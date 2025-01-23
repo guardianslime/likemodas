@@ -4,46 +4,36 @@ import reflex as rx
 
 from rxconfig import config
 
-from .ui.base import base_page
-
-from . import navigation, pages
 
 class State(rx.State):
-    
-    label = "Welcome to Reflex"
+    """The app state."""
 
-    def handle_title_input_change(self, val):
-         self.label = val
-        
-    def did_click(self):
-        print("hello world did click")
-        return rx.redirect(navigation.routes.ABOUT_US_ROUTE)
+    ...
+
 
 def index() -> rx.Component:
     # Welcome Page (Index)
-        my_child=rx.vstack(
-            rx.heading(State.label, size="9"),
+    return rx.container(
+        rx.color_mode.button(position="top-right"),
+        rx.vstack(
+            rx.heading("Welcome to Reflex!", size="9"),
             rx.text(
                 "Get started by editing ",
                 rx.code(f"{config.app_name}/{config.app_name}.py"),
                 size="5",
             ),
-            # rx.button("About us", on_click=State.did_click),
             rx.link(
-                 rx.button("about us"), 
-                 href=navigation.routes.ABOUT_US_ROUTE
+                rx.button("Check out our docs!"),
+                href="https://reflex.dev/docs/getting-started/introduction/",
+                is_external=True,
             ),
             spacing="5",
             justify="center",
-            align="center",
-            text_align="center",
             min_height="85vh",
-            id="my-child"
-        )
-        return base_page(my_child)
+        ),
+        rx.logo(),
+    )
+
 
 app = rx.App()
 app.add_page(index)
-app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
-app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
-
