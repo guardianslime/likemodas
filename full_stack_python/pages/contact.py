@@ -54,7 +54,7 @@ def contact_page() -> rx.Component:
 
     my_child = rx.vstack(
             rx.heading("Contact us", size="9"),
-            rx.cond(ContactState.did_submit, rx.text("Submitted"), rx.button("Default")),
+            rx.cond(ContactState.did_submit, rx.text("Submitted")),
             rx.desktop_only(
                 rx.box(
                     my_form,
