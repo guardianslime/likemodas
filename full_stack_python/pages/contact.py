@@ -8,10 +8,10 @@ class ContactState(rx.State):
     form_data: dict = {}
     did_submit: bool = False
 
-    @rx.var 
+    @rx.var(cache=True)
     def thank_you(self):
         first_name = self.form_data.get("first_name") or ""
-        return f"Thank you! {first_name}"
+        return f"Thank you! {first_name}!"
 
     def handle_submit(self, form_data: dict):
         """handle the form submit."""
