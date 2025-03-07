@@ -11,7 +11,7 @@ class ContactState(rx.State):
     @rx.var(cache=True)
     def thank_you(self):
         first_name = self.form_data.get("first_name") or ""
-        return f"Thank you! {first_name}!"
+        return f"Thank you{first_name}!"
 
     def handle_submit(self, form_data: dict):
         """handle the form submit."""
@@ -25,11 +25,11 @@ def contact_page() -> rx.Component:
             rx.vstack(
                 rx.hstack(
                     rx.input(
-                    name="first_name",
-                    placeholder="First name",
-                    required=True,
-                    tyoe= "text",
-                    width="100%",
+                        name="first_name",
+                        placeholder="First name",
+                        required=True,
+                        tyoe= "text",
+                        width="100%",
                     ),
                     rx.input(
                         name="last_name",
@@ -59,7 +59,7 @@ def contact_page() -> rx.Component:
 
     my_child = rx.vstack(
             rx.heading("Contact us", size="9"),
-            rx.cond(ContactState.did_submit, ContactState.thank_you, ContactState.thank_you),
+            rx.cond(ContactState.did_submit, "Thank you {first_name}", ""),
             rx.desktop_only(
                 rx.box(
                     my_form,
