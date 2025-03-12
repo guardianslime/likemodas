@@ -8,11 +8,11 @@ from ..ui.base import base_page
 class ContactState(rx.State):
     form_data: dict = {}
     did_submit: bool = False
-    timelef: int = 5
+    timeleft: int = 5
 
     @rx.var(cache=True)
     def timeleft_label(self):
-        if self.timelef < 1:
+        if self.timeleft < 1:
             return "No time left"
         return f"{self.timeleft} seconds"
 
@@ -32,7 +32,7 @@ class ContactState(rx.State):
         yield
     
     async def start_timer(self):
-        while self.timeleft > 10:
+        while self.timeleft > 0:
             await asyncio.sleep(1)
             self.timeleft -= 1
             yield
