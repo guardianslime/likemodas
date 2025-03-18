@@ -4,6 +4,8 @@ import reflex as rx
 from .. import navigation
 from ..ui.base import base_page
 
+class ContactEntryModel(rx.model, table=True):
+    first_name: str
 
 class ContactState(rx.State):
     form_data: dict = {}
@@ -47,7 +49,7 @@ def contact_page() -> rx.Component:
                 rx.hstack(
                     rx.input(
                         name="first_name",
-                        placeholder="First name",
+                        placeholder="first name",
                         required=False,
                         tyoe= "text",
                         width="100%",
