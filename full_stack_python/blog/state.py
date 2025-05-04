@@ -6,7 +6,7 @@ from sqlmodel import select
 from .model import BlogPostModel
 
 class BlogPostState(rx.State):
-    posts: List["BlogPostModel"] = []
+    posts: list["BlogPostModel"] = []
     posts: Optional["BlogPostModel"] = []
 
     def load_posts(self):
