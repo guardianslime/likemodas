@@ -6,8 +6,7 @@ from sqlmodel import select
 from .model import BlogPostModel
 
 class BlogPostState(rx.State):
-    posts: list["BlogPostModel"] = []
-    posts: Optional["BlogPostModel"] = []
+    posts: list[BlogPostModel] = []
 
     def load_posts(self):
         with rx.session() as session:
