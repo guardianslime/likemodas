@@ -19,7 +19,8 @@ def blog_post_list_page() -> rx.Component:
         rx.vstack(
             rx.heading("Blog Posts", size="5"),
             # rx.foreach(["abc", "abc", "cde"], foreach_callback),
-            rx.foreach(BlogPostState.posts, blog_post_list_item),
+            rx.foreach(state.BlogPostState.posts,
+            blog_post_list_item),
             spacing="5",
             align="center",
             min_height="85vh",

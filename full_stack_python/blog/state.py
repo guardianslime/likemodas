@@ -5,7 +5,7 @@ from sqlmodel import select
 
 from .model import BlogPostModel
 
-class blogPostState(rx.State):
+class BlogPostState(rx.State):
     posts: List["BlogPostModel"] = []
     posts: Optional["BlogPostModel"] = []
 
