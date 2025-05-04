@@ -1,4 +1,4 @@
-from. list import blog_post_list_page
+from .list import blog_post_list_page
 from .model import BlogPostModel
 
 __all__= [
