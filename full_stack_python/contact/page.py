@@ -5,7 +5,8 @@ from . import form, state, model
 
 def contact_entry_list_item(contact: model.ContactEntryModel):
     return rx.box(
-        rx.text(contact.first_name, contact.message),
+        rx.heading(contact.first_name),
+        rx.text(contact.message),
         padding="1em"
         )
 
