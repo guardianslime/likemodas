@@ -14,7 +14,7 @@ class BlogPostState(rx.State):
             result = session.exec(
                 select(BlogPostModel)
             )
-            self.posts = result
+            self.posts = result()
         #return
 
     #def get_post(self):
