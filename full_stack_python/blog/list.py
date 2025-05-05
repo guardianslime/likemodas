@@ -20,12 +20,12 @@ def blog_post_detail_link(child: rx.Component, post: model.BlogPostModel):
 
 def blog_post_list_item(post: model.BlogPostModel):
     return rx.box(
-        blog_post_detail_link(
+        blog_post_detail_link(    
             rx.heading(post.title),
-            
+
             post
         ),
-        padding='1em'
+        padding="1em"
     )
 
 # def foreach_callback(text):
