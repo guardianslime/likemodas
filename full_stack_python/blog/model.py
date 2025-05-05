@@ -7,7 +7,7 @@ from sqlmodel import Field
 from .. import utils
 
 class BlogPostModel(rx.Model, table=True):
-    titlle: str
+    title: str
     content: str
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
