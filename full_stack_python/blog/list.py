@@ -31,7 +31,7 @@ def blog_post_list_item(post: model.BlogPostModel):
 # def foreach_callback(text):
 #     return rx.box(rx.text(text))
 
-def blog_post_list_page() ->rx.Component:
+def blog_post_list_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Blog Posts", size="5"),
