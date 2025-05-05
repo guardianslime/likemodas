@@ -11,7 +11,7 @@ def blog_post_detail_link(child: rx.Component, post: model.BlogPostModel):
     post_id = post.id
     if post_id is None:
         return rx.fragment(child)
-    root_path = navigation.routes.BLOG_POSTS_ROUTE
+    root_path = navigation.routes.BLOG_POST_ROUTE
     post_detail_url = f"{root_path}/{post_id}"
     return rx.link(
         child,
