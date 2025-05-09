@@ -36,10 +36,11 @@ class BlogPostState(rx.State):
     def add_post(self, form_data:dict):
         with rx.session() as session:
             post = BlogPostModel(**form_data)
-            print("adding", post)
+            # print("adding", post)
             session.add(post)
             session.commit()
             session.refresh(post)
+            # print("added", post)
             self.post = post
     #def get_post(self):
     #    with rx.session() as session:
