@@ -1,8 +1,10 @@
+from .detail import blog_post_detail_page 
 from .list import blog_post_list_page
 from .model import BlogPostModel
 from .state import BlogPostState
 
 __all__ = [
+    "blog_post_detail_page",
     "blog_post_list_page",
     "BlogPostModel",
     "BlogPostState"
