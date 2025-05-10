@@ -1,8 +1,7 @@
 from typing import Optional, List
 import reflex as rx
 
-import sqlalchemy
-from sqlmodel import select
+
 from sqlmodel import select
 
 from .model import BlogPostModel
@@ -32,9 +31,7 @@ class BlogPostState(rx.State):
     def load_posts(self):
         with rx.session() as session:
             result = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
+                select(BlogPostModel)
             ).all()
             self.posts = result
         #return
@@ -63,7 +60,7 @@ class BlogPostState(rx.State):
             session.add(post)
             session.commit()
             session.refresh(post)
-            self.post = post
+            #
 
 
 class BlogAddPostFormState(BlogPostState):
