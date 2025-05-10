@@ -44,12 +44,22 @@ class BlogPostState(rx.State):
             session.refresh(post)
             # print("added", post)
             self.post = post
-    #def get_post(self):
-    #    with rx.session() as session:
-    #        result = session.exec(
-    #            select(BlogPostModel)
-    #        )
-    #        self.posts = result
+
+    def save_post_edits(self, post_id:int, updated_data:dict):
+        with rx.session() as session:
+            post = session.exec(
+                select(BlogPostModel).where(
+                    BlogPostModel.id == post_id
+                )
+            ).one_or_none()
+            if post is None:
+                return
+            for key, value in updated_data.items():
+                setattr(post, key, value)
+            session.add(post)
+            session.commit()
+            session.refresh(post)
+            #
 
 
 class BlogAddPostFormState(BlogPostState):
@@ -69,4 +79,7 @@ class BlogEditFormState(BlogPostState):
         post_id = form_data.pop('post_id')
         update_data = {**form_data}
         print(post_id, update_data)
-        # self.add_post(form_data)
+        self.save_post_edits(form_data)
+
+    
+    
