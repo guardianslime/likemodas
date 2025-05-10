@@ -8,6 +8,7 @@ from .model import BlogPostModel
 class BlogPostState(rx.State):
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
+    post_content: str = ""
 
     @rx.var
     def blog_post_id(self):
@@ -23,7 +24,8 @@ class BlogPostState(rx.State):
                     BlogPostModel.id == self.blog_post_id
                 )
             ).one_or_none()
-            self.post =result 
+            self.post = result
+            self.post = self.post.content
 
     def load_posts(self):
         with rx.session() as session:
@@ -56,3 +58,13 @@ class BlogAddPostFormState(BlogPostState):
     def handle_submit(self, form_data):
         self.form_data = form_data
         self.add_post(form_data)
+
+
+class BlogEditFormState(BlogPostState):
+    form_data: dict = {}
+    # post_content: str = ""
+
+    def handle_submit(self, form_data):
+        self.form_data = form_data
+        print(form_data)
+        # self.add_post(form_data)
