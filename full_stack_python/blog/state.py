@@ -78,8 +78,7 @@ class BlogEditFormState(BlogPostState):
         self.form_data = form_data
         post_id = form_data.pop('post_id')
         updated_data = {**form_data}
-        print(post_id, updated_data)
-        self.save_post_edits(form_data)
+        self.save_post_edits(post_id, updated_data)
 
     
     
