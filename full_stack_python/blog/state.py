@@ -66,5 +66,7 @@ class BlogEditFormState(BlogPostState):
 
     def handle_submit(self, form_data):
         self.form_data = form_data
-        print(form_data)
+        post_id = form_data.pop('post_id')
+        update_data = {**form_data}
+        print(post_id, update_data)
         # self.add_post(form_data)
