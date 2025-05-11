@@ -40,6 +40,7 @@ from .state import BlogEditFormState
 def blog_post_edit_form() -> rx.Component:
     post = BlogEditFormState.post
     title = post.title
+    publish_active = post.publish_active
     post_content = BlogEditFormState.post_content
     return rx.form(
             rx.box(
@@ -70,6 +71,14 @@ def blog_post_edit_form() -> rx.Component:
                     required=True,
                     height='50vh',
                     width='100%',
+                ),
+                rx.flex(
+                    rx.switch(
+                        default_checked=publish_active,
+                        name='pubish_active',        
+                    ),
+                    rx.text('Publish Active'),
+                    spacing="2",
                 ),
                 rx.button("Submit", type="submit"),
             ),

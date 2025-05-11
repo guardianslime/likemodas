@@ -26,4 +26,5 @@ class BlogPostModel(rx.Model, table=True):
         },
         nullable=False
     )
+    publish_active: bool = False
     

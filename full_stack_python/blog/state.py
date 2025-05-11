@@ -1,10 +1,14 @@
 from typing import Optional, List
 import reflex as rx
 
-
 from sqlmodel import select
 
+from .. import navigation
 from .model import BlogPostModel
+
+BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
+if BLOG_POSTS_ROUTE.endswith("/"):
+    BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
 class BlogPostState(rx.State):
     posts: List["BlogPostModel"] = []
@@ -14,6 +18,18 @@ class BlogPostState(rx.State):
     @rx.var
     def blog_post_id(self):
         return self.router.page.params.get("blog_id","")
+
+    @rx.var
+    def blog_post_url(self):
+        if not self.post:
+            return f"{BLOG_POSTS_ROUTE}"
+        return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
+
+    @rx.var
+    def blog_post_edit_url(self):
+        if not self.post:
+            return f"{BLOG_POSTS_ROUTE}"
+        return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
     def get_post_detail(self):
         with rx.session() as session:
@@ -65,10 +81,12 @@ class BlogPostState(rx.State):
             session.refresh(post)
             self.post = post
 
-    def to_blog_post(self):
+    def to_blog_post(self, edit_page=False):
         if not self.post:
-            return rx.redirect('/blog')
-        return rx.redirect(f"/blog{self.post.id}")
+            return rx.redirect(BLOG_POSTS_ROUTE)
+        if edit_page:
+            return rx.redirect(f"{self.blog_post_edit_url}")
+        return rx.redirect(f"{self.blog_post_url}")
 
 
 class BlogAddPostFormState(BlogPostState):
@@ -77,7 +95,7 @@ class BlogAddPostFormState(BlogPostState):
     def handle_submit(self, form_data):
         self.form_data = form_data
         self.add_post(form_data)
-        return self.to_blog_post()
+        return self.to_blog_post(edit_page=True)
 
 
 class BlogEditFormState(BlogPostState):
