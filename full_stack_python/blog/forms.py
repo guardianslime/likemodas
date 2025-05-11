@@ -74,10 +74,10 @@ def blog_post_edit_form() -> rx.Component:
                 ),
                 rx.flex(
                     rx.switch(
-                        default_checked=publish_active,
+                        default_checked = publish_active,
                         name='pubish_active',        
                     ),
-                    rx.text('Publish Active'),
+                    rx.text("Publish Active"),
                     spacing="2",
                 ),
                 rx.button("Submit", type="submit"),
