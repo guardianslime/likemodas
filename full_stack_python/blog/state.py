@@ -63,7 +63,12 @@ class BlogPostState(rx.State):
             session.add(post)
             session.commit()
             session.refresh(post)
-            #
+            self.post = post
+
+    def to_blog_post(self):
+        if not self.post:
+            return rx.redirect('/blog')
+        return rx.redirect(f"/blog{self.post.id}")
 
 
 class BlogAddPostFormState(BlogPostState):
@@ -72,17 +77,18 @@ class BlogAddPostFormState(BlogPostState):
     def handle_submit(self, form_data):
         self.form_data = form_data
         self.add_post(form_data)
+        return self.to_blog_post()
 
 
 class BlogEditFormState(BlogPostState):
     form_data: dict = {}
-    # post_content: str = ""
 
     def handle_submit(self, form_data):
         self.form_data = form_data
         post_id = form_data.pop('post_id')
         updated_data = {**form_data}
         self.save_post_edits(post_id, updated_data)
+        return self.to_blog_post()
 
     
     
