@@ -104,12 +104,7 @@ class BlogEditFormState(BlogPostState):
     def handle_submit(self, form_data):
         self.form_data = form_data
         post_id = form_data.pop('post_id')
-        publish_activate = False
-        print(form_data) 
-        if 'publish_active' in form_data:
-            publish_active = form_data.pop('publish_active') == "on"
         updated_data = {**form_data}
-        updated_data['publish_active'] = publish_active
         self.save_post_edits(post_id, updated_data)
         return self.to_blog_post()
 
