@@ -14,18 +14,18 @@ def blog_post_detail_page() -> rx.Component:
         edit_link,
     )
     my_child = rx.vstack(
-            rx.hstack(
-                rx.heading(state.BlogPostState.post.title, size="9"),
-                edit_link_el,
-                align='end'
-            ),
-            rx.text(state.BlogPostState.post.publish_date),
-            rx.text(
-                state.BlogPostState.post.content,
-                white_space='pre-wrap'
-            ),
-            spacing="5",
-            align="center",
-            min_height="85vh",
-        )
+        rx.hstack(
+            rx.heading(state.BlogPostState.post.title, size="9"),
+            edit_link_el,
+            align='end'
+        ),
+        rx.text(state.BlogPostState.post.publish_date),
+        rx.text(
+            state.BlogPostState.post.content,
+            white_space='pre-wrap'
+        ),
+        spacing="5",
+        align="center",
+        min_height="85vh",
+    )
     return base_page(my_child)
