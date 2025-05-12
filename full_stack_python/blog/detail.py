@@ -16,8 +16,10 @@ def blog_post_detail_page() -> rx.Component:
     my_child = rx.vstack(
             rx.hstack(
                 rx.heading(state.BlogPostState.post.title, size="9"),
-                edit_link_el,align='end'
+                edit_link_el,
+                align='end'
             ),
+                rx.text(state.BlogPostState.post.title),
                 rx.text(
                 state.BlogPostState.post.content,
                 white_space='pre-wrap'
