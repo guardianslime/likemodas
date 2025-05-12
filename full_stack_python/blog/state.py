@@ -107,6 +107,10 @@ class BlogEditFormState(BlogPostState):
     @rx.var
     def publish_display_date(self) -> str:
         return "2023-12-01"
+    
+    @rx.var
+    def publish_display_time(self) -> str:
+        return datetime.now().strftime("%H:%M:%S")
 
     def handle_submit(self, form_data):
         self.form_data = form_data

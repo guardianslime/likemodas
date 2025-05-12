@@ -95,6 +95,8 @@ def blog_post_edit_form() -> rx.Component:
                                 width='100%'
                             ),
                             rx.input(
+                                default_value=BlogEditFormState.
+                                publish_display_time,
                                 type='time',
                                 name='publish_time',
                                 width='100%'
