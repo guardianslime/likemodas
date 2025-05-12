@@ -19,7 +19,7 @@ class BlogPostState(rx.State):
 
     @rx.var
     def blog_post_id(self):
-        return self.router.page.params.get("blog_id","")
+        return self.router.page.params.get("blog_id","/")
 
     @rx.var
     def blog_post_url(self):
