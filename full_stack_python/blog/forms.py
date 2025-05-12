@@ -86,7 +86,20 @@ def blog_post_edit_form() -> rx.Component:
                 rx.cond(
                     BlogEditFormState.post_publish_active,
                     rx.box(
-                        rx.text("publish input")
+                        rx.hstack(
+                            rx.input(
+                                type='date',
+                                name='publish_date',
+                                width='100%'
+                            ),
+                            rx.input(
+                                type='time',
+                                name='publish_time',
+                                width='100%'
+                            ),
+                        width='100%'
+                        ),
+                        width='100%'
                     )
                 ),
                 rx.button("Submit", type="submit"),
