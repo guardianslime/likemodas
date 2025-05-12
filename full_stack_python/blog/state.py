@@ -106,11 +106,19 @@ class BlogEditFormState(BlogPostState):
 
     @rx.var
     def publish_display_date(self) -> str:
-        return datetime.now().strftime("%Y-%m-%d")
+        if not self.post:
+            return datetime.now().strftime("%Y-%m-%d")
+        if not self.post.publish_date:
+            return datetime.now().strftime("%Y-%m-%d")
+        return self.post.publish_date.strftime("%Y-%m-%d")
     
     @rx.var
     def publish_display_time(self) -> str:
-        return datetime.now().strftime("%H:%M:%S")
+        if not self.post:
+            return datetime.now().strftime("%H:%M:%S")
+        if not self.post.publish_date:
+            return datetime.now().strftime("%H:%M-%S")
+        return self.post.publish_date.strftime("%H:%M:%S")
 
     def handle_submit(self, form_data):
         self.form_data = form_data
