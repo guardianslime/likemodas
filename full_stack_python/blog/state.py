@@ -124,8 +124,7 @@ class BlogEditFormState(BlogPostState):
         print(publish_date, publish_time)
         publish_input_string = f"{publish_date} {publish_time}"
         try:
-            final_publish_date = datetime.strptime
-            (publish_input_string, "%Y-%m-%d %H:%M:%S")
+            final_publish_date = datetime.strptime(publish_input_string, "%Y-%m-%d %H:%M:%S")
         except:
             final_publish_date = None
         publish_active = False
