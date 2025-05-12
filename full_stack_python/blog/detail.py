@@ -19,7 +19,7 @@ def blog_post_detail_page() -> rx.Component:
                 edit_link_el,
                 align='end'
             ),
-                rx.text(state.BlogPostState.post.title),
+                rx.text(state.BlogPostState.post.publish_date),
                 rx.text(
                 state.BlogPostState.post.content,
                 white_space='pre-wrap'
