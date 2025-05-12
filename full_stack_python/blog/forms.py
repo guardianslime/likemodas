@@ -88,6 +88,8 @@ def blog_post_edit_form() -> rx.Component:
                     rx.box(
                         rx.hstack(
                             rx.input(
+                                default_value=BlogEditFormState.
+                                publish_display_date,
                                 type='date',
                                 name='publish_date',
                                 width='100%'

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional, List
 import reflex as rx
 
@@ -103,9 +104,20 @@ class BlogAddPostFormState(BlogPostState):
 class BlogEditFormState(BlogPostState):
     form_data: dict = {}
 
+    @rx.var
+    def publish_diplay_date(self) -> str:
+        return "2023-12-01"
+
     def handle_submit(self, form_data):
         self.form_data = form_data
         post_id = form_data.pop('post_id')
+        publish_date = None
+        if'publish_date' in form_data:
+            publish_date = form_data.pop('publish_date')
+        publish_time = None
+        if'publish_time' in form_data:
+            publish_time = form_data.pop('publish_time')
+        print(publish_date, publish_time)
         publish_active = False
         if 'publish_active' in form_data:
             publish_active = form_data.pop('publish_active') == "on"
