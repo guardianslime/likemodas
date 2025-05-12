@@ -14,6 +14,7 @@ class BlogPostState(rx.State):
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
+    post_publish_active: bool = False
 
     @rx.var
     def blog_post_id(self):
@@ -46,6 +47,7 @@ class BlogPostState(rx.State):
                 self.post_content =""
                 return
             self.post_content = self.post.content
+            self.post_publish_active = self.post.publish_active
 
     def load_posts(self):
         with rx.session() as session:
