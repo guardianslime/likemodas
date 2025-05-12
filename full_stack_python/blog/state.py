@@ -105,7 +105,7 @@ class BlogEditFormState(BlogPostState):
     form_data: dict = {}
 
     @rx.var
-    def publish_diplay_date(self) -> str:
+    def publish_display_date(self) -> str:
         return "2023-12-01"
 
     def handle_submit(self, form_data):
