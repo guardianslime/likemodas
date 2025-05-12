@@ -51,16 +51,16 @@ class BlogPostState(rx.State):
             self.post_publish_active = self.post.publish_active
 
     def load_posts(self, published_only=False):
-        lookup_orgs = ()
+        lookup_args = ()
         if published_only:
-            loockup_args = (
+            lookup_args = (
                 (BlogPostModel.publish_active == True) &
                 (BlogPostModel.publish_date < datetime.now())
             )
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).where(
-                    *loockup_args
+                    *lookup_args
                 )
             ).all()
             self.posts = result
