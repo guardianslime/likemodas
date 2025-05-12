@@ -53,7 +53,10 @@ class BlogPostState(rx.State):
     def load_posts(self):
         with rx.session() as session:
             result = session.exec(
-                select(BlogPostModel)
+                select(BlogPostModel).where(
+                    (BlogPostModel.publish_active == True) &
+                    (BlogPostModel.publish_date < datetime.now())
+                )
             ).all()
             self.posts = result
         #return
