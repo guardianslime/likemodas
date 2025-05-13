@@ -129,22 +129,20 @@ class BlogEditFormState(BlogPostState):
         return self.post.publish_date.strftime("%H:%M:%S")
 
     def handle_submit(self, form_data):
-        print(f"BlogEditFormState.handle_submit recibió: {form_data}")
         self.form_data = form_data
         post_id = form_data.pop('post_id')
         publish_date = None
-        if 'publish_date' in form_data:
+        if'publish_date' in form_data:
             publish_date = form_data.pop('publish_date')
         publish_time = None
-        if 'publish_time' in form_data:
+        if'publish_time' in form_data:
             publish_time = form_data.pop('publish_time')
-        print(f"publish_date: {publish_date}, publish_time: {publish_time}")
+        print(publish_date, publish_time)
         publish_input_string = f"{publish_date} {publish_time}"
         try:
             final_publish_date = datetime.strptime(publish_input_string, "%Y-%m-%d %H:%M:%S")
         except:
             final_publish_date = None
-        print(f"final_publish_date: {final_publish_date}")
         publish_active = False
         if 'publish_active' in form_data:
             publish_active = form_data.pop('publish_active') == "on"
