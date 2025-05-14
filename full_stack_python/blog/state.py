@@ -85,7 +85,11 @@ class BlogPostState(rx.State):
             session.add(post)
             session.commit()
             session.refresh(post)
-            self.post = post
+            self.post = session.exec(  # Fetch updated post!
+                select(BlogPostModel).where(
+                    BlogPostModel.id == post_id
+                )
+            ).one_or_none()
 
     def to_blog_post(self, edit_page=False):
         if not self.post:
