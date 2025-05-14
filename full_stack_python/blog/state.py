@@ -85,11 +85,7 @@ class BlogPostState(rx.State):
             session.add(post)
             session.commit()
             session.refresh(post)
-            self.post = session.exec(  # Fetch updated post!
-                select(BlogPostModel).where(
-                    BlogPostModel.id == post_id
-                )
-            ).one_or_none()
+            self.post = post
 
     def to_blog_post(self, edit_page=False):
         if not self.post:
@@ -124,7 +120,7 @@ class BlogEditFormState(BlogPostState):
         if not self.post:
             return datetime.now().strftime("%H:%M:%S")
         if not self.post.publish_date:
-            return datetime.now().strftime("%H:%M-%S")
+            return datetime.now().strftime("%H:%M:%S")
         return self.post.publish_date.strftime("%H:%M:%S")
 
     def handle_submit(self, form_data):
