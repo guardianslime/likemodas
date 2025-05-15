@@ -18,6 +18,7 @@ class BlogPostState(rx.State):
     @rx.var
     def blog_post_id(self):
         return self.router.page.params.get("blog_id","")
+    
 
     @rx.var
     def blog_post_url(self):
@@ -52,12 +53,11 @@ class BlogPostState(rx.State):
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).where(
-                    (BlogPostModel.publish_active == True) &
                     (BlogPostModel.publish_date < datetime.now())                    
                 )
             ).all()
             self.posts = result
-            
+
 
     def add_post(self, form_data:dict):
         with rx.session() as session:
@@ -130,12 +130,14 @@ class BlogEditFormState(BlogPostState):
             publish_time = form_data.pop('publish_time')
         publish_input_string = f"{publish_date} {publish_time}"
         try:
-            final_publish_date = datetime.strptime(publish_input_string, "%Y-%m-%d %H:%M:%S")
+            final_publish_date = datetime.strptime
+            (publish_input_string, "%Y-%m-%d %H:%M:%S")
         except:
             final_publish_date = None
         publish_active = False
         if 'publish_active' in form_data:
-            publish_active = form_data.pop('publish_active') == "on"
+            publish_active = form_data.pop
+            ('publish_active') == "on"
         updated_data = {**form_data}
         updated_data['publish_active'] = publish_active
         updated_data['publish_date'] = final_publish_date
