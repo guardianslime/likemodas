@@ -48,20 +48,15 @@ class BlogPostState(rx.State):
             self.post_content = self.post.content
             self.post_publish_active = self.post.publish_active
 
-    def load_posts(self, published_only=False):
-        lookup_args = ()
-        if published_only:
-            lookup_args = (
-                (BlogPostModel.publish_active == True) &
-                (BlogPostModel.publish_date < datetime.now())
-            )
+    def load_posts(self):
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).where(
-                    *lookup_args
+                    BlogPostModel.publish_active = True
                 )
             ).all()
             self.posts = result
+        # return
 
     def add_post(self, form_data:dict):
         with rx.session() as session:
@@ -132,7 +127,6 @@ class BlogEditFormState(BlogPostState):
         publish_time = None
         if'publish_time' in form_data:
             publish_time = form_data.pop('publish_time')
-        print(publish_date, publish_time)
         publish_input_string = f"{publish_date} {publish_time}"
         try:
             final_publish_date = datetime.strptime(publish_input_string, "%Y-%m-%d %H:%M:%S")

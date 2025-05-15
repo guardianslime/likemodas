@@ -14,7 +14,7 @@ def blog_post_edit_page() -> rx.Component:
     my_form = forms.blog_post_edit_form()
     post = BlogEditFormState.post
     my_child = rx.vstack(
-            rx.heading("Editing", post.title, size="9"), 
+            rx.heading("Editing ", post.title, size="9"), 
             rx.desktop_only(
                 rx.box(
                     my_form,
