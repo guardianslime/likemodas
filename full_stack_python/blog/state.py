@@ -123,7 +123,6 @@ class BlogEditFormState(BlogPostState):
     def handle_submit(self, form_data):
         self.form_data = form_data
         post_id = form_data.pop('post_id')
-        publish_active = False
         publish_date = None
         if'publish_date' in form_data:
             publish_date = form_data.pop('publish_date')
