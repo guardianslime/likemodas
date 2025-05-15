@@ -136,7 +136,7 @@ class BlogEditFormState(BlogPostState):
             (publish_input_string, "%Y-%m-%d %H:%M:%S")
         except:
             final_publish_date = None
-        publish_active = False
+            publish_active = False
         if 'publish_active' in form_data:
             publish_active = form_data.pop('publish_active') == "on"
         updated_data = {**form_data}
