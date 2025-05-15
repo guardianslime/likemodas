@@ -79,7 +79,7 @@ def blog_post_edit_form() -> rx.Component:
                         on_change=BlogEditFormState.set_post_publish_active,
                         name='publish_active',        
                     ),
-                    rx.text("publish Active"),
+                    rx.text("Publish Active"),
                     spacing="2",
                 ),
                 rx.cond(
