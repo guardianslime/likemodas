@@ -76,8 +76,7 @@ def blog_post_edit_form() -> rx.Component:
                     rx.switch(
                         default_checked=BlogEditFormState.
                         post_publish_active,
-                        on_change=BlogEditFormState.
-                        set_post_publish_active,
+                        on_change=BlogEditFormState.set_post_publish_active,
                         name='publish_active',        
                     ),
                     rx.text("publish Active"),
