@@ -52,7 +52,7 @@ class BlogPostState(rx.State):
         lookup_args = ()
         if published_only:
             lookup_args = (
-                (BlogPostModel.publish_active == False) &
+                (BlogPostModel.publish_active == True) &
                 (BlogPostModel.publish_date < datetime.now())                
             )
         with rx.session() as session:
