@@ -90,6 +90,7 @@ class BlogPostState(rx.State):
 
 
 class BlogAddPostFormState(BlogPostState):
+    form_data: dict = {}
 
     def handle_submit(self, form_data):
         self.form_data = form_data
