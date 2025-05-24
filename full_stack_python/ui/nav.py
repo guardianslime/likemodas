@@ -94,8 +94,12 @@ def navbar() -> rx.Component:
                         rx.menu.item("Contact",
                             on_click=navigation.NavState.to_contact),
                         rx.menu.separator(),
-                        rx.menu.item("Log in"),
-                        rx.menu.item("Sign up"),
+                        rx.menu.item("Log in",
+                            on_click=navigation.NavState.
+                            to_login),
+                        rx.menu.item("Register",
+                            on_click=navigation.NavState.
+                            to_register),
                     ),
                     justify="end",
                 ),
