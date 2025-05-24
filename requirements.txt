@@ -1,2 +1,2 @@
 reflex==0.6.8
-reflex-local-authr
+reflex-local-auth
