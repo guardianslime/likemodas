@@ -16,17 +16,17 @@ class BlogPostState(rx.State):
     post_publish_active: bool = False
 
     @rx.var
-    def blog_post_id(self) -> str:  # Añadida la anotación de tipo -> str
+    def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
     @rx.var
-    def blog_post_url(self) -> str: # Añadida la anotación de tipo -> str
+    def blog_post_url(self) -> str:
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
 
     @rx.var
-    def blog_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
+    def blog_post_edit_url(self) -> str:
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
@@ -90,7 +90,7 @@ class BlogPostState(rx.State):
 
 
 class BlogAddPostFormState(BlogPostState):
-    form_data: dict = {}
+    form_data: dict = {} # Agrega esta línea para definir form_data
 
     def handle_submit(self, form_data):
         self.form_data = form_data
