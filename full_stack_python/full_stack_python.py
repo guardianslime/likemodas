@@ -51,7 +51,7 @@ app.add_page(
      title="login",
 )
 app.add_page(
-     reflex_local_auth.pages.register_page,
+     auth.pages.my_register_page,
      route=reflex_local_auth.routes.REGISTER_ROUTE,
      title="Register",
 )
