@@ -5,7 +5,7 @@ from reflex_local_auth.pages.registration import RegistrationState, register_for
 
 from ..ui.base import base_page
 
-from ..ui.base import my_register_form
+from .forms import my_register_form
 
 def my_login_page()->rx.Component:
     return base_page(
