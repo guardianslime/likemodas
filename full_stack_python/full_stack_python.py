@@ -6,7 +6,7 @@ import reflex_local_auth
 from rxconfig import config
 from .ui.base import base_page
 
-from . import blog, contact, navigation, pages
+from . import auth, blog, contact, navigation, pages
 
 class State(rx.State):
     
@@ -46,7 +46,7 @@ app = rx.App()
 app.add_page(index)
 # reflex_local_auth,pages
 app.add_page(
-     reflex_local_auth.pages.login_page,
+     auth.pages.my_login_page,
      route=reflex_local_auth.routes.LOGIN_ROUTE,
      title="login",
 )
