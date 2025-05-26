@@ -29,7 +29,7 @@ def my_register_form() -> rx.Component:
             input_100w("email", type='email'),
             rx.text("Password"),
             input_100w("password", type="password"),
-            rx.text("Confirm_password", type="password"),
+            rx.text("Confirm password", type="password"),
             input_100w("Confirm_password", type="password"),
             rx.button("Sign up", width="100%"),
             rx.center(
