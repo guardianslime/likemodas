@@ -25,10 +25,23 @@ class SessionState(reflex_local_auth.LocalAuthState):
         print(self.authenticated_user_info)
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
+    def handle_registration(
+        self, form_data
+    ) -> rx.event.EventSpec | list[rx.event.EventSpec]:
+        username = form_data["username"]
+        password = form_data["password"]
+        validation_errors = self._validate_fields(
+            username, password, form_data["confirm_password"]
+        )
+        if validation_errors:
+            self.new_user_id = -1
+            return validation_errors
+        self._register_user(username, password)
+        return self.new.user_id
+
     def handle_registration_email(self, form_data):
-        registration_result = super().handle_registration(form_data)
-        print(self.new_user_id)
-        if self.new_user_id >= 0:
+        new_user_id = self.handle_registration(form_data)
+        if new_user_id >= 0:
             with rx.session() as session:
                 session.add(
                     UserInfo(
@@ -37,4 +50,4 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
                     )
                 )
                 session.commit()
-        return registration_result
+        return type(self).successful_registration
