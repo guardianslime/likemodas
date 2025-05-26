@@ -21,11 +21,13 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def on_load(self):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
+        print(self.is_authenticated)
         print(self.authenticated_user_info)
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
     def handle_registration_email(self, form_data):
         registration_result = super().handle_registration(form_data)
+        print(self.new_user_id)
         if self.new_user_id >= 0:
             with rx.session() as session:
                 session.add(
