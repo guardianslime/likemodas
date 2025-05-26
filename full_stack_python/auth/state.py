@@ -10,7 +10,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
         if self.authenticated_user.id < 0:
-            return
+            return 
         with rx.session() as session:
             return session.exec(
             sqlmodel.select(UserInfo).where(
@@ -25,8 +25,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
         print(self.authenticated_user_info)
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
-    def handle_registration(
-        self, form_data
+    def handle_registration(self, form_data
     ) -> rx.event.EventSpec | list[rx.event.EventSpec]:
         username = form_data["username"]
         password = form_data["password"]
