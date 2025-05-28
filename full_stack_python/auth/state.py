@@ -17,17 +17,16 @@ class SessionState(reflex_local_auth.LocalAuthState):
                     UserInfo.user_id == self.authenticated_user.id
                 ),
             ).one_or_none()
-
+    
     def on_load(self):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
-        print(self.is_authenticated)
-        print(self.authenticated_user_info)
+        print(f"Usuario autenticado: {self.is_authenticated}")
+        print(f"info usario: {self.authenticated_user_info}")
         
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
-    def handle_registration(self, form_data
-    ) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
+    def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
         username = form_data["username"]
         password = form_data["password"]
         validation_errors = self._validate_fields(
