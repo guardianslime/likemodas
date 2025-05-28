@@ -37,7 +37,8 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
             self.new_user_id = -1
             return validation_errors
         self._register_user(username, password)
-        return self.new.user_id
+        return self.new_user_id
+        
 
     def handle_registration_email(self, form_data):
         new_user_id = self.handle_registration(form_data)
