@@ -21,8 +21,8 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def on_load(self):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
-        print(f"Usuario autenticado: {self.is_authenticated}")
-        print(f"info usario: {self.authenticated_user_info}")
+        print(self.is_authenticated)
+        print(self.authenticated_user_info)
         
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
