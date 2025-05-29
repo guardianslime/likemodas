@@ -1,5 +1,7 @@
 import reflex as rx
 
+from .. import navigation
+
 def sidebar_item(
     text: str, icon: str, href: str
 ) -> rx.Component:
@@ -28,10 +30,9 @@ def sidebar_item(
 
 def sidebar_items() -> rx.Component:
     return rx.vstack(
-        sidebar_item("Dashboard", "layout-dashboard", "/#"),
-        sidebar_item("Projects", "square-library", "/#"),
-        sidebar_item("Analytics", "bar-chart-4", "/#"),
-        sidebar_item("Messages", "mail", "/#"),
+        sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
+        sidebar_item("Projects", "square-library", navigation.routes.BLOG_POSTS_ROUTE),
+        sidebar_item("Create post", "square-library", navigation.routes.BLOG_POSTS_ADD_ROUTE),
         spacing="1",
         width="100%",
     )
@@ -112,8 +113,8 @@ def sidebar() -> rx.Component:
                 padding_y="1.5em",
                 bg=rx.color("accent", 3),
                 align="start",
-                # height="100%",
-                height="650px",
+                height="100vh",
+                # height="650px",
                 width="16em",
             ),
         ),

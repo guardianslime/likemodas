@@ -75,7 +75,7 @@ app.add_page(
 
 app.add_page(
      blog.blog_post_add_page,
-     route=navigation.routes.BLOG_POST_ADD_ROUTE,
+     route=navigation.routes.BLOG_POSTS_ADD_ROUTE,
 )
 
 app.add_page(
