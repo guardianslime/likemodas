@@ -1,6 +1,7 @@
 import reflex as rx
 
 from .nav import navbar
+from .sidebar import sidebar
 
 def base_page(child: rx.Component, hide_navbar=False, *args, **kwargs) -> rx.Component:
     # print(type(x) for x in args)
@@ -13,7 +14,7 @@ def base_page(child: rx.Component, hide_navbar=False, *args, **kwargs) -> rx.Com
             rx.color_mode.button(oosittion= "bottom-left"),
     )
     return rx.fragment(
-        navbar(),
+        sidebar(),
         rx.box(
             child,
             #bg=rx.color("accent", 3),
