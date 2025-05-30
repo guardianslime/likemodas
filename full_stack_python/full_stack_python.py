@@ -8,7 +8,8 @@ from .ui.base import base_page
 
 from .auth.pages import(
      my_login_page,
-     my_register_page
+     my_register_page,
+     my_logout_page
 )
 from .auth.state import SessionState
 
@@ -60,6 +61,12 @@ app.add_page(
      my_register_page,
      route=reflex_local_auth.routes.REGISTER_ROUTE,
      title="Register",
+)
+
+app.add_page(
+     my_logout_page,
+     route=navigation.routes.LOGOUT_ROUTE,
+     title="Logout"
 )
 
 #my pages

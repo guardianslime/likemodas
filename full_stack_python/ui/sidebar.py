@@ -9,7 +9,7 @@ def sidebar_logout_item() -> rx.Component:
     return rx.box(
         rx.hstack(
             rx.icon("log-out"),
-            rx.text("Log out", size="4"),
+            rx.text("Logout", size="4"),
             width="100%",
             padding_x="0.5rem",
             padding_y="0.75rem",
