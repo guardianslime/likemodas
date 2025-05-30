@@ -42,7 +42,7 @@ def my_logout_page() -> rx.Component:
         my_child=rx.vstack(
             rx.heading("Are you sure you want logout?", size="7"),
             rx.link(
-                 rx.button("No", color_scheme="grey"),
+                 rx.button("No", color_scheme="gray"),
                  href=navigation.routes.HOME_ROUTE
             ),
             rx.button("No", color_scheme="grey"),            
