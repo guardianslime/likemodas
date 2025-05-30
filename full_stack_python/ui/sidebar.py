@@ -1,7 +1,6 @@
 import reflex as rx
 from reflex.style import toggle_color_mode
 
-from ..auth.state import SessionState
 from .. import navigation
 
 
@@ -25,7 +24,7 @@ def sidebar_logout_item() -> rx.Component:
                 "border-radius": "0.5em",
             },
         ),
-        on_click=SessionState.perform_logout,
+        on_click=navigation.NavState.to_logout,
         as_='button', # <button></button>
         underline="none",
         weight="medium",
