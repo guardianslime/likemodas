@@ -44,8 +44,7 @@ def my_logout_page() -> rx.Component:
             rx.link(
                  rx.button("No", color_scheme="gray"),
                  href=navigation.routes.HOME_ROUTE
-            ),
-            rx.button("No", color_scheme="gray"),            
+            ),           
             rx.button("Yes, please logout", on_click=SessionState.perform_logout),
             spacing="5",
             justify="center",
