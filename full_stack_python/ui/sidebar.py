@@ -1,46 +1,10 @@
 import reflex as rx
 from reflex.style import toggle_color_mode
 
-from ..auth.state import SessionState
 from .. import navigation
 
-def sidebar_user_item() -> rx.Component:
-    user_info_abj = SessionState.authenticated_user_info
-    return rx.cond(
-        user_info_abj,    
-        rx.hstack(
-            rx.icon_button(
-                rx.icon("user"),
-                size="3",
-                radius="full",
-            ),
-            rx.vstack(
-                rx.box(
-                    rx.text(
-                        "My account",
-                        size="3",
-                        weight="bold",
-                    ),
-                    rx.text(
-                        f"{user_info_abj.email}",
-                        size="2",
-                        weight="medium",
-                    ),
-                    width="100%",
-                ),
-                spacing="0",
-                align="start",
-                justify="start",
-                width="100%",
-            ),
-            padding_x="0.5rem",
-            align="center",
-            justify="start",
-            width="100%",
-        ),
-        rx.fragment("")
-    )
-    
+
+
 def sidebar_logout_item() -> rx.Component:
     return rx.box(
         rx.hstack(
@@ -164,7 +128,36 @@ def sidebar() -> rx.Component:
                         width="100%",
                     ),
                     rx.divider(),
-                    sidebar_user_item(),
+                    rx.hstack(
+                        rx.icon_button(
+                            rx.icon("user"),
+                            size="3",
+                            radius="full",
+                        ),
+                        rx.vstack(
+                            rx.box(
+                                rx.text(
+                                    "My account",
+                                    size="3",
+                                    weight="bold",
+                                ),
+                                rx.text(
+                                    "user@reflex.dev",
+                                    size="2",
+                                    weight="medium",
+                                ),
+                                width="100%",
+                            ),
+                            spacing="0",
+                            align="start",
+                            justify="start",
+                            width="100%",
+                        ),
+                        padding_x="0.5rem",
+                        align="center",
+                        justify="start",
+                        width="100%",
+                    ),
                     width="100%",
                     spacing="5",
                 ),
@@ -207,7 +200,35 @@ def sidebar() -> rx.Component:
                                     spacing="1",
                                 ),
                                 rx.divider(margin="0"),
-                                sidebar_user_item(),
+                                rx.hstack(
+                                    rx.icon_button(
+                                        rx.icon("user"),
+                                        size="3",
+                                        radius="full",
+                                    ),
+                                    rx.vstack(
+                                        rx.box(
+                                            rx.text(
+                                                "My account",
+                                                size="3",
+                                                weight="bold",
+                                            ),
+                                            rx.text(
+                                                "user@reflex.dev",
+                                                size="2",
+                                                weight="medium",
+                                            ),
+                                            width="100%",
+                                        ),
+                                        spacing="0",
+                                        justify="start",
+                                        width="100%",
+                                    ),
+                                    padding_x="0.5rem",
+                                    align="center",
+                                    justify="start",
+                                    width="100%",
+                                ),
                                 width="100%",
                                 spacing="5",
                             ),
