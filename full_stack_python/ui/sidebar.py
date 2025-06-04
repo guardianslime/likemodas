@@ -158,7 +158,7 @@ def sidebar() -> rx.Component:
                         width="100%",
                     ),
                     rx.divider(),
-                    rx.divider_user_item(),
+                    sidebar_user_item(),
                     width="100%",
                     spacing="5",
                 ),
