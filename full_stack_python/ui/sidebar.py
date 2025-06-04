@@ -3,7 +3,37 @@ from reflex.style import toggle_color_mode
 
 from .. import navigation
 
-
+def sidebar_user_item() -> rx.Component:
+    return rx.hstack(
+            rx.icon_button(
+                rx.icon("user"),
+                size="3",
+                radius="full",
+            ),
+            rx.vstack(
+                rx.box(
+                    rx.text(
+                        "My account",
+                        size="3",
+                        weight="bold",
+                    ),
+                    rx.text(
+                        "user@reflex.dev",
+                        size="2",
+                        weight="medium",
+                    ),
+                    width="100%",
+                ),
+                spacing="0",
+                align="start",
+                justify="start",
+                width="100%",
+            ),
+            padding_x="0.5rem",
+            align="center",
+            justify="start",
+            width="100%",
+                    )
 
 def sidebar_logout_item() -> rx.Component:
     return rx.box(
@@ -128,36 +158,7 @@ def sidebar() -> rx.Component:
                         width="100%",
                     ),
                     rx.divider(),
-                    rx.hstack(
-                        rx.icon_button(
-                            rx.icon("user"),
-                            size="3",
-                            radius="full",
-                        ),
-                        rx.vstack(
-                            rx.box(
-                                rx.text(
-                                    "My account",
-                                    size="3",
-                                    weight="bold",
-                                ),
-                                rx.text(
-                                    "user@reflex.dev",
-                                    size="2",
-                                    weight="medium",
-                                ),
-                                width="100%",
-                            ),
-                            spacing="0",
-                            align="start",
-                            justify="start",
-                            width="100%",
-                        ),
-                        padding_x="0.5rem",
-                        align="center",
-                        justify="start",
-                        width="100%",
-                    ),
+                    rx.divider_user_item(),
                     width="100%",
                     spacing="5",
                 ),
@@ -200,35 +201,7 @@ def sidebar() -> rx.Component:
                                     spacing="1",
                                 ),
                                 rx.divider(margin="0"),
-                                rx.hstack(
-                                    rx.icon_button(
-                                        rx.icon("user"),
-                                        size="3",
-                                        radius="full",
-                                    ),
-                                    rx.vstack(
-                                        rx.box(
-                                            rx.text(
-                                                "My account",
-                                                size="3",
-                                                weight="bold",
-                                            ),
-                                            rx.text(
-                                                "user@reflex.dev",
-                                                size="2",
-                                                weight="medium",
-                                            ),
-                                            width="100%",
-                                        ),
-                                        spacing="0",
-                                        justify="start",
-                                        width="100%",
-                                    ),
-                                    padding_x="0.5rem",
-                                    align="center",
-                                    justify="start",
-                                    width="100%",
-                                ),
+                                sidebar_user_item(),
                                 width="100%",
                                 spacing="5",
                             ),
