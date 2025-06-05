@@ -1,10 +1,14 @@
 import reflex as rx
 from reflex.style import toggle_color_mode
 
+from ..auth.state import SessionState
 from .. import navigation
 
 def sidebar_user_item() -> rx.Component:
-    return rx.hstack(
+    user_info_obj = SessionState.authenticated_user_info
+    return rx.cond(
+        user_info_obj,
+        rx.hstack(
             rx.icon_button(
                 rx.icon("user"),
                 size="3",
@@ -18,7 +22,7 @@ def sidebar_user_item() -> rx.Component:
                         weight="bold",
                     ),
                     rx.text(
-                        "user@reflex.dev",
+                        f"{user_info_obj.email}",
                         size="2",
                         weight="medium",
                     ),
@@ -33,7 +37,9 @@ def sidebar_user_item() -> rx.Component:
             align="center",
             justify="start",
             width="100%",
-                    )
+        ),
+        rx.fragment("")
+    )
 
 def sidebar_logout_item() -> rx.Component:
     return rx.box(
