@@ -19,6 +19,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
             ).one_or_none()
             if result is None:
                 return None
+            user_obj = result.user
             # print(result.user)
             return result
     
