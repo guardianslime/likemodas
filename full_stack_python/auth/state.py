@@ -7,6 +7,13 @@ from .models import UserInfo
 
 
 class SessionState(reflex_local_auth.LocalAuthState):
+    
+    rx.var(cache=True)
+    def authenticated_username(self) -> str | None:
+        if self.authenticated_user.id < 0:
+            return None
+        return self.authenticated_user.username
+
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
         if self.authenticated_user.id < 0:
@@ -19,7 +26,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
             ).one_or_none()
             if result is None:
                 return None
-            user_obj = result.user
+            # user_obj = result.user
             # print(result.user)
             return result
     
