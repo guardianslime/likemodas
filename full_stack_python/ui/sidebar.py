@@ -6,6 +6,7 @@ from .. import navigation
 
 def sidebar_user_item() -> rx.Component:
     user_info_obj = SessionState.authenticated_user_info
+    username_via_user_abj = rx.cond(user_info_abj.user, user_info_abj.user.username, "My account")
     return rx.cond(
         user_info_obj,
         rx.hstack(
@@ -17,7 +18,7 @@ def sidebar_user_item() -> rx.Component:
             rx.vstack(
                 rx.box(
                     rx.text(
-                        "My account",
+                        username_via_user_abj,
                         size="3",
                         weight="bold",
                     ),

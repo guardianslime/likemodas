@@ -19,7 +19,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
             ).one_or_none()
             if result is None:
                 return None
-            print(result)
+            # print(result.user)
             return result
     
     def on_load(self):
