@@ -100,9 +100,7 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
         width="100%",
     )
 
-def sidebar_item(
-    text: str, icon: str, href: str
-) -> rx.Component:
+def sidebar_item(text: str, icon: str, href: str) -> rx.Component:
     return rx.link(
         rx.hstack(
             rx.icon(icon),
