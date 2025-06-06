@@ -17,6 +17,16 @@ import NextHead from "next/head"
 
 
 
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -41,67 +51,7 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
-  
-  const { resolvedColorMode } = useContext(ColorModeContext)
-
-  refs['__toast'] = toast
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
-  const [userDismissed, setUserDismissed] = useState(false);
-  (useEffect(
-() => {
-    if ((connectErrors.length >= 2)) {
-        if (!userDismissed) {
-            toast.error(
-                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
-                {...toast_props, onDismiss: () => setUserDismissed(true)},
-            )
-        }
-    } else {
-        toast.dismiss("websocket-error");
-        setUserDismissed(false);  // after reconnection reset dismissed state
-    }
-}
-, [connectErrors]))
-
-
-
-
-  
-  return (
-    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
-  )
-}
-
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
-export function Fragment_477e67618136fce790b718ee41576395 () {
+export function Fragment_f08acdc01a92074bc82610819d20e3ba () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const ref_my_base_container = useRef(null); refs["ref_my_base_container"] = ref_my_base_container;
@@ -436,8 +386,8 @@ export function Fragment_477e67618136fce790b718ee41576395 () {
 </RadixThemesButton>
 </NextLink>
 </RadixThemesLink>
-<>{reflex___state____state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_08b2d5c385eabc0b) => (
-  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_08b2d5c385eabc0b}>
+<>{reflex___state____state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_49dc7f845197a59f) => (
+  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_49dc7f845197a59f}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -656,8 +606,8 @@ export function Fragment_477e67618136fce790b718ee41576395 () {
 </RadixThemesButton>
 </NextLink>
 </RadixThemesLink>
-<>{reflex___state____state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_08b2d5c385eabc0b) => (
-  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_08b2d5c385eabc0b}>
+<>{reflex___state____state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_49dc7f845197a59f) => (
+  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_49dc7f845197a59f}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -718,7 +668,57 @@ export function Fragment_477e67618136fce790b718ee41576395 () {
   )
 }
 
-export function Errorboundary_91936fa9fee52580ee46eaf673627d71 () {
+export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
+  
+  const { resolvedColorMode } = useContext(ColorModeContext)
+
+  refs['__toast'] = toast
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
+  const [userDismissed, setUserDismissed] = useState(false);
+  (useEffect(
+() => {
+    if ((connectErrors.length >= 2)) {
+        if (!userDismissed) {
+            toast.error(
+                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
+                {...toast_props, onDismiss: () => setUserDismissed(true)},
+            )
+        }
+    } else {
+        toast.dismiss("websocket-error");
+        setUserDismissed(false);  // after reconnection reset dismissed state
+    }
+}
+, [connectErrors]))
+
+
+
+
+  
+  return (
+    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
+  )
+}
+
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Errorboundary_ff9f773129e81e52675ab11f827fa210 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -736,7 +736,7 @@ export function Errorboundary_91936fa9fee52580ee46eaf673627d71 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_477e67618136fce790b718ee41576395/>
+<Fragment_f08acdc01a92074bc82610819d20e3ba/>
 <NextHead>
 
 <title>
@@ -756,6 +756,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_91936fa9fee52580ee46eaf673627d71/>
+    <Errorboundary_ff9f773129e81e52675ab11f827fa210/>
   )
 }
