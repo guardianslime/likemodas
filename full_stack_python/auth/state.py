@@ -8,7 +8,7 @@ from .models import UserInfo
 
 class SessionState(reflex_local_auth.LocalAuthState):
     
-    rx.var(cache=True)
+    @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
         if self.authenticated_user.id < 0:
             return None
