@@ -7,7 +7,7 @@ def contact_form() -> rx.Component:
     return rx.form(
             rx.input(
                 type='hidden',
-                name='contact_user_id',
+                name='user_id',
                 value=SessionState.my_user_id
             ),
             rx.vstack(
