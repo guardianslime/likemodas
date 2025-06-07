@@ -6,7 +6,7 @@ import { Fragment, useCallback, useContext, useEffect, useRef, useState } from "
 import { ColorModeContext, EventLoopContext, StateContexts } from "$/utils/context"
 import { Event, getBackendURL, isTrue, refs } from "$/utils/state"
 import { jsx, keyframes } from "@emotion/react"
-import { AlignJustifyIcon as LucideAlignJustifyIcon, LayoutDashboardIcon as LucideLayoutDashboardIcon, LogOutIcon as LucideLogOutIcon, MenuIcon as LucideMenuIcon, MoonIcon as LucideMoonIcon, SquareLibraryIcon as LucideSquareLibraryIcon, SunIcon as LucideSunIcon, UserIcon as LucideUserIcon, WifiOffIcon as LucideWifiOffIcon, XIcon as LucideXIcon } from "lucide-react"
+import { AlignJustifyIcon as LucideAlignJustifyIcon, LayoutDashboardIcon as LucideLayoutDashboardIcon, LogOutIcon as LucideLogOutIcon, MailboxIcon as LucideMailboxIcon, MailIcon as LucideMailIcon, MenuIcon as LucideMenuIcon, MoonIcon as LucideMoonIcon, NewspaperIcon as LucideNewspaperIcon, SquareLibraryIcon as LucideSquareLibraryIcon, SunIcon as LucideSunIcon, UserIcon as LucideUserIcon, WifiOffIcon as LucideWifiOffIcon, XIcon as LucideXIcon } from "lucide-react"
 import { toast, Toaster } from "sonner"
 import env from "$/env.json"
 import { Box as RadixThemesBox, Button as RadixThemesButton, DropdownMenu as RadixThemesDropdownMenu, Flex as RadixThemesFlex, Heading as RadixThemesHeading, IconButton as RadixThemesIconButton, Link as RadixThemesLink, Separator as RadixThemesSeparator, Text as RadixThemesText, Theme as RadixThemesTheme } from "@radix-ui/themes"
@@ -17,7 +17,7 @@ import NextHead from "next/head"
 
 
 
-export function Errorboundary_1620e309d0132430b6ab17727ab7d9b8 () {
+export function Errorboundary_1577a7d0e1eca231b2cb7207c1a517ba () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -35,7 +35,7 @@ export function Errorboundary_1620e309d0132430b6ab17727ab7d9b8 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_d6794680e93e403bf6aefb39b8cb7fb6/>
+<Fragment_c6705c5707366d41b8940a774072c352/>
 <NextHead>
 
 <title>
@@ -47,6 +47,16 @@ export function Errorboundary_1620e309d0132430b6ab17727ab7d9b8 () {
 </ErrorBoundary>
   )
 }
+
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
 
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
@@ -72,34 +82,7 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
-export function Fragment_d6794680e93e403bf6aefb39b8cb7fb6 () {
+export function Fragment_c6705c5707366d41b8940a774072c352 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const ref_my_base_container = useRef(null); refs["ref_my_base_container"] = ref_my_base_container;
@@ -161,7 +144,7 @@ export function Fragment_d6794680e93e403bf6aefb39b8cb7fb6 () {
 
 <RadixThemesFlex align={"center"} className={"rx-Stack"} css={({ ["&:hover"] : ({ ["background"] : "var(--accent-4)", ["color"] : "var(--accent-11)" }), ["border-radius"] : "0.5em", ["width"] : "100%", ["paddingInlineStart"] : "0.5rem", ["paddingInlineEnd"] : "0.5rem", ["paddingTop"] : "0.75rem", ["paddingBottom"] : "0.75rem" })} direction={"row"} gap={"3"}>
 
-<LucideSquareLibraryIcon css={({ ["color"] : "var(--current-color)" })}/>
+<LucideNewspaperIcon css={({ ["color"] : "var(--current-color)" })}/>
 <RadixThemesText as={"p"} size={"4"}>
 
 {"Blog"}
@@ -179,6 +162,34 @@ export function Fragment_d6794680e93e403bf6aefb39b8cb7fb6 () {
 <RadixThemesText as={"p"} size={"4"}>
 
 {"Create post"}
+</RadixThemesText>
+</RadixThemesFlex>
+</NextLink>
+</RadixThemesLink>
+<RadixThemesLink asChild={true} css={({ ["width"] : "100%", ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })} underline={"none"} weight={"medium"}>
+
+<NextLink href={"/contact"} passHref={true}>
+
+<RadixThemesFlex align={"center"} className={"rx-Stack"} css={({ ["&:hover"] : ({ ["background"] : "var(--accent-4)", ["color"] : "var(--accent-11)" }), ["border-radius"] : "0.5em", ["width"] : "100%", ["paddingInlineStart"] : "0.5rem", ["paddingInlineEnd"] : "0.5rem", ["paddingTop"] : "0.75rem", ["paddingBottom"] : "0.75rem" })} direction={"row"} gap={"3"}>
+
+<LucideMailIcon css={({ ["color"] : "var(--current-color)" })}/>
+<RadixThemesText as={"p"} size={"4"}>
+
+{"Contact"}
+</RadixThemesText>
+</RadixThemesFlex>
+</NextLink>
+</RadixThemesLink>
+<RadixThemesLink asChild={true} css={({ ["width"] : "100%", ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })} underline={"none"} weight={"medium"}>
+
+<NextLink href={"/contact/entries"} passHref={true}>
+
+<RadixThemesFlex align={"center"} className={"rx-Stack"} css={({ ["&:hover"] : ({ ["background"] : "var(--accent-4)", ["color"] : "var(--accent-11)" }), ["border-radius"] : "0.5em", ["width"] : "100%", ["paddingInlineStart"] : "0.5rem", ["paddingInlineEnd"] : "0.5rem", ["paddingTop"] : "0.75rem", ["paddingBottom"] : "0.75rem" })} direction={"row"} gap={"3"}>
+
+<LucideMailboxIcon css={({ ["color"] : "var(--current-color)" })}/>
+<RadixThemesText as={"p"} size={"4"}>
+
+{"Contact History"}
 </RadixThemesText>
 </RadixThemesFlex>
 </NextLink>
@@ -309,7 +320,7 @@ export function Fragment_d6794680e93e403bf6aefb39b8cb7fb6 () {
 
 <RadixThemesFlex align={"center"} className={"rx-Stack"} css={({ ["&:hover"] : ({ ["background"] : "var(--accent-4)", ["color"] : "var(--accent-11)" }), ["border-radius"] : "0.5em", ["width"] : "100%", ["paddingInlineStart"] : "0.5rem", ["paddingInlineEnd"] : "0.5rem", ["paddingTop"] : "0.75rem", ["paddingBottom"] : "0.75rem" })} direction={"row"} gap={"3"}>
 
-<LucideSquareLibraryIcon css={({ ["color"] : "var(--current-color)" })}/>
+<LucideNewspaperIcon css={({ ["color"] : "var(--current-color)" })}/>
 <RadixThemesText as={"p"} size={"4"}>
 
 {"Blog"}
@@ -327,6 +338,34 @@ export function Fragment_d6794680e93e403bf6aefb39b8cb7fb6 () {
 <RadixThemesText as={"p"} size={"4"}>
 
 {"Create post"}
+</RadixThemesText>
+</RadixThemesFlex>
+</NextLink>
+</RadixThemesLink>
+<RadixThemesLink asChild={true} css={({ ["width"] : "100%", ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })} underline={"none"} weight={"medium"}>
+
+<NextLink href={"/contact"} passHref={true}>
+
+<RadixThemesFlex align={"center"} className={"rx-Stack"} css={({ ["&:hover"] : ({ ["background"] : "var(--accent-4)", ["color"] : "var(--accent-11)" }), ["border-radius"] : "0.5em", ["width"] : "100%", ["paddingInlineStart"] : "0.5rem", ["paddingInlineEnd"] : "0.5rem", ["paddingTop"] : "0.75rem", ["paddingBottom"] : "0.75rem" })} direction={"row"} gap={"3"}>
+
+<LucideMailIcon css={({ ["color"] : "var(--current-color)" })}/>
+<RadixThemesText as={"p"} size={"4"}>
+
+{"Contact"}
+</RadixThemesText>
+</RadixThemesFlex>
+</NextLink>
+</RadixThemesLink>
+<RadixThemesLink asChild={true} css={({ ["width"] : "100%", ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })} underline={"none"} weight={"medium"}>
+
+<NextLink href={"/contact/entries"} passHref={true}>
+
+<RadixThemesFlex align={"center"} className={"rx-Stack"} css={({ ["&:hover"] : ({ ["background"] : "var(--accent-4)", ["color"] : "var(--accent-11)" }), ["border-radius"] : "0.5em", ["width"] : "100%", ["paddingInlineStart"] : "0.5rem", ["paddingInlineEnd"] : "0.5rem", ["paddingTop"] : "0.75rem", ["paddingBottom"] : "0.75rem" })} direction={"row"} gap={"3"}>
+
+<LucideMailboxIcon css={({ ["color"] : "var(--current-color)" })}/>
+<RadixThemesText as={"p"} size={"4"}>
+
+{"Contact History"}
 </RadixThemesText>
 </RadixThemesFlex>
 </NextLink>
@@ -755,6 +794,23 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
 export default function Component() {
     
 
@@ -762,6 +818,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_1620e309d0132430b6ab17727ab7d9b8/>
+    <Errorboundary_1577a7d0e1eca231b2cb7207c1a517ba/>
   )
 }
