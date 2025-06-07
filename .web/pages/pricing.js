@@ -41,7 +41,24 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-export function Fragment_9e88ac05cd198694b0263bdf32b1addb () {
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Fragment_8c81f430ef728ed890b58db385666261 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const ref_my_base_container = useRef(null); refs["ref_my_base_container"] = ref_my_base_container;
@@ -715,7 +732,7 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Errorboundary_4b6895f6cd589afd0711da5e8acd75c0 () {
+export function Errorboundary_1e3c92a7336dc40488dc8d7189c603f8 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -733,7 +750,7 @@ export function Errorboundary_4b6895f6cd589afd0711da5e8acd75c0 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_9e88ac05cd198694b0263bdf32b1addb/>
+<Fragment_8c81f430ef728ed890b58db385666261/>
 <NextHead>
 
 <title>
@@ -746,23 +763,6 @@ export function Errorboundary_4b6895f6cd589afd0711da5e8acd75c0 () {
   )
 }
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
 export default function Component() {
     
 
@@ -770,6 +770,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_4b6895f6cd589afd0711da5e8acd75c0/>
+    <Errorboundary_1e3c92a7336dc40488dc8d7189c603f8/>
   )
 }

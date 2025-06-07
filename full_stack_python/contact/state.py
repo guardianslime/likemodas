@@ -27,12 +27,12 @@ class ContactState(SessionState):
                 continue
             data[k] = v
         if self.my_user_id is not None:
-            data['user_id'] = SessionState.my_user_id
+            data['user_id'] = self.my_user_id
         print("contact data", data)
         with rx.session() as session:
                 db_entry = ContactEntryModel(
                      **data
-                     )
+                )
                 session.add(db_entry)
                 session.commit()
                 self.did_submit = True
