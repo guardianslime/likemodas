@@ -10,7 +10,7 @@ def contact_entry_list_item(contact: model.ContactEntryModel):
         rx.heading(contact.first_name),
         rx.text("Messages:", contact.message),
         rx.cond(contact.user_id,
-                rx.text("user Id", f"{contact.user_id}",),
+                rx.text("user Id:", f"{contact.user_id}",),
                 rx.fragment("")),
         padding="1em"
     )
