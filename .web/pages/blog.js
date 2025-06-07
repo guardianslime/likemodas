@@ -27,7 +27,24 @@ const pulse = keyframes`
 `
 
 
-export function Fragment_1fc67bafe2f737920477fb95cab3b913 () {
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Fragment_3038940227ab482cbc9e9d7b1e0ded2b () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const ref_my_base_container = useRef(null); refs["ref_my_base_container"] = ref_my_base_container;
@@ -418,8 +435,8 @@ export function Fragment_1fc67bafe2f737920477fb95cab3b913 () {
 </RadixThemesButton>
 </NextLink>
 </RadixThemesLink>
-<>{reflex___state____state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_b41d56e3a43f3a0a) => (
-  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_b41d56e3a43f3a0a}>
+<>{reflex___state____state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_0ca66e0c8bf808a8) => (
+  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_0ca66e0c8bf808a8}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -638,8 +655,8 @@ export function Fragment_1fc67bafe2f737920477fb95cab3b913 () {
 </RadixThemesButton>
 </NextLink>
 </RadixThemesLink>
-<>{reflex___state____state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_b41d56e3a43f3a0a) => (
-  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_b41d56e3a43f3a0a}>
+<>{reflex___state____state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_0ca66e0c8bf808a8) => (
+  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_0ca66e0c8bf808a8}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -700,7 +717,40 @@ export function Fragment_1fc67bafe2f737920477fb95cab3b913 () {
   )
 }
 
-export function Errorboundary_0c7b2f27544fc0c9d52d55ea5c11dbb7 () {
+export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
+  
+  const { resolvedColorMode } = useContext(ColorModeContext)
+
+  refs['__toast'] = toast
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
+  const [userDismissed, setUserDismissed] = useState(false);
+  (useEffect(
+() => {
+    if ((connectErrors.length >= 2)) {
+        if (!userDismissed) {
+            toast.error(
+                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
+                {...toast_props, onDismiss: () => setUserDismissed(true)},
+            )
+        }
+    } else {
+        toast.dismiss("websocket-error");
+        setUserDismissed(false);  // after reconnection reset dismissed state
+    }
+}
+, [connectErrors]))
+
+
+
+
+  
+  return (
+    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
+  )
+}
+
+export function Errorboundary_338a36280dccde5cec59d3b8a4ea5d21 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -718,7 +768,7 @@ export function Errorboundary_0c7b2f27544fc0c9d52d55ea5c11dbb7 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_1fc67bafe2f737920477fb95cab3b913/>
+<Fragment_3038940227ab482cbc9e9d7b1e0ded2b/>
 <NextHead>
 
 <title>
@@ -755,56 +805,6 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
-  
-  const { resolvedColorMode } = useContext(ColorModeContext)
-
-  refs['__toast'] = toast
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
-  const [userDismissed, setUserDismissed] = useState(false);
-  (useEffect(
-() => {
-    if ((connectErrors.length >= 2)) {
-        if (!userDismissed) {
-            toast.error(
-                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
-                {...toast_props, onDismiss: () => setUserDismissed(true)},
-            )
-        }
-    } else {
-        toast.dismiss("websocket-error");
-        setUserDismissed(false);  // after reconnection reset dismissed state
-    }
-}
-, [connectErrors]))
-
-
-
-
-  
-  return (
-    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
-  )
-}
-
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
 export default function Component() {
     
 
@@ -812,6 +812,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_0c7b2f27544fc0c9d52d55ea5c11dbb7/>
+    <Errorboundary_338a36280dccde5cec59d3b8a4ea5d21/>
   )
 }
