@@ -8,9 +8,12 @@ from . import form, state, model
 def contact_entry_list_item(contact: model.ContactEntryModel):
     return rx.box(
         rx.heading(contact.first_name),
-        rx.text(contact.message),
+        rx.text("Messages", contact.nessage),
+        rx.cond(contact.user_id,
+                rx.text("user Id", f"contact.user_id",),
+                rx.fragment("")),
         padding="1em"
-        )
+    )
 
 # def foreach_callback(text):
 #     return rx.box(rx.text(text))
