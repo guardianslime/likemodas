@@ -24,6 +24,7 @@ class ContactState(rx.State):
             if v == "" or v is None:
                 continue
             data[k] = v
+        print("contact data", data)
         with rx.session() as session:
                 db_entry = ContactEntryModel(
                      **data
