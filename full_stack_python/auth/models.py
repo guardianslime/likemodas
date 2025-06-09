@@ -10,7 +10,7 @@ from .. import utils
 class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key='localuser.id')
-    my_user_obj: LocalUser | None = Relationship()
+    user: LocalUser | None = Relationship()
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),

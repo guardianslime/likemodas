@@ -32,7 +32,7 @@ def index() -> rx.Component:
      my_child = rx.vstack(
           rx.heading(State.label, size="9"),
           rx.text(my_user_obj.to_string()),
-          rx.text(my_user_obj.my_user_obj.username),
+          rx.text(my_user_obj.user.username),
           rx.text(
                "Get started by editing ",
                rx.code(f"{config.app_name}/{config.app_name}.py"),
