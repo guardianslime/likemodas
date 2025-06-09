@@ -10,14 +10,15 @@ def base_layout_component(child, *args, **Kwargs) -> rx.Component:
         navbar(),
         rx.box(
             child,
-            #bg=rx.color("accent", 3),
+            # bg=rx.color("accent", 3),
             padding="1em",
             width="100%",    
             id="my-content-area-el"
         ),
         rx.logo(),
         rx.color_mode.button(position= "bottom-left"),
-        id="my-base-container",
+        # rx.logo(),
+        # id="my-base-container",
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
