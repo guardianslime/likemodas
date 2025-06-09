@@ -74,10 +74,9 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Fragment_5878dd96bf0da23da173c4f17f52a9e6 () {
+export function Fragment_3dadcaf6ce4c3115ec4e8d314f301d66 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
-  const ref_my_base_container = useRef(null); refs["ref_my_base_container"] = ref_my_base_container;
   const { toggleColorMode } = useContext(ColorModeContext)
   const [addEvents, connectErrors] = useContext(EventLoopContext);
   const { resolvedColorMode } = useContext(ColorModeContext)
@@ -96,7 +95,7 @@ export function Fragment_5878dd96bf0da23da173c4f17f52a9e6 () {
     <Fragment>
 
 {isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state.is_authenticated) ? (
-  <Fragment css={({ ["padding"] : "10em" })} id={"my-base-container"} ref={ref_my_base_container}>
+  <Fragment>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} direction={"row"} gap={"3"}>
 
@@ -753,24 +752,17 @@ export function Fragment_5878dd96bf0da23da173c4f17f52a9e6 () {
   )
 }
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
 
 
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
-export function Errorboundary_7dddd20ad8678c77ccd3495de54eea7d () {
+export function Errorboundary_82a1fe24311c7df2b7e77a62e700ecf3 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -788,7 +780,7 @@ export function Errorboundary_7dddd20ad8678c77ccd3495de54eea7d () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_5878dd96bf0da23da173c4f17f52a9e6/>
+<Fragment_3dadcaf6ce4c3115ec4e8d314f301d66/>
 <NextHead>
 
 <title>
@@ -801,15 +793,22 @@ export function Errorboundary_7dddd20ad8678c77ccd3495de54eea7d () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
 
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
 
 export default function Component() {
     
@@ -818,6 +817,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_7dddd20ad8678c77ccd3495de54eea7d/>
+    <Errorboundary_82a1fe24311c7df2b7e77a62e700ecf3/>
   )
 }
