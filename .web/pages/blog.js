@@ -34,50 +34,31 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
-export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
+export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
-  const { resolvedColorMode } = useContext(ColorModeContext)
-
-  refs['__toast'] = toast
   const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
-  const [userDismissed, setUserDismissed] = useState(false);
-  (useEffect(
-() => {
-    if ((connectErrors.length >= 2)) {
-        if (!userDismissed) {
-            toast.error(
-                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
-                {...toast_props, onDismiss: () => setUserDismissed(true)},
-            )
-        }
-    } else {
-        toast.dismiss("websocket-error");
-        setUserDismissed(false);  // after reconnection reset dismissed state
-    }
-}
-, [connectErrors]))
+
 
 
 
 
   
   return (
-    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
+    <Fragment>
+
+{isTrue((connectErrors.length > 0)) ? (
+  <Fragment>
+
+<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
+</Fragment>
+) : (
+  <Fragment/>
+)}
+</Fragment>
   )
 }
 
-export function Fragment_a1457981a229332a9576603ae72ce2f5 () {
+export function Fragment_e38dc4a6a864307ede63a7b3d6fea212 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -467,8 +448,8 @@ export function Fragment_a1457981a229332a9576603ae72ce2f5 () {
 </RadixThemesButton>
 </NextLink>
 </RadixThemesLink>
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_50beb90f4e664875) => (
-  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_50beb90f4e664875}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_1a27ec6ba3c61cc6) => (
+  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_1a27ec6ba3c61cc6}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -687,8 +668,8 @@ export function Fragment_a1457981a229332a9576603ae72ce2f5 () {
 </RadixThemesButton>
 </NextLink>
 </RadixThemesLink>
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_50beb90f4e664875) => (
-  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_50beb90f4e664875}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.posts.map((post, index_1a27ec6ba3c61cc6) => (
+  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_1a27ec6ba3c61cc6}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -749,31 +730,50 @@ export function Fragment_a1457981a229332a9576603ae72ce2f5 () {
   )
 }
 
-export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
+export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const { resolvedColorMode } = useContext(ColorModeContext)
 
+  refs['__toast'] = toast
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
+  const [userDismissed, setUserDismissed] = useState(false);
+  (useEffect(
+() => {
+    if ((connectErrors.length >= 2)) {
+        if (!userDismissed) {
+            toast.error(
+                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
+                {...toast_props, onDismiss: () => setUserDismissed(true)},
+            )
+        }
+    } else {
+        toast.dismiss("websocket-error");
+        setUserDismissed(false);  // after reconnection reset dismissed state
+    }
+}
+, [connectErrors]))
 
 
 
 
   
   return (
-    <Fragment>
-
-{isTrue((connectErrors.length > 0)) ? (
-  <Fragment>
-
-<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
-</Fragment>
-) : (
-  <Fragment/>
-)}
-</Fragment>
+    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
   )
 }
 
-export function Errorboundary_49ef607d9cf57c9bfa4d68bbe25f7457 () {
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
+export function Errorboundary_33ea6138c5f11f440edaf3a7b00fd9e9 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -791,7 +791,7 @@ export function Errorboundary_49ef607d9cf57c9bfa4d68bbe25f7457 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_a1457981a229332a9576603ae72ce2f5/>
+<Fragment_e38dc4a6a864307ede63a7b3d6fea212/>
 <NextHead>
 
 <title>
@@ -811,6 +811,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_49ef607d9cf57c9bfa4d68bbe25f7457/>
+    <Errorboundary_33ea6138c5f11f440edaf3a7b00fd9e9/>
   )
 }

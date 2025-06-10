@@ -34,15 +34,29 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
+export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
 
+
+
+
+
+  
+  return (
+    <Fragment>
+
+{isTrue((connectErrors.length > 0)) ? (
+  <Fragment>
+
+<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
+</Fragment>
+) : (
+  <Fragment/>
+)}
+</Fragment>
+  )
+}
 
 export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
@@ -77,7 +91,17 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Fragment_95855acc4a73b72b3a82ab28ee5eff51 () {
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
+export function Fragment_2f84b0a3ad0e4284e08175aaac8a2d4a () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -707,31 +731,7 @@ export function Fragment_95855acc4a73b72b3a82ab28ee5eff51 () {
   )
 }
 
-export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <Fragment>
-
-{isTrue((connectErrors.length > 0)) ? (
-  <Fragment>
-
-<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
-</Fragment>
-) : (
-  <Fragment/>
-)}
-</Fragment>
-  )
-}
-
-export function Errorboundary_d84c57feef555bd25e505494d08862be () {
+export function Errorboundary_f759e8a45a781b0904085b9108d2e65f () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -749,7 +749,7 @@ export function Errorboundary_d84c57feef555bd25e505494d08862be () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_95855acc4a73b72b3a82ab28ee5eff51/>
+<Fragment_2f84b0a3ad0e4284e08175aaac8a2d4a/>
 <NextHead>
 
 <title>
@@ -769,6 +769,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_d84c57feef555bd25e505494d08862be/>
+    <Errorboundary_f759e8a45a781b0904085b9108d2e65f/>
   )
 }
