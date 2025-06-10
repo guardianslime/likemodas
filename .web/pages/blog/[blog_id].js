@@ -17,7 +17,7 @@ import NextHead from "next/head"
 
 
 
-export function Fragment_290262e69d30132135bdb276e95a6868 () {
+export function Fragment_bbdbea19b2e128dd1cd4b4b947279f76 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -695,6 +695,30 @@ export function Fragment_290262e69d30132135bdb276e95a6868 () {
   )
 }
 
+export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <Fragment>
+
+{isTrue((connectErrors.length > 0)) ? (
+  <Fragment>
+
+<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
+</Fragment>
+) : (
+  <Fragment/>
+)}
+</Fragment>
+  )
+}
+
 export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
   const { resolvedColorMode } = useContext(ColorModeContext)
@@ -728,31 +752,7 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <Fragment>
-
-{isTrue((connectErrors.length > 0)) ? (
-  <Fragment>
-
-<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
-</Fragment>
-) : (
-  <Fragment/>
-)}
-</Fragment>
-  )
-}
-
-export function Errorboundary_bcb6ac184876ec455b147a6698d4746b () {
+export function Errorboundary_543f4d2a9c83ba74e888c7e91b9efd28 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -770,7 +770,7 @@ export function Errorboundary_bcb6ac184876ec455b147a6698d4746b () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_290262e69d30132135bdb276e95a6868/>
+<Fragment_bbdbea19b2e128dd1cd4b4b947279f76/>
 <NextHead>
 
 <title>
@@ -782,16 +782,6 @@ export function Errorboundary_bcb6ac184876ec455b147a6698d4746b () {
 </ErrorBoundary>
   )
 }
-
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
 
 export function Div_602c14884fa2de27f522fe8f94374b02 () {
   
@@ -810,6 +800,16 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
   )
 }
 
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
 export default function Component() {
     
 
@@ -817,6 +817,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_bcb6ac184876ec455b147a6698d4746b/>
+    <Errorboundary_543f4d2a9c83ba74e888c7e91b9efd28/>
   )
 }
