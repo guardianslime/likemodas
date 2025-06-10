@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
+
+import sqlalchemy
 from sqlmodel import select
 
 from .. import navigation
@@ -38,13 +40,15 @@ class BlogPostState(SessionState):
             if self.blog_post_id == "":
                 self.post = None
                 return
-            result = session.exec(
-                select(BlogPostModel).where(
+            sql_statement = select(BlogPostModel).options(
+                sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
+            ).where(
                     (BlogPostModel.id == self.blog_post_id)
                 )
-            ).one_or_none()
-            if result.userinfo: # db lookup
-                result.userinfo.user
+            result = session.exec(sql_statement).one_or_none()
+            # if result.userinfo: # db lookup
+            #     print('working')
+            #     result.userinfo.user
             self.post = result
             if result is None:
                 self.post_content = ""

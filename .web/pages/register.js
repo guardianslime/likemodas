@@ -18,34 +18,7 @@ import NextHead from "next/head"
 
 
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
-export function Errorboundary_1fea8c127f4c67dc26f141d89a11a6a9 () {
+export function Errorboundary_27690e4f62bf03027ba933171e3db7a9 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -63,7 +36,7 @@ export function Errorboundary_1fea8c127f4c67dc26f141d89a11a6a9 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_51ed0f2640a800458f7e707935e48b0b/>
+<Fragment_51d5dcf426445c36177c47810c9924aa/>
 <NextHead>
 
 <title>
@@ -73,6 +46,23 @@ export function Errorboundary_1fea8c127f4c67dc26f141d89a11a6a9 () {
 <meta content={"favicon.ico"} property={"og:image"}/>
 </NextHead>
 </ErrorBoundary>
+  )
+}
+
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
   )
 }
 
@@ -100,7 +90,7 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-export function Fragment_51ed0f2640a800458f7e707935e48b0b () {
+export function Fragment_51d5dcf426445c36177c47810c9924aa () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -117,10 +107,10 @@ export function Fragment_51ed0f2640a800458f7e707935e48b0b () {
   const ref_my_navbar_hstack_desktop = useRef(null); refs["ref_my_navbar_hstack_desktop"] = ref_my_navbar_hstack_desktop;
 
   
-    const handleSubmit_6cafbb30152157cc4a65d20e53bb47a9 = useCallback((ev) => {
+    const handleSubmit_c9e37a399af742a94804967e95846fa3 = useCallback((ev) => {
         const $form = ev.target
         ev.preventDefault()
-        const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({ ["confirm_password"] : getRefValue(refs["ref_confirm_password"]), ["username"] : getRefValue(refs["ref_username"]), ["email"] : getRefValue(refs["ref_email"]), ["password"] : getRefValue(refs["ref_password"]) })};
+        const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({ ["password"] : getRefValue(refs["ref_password"]), ["email"] : getRefValue(refs["ref_email"]), ["username"] : getRefValue(refs["ref_username"]), ["confirm_password"] : getRefValue(refs["ref_confirm_password"]) })};
 
         (((...args) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state.full_stack_python___auth___state____my_register_state.handle_registration_email", ({ ["form_data"] : form_data }), ({  })))], args, ({  }))))());
 
@@ -511,7 +501,7 @@ export function Fragment_51ed0f2640a800458f7e707935e48b0b () {
 
 <RadixThemesCard>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_6cafbb30152157cc4a65d20e53bb47a9}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_c9e37a399af742a94804967e95846fa3}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["minWidth"] : "50vw" })} direction={"column"} gap={"3"}>
 
@@ -786,7 +776,7 @@ export function Fragment_51ed0f2640a800458f7e707935e48b0b () {
 
 <RadixThemesCard>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_6cafbb30152157cc4a65d20e53bb47a9}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_c9e37a399af742a94804967e95846fa3}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["minWidth"] : "50vw" })} direction={"column"} gap={"3"}>
 
@@ -899,6 +889,16 @@ export function Fragment_51ed0f2640a800458f7e707935e48b0b () {
   )
 }
 
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
 export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
   const { resolvedColorMode } = useContext(ColorModeContext)
@@ -939,6 +939,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_1fea8c127f4c67dc26f141d89a11a6a9/>
+    <Errorboundary_27690e4f62bf03027ba933171e3db7a9/>
   )
 }
