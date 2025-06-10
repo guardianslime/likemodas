@@ -21,6 +21,7 @@ def blog_post_detail_page() -> rx.Component:
         ),
         rx.text("User info id", state.BlogPostState.post.userinfo_id),
         rx.text("User info: ", state.BlogPostState.post.userinfo.to_string()),
+        rx.text("User: ", state.BlogPostModel.post.userinfo.user.to_string()),
         rx.text(state.BlogPostState.post.publish_date),
         rx.text(
             state.BlogPostState.post.content,

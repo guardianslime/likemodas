@@ -43,7 +43,8 @@ class BlogPostState(SessionState):
                     (BlogPostModel.id == self.blog_post_id)
                 )
             ).one_or_none()
-            result.userinfo # db lookup
+            if result.userinfo: # db lookup
+                result.userinfo.user
             self.post = result
             if result is None:
                 self.post_content = ""
