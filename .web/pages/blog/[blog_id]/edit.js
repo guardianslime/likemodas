@@ -19,7 +19,24 @@ import NextHead from "next/head"
 
 
 
-export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Fragment_45e6984d0721c52cafbfcc57588a0cba () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -27,19 +44,19 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
   const { resolvedColorMode } = useContext(ColorModeContext)
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state)
   const ref_my_content_area_el = useRef(null); refs["ref_my_content_area_el"] = ref_my_content_area_el;
-  const reflex___state____state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__full_stack_python___blog___state____blog_post_state)
-  const reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state = useContext(StateContexts.reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state)
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state)
   const ref_my_form_box = useRef(null); refs["ref_my_form_box"] = ref_my_form_box;
   const ref_my_main_nav = useRef(null); refs["ref_my_main_nav"] = ref_my_main_nav;
   const ref_my_navbar_hstack_desktop = useRef(null); refs["ref_my_navbar_hstack_desktop"] = ref_my_navbar_hstack_desktop;
 
   
-    const handleSubmit_d280ef4ed7e7314a28f4ec41336f9743 = useCallback((ev) => {
+    const handleSubmit_4e6531c8d844e2eb82b53cc99ed817dd = useCallback((ev) => {
         const $form = ev.target
         ev.preventDefault()
         const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({  })};
 
-        (((...args) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.full_stack_python___blog___state____blog_edit_form_state.handle_submit", ({ ["form_data"] : form_data }), ({  })))], args, ({  }))))());
+        (((...args) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.full_stack_python___blog___state____blog_edit_form_state.handle_submit", ({ ["form_data"] : form_data }), ({  })))], args, ({  }))))());
 
         if (false) {
             $form.reset()
@@ -413,28 +430,28 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 <RadixThemesHeading size={"9"}>
 
 {"Editing "}
-{reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["title"]}
+{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"]}
 </RadixThemesHeading>
 <RadixThemesBox css={({ ["@media screen and (min-width: 0)"] : ({ ["display"] : "none" }), ["@media screen and (min-width: 30em)"] : ({ ["display"] : "none" }), ["@media screen and (min-width: 48em)"] : ({ ["display"] : "none" }), ["@media screen and (min-width: 62em)"] : ({ ["display"] : "block" }) })}>
 
 <RadixThemesBox css={({ ["width"] : "50vw" })}>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_d280ef4ed7e7314a28f4ec41336f9743}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_4e6531c8d844e2eb82b53cc99ed817dd}>
 
 <RadixThemesBox css={({ ["display"] : "none" })}>
 
-<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
+<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
 </RadixThemesBox>
 <RadixThemesFlex align={"start"} className={"rx-Stack"} direction={"column"} gap={"3"}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
 </RadixThemesFlex>
-<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_content}/>
+<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_content}/>
 <RadixThemesFlex gap={"2"}>
 
-<RadixThemesSwitch defaultChecked={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
+<RadixThemesSwitch defaultChecked={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
 <RadixThemesText as={"p"}>
 
 {"Publish Active"}
@@ -442,15 +459,15 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 </RadixThemesFlex>
 <Fragment>
 
-{isTrue(reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
+{isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
   <Fragment>
 
 <RadixThemesBox css={({ ["width"] : "100%" })}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
 </RadixThemesFlex>
 </RadixThemesBox>
 </Fragment>
@@ -470,22 +487,22 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 
 <RadixThemesBox css={({ ["width"] : "75vw" })}>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_d280ef4ed7e7314a28f4ec41336f9743}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_4e6531c8d844e2eb82b53cc99ed817dd}>
 
 <RadixThemesBox css={({ ["display"] : "none" })}>
 
-<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
+<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
 </RadixThemesBox>
 <RadixThemesFlex align={"start"} className={"rx-Stack"} direction={"column"} gap={"3"}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
 </RadixThemesFlex>
-<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_content}/>
+<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_content}/>
 <RadixThemesFlex gap={"2"}>
 
-<RadixThemesSwitch defaultChecked={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
+<RadixThemesSwitch defaultChecked={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
 <RadixThemesText as={"p"}>
 
 {"Publish Active"}
@@ -493,15 +510,15 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 </RadixThemesFlex>
 <Fragment>
 
-{isTrue(reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
+{isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
   <Fragment>
 
 <RadixThemesBox css={({ ["width"] : "100%" })}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
 </RadixThemesFlex>
 </RadixThemesBox>
 </Fragment>
@@ -521,22 +538,22 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 
 <RadixThemesBox css={({ ["width"] : "85vw" })} id={"my-form-box"} ref={ref_my_form_box}>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_d280ef4ed7e7314a28f4ec41336f9743}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_4e6531c8d844e2eb82b53cc99ed817dd}>
 
 <RadixThemesBox css={({ ["display"] : "none" })}>
 
-<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
+<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
 </RadixThemesBox>
 <RadixThemesFlex align={"start"} className={"rx-Stack"} direction={"column"} gap={"3"}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
 </RadixThemesFlex>
-<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_content}/>
+<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_content}/>
 <RadixThemesFlex gap={"2"}>
 
-<RadixThemesSwitch defaultChecked={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
+<RadixThemesSwitch defaultChecked={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
 <RadixThemesText as={"p"}>
 
 {"Publish Active"}
@@ -544,15 +561,15 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 </RadixThemesFlex>
 <Fragment>
 
-{isTrue(reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
+{isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
   <Fragment>
 
 <RadixThemesBox css={({ ["width"] : "100%" })}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
 </RadixThemesFlex>
 </RadixThemesBox>
 </Fragment>
@@ -762,28 +779,28 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 <RadixThemesHeading size={"9"}>
 
 {"Editing "}
-{reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["title"]}
+{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"]}
 </RadixThemesHeading>
 <RadixThemesBox css={({ ["@media screen and (min-width: 0)"] : ({ ["display"] : "none" }), ["@media screen and (min-width: 30em)"] : ({ ["display"] : "none" }), ["@media screen and (min-width: 48em)"] : ({ ["display"] : "none" }), ["@media screen and (min-width: 62em)"] : ({ ["display"] : "block" }) })}>
 
 <RadixThemesBox css={({ ["width"] : "50vw" })}>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_d280ef4ed7e7314a28f4ec41336f9743}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_4e6531c8d844e2eb82b53cc99ed817dd}>
 
 <RadixThemesBox css={({ ["display"] : "none" })}>
 
-<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
+<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
 </RadixThemesBox>
 <RadixThemesFlex align={"start"} className={"rx-Stack"} direction={"column"} gap={"3"}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
 </RadixThemesFlex>
-<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_content}/>
+<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_content}/>
 <RadixThemesFlex gap={"2"}>
 
-<RadixThemesSwitch defaultChecked={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
+<RadixThemesSwitch defaultChecked={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
 <RadixThemesText as={"p"}>
 
 {"Publish Active"}
@@ -791,15 +808,15 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 </RadixThemesFlex>
 <Fragment>
 
-{isTrue(reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
+{isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
   <Fragment>
 
 <RadixThemesBox css={({ ["width"] : "100%" })}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
 </RadixThemesFlex>
 </RadixThemesBox>
 </Fragment>
@@ -819,22 +836,22 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 
 <RadixThemesBox css={({ ["width"] : "75vw" })}>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_d280ef4ed7e7314a28f4ec41336f9743}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_4e6531c8d844e2eb82b53cc99ed817dd}>
 
 <RadixThemesBox css={({ ["display"] : "none" })}>
 
-<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
+<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
 </RadixThemesBox>
 <RadixThemesFlex align={"start"} className={"rx-Stack"} direction={"column"} gap={"3"}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
 </RadixThemesFlex>
-<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_content}/>
+<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_content}/>
 <RadixThemesFlex gap={"2"}>
 
-<RadixThemesSwitch defaultChecked={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
+<RadixThemesSwitch defaultChecked={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
 <RadixThemesText as={"p"}>
 
 {"Publish Active"}
@@ -842,15 +859,15 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 </RadixThemesFlex>
 <Fragment>
 
-{isTrue(reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
+{isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
   <Fragment>
 
 <RadixThemesBox css={({ ["width"] : "100%" })}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
 </RadixThemesFlex>
 </RadixThemesBox>
 </Fragment>
@@ -870,22 +887,22 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 
 <RadixThemesBox css={({ ["width"] : "85vw" })} id={"my-form-box"} ref={ref_my_form_box}>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_d280ef4ed7e7314a28f4ec41336f9743}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_4e6531c8d844e2eb82b53cc99ed817dd}>
 
 <RadixThemesBox css={({ ["display"] : "none" })}>
 
-<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
+<RadixThemesTextField.Root name={"post_id"} type={"hidden"} value={((((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== null) && ((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") !== undefined)) ? (((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")}/>
 </RadixThemesBox>
 <RadixThemesFlex align={"start"} className={"rx-Stack"} direction={"column"} gap={"3"}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"]} name={"title"} placeholder={"Title"} required={true} type={"text"}/>
 </RadixThemesFlex>
-<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_content}/>
+<DebounceInput css={({ ["height"] : "50vh", ["width"] : "100%" })} debounceTimeout={300} element={RadixThemesTextArea} name={"content"} onChange={((_e) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_content", ({ ["value"] : _e["target"]["value"] }), ({  })))], [_e], ({  }))))} placeholder={"Your message"} required={true} value={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_content}/>
 <RadixThemesFlex gap={"2"}>
 
-<RadixThemesSwitch defaultChecked={reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
+<RadixThemesSwitch defaultChecked={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active} name={"publish_active"} onCheckedChange={((_ev_0) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  }))))}/>
 <RadixThemesText as={"p"}>
 
 {"Publish Active"}
@@ -893,15 +910,15 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
 </RadixThemesFlex>
 <Fragment>
 
-{isTrue(reflex___state____state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
+{isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active) ? (
   <Fragment>
 
 <RadixThemesBox css={({ ["width"] : "100%" })}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["width"] : "100%" })} direction={"row"} gap={"3"}>
 
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
-<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date} name={"publish_date"} type={"date"}/>
+<RadixThemesTextField.Root css={({ ["width"] : "100%" })} defaultValue={reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time} name={"publish_time"} type={"time"}/>
 </RadixThemesFlex>
 </RadixThemesBox>
 </Fragment>
@@ -964,37 +981,6 @@ export function Fragment_fef3007ffd330b458a8abbf64c19df42 () {
   )
 }
 
-export function Errorboundary_defb9f8df01d35bbb18931e22ab5c0a5 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-  const on_error_0f5dbf674521530422d73a7946faf6d4 = useCallback(((_error, _info) => (addEvents([(Event("reflex___state____state.reflex___state____frontend_event_exception_state.handle_frontend_exception", ({ ["stack"] : _error["stack"], ["component_stack"] : _info["componentStack"] }), ({  })))], [_error, _info], ({  })))), [addEvents, Event])
-
-
-
-  
-  return (
-    <ErrorBoundary fallbackRender={((event_args) => (jsx("div", ({ ["css"] : ({ ["height"] : "100%", ["width"] : "100%", ["position"] : "absolute", ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center" }) }), (jsx("div", ({ ["css"] : ({ ["display"] : "flex", ["flexDirection"] : "column", ["gap"] : "1rem" }) }), (jsx("div", ({ ["css"] : ({ ["display"] : "flex", ["flexDirection"] : "column", ["gap"] : "1rem", ["maxWidth"] : "50ch", ["border"] : "1px solid #888888", ["borderRadius"] : "0.25rem", ["padding"] : "1rem" }) }), (jsx("h2", ({ ["css"] : ({ ["fontSize"] : "1.25rem", ["fontWeight"] : "bold" }) }), (jsx(Fragment, ({  }), "An error occurred while rendering this page.")))), (jsx("p", ({ ["css"] : ({ ["opacity"] : "0.75" }) }), (jsx(Fragment, ({  }), "This is an error with the application itself.")))), (jsx("details", ({  }), (jsx("summary", ({ ["css"] : ({ ["padding"] : "0.5rem" }) }), (jsx(Fragment, ({  }), "Error message")))), (jsx("div", ({ ["css"] : ({ ["width"] : "100%", ["maxHeight"] : "50vh", ["overflow"] : "auto", ["background"] : "#000", ["color"] : "#fff", ["borderRadius"] : "0.25rem" }) }), (jsx("div", ({ ["css"] : ({ ["padding"] : "0.5rem", ["width"] : "fit-content" }) }), (jsx("pre", ({  }), (jsx(Fragment, ({  }), event_args.error.stack)))))))), (jsx("button", ({ ["css"] : ({ ["padding"] : "0.35rem 0.75rem", ["margin"] : "0.5rem", ["background"] : "#fff", ["color"] : "#000", ["border"] : "1px solid #000", ["borderRadius"] : "0.25rem", ["fontWeight"] : "bold" }), ["onClick"] : ((...args) => (addEvents([(Event("_call_function", ({ ["function"] : (() => (navigator["clipboard"]["writeText"](event_args.error.stack))), ["callback"] : null }), ({  })))], args, ({  })))) }), (jsx(Fragment, ({  }), "Copy")))))))), (jsx("hr", ({ ["css"] : ({ ["borderColor"] : "currentColor", ["opacity"] : "0.25" }) }))), (jsx("a", ({ ["href"] : "https://reflex.dev" }), (jsx("div", ({ ["css"] : ({ ["display"] : "flex", ["alignItems"] : "baseline", ["justifyContent"] : "center", ["fontFamily"] : "monospace", ["--default-font-family"] : "monospace", ["gap"] : "0.5rem" }) }), (jsx(Fragment, ({  }), "Built with ")), (jsx("svg", ({ ["css"] : ({ ["viewBox"] : "0 0 56 12", ["fill"] : "currentColor" }), ["height"] : "12", ["width"] : "56", ["xmlns"] : "http://www.w3.org/2000/svg" }), (jsx("path", ({ ["d"] : "M0 11.5999V0.399902H8.96V4.8799H6.72V2.6399H2.24V4.8799H6.72V7.1199H2.24V11.5999H0ZM6.72 11.5999V7.1199H8.96V11.5999H6.72Z" }))), (jsx("path", ({ ["d"] : "M11.2 11.5999V0.399902H17.92V2.6399H13.44V4.8799H17.92V7.1199H13.44V9.3599H17.92V11.5999H11.2Z" }))), (jsx("path", ({ ["d"] : "M20.16 11.5999V0.399902H26.88V2.6399H22.4V4.8799H26.88V7.1199H22.4V11.5999H20.16Z" }))), (jsx("path", ({ ["d"] : "M29.12 11.5999V0.399902H31.36V9.3599H35.84V11.5999H29.12Z" }))), (jsx("path", ({ ["d"] : "M38.08 11.5999V0.399902H44.8V2.6399H40.32V4.8799H44.8V7.1199H40.32V9.3599H44.8V11.5999H38.08Z" }))), (jsx("path", ({ ["d"] : "M47.04 4.8799V0.399902H49.28V4.8799H47.04ZM53.76 4.8799V0.399902H56V4.8799H53.76ZM49.28 7.1199V4.8799H53.76V7.1199H49.28ZM47.04 11.5999V7.1199H49.28V11.5999H47.04ZM53.76 11.5999V7.1199H56V11.5999H53.76Z" }))))))))))))))} onError={on_error_0f5dbf674521530422d73a7946faf6d4}>
-
-<Fragment>
-
-<Div_602c14884fa2de27f522fe8f94374b02/>
-<Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
-</Fragment>
-<Fragment_fef3007ffd330b458a8abbf64c19df42/>
-<NextHead>
-
-<title>
-
-{"FullStackPython | Edit"}
-</title>
-<meta content={"favicon.ico"} property={"og:image"}/>
-</NextHead>
-</ErrorBoundary>
-  )
-}
-
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -1052,23 +1038,6 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
 const pulse = keyframes`
     0% {
         opacity: 0;
@@ -1079,6 +1048,37 @@ const pulse = keyframes`
 `
 
 
+export function Errorboundary_7c99049d68c5ae569af1796ed890f9e4 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+  const on_error_0f5dbf674521530422d73a7946faf6d4 = useCallback(((_error, _info) => (addEvents([(Event("reflex___state____state.reflex___state____frontend_event_exception_state.handle_frontend_exception", ({ ["stack"] : _error["stack"], ["component_stack"] : _info["componentStack"] }), ({  })))], [_error, _info], ({  })))), [addEvents, Event])
+
+
+
+  
+  return (
+    <ErrorBoundary fallbackRender={((event_args) => (jsx("div", ({ ["css"] : ({ ["height"] : "100%", ["width"] : "100%", ["position"] : "absolute", ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center" }) }), (jsx("div", ({ ["css"] : ({ ["display"] : "flex", ["flexDirection"] : "column", ["gap"] : "1rem" }) }), (jsx("div", ({ ["css"] : ({ ["display"] : "flex", ["flexDirection"] : "column", ["gap"] : "1rem", ["maxWidth"] : "50ch", ["border"] : "1px solid #888888", ["borderRadius"] : "0.25rem", ["padding"] : "1rem" }) }), (jsx("h2", ({ ["css"] : ({ ["fontSize"] : "1.25rem", ["fontWeight"] : "bold" }) }), (jsx(Fragment, ({  }), "An error occurred while rendering this page.")))), (jsx("p", ({ ["css"] : ({ ["opacity"] : "0.75" }) }), (jsx(Fragment, ({  }), "This is an error with the application itself.")))), (jsx("details", ({  }), (jsx("summary", ({ ["css"] : ({ ["padding"] : "0.5rem" }) }), (jsx(Fragment, ({  }), "Error message")))), (jsx("div", ({ ["css"] : ({ ["width"] : "100%", ["maxHeight"] : "50vh", ["overflow"] : "auto", ["background"] : "#000", ["color"] : "#fff", ["borderRadius"] : "0.25rem" }) }), (jsx("div", ({ ["css"] : ({ ["padding"] : "0.5rem", ["width"] : "fit-content" }) }), (jsx("pre", ({  }), (jsx(Fragment, ({  }), event_args.error.stack)))))))), (jsx("button", ({ ["css"] : ({ ["padding"] : "0.35rem 0.75rem", ["margin"] : "0.5rem", ["background"] : "#fff", ["color"] : "#000", ["border"] : "1px solid #000", ["borderRadius"] : "0.25rem", ["fontWeight"] : "bold" }), ["onClick"] : ((...args) => (addEvents([(Event("_call_function", ({ ["function"] : (() => (navigator["clipboard"]["writeText"](event_args.error.stack))), ["callback"] : null }), ({  })))], args, ({  })))) }), (jsx(Fragment, ({  }), "Copy")))))))), (jsx("hr", ({ ["css"] : ({ ["borderColor"] : "currentColor", ["opacity"] : "0.25" }) }))), (jsx("a", ({ ["href"] : "https://reflex.dev" }), (jsx("div", ({ ["css"] : ({ ["display"] : "flex", ["alignItems"] : "baseline", ["justifyContent"] : "center", ["fontFamily"] : "monospace", ["--default-font-family"] : "monospace", ["gap"] : "0.5rem" }) }), (jsx(Fragment, ({  }), "Built with ")), (jsx("svg", ({ ["css"] : ({ ["viewBox"] : "0 0 56 12", ["fill"] : "currentColor" }), ["height"] : "12", ["width"] : "56", ["xmlns"] : "http://www.w3.org/2000/svg" }), (jsx("path", ({ ["d"] : "M0 11.5999V0.399902H8.96V4.8799H6.72V2.6399H2.24V4.8799H6.72V7.1199H2.24V11.5999H0ZM6.72 11.5999V7.1199H8.96V11.5999H6.72Z" }))), (jsx("path", ({ ["d"] : "M11.2 11.5999V0.399902H17.92V2.6399H13.44V4.8799H17.92V7.1199H13.44V9.3599H17.92V11.5999H11.2Z" }))), (jsx("path", ({ ["d"] : "M20.16 11.5999V0.399902H26.88V2.6399H22.4V4.8799H26.88V7.1199H22.4V11.5999H20.16Z" }))), (jsx("path", ({ ["d"] : "M29.12 11.5999V0.399902H31.36V9.3599H35.84V11.5999H29.12Z" }))), (jsx("path", ({ ["d"] : "M38.08 11.5999V0.399902H44.8V2.6399H40.32V4.8799H44.8V7.1199H40.32V9.3599H44.8V11.5999H38.08Z" }))), (jsx("path", ({ ["d"] : "M47.04 4.8799V0.399902H49.28V4.8799H47.04ZM53.76 4.8799V0.399902H56V4.8799H53.76ZM49.28 7.1199V4.8799H53.76V7.1199H49.28ZM47.04 11.5999V7.1199H49.28V11.5999H47.04ZM53.76 11.5999V7.1199H56V11.5999H53.76Z" }))))))))))))))} onError={on_error_0f5dbf674521530422d73a7946faf6d4}>
+
+<Fragment>
+
+<Div_602c14884fa2de27f522fe8f94374b02/>
+<Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
+</Fragment>
+<Fragment_45e6984d0721c52cafbfcc57588a0cba/>
+<NextHead>
+
+<title>
+
+{"FullStackPython | Edit"}
+</title>
+<meta content={"favicon.ico"} property={"og:image"}/>
+</NextHead>
+</ErrorBoundary>
+  )
+}
+
 export default function Component() {
     
 
@@ -1086,6 +1086,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_defb9f8df01d35bbb18931e22ab5c0a5/>
+    <Errorboundary_7c99049d68c5ae569af1796ed890f9e4/>
   )
 }
