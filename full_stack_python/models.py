@@ -73,7 +73,6 @@ class ContactEntryModel(rx.Model, table=True):
     user_id: int | None = None
     userinfo_id: int = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
-    user_id: int | None = None
     first_name: str
     last_name: str | None = None
     email: str | None = None # = Field(nullable=True)
