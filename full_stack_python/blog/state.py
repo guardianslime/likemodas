@@ -43,6 +43,7 @@ class BlogPostState(SessionState):
                     (BlogPostModel.id == self.blog_post_id)
                 )
             ).one_or_none()
+            result.userinfo # db lookup
             self.post = result
             if result is None:
                 self.post_content = ""
@@ -105,7 +106,6 @@ class BlogAddPostFormState(BlogPostState):
         if self.my_userinfo_id is not None:
             data['userinfo_id'] = self.my_userinfo_id
         self.form_data = data
-        print(data)
         self.add_post(data)
         return self.to_blog_post(edit_page=True)
 
