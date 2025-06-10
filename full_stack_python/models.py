@@ -1,3 +1,4 @@
+from typing import Optional, List
 from datetime import datetime
 import reflex as rx
 from reflex_local_auth.user import LocalUser
@@ -11,6 +12,12 @@ class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key='localuser.id')
     user: LocalUser | None = Relationship()
+    posts: List['BlogPostModel'] = Relationship(
+        back_populates='userinfo'
+    )
+    contact_entries: List['ContactEntryModel'] = Relationship(
+        back_populates='userinfo'
+    ) 
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -31,6 +38,8 @@ class UserInfo(rx.Model, table=True):
 
 
 class BlogPostModel(rx.Model, table=True):
+    userinfo_id: int = Field(default=None, foreign_key="userinfo.id")
+    userinfo: Optional['UserInfo'] = Relationship(back_populates="posts")
     title: str
     content: str
     created_at: datetime = Field(
@@ -61,6 +70,9 @@ class BlogPostModel(rx.Model, table=True):
 
 
 class ContactEntryModel(rx.Model, table=True):
+    user_id: int | None = None
+    userinfo_id: int = Field(default=None, foreign_key="userinfo.id")
+    userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
     user_id: int | None = None
     first_name: str
     last_name: str | None = None
