@@ -19,6 +19,7 @@ def blog_post_detail_page() -> rx.Component:
             edit_link_el,
             align='end'
         ),
+        rx.text("User info id", state.BlogPostState.post.userinfo_id),
         rx.text(state.BlogPostState.post.publish_date),
         rx.text(
             state.BlogPostState.post.content,
