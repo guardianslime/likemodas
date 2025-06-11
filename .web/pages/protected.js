@@ -17,7 +17,7 @@ import NextHead from "next/head"
 
 
 
-export function Errorboundary_8156b50528a6d5b85dab163d62146b6e () {
+export function Errorboundary_8ae17c88c6ebf4d05e6ffbbe3cd77e29 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -35,7 +35,7 @@ export function Errorboundary_8156b50528a6d5b85dab163d62146b6e () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_24aafb72e68dbdbf45042f7c3d3388bf/>
+<Fragment_b6fef33863fa9c1b18537cc977b4e273/>
 <NextHead>
 
 <title>
@@ -47,6 +47,16 @@ export function Errorboundary_8156b50528a6d5b85dab163d62146b6e () {
 </ErrorBoundary>
   )
 }
+
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
 
 export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
@@ -81,6 +91,23 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -105,34 +132,7 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
-export function Fragment_24aafb72e68dbdbf45042f7c3d3388bf () {
+export function Fragment_b6fef33863fa9c1b18537cc977b4e273 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -769,6 +769,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_8156b50528a6d5b85dab163d62146b6e/>
+    <Errorboundary_8ae17c88c6ebf4d05e6ffbbe3cd77e29/>
   )
 }

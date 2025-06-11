@@ -36,15 +36,17 @@ class BlogPostState(SessionState):
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
     def get_post_detail(self):
+        lookups = (
+            (BlogPostModel.userinfo_id == self.my_userinfo_id) &
+            (BlogPostModel.id == self.blog_post_id)
+        )
         with rx.session() as session:
             if self.blog_post_id == "":
                 self.post = None
                 return
             sql_statement = select(BlogPostModel).options(
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
-            ).where(
-                (BlogPostModel.id == self.blog_post_id)
-            )
+            ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
             # if result.userinfo: # db lookup
             #     print('working')
@@ -56,10 +58,7 @@ class BlogPostState(SessionState):
             self.post_content = self.post.content
             self.post_publish_active = self.post.publish_active
 
-    def load_posts(self, published_only=False):
-        lookup_args = (
-            BlogPostModel.userinfo_id == self.my_userinfo_id
-        )
+    def load_posts(self, *args, **kwargs):
         # if published_only:
         #     lookup_args = (
         #         (BlogPostModel.publish_active == True) &
@@ -69,9 +68,7 @@ class BlogPostState(SessionState):
             result = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(
-                    *lookup_args
-                )
+                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
             ).all()
             self.posts = result
 
