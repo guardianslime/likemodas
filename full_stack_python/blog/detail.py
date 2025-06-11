@@ -13,7 +13,7 @@ def blog_post_detail_page() -> rx.Component:
         con_edit,
         edit_link,
     )
-    my_child = rx.vstack(
+    my_child = rx.cond(state.BlogPostState.post, rx.vstack(
         rx.hstack(
             rx.heading(state.BlogPostState.post.title, size="9"),
             edit_link_el,
@@ -30,5 +30,5 @@ def blog_post_detail_page() -> rx.Component:
         spacing="5",
         align="center",
         min_height="85vh",
-    )
+    ), rx.heading("Blog PostNot Found"))
     return base_page(my_child)
