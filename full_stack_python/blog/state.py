@@ -36,6 +36,11 @@ class BlogPostState(SessionState):
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
     def get_post_detail(self):
+        if self.my_userinfo_id is None:
+            self.post = None
+            self.post_content = ""
+            self.post_publish_active = False
+            return
         lookups = (
             (BlogPostModel.userinfo_id == self.my_userinfo_id) &
             (BlogPostModel.id == self.blog_post_id)
