@@ -22,7 +22,7 @@ def blog_post_list_item(post: BlogPostModel):
     return rx.box(
         blog_post_detail_link(    
             rx.heading(post.title),
-
+            rx.heading(post.userinfo.user_id),
             post
         ),
         padding="1em"

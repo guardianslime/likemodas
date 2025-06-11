@@ -7,7 +7,7 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel
+from ..models import BlogPostModel, UserInfo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
 if BLOG_POSTS_ROUTE.endswith("/"):
@@ -41,10 +41,10 @@ class BlogPostState(SessionState):
                 self.post = None
                 return
             sql_statement = select(BlogPostModel).options(
-                sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
+                sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
             ).where(
-                    (BlogPostModel.id == self.blog_post_id)
-                )
+                (BlogPostModel.id == self.blog_post_id)
+            )
             result = session.exec(sql_statement).one_or_none()
             # if result.userinfo: # db lookup
             #     print('working')
@@ -65,7 +65,9 @@ class BlogPostState(SessionState):
             )
         with rx.session() as session:
             result = session.exec(
-                select(BlogPostModel).where(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
+                ).where(
                     *lookup_args
                 )
             ).all()
