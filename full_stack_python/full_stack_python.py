@@ -13,6 +13,9 @@ from .auth.pages import(
 )
 from .auth.state import SessionState
 
+from .articles.list import article_public_list_page
+from .articles.state import ArticlePublicState
+
 from . import blog, contact, navigation, pages
 
 class State(rx.State):
@@ -52,6 +55,8 @@ def index() -> rx.Component:
      )
      return base_page(my_child)
 
+
+
 app = rx.App()
 app.add_page(index)
 # reflex_local_auth,pages
@@ -80,6 +85,12 @@ app.add_page(
      pages.protected_page, 
      route="/protected/",
      on_load=SessionState.on_load
+)
+
+app.add_page(
+     article_public_list_page,
+     route=navigation.routes.ARTICLE_LIST_ROUTE,
+     on_load=ArticlePublicState.load_posts
 )
 
 app.add_page(
