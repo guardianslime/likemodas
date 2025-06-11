@@ -57,12 +57,14 @@ class BlogPostState(SessionState):
             self.post_publish_active = self.post.publish_active
 
     def load_posts(self, published_only=False):
-        lookup_args = ()
-        if published_only:
-            lookup_args = (
-                (BlogPostModel.publish_active == True) &
-                (BlogPostModel.publish_date < datetime.now())
-            )
+        lookup_args = (
+            BlogPostModel.userinfo_id == self.my_userinfo_id
+        )
+        # if published_only:
+        #     lookup_args = (
+        #         (BlogPostModel.publish_active == True) &
+        #         (BlogPostModel.publish_date < datetime.now())
+        #     )
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).options(
