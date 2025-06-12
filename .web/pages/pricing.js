@@ -17,16 +17,6 @@ import NextHead from "next/head"
 
 
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -51,7 +41,24 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-export function Errorboundary_a90aa84a02641303c1724e03fc75da76 () {
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Errorboundary_aa19281cf08a5f0153502d09f6004751 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -69,7 +76,7 @@ export function Errorboundary_a90aa84a02641303c1724e03fc75da76 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_304303f753c81ceed29994d4e8330869/>
+<Fragment_a125f06bcf25ee02fba2f2b2963da570/>
 <NextHead>
 
 <title>
@@ -79,23 +86,6 @@ export function Errorboundary_a90aa84a02641303c1724e03fc75da76 () {
 <meta content={"favicon.ico"} property={"og:image"}/>
 </NextHead>
 </ErrorBoundary>
-  )
-}
-
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
   )
 }
 
@@ -132,7 +122,7 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Fragment_304303f753c81ceed29994d4e8330869 () {
+export function Fragment_a125f06bcf25ee02fba2f2b2963da570 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -790,6 +780,16 @@ export function Fragment_304303f753c81ceed29994d4e8330869 () {
   )
 }
 
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
 export default function Component() {
     
 
@@ -797,6 +797,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_a90aa84a02641303c1724e03fc75da76/>
+    <Errorboundary_aa19281cf08a5f0153502d09f6004751/>
   )
 }
