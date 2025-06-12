@@ -6,7 +6,14 @@ def landing_component() -> rx.Component:
     return rx.vstack(
           rx.heading("Welcome to SaaS", size="9"),
           rx.link(
-               rx.button("about us"),
+               rx.button("about us",
+                    bg=rx.color('tomato', 12, False),
+                    style={
+                        "_haver": {
+                            "bg": rx.color('tomato', 4, False)
+                        }
+                    }
+                ),
                href=navigation.routes.ABOUT_US_ROUTE
           ),
           rx.divider(),
