@@ -24,7 +24,6 @@ def article_link(post: BlogPostModel):
         as_child=True
     )
    
-
 def article_list_item(post: BlogPostModel):
     return rx.box(
         article_link(post),

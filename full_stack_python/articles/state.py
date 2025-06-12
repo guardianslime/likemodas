@@ -21,7 +21,7 @@ class ArticlePublicState(SessionState):
 
     @rx.var
     def post_id(self) -> str:  # Añadida la anotación de tipo -> str
-        return self.router.page.params.get("post_id", "")
+        return self.router.page.params.get("article_id", "")
 
     @rx.var
     def post_url(self) -> str: # Añadida la anotación de tipo -> str

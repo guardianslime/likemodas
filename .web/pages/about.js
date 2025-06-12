@@ -17,7 +17,17 @@ import NextHead from "next/head"
 
 
 
-export function Errorboundary_227e8b88d9f10562575d769fe3d2b6a6 () {
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
+export function Errorboundary_c584030d1e49beb844d2ac7c320a6547 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -35,7 +45,7 @@ export function Errorboundary_227e8b88d9f10562575d769fe3d2b6a6 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_1a24d9be3e8bd1f592f05abdd6e8ecaf/>
+<Fragment_5f83505fb082428f30c7c211f7b3bb7f/>
 <NextHead>
 
 <title>
@@ -48,24 +58,7 @@ export function Errorboundary_227e8b88d9f10562575d769fe3d2b6a6 () {
   )
 }
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
-export function Fragment_1a24d9be3e8bd1f592f05abdd6e8ecaf () {
+export function Fragment_5f83505fb082428f30c7c211f7b3bb7f () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -747,15 +740,22 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
 
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
 
 export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
@@ -797,6 +797,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_227e8b88d9f10562575d769fe3d2b6a6/>
+    <Errorboundary_c584030d1e49beb844d2ac7c320a6547/>
   )
 }

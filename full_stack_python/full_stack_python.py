@@ -60,7 +60,9 @@ def index() -> rx.Component:
 
 
 app = rx.App()
-app.add_page(index)
+app.add_page(index,
+        on_load=ArticlePublicState.load_posts
+     )
 # reflex_local_auth,pages
 app.add_page(
      my_login_page,
@@ -96,9 +98,9 @@ app.add_page(
 )
 
 app.add_page(
-     article_detail_page,
-     route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[post_id]",
-     on_load=ArticlePublicState.get_post_detail
+    article_detail_page, 
+    route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
+    on_load=ArticlePublicState.get_post_detail
 )
 
 app.add_page(
