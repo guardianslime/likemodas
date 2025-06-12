@@ -97,7 +97,7 @@ app.add_page(
 
 app.add_page(
      article_detail_page,
-     route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
+     route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[post_id]",
      on_load=ArticlePublicState.get_post_detail
 )
 
