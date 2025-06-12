@@ -35,17 +35,40 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
+export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
+  
+  const { resolvedColorMode } = useContext(ColorModeContext)
+
+  refs['__toast'] = toast
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
+  const [userDismissed, setUserDismissed] = useState(false);
+  (useEffect(
+() => {
+    if ((connectErrors.length >= 2)) {
+        if (!userDismissed) {
+            toast.error(
+                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
+                {...toast_props, onDismiss: () => setUserDismissed(true)},
+            )
+        }
+    } else {
+        toast.dismiss("websocket-error");
+        setUserDismissed(false);  // after reconnection reset dismissed state
     }
-    100% {
-        opacity: 1;
-    }
-`
+}
+, [connectErrors]))
 
 
-export function Errorboundary_ca8208d3b8df9015f21a51466a8bc58c () {
+
+
+  
+  return (
+    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
+  )
+}
+
+export function Errorboundary_56a2a28fa0b21cece16429576d015c88 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -63,7 +86,7 @@ export function Errorboundary_ca8208d3b8df9015f21a51466a8bc58c () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_13dbd3c96234069fc768acb6a4e655e1/>
+<Fragment_6dfeb9f25c69d0654e41059a2cbb7070/>
 <NextHead>
 
 <title>
@@ -100,40 +123,17 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
-  
-  const { resolvedColorMode } = useContext(ColorModeContext)
-
-  refs['__toast'] = toast
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
-  const [userDismissed, setUserDismissed] = useState(false);
-  (useEffect(
-() => {
-    if ((connectErrors.length >= 2)) {
-        if (!userDismissed) {
-            toast.error(
-                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
-                {...toast_props, onDismiss: () => setUserDismissed(true)},
-            )
-        }
-    } else {
-        toast.dismiss("websocket-error");
-        setUserDismissed(false);  // after reconnection reset dismissed state
+const pulse = keyframes`
+    0% {
+        opacity: 0;
     }
-}
-, [connectErrors]))
+    100% {
+        opacity: 1;
+    }
+`
 
 
-
-
-  
-  return (
-    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
-  )
-}
-
-export function Fragment_13dbd3c96234069fc768acb6a4e655e1 () {
+export function Fragment_6dfeb9f25c69d0654e41059a2cbb7070 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -150,10 +150,10 @@ export function Fragment_13dbd3c96234069fc768acb6a4e655e1 () {
   const ref_my_navbar_hstack_desktop = useRef(null); refs["ref_my_navbar_hstack_desktop"] = ref_my_navbar_hstack_desktop;
 
   
-    const handleSubmit_d4fbcd6f66d861808b45d702cd38b2d9 = useCallback((ev) => {
+    const handleSubmit_6cafbb30152157cc4a65d20e53bb47a9 = useCallback((ev) => {
         const $form = ev.target
         ev.preventDefault()
-        const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({ ["email"] : getRefValue(refs["ref_email"]), ["password"] : getRefValue(refs["ref_password"]), ["confirm_password"] : getRefValue(refs["ref_confirm_password"]), ["username"] : getRefValue(refs["ref_username"]) })};
+        const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({ ["confirm_password"] : getRefValue(refs["ref_confirm_password"]), ["username"] : getRefValue(refs["ref_username"]), ["email"] : getRefValue(refs["ref_email"]), ["password"] : getRefValue(refs["ref_password"]) })};
 
         (((...args) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state.full_stack_python___auth___state____my_register_state.handle_registration_email", ({ ["form_data"] : form_data }), ({  })))], args, ({  }))))());
 
@@ -572,7 +572,7 @@ export function Fragment_13dbd3c96234069fc768acb6a4e655e1 () {
 
 <RadixThemesCard>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_d4fbcd6f66d861808b45d702cd38b2d9}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_6cafbb30152157cc4a65d20e53bb47a9}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["minWidth"] : "50vw" })} direction={"column"} gap={"3"}>
 
@@ -847,7 +847,7 @@ export function Fragment_13dbd3c96234069fc768acb6a4e655e1 () {
 
 <RadixThemesCard>
 
-<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_d4fbcd6f66d861808b45d702cd38b2d9}>
+<RadixFormRoot className={"Root "} css={({ ["width"] : "100%" })} onSubmit={handleSubmit_6cafbb30152157cc4a65d20e53bb47a9}>
 
 <RadixThemesFlex align={"start"} className={"rx-Stack"} css={({ ["minWidth"] : "50vw" })} direction={"column"} gap={"3"}>
 
@@ -967,6 +967,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_ca8208d3b8df9015f21a51466a8bc58c/>
+    <Errorboundary_56a2a28fa0b21cece16429576d015c88/>
   )
 }

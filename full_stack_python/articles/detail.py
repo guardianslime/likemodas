@@ -13,10 +13,7 @@ def article_detail_page() -> rx.Component:
             rx.heading(state.ArticlePublicState.post.title, size="9"),
             align='end'
         ),
-        rx.text("User info id", state.ArticlePublicState.post.userinfo_id),
-        rx.text("User info: ", state.ArticlePublicState.post.userinfo.to_string()),
-        rx.text("User: ", state.ArticlePublicState.post.userinfo.user.to_string()),
-        rx.text(state.BlogPostState.post.publish_date),
+        rx.text(state.ArticlePublicState.post.publish_date),
         rx.text(
             state.ArticlePublicState.post.content,
             white_space='pre-wrap'
