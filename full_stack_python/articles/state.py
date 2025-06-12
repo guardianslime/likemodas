@@ -31,8 +31,8 @@ class ArticlePublicState(SessionState):
 
     def get_post_detail(self):
         lookups = (
-            (BlogPostModel.puslish_active == True) &
-            (BlogPostModel.puslish_data < datetime.now())
+            (BlogPostModel.publish_active == True) &
+            (BlogPostModel.publish_date < datetime.now()) &
             (BlogPostModel.id == self.post_id)
         )
         with rx.session() as session:
