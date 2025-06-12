@@ -17,7 +17,7 @@ import NextHead from "next/head"
 
 
 
-export function Fragment_61c4ceca960c2ffa8023560fc69d4050 () {
+export function Fragment_a6bc73f9d1ba987a95a4fdb0d4f55029 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -708,16 +708,6 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
 export function Div_602c14884fa2de27f522fe8f94374b02 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -735,7 +725,7 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
   )
 }
 
-export function Errorboundary_dcbf8635b614a2a8b6424003ea5217d1 () {
+export function Errorboundary_5d45d6f4541a06f8297b116dbd86a584 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -753,7 +743,7 @@ export function Errorboundary_dcbf8635b614a2a8b6424003ea5217d1 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_61c4ceca960c2ffa8023560fc69d4050/>
+<Fragment_a6bc73f9d1ba987a95a4fdb0d4f55029/>
 <NextHead>
 
 <title>
@@ -765,6 +755,16 @@ export function Errorboundary_dcbf8635b614a2a8b6424003ea5217d1 () {
 </ErrorBoundary>
   )
 }
+
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
 
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
@@ -797,6 +797,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_dcbf8635b614a2a8b6424003ea5217d1/>
+    <Errorboundary_5d45d6f4541a06f8297b116dbd86a584/>
   )
 }

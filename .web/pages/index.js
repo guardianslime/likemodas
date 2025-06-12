@@ -17,7 +17,57 @@ import NextHead from "next/head"
 
 
 
-export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
+export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
+  
+  const { resolvedColorMode } = useContext(ColorModeContext)
+
+  refs['__toast'] = toast
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
+  const [userDismissed, setUserDismissed] = useState(false);
+  (useEffect(
+() => {
+    if ((connectErrors.length >= 2)) {
+        if (!userDismissed) {
+            toast.error(
+                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
+                {...toast_props, onDismiss: () => setUserDismissed(true)},
+            )
+        }
+    } else {
+        toast.dismiss("websocket-error");
+        setUserDismissed(false);  // after reconnection reset dismissed state
+    }
+}
+, [connectErrors]))
+
+
+
+
+  
+  return (
+    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
+  )
+}
+
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Fragment_e3a4d9c8bf477c050993a4dad9b57941 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -25,6 +75,14 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
   const { resolvedColorMode } = useContext(ColorModeContext)
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state)
   const ref_my_content_area_el = useRef(null); refs["ref_my_content_area_el"] = ref_my_content_area_el;
+  
+                useEffect(() => {
+                    ((...args) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___articles___state____article_public_state.set_limit_and_reload", ({ ["new_limit"] : 20 }), ({  })))], args, ({  }))))()
+                    return () => {
+                        
+                    }
+                }, []);
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state)
   const ref_my_child = useRef(null); refs["ref_my_child"] = ref_my_child;
   
                 useEffect(() => {
@@ -33,7 +91,6 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
                         
                     }
                 }, []);
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state)
   const ref_my_main_nav = useRef(null); refs["ref_my_main_nav"] = ref_my_main_nav;
   const ref_my_navbar_hstack_desktop = useRef(null); refs["ref_my_navbar_hstack_desktop"] = ref_my_navbar_hstack_desktop;
 
@@ -427,6 +484,47 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
 </RadixThemesBox>
 <RadixThemesBox css={({ ["padding"] : "1em", ["width"] : "100%" })} id={"my-content-area-el"} ref={ref_my_content_area_el}>
 
+<Fragment>
+
+{isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state.is_authenticated) ? (
+  <Fragment>
+
+<RadixThemesBox css={({ ["minHeight"] : "85vh" })}>
+
+<RadixThemesHeading size={"2"}>
+
+{"Welcome back"}
+</RadixThemesHeading>
+<RadixThemesSeparator css={({ ["marginTop"] : "1em", ["manginBottom"] : "1em" })} size={"4"}/>
+<RadixThemesGrid columns={"3"} gap={"5"}>
+
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_1874055eff0b9340) => (
+  <RadixThemesCard asChild={true} key={index_1874055eff0b9340}>
+
+<RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
+
+<NextLink href={("/articles/"+post["id"])} passHref={true}>
+
+<RadixThemesFlex gap={"2"}>
+
+<RadixThemesBox>
+
+<RadixThemesHeading>
+
+{post["title"]}
+</RadixThemesHeading>
+</RadixThemesBox>
+</RadixThemesFlex>
+</NextLink>
+</RadixThemesLink>
+</RadixThemesCard>
+))}</>
+</RadixThemesGrid>
+</RadixThemesBox>
+</Fragment>
+) : (
+  <Fragment>
+
 <RadixThemesFlex align={"center"} className={"rx-Stack"} css={({ ["minHeight"] : "85vh" })} direction={"column"} id={"my-child"} justify={"center"} ref={ref_my_child} gap={"5"}>
 
 <RadixThemesHeading size={"9"}>
@@ -450,8 +548,8 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
 </RadixThemesHeading>
 <RadixThemesGrid columns={"1"} gap={"5"}>
 
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_f3199bf2db9e0d50) => (
-  <RadixThemesCard asChild={true} key={index_f3199bf2db9e0d50}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_1874055eff0b9340) => (
+  <RadixThemesCard asChild={true} key={index_1874055eff0b9340}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -473,6 +571,9 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
 ))}</>
 </RadixThemesGrid>
 </RadixThemesFlex>
+</Fragment>
+)}
+</Fragment>
 <RadixThemesFlex css={({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["width"] : "100%" })}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })} size={"3"}>
@@ -661,6 +762,47 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
 </RadixThemesBox>
 <RadixThemesBox css={({ ["padding"] : "1em", ["width"] : "100%" })} id={"my-content-area-el"} ref={ref_my_content_area_el}>
 
+<Fragment>
+
+{isTrue(reflex___state____state__reflex_local_auth___local_auth____local_auth_state.is_authenticated) ? (
+  <Fragment>
+
+<RadixThemesBox css={({ ["minHeight"] : "85vh" })}>
+
+<RadixThemesHeading size={"2"}>
+
+{"Welcome back"}
+</RadixThemesHeading>
+<RadixThemesSeparator css={({ ["marginTop"] : "1em", ["manginBottom"] : "1em" })} size={"4"}/>
+<RadixThemesGrid columns={"3"} gap={"5"}>
+
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_1874055eff0b9340) => (
+  <RadixThemesCard asChild={true} key={index_1874055eff0b9340}>
+
+<RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
+
+<NextLink href={("/articles/"+post["id"])} passHref={true}>
+
+<RadixThemesFlex gap={"2"}>
+
+<RadixThemesBox>
+
+<RadixThemesHeading>
+
+{post["title"]}
+</RadixThemesHeading>
+</RadixThemesBox>
+</RadixThemesFlex>
+</NextLink>
+</RadixThemesLink>
+</RadixThemesCard>
+))}</>
+</RadixThemesGrid>
+</RadixThemesBox>
+</Fragment>
+) : (
+  <Fragment>
+
 <RadixThemesFlex align={"center"} className={"rx-Stack"} css={({ ["minHeight"] : "85vh" })} direction={"column"} id={"my-child"} justify={"center"} ref={ref_my_child} gap={"5"}>
 
 <RadixThemesHeading size={"9"}>
@@ -684,8 +826,8 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
 </RadixThemesHeading>
 <RadixThemesGrid columns={"1"} gap={"5"}>
 
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_f3199bf2db9e0d50) => (
-  <RadixThemesCard asChild={true} key={index_f3199bf2db9e0d50}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_1874055eff0b9340) => (
+  <RadixThemesCard asChild={true} key={index_1874055eff0b9340}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -707,6 +849,9 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
 ))}</>
 </RadixThemesGrid>
 </RadixThemesFlex>
+</Fragment>
+)}
+</Fragment>
 </RadixThemesBox>
 <RadixThemesFlex css={({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["width"] : "100%" })}>
 
@@ -753,7 +898,17 @@ export function Fragment_cab42a6eeaeeca9d634e740ab3eca76b () {
   )
 }
 
-export function Errorboundary_529692f72fd0a53f7ea5411db98bac4e () {
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
+export function Errorboundary_e4841b6560944cf5319d9d5733babc58 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -771,7 +926,7 @@ export function Errorboundary_529692f72fd0a53f7ea5411db98bac4e () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_cab42a6eeaeeca9d634e740ab3eca76b/>
+<Fragment_e3a4d9c8bf477c050993a4dad9b57941/>
 <NextHead>
 
 <title>
@@ -781,66 +936,6 @@ export function Errorboundary_529692f72fd0a53f7ea5411db98bac4e () {
 <meta content={"favicon.ico"} property={"og:image"}/>
 </NextHead>
 </ErrorBoundary>
-  )
-}
-
-export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
-  
-  const { resolvedColorMode } = useContext(ColorModeContext)
-
-  refs['__toast'] = toast
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
-  const [userDismissed, setUserDismissed] = useState(false);
-  (useEffect(
-() => {
-    if ((connectErrors.length >= 2)) {
-        if (!userDismissed) {
-            toast.error(
-                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
-                {...toast_props, onDismiss: () => setUserDismissed(true)},
-            )
-        }
-    } else {
-        toast.dismiss("websocket-error");
-        setUserDismissed(false);  // after reconnection reset dismissed state
-    }
-}
-, [connectErrors]))
-
-
-
-
-  
-  return (
-    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
-  )
-}
-
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
   )
 }
 
@@ -875,6 +970,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_529692f72fd0a53f7ea5411db98bac4e/>
+    <Errorboundary_e4841b6560944cf5319d9d5733babc58/>
   )
 }

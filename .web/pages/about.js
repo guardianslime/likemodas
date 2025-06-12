@@ -17,7 +17,7 @@ import NextHead from "next/head"
 
 
 
-export function Fragment_4d0c1f3280fd9ca15802267322116858 () {
+export function Fragment_252f888186d2e195aa02cab5fb661466 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -675,7 +675,7 @@ export function Fragment_4d0c1f3280fd9ca15802267322116858 () {
   )
 }
 
-export function Errorboundary_9b3c8e52e1870a6121db9fa6a187c4f0 () {
+export function Errorboundary_bf89a52c5121c051236482e692d2f165 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -693,7 +693,7 @@ export function Errorboundary_9b3c8e52e1870a6121db9fa6a187c4f0 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_4d0c1f3280fd9ca15802267322116858/>
+<Fragment_252f888186d2e195aa02cab5fb661466/>
 <NextHead>
 
 <title>
@@ -739,16 +739,6 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
 export function Div_602c14884fa2de27f522fe8f94374b02 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -765,6 +755,16 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
 </div>
   )
 }
+
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
 
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
@@ -797,6 +797,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_9b3c8e52e1870a6121db9fa6a187c4f0/>
+    <Errorboundary_bf89a52c5121c051236482e692d2f165/>
   )
 }

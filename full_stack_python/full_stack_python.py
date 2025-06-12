@@ -20,40 +20,11 @@ from .articles.state import ArticlePublicState
 
 from . import blog, contact, navigation, pages
 
-class State(rx.State):
-
-    label = "Welcome to Reflex"
-
-    def handle_title_input_change(self, val):
-         self.label = val
-
-    def did_click(self):
-        print("hello world did click")
-        return rx.redirect(navigation.routes.ABOUT_US_ROUTE)
-
 def index() -> rx.Component:
-     my_user_obj = SessionState.authenticated_user_info
-     my_child = rx.vstack(
-          rx.heading("Welcome to SaaS", size="9"),
-          rx.link(
-               rx.button("about us"),
-               href=navigation.routes.ABOUT_US_ROUTE
-          ),
-          rx.divider(),
-          rx.heading("Recent Articles", size="5"),
-          article_public_list_component(columns=1, limit=1),
-          spacing="5",
-          justify="center",
-          align="center",
-          # text_align="center",
-          min_height="85vh",
-          id="my-child"
-     )
      return base_page(
-          rx.cond(my_user_obj,
-               my_child,
-               pages.dashboard_component()
-          )          
+          rx.cond(SessionState.is_authenticated,   
+               pages.dashboard_component(),
+               pages.landing_component(),          )          
      )
 
 
