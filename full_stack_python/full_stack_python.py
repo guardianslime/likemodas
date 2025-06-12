@@ -32,7 +32,7 @@ class State(rx.State):
         return rx.redirect(navigation.routes.ABOUT_US_ROUTE)
 
 def index() -> rx.Component:
-     # my_user_obj = SessionState.authenticated_user_info
+     my_user_obj = SessionState.authenticated_user_info
      my_child = rx.vstack(
           rx.heading("Welcome to SaaS", size="9"),
           rx.link(
@@ -49,7 +49,12 @@ def index() -> rx.Component:
           min_height="85vh",
           id="my-child"
      )
-     return base_page(my_child)
+     return base_page(
+          rx.cond(my_user_obj,
+               my_child,
+               pages.dashboard_component()
+          )          
+     )
 
 
 
