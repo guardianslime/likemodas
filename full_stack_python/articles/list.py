@@ -46,7 +46,7 @@ def article_public_list_page() -> rx.Component:
                 href=navigation.routes.BLOG_POST_ADD_ROUTE
             ),
             # rx.foreach(["abc", "abc", "cde"], foreach_callback),
-            rx.foreach(state.ArticlePublicState.posts, article_list_item),
+            rx.foreach(state.ArticlePublicState.posts, article_list_item),          
             spacing="5",
             align="center",
             min_height="85vh",
