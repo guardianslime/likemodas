@@ -15,7 +15,7 @@ def article_link(post: BlogPostModel):
         rx.link(
             rx.flex(
                 rx.box(
-                    rx.headinf("post.title"),
+                    rx.heading("post.title"),
                 ),
                 spacing="2",
             ),
