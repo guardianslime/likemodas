@@ -9,7 +9,7 @@ def article_link(post: BlogPostModel):
     post_id = post.id
     if post_id is None:
         return rx.fragment("Not found")
-    root_path = navigation.routes.BLOG_POSTS_ROUTE
+    root_path = navigation.routes.ARTICLE_LIST_ROUTE
     post_detail_url = f"{root_path}/{post_id}"
     return rx.card(
         rx.link(
@@ -27,25 +27,15 @@ def article_link(post: BlogPostModel):
 
 def article_list_item(post: BlogPostModel):
     return rx.box(
-        article_link(    
-            rx.heading(post.title),
-            post
-        ),
+        article_link(post),
         padding="1em"
     )
 
-# def foreach_callback(text):
-#     return rx.box(rx.text(text))
 
 def article_public_list_page() -> rx.Component:
     return base_page(
         rx.vstack(
-            rx.heading("Blog Posts", size="5"),
-            rx.link(
-                rx.button("New Post"),
-                href=navigation.routes.BLOG_POST_ADD_ROUTE
-            ),
-            # rx.foreach(["abc", "abc", "cde"], foreach_callback),
+            rx.heading("Published Articles", size="5"),
             rx.foreach(state.ArticlePublicState.posts, article_list_item),          
             spacing="5",
             align="center",
