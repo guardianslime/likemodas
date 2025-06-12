@@ -39,7 +39,7 @@ class ArticlePublicState(SessionState):
             if self.post_id == "":
                 self.post = None
                 self.post_content = ""
-                self.post.published_active = False
+                self.post_publish_active = False
                 return
             sql_statement = select(BlogPostModel).options(
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
