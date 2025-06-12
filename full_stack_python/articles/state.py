@@ -18,6 +18,7 @@ class ArticlePublicState(SessionState):
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
+    limit: int = 20
 
     @rx.var
     def post_id(self) -> str:  # Añadida la anotación de tipo -> str
@@ -52,6 +53,11 @@ class ArticlePublicState(SessionState):
             self.post_content = self.post.content
             self.post_publish_active = self.post.publish_active
 
+    def set_limit_and_reload(self, new_limit: int=5):
+        self.limit = new_limit
+        self.load_posts
+        yield
+
     def load_posts(self, *args, **kwargs):
         lookup_args = (
             (BlogPostModel.publish_active == True) &
@@ -61,7 +67,7 @@ class ArticlePublicState(SessionState):
             result = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(lookup_args)
+                ).where(lookup_args).limit(self.limit)
             ).all()
             self.posts = result
 

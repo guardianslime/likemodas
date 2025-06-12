@@ -17,6 +17,39 @@ import NextHead from "next/head"
 
 
 
+export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
+  
+  const { resolvedColorMode } = useContext(ColorModeContext)
+
+  refs['__toast'] = toast
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
+  const [userDismissed, setUserDismissed] = useState(false);
+  (useEffect(
+() => {
+    if ((connectErrors.length >= 2)) {
+        if (!userDismissed) {
+            toast.error(
+                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
+                {...toast_props, onDismiss: () => setUserDismissed(true)},
+            )
+        }
+    } else {
+        toast.dismiss("websocket-error");
+        setUserDismissed(false);  // after reconnection reset dismissed state
+    }
+}
+, [connectErrors]))
+
+
+
+
+  
+  return (
+    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
+  )
+}
+
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -58,7 +91,7 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
   )
 }
 
-export function Errorboundary_431afd812c01af8f2eb116313a51ba94 () {
+export function Errorboundary_91824124f3e4f584d543f825e73aa02a () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -76,7 +109,7 @@ export function Errorboundary_431afd812c01af8f2eb116313a51ba94 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_bdb5d3420e89fbbbfc7bba097a313b0e/>
+<Fragment_2b7e56a1fc2becf3e5c861e4308ee1b8/>
 <NextHead>
 
 <title>
@@ -89,40 +122,7 @@ export function Errorboundary_431afd812c01af8f2eb116313a51ba94 () {
   )
 }
 
-export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
-  
-  const { resolvedColorMode } = useContext(ColorModeContext)
-
-  refs['__toast'] = toast
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
-  const [userDismissed, setUserDismissed] = useState(false);
-  (useEffect(
-() => {
-    if ((connectErrors.length >= 2)) {
-        if (!userDismissed) {
-            toast.error(
-                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
-                {...toast_props, onDismiss: () => setUserDismissed(true)},
-            )
-        }
-    } else {
-        toast.dismiss("websocket-error");
-        setUserDismissed(false);  // after reconnection reset dismissed state
-    }
-}
-, [connectErrors]))
-
-
-
-
-  
-  return (
-    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
-  )
-}
-
-export function Fragment_bdb5d3420e89fbbbfc7bba097a313b0e () {
+export function Fragment_2b7e56a1fc2becf3e5c861e4308ee1b8 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -530,8 +530,8 @@ export function Fragment_bdb5d3420e89fbbbfc7bba097a313b0e () {
 
 {"Contact Entries"}
 </RadixThemesHeading>
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state.entries.map((contact, index_d48e3c11da8d4f4c) => (
-  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_d48e3c11da8d4f4c}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state.entries.map((contact, index_62a541400116aa03) => (
+  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_62a541400116aa03}>
 
 <RadixThemesHeading>
 
@@ -641,11 +641,11 @@ export function Fragment_bdb5d3420e89fbbbfc7bba097a313b0e () {
 </RadixThemesLink>
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
-<NextLink href={"/blog"} passHref={true}>
+<NextLink href={"/articles"} passHref={true}>
 
 <RadixThemesText as={"p"} size={"4"} weight={"medium"}>
 
-{"Blog"}
+{"Articles"}
 </RadixThemesText>
 </NextLink>
 </RadixThemesLink>
@@ -719,9 +719,9 @@ export function Fragment_bdb5d3420e89fbbbfc7bba097a313b0e () {
 
 {"Home"}
 </RadixThemesDropdownMenu.Item>
-<RadixThemesDropdownMenu.Item onClick={((...args) => (addEvents([(Event("reflex___state____state.full_stack_python___navigation___state____nav_state.to_about_us", ({  }), ({  })))], args, ({  }))))}>
+<RadixThemesDropdownMenu.Item onClick={((...args) => (addEvents([(Event("reflex___state____state.full_stack_python___navigation___state____nav_state.to_articles", ({  }), ({  })))], args, ({  }))))}>
 
-{"About"}
+{"Articles"}
 </RadixThemesDropdownMenu.Item>
 <RadixThemesDropdownMenu.Item onClick={((...args) => (addEvents([(Event("reflex___state____state.full_stack_python___navigation___state____nav_state.to_blog", ({  }), ({  })))], args, ({  }))))}>
 
@@ -757,8 +757,8 @@ export function Fragment_bdb5d3420e89fbbbfc7bba097a313b0e () {
 
 {"Contact Entries"}
 </RadixThemesHeading>
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state.entries.map((contact, index_d48e3c11da8d4f4c) => (
-  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_d48e3c11da8d4f4c}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state.entries.map((contact, index_62a541400116aa03) => (
+  <RadixThemesBox css={({ ["padding"] : "1em" })} key={index_62a541400116aa03}>
 
 <RadixThemesHeading>
 
@@ -853,6 +853,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_431afd812c01af8f2eb116313a51ba94/>
+    <Errorboundary_91824124f3e4f584d543f825e73aa02a/>
   )
 }

@@ -17,6 +17,39 @@ import NextHead from "next/head"
 
 
 
+export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
+  
+  const { resolvedColorMode } = useContext(ColorModeContext)
+
+  refs['__toast'] = toast
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
+  const [userDismissed, setUserDismissed] = useState(false);
+  (useEffect(
+() => {
+    if ((connectErrors.length >= 2)) {
+        if (!userDismissed) {
+            toast.error(
+                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
+                {...toast_props, onDismiss: () => setUserDismissed(true)},
+            )
+        }
+    } else {
+        toast.dismiss("websocket-error");
+        setUserDismissed(false);  // after reconnection reset dismissed state
+    }
+}
+, [connectErrors]))
+
+
+
+
+  
+  return (
+    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
+  )
+}
+
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -58,7 +91,7 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
   )
 }
 
-export function Errorboundary_35ecf831d25dc126ba414f2234c5b73e () {
+export function Errorboundary_0fadcba1ee772a9a01e9f4211c4c3ebf () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -78,7 +111,7 @@ export function Errorboundary_35ecf831d25dc126ba414f2234c5b73e () {
 </Fragment>
 <Fragment>
 
-<Fragment_32d29d5376baddd3089076b391bb8316/>
+<Fragment_d196427f1bb0339a830f568540bfcaf8/>
 </Fragment>
 <NextHead>
 
@@ -92,40 +125,17 @@ export function Errorboundary_35ecf831d25dc126ba414f2234c5b73e () {
   )
 }
 
-export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
-  
-  const { resolvedColorMode } = useContext(ColorModeContext)
-
-  refs['__toast'] = toast
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
-  const [userDismissed, setUserDismissed] = useState(false);
-  (useEffect(
-() => {
-    if ((connectErrors.length >= 2)) {
-        if (!userDismissed) {
-            toast.error(
-                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
-                {...toast_props, onDismiss: () => setUserDismissed(true)},
-            )
-        }
-    } else {
-        toast.dismiss("websocket-error");
-        setUserDismissed(false);  // after reconnection reset dismissed state
+const pulse = keyframes`
+    0% {
+        opacity: 0;
     }
-}
-, [connectErrors]))
+    100% {
+        opacity: 1;
+    }
+`
 
 
-
-
-  
-  return (
-    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
-  )
-}
-
-export function Fragment_32d29d5376baddd3089076b391bb8316 () {
+export function Fragment_d196427f1bb0339a830f568540bfcaf8 () {
   
   const reflex___state____state = useContext(StateContexts.reflex___state____state)
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
@@ -627,11 +637,11 @@ export function Fragment_32d29d5376baddd3089076b391bb8316 () {
 </RadixThemesLink>
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
-<NextLink href={"/blog"} passHref={true}>
+<NextLink href={"/articles"} passHref={true}>
 
 <RadixThemesText as={"p"} size={"4"} weight={"medium"}>
 
-{"Blog"}
+{"Articles"}
 </RadixThemesText>
 </NextLink>
 </RadixThemesLink>
@@ -705,9 +715,9 @@ export function Fragment_32d29d5376baddd3089076b391bb8316 () {
 
 {"Home"}
 </RadixThemesDropdownMenu.Item>
-<RadixThemesDropdownMenu.Item onClick={((...args) => (addEvents([(Event("reflex___state____state.full_stack_python___navigation___state____nav_state.to_about_us", ({  }), ({  })))], args, ({  }))))}>
+<RadixThemesDropdownMenu.Item onClick={((...args) => (addEvents([(Event("reflex___state____state.full_stack_python___navigation___state____nav_state.to_articles", ({  }), ({  })))], args, ({  }))))}>
 
-{"About"}
+{"Articles"}
 </RadixThemesDropdownMenu.Item>
 <RadixThemesDropdownMenu.Item onClick={((...args) => (addEvents([(Event("reflex___state____state.full_stack_python___navigation___state____nav_state.to_blog", ({  }), ({  })))], args, ({  }))))}>
 
@@ -807,16 +817,6 @@ export function Fragment_32d29d5376baddd3089076b391bb8316 () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
 export default function Component() {
     
 
@@ -824,6 +824,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_35ecf831d25dc126ba414f2234c5b73e/>
+    <Errorboundary_0fadcba1ee772a9a01e9f4211c4c3ebf/>
   )
 }
