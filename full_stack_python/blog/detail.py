@@ -7,8 +7,7 @@ from .notfound import blog_post_not_found
 # @rx.page(route="/about")
 def blog_post_detail_page() -> rx.Component:
     con_edit = True
-    edit_link = rx.link("Edit", href=f"/{state.
-    BlogPostState.blog_post_edit_url}")
+    edit_link = rx.link("Edit", href=f"{state.BlogPostState.blog_post_edit_url}")
     edit_link_el = rx.cond(
         con_edit,
         edit_link,
