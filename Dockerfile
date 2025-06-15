@@ -16,4 +16,4 @@ RUN reflex init
 EXPOSE 8000
 
 # ¡IMPORTANTE! Cambiado --port a --backend-port
-CMD ["reflex", "run", "--env", "prod", "--backend-port", "8000", "--host", "0.0.0.0"]
+CMD ["reflex", "run", "--env", "prod", "--backend-host", "0.0.0.0", "--backend-port", "8000"]
