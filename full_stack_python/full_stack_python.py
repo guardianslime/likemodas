@@ -31,7 +31,7 @@ def index() -> rx.Component:
 
 
 app = rx.App(
-    api_url=config.api_url, # Esto asegura que la app use la URL de la API definida en rxconfig.py
+     # Esto asegura que la app use la URL de la API definida en rxconfig.py
 
      theme=rx.theme(
           appearance="dark", 
