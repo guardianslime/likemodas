@@ -24,12 +24,31 @@ def index() -> rx.Component:
      return base_page(
           rx.cond(SessionState.is_authenticated,   
                pages.dashboard_component(),
-               pages.landing_component(),          )          
+               pages.landing_component(),          
+          )          
      )
 
 
 
-app = rx.App()
+app = rx.App(
+     cors_allowed_origins=[
+        "http://localhost:3000",  # Para probar tu frontend localmente
+        "http://localhost:8000",  # Para pruebas si el backend y frontend corren en el mismo origen local
+        "https://tu-nombre-de-proyecto.vercel.app", # ESTA ES LA URL DE TU FRONTEND DE VERCEL
+        # Puedes agregar más dominios si planeas tener múltiples frontends
+    ],
+    api_url=config.api_url, # Esto asegura que la app use la URL de la API definida en rxconfig.py
+
+     theme=rx.theme(
+          appearance="dark", 
+          has_background=True, 
+          panel_background="solid",
+          scaling= "90%",
+          radius="medium",
+          accent_color="sky"
+     )
+     
+)
 app.add_page(index,
           on_load=ArticlePublicState.load_posts
      )
