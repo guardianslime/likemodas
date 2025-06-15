@@ -1,23 +1,16 @@
 # rxconfig.py
 import reflex as rx
+from typing import List # AÑADE ESTA LÍNEA
 
-# Reflex cargará la configuración directamente de esta clase.
 class FullStackPythonConfig(rx.Config):
     app_name = "full_stack_python"
-    api_url = "https://page-wpzf.onrender.com" # <-- Tu URL de Render (¡esto está bien!)
+    api_url = "https://page-wpzf.onrender.com" # Tu URL de Render
 
-    # CORS para tu frontend (¡cambia la URL de Vercel por la real!)
-    cors_allowed_origins = [
+    # CAMBIA ESTA LÍNEA para añadir la anotación de tipo
+    cors_allowed_origins: List[str] = [ # <--- AQUI ESTÁ EL CAMBIO
         "http://localhost:3000",
-        # "https://your-vercel-frontend-url.vercel.app", # ¡IMPORTANTE: CAMBIA ESTA POR LA URL REAL DE TU FRONTEND EN VERCEL!
+        #"https://your-vercel-frontend-url.vercel.app", # ¡CAMBIA ESTO por la URL REAL de tu frontend en Vercel!
         "http://localhost:8000"
     ]
-    
-    # Si necesitas db_url, colócala aquí también
-    db_url = "sqlite:///reflex.db" 
 
-# ¡Elimina esta línea! Reflex no la necesita y causa conflictos.
-# config = rx.Config(
-#     app_name="full_stack_python",
-#     db_url="sqlite:///reflex.db", 
-# )
+    db_url = "sqlite:///reflex.db"
