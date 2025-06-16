@@ -18,7 +18,7 @@ import NextHead from "next/head"
 
 
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
+export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -28,10 +28,17 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
 
   
   return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+    <Fragment>
 
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
+{isTrue((connectErrors.length > 0)) ? (
+  <Fragment>
+
+<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
+</Fragment>
+) : (
+  <Fragment/>
+)}
+</Fragment>
   )
 }
 
@@ -68,17 +75,7 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
-export function Fragment_3e99b46c861b68562a28f2b63f5cf52a () {
+export function Fragment_3619e284bea2f63f7f9944c6a4cae42f () {
   
   const reflex___state____state = useContext(StateContexts.reflex___state____state)
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
@@ -891,31 +888,7 @@ export function Fragment_3e99b46c861b68562a28f2b63f5cf52a () {
   )
 }
 
-export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <Fragment>
-
-{isTrue((connectErrors.length > 0)) ? (
-  <Fragment>
-
-<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
-</Fragment>
-) : (
-  <Fragment/>
-)}
-</Fragment>
-  )
-}
-
-export function Errorboundary_6949efcc8f3a8762980a8a570ca00d4e () {
+export function Errorboundary_5e48b523be957d748d8773c2a32688a2 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -935,7 +908,7 @@ export function Errorboundary_6949efcc8f3a8762980a8a570ca00d4e () {
 </Fragment>
 <Fragment>
 
-<Fragment_3e99b46c861b68562a28f2b63f5cf52a/>
+<Fragment_3619e284bea2f63f7f9944c6a4cae42f/>
 </Fragment>
 <NextHead>
 
@@ -949,6 +922,33 @@ export function Errorboundary_6949efcc8f3a8762980a8a570ca00d4e () {
   )
 }
 
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
 export default function Component() {
     
 
@@ -956,6 +956,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_6949efcc8f3a8762980a8a570ca00d4e/>
+    <Errorboundary_5e48b523be957d748d8773c2a32688a2/>
   )
 }
