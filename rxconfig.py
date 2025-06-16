@@ -9,7 +9,7 @@ class FullStackPythonConfig(rx.Config):
     cors_allowed_origins: List[str] = [
         "http://localhost:3000", # Para desarrollo local
         # ¡IMPORTANTE! Cambia esta línea para que sea la URL EXACTA de tu Vercel
-        "https://pagefronted-git-main-nkpz01s-projects.vercel.app", # <--- ¡ESTA ES LA URL CORREGIDA!
+        "https://pagefronted-zz96.vercel.app/", # <--- ¡ESTA ES LA URL CORREGIDA!
         "http://localhost:8000" # A veces necesario para el backend local
     ]
 
