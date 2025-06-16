@@ -1,6 +1,0 @@
-# cloudbuild.yaml
-steps:
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'gcr.io/triple-nectar-463003-u9/mi-app-reflex:latest', '.']
-images:
-- 'gcr.io/triple-nectar-463003-u9/mi-app-reflex:latest'
