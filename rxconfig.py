@@ -4,7 +4,7 @@ from typing import List
 
 class FullStackPythonConfig(rx.Config):
     app_name = "full_stack_python"
-    api_url = "https://page-5mr7.onrender.com" # Tu URL del backend en Render
+    api_url = "https://page-wpzf.onrender.com" # Tu URL del backend en Render
 
     cors_allowed_origins: List[str] = [
         "http://localhost:3000", # Para desarrollo local
