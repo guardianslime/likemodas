@@ -11,7 +11,7 @@ class FullStackPythonConfig(rx.Config):
         "http://localhost:3000", # Para desarrollo local
         # ¡IMPORTANTE! Asegúrate de que esta URL de Vercel sea la EXACTA.
         # Le quitamos la barra final para consistencia.
-        "https://fronted-kohl.vercel.app/", # URL de tu frontend en Vercel
+        "https://fronted-kohl.vercel.app", # URL de tu frontend en Vercel
         "http://localhost:8000" # A veces necesario para el backend local
     ]
 
