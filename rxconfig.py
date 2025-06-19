@@ -15,7 +15,7 @@ class FullStackPythonConfig(rx.Config):
         "http://localhost:8000" # A veces necesario para el backend local
     ]
 
-    db_url = "sqlite:///reflex.db" # Si estás usando SQLite
+    db_url = "sqlite:///reflex.db" # lSi estás usando SQLite
 
 config = FullStackPythonConfig()
 
