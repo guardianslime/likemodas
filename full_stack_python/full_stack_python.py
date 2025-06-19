@@ -28,7 +28,9 @@ def index() -> rx.Component:
           )          
      )
 
-
+@rx.page("/healthz", title="Health Check")
+def healthz_page() -> rx.Component:
+    return rx.text("OK")
 
 app = rx.App(
      # Esto asegura que la app use la URL de la API definida en rxconfig.py
