@@ -5,7 +5,7 @@ from typing import List
 class FullStackPythonConfig(rx.Config):
     app_name = "full_stack_python"
     # URL de tu backend en Render. Reflex usará HTTPS para API y WSS para WebSockets si esta es HTTPS.
-    api_url = "https://page-production-8756.up.railway.app/" 
+    api_url = "https://page-production-8756.up.railway.app"
 
     cors_allowed_origins: List[str] = [
         "http://localhost:3000", # Para desarrollo local
