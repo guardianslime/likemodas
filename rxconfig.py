@@ -10,10 +10,9 @@ class FullStackPythonConfig(rx.Config):
     cors_allowed_origins: List[str] = [
         "http://localhost:3000",
         # ¡ESTA ES LA URL DE TU FRONTEND DE VERCEL, SIN BARRA FINAL!
-        "https://fronted-kohl.vercel.app", 
+        "https://frontend-snowy-six-69.vercel.app",
         "http://localhost:8000"
     ]
 
     db_url = "sqlite:///reflex.db"
-
 config = FullStackPythonConfig()
