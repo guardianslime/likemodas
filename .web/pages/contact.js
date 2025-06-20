@@ -42,16 +42,6 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
 export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
   const { resolvedColorMode } = useContext(ColorModeContext)
@@ -85,24 +75,17 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
 
 
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
-export function Errorboundary_13ab63296b7fc4c09016d6dd8ec3ae8c () {
+export function Errorboundary_2b9286f5da6162d4dcd80e47459f0f42 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -120,7 +103,7 @@ export function Errorboundary_13ab63296b7fc4c09016d6dd8ec3ae8c () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_a8b116964850e6e7b5191598e4a29dfd/>
+<Fragment_177d800945f43266f3ef4c755c855027/>
 <NextHead>
 
 <title>
@@ -133,7 +116,24 @@ export function Errorboundary_13ab63296b7fc4c09016d6dd8ec3ae8c () {
   )
 }
 
-export function Fragment_a8b116964850e6e7b5191598e4a29dfd () {
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Fragment_177d800945f43266f3ef4c755c855027 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -945,6 +945,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_13ab63296b7fc4c09016d6dd8ec3ae8c/>
+    <Errorboundary_2b9286f5da6162d4dcd80e47459f0f42/>
   )
 }
