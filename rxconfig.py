@@ -17,4 +17,3 @@ class FullStackPythonConfig(rx.Config):
     db_url = "sqlite:///reflex.db"
 
 config = FullStackPythonConfig()
-
