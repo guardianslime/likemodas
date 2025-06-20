@@ -17,30 +17,6 @@ import NextHead from "next/head"
 
 
 
-export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <Fragment>
-
-{isTrue((connectErrors.length > 0)) ? (
-  <Fragment>
-
-<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
-</Fragment>
-) : (
-  <Fragment/>
-)}
-</Fragment>
-  )
-}
-
 export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
   const { resolvedColorMode } = useContext(ColorModeContext)
@@ -74,7 +50,24 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Fragment_6da33fbc6d08e6a448b8601645e792ae () {
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Fragment_d3bb0878ba0dafe16fb0195d73b47840 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -742,7 +735,7 @@ const pulse = keyframes`
 `
 
 
-export function Errorboundary_7ca16bbb28e3501ed69b6d9e195bb6a6 () {
+export function Errorboundary_cca035ec913fc82f6a8d4e2818949757 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -760,7 +753,7 @@ export function Errorboundary_7ca16bbb28e3501ed69b6d9e195bb6a6 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_6da33fbc6d08e6a448b8601645e792ae/>
+<Fragment_d3bb0878ba0dafe16fb0195d73b47840/>
 <NextHead>
 
 <title>
@@ -773,7 +766,7 @@ export function Errorboundary_7ca16bbb28e3501ed69b6d9e195bb6a6 () {
   )
 }
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
+export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -783,10 +776,17 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
 
   
   return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+    <Fragment>
 
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
+{isTrue((connectErrors.length > 0)) ? (
+  <Fragment>
+
+<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
+</Fragment>
+) : (
+  <Fragment/>
+)}
+</Fragment>
   )
 }
 
@@ -797,6 +797,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_7ca16bbb28e3501ed69b6d9e195bb6a6/>
+    <Errorboundary_cca035ec913fc82f6a8d4e2818949757/>
   )
 }

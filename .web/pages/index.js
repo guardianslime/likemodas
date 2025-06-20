@@ -17,30 +17,6 @@ import NextHead from "next/head"
 
 
 
-export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <Fragment>
-
-{isTrue((connectErrors.length > 0)) ? (
-  <Fragment>
-
-<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
-</Fragment>
-) : (
-  <Fragment/>
-)}
-</Fragment>
-  )
-}
-
 export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   
   const { resolvedColorMode } = useContext(ColorModeContext)
@@ -74,17 +50,24 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
 
 
-export function Fragment_4e08cbef9bf1e80831fc21bab77488d5 () {
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+export function Fragment_fb46a7fa9c4c7505049815f7426fcf7a () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -515,8 +498,8 @@ export function Fragment_4e08cbef9bf1e80831fc21bab77488d5 () {
 <RadixThemesSeparator css={({ ["marginTop"] : "1em", ["manginBottom"] : "1em" })} size={"4"}/>
 <RadixThemesGrid columns={"3"} gap={"5"}>
 
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_e5d4c2002d658885) => (
-  <RadixThemesCard asChild={true} key={index_e5d4c2002d658885}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_1758bbdebe5afded) => (
+  <RadixThemesCard asChild={true} key={index_1758bbdebe5afded}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -565,8 +548,8 @@ export function Fragment_4e08cbef9bf1e80831fc21bab77488d5 () {
 </RadixThemesHeading>
 <RadixThemesGrid columns={"1"} gap={"5"}>
 
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_e5d4c2002d658885) => (
-  <RadixThemesCard asChild={true} key={index_e5d4c2002d658885}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_1758bbdebe5afded) => (
+  <RadixThemesCard asChild={true} key={index_1758bbdebe5afded}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -793,8 +776,8 @@ export function Fragment_4e08cbef9bf1e80831fc21bab77488d5 () {
 <RadixThemesSeparator css={({ ["marginTop"] : "1em", ["manginBottom"] : "1em" })} size={"4"}/>
 <RadixThemesGrid columns={"3"} gap={"5"}>
 
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_e5d4c2002d658885) => (
-  <RadixThemesCard asChild={true} key={index_e5d4c2002d658885}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_1758bbdebe5afded) => (
+  <RadixThemesCard asChild={true} key={index_1758bbdebe5afded}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -843,8 +826,8 @@ export function Fragment_4e08cbef9bf1e80831fc21bab77488d5 () {
 </RadixThemesHeading>
 <RadixThemesGrid columns={"1"} gap={"5"}>
 
-<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_e5d4c2002d658885) => (
-  <RadixThemesCard asChild={true} key={index_e5d4c2002d658885}>
+<>{reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post, index_1758bbdebe5afded) => (
+  <RadixThemesCard asChild={true} key={index_1758bbdebe5afded}>
 
 <RadixThemesLink asChild={true} css={({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })}>
 
@@ -915,7 +898,17 @@ export function Fragment_4e08cbef9bf1e80831fc21bab77488d5 () {
   )
 }
 
-export function Errorboundary_d3e3c30f7db3d1faef2032f441635b64 () {
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
+export function Errorboundary_f72c75ae29e7cfdbf806bd0f0b936029 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -933,7 +926,7 @@ export function Errorboundary_d3e3c30f7db3d1faef2032f441635b64 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_4e08cbef9bf1e80831fc21bab77488d5/>
+<Fragment_fb46a7fa9c4c7505049815f7426fcf7a/>
 <NextHead>
 
 <title>
@@ -946,7 +939,7 @@ export function Errorboundary_d3e3c30f7db3d1faef2032f441635b64 () {
   )
 }
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
+export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -956,10 +949,17 @@ export function Div_602c14884fa2de27f522fe8f94374b02 () {
 
   
   return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+    <Fragment>
 
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
+{isTrue((connectErrors.length > 0)) ? (
+  <Fragment>
+
+<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
+</Fragment>
+) : (
+  <Fragment/>
+)}
+</Fragment>
   )
 }
 
@@ -970,6 +970,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_d3e3c30f7db3d1faef2032f441635b64/>
+    <Errorboundary_f72c75ae29e7cfdbf806bd0f0b936029/>
   )
 }
