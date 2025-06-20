@@ -3,6 +3,7 @@ import axios from "axios";
 import io from "socket.io-client";
 import JSON5 from "json5";
 import env from "$/env.json";
+import reflexEnvironment from "$/reflex.json";
 import Cookies from "universal-cookie";
 import { useEffect, useRef, useState } from "react";
 import Router, { useRouter } from "next/router";
@@ -106,6 +107,18 @@ export const getBackendURL = (url_str) => {
 };
 
 /**
+ * Check if the backend is disabled.
+ *
+ * @returns True if the backend is disabled, false otherwise.
+ */
+export const isBackendDisabled = () => {
+  const cookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("backend-enabled="));
+  return cookie !== undefined && cookie.split("=")[1] == "false";
+};
+
+/**
  * Determine if any event in the event queue is stateful.
  *
  * @returns True if there's any event that requires state and False if none of them do.
@@ -165,8 +178,11 @@ export const queueEventIfSocketExists = async (events, socket) => {
 export const applyEvent = async (event, socket) => {
   // Handle special events
   if (event.name == "_redirect") {
+    if ((event.payload.path ?? undefined) === undefined) {
+      return false;
+    }
     if (event.payload.external) {
-      window.open(event.payload.path, "_blank");
+      window.open(event.payload.path, "_blank", "noopener");
     } else if (event.payload.replace) {
       Router.replace(event.payload.path);
     } else {
@@ -214,8 +230,8 @@ export const applyEvent = async (event, socket) => {
       a.href = eval?.(
         event.payload.url.replace(
           "getBackendURL(env.UPLOAD)",
-          `"${getBackendURL(env.UPLOAD)}"`
-        )
+          `"${getBackendURL(env.UPLOAD)}"`,
+        ),
       );
     }
     a.download = event.payload.filename;
@@ -227,7 +243,14 @@ export const applyEvent = async (event, socket) => {
   if (event.name == "_set_focus") {
     const ref =
       event.payload.ref in refs ? refs[event.payload.ref] : event.payload.ref;
-    ref.current.focus();
+    const current = ref?.current;
+    if (current === undefined || current?.focus === undefined) {
+      console.error(
+        `No element found for ref ${event.payload.ref} in _set_focus`,
+      );
+    } else {
+      current.focus();
+    }
     return false;
   }
 
@@ -247,11 +270,15 @@ export const applyEvent = async (event, socket) => {
     try {
       const eval_result = event.payload.function();
       if (event.payload.callback) {
-        if (!!eval_result && typeof eval_result.then === "function") {
-          event.payload.callback(await eval_result);
-        } else {
-          event.payload.callback(eval_result);
-        }
+        const final_result =
+          !!eval_result && typeof eval_result.then === "function"
+            ? await eval_result
+            : eval_result;
+        const callback =
+          typeof event.payload.callback === "string"
+            ? eval(event.payload.callback)
+            : event.payload.callback;
+        callback(final_result);
       }
     } catch (e) {
       console.log("_call_function", e);
@@ -270,11 +297,15 @@ export const applyEvent = async (event, socket) => {
           : eval(event.payload.function)();
 
       if (event.payload.callback) {
-        if (!!eval_result && typeof eval_result.then === "function") {
-          eval(event.payload.callback)(await eval_result);
-        } else {
-          eval(event.payload.callback)(eval_result);
-        }
+        const final_result =
+          !!eval_result && typeof eval_result.then === "function"
+            ? await eval_result
+            : eval_result;
+        const callback =
+          typeof event.payload.callback === "string"
+            ? eval(event.payload.callback)
+            : event.payload.callback;
+        callback(final_result);
       }
     } catch (e) {
       console.log("_call_script", e);
@@ -300,10 +331,7 @@ export const applyEvent = async (event, socket) => {
 
   // Send the event to the server.
   if (socket) {
-    socket.emit(
-      "event",
-      event,
-    );
+    socket.emit("event", event);
     return true;
   }
 
@@ -322,7 +350,7 @@ export const applyRestEvent = async (event, socket) => {
   if (event.handler === "uploadFiles") {
     if (event.payload.files === undefined || event.payload.files.length === 0) {
       // Submit the event over the websocket to trigger the event handler.
-      return await applyEvent(Event(event.name), socket);
+      return await applyEvent(Event(event.name, { files: [] }), socket);
     }
 
     // Start upload, but do not wait for it, which would block other events.
@@ -331,7 +359,7 @@ export const applyRestEvent = async (event, socket) => {
       event.payload.files,
       event.payload.upload_id,
       event.payload.on_upload_progress,
-      socket
+      socket,
     );
     return false;
   }
@@ -342,9 +370,19 @@ export const applyRestEvent = async (event, socket) => {
  * Queue events to be processed and trigger processing of queue.
  * @param events Array of events to queue.
  * @param socket The socket object to send the event on.
+ * @param prepend Whether to place the events at the beginning of the queue.
  */
-export const queueEvents = async (events, socket) => {
-  event_queue.push(...events);
+export const queueEvents = async (events, socket, prepend) => {
+  if (prepend) {
+    // Drain the existing queue and place it after the given events.
+    events = [
+      ...events,
+      ...Array.from({ length: event_queue.length }).map(() =>
+        event_queue.shift(),
+      ),
+    ];
+  }
+  event_queue.push(...events.filter((e) => e !== undefined && e !== null));
   await processEvent(socket.current);
 };
 
@@ -398,7 +436,7 @@ export const connect = async (
   dispatch,
   transports,
   setConnectErrors,
-  client_storage = {}
+  client_storage = {},
 ) => {
   // Get backend URL object from the endpoint.
   const endpoint = getBackendURL(EVENTURL);
@@ -407,10 +445,18 @@ export const connect = async (
   socket.current = io(endpoint.href, {
     path: endpoint["pathname"],
     transports: transports,
+    protocols: [reflexEnvironment.version],
     autoUnref: false,
   });
   // Ensure undefined fields in events are sent as null instead of removed
-  socket.current.io.encoder.replacer = (k, v) => (v === undefined ? null : v)
+  socket.current.io.encoder.replacer = (k, v) => (v === undefined ? null : v);
+  socket.current.io.decoder.tryParse = (str) => {
+    try {
+      return JSON5.parse(str);
+    } catch (e) {
+      return false;
+    }
+  };
 
   function checkVisibility() {
     if (document.visibilityState === "visible") {
@@ -423,6 +469,13 @@ export const connect = async (
     }
   }
 
+  const disconnectTrigger = (event) => {
+    if (socket.current?.connected) {
+      console.log("Disconnect websocket on unload");
+      socket.current.disconnect();
+    }
+  };
+
   const pagehideHandler = (event) => {
     if (event.persisted && socket.current?.connected) {
       console.log("Disconnect backend before bfcache on navigation");
@@ -434,6 +487,8 @@ export const connect = async (
   socket.current.on("connect", () => {
     setConnectErrors([]);
     window.addEventListener("pagehide", pagehideHandler);
+    window.addEventListener("beforeunload", disconnectTrigger);
+    window.addEventListener("unload", disconnectTrigger);
   });
 
   socket.current.on("connect_error", (error) => {
@@ -443,6 +498,8 @@ export const connect = async (
   // When the socket disconnects reset the event_processing flag
   socket.current.on("disconnect", () => {
     event_processing = false;
+    window.removeEventListener("unload", disconnectTrigger);
+    window.removeEventListener("beforeunload", disconnectTrigger);
     window.removeEventListener("pagehide", pagehideHandler);
   });
 
@@ -459,7 +516,7 @@ export const connect = async (
   });
   socket.current.on("reload", async (event) => {
     event_processing = false;
-    queueEvents([...initialEvents(), event], socket);
+    queueEvents([...initialEvents(), event], socket, true);
   });
 
   document.addEventListener("visibilitychange", checkVisibility);
@@ -481,14 +538,14 @@ export const uploadFiles = async (
   files,
   upload_id,
   on_upload_progress,
-  socket
+  socket,
 ) => {
   // return if there's no file to upload
   if (files === undefined || files.length === 0) {
     return false;
   }
 
-  const upload_ref_name = `__upload_controllers_${upload_id}`
+  const upload_ref_name = `__upload_controllers_${upload_id}`;
 
   if (refs[upload_ref_name]) {
     console.log("Upload already in progress for ", upload_id);
@@ -586,7 +643,7 @@ export const Event = (
   name,
   payload = {},
   event_actions = {},
-  handler = null
+  handler = null,
 ) => {
   return { name, payload, handler, event_actions };
 };
@@ -613,7 +670,7 @@ export const hydrateClientStorage = (client_storage) => {
     for (const state_key in client_storage.local_storage) {
       const options = client_storage.local_storage[state_key];
       const local_storage_value = localStorage.getItem(
-        options.name || state_key
+        options.name || state_key,
       );
       if (local_storage_value !== null) {
         client_storage_values[state_key] = local_storage_value;
@@ -624,7 +681,7 @@ export const hydrateClientStorage = (client_storage) => {
     for (const state_key in client_storage.session_storage) {
       const session_options = client_storage.session_storage[state_key];
       const session_storage_value = sessionStorage.getItem(
-        session_options.name || state_key
+        session_options.name || state_key,
       );
       if (session_storage_value != null) {
         client_storage_values[state_key] = session_storage_value;
@@ -649,7 +706,7 @@ export const hydrateClientStorage = (client_storage) => {
 const applyClientStorageDelta = (client_storage, delta) => {
   // find the main state and check for is_hydrated
   const unqualified_states = Object.keys(delta).filter(
-    (key) => key.split(".").length === 1
+    (key) => key.split(".").length === 1,
   );
   if (unqualified_states.length === 1) {
     const main_state = delta[unqualified_states[0]];
@@ -683,7 +740,7 @@ const applyClientStorageDelta = (client_storage, delta) => {
         const session_options = client_storage.session_storage[state_key];
         sessionStorage.setItem(
           session_options.name || state_key,
-          delta[substate][key]
+          delta[substate][key],
         );
       }
     }
@@ -703,7 +760,7 @@ const applyClientStorageDelta = (client_storage, delta) => {
 export const useEventLoop = (
   dispatch,
   initial_events = () => [],
-  client_storage = {}
+  client_storage = {},
 ) => {
   const socket = useRef(null);
   const router = useRouter();
@@ -711,13 +768,15 @@ export const useEventLoop = (
 
   // Function to add new events to the event queue.
   const addEvents = (events, args, event_actions) => {
+    const _events = events.filter((e) => e !== undefined && e !== null);
+
     if (!(args instanceof Array)) {
       args = [args];
     }
 
-    event_actions = events.reduce(
+    event_actions = _events.reduce(
       (acc, e) => ({ ...acc, ...e.event_actions }),
-      event_actions ?? {}
+      event_actions ?? {},
     );
 
     const _e = args.filter((o) => o?.preventDefault !== undefined)[0];
@@ -728,7 +787,7 @@ export const useEventLoop = (
     if (event_actions?.stopPropagation && _e?.stopPropagation) {
       _e.stopPropagation();
     }
-    const combined_name = events.map((e) => e.name).join("+++");
+    const combined_name = _events.map((e) => e.name).join("+++");
     if (event_actions?.temporal) {
       if (!socket.current || !socket.current.connected) {
         return; // don't queue when the backend is not connected
@@ -744,27 +803,28 @@ export const useEventLoop = (
       // If debounce is used, queue the events after some delay
       debounce(
         combined_name,
-        () => queueEvents(events, socket),
-        event_actions.debounce
+        () => queueEvents(_events, socket),
+        event_actions.debounce,
       );
     } else {
-      queueEvents(events, socket);
+      queueEvents(_events, socket);
     }
   };
 
   const sentHydrate = useRef(false); // Avoid double-hydrate due to React strict-mode
   useEffect(() => {
     if (router.isReady && !sentHydrate.current) {
-      const events = initial_events();
-      addEvents(
-        events.map((e) => ({
+      queueEvents(
+        initial_events().map((e) => ({
           ...e,
           router_data: (({ pathname, query, asPath }) => ({
             pathname,
             query,
             asPath,
           }))(router),
-        }))
+        })),
+        socket,
+        true,
       );
       sentHydrate.current = true;
     }
@@ -799,14 +859,10 @@ export const useEventLoop = (
     };
   }, []);
 
-  // Main event loop.
+  // Handle socket connect/disconnect.
   useEffect(() => {
-    // Skip if the router is not ready.
-    if (!router.isReady) {
-      return;
-    }
-    // only use websockets if state is present
-    if (Object.keys(initialState).length > 1) {
+    // only use websockets if state is present and backend is not disabled (reflex cloud).
+    if (Object.keys(initialState).length > 1 && !isBackendDisabled()) {
       // Initialize the websocket connection.
       if (!socket.current) {
         connect(
@@ -814,16 +870,31 @@ export const useEventLoop = (
           dispatch,
           ["websocket"],
           setConnectErrors,
-          client_storage
+          client_storage,
         );
       }
-      (async () => {
-        // Process all outstanding events.
-        while (event_queue.length > 0 && !event_processing) {
-          await processEvent(socket.current);
-        }
-      })();
     }
+
+    // Cleanup function.
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+      }
+    };
+  }, []);
+
+  // Main event loop.
+  useEffect(() => {
+    // Skip if the router is not ready.
+    if (!router.isReady || isBackendDisabled()) {
+      return;
+    }
+    (async () => {
+      // Process all outstanding events.
+      while (event_queue.length > 0 && !event_processing) {
+        await processEvent(socket.current);
+      }
+    })();
   });
 
   // localStorage event handling
@@ -847,7 +918,7 @@ export const useEventLoop = (
         vars[storage_to_state_map[e.key]] = e.newValue;
         const event = Event(
           `${state_name}.reflex___state____update_vars_internal_state.update_vars_internal`,
-          { vars: vars }
+          { vars: vars },
         );
         addEvents([event], e);
       }
@@ -897,6 +968,15 @@ export const isTrue = (val) => {
   return Boolean(val);
 };
 
+/***
+ * Check if a value is not null or undefined.
+ * @param val The value to check.
+ * @returns True if the value is not null or undefined, false otherwise.
+ */
+export const isNotNullOrUndefined = (val) => {
+  return (val ?? undefined) !== undefined;
+};
+
 /**
  * Get the value from a ref.
  * @param ref The ref to get the value from.
@@ -940,7 +1020,7 @@ export const getRefValues = (refs) => {
   return refs.map((ref) =>
     ref.current
       ? ref.current.value || ref.current.getAttribute("aria-valuenow")
-      : null
+      : null,
   );
 };
 
