@@ -17,33 +17,6 @@ import NextHead from "next/head"
 
 
 
-export function Div_602c14884fa2de27f522fe8f94374b02 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
-
-<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
-</div>
-  )
-}
-
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
 export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
@@ -68,7 +41,7 @@ export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
   )
 }
 
-export function Fragment_87747c73945e7695ce17ab8c282bc76a () {
+export function Fragment_28886d4d2ea9919d1730ed90a3df61e5 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const { toggleColorMode } = useContext(ColorModeContext)
@@ -779,7 +752,7 @@ export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
   )
 }
 
-export function Errorboundary_1c1554c1c39e97e8bcca4c3d48c5a1f0 () {
+export function Errorboundary_38a46c56c93ac551417e0bd7c3748c27 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -797,7 +770,7 @@ export function Errorboundary_1c1554c1c39e97e8bcca4c3d48c5a1f0 () {
 <Div_602c14884fa2de27f522fe8f94374b02/>
 <Toaster_6e6ebf8d7ce589d59b7d382fb7576edf/>
 </Fragment>
-<Fragment_87747c73945e7695ce17ab8c282bc76a/>
+<Fragment_28886d4d2ea9919d1730ed90a3df61e5/>
 <NextHead>
 
 <title>
@@ -810,6 +783,33 @@ export function Errorboundary_1c1554c1c39e97e8bcca4c3d48c5a1f0 () {
   )
 }
 
+export function Div_602c14884fa2de27f522fe8f94374b02 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <div css={({ ["position"] : "fixed", ["width"] : "100vw", ["height"] : "0" })} title={("Connection Error: "+((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : ''))}>
+
+<Fragment_f2f0916d2fcc08b7cdf76cec697f0750/>
+</div>
+  )
+}
+
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
 export default function Component() {
     
 
@@ -817,6 +817,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_1c1554c1c39e97e8bcca4c3d48c5a1f0/>
+    <Errorboundary_38a46c56c93ac551417e0bd7c3748c27/>
   )
 }
