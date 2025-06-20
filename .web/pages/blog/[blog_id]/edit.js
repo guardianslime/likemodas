@@ -19,74 +19,7 @@ import NextHead from "next/head"
 
 
 
-export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-
-
-
-
-
-  
-  return (
-    <Fragment>
-
-{isTrue((connectErrors.length > 0)) ? (
-  <Fragment>
-
-<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
-</Fragment>
-) : (
-  <Fragment/>
-)}
-</Fragment>
-  )
-}
-
-export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
-  
-  const { resolvedColorMode } = useContext(ColorModeContext)
-
-  refs['__toast'] = toast
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
-  const [userDismissed, setUserDismissed] = useState(false);
-  (useEffect(
-() => {
-    if ((connectErrors.length >= 2)) {
-        if (!userDismissed) {
-            toast.error(
-                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
-                {...toast_props, onDismiss: () => setUserDismissed(true)},
-            )
-        }
-    } else {
-        toast.dismiss("websocket-error");
-        setUserDismissed(false);  // after reconnection reset dismissed state
-    }
-}
-, [connectErrors]))
-
-
-
-
-  
-  return (
-    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
-  )
-}
-
-const pulse = keyframes`
-    0% {
-        opacity: 0;
-    }
-    100% {
-        opacity: 1;
-    }
-`
-
-
-export function Fragment_170d16a88b3da92fb07070374305f382 () {
+export function Fragment_5004b1da93b6ee300be1c44025a9b679 () {
   
   const reflex___state____state = useContext(StateContexts.reflex___state____state)
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
@@ -1121,7 +1054,31 @@ export function Fragment_170d16a88b3da92fb07070374305f382 () {
   )
 }
 
-export function Errorboundary_2bd5bc43eeede00d9a13053e45e49f80 () {
+export function Fragment_f2f0916d2fcc08b7cdf76cec697f0750 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+
+
+
+
+
+  
+  return (
+    <Fragment>
+
+{isTrue((connectErrors.length > 0)) ? (
+  <Fragment>
+
+<LucideWifiOffIcon css={({ ["color"] : "crimson", ["zIndex"] : 9999, ["position"] : "fixed", ["bottom"] : "33px", ["right"] : "33px", ["animation"] : (pulse+" 1s infinite") })} size={32}/>
+</Fragment>
+) : (
+  <Fragment/>
+)}
+</Fragment>
+  )
+}
+
+export function Errorboundary_8bb3f35e97d0c158dfa74cd7c97f8f5b () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
 
@@ -1141,7 +1098,7 @@ export function Errorboundary_2bd5bc43eeede00d9a13053e45e49f80 () {
 </Fragment>
 <Fragment>
 
-<Fragment_170d16a88b3da92fb07070374305f382/>
+<Fragment_5004b1da93b6ee300be1c44025a9b679/>
 </Fragment>
 <NextHead>
 
@@ -1152,6 +1109,49 @@ export function Errorboundary_2bd5bc43eeede00d9a13053e45e49f80 () {
 <meta content={"favicon.ico"} property={"og:image"}/>
 </NextHead>
 </ErrorBoundary>
+  )
+}
+
+const pulse = keyframes`
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+`
+
+
+export function Toaster_6e6ebf8d7ce589d59b7d382fb7576edf () {
+  
+  const { resolvedColorMode } = useContext(ColorModeContext)
+
+  refs['__toast'] = toast
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const toast_props = ({ ["description"] : ("Check if server is reachable at "+getBackendURL(env.EVENT).href), ["closeButton"] : true, ["duration"] : 120000, ["id"] : "websocket-error" });
+  const [userDismissed, setUserDismissed] = useState(false);
+  (useEffect(
+() => {
+    if ((connectErrors.length >= 2)) {
+        if (!userDismissed) {
+            toast.error(
+                `Cannot connect to server: ${((connectErrors.length > 0) ? connectErrors[connectErrors.length - 1].message : '')}.`,
+                {...toast_props, onDismiss: () => setUserDismissed(true)},
+            )
+        }
+    } else {
+        toast.dismiss("websocket-error");
+        setUserDismissed(false);  // after reconnection reset dismissed state
+    }
+}
+, [connectErrors]))
+
+
+
+
+  
+  return (
+    <Toaster closeButton={false} expand={true} position={"bottom-right"} richColors={true} theme={resolvedColorMode}/>
   )
 }
 
@@ -1179,6 +1179,6 @@ export default function Component() {
 
 
   return (
-    <Errorboundary_2bd5bc43eeede00d9a13053e45e49f80/>
+    <Errorboundary_8bb3f35e97d0c158dfa74cd7c97f8f5b/>
   )
 }
