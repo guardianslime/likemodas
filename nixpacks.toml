@@ -1,0 +1,63 @@
+# nixpacks.toml
+# Este archivo le dice a Nixpacks cómo construir y ejecutar tu aplicación Reflex (full-stack).
+
+# Proveedor principal: Python.
+providers = ['python']
+
+# Variables de entorno para minimizar mensajes no deseados durante la construcción y ejecución.
+[variables]
+    NEXT_TELEMETRY_DISABLED = '1' # Deshabilita la telemetría de Next.js (usado por Reflex frontend)
+    NPM_CONFIG_UPDATE_NOTIFIER = 'false' # Deshabilita la verificación de actualizaciones de npm
+    NPM_CONFIG_FUND = 'false' # Deshabilita la notificación de "fund" de npm
+    PIP_DISABLE_PIP_VERSION_CHECK = '1' # Deshabilita la verificación de versiones de pip
+
+# Fase de setup: Instala paquetes del sistema operativo.
+[phases.setup]
+    # Instala git, nodejs, npm, unzip (Reflex lo necesita), parallel (para ejecutar Caddy y Reflex backend en paralelo)
+    # y build-essential (para compilar dependencias de Python si es necesario).
+    apt_packages = ["git", "nodejs", "npm", "unzip", "parallel", "build-essential"]
+    # Si Reflex necesita zlib, puedes añadir 'zlib1g-dev' a apt_packages, o 'zlib' si no es dev.
+    # nixLibs = ['zlib'] # Esta línea es más específica de NixOS, apt_packages es más genérico para Debian/Ubuntu.
+
+# Fase de init: Inicializa la aplicación Reflex.
+# Corre después de que las dependencias de Python se hayan instalado (fase 'install' de Nixpacks).
+[phases.init]
+    dependsOn = ['install'] 
+    # Re-inicializa la app con la última plantilla.
+    # Asegúrate de que 'full_stack_python' sea el nombre de tu aplicación Reflex.
+    cmds = ['reflex init --name full_stack_python'] 
+
+# Fase de export: Exporta el frontend a una carpeta estática.
+# Corre después de la inicialización de Reflex.
+[phases.export]
+    dependsOn = ['init'] 
+    # Exporta el frontend a una carpeta estática (por defecto 'public') sin comprimir.
+    cmds = ['reflex export --frontend-only --no-zip'] 
+
+# Fase de caddy: Instala Caddy.
+[phases.caddy]
+    dependsOn = ['export'] # Corre después de exportar el frontend.
+    # Utiliza una versión específica de Caddy de los archivos de Nixpkgs para consistencia.
+    nixpkgsArchive = 'ced9bf9f7c303c7d4acc6c4a1bb44368c6baae3f' # Caddy v2.7.5 (commit de NixOS/nixpkgs)
+    nixPkgs = ['caddy'] # Instala Caddy.
+
+# Fase de fmt (formateo): Formatea el Caddyfile (opcional, pero buena práctica).
+[phases.fmt]
+    dependsOn = ['caddy'] # Corre después de instalar Caddy.
+    cmds = ['caddy fmt --overwrite'] # Formatea el Caddyfile.
+
+# Fase de inicio: Cómo se ejecuta tu aplicación.
+[start]
+    # 'parallel': Ejecuta el backend de Reflex y Caddy en paralelo.
+    # --ungroup: No agrupa la salida de los comandos (para mejor visibilidad de logs).
+    # --halt now,fail=1: Si algún comando falla, detén todo y sal con código 1.
+    # ::: "cmd1" "cmd2": Sintaxis para ejecutar cmd1 y cmd2 en paralelo.
+    #
+    # "reflex run --backend-only --host 0.0.0.0 --port 8000 --loglevel info": 
+    #   Inicia el backend de Reflex. --host 0.0.0.0 es crucial en Docker/Railway.
+    #   --port 8000 es el puerto en el que escuchará el backend.
+    #   --loglevel info para más detalles en los logs.
+    #
+    # "caddy run --config Caddyfile --adapter caddyfile 2>&1": 
+    #   Inicia Caddy usando nuestro Caddyfile y redirige los errores a la salida estándar.
+    cmd = 'parallel --ungroup --halt now,fail=1 ::: "reflex run --backend-only --host 0.0.0.0 --port 8000 --loglevel info" "caddy run --config Caddyfile --adapter caddyfile 2>&1"'

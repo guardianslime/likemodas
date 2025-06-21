@@ -1,0 +1,65 @@
+# Caddyfile
+# Este archivo configura Caddy para servir el frontend estático de Reflex
+# y actuar como proxy inverso para el backend de Reflex, todo en un solo servicio de Railway.
+
+# --- Bloque Global de Opciones ---
+{
+    # Las opciones globales de Caddy se definen aquí.
+    # 'admin off', 'persist_config off', 'auto_https off':
+    # Estas son buenas prácticas para Railway, ya que Railway maneja HTTPS y la persistencia del contenedor.
+    admin off
+    persist_config off
+    auto_https off 
+
+    # Configuración de logs en formato JSON para una mejor integración con los logs de Railway.
+    log {
+        output stdout # Salida a la consola, que Railway capturará
+        format json  # Formato JSON para los logs de acceso de Caddy
+    }
+    
+    # Confiar en los proxies de Railway.
+    servers {
+        trusted_proxies static private_ranges
+    }
+}
+
+# --- Bloque del Sitio Principal ---
+# Caddy escuchará en el puerto 8000, que es el puerto que Railway expone por defecto para tu servicio.
+# Railway asignará automáticamente la variable de entorno $PORT, que Caddy puede usar.
+:{$PORT} {
+    # Habilita los logs de acceso para este sitio.
+    log {
+        output stdout
+        format json
+    }
+
+    # Sirve los archivos estáticos desde la carpeta 'public'.
+    # NOTA: Tu 'nixpacks.toml' y 'reflex export' exportan a 'public'.
+    # La referencia que diste usaba '.web/_static', pero 'public' es lo estándar para Reflex.
+    root * public 
+
+    # Habilita la compresión Gzip para los archivos servidos, mejorando la velocidad de carga.
+    encode gzip
+
+    # Sirve los archivos estáticos directamente.
+    file_server
+
+    # Manejo de rutas "bonitas" para Reflex (enrutamiento del lado del cliente).
+    # Si la ruta solicitada no es un archivo o carpeta existente, Caddy intentará servir 'index.html'.
+    try_files {path} {path}.html /index.html
+
+    # Proxy inverso para el backend de Reflex.
+    # Cualquier solicitud que llegue a /backend/* será reenviada al backend de Reflex
+    # que se ejecuta en el puerto 8000 dentro del mismo contenedor.
+    handle_path /backend/* {
+        # Esta directiva (handle_path) se asegura de que /backend/ sea eliminado antes del proxy.
+        reverse_proxy 127.0.0.1:8000 
+    }
+
+    # Manejo de errores: Redirige errores a páginas HTML específicas si existen.
+    # Por ejemplo, si se produce un error 404, buscará '404.html'.
+    handle_errors {
+        rewrite * /{err.status_code}.html
+        file_server
+    }
+}
