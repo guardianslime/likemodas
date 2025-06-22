@@ -7,8 +7,8 @@ FROM node:20-slim as frontend-builder
 # Variable de entorno para permitir a pip instalar paquetes.
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
-# ¡CAMBIO! Añadimos "unzip" a la lista de paquetes a instalar.
-RUN apt-get update && apt-get install -y python3 python3-pip unzip && rm -rf /var/lib/apt/lists/*
+# ¡CAMBIO! Añadimos "curl" a la lista de paquetes a instalar.
+RUN apt-get update && apt-get install -y python3 python3-pip unzip curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
