@@ -121,5 +121,6 @@ app.add_page(
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 
-# ¡SOLUCIÓN! Añadimos esta línea para excluir la página 404 de la compilación estática.
+# ¡CORRECCIÓN! Esta línea es necesaria para evitar errores de compilación.
+# Se asegura de que el proceso de exportación ignore la página 404.
 app.add_page_404(export=False)
