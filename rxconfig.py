@@ -10,6 +10,12 @@ class FullStackPythonConfig(rx.Config):
     telemetry_enabled = False
     frontend_port = 3000
     backend_port = 8000
+
+    # ¡SOLUCIÓN! Añadimos la URL de despliegue.
+    # Esto es necesario para la generación del sitemap y otros metadatos.
+    # Puedes poner un placeholder si aún no tienes la URL final de Railway.
+    deploy_url: str = "https://example.com"
+
     api_url: str = "/backend"
 
     cors_allowed_origins: List[str] = [
@@ -17,9 +23,6 @@ class FullStackPythonConfig(rx.Config):
         "http://localhost:8000",
     ]
     
-    # ¡CAMBIO IMPORTANTE!
-    # Lee la URL de la base de datos desde las variables de entorno de Railway.
-    # Si no la encuentra, usa SQLite para desarrollo local.
     db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
 
 config = FullStackPythonConfig()
