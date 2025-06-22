@@ -28,11 +28,7 @@ def index() -> rx.Component:
           )          
      )
 
-# ¡CORRECCIÓN! Se añade `export=False` para excluir esta página de la compilación estática
-# y prevenir errores durante el despliegue.
-@rx.page("/healthz", title="Health Check", export=False)
-def healthz_page() -> rx.Component:
-    return rx.text("OK")
+# EL ANTIGUO BLOQUE @rx.page("/healthz", ...) SE HA ELIMINADO DE AQUÍ.
 
 app = rx.App(
      # Esto asegura que la app use la URL de la API definida en rxconfig.py
@@ -47,6 +43,14 @@ app = rx.App(
      )
      
 )
+
+# ¡SOLUCIÓN DEFINITIVA! Añadimos la ruta /healthz directamente a la API de FastAPI.
+# Esto hace que la ruta exista en el servidor, pero que el compilador de Reflex la ignore.
+@app.api.get("/healthz")
+def healthz():
+    return {"status": "OK"}
+
+
 app.add_page(index,
           on_load=ArticlePublicState.load_posts
      )
