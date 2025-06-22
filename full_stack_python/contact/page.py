@@ -4,25 +4,31 @@ from ..models import ContactEntryModel
 from . import form, state
 
 def contact_entry_list_item(contact: ContactEntryModel):
+    """
+    Muestra una entrada de contacto individual.
+    La corrección está en la línea `rx.cond` para usar `contact.userinfo_id`.
+    """
     return rx.box(
         rx.heading(contact.first_name),
         rx.text("Messages:", contact.message),
-        rx.cond(contact.user_id,
-                rx.text("user Id:", f"{contact.user_id}",),
-                rx.fragment("")),
+        # ¡CORRECCIÓN! Se cambió contact.user_id por contact.userinfo_id.
+        # Esto verifica si la entrada de contacto está asociada a un usuario.
+        rx.cond(
+            contact.userinfo_id,
+            rx.text("User associated, ID:", f"{contact.userinfo_id}"),
+            rx.fragment("")  # No muestra nada si no hay un usuario asociado.
+        ),
         padding="1em"
     )
-
-# def foreach_callback(text):
-#     return rx.box(rx.text(text))
 
 def contact_entries_list_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Contact Entries", size="5"),
-            # rx.foreach(["abc", "abc", "cde"], foreach_callback),
-            rx.foreach(state.ContactState.entries,
-            contact_entry_list_item),
+            rx.foreach(
+                state.ContactState.entries,
+                contact_entry_list_item
+            ),
             spacing="5",
             align="center",
             min_height="85vh",
