@@ -1,9 +1,26 @@
-.states
-assets/external/
+# Archivos de la base de datos local
 *.db
-*.py[cod]
-.web
+
+# Directorios de caché y compilados de Python
 __pycache__/
+*.py[cod]
+
+# Directorios de build y assets de Reflex/Next.js
+.web/
+assets/external/
+.next/
+
+# Directorio de estados de Reflex
+# .states/  <- Es opcional, pero bueno ignorarlo
+
+# Entorno virtual de Python
 venv/
-alembic/
-alembic.ini
+.venv/
+
+# Archivos de entorno
+.env*
+!/.env.example
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db

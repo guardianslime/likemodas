@@ -1,2 +1,3 @@
 reflex==0.7.14
 reflex-local-auth
+psycopg2-binary
