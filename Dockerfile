@@ -7,7 +7,7 @@ FROM node:20-slim as frontend-builder
 # Variable de entorno para permitir a pip instalar paquetes.
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
-# ¡CAMBIO! Añadimos "curl" a la lista de paquetes a instalar.
+# Instalamos las dependencias del sistema operativo
 RUN apt-get update && apt-get install -y python3 python3-pip unzip curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -18,6 +18,9 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copiamos todo el código de la aplicación
 COPY . .
+
+# ¡PLAN B! Elimina la configuración del sitemap para deshabilitar su generación.
+RUN rm -f .web/next-sitemap.config.js
 
 # Optimizamos el uso de memoria para el proceso de compilación del frontend.
 ENV NODE_OPTIONS="--max-old-space-size=2048"
