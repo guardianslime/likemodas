@@ -4,7 +4,7 @@
 # Usamos una imagen de Node.js para las herramientas de frontend
 FROM node:20-slim as frontend-builder
 
-# ¡SOLUCIÓN! Esta variable de entorno permite a pip instalar paquetes.
+# Variable de entorno para permitir a pip instalar paquetes.
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Instalamos Python y Pip para poder ejecutar el comando de Reflex
@@ -19,15 +19,19 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copiamos todo el código de la aplicación
 COPY . .
 
-# Exportamos el frontend. Esto crea la carpeta .web
-RUN reflex export --frontend-only --no-zip
+# ¡CAMBIO 1! Optimizamos el uso de memoria para el proceso de compilación del frontend.
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+
+# Exportamos el frontend.
+# ¡CAMBIO 2! Añadimos --loglevel debug para obtener errores más detallados si falla.
+RUN reflex export --frontend-only --no-zip --loglevel debug
 
 
 # --- Etapa 2: Construir la Imagen Final de Producción ---
 # Usamos una imagen ligera de Python
 FROM python:3.11-slim
 
-# ¡SOLUCIÓN! También añadimos la variable aquí para la segunda etapa.
+# Variable de entorno para permitir a pip instalar paquetes.
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 WORKDIR /app
@@ -59,6 +63,6 @@ EXPOSE 3000
 
 # Establece el entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]
-    
+
 # El comando para iniciar la aplicación ahora se pasa al entrypoint
 CMD ["parallel", "--ungroup", "--halt", "now,fail=1", ":::", "reflex run --backend-only --host 0.0.0.0 --port 8000 --loglevel info", "caddy run --config /app/Caddyfile --adapter caddyfile"]
