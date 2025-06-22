@@ -28,11 +28,7 @@ def index() -> rx.Component:
           )          
      )
 
-# EL ANTIGUO BLOQUE @rx.page("/healthz", ...) SE HA ELIMINADO DE AQUÍ.
-
 app = rx.App(
-     # Esto asegura que la app use la URL de la API definida en rxconfig.py
-
      theme=rx.theme(
           appearance="dark", 
           has_background=True, 
@@ -41,11 +37,9 @@ app = rx.App(
           radius="medium",
           accent_color="sky"
      )
-     
 )
 
-# ¡SOLUCIÓN DEFINITIVA! Añadimos la ruta /healthz directamente a la API de FastAPI.
-# Esto hace que la ruta exista en el servidor, pero que el compilador de Reflex la ignore.
+# Añadimos la ruta /healthz directamente a la API de FastAPI.
 @app.api.get("/healthz")
 def healthz():
     return {"status": "OK"}
@@ -125,3 +119,7 @@ app.add_page(
     on_load=contact.ContactState.list_entries
 )
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
+
+
+# ¡SOLUCIÓN! Añadimos esta línea para excluir la página 404 de la compilación estática.
+app.add_page_404(export=False)
