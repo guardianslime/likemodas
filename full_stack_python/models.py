@@ -38,8 +38,11 @@ class UserInfo(rx.Model, table=True):
 
 
 class BlogPostModel(rx.Model, table=True):
-    userinfo_id: int = Field(default=None, foreign_key="userinfo.id")
-    userinfo: Optional['UserInfo'] = Relationship(back_populates="posts")
+    # ¡CORRECCIÓN! Se hace obligatorio que un post tenga un autor eliminando `default=None`.
+    userinfo_id: int = Field(foreign_key="userinfo.id")
+    # ¡CORRECCIÓN! La relación con el autor ya no es opcional.
+    userinfo: "UserInfo" = Relationship(back_populates="posts")
+    
     title: str
     content: str
     created_at: datetime = Field(
@@ -70,12 +73,16 @@ class BlogPostModel(rx.Model, table=True):
 
 
 class ContactEntryModel(rx.Model, table=True):
-    user_id: int | None = None
-    userinfo_id: int = Field(default=None, foreign_key="userinfo.id")
+    # ¡CORRECCIÓN! Se elimina el campo `user_id` que era redundante.
+    # La relación se maneja a través de `userinfo_id`.
+    
+    # ¡CORRECCIÓN! Se hace el tipo explícitamente Opcional para mayor claridad.
+    userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
+    
     first_name: str
     last_name: str | None = None
-    email: str | None = None # = Field(nullable=True)
+    email: str | None = None
     message: str
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
@@ -85,5 +92,3 @@ class ContactEntryModel(rx.Model, table=True):
         },
         nullable=False
     )
-
-    
