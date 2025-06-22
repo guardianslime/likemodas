@@ -1,3 +1,8 @@
-reflex==0.7.14
+# requirements.txt
+
+# Versión moderna y estable de Reflex
+reflex==0.5.0
+
+# Las mismas dependencias que ya tenías
 reflex-local-auth
 psycopg2-binary
