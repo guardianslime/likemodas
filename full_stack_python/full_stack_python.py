@@ -28,7 +28,9 @@ def index() -> rx.Component:
           )          
      )
 
-@rx.page("/healthz", title="Health Check")
+# ¡CORRECCIÓN! Se añade `export=False` para excluir esta página de la compilación estática
+# y prevenir errores durante el despliegue.
+@rx.page("/healthz", title="Health Check", export=False)
 def healthz_page() -> rx.Component:
     return rx.text("OK")
 
@@ -119,4 +121,3 @@ app.add_page(
     on_load=contact.ContactState.list_entries
 )
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
-
