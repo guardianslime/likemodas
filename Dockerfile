@@ -67,4 +67,5 @@ EXPOSE 3000
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # El comando para iniciar la aplicación ahora se pasa al entrypoint
-CMD ["parallel", "--ungroup", "--halt", "now,fail=1", ":::", "reflex run --backend-only --host 0.0.0.0 --port 8000 --loglevel info", "caddy run --config /app/Caddyfile --adapter caddyfile"]
+# El cambio es añadir --factory "reflex.reflex.get_production_app"
+CMD ["parallel", "--ungroup", "--halt", "now,fail=1", ":::", "reflex run --backend-only --host 0.0.0.0 --port 8000 --loglevel info --factory \"reflex.reflex.get_production_app\"", "caddy run --config /app/Caddyfile --adapter caddyfile"]
