@@ -19,7 +19,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copiamos todo el código de la aplicación
 COPY . .
 
-# ¡PLAN B! Elimina la configuración del sitemap para deshabilitar su generación.
+# ¡SOLUCIÓN DEFINITIVA! Elimina la configuración del sitemap para forzar su desactivación.
 RUN rm -f .web/next-sitemap.config.js
 
 # Optimizamos el uso de memoria para el proceso de compilación del frontend.
