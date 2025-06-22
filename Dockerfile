@@ -7,8 +7,8 @@ FROM node:20-slim as frontend-builder
 # Variable de entorno para permitir a pip instalar paquetes.
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
-# Instalamos Python y Pip para poder ejecutar el comando de Reflex
-RUN apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/apt/lists/*
+# ¡CAMBIO! Añadimos "unzip" a la lista de paquetes a instalar.
+RUN apt-get update && apt-get install -y python3 python3-pip unzip && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -19,11 +19,10 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # Copiamos todo el código de la aplicación
 COPY . .
 
-# ¡CAMBIO 1! Optimizamos el uso de memoria para el proceso de compilación del frontend.
+# Optimizamos el uso de memoria para el proceso de compilación del frontend.
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Exportamos el frontend.
-# ¡CAMBIO 2! Añadimos --loglevel debug para obtener errores más detallados si falla.
 RUN reflex export --frontend-only --no-zip --loglevel debug
 
 
