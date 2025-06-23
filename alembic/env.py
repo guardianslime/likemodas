@@ -7,13 +7,13 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# --- INICIO DEL CÓDIGO AÑADIDO ---
-# Importa el modelo base de tus modelos de SQLModel
-from full_stack_python.models import SQLModel
+# --- INICIO DEL CÓDIGO CORREGIDO ---
+# (--- CAMBIO ---) Importamos reflex, que contiene la clase base rx.Model.
+import reflex as rx 
 
 # Lee la URL de la base de datos desde la variable de entorno
 DATABASE_URL = os.getenv("DATABASE_URL")
-# --- FIN DEL CÓDIGO AÑADIDO ---
+# --- FIN DEL CÓDIGO CORREGIDO ---
 
 
 # This is the Alembic Config object, which provides
@@ -27,9 +27,9 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = SQLModel.metadata
+# (--- CAMBIO ---) Usamos rx.Model.metadata, que es el lugar correcto donde
+# Alembic puede encontrar todas las definiciones de tus tablas.
+target_metadata = rx.Model.metadata
 
 
 def run_migrations_offline() -> None:
