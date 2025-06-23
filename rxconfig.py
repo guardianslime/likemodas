@@ -31,3 +31,4 @@ class FullStackPythonConfig(rx.Config):
     tailwind: Optional[Dict[str, Any]] = None
 
 config = FullStackPythonConfig()
+
