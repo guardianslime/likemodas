@@ -16,11 +16,11 @@ import { DefaultOverlayComponents, MemoizedBadge, MemoizedToastProvider } from "
 import { EventLoopProvider, StateProvider, defaultColorMode } from "$/utils/context.js";
 import { ThemeProvider } from 'next-themes'
 import * as radix_ui_themes from "@radix-ui/themes";
-import * as utils_state from "$/utils/state";
-import * as next_link from "next/link";
-import * as utils_components from "$/utils/components";
-import * as React from "react";
 import * as utils_context from "$/utils/context";
+import * as React from "react";
+import * as utils_state from "$/utils/state";
+import * as utils_components from "$/utils/components";
+import * as next_link from "next/link";
 import * as emotion_react from "@emotion/react";
 
 
@@ -66,11 +66,11 @@ export default function MyApp({ Component, pageProps }) {
     // Make contexts and state objects available globally for dynamic eval'd components
     let windowImports = {
       "@radix-ui/themes": radix_ui_themes,
-      "$/utils/state": utils_state,
-      "next/link": next_link,
-      "$/utils/components": utils_components,
-      "react": React,
       "$/utils/context": utils_context,
+      "react": React,
+      "$/utils/state": utils_state,
+      "$/utils/components": utils_components,
+      "next/link": next_link,
       "@emotion/react": emotion_react,
     };
     window["__reflex"] = windowImports;
