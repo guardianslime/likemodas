@@ -1,37 +1,34 @@
-import { createContext, useContext, useMemo, useReducer, useState, createElement } from "react"
-import { applyDelta, Event, hydrateClientStorage, useEventLoop, refs } from "$/utils/state.js"
+import { createContext, useContext, useMemo, useReducer, useState } from "react"
+import { applyDelta, Event, hydrateClientStorage, useEventLoop, refs } from "/utils/state.js"
 
-export const initialState = {"reflex___state____state": {"article_id": "", "blog_id": "", "is_hydrated": false, "router": {"session": {"client_token": "", "client_ip": "", "session_id": ""}, "headers": {"host": "", "origin": "", "upgrade": "", "connection": "", "cookie": "", "pragma": "", "cache_control": "", "user_agent": "", "sec_websocket_version": "", "sec_websocket_key": "", "sec_websocket_extensions": "", "accept_encoding": "", "accept_language": "", "raw_headers": {}}, "page": {"host": "", "path": "", "raw_path": "", "full_path": "", "full_raw_path": "", "params": {}}}}, "reflex___state____state.reflex___state____update_vars_internal_state": {}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state": {"auth_token": "", "authenticated_user": {"id": -1, "username": null, "enabled": false}, "is_authenticated": false}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state": {"authenticated_user_info": null, "authenticated_username": null, "my_user_id": null, "my_userinfo_id": null}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state": {"blog_post_edit_url": "/blog", "blog_post_id": "", "blog_post_url": "/blog", "post": null, "post_content": "", "post_publish_active": false, "posts": []}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.full_stack_python___blog___state____blog_add_post_form_state": {"form_data": {}}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.full_stack_python___blog___state____blog_edit_form_state": {"form_data": {}, "publish_display_date": "2025-06-22", "publish_display_time": "22:49:19"}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___contact___state____contact_state": {"did_submit": false, "entries": [], "form_data": {}, "thank_you": "Thank you for your message!"}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___articles___state____article_public_state": {"limit": 20, "post": null, "post_content": "", "post_id": "", "post_publish_active": false, "post_url": "/articles", "posts": []}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state": {"error_message": "", "new_user_id": -1, "success": false}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state.full_stack_python___auth___state____my_register_state": {}, "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___login____login_state": {"error_message": "", "redirect_to": ""}, "reflex___state____state.reflex___state____on_load_internal_state": {}, "reflex___state____state.full_stack_python___navigation___state____nav_state": {}, "reflex___state____state.reflex___state____frontend_event_exception_state": {}}
+export const initialState = {"state": {"is_hydrated": false, "router": {"session": {"client_token": "", "client_ip": "", "session_id": ""}, "headers": {"host": "", "origin": "", "upgrade": "", "connection": "", "pragma": "", "cache_control": "", "user_agent": "", "sec_websocket_version": "", "sec_websocket_key": "", "sec_websocket_extensions": "", "accept_encoding": "", "accept_language": ""}, "page": {"host": "", "path": "", "raw_path": "", "full_path": "", "full_raw_path": "", "params": {}}}}, "state.nav_state": {}, "state.update_vars_internal_state": {}, "state.local_auth_state": {"auth_token": ""}, "state.local_auth_state.login_state": {"error_message": "", "redirect_to": ""}, "state.local_auth_state.registration_state": {"error_message": "", "new_user_id": -1, "success": false}, "state.local_auth_state.registration_state.my_register_state": {}, "state.local_auth_state.session_state": {}, "state.local_auth_state.session_state.contact_state": {"did_submit": false, "entries": [], "form_data": {}}, "state.local_auth_state.session_state.article_public_state": {"limit": 20, "post": null, "post_content": "", "post_publish_active": false, "posts": []}, "state.local_auth_state.session_state.blog_post_state": {"post": null, "post_content": "", "post_publish_active": false, "posts": []}, "state.local_auth_state.session_state.blog_post_state.blog_add_post_form_state": {"form_data": {}}, "state.local_auth_state.session_state.blog_post_state.blog_edit_form_state": {"form_data": {}}, "state.on_load_internal_state": {}}
 
 export const defaultColorMode = "dark"
 export const ColorModeContext = createContext(null);
 export const UploadFilesContext = createContext(null);
 export const DispatchContext = createContext(null);
 export const StateContexts = {
-  reflex___state____state: createContext(null),
-  reflex___state____state__reflex___state____update_vars_internal_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_add_post_form_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state__full_stack_python___auth___state____my_register_state: createContext(null),
-  reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___login____login_state: createContext(null),
-  reflex___state____state__reflex___state____on_load_internal_state: createContext(null),
-  reflex___state____state__full_stack_python___navigation___state____nav_state: createContext(null),
-  reflex___state____state__reflex___state____frontend_event_exception_state: createContext(null),
+  state: createContext(null),
+  state__nav_state: createContext(null),
+  state__update_vars_internal_state: createContext(null),
+  state__local_auth_state: createContext(null),
+  state__local_auth_state__login_state: createContext(null),
+  state__local_auth_state__registration_state: createContext(null),
+  state__local_auth_state__registration_state__my_register_state: createContext(null),
+  state__local_auth_state__session_state: createContext(null),
+  state__local_auth_state__session_state__contact_state: createContext(null),
+  state__local_auth_state__session_state__article_public_state: createContext(null),
+  state__local_auth_state__session_state__blog_post_state: createContext(null),
+  state__local_auth_state__session_state__blog_post_state__blog_add_post_form_state: createContext(null),
+  state__local_auth_state__session_state__blog_post_state__blog_edit_form_state: createContext(null),
+  state__on_load_internal_state: createContext(null),
 }
 export const EventLoopContext = createContext(null);
-export const clientStorage = {"cookies": {}, "local_storage": {"reflex___state____state.reflex_local_auth___local_auth____local_auth_state.auth_token": {"name": "_auth_token", "sync": false}}, "session_storage": {}}
+export const clientStorage = {"cookies": {}, "local_storage": {"state.local_auth_state.auth_token": {"name": "_auth_token", "sync": false}}}
 
-export const state_name = "reflex___state____state"
+export const state_name = "state"
 
-export const exception_state_name = "reflex___state____state.reflex___state____frontend_event_exception_state"
-
-// These events are triggered on initial load and each page navigation.
+// Theses events are triggered on initial load and each page navigation.
 export const onLoadInternalEvent = () => {
     const internal_events = [];
 
@@ -41,7 +38,7 @@ export const onLoadInternalEvent = () => {
     if (client_storage_vars && Object.keys(client_storage_vars).length !== 0) {
         internal_events.push(
             Event(
-                'reflex___state____state.reflex___state____update_vars_internal_state.update_vars_internal',
+                'state.update_vars_internal_state.update_vars_internal',
                 {vars: client_storage_vars},
             ),
         );
@@ -49,20 +46,18 @@ export const onLoadInternalEvent = () => {
 
     // `on_load_internal` triggers the correct on_load event(s) for the current page.
     // If the page does not define any on_load event, this will just set `is_hydrated = true`.
-    internal_events.push(Event('reflex___state____state.reflex___state____on_load_internal_state.on_load_internal'));
+    internal_events.push(Event('state.on_load_internal_state.on_load_internal'));
 
     return internal_events;
 }
 
 // The following events are sent when the websocket connects or reconnects.
 export const initialEvents = () => [
-    Event('reflex___state____state.hydrate'),
+    Event('state.hydrate'),
     ...onLoadInternalEvent()
 ]
 
-export const isDevMode = false
-
-export const lastCompiledTimeStamp = "2025-06-22 22:49:19.190201"
+export const isDevMode = true
 
 export function UploadFilesProvider({ children }) {
   const [filesById, setFilesById] = useState({})
@@ -71,7 +66,11 @@ export function UploadFilesProvider({ children }) {
     delete newFilesById[id]
     return newFilesById
   })
-  return createElement(UploadFilesContext, {value:[filesById, setFilesById]}, children);
+  return (
+    <UploadFilesContext.Provider value={[filesById, setFilesById]}>
+      {children}
+    </UploadFilesContext.Provider>
+  )
 }
 
 export function EventLoopProvider({ children }) {
@@ -81,61 +80,78 @@ export function EventLoopProvider({ children }) {
     initialEvents,
     clientStorage,
   )
-  return createElement(EventLoopContext, {value:[addEvents, connectErrors]}, children);
+  return (
+    <EventLoopContext.Provider value={[addEvents, connectErrors]}>
+      {children}
+    </EventLoopContext.Provider>
+  )
 }
 
 export function StateProvider({ children }) {
-  const [reflex___state____state, dispatch_reflex___state____state] = useReducer(applyDelta, initialState["reflex___state____state"])
-  const [reflex___state____state__reflex___state____update_vars_internal_state, dispatch_reflex___state____state__reflex___state____update_vars_internal_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex___state____update_vars_internal_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_add_post_form_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_add_post_form_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.full_stack_python___blog___state____blog_add_post_form_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.full_stack_python___blog___state____blog_edit_form_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___contact___state____contact_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___articles___state____article_public_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state__full_stack_python___auth___state____my_register_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state__full_stack_python___auth___state____my_register_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state.full_stack_python___auth___state____my_register_state"])
-  const [reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___login____login_state, dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___login____login_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___login____login_state"])
-  const [reflex___state____state__reflex___state____on_load_internal_state, dispatch_reflex___state____state__reflex___state____on_load_internal_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex___state____on_load_internal_state"])
-  const [reflex___state____state__full_stack_python___navigation___state____nav_state, dispatch_reflex___state____state__full_stack_python___navigation___state____nav_state] = useReducer(applyDelta, initialState["reflex___state____state.full_stack_python___navigation___state____nav_state"])
-  const [reflex___state____state__reflex___state____frontend_event_exception_state, dispatch_reflex___state____state__reflex___state____frontend_event_exception_state] = useReducer(applyDelta, initialState["reflex___state____state.reflex___state____frontend_event_exception_state"])
+  const [state, dispatch_state] = useReducer(applyDelta, initialState["state"])
+  const [state__nav_state, dispatch_state__nav_state] = useReducer(applyDelta, initialState["state.nav_state"])
+  const [state__update_vars_internal_state, dispatch_state__update_vars_internal_state] = useReducer(applyDelta, initialState["state.update_vars_internal_state"])
+  const [state__local_auth_state, dispatch_state__local_auth_state] = useReducer(applyDelta, initialState["state.local_auth_state"])
+  const [state__local_auth_state__login_state, dispatch_state__local_auth_state__login_state] = useReducer(applyDelta, initialState["state.local_auth_state.login_state"])
+  const [state__local_auth_state__registration_state, dispatch_state__local_auth_state__registration_state] = useReducer(applyDelta, initialState["state.local_auth_state.registration_state"])
+  const [state__local_auth_state__registration_state__my_register_state, dispatch_state__local_auth_state__registration_state__my_register_state] = useReducer(applyDelta, initialState["state.local_auth_state.registration_state.my_register_state"])
+  const [state__local_auth_state__session_state, dispatch_state__local_auth_state__session_state] = useReducer(applyDelta, initialState["state.local_auth_state.session_state"])
+  const [state__local_auth_state__session_state__contact_state, dispatch_state__local_auth_state__session_state__contact_state] = useReducer(applyDelta, initialState["state.local_auth_state.session_state.contact_state"])
+  const [state__local_auth_state__session_state__article_public_state, dispatch_state__local_auth_state__session_state__article_public_state] = useReducer(applyDelta, initialState["state.local_auth_state.session_state.article_public_state"])
+  const [state__local_auth_state__session_state__blog_post_state, dispatch_state__local_auth_state__session_state__blog_post_state] = useReducer(applyDelta, initialState["state.local_auth_state.session_state.blog_post_state"])
+  const [state__local_auth_state__session_state__blog_post_state__blog_add_post_form_state, dispatch_state__local_auth_state__session_state__blog_post_state__blog_add_post_form_state] = useReducer(applyDelta, initialState["state.local_auth_state.session_state.blog_post_state.blog_add_post_form_state"])
+  const [state__local_auth_state__session_state__blog_post_state__blog_edit_form_state, dispatch_state__local_auth_state__session_state__blog_post_state__blog_edit_form_state] = useReducer(applyDelta, initialState["state.local_auth_state.session_state.blog_post_state.blog_edit_form_state"])
+  const [state__on_load_internal_state, dispatch_state__on_load_internal_state] = useReducer(applyDelta, initialState["state.on_load_internal_state"])
   const dispatchers = useMemo(() => {
     return {
-      "reflex___state____state": dispatch_reflex___state____state,
-      "reflex___state____state.reflex___state____update_vars_internal_state": dispatch_reflex___state____state__reflex___state____update_vars_internal_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.full_stack_python___blog___state____blog_add_post_form_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_add_post_form_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.full_stack_python___blog___state____blog_edit_form_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___contact___state____contact_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___articles___state____article_public_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state.full_stack_python___auth___state____my_register_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state__full_stack_python___auth___state____my_register_state,
-      "reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___login____login_state": dispatch_reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___login____login_state,
-      "reflex___state____state.reflex___state____on_load_internal_state": dispatch_reflex___state____state__reflex___state____on_load_internal_state,
-      "reflex___state____state.full_stack_python___navigation___state____nav_state": dispatch_reflex___state____state__full_stack_python___navigation___state____nav_state,
-      "reflex___state____state.reflex___state____frontend_event_exception_state": dispatch_reflex___state____state__reflex___state____frontend_event_exception_state,
+      "state": dispatch_state,
+      "state.nav_state": dispatch_state__nav_state,
+      "state.update_vars_internal_state": dispatch_state__update_vars_internal_state,
+      "state.local_auth_state": dispatch_state__local_auth_state,
+      "state.local_auth_state.login_state": dispatch_state__local_auth_state__login_state,
+      "state.local_auth_state.registration_state": dispatch_state__local_auth_state__registration_state,
+      "state.local_auth_state.registration_state.my_register_state": dispatch_state__local_auth_state__registration_state__my_register_state,
+      "state.local_auth_state.session_state": dispatch_state__local_auth_state__session_state,
+      "state.local_auth_state.session_state.contact_state": dispatch_state__local_auth_state__session_state__contact_state,
+      "state.local_auth_state.session_state.article_public_state": dispatch_state__local_auth_state__session_state__article_public_state,
+      "state.local_auth_state.session_state.blog_post_state": dispatch_state__local_auth_state__session_state__blog_post_state,
+      "state.local_auth_state.session_state.blog_post_state.blog_add_post_form_state": dispatch_state__local_auth_state__session_state__blog_post_state__blog_add_post_form_state,
+      "state.local_auth_state.session_state.blog_post_state.blog_edit_form_state": dispatch_state__local_auth_state__session_state__blog_post_state__blog_edit_form_state,
+      "state.on_load_internal_state": dispatch_state__on_load_internal_state,
     }
   }, [])
 
   return (
-    createElement(StateContexts.reflex___state____state,{value: reflex___state____state},
-    createElement(StateContexts.reflex___state____state__reflex___state____update_vars_internal_state,{value: reflex___state____state__reflex___state____update_vars_internal_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_add_post_form_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_add_post_form_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state__full_stack_python___auth___state____my_register_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state__full_stack_python___auth___state____my_register_state},
-    createElement(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___login____login_state,{value: reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___login____login_state},
-    createElement(StateContexts.reflex___state____state__reflex___state____on_load_internal_state,{value: reflex___state____state__reflex___state____on_load_internal_state},
-    createElement(StateContexts.reflex___state____state__full_stack_python___navigation___state____nav_state,{value: reflex___state____state__full_stack_python___navigation___state____nav_state},
-    createElement(StateContexts.reflex___state____state__reflex___state____frontend_event_exception_state,{value: reflex___state____state__reflex___state____frontend_event_exception_state},
-    createElement(DispatchContext.Provider, {value: dispatchers}, children),
-)))))))))))))))  )
+    <StateContexts.state.Provider value={ state }>
+    <StateContexts.state__nav_state.Provider value={ state__nav_state }>
+    <StateContexts.state__update_vars_internal_state.Provider value={ state__update_vars_internal_state }>
+    <StateContexts.state__local_auth_state.Provider value={ state__local_auth_state }>
+    <StateContexts.state__local_auth_state__login_state.Provider value={ state__local_auth_state__login_state }>
+    <StateContexts.state__local_auth_state__registration_state.Provider value={ state__local_auth_state__registration_state }>
+    <StateContexts.state__local_auth_state__registration_state__my_register_state.Provider value={ state__local_auth_state__registration_state__my_register_state }>
+    <StateContexts.state__local_auth_state__session_state.Provider value={ state__local_auth_state__session_state }>
+    <StateContexts.state__local_auth_state__session_state__contact_state.Provider value={ state__local_auth_state__session_state__contact_state }>
+    <StateContexts.state__local_auth_state__session_state__article_public_state.Provider value={ state__local_auth_state__session_state__article_public_state }>
+    <StateContexts.state__local_auth_state__session_state__blog_post_state.Provider value={ state__local_auth_state__session_state__blog_post_state }>
+    <StateContexts.state__local_auth_state__session_state__blog_post_state__blog_add_post_form_state.Provider value={ state__local_auth_state__session_state__blog_post_state__blog_add_post_form_state }>
+    <StateContexts.state__local_auth_state__session_state__blog_post_state__blog_edit_form_state.Provider value={ state__local_auth_state__session_state__blog_post_state__blog_edit_form_state }>
+    <StateContexts.state__on_load_internal_state.Provider value={ state__on_load_internal_state }>
+      <DispatchContext.Provider value={dispatchers}>
+        {children}
+      </DispatchContext.Provider>
+    </StateContexts.state__on_load_internal_state.Provider>
+    </StateContexts.state__local_auth_state__session_state__blog_post_state__blog_edit_form_state.Provider>
+    </StateContexts.state__local_auth_state__session_state__blog_post_state__blog_add_post_form_state.Provider>
+    </StateContexts.state__local_auth_state__session_state__blog_post_state.Provider>
+    </StateContexts.state__local_auth_state__session_state__article_public_state.Provider>
+    </StateContexts.state__local_auth_state__session_state__contact_state.Provider>
+    </StateContexts.state__local_auth_state__session_state.Provider>
+    </StateContexts.state__local_auth_state__registration_state__my_register_state.Provider>
+    </StateContexts.state__local_auth_state__registration_state.Provider>
+    </StateContexts.state__local_auth_state__login_state.Provider>
+    </StateContexts.state__local_auth_state.Provider>
+    </StateContexts.state__update_vars_internal_state.Provider>
+    </StateContexts.state__nav_state.Provider>
+    </StateContexts.state.Provider>
+  )
 }

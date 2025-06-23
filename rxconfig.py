@@ -6,7 +6,9 @@ from typing import List, Optional, Dict, Any
 # La URL donde vivirá tu backend (Railway)
 BACKEND_PRODUCTION_URL = "https://web-production-15ad.up.railway.app"
 # La URL donde vivirá tu frontend (Vercel)
-FRONTEND_PRODUCTION_URL = "https://mi-frontend-vercele.vercel.app" # ¡Asegúrate que esta sea tu URL de Vercel!
+# EN TU ARCHIVO ACTUALMENTE
+# CÓDIGO CORREGIDO
+FRONTEND_PRODUCTION_URL = "https://full-stack-python-7h2v9smff-guardianslimes-projects.vercel.app"  # ¡Asegúrate que esta sea tu URL de Vercel!
 
 class FullStackPythonConfig(rx.Config):
     app_name = "full_stack_python"
