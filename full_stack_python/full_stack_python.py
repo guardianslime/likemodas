@@ -126,7 +126,7 @@ app.add_page(
 )
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
-```python
+
 # =================================================================
 # ARCHIVO 2: full_stack_python/auth/state.py
 # Reemplaza todo el contenido de tu archivo con este bloque.
