@@ -8,7 +8,7 @@ class FullStackPythonConfig(rx.Config):
     telemetry_enabled = False
     frontend_port = 3000
     backend_port = 8000
-    deploy_url: str = "https://example.com" # Esto ya no es tan crítico aquí
+    deploy_url: str = "https://web-production-15ad.up.railway.app" # Esto ya no es tan crítico aquí
     api_url: str = "" # La API se sirve desde la raíz ahora
 
     # ¡CAMBIO IMPORTANTE! Preparamos la lista para aceptar la URL de Vercel.

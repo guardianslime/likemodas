@@ -10,17 +10,17 @@ import { jsx } from "@emotion/react"
 import RadixThemesColorModeProvider from "$/components/reflex/radix_themes_color_mode_provider.js"
 import { Theme as RadixThemesTheme } from "@radix-ui/themes"
 import theme from "$/utils/theme.js"
-import { DefaultOverlayComponents, MemoizedToastProvider } from "$/utils/components"
+import { DefaultOverlayComponents, MemoizedBadge, MemoizedToastProvider } from "$/utils/components"
 
 
 import { EventLoopProvider, StateProvider, defaultColorMode } from "$/utils/context.js";
 import { ThemeProvider } from 'next-themes'
-import * as React from "react";
-import * as radix_ui_themes from "@radix-ui/themes";
-import * as next_link from "next/link";
-import * as utils_components from "$/utils/components";
-import * as utils_context from "$/utils/context";
 import * as emotion_react from "@emotion/react";
+import * as utils_components from "$/utils/components";
+import * as radix_ui_themes from "@radix-ui/themes";
+import * as utils_context from "$/utils/context";
+import * as next_link from "next/link";
+import * as React from "react";
 import * as utils_state from "$/utils/state";
 
 
@@ -56,6 +56,7 @@ jsx(MemoizedToastProvider,{},)
 Fragment,
 {},
 children
+,jsx(MemoizedBadge,{},)
 ,),),),),),),)
   )
 }
@@ -64,12 +65,12 @@ export default function MyApp({ Component, pageProps }) {
   React.useEffect(() => {
     // Make contexts and state objects available globally for dynamic eval'd components
     let windowImports = {
-      "react": React,
-      "@radix-ui/themes": radix_ui_themes,
-      "next/link": next_link,
-      "$/utils/components": utils_components,
-      "$/utils/context": utils_context,
       "@emotion/react": emotion_react,
+      "$/utils/components": utils_components,
+      "@radix-ui/themes": radix_ui_themes,
+      "$/utils/context": utils_context,
+      "next/link": next_link,
+      "react": React,
       "$/utils/state": utils_state,
     };
     window["__reflex"] = windowImports;
