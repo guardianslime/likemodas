@@ -1,7 +1,9 @@
 """Welcome to Reflex! This file outlines the steps to create a basic app."""
 
 import reflex as rx
+import sqlalchemy
 import reflex_local_auth
+from reflex_local_auth.user import LocalUser 
 
 from rxconfig import config
 from .ui.base import base_page
@@ -40,9 +42,20 @@ app = rx.App(
 )
 
 # Añadimos la ruta /healthz directamente a la API de FastAPI.
-@app.api.get("/healthz")
-def healthz():
-    return {"status": "OK"}
+@app.api.get("/db_healthz")
+def db_healthz():
+    try:
+        print("--- [db_healthz] Iniciando prueba de conexión a la BD. ---")
+        with rx.session() as session:
+            print("--- [db_healthz] Sesión de BD creada. Ejecutando consulta simple. ---")
+            # Hacemos una consulta muy simple que no debería fallar
+            session.exec(sqlalchemy.select(LocalUser).limit(1)).first()
+            print("--- [db_healthz] Consulta exitosa. La conexión a la BD funciona. ---")
+        return {"status": "OK", "message": "Database connection successful."}
+    except Exception as e:
+        # ¡Si hay un error, lo capturamos y lo mostramos!
+        print(f"!!!!!!!!!! [db_healthz] ERROR DE BASE DE DATOS: {e} !!!!!!!!!!!")
+        return {"status": "ERROR", "detail": str(e)}, 500
 
 
 app.add_page(index,
