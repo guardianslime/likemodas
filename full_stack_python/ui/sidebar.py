@@ -1,3 +1,7 @@
+# =================================================================
+# ARCHIVO: full_stack_python/ui/sidebar.py (VERSIÓN CORREGIDA Y FUNCIONAL)
+# Reemplaza todo el contenido de tu archivo con este bloque.
+# =================================================================
 import reflex as rx
 from reflex.style import toggle_color_mode
 
@@ -5,10 +9,13 @@ from ..auth.state import SessionState
 from .. import navigation
 
 def sidebar_user_item() -> rx.Component:
-    user_info_obj = SessionState.authenticated_user_info
-    username_via_user_abj = rx.cond(SessionState.authenticated_username, SessionState.authenticated_username, "Account")
+    """
+    Muestra la información del usuario si está autenticado.
+    De lo contrario, muestra un botón para iniciar sesión.
+    """
     return rx.cond(
-        user_info_obj,
+        SessionState.is_authenticated,
+        # --- Si el usuario ESTÁ autenticado, muestra esto ---
         rx.hstack(
             rx.icon_button(
                 rx.icon("user"),
@@ -17,13 +24,19 @@ def sidebar_user_item() -> rx.Component:
             ),
             rx.vstack(
                 rx.box(
+                    # Muestra el nombre de usuario de forma segura
                     rx.text(
-                        username_via_user_abj,
+                        SessionState.authenticated_username,
                         size="3",
                         weight="bold",
                     ),
+                    # Muestra el email de forma segura usando rx.cond
                     rx.text(
-                        f"{user_info_obj.email}",
+                        rx.cond(
+                            SessionState.authenticated_user_info,
+                            SessionState.authenticated_user_info.email,
+                            "Cargando email..."
+                        ),
                         size="2",
                         weight="medium",
                     ),
@@ -39,36 +52,54 @@ def sidebar_user_item() -> rx.Component:
             justify="start",
             width="100%",
         ),
-        rx.fragment("")
+        # --- Si el usuario NO ESTÁ autenticado, muestra esto ---
+        rx.link(
+             rx.hstack(
+                rx.icon_button(
+                    rx.icon("log-in"),
+                    size="3",
+                    radius="full",
+                ),
+                rx.text("Login / Register", size="3", weight="bold"),
+                align="center",
+             ),
+             href=navigation.routes.LOGIN_ROUTE,
+             width="100%",
+        )
     )
 
 def sidebar_logout_item() -> rx.Component:
-    return rx.box(
-        rx.hstack(
-            rx.icon("log-out"),
-            rx.text("Logout", size="4"),
-            width="100%",
-            padding_x="0.5rem",
-            padding_y="0.75rem",
-            align="center",
-            style={
-                "_hover": {
-                    "cursor": "pointer", # css
-                    "bg": rx.color("accent", 4),
+    """Botón para cerrar sesión, solo se muestra si el usuario está autenticado."""
+    return rx.cond(
+        SessionState.is_authenticated,
+        rx.box(
+            rx.hstack(
+                rx.icon("log-out"),
+                rx.text("Logout", size="4"),
+                width="100%",
+                padding_x="0.5rem",
+                padding_y="0.75rem",
+                align="center",
+                style={
+                    "_hover": {
+                        "cursor": "pointer",
+                        "bg": rx.color("accent", 4),
+                        "color": rx.color("accent", 11),
+                    },
                     "color": rx.color("accent", 11),
+                    "border-radius": "0.5em",
                 },
-                "color": rx.color("accent", 11),
-                "border-radius": "0.5em",
-            },
-        ),
-        on_click=navigation.NavState.to_logout,
-        as_='button', # <button></button>
-        underline="none",
-        weight="medium",
-        width="100%",
+            ),
+            on_click=SessionState.perform_logout, # Usa el evento del SessionState corregido
+            as_='button',
+            underline="none",
+            weight="medium",
+            width="100%",
+        )
     )
 
 def sidebar_dark_mode_toggle_item() -> rx.Component:
+    """Botón para cambiar el modo oscuro/claro."""
     return rx.box(
         rx.hstack(
             rx.color_mode_cond(
@@ -85,7 +116,7 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
             align="center",
             style={
                 "_hover": {
-                    "cursor": "pointer", # css
+                    "cursor": "pointer",
                     "bg": rx.color("accent", 4),
                     "color": rx.color("accent", 11),
                 },
@@ -94,13 +125,14 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
             },
         ),
         on_click=toggle_color_mode,
-        as_='button', # <button></button>
+        as_='button',
         underline="none",
         weight="medium",
         width="100%",
     )
 
 def sidebar_item(text: str, icon: str, href: str) -> rx.Component:
+    """Un item de menú genérico para el sidebar."""
     return rx.link(
         rx.hstack(
             rx.icon(icon),
@@ -123,8 +155,8 @@ def sidebar_item(text: str, icon: str, href: str) -> rx.Component:
         width="100%",
     )
 
-
 def sidebar_items() -> rx.Component:
+    """Lista de todos los items del menú principal."""
     return rx.vstack(
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
         sidebar_item("Articles", "globe", navigation.routes.ARTICLE_LIST_ROUTE),
@@ -136,9 +168,10 @@ def sidebar_items() -> rx.Component:
         width="100%",
     )
 
-
 def sidebar() -> rx.Component:
+    """El componente completo del sidebar, para escritorio y móvil."""
     return rx.box(
+        # --- Vista de Escritorio ---
         rx.desktop_only(
             rx.vstack(
                 rx.hstack(
@@ -148,85 +181,57 @@ def sidebar() -> rx.Component:
                         height="auto",
                         border_radius="25%",
                     ),
-                    rx.heading(
-                        "Reflex", size="7", weight="bold"
-                    ),
-                    align="center",
-                    justify="start",
-                    padding_x="0.5rem",
-                    width="100%",
+                    rx.heading("Reflex", size="7", weight="bold"),
+                    align="center", justify="start", padding_x="0.5rem", width="100%",
                 ),
                 sidebar_items(),
                 rx.spacer(),
                 rx.vstack(
                     rx.vstack(
                         sidebar_dark_mode_toggle_item(),
-                        sidebar_logout_item(),
-                        spacing="1",
-                        width="100%",
+                        sidebar_logout_item(), # El botón de logout ya es condicional
+                        spacing="1", width="100%",
                     ),
                     rx.divider(),
-                    sidebar_user_item(),
-                    width="100%",
-                    spacing="5",
+                    sidebar_user_item(), # El perfil de usuario ya es condicional
+                    width="100%", spacing="5",
                 ),
-                spacing="5",
-                # position="fixed",
-                # left="0px",
-                # top="0px",
-                # z_index="5",
-                padding_x="1em",
-                padding_y="1.5em",
-                bg=rx.color("accent", 3),
-                align="start",
-                height="100vh",
-                # height="650px",
-                width="16em",
+                spacing="5", padding_x="1em", padding_y="1.5em",
+                bg=rx.color("accent", 3), align="start", height="100vh", width="16em",
             ),
         ),
+        # --- Vista Móvil ---
         rx.mobile_and_tablet(
-            rx.drawer.root(
-                rx.drawer.trigger(
-                    rx.icon("align-justify", size=30)
-                ),
-                rx.drawer.overlay(z_index="5"),
-                rx.drawer.portal(
-                    rx.drawer.content(
-                        rx.vstack(
-                            rx.box(
-                                rx.drawer.close(
-                                    rx.icon("x", size=30)
-                                ),
-                                width="100%",
-                            ),
-                            sidebar_items(),
-                            rx.spacer(),
+            rx.box(
+                rx.drawer.root(
+                    rx.drawer.trigger(rx.icon("align-justify", size=30)),
+                    rx.drawer.overlay(z_index="5"),
+                    rx.drawer.portal(
+                        rx.drawer.content(
                             rx.vstack(
+                                rx.box(rx.drawer.close(rx.icon("x", size=30)), width="100%"),
+                                sidebar_items(),
+                                rx.spacer(),
                                 rx.vstack(
-                                    sidebar_dark_mode_toggle_item(),
-                                    sidebar_logout_item(),
-                                    width="100%",
-                                    spacing="1",
+                                    rx.vstack(
+                                        sidebar_dark_mode_toggle_item(),
+                                        sidebar_logout_item(),
+                                        width="100%", spacing="1",
+                                    ),
+                                    rx.divider(margin="0"),
+                                    sidebar_user_item(),
+                                    width="100%", spacing="5",
                                 ),
-                                rx.divider(margin="0"),
-                                sidebar_user_item(),
-                                width="100%",
-                                spacing="5",
+                                spacing="5", width="100%",
                             ),
-                            spacing="5",
-                            width="100%",
+                            top="auto", right="auto", height="100%", width="20em",
+                            padding="1.5em", bg=rx.color("accent", 2),
                         ),
-                        top="auto",
-                        right="auto",
-                        height="100%",
-                        width="20em",
-                        padding="1.5em",
-                        bg=rx.color("accent", 2),
                     ),
-                    width="100%",
+                    direction="left",
                 ),
-                direction="left",
-            ),
-            padding="1em",
+                padding="1em",
+            )
         ),
     )
+
