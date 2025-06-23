@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+Necesito que me digas que necesito para poder subir eso a railway y conectarlo a versel, dime el paso a paso, mira las versiones y todo, quiero conectar y subir la imagen ducke si es posible dime con pasos bien detallados explicando lo que debo hacer y dándome los códigos corregidos para subirlos además de las otras cosas que debería hacer, ten en cuenta que ese código que te estoy pasando ya funciona en Railway pero no logro conectarlo a versel, por favor explica a detalle como lograr la conexión  
+
 # Copia todo el código de la aplicación
 COPY . .
 
