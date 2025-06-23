@@ -50,16 +50,14 @@ def run_migrations_online() -> None:
     if DATABASE_URL:
         configuration.set_main_option("sqlalchemy.url", DATABASE_URL)
         
-    # --- INICIO DE LA CORRECCIÓN ---
-    # Esta es la sección que tenía el error de tipeo.
-    # Ahora usamos "configuration.main_section" para obtener la
-    # sección de configuración correcta.
+    # --- INICIO DE LA CORRECCIÓN FINAL ---
+    # El atributo correcto es "config_ini_section". Esto finalmente resolverá el error.
     connectable = engine_from_config(
-        configuration.get_section(configuration.main_section, {}),
+        configuration.get_section(configuration.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-    # --- FIN DE LA CORRECCIÓN ---
+    # --- FIN DE LA CORRECION FINAL ---
 
     with connectable.connect() as connection:
         context.configure(
