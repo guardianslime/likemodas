@@ -7,7 +7,7 @@ import { isTrue, refs } from "$/utils/state"
 import { Box as RadixThemesBox, Button as RadixThemesButton, DropdownMenu as RadixThemesDropdownMenu, Flex as RadixThemesFlex, Heading as RadixThemesHeading, Link as RadixThemesLink, Separator as RadixThemesSeparator, Text as RadixThemesText, Theme as RadixThemesTheme } from "@radix-ui/themes"
 import NextLink from "next/link"
 import { AlignJustify as LucideAlignJustify, Globe as LucideGlobe, LayoutDashboard as LucideLayoutDashboard, Mail as LucideMail, Mailbox as LucideMailbox, Menu as LucideMenu, Newspaper as LucideNewspaper, SquareLibrary as LucideSquareLibrary, X as LucideX } from "lucide-react"
-import { Box_a3024561c54556fdec0036516b0350d9, Box_f25d3c09d7bdff8b0c3e58c5f733b7ed, Dropdownmenu__item_0135103a5bf381b9d7f74f7b30f7dc66, Dropdownmenu__item_1fbe7c71954c734735664f498e580e6b, Dropdownmenu__item_2e94dc784884fede0179af2e6701a2be, Dropdownmenu__item_81a2b1073d401a4d60e14f3b0804a346, Dropdownmenu__item_9fe9a971872f647874918ba7a3cd7b39, Dropdownmenu__item_c240db5f9b11e77b7166baee506fd74a, Dropdownmenu__item_dfeb4d8d19e41db8abd33bc17298d1c8, Fragment_a7675a0ce9b156ddd23486bb91bfa83a, Iconbutton_53adde116165ab531c43c5cb8d60c677, Link_6d8ef781efad3969e1ad202c69c43883, Root_30ca9fa28b320364d1c6ecc69b7de571, Text_f8365c41821e8790dbd1464049a081ca } from "$/utils/stateful_components"
+import { Box_a3024561c54556fdec0036516b0350d9, Box_f25d3c09d7bdff8b0c3e58c5f733b7ed, Dropdownmenu__item_0135103a5bf381b9d7f74f7b30f7dc66, Dropdownmenu__item_1fbe7c71954c734735664f498e580e6b, Dropdownmenu__item_2e94dc784884fede0179af2e6701a2be, Dropdownmenu__item_81a2b1073d401a4d60e14f3b0804a346, Dropdownmenu__item_9fe9a971872f647874918ba7a3cd7b39, Dropdownmenu__item_c240db5f9b11e77b7166baee506fd74a, Dropdownmenu__item_dfeb4d8d19e41db8abd33bc17298d1c8, Fragment_5ccec3bd2ebf3b045a49657c2326d0f9, Iconbutton_53adde116165ab531c43c5cb8d60c677, Link_6d8ef781efad3969e1ad202c69c43883, Root_30ca9fa28b320364d1c6ecc69b7de571, Text_f8365c41821e8790dbd1464049a081ca } from "$/utils/stateful_components"
 import { Drawer as VaulDrawer } from "vaul"
 import theme from "$/utils/theme.js"
 import NextHead from "next/head"
@@ -15,7 +15,33 @@ import { jsx } from "@emotion/react"
 
 
 
-export function Fragment_c861d0979759bf0ebcd6346f7cd7ea44 () {
+export function Fragment_e2d314996009539fdb846fc57fcff17c () {
+  
+  const reflex___state____state = useContext(StateContexts.reflex___state____state)
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+Fragment,
+{},
+((reflex___state____state.is_hydrated && reflex___state____state__reflex_local_auth___local_auth____local_auth_state.is_authenticated) ? (jsx(Fragment_3631eb6cfb2d02f5ac2af0ed65d2aa65,{},)
+) : (jsx(
+Fragment,
+{},
+jsx(
+RadixThemesFlex,
+{css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center" })},
+jsx(Text_f8365c41821e8790dbd1464049a081ca,{},)
+,),))),)
+  )
+}
+
+export function Fragment_3631eb6cfb2d02f5ac2af0ed65d2aa65 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const ref_my_content_area_el = useRef(null); refs["ref_my_content_area_el"] = ref_my_content_area_el;
@@ -152,7 +178,7 @@ RadixThemesFlex,
 jsx(Box_f25d3c09d7bdff8b0c3e58c5f733b7ed,{},)
 ,jsx(Box_a3024561c54556fdec0036516b0350d9,{},)
 ,),jsx(RadixThemesSeparator,{size:"4"},)
-,jsx(Fragment_a7675a0ce9b156ddd23486bb91bfa83a,{},)
+,jsx(Fragment_5ccec3bd2ebf3b045a49657c2326d0f9,{},)
 ,),),),jsx(
 RadixThemesBox,
 {css:({ ["padding"] : "1em", ["@media screen and (min-width: 0)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 30em)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 48em)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 62em)"] : ({ ["display"] : "none" }) })},
@@ -280,7 +306,7 @@ RadixThemesFlex,
 jsx(Box_f25d3c09d7bdff8b0c3e58c5f733b7ed,{},)
 ,jsx(Box_a3024561c54556fdec0036516b0350d9,{},)
 ,),jsx(RadixThemesSeparator,{css:({ ["margin"] : "0" }),size:"4"},)
-,jsx(Fragment_a7675a0ce9b156ddd23486bb91bfa83a,{},)
+,jsx(Fragment_5ccec3bd2ebf3b045a49657c2326d0f9,{},)
 ,),),),),),),),),jsx(
 RadixThemesBox,
 {css:({ ["padding"] : "1em", ["width"] : "100%" }),id:"my-content-area-el",ref:ref_my_content_area_el},
@@ -496,32 +522,6 @@ jsx(Link_6d8ef781efad3969e1ad202c69c43883,{},)
   )
 }
 
-export function Fragment_81440b0f0a80fd59454feec9c872122f () {
-  
-  const reflex___state____state = useContext(StateContexts.reflex___state____state)
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-Fragment,
-{},
-((reflex___state____state.is_hydrated && reflex___state____state__reflex_local_auth___local_auth____local_auth_state.is_authenticated) ? (jsx(Fragment_c861d0979759bf0ebcd6346f7cd7ea44,{},)
-) : (jsx(
-Fragment,
-{},
-jsx(
-RadixThemesFlex,
-{css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center" })},
-jsx(Text_f8365c41821e8790dbd1464049a081ca,{},)
-,),))),)
-  )
-}
-
 export default function Component() {
     
 
@@ -535,7 +535,7 @@ Fragment,
 jsx(
 Fragment,
 {},
-jsx(Fragment_81440b0f0a80fd59454feec9c872122f,{},)
+jsx(Fragment_e2d314996009539fdb846fc57fcff17c,{},)
 ,),jsx(
 NextHead,
 {},

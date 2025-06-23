@@ -143,7 +143,7 @@ reflex___state____state__reflex_local_auth___local_auth____local_auth_state__ful
   )
 }
 
-export function Fragment_a7675a0ce9b156ddd23486bb91bfa83a () {
+export function Fragment_5ccec3bd2ebf3b045a49657c2326d0f9 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state)
 
@@ -182,7 +182,7 @@ Fragment,
   )
 }
 
-export function Grid_86a62928948a6cdfd3c116e5540894b8 () {
+export function Grid_5566ca0ec3907bd72d38116c6ec7f0cc () {
   
   
                 useEffect(() => {
@@ -203,9 +203,9 @@ export function Grid_86a62928948a6cdfd3c116e5540894b8 () {
     jsx(
 RadixThemesGrid,
 {columns:"3",gap:"5"},
-reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post,index_e9e53a530abde515)=>(jsx(
+reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post,index_d2de58a9282608a6)=>(jsx(
 RadixThemesCard,
-{asChild:true,key:index_e9e53a530abde515},
+{asChild:true,key:index_d2de58a9282608a6},
 jsx(
 RadixThemesLink,
 {asChild:true,css:({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })},
@@ -226,7 +226,7 @@ post["title"]
   )
 }
 
-export function Grid_d85fd34800d3f08d006ebb60cf5b4105 () {
+export function Grid_5f218ba9fc20cfb18b220759724227cf () {
   
   
                 useEffect(() => {
@@ -247,9 +247,9 @@ export function Grid_d85fd34800d3f08d006ebb60cf5b4105 () {
     jsx(
 RadixThemesGrid,
 {columns:"1",gap:"5"},
-reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post,index_e9e53a530abde515)=>(jsx(
+reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.posts.map((post,index_d2de58a9282608a6)=>(jsx(
 RadixThemesCard,
-{asChild:true,key:index_e9e53a530abde515},
+{asChild:true,key:index_d2de58a9282608a6},
 jsx(
 RadixThemesLink,
 {asChild:true,css:({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })},
@@ -270,7 +270,7 @@ post["title"]
   )
 }
 
-export function Fragment_74407a72a97ad490e9853928f7b7b092 () {
+export function Fragment_9bfb55a07066995a4270653dcbd80ee5 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const ref_my_child = useRef(null); refs["ref_my_child"] = ref_my_child;
@@ -295,7 +295,7 @@ RadixThemesHeading,
 {size:"2"},
 "Welcome back"
 ,),jsx(RadixThemesSeparator,{css:({ ["marginTop"] : "1em", ["manginBottom"] : "1em" }),size:"4"},)
-,jsx(Grid_86a62928948a6cdfd3c116e5540894b8,{},)
+,jsx(Grid_5566ca0ec3907bd72d38116c6ec7f0cc,{},)
 ,),)) : (jsx(
 Fragment,
 {},
@@ -321,7 +321,7 @@ RadixThemesButton,
 RadixThemesHeading,
 {size:"5"},
 "Recent Articles"
-,),jsx(Grid_d85fd34800d3f08d006ebb60cf5b4105,{},)
+,),jsx(Grid_5f218ba9fc20cfb18b220759724227cf,{},)
 ,),))),)
   )
 }
@@ -584,7 +584,25 @@ reflex___state____state__reflex_local_auth___local_auth____local_auth_state__ful
   )
 }
 
-export function Text_a3796bf0727461db85f2fa21173bc236 () {
+export function Heading_8074f2b3681adff26fc90223c15b45ac () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesHeading,
+{size:"9"},
+reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.post?.["title"]
+,)
+  )
+}
+
+export function Text_920b37ee01ec8bb732e7115451d0f3c3 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state)
 
@@ -596,8 +614,9 @@ export function Text_a3796bf0727461db85f2fa21173bc236 () {
   return (
     jsx(
 RadixThemesText,
-{as:"p",css:({ ["whiteSpace"] : "pre-wrap" })},
-reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.post?.["content"]
+{as:"p"},
+"By "
+,reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.post?.["userinfo"]["user"]?.["username"]
 ,)
   )
 }
@@ -642,7 +661,7 @@ RadixThemesHeading,
   )
 }
 
-export function Text_920b37ee01ec8bb732e7115451d0f3c3 () {
+export function Text_a3796bf0727461db85f2fa21173bc236 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state)
 
@@ -654,32 +673,13 @@ export function Text_920b37ee01ec8bb732e7115451d0f3c3 () {
   return (
     jsx(
 RadixThemesText,
-{as:"p"},
-"By "
-,reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.post?.["userinfo"]["user"]?.["username"]
+{as:"p",css:({ ["whiteSpace"] : "pre-wrap" })},
+reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.post?.["content"]
 ,)
   )
 }
 
-export function Heading_8074f2b3681adff26fc90223c15b45ac () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-RadixThemesHeading,
-{size:"9"},
-reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___articles___state____article_public_state.post?.["title"]
-,)
-  )
-}
-
-export function Flex_12693a4897cd4e5e916e5e868dd395d9 () {
+export function Flex_6d8452a5eccbaec687bae311abc1bcae () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
 
@@ -706,9 +706,9 @@ jsx(
 RadixThemesButton,
 {},
 "New Post"
-,),),),reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.posts.map((post,index_ed128d660f86f914)=>(jsx(
+,),),),reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.posts.map((post,index_251e3438e35775c5)=>(jsx(
 RadixThemesBox,
-{css:({ ["padding"] : "1em" }),key:index_ed128d660f86f914},
+{css:({ ["padding"] : "1em" }),key:index_251e3438e35775c5},
 jsx(
 RadixThemesLink,
 {asChild:true,css:({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })},
@@ -767,6 +767,120 @@ RadixThemesButton,
 {type:"submit"},
 "Submit"
 ,),),)
+  )
+}
+
+export function Text_b1f81e2e304dfd9793805a82a0b56a29 () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesText,
+{as:"p"},
+"User info: "
+,(JSON.stringify(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["userinfo"]))
+,)
+  )
+}
+
+export function Text_ab3b96c97df8321e09bb155461191e9d () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesText,
+{as:"p"},
+"User info id"
+,reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["userinfo_id"]
+,)
+  )
+}
+
+export function Text_ac28c17299d680f06300ef32b2ddf128 () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesText,
+{as:"p"},
+reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["publish_date"]
+,)
+  )
+}
+
+export function Link_1e5483bb89e8c35958f6113730ac6a21 () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesLink,
+{asChild:true,css:({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })},
+jsx(
+NextLink,
+{href:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.blog_post_edit_url,passHref:true},
+"Edit"
+,),)
+  )
+}
+
+export function Text_5e4ae157be64ae260ef734899376b8b4 () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesText,
+{as:"p",css:({ ["whiteSpace"] : "pre-wrap" })},
+reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["content"]
+,)
+  )
+}
+
+export function Text_7b6c04dda438b3c9b1ca86789d3bf87e () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesText,
+{as:"p"},
+"User: "
+,(JSON.stringify(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["userinfo"]["user"]))
+,)
   )
 }
 
@@ -838,7 +952,7 @@ RadixThemesHeading,
   )
 }
 
-export function Text_b1f81e2e304dfd9793805a82a0b56a29 () {
+export function Textfield__root_8d76a480ed0096d8ff526fc8315dc281 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
 
@@ -848,18 +962,14 @@ export function Text_b1f81e2e304dfd9793805a82a0b56a29 () {
 
   
   return (
-    jsx(
-RadixThemesText,
-{as:"p"},
-"User info: "
-,(JSON.stringify(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["userinfo"]))
-,)
+    jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),defaultValue:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"],name:"title",placeholder:"Title",required:true,type:"text"},)
+
   )
 }
 
-export function Text_ac28c17299d680f06300ef32b2ddf128 () {
+export function Textfield__root_b87ea0fbdf5414ffeb3dd83706c673ec () {
   
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state)
 
 
 
@@ -867,117 +977,25 @@ export function Text_ac28c17299d680f06300ef32b2ddf128 () {
 
   
   return (
-    jsx(
-RadixThemesText,
-{as:"p"},
-reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["publish_date"]
-,)
+    jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),defaultValue:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date,name:"publish_date",type:"date"},)
+
   )
 }
 
-export function Text_5e4ae157be64ae260ef734899376b8b4 () {
+export function Switch_187881db425609111c31bbfd136a3277 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
 
 
+  const on_change_0fcb3cdba4563238f47aba51054032be = useCallback(((_ev_0) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  })))), [addEvents, Event])
 
 
 
   
   return (
-    jsx(
-RadixThemesText,
-{as:"p",css:({ ["whiteSpace"] : "pre-wrap" })},
-reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["content"]
-,)
-  )
-}
+    jsx(RadixThemesSwitch,{defaultChecked:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active,name:"publish_active",onCheckedChange:on_change_0fcb3cdba4563238f47aba51054032be},)
 
-export function Link_1e5483bb89e8c35958f6113730ac6a21 () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-RadixThemesLink,
-{asChild:true,css:({ ["&:hover"] : ({ ["color"] : "var(--accent-8)" }) })},
-jsx(
-NextLink,
-{href:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.blog_post_edit_url,passHref:true},
-"Edit"
-,),)
-  )
-}
-
-export function Text_ab3b96c97df8321e09bb155461191e9d () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-RadixThemesText,
-{as:"p"},
-"User info id"
-,reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["userinfo_id"]
-,)
-  )
-}
-
-export function Text_7b6c04dda438b3c9b1ca86789d3bf87e () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-RadixThemesText,
-{as:"p"},
-"User: "
-,(JSON.stringify(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["userinfo"]["user"]))
-,)
-  )
-}
-
-export function Fragment_ca347cf4b705e0ad50abe3e04075ae60 () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-Fragment,
-{},
-(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active ? (jsx(
-Fragment,
-{},
-jsx(
-RadixThemesBox,
-{css:({ ["width"] : "100%" })},
-jsx(
-RadixThemesFlex,
-{align:"start",className:"rx-Stack",css:({ ["width"] : "100%" }),direction:"row",gap:"3"},
-jsx(Textfield__root_b87ea0fbdf5414ffeb3dd83706c673ec,{},)
-,jsx(Textfield__root_0236b08bfd5fd58a07489aac880f401d,{},)
-,),),)) : (jsx(Fragment,{},)
-)),)
   )
 }
 
@@ -992,36 +1010,6 @@ export function Textfield__root_0236b08bfd5fd58a07489aac880f401d () {
   
   return (
     jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),defaultValue:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_time,name:"publish_time",type:"time"},)
-
-  )
-}
-
-export function Textfield__root_53d9132ffba40ef2a33a51466df3225f () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
-
-
-
-
-
-  
-  return (
-    jsx(RadixThemesTextField.Root,{name:"post_id",type:"hidden",value:(isNotNullOrUndefined((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "")) ? (((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")},)
-
-  )
-}
-
-export function Textfield__root_8d76a480ed0096d8ff526fc8315dc281 () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
-
-
-
-
-
-  
-  return (
-    jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),defaultValue:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["title"],name:"title",placeholder:"Title",required:true,type:"text"},)
 
   )
 }
@@ -1098,9 +1086,9 @@ export function Debounceinput_c99a0c905ca64bd58399c59c37fcd3d5 () {
   )
 }
 
-export function Textfield__root_b87ea0fbdf5414ffeb3dd83706c673ec () {
+export function Fragment_ca347cf4b705e0ad50abe3e04075ae60 () {
   
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state)
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
 
 
 
@@ -1108,24 +1096,36 @@ export function Textfield__root_b87ea0fbdf5414ffeb3dd83706c673ec () {
 
   
   return (
-    jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),defaultValue:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state__full_stack_python___blog___state____blog_edit_form_state.publish_display_date,name:"publish_date",type:"date"},)
-
+    jsx(
+Fragment,
+{},
+(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active ? (jsx(
+Fragment,
+{},
+jsx(
+RadixThemesBox,
+{css:({ ["width"] : "100%" })},
+jsx(
+RadixThemesFlex,
+{align:"start",className:"rx-Stack",css:({ ["width"] : "100%" }),direction:"row",gap:"3"},
+jsx(Textfield__root_b87ea0fbdf5414ffeb3dd83706c673ec,{},)
+,jsx(Textfield__root_0236b08bfd5fd58a07489aac880f401d,{},)
+,),),)) : (jsx(Fragment,{},)
+)),)
   )
 }
 
-export function Switch_187881db425609111c31bbfd136a3277 () {
+export function Textfield__root_53d9132ffba40ef2a33a51466df3225f () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state)
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
 
 
-  const on_change_0fcb3cdba4563238f47aba51054032be = useCallback(((_ev_0) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.full_stack_python___auth___state____session_state.full_stack_python___blog___state____blog_post_state.set_post_publish_active", ({ ["value"] : _ev_0 }), ({  })))], [_ev_0], ({  })))), [addEvents, Event])
 
 
 
   
   return (
-    jsx(RadixThemesSwitch,{defaultChecked:reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post_publish_active,name:"publish_active",onCheckedChange:on_change_0fcb3cdba4563238f47aba51054032be},)
+    jsx(RadixThemesTextField.Root,{name:"post_id",type:"hidden",value:(isNotNullOrUndefined((((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "")) ? (((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== null) && (reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] !== undefined)) ? reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___blog___state____blog_post_state.post?.["id"] : "") : "")},)
 
   )
 }
@@ -1294,7 +1294,7 @@ jsx(Root_ceaccd4ba203c3e53167ca6dc25f31b6,{},)
   )
 }
 
-export function Flex_ccf3e6a4f1aee372da2e324eabab53ca () {
+export function Flex_c87827ed742b90b20d8479294bf8ebbd () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state)
 
@@ -1311,9 +1311,9 @@ jsx(
 RadixThemesHeading,
 {size:"5"},
 "Contact Entries"
-,),reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state.entries.map((contact,index_f9303580f4e7ef50)=>(jsx(
+,),reflex___state____state__reflex_local_auth___local_auth____local_auth_state__full_stack_python___auth___state____session_state__full_stack_python___contact___state____contact_state.entries.map((contact,index_43f43a4c3c683a94)=>(jsx(
 RadixThemesBox,
-{css:({ ["padding"] : "1em" }),key:index_f9303580f4e7ef50},
+{css:({ ["padding"] : "1em" }),key:index_43f43a4c3c683a94},
 jsx(
 RadixThemesHeading,
 {},

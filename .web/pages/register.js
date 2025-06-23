@@ -7,7 +7,7 @@ import { Event, getRefValue, getRefValues, isTrue, refs } from "$/utils/state"
 import { Box as RadixThemesBox, Button as RadixThemesButton, Callout as RadixThemesCallout, Card as RadixThemesCard, DropdownMenu as RadixThemesDropdownMenu, Flex as RadixThemesFlex, Heading as RadixThemesHeading, Link as RadixThemesLink, Separator as RadixThemesSeparator, Text as RadixThemesText, TextField as RadixThemesTextField, Theme as RadixThemesTheme } from "@radix-ui/themes"
 import NextLink from "next/link"
 import { AlignJustify as LucideAlignJustify, Globe as LucideGlobe, LayoutDashboard as LucideLayoutDashboard, Mail as LucideMail, Mailbox as LucideMailbox, Menu as LucideMenu, Newspaper as LucideNewspaper, SquareLibrary as LucideSquareLibrary, TriangleAlert as LucideTriangleAlert, X as LucideX } from "lucide-react"
-import { Box_a3024561c54556fdec0036516b0350d9, Box_f25d3c09d7bdff8b0c3e58c5f733b7ed, Dropdownmenu__item_0135103a5bf381b9d7f74f7b30f7dc66, Dropdownmenu__item_1fbe7c71954c734735664f498e580e6b, Dropdownmenu__item_2e94dc784884fede0179af2e6701a2be, Dropdownmenu__item_81a2b1073d401a4d60e14f3b0804a346, Dropdownmenu__item_9fe9a971872f647874918ba7a3cd7b39, Dropdownmenu__item_c240db5f9b11e77b7166baee506fd74a, Dropdownmenu__item_dfeb4d8d19e41db8abd33bc17298d1c8, Fragment_a7675a0ce9b156ddd23486bb91bfa83a, Iconbutton_53adde116165ab531c43c5cb8d60c677, Link_6d8ef781efad3969e1ad202c69c43883 } from "$/utils/stateful_components"
+import { Box_a3024561c54556fdec0036516b0350d9, Box_f25d3c09d7bdff8b0c3e58c5f733b7ed, Dropdownmenu__item_0135103a5bf381b9d7f74f7b30f7dc66, Dropdownmenu__item_1fbe7c71954c734735664f498e580e6b, Dropdownmenu__item_2e94dc784884fede0179af2e6701a2be, Dropdownmenu__item_81a2b1073d401a4d60e14f3b0804a346, Dropdownmenu__item_9fe9a971872f647874918ba7a3cd7b39, Dropdownmenu__item_c240db5f9b11e77b7166baee506fd74a, Dropdownmenu__item_dfeb4d8d19e41db8abd33bc17298d1c8, Fragment_5ccec3bd2ebf3b045a49657c2326d0f9, Iconbutton_53adde116165ab531c43c5cb8d60c677, Link_6d8ef781efad3969e1ad202c69c43883 } from "$/utils/stateful_components"
 import { Drawer as VaulDrawer } from "vaul"
 import theme from "$/utils/theme.js"
 import { Root as RadixFormRoot } from "@radix-ui/react-form"
@@ -15,35 +15,6 @@ import NextHead from "next/head"
 import { jsx } from "@emotion/react"
 
 
-
-export function Fragment_0a0db63c2f041324df215ada7971f5db () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-Fragment,
-{},
-(!((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.error_message === "")) ? (jsx(
-Fragment,
-{},
-jsx(
-RadixThemesCallout.Root,
-{color:"red",css:({ ["icon"] : "triangle_alert", ["width"] : "" }),role:"alert"},
-jsx(
-RadixThemesCallout.Icon,
-{},
-jsx(LucideTriangleAlert,{},)
-,),jsx(Callout__text_6245b77495a8797469f16933ce39ee2c,{},)
-,),)) : (jsx(Fragment,{},)
-)),)
-  )
-}
 
 export function Link_f6469c84bb26aa9e7f77338335a919cb () {
   
@@ -64,7 +35,7 @@ RadixThemesLink,
   )
 }
 
-export function Fragment_9eff3edb852002a1a869455176f00c90 () {
+export function Fragment_a593f6532a2277a103986efdc521d7fe () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const ref_my_content_area_el = useRef(null); refs["ref_my_content_area_el"] = ref_my_content_area_el;
@@ -200,7 +171,7 @@ RadixThemesFlex,
 jsx(Box_f25d3c09d7bdff8b0c3e58c5f733b7ed,{},)
 ,jsx(Box_a3024561c54556fdec0036516b0350d9,{},)
 ,),jsx(RadixThemesSeparator,{size:"4"},)
-,jsx(Fragment_a7675a0ce9b156ddd23486bb91bfa83a,{},)
+,jsx(Fragment_5ccec3bd2ebf3b045a49657c2326d0f9,{},)
 ,),),),jsx(
 RadixThemesBox,
 {css:({ ["padding"] : "1em", ["@media screen and (min-width: 0)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 30em)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 48em)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 62em)"] : ({ ["display"] : "none" }) })},
@@ -328,14 +299,14 @@ RadixThemesFlex,
 jsx(Box_f25d3c09d7bdff8b0c3e58c5f733b7ed,{},)
 ,jsx(Box_a3024561c54556fdec0036516b0350d9,{},)
 ,),jsx(RadixThemesSeparator,{css:({ ["margin"] : "0" }),size:"4"},)
-,jsx(Fragment_a7675a0ce9b156ddd23486bb91bfa83a,{},)
+,jsx(Fragment_5ccec3bd2ebf3b045a49657c2326d0f9,{},)
 ,),),),),),),),),jsx(
 RadixThemesBox,
 {css:({ ["padding"] : "1em", ["width"] : "100%" }),id:"my-content-area-el",ref:ref_my_content_area_el},
 jsx(
 RadixThemesFlex,
 {css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["minHeight"] : "85vh" })},
-jsx(Fragment_78d56142e9c2226467a06303e08817d5,{},)
+jsx(Fragment_c7419b2e1029f3585e836e434f33b75f,{},)
 ,),jsx(
 RadixThemesFlex,
 {css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["width"] : "100%" })},
@@ -486,7 +457,7 @@ RadixThemesBox,
 jsx(
 RadixThemesFlex,
 {css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["minHeight"] : "85vh" })},
-jsx(Fragment_78d56142e9c2226467a06303e08817d5,{},)
+jsx(Fragment_c7419b2e1029f3585e836e434f33b75f,{},)
 ,),),jsx(
 RadixThemesFlex,
 {css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["width"] : "100%" })},
@@ -496,7 +467,59 @@ jsx(Link_6d8ef781efad3969e1ad202c69c43883,{},)
   )
 }
 
-export function Root_0da1c02bc72e4ac2a42fbf81b5d85368 () {
+export function Fragment_c7419b2e1029f3585e836e434f33b75f () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+Fragment,
+{},
+(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.success ? (jsx(
+Fragment,
+{},
+jsx(
+RadixThemesFlex,
+{align:"start",className:"rx-Stack",direction:"column",gap:"3"},
+jsx(
+RadixThemesText,
+{as:"p"},
+"Registration successful!"
+,),),)) : (jsx(
+Fragment,
+{},
+jsx(
+RadixThemesCard,
+{},
+jsx(Root_bfab9d78e479cd4ec9720f1a3221ec31,{},)
+,),))),)
+  )
+}
+
+export function Callout__text_6245b77495a8797469f16933ce39ee2c () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesCallout.Text,
+{},
+reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.error_message
+,)
+  )
+}
+
+export function Root_bfab9d78e479cd4ec9720f1a3221ec31 () {
   
   const [addEvents, connectErrors] = useContext(EventLoopContext);
   const ref_username = useRef(null); refs["ref_username"] = ref_username;
@@ -505,10 +528,10 @@ export function Root_0da1c02bc72e4ac2a42fbf81b5d85368 () {
   const ref_confirm_password = useRef(null); refs["ref_confirm_password"] = ref_confirm_password;
 
   
-    const handleSubmit_a46ba4ab41dc7c8692f37f5e556b104a = useCallback((ev) => {
+    const handleSubmit_fc3f6cdca031030dcda438e5f84c0aa7 = useCallback((ev) => {
         const $form = ev.target
         ev.preventDefault()
-        const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({ ["username"] : getRefValue(refs["ref_username"]), ["confirm_password"] : getRefValue(refs["ref_confirm_password"]), ["password"] : getRefValue(refs["ref_password"]), ["email"] : getRefValue(refs["ref_email"]) })};
+        const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({ ["email"] : getRefValue(refs["ref_email"]), ["password"] : getRefValue(refs["ref_password"]), ["confirm_password"] : getRefValue(refs["ref_confirm_password"]), ["username"] : getRefValue(refs["ref_username"]) })};
 
         (((...args) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state.full_stack_python___auth___state____my_register_state.handle_registration_email", ({ ["form_data"] : form_data }), ({  })))], args, ({  }))))(ev));
 
@@ -525,7 +548,7 @@ export function Root_0da1c02bc72e4ac2a42fbf81b5d85368 () {
   return (
     jsx(
 RadixFormRoot,
-{className:"Root ",css:({ ["width"] : "100%" }),onSubmit:handleSubmit_a46ba4ab41dc7c8692f37f5e556b104a},
+{className:"Root ",css:({ ["width"] : "100%" }),onSubmit:handleSubmit_fc3f6cdca031030dcda438e5f84c0aa7},
 jsx(
 RadixThemesFlex,
 {align:"start",className:"rx-Stack",css:({ ["minWidth"] : "50vw" }),direction:"column",gap:"3"},
@@ -566,7 +589,7 @@ jsx(Link_f6469c84bb26aa9e7f77338335a919cb,{},)
   )
 }
 
-export function Fragment_78d56142e9c2226467a06303e08817d5 () {
+export function Fragment_0a0db63c2f041324df215ada7971f5db () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
 
@@ -579,42 +602,19 @@ export function Fragment_78d56142e9c2226467a06303e08817d5 () {
     jsx(
 Fragment,
 {},
-(reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.success ? (jsx(
+(!((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.error_message === "")) ? (jsx(
 Fragment,
 {},
 jsx(
-RadixThemesFlex,
-{align:"start",className:"rx-Stack",direction:"column",gap:"3"},
+RadixThemesCallout.Root,
+{color:"red",css:({ ["icon"] : "triangle_alert", ["width"] : "" }),role:"alert"},
 jsx(
-RadixThemesText,
-{as:"p"},
-"Registration successful!"
-,),),)) : (jsx(
-Fragment,
+RadixThemesCallout.Icon,
 {},
-jsx(
-RadixThemesCard,
-{},
-jsx(Root_0da1c02bc72e4ac2a42fbf81b5d85368,{},)
-,),))),)
-  )
-}
-
-export function Callout__text_6245b77495a8797469f16933ce39ee2c () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-RadixThemesCallout.Text,
-{},
-reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.error_message
-,)
+jsx(LucideTriangleAlert,{},)
+,),jsx(Callout__text_6245b77495a8797469f16933ce39ee2c,{},)
+,),)) : (jsx(Fragment,{},)
+)),)
   )
 }
 
@@ -628,7 +628,7 @@ export default function Component() {
     jsx(
 Fragment,
 {},
-jsx(Fragment_9eff3edb852002a1a869455176f00c90,{},)
+jsx(Fragment_a593f6532a2277a103986efdc521d7fe,{},)
 ,jsx(
 NextHead,
 {},
