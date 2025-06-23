@@ -7,12 +7,17 @@ from ..models import UserInfo
 
 
 class SessionState(reflex_local_auth.LocalAuthState):
+   # Problemático
     @rx.var(cache=True)
-    def my_userinfo_id(self) -> str | None:
-        if self.authenticated_user_info is None:
+    def authenticated_user_info(self) -> UserInfo | None:
+        if self.authenticated_user.id < 0:
             return None
-        return self.authenticated_user_info.id
-
+        # Esta sesión y consulta se ejecuta CADA VEZ que se necesita el valor.
+        with rx.session() as session:
+            result = session.exec(
+                sqlmodel.select(UserInfo).where(...)
+            ).one_or_none()
+            return result
 
     @rx.var(cache=True)
     def my_user_id(self) -> str | None:
