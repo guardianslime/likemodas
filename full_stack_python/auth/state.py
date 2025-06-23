@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------
-# full_stack_python/auth/state.py (VERSIÓN CORREGIDA)
+# full_stack_python/auth/state.py (VERSIÓN LIMPIA SIN CONFLICTOS)
 # -----------------------------------------------------------------
 from typing import Optional
 import reflex as rx

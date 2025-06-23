@@ -133,4 +133,8 @@ app.add_page(
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
     on_load=contact.ContactState.list_entries
 )
+<<<<<<< HEAD
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
+=======
+app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
+>>>>>>> 0d29b01f074d8b720df676097ada559852e1bda5
