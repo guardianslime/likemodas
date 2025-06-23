@@ -1,9 +1,10 @@
 # =================================================================
-# ARCHIVO: full_stack_python/ui/sidebar.py (VERSIÓN CORREGIDA Y FUNCIONAL)
+# ARCHIVO: full_stack_python/ui/sidebar.py (VERSIÓN CORREGIDA FINAL)
 # Reemplaza todo el contenido de tu archivo con este bloque.
 # =================================================================
 import reflex as rx
 from reflex.style import toggle_color_mode
+import reflex_local_auth  # ¡CORRECCIÓN! Importamos la librería que contiene la ruta de login.
 
 from ..auth.state import SessionState
 from .. import navigation
@@ -24,13 +25,11 @@ def sidebar_user_item() -> rx.Component:
             ),
             rx.vstack(
                 rx.box(
-                    # Muestra el nombre de usuario de forma segura
                     rx.text(
                         SessionState.authenticated_username,
                         size="3",
                         weight="bold",
                     ),
-                    # Muestra el email de forma segura usando rx.cond
                     rx.text(
                         rx.cond(
                             SessionState.authenticated_user_info,
@@ -63,7 +62,8 @@ def sidebar_user_item() -> rx.Component:
                 rx.text("Login / Register", size="3", weight="bold"),
                 align="center",
              ),
-             href=navigation.routes.LOGIN_ROUTE,
+             # ¡CORRECCIÓN! Usamos la ruta correcta desde reflex_local_auth.
+             href=reflex_local_auth.routes.LOGIN_ROUTE,
              width="100%",
         )
     )
@@ -90,7 +90,7 @@ def sidebar_logout_item() -> rx.Component:
                     "border-radius": "0.5em",
                 },
             ),
-            on_click=SessionState.perform_logout, # Usa el evento del SessionState corregido
+            on_click=SessionState.perform_logout,
             as_='button',
             underline="none",
             weight="medium",
@@ -171,7 +171,6 @@ def sidebar_items() -> rx.Component:
 def sidebar() -> rx.Component:
     """El componente completo del sidebar, para escritorio y móvil."""
     return rx.box(
-        # --- Vista de Escritorio ---
         rx.desktop_only(
             rx.vstack(
                 rx.hstack(
@@ -189,18 +188,17 @@ def sidebar() -> rx.Component:
                 rx.vstack(
                     rx.vstack(
                         sidebar_dark_mode_toggle_item(),
-                        sidebar_logout_item(), # El botón de logout ya es condicional
+                        sidebar_logout_item(),
                         spacing="1", width="100%",
                     ),
                     rx.divider(),
-                    sidebar_user_item(), # El perfil de usuario ya es condicional
+                    sidebar_user_item(),
                     width="100%", spacing="5",
                 ),
                 spacing="5", padding_x="1em", padding_y="1.5em",
                 bg=rx.color("accent", 3), align="start", height="100vh", width="16em",
             ),
         ),
-        # --- Vista Móvil ---
         rx.mobile_and_tablet(
             rx.box(
                 rx.drawer.root(
@@ -234,4 +232,3 @@ def sidebar() -> rx.Component:
             )
         ),
     )
-
