@@ -1,13 +1,14 @@
+
 # =================================================================
-# ARCHIVO: full_stack_python/ui/sidebar.py (VERSIÓN CORREGIDA FINAL)
-# Reemplaza todo el contenido de tu archivo con este bloque.
+# ARCHIVO 3: full_stack_python/ui/sidebar.py (Corregido)
 # =================================================================
 import reflex as rx
 from reflex.style import toggle_color_mode
-import reflex_local_auth  # ¡CORRECCIÓN! Importamos la librería que contiene la ruta de login.
+import reflex_local_auth
 
-from ..auth.state import SessionState
-from .. import navigation
+# ¡CORRECCIÓN! Se usan importaciones absolutas.
+from full_stack_python.auth.state import SessionState
+from full_stack_python import navigation
 
 def sidebar_user_item() -> rx.Component:
     """
@@ -62,7 +63,6 @@ def sidebar_user_item() -> rx.Component:
                 rx.text("Login / Register", size="3", weight="bold"),
                 align="center",
              ),
-             # ¡CORRECCIÓN! Usamos la ruta correcta desde reflex_local_auth.
              href=reflex_local_auth.routes.LOGIN_ROUTE,
              width="100%",
         )
