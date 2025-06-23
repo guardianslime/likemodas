@@ -4,21 +4,23 @@ from ..ui.base import base_page
 from . import state
 from .notfound import blog_post_not_found
 
-# --- MEJORA: Añadir la ruta dinámica y la carga de datos en el decorador ---
-# Esto es crucial para que la página funcione cuando accedes a la URL directamente.
+# Este decorador es la clave para que la página funcione bien en Railway.
+# Carga los datos del post ANTES de intentar mostrar la página.
 @rx.page(route="/blog/[blog_id]", on_load=state.BlogPostState.get_post_detail)
 def blog_post_detail_page() -> rx.Component:
+    """Muestra la página de detalles de un solo post del blog."""
     
-    # --- MEJORA: Lógica para mostrar el botón de edición solo si el post pertenece al usuario logueado ---
+    # Comprueba si el usuario logueado es el dueño del post.
+    # Se usa para mostrar condicionalmente el botón de "Editar".
     is_owner = (
         state.BlogPostState.is_authenticated & 
         (state.BlogPostState.post.userinfo_id == state.BlogPostState.my_userinfo_id)
     )
 
-    # --- CORRECCIÓN: Usar rx.cond para renderizar de forma segura la información del usuario ---
+    # Renderiza la información del autor de forma segura,
+    # mostrando un texto de "Cargando..." si los datos aún no están listos.
     user_info_display = rx.cond(
         state.BlogPostState.post.userinfo,
-        # Si userinfo existe, muestra los detalles
         rx.hstack(
             rx.avatar(fallback=state.BlogPostState.post.userinfo.user.email[0].upper() if state.BlogPostState.post.userinfo.user else "A"),
             rx.text(
@@ -26,20 +28,32 @@ def blog_post_detail_page() -> rx.Component:
                 rx.link(
                     state.BlogPostState.post.userinfo.user.email if state.BlogPostState.post.userinfo.user else "Usuario desconocido",
                     font_weight="bold",
+                    # podrías enlazar al perfil del usuario aquí
                 ),
                 color_scheme="gray",
             ),
             spacing="3",
             align="center",
         ),
-        # Si no, muestra un texto alternativo
         rx.text("Cargando autor...", color_scheme="gray")
     )
+    
+    # Muestra la fecha de publicación solo si el post está activo y tiene una fecha.
+    publish_date_display = rx.cond(
+        state.BlogPostState.post.publish_active & state.BlogPostState.post.publish_date,
+         rx.text(
+            "Publicado el ",
+            # Usamos strftime para un formato de fecha y hora más amigable.
+            rx.text(state.BlogPostState.post.publish_date.strftime("%d de %B de %Y a las %H:%M"), as_="span"),
+            color_scheme="gray",
+        ),
+        rx.text("No publicado", color_scheme="gray"),
+    )
 
+    # Contenido principal de la página de detalles.
     content = rx.vstack(
         rx.hstack(
             rx.heading(state.BlogPostState.post.title, size="8", text_align="left"),
-            # Mostrar el botón de editar solo al propietario
             rx.cond(
                 is_owner,
                 rx.link(
@@ -52,19 +66,7 @@ def blog_post_detail_page() -> rx.Component:
             width="100%",
         ),
         user_info_display,
-        rx.text(
-            "Publicado el: ",
-            # Formatear la fecha para que sea más legible
-            rx.text(
-                state.BlogPostState.post.publish_date.to_string(
-                    locale="es-ES", 
-                    date_style="full", 
-                    time_style="short"
-                ), 
-                as_="span"
-            ),
-            color_scheme="gray",
-        ),
+        publish_date_display,
         rx.divider(width="100%"),
         rx.box(
             rx.markdown(
@@ -84,7 +86,8 @@ def blog_post_detail_page() -> rx.Component:
         padding="1rem",
     )
 
-    # Vista principal que muestra el contenido solo si el post se ha cargado
+    # Envoltura final: Muestra el contenido solo si self.post tiene datos,
+    # de lo contrario, muestra la página de "no encontrado".
     main_component = rx.cond(
         state.BlogPostState.post, 
         content,
