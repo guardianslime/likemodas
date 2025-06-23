@@ -1,7 +1,7 @@
 # rxconfig.py
 import reflex as rx
 import os
-from typing import List, Optional, Dict, Any 
+from typing import List
 
 class FullStackPythonConfig(rx.Config):
     app_name = "full_stack_python"
@@ -18,6 +18,5 @@ class FullStackPythonConfig(rx.Config):
     ]
     
     db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
-    tailwind: Optional[Dict[str, Any]] = None
 
 config = FullStackPythonConfig()
