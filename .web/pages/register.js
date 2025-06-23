@@ -7,7 +7,7 @@ import { Event, getRefValue, getRefValues, isTrue, refs } from "$/utils/state"
 import { Box as RadixThemesBox, Button as RadixThemesButton, Callout as RadixThemesCallout, Card as RadixThemesCard, DropdownMenu as RadixThemesDropdownMenu, Flex as RadixThemesFlex, Heading as RadixThemesHeading, Link as RadixThemesLink, Separator as RadixThemesSeparator, Text as RadixThemesText, TextField as RadixThemesTextField, Theme as RadixThemesTheme } from "@radix-ui/themes"
 import NextLink from "next/link"
 import { AlignJustify as LucideAlignJustify, Globe as LucideGlobe, LayoutDashboard as LucideLayoutDashboard, Mail as LucideMail, Mailbox as LucideMailbox, Menu as LucideMenu, Newspaper as LucideNewspaper, SquareLibrary as LucideSquareLibrary, TriangleAlert as LucideTriangleAlert, X as LucideX } from "lucide-react"
-import { Box_a3024561c54556fdec0036516b0350d9, Box_f25d3c09d7bdff8b0c3e58c5f733b7ed, Dropdownmenu__item_0135103a5bf381b9d7f74f7b30f7dc66, Dropdownmenu__item_1fbe7c71954c734735664f498e580e6b, Dropdownmenu__item_2e94dc784884fede0179af2e6701a2be, Dropdownmenu__item_81a2b1073d401a4d60e14f3b0804a346, Dropdownmenu__item_9fe9a971872f647874918ba7a3cd7b39, Dropdownmenu__item_c240db5f9b11e77b7166baee506fd74a, Dropdownmenu__item_dfeb4d8d19e41db8abd33bc17298d1c8, Fragment_fd18886b13c8adaf58e8feab2dc67239, Iconbutton_53adde116165ab531c43c5cb8d60c677, Link_6d8ef781efad3969e1ad202c69c43883 } from "$/utils/stateful_components"
+import { Box_a3024561c54556fdec0036516b0350d9, Box_f25d3c09d7bdff8b0c3e58c5f733b7ed, Dropdownmenu__item_0135103a5bf381b9d7f74f7b30f7dc66, Dropdownmenu__item_1fbe7c71954c734735664f498e580e6b, Dropdownmenu__item_2e94dc784884fede0179af2e6701a2be, Dropdownmenu__item_81a2b1073d401a4d60e14f3b0804a346, Dropdownmenu__item_9fe9a971872f647874918ba7a3cd7b39, Dropdownmenu__item_c240db5f9b11e77b7166baee506fd74a, Dropdownmenu__item_dfeb4d8d19e41db8abd33bc17298d1c8, Fragment_5c6cba2c72d6272d3a9c7a20fc117f03, Iconbutton_53adde116165ab531c43c5cb8d60c677, Link_6d8ef781efad3969e1ad202c69c43883 } from "$/utils/stateful_components"
 import { Drawer as VaulDrawer } from "vaul"
 import theme from "$/utils/theme.js"
 import { Root as RadixFormRoot } from "@radix-ui/react-form"
@@ -16,7 +16,124 @@ import { jsx } from "@emotion/react"
 
 
 
-export function Fragment_c7419b2e1029f3585e836e434f33b75f () {
+export function Root_82c2eac22d6e6d4caf808284cad38ba2 () {
+  
+  const [addEvents, connectErrors] = useContext(EventLoopContext);
+  const ref_username = useRef(null); refs["ref_username"] = ref_username;
+  const ref_email = useRef(null); refs["ref_email"] = ref_email;
+  const ref_password = useRef(null); refs["ref_password"] = ref_password;
+  const ref_confirm_password = useRef(null); refs["ref_confirm_password"] = ref_confirm_password;
+
+  
+    const handleSubmit_d9853df68d0edbcba2cc1e18e2875eab = useCallback((ev) => {
+        const $form = ev.target
+        ev.preventDefault()
+        const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({ ["email"] : getRefValue(refs["ref_email"]), ["username"] : getRefValue(refs["ref_username"]), ["confirm_password"] : getRefValue(refs["ref_confirm_password"]), ["password"] : getRefValue(refs["ref_password"]) })};
+
+        (((...args) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state.full_stack_python___auth___state____my_register_state.handle_registration_email", ({ ["form_data"] : form_data }), ({  })))], args, ({  }))))(ev));
+
+        if (false) {
+            $form.reset()
+        }
+    })
+    
+
+
+
+
+  
+  return (
+    jsx(
+RadixFormRoot,
+{className:"Root ",css:({ ["width"] : "100%" }),onSubmit:handleSubmit_d9853df68d0edbcba2cc1e18e2875eab},
+jsx(
+RadixThemesFlex,
+{align:"start",className:"rx-Stack",css:({ ["minWidth"] : "50vw" }),direction:"column",gap:"3"},
+jsx(
+RadixThemesHeading,
+{size:"7"},
+"Create an account"
+,),jsx(Fragment_0a0db63c2f041324df215ada7971f5db,{},)
+,jsx(
+RadixThemesText,
+{as:"p"},
+"Username"
+,),jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),id:"username",name:"username",placeholder:"Username",ref:ref_username},)
+,jsx(
+RadixThemesText,
+{as:"p"},
+"Email"
+,),jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),id:"email",name:"email",placeholder:"Email",ref:ref_email,type:"email"},)
+,jsx(
+RadixThemesText,
+{as:"p"},
+"Password"
+,),jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),id:"password",name:"password",placeholder:"Password",ref:ref_password,type:"password"},)
+,jsx(
+RadixThemesText,
+{as:"p",css:({ ["type"] : "password" })},
+"Confirm password"
+,),jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),id:"confirm_password",name:"confirm_password",placeholder:"Confirm Password",ref:ref_confirm_password,type:"password"},)
+,jsx(
+RadixThemesButton,
+{css:({ ["width"] : "100%" })},
+"Sign up"
+,),jsx(
+RadixThemesFlex,
+{css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["width"] : "100%" })},
+jsx(Link_f6469c84bb26aa9e7f77338335a919cb,{},)
+,),),)
+  )
+}
+
+export function Callout__text_6245b77495a8797469f16933ce39ee2c () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+RadixThemesCallout.Text,
+{},
+reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.error_message
+,)
+  )
+}
+
+export function Fragment_0a0db63c2f041324df215ada7971f5db () {
+  
+  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
+
+
+
+
+
+  
+  return (
+    jsx(
+Fragment,
+{},
+(!((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.error_message === "")) ? (jsx(
+Fragment,
+{},
+jsx(
+RadixThemesCallout.Root,
+{color:"red",css:({ ["icon"] : "triangle_alert", ["width"] : "" }),role:"alert"},
+jsx(
+RadixThemesCallout.Icon,
+{},
+jsx(LucideTriangleAlert,{},)
+,),jsx(Callout__text_6245b77495a8797469f16933ce39ee2c,{},)
+,),)) : (jsx(Fragment,{},)
+)),)
+  )
+}
+
+export function Fragment_fb8fc941a7e9db052a105106ec24a1cd () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
 
@@ -45,7 +162,7 @@ Fragment,
 jsx(
 RadixThemesCard,
 {},
-jsx(Root_bfab9d78e479cd4ec9720f1a3221ec31,{},)
+jsx(Root_82c2eac22d6e6d4caf808284cad38ba2,{},)
 ,),))),)
   )
 }
@@ -69,7 +186,7 @@ RadixThemesLink,
   )
 }
 
-export function Fragment_8f68a2d50b75e44a4bef94de691285a6 () {
+export function Fragment_d68d581e9761896e929f356fa8950847 () {
   
   const reflex___state____state__reflex_local_auth___local_auth____local_auth_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state)
   const ref_my_content_area_el = useRef(null); refs["ref_my_content_area_el"] = ref_my_content_area_el;
@@ -205,7 +322,7 @@ RadixThemesFlex,
 jsx(Box_f25d3c09d7bdff8b0c3e58c5f733b7ed,{},)
 ,jsx(Box_a3024561c54556fdec0036516b0350d9,{},)
 ,),jsx(RadixThemesSeparator,{size:"4"},)
-,jsx(Fragment_fd18886b13c8adaf58e8feab2dc67239,{},)
+,jsx(Fragment_5c6cba2c72d6272d3a9c7a20fc117f03,{},)
 ,),),),jsx(
 RadixThemesBox,
 {css:({ ["padding"] : "1em", ["@media screen and (min-width: 0)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 30em)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 48em)"] : ({ ["display"] : "block" }), ["@media screen and (min-width: 62em)"] : ({ ["display"] : "none" }) })},
@@ -333,14 +450,14 @@ RadixThemesFlex,
 jsx(Box_f25d3c09d7bdff8b0c3e58c5f733b7ed,{},)
 ,jsx(Box_a3024561c54556fdec0036516b0350d9,{},)
 ,),jsx(RadixThemesSeparator,{css:({ ["margin"] : "0" }),size:"4"},)
-,jsx(Fragment_fd18886b13c8adaf58e8feab2dc67239,{},)
+,jsx(Fragment_5c6cba2c72d6272d3a9c7a20fc117f03,{},)
 ,),),),),),),),),jsx(
 RadixThemesBox,
 {css:({ ["padding"] : "1em", ["width"] : "100%" }),id:"my-content-area-el",ref:ref_my_content_area_el},
 jsx(
 RadixThemesFlex,
 {css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["minHeight"] : "85vh" })},
-jsx(Fragment_c7419b2e1029f3585e836e434f33b75f,{},)
+jsx(Fragment_fb8fc941a7e9db052a105106ec24a1cd,{},)
 ,),jsx(
 RadixThemesFlex,
 {css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["width"] : "100%" })},
@@ -491,130 +608,13 @@ RadixThemesBox,
 jsx(
 RadixThemesFlex,
 {css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["minHeight"] : "85vh" })},
-jsx(Fragment_c7419b2e1029f3585e836e434f33b75f,{},)
+jsx(Fragment_fb8fc941a7e9db052a105106ec24a1cd,{},)
 ,),),jsx(
 RadixThemesFlex,
 {css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["width"] : "100%" })},
 jsx(Link_6d8ef781efad3969e1ad202c69c43883,{},)
 ,),jsx(Iconbutton_53adde116165ab531c43c5cb8d60c677,{},)
 ,))),)
-  )
-}
-
-export function Callout__text_6245b77495a8797469f16933ce39ee2c () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-RadixThemesCallout.Text,
-{},
-reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.error_message
-,)
-  )
-}
-
-export function Root_bfab9d78e479cd4ec9720f1a3221ec31 () {
-  
-  const [addEvents, connectErrors] = useContext(EventLoopContext);
-  const ref_username = useRef(null); refs["ref_username"] = ref_username;
-  const ref_email = useRef(null); refs["ref_email"] = ref_email;
-  const ref_password = useRef(null); refs["ref_password"] = ref_password;
-  const ref_confirm_password = useRef(null); refs["ref_confirm_password"] = ref_confirm_password;
-
-  
-    const handleSubmit_fc3f6cdca031030dcda438e5f84c0aa7 = useCallback((ev) => {
-        const $form = ev.target
-        ev.preventDefault()
-        const form_data = {...Object.fromEntries(new FormData($form).entries()), ...({ ["email"] : getRefValue(refs["ref_email"]), ["password"] : getRefValue(refs["ref_password"]), ["confirm_password"] : getRefValue(refs["ref_confirm_password"]), ["username"] : getRefValue(refs["ref_username"]) })};
-
-        (((...args) => (addEvents([(Event("reflex___state____state.reflex_local_auth___local_auth____local_auth_state.reflex_local_auth___registration____registration_state.full_stack_python___auth___state____my_register_state.handle_registration_email", ({ ["form_data"] : form_data }), ({  })))], args, ({  }))))(ev));
-
-        if (false) {
-            $form.reset()
-        }
-    })
-    
-
-
-
-
-  
-  return (
-    jsx(
-RadixFormRoot,
-{className:"Root ",css:({ ["width"] : "100%" }),onSubmit:handleSubmit_fc3f6cdca031030dcda438e5f84c0aa7},
-jsx(
-RadixThemesFlex,
-{align:"start",className:"rx-Stack",css:({ ["minWidth"] : "50vw" }),direction:"column",gap:"3"},
-jsx(
-RadixThemesHeading,
-{size:"7"},
-"Create an account"
-,),jsx(Fragment_0a0db63c2f041324df215ada7971f5db,{},)
-,jsx(
-RadixThemesText,
-{as:"p"},
-"Username"
-,),jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),id:"username",name:"username",placeholder:"Username",ref:ref_username},)
-,jsx(
-RadixThemesText,
-{as:"p"},
-"Email"
-,),jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),id:"email",name:"email",placeholder:"Email",ref:ref_email,type:"email"},)
-,jsx(
-RadixThemesText,
-{as:"p"},
-"Password"
-,),jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),id:"password",name:"password",placeholder:"Password",ref:ref_password,type:"password"},)
-,jsx(
-RadixThemesText,
-{as:"p",css:({ ["type"] : "password" })},
-"Confirm password"
-,),jsx(RadixThemesTextField.Root,{css:({ ["width"] : "100%" }),id:"confirm_password",name:"confirm_password",placeholder:"Confirm Password",ref:ref_confirm_password,type:"password"},)
-,jsx(
-RadixThemesButton,
-{css:({ ["width"] : "100%" })},
-"Sign up"
-,),jsx(
-RadixThemesFlex,
-{css:({ ["display"] : "flex", ["alignItems"] : "center", ["justifyContent"] : "center", ["width"] : "100%" })},
-jsx(Link_f6469c84bb26aa9e7f77338335a919cb,{},)
-,),),)
-  )
-}
-
-export function Fragment_0a0db63c2f041324df215ada7971f5db () {
-  
-  const reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state = useContext(StateContexts.reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state)
-
-
-
-
-
-  
-  return (
-    jsx(
-Fragment,
-{},
-(!((reflex___state____state__reflex_local_auth___local_auth____local_auth_state__reflex_local_auth___registration____registration_state.error_message === "")) ? (jsx(
-Fragment,
-{},
-jsx(
-RadixThemesCallout.Root,
-{color:"red",css:({ ["icon"] : "triangle_alert", ["width"] : "" }),role:"alert"},
-jsx(
-RadixThemesCallout.Icon,
-{},
-jsx(LucideTriangleAlert,{},)
-,),jsx(Callout__text_6245b77495a8797469f16933ce39ee2c,{},)
-,),)) : (jsx(Fragment,{},)
-)),)
   )
 }
 
@@ -628,7 +628,7 @@ export default function Component() {
     jsx(
 Fragment,
 {},
-jsx(Fragment_8f68a2d50b75e44a4bef94de691285a6,{},)
+jsx(Fragment_d68d581e9761896e929f356fa8950847,{},)
 ,jsx(
 NextHead,
 {},
