@@ -13,21 +13,29 @@ BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
 if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
-# --- ESTADO PARA POSTS PÚBLICOS ---
 class ArticlePublicState(rx.State):
     posts: list[BlogPostModel] = []
+    limit: int = 100
 
-    def load_posts(self, limit: int = 100):
+    def load_posts(self):
+        """Carga los posts públicos usando el límite guardado en el estado."""
         with rx.session() as session:
             self.posts = session.exec(
                 select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user))
                 .where(BlogPostModel.publish_active == True)
                 .order_by(BlogPostModel.publish_date.desc())
-                .limit(limit)
+                .limit(self.limit)
             ).all()
+    
+    # --- CORRECCIÓN CLAVE ---
+    # Creamos un nuevo manejador de eventos que SÍ puede recibir un argumento.
+    def set_limit_and_load(self, limit: int):
+        """Primero establece el límite y luego carga los posts."""
+        self.limit = limit
+        return self.load_posts()
 
-# --- ESTADO PARA POSTS PRIVADOS Y EDICIÓN ---
+
 class BlogPostState(SessionState):
     posts: List[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
