@@ -14,28 +14,21 @@ if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
 # --- ESTADO PARA POSTS PÚBLICOS ---
-# Este estado se encarga de cargar y mostrar los posts que están marcados como 'publish_active'.
 class ArticlePublicState(rx.State):
     posts: list[BlogPostModel] = []
-    limit: int = 100 # Por defecto, muestra 100 posts
 
-    def load_posts(self, limit: int | None = None):
-        """Carga todos los posts que están publicados."""
-        if limit is not None:
-            self.limit = limit
+    def load_posts(self, limit: int = 100):
         with rx.session() as session:
-            # Selecciona los posts donde 'publish_active' es verdadero.
             self.posts = session.exec(
                 select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user))
                 .where(BlogPostModel.publish_active == True)
-                .order_by(BlogPostModel.publish_date.desc()) # Ordena por fecha de publicación
-                .limit(self.limit)
+                .order_by(BlogPostModel.publish_date.desc())
+                .limit(limit)
             ).all()
 
-# --- ESTADO PARA LOS POSTS PRIVADOS Y LA EDICIÓN ---
-# (Este es el código que ya habíamos corregido antes, asegúrate que se quede así)
+# --- ESTADO PARA POSTS PRIVADOS Y EDICIÓN ---
 class BlogPostState(SessionState):
-    """Manages all state for blog posts."""
     posts: List[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
     post_content: str = ""
@@ -80,11 +73,10 @@ class BlogPostState(SessionState):
             if self.my_userinfo_id is None:
                 self.posts = []
                 return
-            
             result = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
+                select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo))
+                .where(BlogPostModel.userinfo_id == self.my_userinfo_id)
             ).all()
             self.posts = result
 
@@ -99,9 +91,7 @@ class BlogPostState(SessionState):
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
-            if post is None:
-                return
-            if post.userinfo_id != self.my_userinfo_id:
+            if post is None or post.userinfo_id != self.my_userinfo_id:
                 return
 
             for key, value in updated_data.items():
@@ -114,14 +104,10 @@ class BlogPostState(SessionState):
     def to_blog_post(self, edit_page=False):
         if not self.post:
             return rx.redirect(BLOG_POSTS_ROUTE)
-        if edit_page:
-            return rx.redirect(self.blog_post_edit_url)
-        return rx.redirect(self.blog_post_url)
+        return rx.redirect(self.blog_post_edit_url if edit_page else self.blog_post_url)
 
 
 class BlogAddPostFormState(BlogPostState):
-    form_data: dict = {}
-
     def handle_submit(self, form_data: dict):
         data = form_data.copy()
         if self.my_userinfo_id:
@@ -133,8 +119,6 @@ class BlogAddPostFormState(BlogPostState):
 
 
 class BlogEditFormState(BlogPostState):
-    form_data: dict = {}
-
     @rx.var
     def publish_display_date(self) -> str:
         date_to_show = self.post.publish_date if self.post and self.post.publish_date else datetime.now()
@@ -150,25 +134,19 @@ class BlogEditFormState(BlogPostState):
         
         updated_data = {
             'title': form_data.get('title'),
-            'content': form_data.get('content')
+            'content': form_data.get('content'),
+            'publish_active': form_data.get('publish_active') == "on"
         }
-
-        publish_active = form_data.get('publish_active') == "on"
-        updated_data['publish_active'] = publish_active
         
         final_publish_date = None
-
-        if publish_active:
+        if updated_data['publish_active']:
             publish_date_str = form_data.get('publish_date')
             publish_time_str = form_data.get('publish_time')
-
             if publish_date_str and publish_time_str:
-                publish_input_string = f"{publish_date_str} {publish_time_str}"
                 try:
-                    final_publish_date = datetime.strptime(publish_input_string, "%Y-%m-%d %H:%M")
+                    final_publish_date = datetime.strptime(f"{publish_date_str} {publish_time_str}", "%Y-%m-%d %H:%M")
                 except ValueError:
-                    print(f"Error al convertir la fecha y hora: {publish_input_string}")
-                    final_publish_date = self.post.publish_date if self.post else None
+                    final_publish_date = datetime.now()
             else:
                 final_publish_date = datetime.now()
         

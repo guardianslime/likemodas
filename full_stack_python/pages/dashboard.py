@@ -1,7 +1,7 @@
 import reflex as rx 
 
 # --- CORRECCIÓN ---
-# Se importa el componente para listar posts desde el módulo 'blog', no 'articles'.
+# Apuntamos a la carpeta 'blog' para obtener el componente que lista los posts públicos.
 from ..blog.list import blog_public_list_component
 
 def dashboard_component() -> rx.Component:
@@ -10,10 +10,10 @@ def dashboard_component() -> rx.Component:
     """
     return rx.box(
         rx.heading("Bienvenido de nuevo", size='2'),
-        rx.divider(margin_y='1em'), # margin_y es un atajo para margin_top y margin_bottom
+        # Usar margin_y es un atajo para margin_top y margin_bottom.
+        rx.divider(margin_y='1em'), 
         
-        # --- CORRECCIÓN ---
-        # Usamos el nuevo componente que carga los posts públicos desde el módulo 'blog'.
+        # Usamos el componente correcto que ahora vive en el módulo del blog.
         blog_public_list_component(columns=3, limit=20),
         
         min_height="85vh",

@@ -14,7 +14,7 @@ def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
         href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
     )
 
-# --- Componente para la lista privada del usuario (su dashboard de posts) ---
+# --- Componente para la lista PRIVADA del usuario ---
 def blog_post_list_item(post: BlogPostModel):
     return rx.box(
         blog_post_detail_link(    
@@ -27,14 +27,13 @@ def blog_post_list_item(post: BlogPostModel):
             color_scheme="green" if post.publish_active else "orange",
         ),
         padding="1em",
-        border="1px solid #ddd",
+        border="1px solid #444",
         border_radius="8px",
         width="100%"
     )
 
 @reflex_local_auth.require_login
 def blog_post_list_page() -> rx.Component:
-    """Página que muestra la lista de posts creados por el usuario."""
     return base_page(
         rx.vstack(
             rx.heading("Mis Publicaciones", size="8"),
@@ -52,9 +51,8 @@ def blog_post_list_page() -> rx.Component:
         )
     )
 
-# --- Componente para mostrar posts públicos (usado en el dashboard) ---
+# --- Componente para la lista PÚBLICA (usado en el dashboard) ---
 def blog_public_card(post: BlogPostModel):
-    """Una tarjeta individual para un post público."""
     return rx.card(
         blog_post_detail_link(
             rx.flex(
@@ -68,19 +66,14 @@ def blog_public_card(post: BlogPostModel):
             ),
             post
         ), 
-        as_child=True, # Hace que toda la tarjeta sea un enlace.
+        as_child=True,
         size="2"
     )
 
 def blog_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -> rx.Component:
-    """
-    Un componente de cuadrícula que muestra una lista de posts públicos.
-    Este reemplaza al antiguo 'article_public_list_component'.
-    """
     return rx.grid(
         rx.foreach(state.ArticlePublicState.posts, blog_public_card),
         columns=f'{columns}',
         spacing=f'{spacing}',
-        # Carga los posts públicos cuando el componente aparece en pantalla.
         on_mount=lambda: state.ArticlePublicState.load_posts(limit=limit)
     )
