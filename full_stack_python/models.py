@@ -73,17 +73,13 @@ class BlogPostModel(rx.Model, table=True):
 
 
 class ContactEntryModel(rx.Model, table=True):
-    # ¡CORRECCIÓN! Se elimina el campo `user_id` que era redundante.
-    # La relación se maneja a través de `userinfo_id`.
+   # ¡CORRECCIÓN! Se hace obligatorio que un post tenga un autor eliminando `default=None`.
+    userinfo_id: int = Field(foreign_key="userinfo.id")
+    # ¡CORRECCIÓN! La relación con el autor ya no es opcional.
+    userinfo: "UserInfo" = Relationship(back_populates="posts")
     
-    # ¡CORRECCIÓN! Se hace el tipo explícitamente Opcional para mayor claridad.
-    userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
-    userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
-    
-    first_name: str
-    last_name: str | None = None
-    email: str | None = None
-    message: str
+    title: str
+    content: str
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -91,4 +87,20 @@ class ContactEntryModel(rx.Model, table=True):
             "server_default": sqlalchemy.func.now()
         },
         nullable=False
+    )
+    updated_at: datetime = Field(
+        default_factory=utils.timing.get_utc_now,
+        sa_type=sqlalchemy.DateTime(timezone=True),
+        sa_column_kwargs={
+            "onupdate": sqlalchemy.func.now(),
+            "server_default": sqlalchemy.func.now()
+        },
+        nullable=False
+    )
+    publish_active: bool = False
+    publish_date: datetime = Field(
+        default=None,
+        sa_type=sqlalchemy.DateTime(timezone=True),
+        sa_column_kwargs={},
+        nullable=True
     )
