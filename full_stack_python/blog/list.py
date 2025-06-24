@@ -1,99 +1,97 @@
 import reflex as rx 
-import reflex_local_auth
-from .. import navigation
+
 from ..ui.base import base_page
-from ..models import BlogPostModel
 from . import state
+from .notfound import blog_post_not_found
 
-def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
+@rx.page(route="/blog/[blog_id]", on_load=state.BlogPostState.get_post_detail)
+def blog_post_detail_page() -> rx.Component:
     """
-    Envuelve un componente en un enlace a la página de detalle del post.
-    Usa rx.cond para manejar de forma segura el caso de que el post no exista.
-    """
-    return rx.cond(
-        post & post.id,
-        rx.link(
-            child,
-            href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
-        ),
-        rx.fragment(child)
-    )
-
-def blog_post_list_item(post: BlogPostModel):
-    """
-    Muestra un solo post en la lista privada del usuario.
+    Muestra la página de detalles de un solo post del blog.
     CORREGIDO para usar solo herramientas de Reflex en la UI.
     """
-    return rx.box(
-        blog_post_detail_link(    
-            rx.heading(post.title, size="5"),
-            post
-        ),
-        # --- CORRECCIÓN FINAL ---
-        # El método .to_string() no acepta argumentos.
-        # Simplemente lo llamamos para convertir la fecha a un string.
-        rx.text("Creado el: ", rx.text(post.created_at.to_string(), as_="span")),
-        
-        rx.text(
-            rx.cond(post.publish_active, "Publicado", "Borrador"),
-            color_scheme=rx.cond(post.publish_active, "green", "orange"),
-            font_weight="bold",
-        ),
-        padding="1em",
-        border="1px solid #444",
-        border_radius="8px",
-        width="100%"
+    
+    is_owner = (
+        state.BlogPostState.is_authenticated & 
+        (state.BlogPostState.post.userinfo_id == state.BlogPostState.my_userinfo_id)
     )
 
-@reflex_local_auth.require_login
-def blog_post_list_page() -> rx.Component:
-    """Página que muestra la lista de posts creados por el usuario."""
-    return base_page(
-        rx.vstack(
-            rx.heading("Mis Publicaciones", size="8"),
-            rx.link(
-                rx.button("Nueva Publicación"),
-                href=navigation.routes.BLOG_POST_ADD_ROUTE
+    # CORRECCIÓN: Lógica condicional usando rx.cond para evitar errores de tipo.
+    user_info_display = rx.cond(
+        state.BlogPostState.post.userinfo,
+        rx.hstack(
+            # Se usa el primer caracter del email como fallback. No se usa .upper().
+            rx.avatar(fallback=state.BlogPostState.post.userinfo.email[0]),
+            rx.text(
+                "Por ",
+                rx.link(
+                    state.BlogPostState.post.userinfo.email,
+                    font_weight="bold",
+                ),
+                color_scheme="gray",
             ),
-            rx.foreach(state.BlogPostState.posts, blog_post_list_item),
-            spacing="5",
+            spacing="3",
             align="center",
+        ),
+        rx.text("Cargando autor...", color_scheme="gray")
+    )
+
+    # CORRECCIÓN: Lógica para mostrar la fecha de publicación.
+    publish_date_display = rx.cond(
+        state.BlogPostState.post.publish_active & state.BlogPostState.post.publish_date,
+         rx.text(
+            "Publicado el: ",
+            # No se puede usar .strftime(). Usamos .to_string() sin argumentos.
+            rx.text(state.BlogPostState.post.publish_date.to_string(), as_="span"),
+            color_scheme="gray",
+        ),
+        rx.text("No publicado", color_scheme="gray"),
+    )
+
+    content = rx.vstack(
+        rx.hstack(
+            rx.heading(state.BlogPostState.post.title, size="8", text_align="left"),
+            rx.cond(
+                is_owner,
+                rx.link(
+                    rx.button("Editar Post", color_scheme="grass"),
+                    href=state.BlogPostState.blog_post_edit_url,
+                ),
+            ),
+            justify="between",
+            align="start",
             width="100%",
-            max_width="960px",
-            padding_x="1em",
+        ),
+        user_info_display,
+        publish_date_display,
+        rx.divider(width="100%"),
+        rx.box(
+            rx.markdown(
+                state.BlogPostState.post.content,
+                component_map={
+                    "a": lambda text, **props: rx.link(text, **props, color_scheme="grass"),
+                }
+            ),
+            padding_top="1rem",
+            width="100%",
+            align="start",
+        ),
+        spacing="5",
+        align="start",
+        width="100%",
+        max_width="960px",
+        padding="1rem",
+    )
+
+    main_component = rx.cond(
+        state.BlogPostState.post, 
+        content,
+        blog_post_not_found()
+    )
+    
+    return base_page(
+        rx.center(
+            main_component,
             min_height="85vh",
         )
-    )
-
-def blog_public_card(post: BlogPostModel):
-    """Una tarjeta individual para un post público."""
-    return rx.card(
-        blog_post_detail_link(
-            rx.flex(
-                rx.box(
-                    rx.heading(post.title, size="4"),
-                    rx.cond(
-                        post.userinfo,
-                        rx.text(f"Por {post.userinfo.email}"),
-                        rx.text("Autor desconocido")
-                    ),
-                ),
-                spacing="2",
-                direction="column",
-                align="start"
-            ),
-            post
-        ), 
-        as_child=True,
-        size="2"
-    )
-
-def blog_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -> rx.Component:
-    """Un componente de cuadrícula que muestra una lista de posts públicos."""
-    return rx.grid(
-        rx.foreach(state.ArticlePublicState.posts, blog_public_card),
-        columns=f'{columns}',
-        spacing=f'{spacing}',
-        width="100%",
-        on_mount=state.ArticlePublicState.set_limit_and_load(limit)
     )
