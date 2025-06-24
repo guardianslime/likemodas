@@ -8,7 +8,7 @@ BACKEND_PRODUCTION_URL = "https://web-production-15ad.up.railway.app"
 # La URL donde vivirá tu frontend (Vercel)
 # EN TU ARCHIVO ACTUALMENTE
 # CÓDIGO CORREGIDO
-FRONTEND_PRODUCTION_URL = "https://full-stack-python.vercel.app"  # ¡Asegúrate que esta sea tu URL de Vercel!
+FRONTEND_PRODUCTION_URL = "https://full-stack-python-git-main-guardianslimes-projects.vercel.app"  # ¡Asegúrate que esta sea tu URL de Vercel!
 
 class FullStackPythonConfig(rx.Config):
     app_name = "full_stack_python"
