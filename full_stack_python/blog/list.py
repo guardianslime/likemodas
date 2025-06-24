@@ -6,6 +6,10 @@ from ..models import BlogPostModel
 from . import state
 
 def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
+    """
+    Envuelve un componente en un enlace a la página de detalle del post.
+    Usa rx.cond para manejar de forma segura el caso de que el post no exista.
+    """
     return rx.cond(
         post & post.id,
         rx.link(
@@ -15,21 +19,25 @@ def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
         rx.fragment(child)
     )
 
-# --- Componente para la lista PRIVADA del usuario ---
 def blog_post_list_item(post: BlogPostModel):
+    """
+    Muestra un solo post en la lista privada del usuario.
+    CORREGIDO para usar solo herramientas de Reflex en la UI.
+    """
     return rx.box(
         blog_post_detail_link(    
             rx.heading(post.title, size="5"),
             post
         ),
-        # --- CORRECCIÓN CLAVE ---
-        # No se puede usar .strftime() en una rx.Var.
-        # Usamos .to_string() para formatear la fecha correctamente en la UI.
-        rx.text("Creado el: ", rx.text(post.created_at.to_string(date_style="short"))),
+        # --- CORRECCIÓN FINAL ---
+        # El método .to_string() no acepta argumentos.
+        # Simplemente lo llamamos para convertir la fecha a un string.
+        rx.text("Creado el: ", rx.text(post.created_at.to_string(), as_="span")),
         
         rx.text(
             rx.cond(post.publish_active, "Publicado", "Borrador"),
             color_scheme=rx.cond(post.publish_active, "green", "orange"),
+            font_weight="bold",
         ),
         padding="1em",
         border="1px solid #444",
@@ -39,6 +47,7 @@ def blog_post_list_item(post: BlogPostModel):
 
 @reflex_local_auth.require_login
 def blog_post_list_page() -> rx.Component:
+    """Página que muestra la lista de posts creados por el usuario."""
     return base_page(
         rx.vstack(
             rx.heading("Mis Publicaciones", size="8"),
@@ -56,8 +65,8 @@ def blog_post_list_page() -> rx.Component:
         )
     )
 
-# --- Componente para la lista PÚBLICA ---
 def blog_public_card(post: BlogPostModel):
+    """Una tarjeta individual para un post público."""
     return rx.card(
         blog_post_detail_link(
             rx.flex(
@@ -80,6 +89,7 @@ def blog_public_card(post: BlogPostModel):
     )
 
 def blog_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -> rx.Component:
+    """Un componente de cuadrícula que muestra una lista de posts públicos."""
     return rx.grid(
         rx.foreach(state.ArticlePublicState.posts, blog_public_card),
         columns=f'{columns}',
