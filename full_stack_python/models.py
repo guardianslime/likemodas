@@ -73,10 +73,22 @@ class BlogPostModel(rx.Model, table=True):
 
 
 class ContactEntryModel(rx.Model, table=True):
-    # ¡CORRECCIÓN! Hacemos 'last_name' y 'email' explícitamente opcionales
-    # para que coincida con la lógica del formulario y evitar errores.
+    # ¡CORRECCIÓN! Se elimina el campo `user_id` que era redundante.
+    # La relación se maneja a través de `userinfo_id`.
+    
+    # ¡CORRECCIÓN! Se hace el tipo explícitamente Opcional para mayor claridad.
+    userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
+    userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
+    
     first_name: str
-    last_name: Optional[str]
-    email: Optional[str] 
+    last_name: str | None = None
+    email: str | None = None
     message: str
-    userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfomodel.id")
+    created_at: datetime = Field(
+        default_factory=utils.timing.get_utc_now,
+        sa_type=sqlalchemy.DateTime(timezone=True),
+        sa_column_kwargs={
+            "server_default": sqlalchemy.func.now()
+        },
+        nullable=False
+    )
