@@ -1,76 +1,84 @@
-# full_stack_python/contact/page.py
+# guardianslime/full-stack-python/full-stack-python-8c473aa59b63fc9e7a7075ae9cbea38efb6553ed/full_stack_python/contact/page.py
+
 import reflex as rx 
 from ..ui.base import base_page
 from ..models import ContactEntryModel
 from . import form, state
 
 def contact_entry_list_item(contact: ContactEntryModel):
-    """Muestra una entrada de contacto individual en la lista."""
+    """
+    Muestra una entrada de contacto individual.
+    """
     return rx.box(
-        rx.hstack(
-            rx.heading(contact.first_name, size="3"),
-            rx.text(contact.last_name or ""),
-            spacing="2",
+        rx.heading(contact.first_name),
+        rx.text("Messages:", contact.message),
+        rx.cond(
+            contact.userinfo_id,
+            rx.text("User associated, ID:", f"{contact.userinfo_id}"),
+            rx.fragment("")
         ),
-        rx.text(contact.email or "No email provided"),
-        rx.text("Message:", contact.message),
-        padding="1em",
-        border_width="1px",
-        border_radius="md",
-        width="100%",
+        padding="1em"
     )
 
 def contact_entries_list_page() -> rx.Component:
-    """Página que lista todas las entradas de contacto."""
+    """
+    Página que lista todas las entradas de contacto.
+    """
+    # ¡MEJORA! Usamos rx.cond para mostrar un mensaje si la lista de entradas está vacía.
     return base_page(
         rx.vstack(
-            rx.heading("Contact Entries", size="7"),
-            rx.text("Messages submitted through the contact form."),
-            # ¡CORRECCIÓN CLAVE! Este rx.cond ahora funcionará.
+            rx.heading("Contact Entries", size="5"),
             rx.cond(
-                state.ContactState.entries,
-                # Si la lista NO está vacía, la muestra.
-                rx.vstack(
-                    rx.foreach(
-                        state.ContactState.entries,
-                        contact_entry_list_item,
-                    ),
-                    spacing="4",
-                    width="100%",
+                state.ContactState.entries,  # Esto evalúa si la lista no está vacía
+                # Si hay entradas, las muestra con rx.foreach
+                rx.foreach(
+                    state.ContactState.entries,
+                    contact_entry_list_item
                 ),
-                # Si la lista ESTÁ vacía, muestra este mensaje.
+                # Si la lista está vacía, muestra este mensaje
                 rx.box(
                     rx.text("No contact entries have been submitted yet."),
-                    padding_y="2em",
+                    padding_top="2em"
                 )
             ),
-            spacing="4",
+            spacing="5",
             align="center",
-            width=["90vw", "80vw", "60vw"],
+            min_height="85vh",
         ),
-        on_load=state.ContactState.list_entries,
+        on_load=state.ContactState.list_entries
     )
 
 def contact_page() -> rx.Component:
-    """Página con el formulario de contacto."""
-    return base_page(
-        rx.vstack(
-            rx.heading("Contact Us", size="9"),
-            rx.cond(
-                state.ContactState.did_submit,
+    """
+    Página con el formulario de contacto.
+    """
+    my_child = rx.vstack(
+            rx.heading("Contact us", size="9"),
+            rx.cond(state.ContactState.did_submit, state.ContactState.thank_you, ""),
+            rx.desktop_only(
                 rx.box(
-                    rx.icon("check_circle", size=32, color="green"),
-                    rx.text(state.ContactState.thank_you),
-                    padding="1em",
-                    border="1px solid green",
-                    border_radius="md",
-                ),
-                form.contact_form(),
+                    form.contact_form(),
+                    width="50vw"
+                )
+            ),
+            rx.tablet_only(
+                rx.box(
+                    form.contact_form(),
+                    width="75vw"
+                )
+            ),
+            rx.mobile_only(
+                rx.box(
+                    form.contact_form(),
+                    id= "my-form-box",
+                    width="85vw"
+                )
             ),
             spacing="5",
             justify="center",
             align="center",
             min_height="85vh",
-            width="100%",
+            id='my-child'
         )
-    )
+    
+    return base_page(my_child)
