@@ -1,3 +1,5 @@
+# guardianslime/full-stack-python/full-stack-python-8c473aa59b63fc9e7a7075ae9cbea38efb6553ed/full_stack_python/contact/state.py
+
 from __future__ import annotations
 import asyncio
 import reflex as rx
@@ -44,9 +46,23 @@ class ContactState(SessionState):
         self.did_submit = False
         self.form_data = {}
 
-    def list_entries(self):
-         """Carga todas las entradas de contacto desde la base de datos."""
-         with rx.session() as session:
+    # ¡FUNCIÓN CORREGIDA!
+    # Ahora es una función asíncrona que maneja el estado de carga.
+    async def list_entries(self):
+        """Carga las entradas de contacto y maneja el estado de carga."""
+        self.is_loading = True
+        yield  # Permite que la UI muestre el indicador de carga
+
+        try:
+            # Añadimos una pequeña pausa para que el indicador sea visible
+            # incluso en conexiones rápidas, mejorando la experiencia de usuario.
+            await asyncio.sleep(0.5)
+            with rx.session() as session:
                 self.entries = session.exec(
                     rx.select(ContactEntryModel)
                 ).all()
+        finally:
+            # Críticamente, nos aseguramos de que is_loading se ponga en False
+            # al final de la operación, para ocultar el indicador de carga.
+            self.is_loading = False
+            yield
