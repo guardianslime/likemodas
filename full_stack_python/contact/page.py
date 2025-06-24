@@ -1,3 +1,5 @@
+# guardianslime/full-stack-python/full-stack-python-8c473aa59b63fc9e7a7075ae9cbea38efb6553ed/full_stack_python/contact/page.py
+
 import reflex as rx 
 from ..ui.base import base_page
 from ..models import ContactEntryModel
@@ -6,13 +8,11 @@ from . import form, state
 def contact_entry_list_item(contact: ContactEntryModel):
     """
     Muestra una entrada de contacto individual.
-    La corrección está en la línea `rx.cond` para usar `contact.userinfo_id`.
     """
     return rx.box(
         rx.heading(contact.first_name),
         rx.text("Messages:", contact.message),
-        # ¡CORRECCIÓN! Se cambió contact.user_id por contact.userinfo_id.
-        # Esto verifica si la entrada de contacto está asociada a un usuario.
+        # Verifica si la entrada de contacto está asociada a un usuario.
         rx.cond(
             contact.userinfo_id,
             rx.text("User associated, ID:", f"{contact.userinfo_id}"),
@@ -22,6 +22,9 @@ def contact_entry_list_item(contact: ContactEntryModel):
     )
 
 def contact_entries_list_page() -> rx.Component:
+    # La corrección principal está aquí: se añade el evento on_load.
+    # Esto le dice a la página que ejecute ContactState.list_entries
+    # tan pronto como la página se cargue en el navegador.
     return base_page(
         rx.vstack(
             rx.heading("Contact Entries", size="5"),
@@ -32,7 +35,8 @@ def contact_entries_list_page() -> rx.Component:
             spacing="5",
             align="center",
             min_height="85vh",
-        )
+        ),
+        on_load=state.ContactState.list_entries  # <-- ¡ESTA ES LA LÍNEA CLAVE DE LA CORRECCIÓN!
     )
 
 def contact_page() -> rx.Component:
