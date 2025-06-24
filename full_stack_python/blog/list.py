@@ -59,17 +59,17 @@ def blog_public_card(post: BlogPostModel):
             rx.flex(
                 rx.box(
                     rx.heading(post.title, size="4"),
-                    # --- CORRECCIÓN ---
-                    # Usamos rx.cond para la lógica condicional en la UI.
-                    # Esto comprueba si 'post.userinfo' Y 'post.userinfo.user' existen.
+                    # --- CORRECCIÓN FINAL ---
+                    # La ruta correcta al email es post.userinfo.email
+                    # Comprobamos que userinfo exista antes de intentar acceder a .email
                     rx.cond(
-                        post.userinfo & post.userinfo.user,
-                        rx.text(f"Por {post.userinfo.user.email}"), # Si existen, muestra el email
-                        rx.text("Autor desconocido") # Si no, muestra este texto
+                        post.userinfo,
+                        rx.text(f"Por {post.userinfo.email}"), # Ruta correcta
+                        rx.text("Autor desconocido")
                     ),
                 ),
                 spacing="2",
-                direction="column", # Asegura que el autor se muestre debajo del título
+                direction="column",
                 align="start"
             ),
             post
