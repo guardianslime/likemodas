@@ -51,18 +51,26 @@ def blog_post_list_page() -> rx.Component:
         )
     )
 
-# --- Componente para la lista PÚBLICA (usado en el dashboard) ---
+# --- Componente para la lista PÚBLICA (usado en el dashboard y landing page) ---
 def blog_public_card(post: BlogPostModel):
+    """Una tarjeta individual para un post público."""
     return rx.card(
         blog_post_detail_link(
             rx.flex(
                 rx.box(
                     rx.heading(post.title, size="4"),
-                    rx.text(
-                        f"Por {post.userinfo.user.email}" if post.userinfo and post.userinfo.user else "Autor desconocido"
+                    # --- CORRECCIÓN ---
+                    # Usamos rx.cond para la lógica condicional en la UI.
+                    # Esto comprueba si 'post.userinfo' Y 'post.userinfo.user' existen.
+                    rx.cond(
+                        post.userinfo & post.userinfo.user,
+                        rx.text(f"Por {post.userinfo.user.email}"), # Si existen, muestra el email
+                        rx.text("Autor desconocido") # Si no, muestra este texto
                     ),
                 ),
                 spacing="2",
+                direction="column", # Asegura que el autor se muestre debajo del título
+                align="start"
             ),
             post
         ), 
@@ -75,5 +83,6 @@ def blog_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -> r
         rx.foreach(state.ArticlePublicState.posts, blog_public_card),
         columns=f'{columns}',
         spacing=f'{spacing}',
+        width="100%",
         on_mount=lambda: state.ArticlePublicState.load_posts(limit=limit)
     )
