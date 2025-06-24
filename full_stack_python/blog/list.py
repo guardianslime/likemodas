@@ -7,11 +7,20 @@ from . import state
 
 # --- Componente reutilizable para el enlace de detalle ---
 def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
-    if not post or not post.id:
-        return rx.fragment(child)
-    return rx.link(
-        child,
-        href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
+    """
+    Envuelve un componente en un enlace a la página de detalle del post.
+    Usa rx.cond para manejar de forma segura el caso de que el post no exista.
+    """
+    return rx.cond(
+        # Condición: El post y su ID deben existir.
+        post & post.id,
+        # Si la condición es verdadera, crea el enlace.
+        rx.link(
+            child,
+            href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
+        ),
+        # Si es falsa, muestra el componente hijo sin enlace.
+        rx.fragment(child)
     )
 
 # --- Componente para la lista PRIVADA del usuario ---
@@ -59,12 +68,10 @@ def blog_public_card(post: BlogPostModel):
             rx.flex(
                 rx.box(
                     rx.heading(post.title, size="4"),
-                    # --- CORRECCIÓN FINAL ---
-                    # La ruta correcta al email es post.userinfo.email
-                    # Comprobamos que userinfo exista antes de intentar acceder a .email
+                    # Usamos rx.cond para la lógica condicional en la UI.
                     rx.cond(
                         post.userinfo,
-                        rx.text(f"Por {post.userinfo.email}"), # Ruta correcta
+                        rx.text(f"Por {post.userinfo.email}"),
                         rx.text("Autor desconocido")
                     ),
                 ),
