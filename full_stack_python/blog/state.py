@@ -13,78 +13,67 @@ BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
 if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
-class ArticlePublicState(rx.State):
-    posts: list[BlogPostModel] = []
-    limit: int = 100
-
-    def load_posts(self):
-        """Carga los posts públicos usando el límite guardado en el estado."""
-        with rx.session() as session:
-            self.posts = session.exec(
-                select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user))
-                .where(BlogPostModel.publish_active == True)
-                .order_by(BlogPostModel.publish_date.desc())
-                .limit(self.limit)
-            ).all()
-    
-    # --- CORRECCIÓN CLAVE ---
-    # Creamos un nuevo manejador de eventos que SÍ puede recibir un argumento.
-    def set_limit_and_load(self, limit: int):
-        """Primero establece el límite y luego carga los posts."""
-        self.limit = limit
-        return self.load_posts()
-
-
 class BlogPostState(SessionState):
-    posts: List[BlogPostModel] = []
-    post: Optional[BlogPostModel] = None
+    posts: List["BlogPostModel"] = []
+    post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
 
     @rx.var
-    def blog_post_id(self) -> str:
+    def blog_post_id(self) -> str:  # Añadida la anotación de tipo -> str
         return self.router.page.params.get("blog_id", "")
 
     @rx.var
-    def blog_post_url(self) -> str:
+    def blog_post_url(self) -> str: # Añadida la anotación de tipo -> str
         if not self.post:
-            return BLOG_POSTS_ROUTE
+            return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
 
     @rx.var
-    def blog_post_edit_url(self) -> str:
+    def blog_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
         if not self.post:
-            return BLOG_POSTS_ROUTE
+            return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
     def get_post_detail(self):
+        if self.my_userinfo_id is None:
+            self.post = None
+            self.post_content = ""
+            self.post_publish_active = False
+            return
+        lookups = (
+            (BlogPostModel.userinfo_id == self.my_userinfo_id) &
+            (BlogPostModel.id == self.blog_post_id)
+        )
         with rx.session() as session:
-            if not self.blog_post_id:
+            if self.blog_post_id == "":
                 self.post = None
                 return
-
             sql_statement = select(BlogPostModel).options(
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
-            ).where(BlogPostModel.id == self.blog_post_id)
-            
+            ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
+            # if result.userinfo: # db lookup
+            #     print('working')
+            #     result.userinfo.user
             self.post = result
-            if result:
-                self.post_content = self.post.content
-                self.post_publish_active = self.post.publish_active
-            else:
+            if result is None:
                 self.post_content = ""
+                return
+            self.post_content = self.post.content
+            self.post_publish_active = self.post.publish_active
 
     def load_posts(self, *args, **kwargs):
+        # if published_only:
+        #     lookup_args = (
+        #         (BlogPostModel.publish_active == True) &
+        #         (BlogPostModel.publish_date < datetime.now())
+        #     )
         with rx.session() as session:
-            if self.my_userinfo_id is None:
-                self.posts = []
-                return
             result = session.exec(
-                select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo))
-                .where(BlogPostModel.userinfo_id == self.my_userinfo_id)
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
+                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
             ).all()
             self.posts = result
 
@@ -98,10 +87,13 @@ class BlogPostState(SessionState):
 
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
-            post = session.get(BlogPostModel, post_id)
-            if post is None or post.userinfo_id != self.my_userinfo_id:
+            post = session.exec(
+                select(BlogPostModel).where(
+                    BlogPostModel.id == post_id
+                )
+            ).one_or_none()
+            if post is None:
                 return
-
             for key, value in updated_data.items():
                 setattr(post, key, value)
             session.add(post)
@@ -112,53 +104,61 @@ class BlogPostState(SessionState):
     def to_blog_post(self, edit_page=False):
         if not self.post:
             return rx.redirect(BLOG_POSTS_ROUTE)
-        return rx.redirect(self.blog_post_edit_url if edit_page else self.blog_post_url)
+        if edit_page:
+            return rx.redirect(f"{self.blog_post_edit_url}")
+        return rx.redirect(f"{self.blog_post_url}")
 
 
 class BlogAddPostFormState(BlogPostState):
-    def handle_submit(self, form_data: dict):
+    form_data: dict = {}
+
+    def handle_submit(self, form_data):
         data = form_data.copy()
-        if self.my_userinfo_id:
+        if self.my_userinfo_id is not None:
             data['userinfo_id'] = self.my_userinfo_id
-        data['publish_active'] = False
-        data['publish_date'] = None
+        self.form_data = data
         self.add_post(data)
         return self.to_blog_post(edit_page=True)
 
 
 class BlogEditFormState(BlogPostState):
+    form_data: dict = {}
+
     @rx.var
     def publish_display_date(self) -> str:
-        date_to_show = self.post.publish_date if self.post and self.post.publish_date else datetime.now()
-        return date_to_show.strftime("%Y-%m-%d")
+        if not self.post:
+            return datetime.now().strftime("%Y-%m-%d")
+        if not self.post.publish_date:
+            return datetime.now().strftime("%Y-%m-%d")
+        return self.post.publish_date.strftime("%Y-%m-%d")
 
     @rx.var
     def publish_display_time(self) -> str:
-        time_to_show = self.post.publish_date if self.post and self.post.publish_date else datetime.now()
-        return time_to_show.strftime("%H:%M")
+        if not self.post:
+            return datetime.now().strftime("%H:%M:%S")
+        if not self.post.publish_date:
+            return datetime.now().strftime("%H:%M:%S")
+        return self.post.publish_date.strftime("%H:%M:%S")
 
-    def handle_submit(self, form_data: dict):
-        post_id = int(form_data.pop('post_id'))
-        
-        updated_data = {
-            'title': form_data.get('title'),
-            'content': form_data.get('content'),
-            'publish_active': form_data.get('publish_active') == "on"
-        }
-        
-        final_publish_date = None
-        if updated_data['publish_active']:
-            publish_date_str = form_data.get('publish_date')
-            publish_time_str = form_data.get('publish_time')
-            if publish_date_str and publish_time_str:
-                try:
-                    final_publish_date = datetime.strptime(f"{publish_date_str} {publish_time_str}", "%Y-%m-%d %H:%M")
-                except ValueError:
-                    final_publish_date = datetime.now()
-            else:
-                final_publish_date = datetime.now()
-        
+    def handle_submit(self, form_data):
+        self.form_data = form_data
+        post_id = form_data.pop('post_id')
+        publish_date = None
+        if 'publish_date' in form_data:
+            publish_date = form_data.pop('publish_date')
+        publish_time = None
+        if 'publish_time' in form_data:
+            publish_time = form_data.pop('publish_time')
+        publish_input_string = f"{publish_date} {publish_time}"
+        try:
+            final_publish_date = datetime.strptime(publish_input_string, "%Y-%m-%d %H:%M:%S")
+        except:
+            final_publish_date = None
+        publish_active = False
+        if 'publish_active' in form_data:
+            publish_active = form_data.pop('publish_active') == "on"
+        updated_data = {**form_data}
+        updated_data['publish_active'] = publish_active
         updated_data['publish_date'] = final_publish_date
-
         self.save_post_edits(post_id, updated_data)
         return self.to_blog_post()

@@ -1,97 +1,49 @@
 import reflex as rx 
-
+import reflex_local_auth
+from .. import navigation
 from ..ui.base import base_page
+from ..models import BlogPostModel
 from . import state
-from .notfound import blog_post_not_found
 
-@rx.page(route="/blog/[blog_id]", on_load=state.BlogPostState.get_post_detail)
-def blog_post_detail_page() -> rx.Component:
-    """
-    Muestra la página de detalles de un solo post del blog.
-    CORREGIDO para usar solo herramientas de Reflex en la UI.
-    """
-    
-    is_owner = (
-        state.BlogPostState.is_authenticated & 
-        (state.BlogPostState.post.userinfo_id == state.BlogPostState.my_userinfo_id)
+def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
+    if post is None:
+        return rx.fragment(child)
+    post_id = post.id
+    if post_id is None:
+        return rx.fragment(child)
+    root_path = navigation.routes.BLOG_POSTS_ROUTE
+    post_detail_url = f"{root_path}/{post_id}"
+    return rx.link(
+        child,
+        rx.heading("by ", post.userinfo.email),
+        href=post_detail_url
     )
 
-    # CORRECCIÓN: Lógica condicional usando rx.cond para evitar errores de tipo.
-    user_info_display = rx.cond(
-        state.BlogPostState.post.userinfo,
-        rx.hstack(
-            # Se usa el primer caracter del email como fallback. No se usa .upper().
-            rx.avatar(fallback=state.BlogPostState.post.userinfo.email[0]),
-            rx.text(
-                "Por ",
-                rx.link(
-                    state.BlogPostState.post.userinfo.email,
-                    font_weight="bold",
-                ),
-                color_scheme="gray",
-            ),
-            spacing="3",
-            align="center",
+def blog_post_list_item(post: BlogPostModel):
+    return rx.box(
+        blog_post_detail_link(    
+            rx.heading(post.title),
+            post
         ),
-        rx.text("Cargando autor...", color_scheme="gray")
+        padding="1em"
     )
 
-    # CORRECCIÓN: Lógica para mostrar la fecha de publicación.
-    publish_date_display = rx.cond(
-        state.BlogPostState.post.publish_active & state.BlogPostState.post.publish_date,
-         rx.text(
-            "Publicado el: ",
-            # No se puede usar .strftime(). Usamos .to_string() sin argumentos.
-            rx.text(state.BlogPostState.post.publish_date.to_string(), as_="span"),
-            color_scheme="gray",
-        ),
-        rx.text("No publicado", color_scheme="gray"),
-    )
+# def foreach_callback(text):
+#     return rx.box(rx.text(text))
 
-    content = rx.vstack(
-        rx.hstack(
-            rx.heading(state.BlogPostState.post.title, size="8", text_align="left"),
-            rx.cond(
-                is_owner,
-                rx.link(
-                    rx.button("Editar Post", color_scheme="grass"),
-                    href=state.BlogPostState.blog_post_edit_url,
-                ),
-            ),
-            justify="between",
-            align="start",
-            width="100%",
-        ),
-        user_info_display,
-        publish_date_display,
-        rx.divider(width="100%"),
-        rx.box(
-            rx.markdown(
-                state.BlogPostState.post.content,
-                component_map={
-                    "a": lambda text, **props: rx.link(text, **props, color_scheme="grass"),
-                }
-            ),
-            padding_top="1rem",
-            width="100%",
-            align="start",
-        ),
-        spacing="5",
-        align="start",
-        width="100%",
-        max_width="960px",
-        padding="1rem",
-    )
-
-    main_component = rx.cond(
-        state.BlogPostState.post, 
-        content,
-        blog_post_not_found()
-    )
-    
+@reflex_local_auth.require_login
+def blog_post_list_page() -> rx.Component:
     return base_page(
-        rx.center(
-            main_component,
+        rx.vstack(
+            rx.heading("Blog Posts", size="5"),
+            rx.link(
+                rx.button("New Post"),
+                href=navigation.routes.BLOG_POST_ADD_ROUTE
+            ),
+            # rx.foreach(["abc", "abc", "cde"], foreach_callback),
+            rx.foreach(state.BlogPostState.posts, blog_post_list_item),
+            spacing="5",
+            align="center",
             min_height="85vh",
         )
     )
