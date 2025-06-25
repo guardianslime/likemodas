@@ -1,52 +1,61 @@
-from __future__ import annotations
-import asyncio
+# full_stack_python/contact/state.py
+
 import reflex as rx
+from sqlmodel import select, selectinload
+from ..models import ContactEntry, User
+from ..auth.state import AuthState
 
-from ..auth.state import SessionState
-from ..models import ContactEntryModel
-
-class ContactState(SessionState):
-    """El estado para manejar el formulario de contacto."""
-
+class ContactState(rx.State):
+    """
+    State for the contact form page.
+    """
     form_data: dict = {}
-    entries: list[ContactEntryModel] = []
-    did_submit: bool = False
+    entries: list[ContactEntry] = []
+    
+    # Nuevo estado para gestionar la visualización del mensaje de agradecimiento
+    submitted: bool = False
 
-    @rx.var
-    def thank_you(self) -> str:
-        """Un componente que se muestra después de enviar el formulario."""
-        first_name = self.form_data.get("first_name", "")
-        if first_name:
-            return f"Thank you, {first_name}!"
-        return "Thank you for your message!"
+    def handle_submit(self, form_data: dict):
+        """Handle the form submission.
 
-    async def handle_submit(self, form_data: dict):
-        """Maneja el envío del formulario."""
+        Args:
+            form_data: The form data.
+        """
         self.form_data = form_data
+        
+        # Obtiene el estado de autenticación para acceder al usuario logueado
+        auth_state = self.get_state(AuthState)
+        user_id = auth_state.user.id if auth_state.is_logged_in else None
 
         with rx.session() as session:
-            user_info = self.authenticated_user_info
-            
-            db_entry = ContactEntryModel(
-                first_name=form_data.get("first_name", ""),
-                last_name=form_data.get("last_name"),
-                email=form_data.get("email"),
-                message=form_data.get("message", ""),
-                userinfo_id=user_info.id if user_info else None,
+            entry = ContactEntry(
+                name=self.form_data["name"],
+                email=self.form_data["email"],
+                message=self.form_data["message"],
+                # Guarda el ID del usuario junto con los datos del formulario
+                user_id=user_id, 
             )
-            session.add(db_entry)
+            session.add(entry)
             session.commit()
-
-        self.did_submit = True
-        
-        await asyncio.sleep(3)
-
-        self.did_submit = False
+            
+        # Marca el formulario como enviado para mostrar el mensaje de agradecimiento
+        self.submitted = True
+        # Limpia los campos del formulario
         self.form_data = {}
+        
+        # Recarga las entradas para mantener la lista actualizada
+        return self.load_entries
 
-    def list_entries(self):
-         """Carga todas las entradas de contacto desde la base de datos."""
-         with rx.session() as session:
-                self.entries = session.exec(
-                    rx.select(ContactEntryModel)
-                ).all()
+    def load_entries(self):
+        """Load the contact entries from the database."""
+        with rx.session() as session:
+            self.entries = session.exec(
+                # Usamos selectinload para cargar eficientemente los datos del usuario relacionado
+                select(ContactEntry).options(selectinload(ContactEntry.user))
+            ).all()
+            
+    # Nuevo manejador de eventos para reiniciar el formulario
+    def reset_form(self):
+        """Resetea el estado del formulario para permitir un nuevo envío."""
+        self.submitted = False
+        self.form_data = {}

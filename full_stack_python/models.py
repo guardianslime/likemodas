@@ -72,23 +72,39 @@ class BlogPostModel(rx.Model, table=True):
 
 
 
-class ContactEntryModel(rx.Model, table=True):
-    # ¡CORRECCIÓN! Se elimina el campo `user_id` que era redundante.
-    # La relación se maneja a través de `userinfo_id`.
-    
-    # ¡CORRECCIÓN! Se hace el tipo explícitamente Opcional para mayor claridad.
-    userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
-    userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
-    
-    first_name: str
-    last_name: str | None = None
-    email: str | None = None
+class User(rx.Model, table=True):
+    """User model."""
+    # Es buena práctica añadir un ID como clave primaria explícita.
+    id: int | None = Field(default=None, primary_key=True)
+    # Se usa Field() de sqlmodel para definir propiedades especiales.
+    username: str = Field(unique=True, index=True)
+    password_hash: str
+    enabled: bool = True
+
+    # Relación para acceder a los formularios enviados por este usuario
+    contact_entries: list["ContactEntry"] = Relationship(back_populates="user")
+
+
+# --- Modelo de Entrada de Contacto corregido ---
+class ContactEntry(rx.Model, table=True):
+    """Contact entry model."""
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    email: str
     message: str
-    created_at: datetime = Field(
-        default_factory=utils.timing.get_utc_now,
-        sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "server_default": sqlalchemy.func.now()
-        },
-        nullable=False
-    )
+
+    # Columna para almacenar la ID del usuario que envió el formulario
+    user_id: int | None = Field(default=None, foreign_key="user.id")
+    # Relación para acceder al objeto User desde un ContactEntry
+    user: "User" | None = Relationship(back_populates="contact_entries")
+
+
+# --- Modelo de Blog corregido ---
+class Blog(rx.Model, table=True):
+    """Blog model."""
+    id: int | None = Field(default=None, primary_key=True)
+    author: str
+    title: str
+    content: str
+    created_at: str
+    updated_at: str
