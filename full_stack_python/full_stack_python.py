@@ -42,7 +42,6 @@ app = rx.App(
      )
 )
 
-# Añadimos la ruta /healthz directamente a la API de FastAPI.
 @app.api.get("/healthz")
 def healthz():
     return {"status": "OK"}
@@ -51,7 +50,6 @@ def healthz():
 app.add_page(index,
           on_load=ArticlePublicState.load_posts
      )
-# reflex_local_auth,pages
 app.add_page(
      my_login_page,
      route=reflex_local_auth.routes.LOGIN_ROUTE,
@@ -69,7 +67,6 @@ app.add_page(
      title="Logout"
 )
 
-#my pages
 app.add_page(pages.about_page,
              route=navigation.routes.ABOUT_US_ROUTE)
 
@@ -109,9 +106,6 @@ app.add_page(
      on_load=blog.BlogPostState.get_post_detail
 )
 
-# --- ÚNICO CAMBIO NECESARIO ---
-# La ruta de edición del blog debe tener el formato "/blog/[blog_id]/edit"
-# para resolver el conflicto que detiene la aplicación.
 app.add_page(
      blog.blog_post_edit_page,
      route="/blog/[blog_id]/edit", 
@@ -123,9 +117,10 @@ app.add_page(
     route=navigation.routes.CONTACT_US_ROUTE
 )
 
-# ARREGLO: Se añade el `on_load` aquí, imitando cómo funciona el blog.
+# --- ARREGLO CLAVE ---
+# Se define el `on_load` aquí para que sea consistente con el blog.
 app.add_page(
     contact.contact_entries_list_page,
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
-    on_load=[contact.state.ContactState.hydrate_session, contact.state.ContactState.list_entries]
+    on_load=contact.state.ContactState.list_entries
 )
