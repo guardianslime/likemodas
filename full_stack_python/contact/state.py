@@ -1,16 +1,12 @@
 # full_stack_python/contact/state.py
-
 import reflex as rx
 from sqlmodel import select
-# Se ha eliminado la importación de 'selectinload' que causaba el error
-from ..models import ContactEntry, User
+from ..models import ContactEntry
 from ..auth.state import AuthState
 from typing import Dict, List
 
 class ContactState(rx.State):
-    """
-    State for the contact form page.
-    """
+    """State for the contact form page."""
     form_data: Dict = {}
     entries: List[ContactEntry] = []
     submitted: bool = False
@@ -38,7 +34,6 @@ class ContactState(rx.State):
     def load_entries(self):
         """Load the contact entries from the database."""
         with rx.session() as session:
-            # Se ha eliminado la parte .options(selectinload(...)) para resolver el error.
             self.entries = session.exec(select(ContactEntry)).all()
             
     def reset_form(self):
