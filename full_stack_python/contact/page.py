@@ -67,4 +67,4 @@ def contact_page() -> rx.Component:
         )
     
     # ARREGLO: Se asegura de cargar la sesión del usuario al visitar la página.
-    return base_page(my_child)
+    return base_page(my_child, on_load=state.ContactState.hydrate_session)
