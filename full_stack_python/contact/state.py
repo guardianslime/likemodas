@@ -1,4 +1,4 @@
-# guardianslime/full-stack-python/full-stack-python-8c473aa59b63fc9e7a7075ae9cbea38efb6553ed/full_stack_python/contact/state.py
+# full_stack_python/contact/state.py
 
 from __future__ import annotations
 import asyncio
@@ -42,27 +42,29 @@ class ContactState(SessionState):
         self.did_submit = False
         self.form_data = {}
 
-    # ¡FUNCIÓN DE DIAGNÓSTICO!
     async def list_entries(self):
-        """Carga las entradas de contacto con logs para depuración."""
+        """Carga las entradas de contacto solo para el usuario autenticado."""
         print("--- DEBUG: El evento list_entries ha COMENZADO. ---")
         try:
             self.is_loading = True
             yield
-            print("--- DEBUG: is_loading se ha establecido en True. ---")
+            
+            user_info = self.authenticated_user_info
+            if not user_info:
+                print("--- DEBUG: No se encontró un usuario autenticado. Las entradas estarán vacías. ---")
+                self.entries = []
+                return
 
-            print("--- DEBUG: Intentando abrir la sesión con la base de datos... ---")
+            print(f"--- DEBUG: Usuario autenticado ID: {user_info.id}. Buscando sus entradas... ---")
             with rx.session() as session:
-                print("--- DEBUG: Sesión con la base de datos ABIERTA. Ejecutando la consulta... ---")
                 self.entries = session.exec(
-                    rx.select(ContactEntryModel)
+                    rx.select(ContactEntryModel).where(ContactEntryModel.userinfo_id == user_info.id)
                 ).all()
-                print(f"--- DEBUG: Consulta EJECUTADA. Se encontraron {len(self.entries)} entradas. ---")
+                print(f"--- DEBUG: Consulta EJECUTADA. Se encontraron {len(self.entries)} entradas para este usuario. ---")
 
         except Exception as e:
-            print(f"!!!!!!!!!! DEBUG: OCURRIÓ UN ERROR: {e} !!!!!!!!!!!")
+            print(f"!!!!!!!!!! DEBUG: OCURRIÓ UN ERROR en list_entries: {e} !!!!!!!!!!!")
         finally:
-            print("--- DEBUG: Bloque FINALLY alcanzado. Estableciendo is_loading en False. ---")
             self.is_loading = False
             yield
             print("--- DEBUG: El evento list_entries ha FINALIZADO. ---")

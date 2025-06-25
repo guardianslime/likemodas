@@ -1,4 +1,4 @@
-# guardianslime/full-stack-python/full-stack-python-8c473aa59b63fc9e7a7075ae9cbea38efb6553ed/full_stack_python/contact/page.py
+# full_stack_python/contact/page.py
 
 import reflex as rx 
 from ..ui.base import base_page
@@ -22,20 +22,18 @@ def contact_entry_list_item(contact: ContactEntryModel):
 
 def contact_entries_list_page() -> rx.Component:
     
-    # ¡MEJORA! Usamos rx.cond para mostrar un mensaje si la lista de entradas está vacía.
     return base_page(
         rx.vstack(
             rx.heading("Contact Entries", size="5"),
             rx.cond(
-                state.ContactState.entries,  # Esto evalúa si la lista no está vacía
-                # Si hay entradas, las muestra con rx.foreach
+                state.ContactState.entries,
                 rx.foreach(
                     state.ContactState.entries,
                     contact_entry_list_item
                 ),
                 # Si la lista está vacía, muestra este mensaje
                 rx.box(
-                    rx.text("No contact entries have been submitted yet."),
+                    rx.text("No contact entries have been submitted yet for your account."),
                     padding_top="2em"
                 )
             ),
@@ -43,7 +41,9 @@ def contact_entries_list_page() -> rx.Component:
             align="center",
             min_height="85vh",
         ),
-        on_load=state.ContactState.list_entries
+        # --- ARREGLO PRINCIPAL AQUÍ ---
+        # Primero se verifica el login y luego se listan las entradas
+        on_load=[state.ContactState.check_login, state.ContactState.list_entries]
     )
 
 def contact_page() -> rx.Component:
@@ -79,4 +79,5 @@ def contact_page() -> rx.Component:
             id='my-child'
         )
     
-    return base_page(my_child)
+    # Esta página necesita también el check_login para que el envío asocie al usuario
+    return base_page(my_child, on_load=state.ContactState.check_login)
