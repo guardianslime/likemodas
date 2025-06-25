@@ -2,6 +2,7 @@
 
 import reflex as rx
 from sqlmodel import select
+import reflex_local_auth  # Importamos la librería de autenticación
 from ..models import ContactEntryModel
 from ..auth.state import SessionState
 from ..navigation import routes
@@ -35,8 +36,11 @@ class ContactV2FormState(ContactV2State):
 
     def handle_submit(self, form_data: dict):
         """Maneja el envío del formulario y lo guarda en la base de datos."""
+        # --- ARREGLO CLAVE ---
+        # Si el usuario no está autenticado, lo redirigimos a la página de login
+        # usando la ruta correcta desde reflex_local_auth.
         if not self.is_authenticated or self.my_userinfo_id is None:
-            return rx.redirect(routes.LOGIN_ROUTE) # Si no está logueado, no debería poder enviar.
+            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
         data = form_data.copy()
         data['userinfo_id'] = self.my_userinfo_id
