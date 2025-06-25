@@ -1,85 +1,52 @@
+# full_stack_python/contact/page.py
+
 import reflex as rx
-# Asumo que la importación base es desde ui.base y no ui.base_page
-from ..ui.base import base as base_page 
-from ..models import ContactEntryModel
-# Asumo que AuthState, que contiene check_login, está en state
-from . import form, state
+from full_stack_python.navigation import Route
+from full_stack_python.ui.base import base
+from .form import contact_form
+from .state import AuthState, ContactState
 
-def contact_entry_list_item(contact: ContactEntryModel):
-    """
-    Muestra una entrada de contacto individual.
-    """
-    return rx.box(
-        rx.heading(contact.first_name),
-        rx.text("Messages:", contact.message),
-        rx.cond(
-            contact.userinfo_id,
-            rx.text("User associated, ID:", f"{contact.userinfo_id}"),
-            rx.fragment("")
-        ),
-        padding="1em"
-    )
 
-def contact_entries_list_page() -> rx.Component:
-    
-    # ¡MEJORA! Usamos rx.cond para mostrar un mensaje si la lista de entradas está vacía.
-    return base_page(
-        rx.vstack(
-            rx.heading("Contact Entries", size="5"),
-            rx.cond(
-                state.ContactState.entries,  # Esto evalúa si la lista no está vacía
-                # Si hay entradas, las muestra con rx.foreach
-                rx.foreach(
-                    state.ContactState.entries,
-                    contact_entry_list_item
-                ),
-                # Si la lista está vacía, muestra este mensaje
-                rx.box(
-                    rx.text("No contact entries have been submitted yet."),
-                    padding_top="2em"
-                )
-            ),
-            spacing="5",
-            align="center",
-            min_height="85vh",
+def list_contact_entries():
+    """List the contact entries."""
+    return rx.vstack(
+        rx.heading("Contact Entries", size="5"),
+        rx.data_table(
+            data=ContactState.contact_entries,
+            columns=["name", "email", "message", "created_at"],
         ),
-        # --- CORRECCIÓN AQUÍ ---
-        # Se ha convertido on_load en una lista para primero verificar el login
-        # y luego cargar las entradas.
-        on_load=[state.ContactState.check_login, state.ContactState.list_entries]
-    )
-
-def contact_page() -> rx.Component:
-    """
-    Página con el formulario de contacto.
-    """
-    my_child = rx.vstack(
-        rx.heading("Contact us", size="9"),
-        rx.cond(state.ContactState.did_submit, state.ContactState.thank_you, ""),
-        rx.desktop_only(
-            rx.box(
-                form.contact_form(),
-                width="50vw"
-            )
-        ),
-        rx.tablet_only(
-            rx.box(
-                form.contact_form(),
-                width="75vw"
-            )
-        ),
-        rx.mobile_only(
-            rx.box(
-                form.contact_form(),
-                id= "my-form-box",
-                width="85vw"
-            )
-        ),
-        spacing="5",
-        justify="center",
         align="center",
-        min_height="85vh",
-        id='my-child'
     )
-    
-    return base_page(my_child)
+
+
+@rx.page(
+    route=Route.CONTACT_ENTRIES.value,
+    # --- CORRECCIÓN LÓGICA AQUÍ ---
+    # Se asegura de verificar el login antes de cargar las entradas.
+    on_load=[ContactState.check_login, ContactState.load_entries],
+)
+def contact_entries_page() -> rx.Component:
+    """The contact entries page."""
+    return base(
+        rx.vstack(
+            rx.cond(
+                ContactState.logged_in,
+                list_contact_entries(),
+                rx.text("You must be logged in to view entries."),
+            ),
+            align="center",
+        )
+    )
+
+
+@rx.page(route=Route.CONTACT.value, on_load=AuthState.check_login)
+def contact_page() -> rx.Component:
+    """The contact page."""
+    return base(
+        rx.vstack(
+            rx.heading("Contact Us", size="9"),
+            contact_form(),
+            align="center",
+            spacing="7",
+        )
+    )
