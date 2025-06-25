@@ -1,3 +1,5 @@
+# full_stack_python/full_stack_python.py
+
 """Welcome to Reflex! This file outlines the steps to create a basic app."""
 
 import reflex as rx
@@ -19,6 +21,7 @@ from .articles.list import article_public_list_page, article_public_list_compone
 from .articles.state import ArticlePublicState
 
 from . import blog, contact, navigation, pages
+
 
 def index() -> rx.Component:
      return base_page(
@@ -108,15 +111,22 @@ app.add_page(
 
 app.add_page(
      blog.blog_post_edit_page,
-     route="/blog/[blog_id]/edit",
+     route="/blog/edit/[blog_id]",
      on_load=blog.BlogPostState.get_post_detail
 )
 
-app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
+app.add_page(
+    contact.contact_page,
+    route=navigation.routes.CONTACT_US_ROUTE,
+    # --- ARREGLO 1 ---
+    # Se añade el on_load aquí para asegurar que la sesión del usuario esté cargada
+    on_load=contact.state.ContactState.hydrate_session
+)
+
 app.add_page(
     contact.contact_entries_list_page,
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
-    on_load=contact.ContactState.list_entries
+    # --- ARREGLO 2 ---
+    # Se añade la cadena de on_load correcta: primero carga la sesión, luego lista las entradas
+    on_load=[contact.state.ContactState.hydrate_session, contact.state.ContactState.list_entries]
 )
-app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
-

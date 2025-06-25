@@ -43,8 +43,7 @@ def contact_entries_list_page() -> rx.Component:
             align="center",
             min_height="85vh",
         ),
-        # ARREGLO: Primero carga la sesión, luego lista las entradas.
-        on_load=[state.ContactState.hydrate_session, state.ContactState.list_entries]
+        # on_load ha sido eliminado de aquí porque ahora se maneja en full_stack_python.py
     )
 
 def contact_page() -> rx.Component:
@@ -80,5 +79,5 @@ def contact_page() -> rx.Component:
             id='my-child'
         )
     
-    # ARREGLO: Se asegura de cargar la sesión del usuario al visitar la página.
-    return base_page(my_child, on_load=state.ContactState.hydrate_session)
+    # on_load ha sido eliminado de aquí porque ahora se maneja en full_stack_python.py
+    return base_page(my_child)
