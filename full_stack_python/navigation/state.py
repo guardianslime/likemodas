@@ -30,10 +30,3 @@ class NavState(rx.State):
         return rx.redirect(routes.CONTACT_POSTS_ROUTE)
     def to_blog_create(self):
         return rx.redirect(routes.CONTACT_POST_ADD_ROUTE)
-    def to_contat(self):
-        return rx.redirect(routes.CONTACT_US_ROUTE)
-    def to_contact(self):
-        return rx.redirect(routes.CONTACT_US_ROUTE)
-    def to_pricing(self):
-        return rx.redirect(routes.PRICING_ROUTE)
-    
