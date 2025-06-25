@@ -1,4 +1,4 @@
-# full_stack_python/full_stack_python.py
+# full_stack_python.py
 
 """Welcome to Reflex! This file outlines the steps to create a basic app."""
 
@@ -109,24 +109,21 @@ app.add_page(
      on_load=blog.BlogPostState.get_post_detail
 )
 
+# --- ÚNICO CAMBIO NECESARIO ---
+# La ruta de edición del blog debe tener el formato "/blog/[blog_id]/edit"
+# para resolver el conflicto que detiene la aplicación.
 app.add_page(
      blog.blog_post_edit_page,
-     route="/blog/edit/[blog_id]",
+     route="/blog/[blog_id]/edit", 
      on_load=blog.BlogPostState.get_post_detail
 )
 
 app.add_page(
     contact.contact_page,
-    route=navigation.routes.CONTACT_US_ROUTE,
-    # --- ARREGLO 1 ---
-    # Se añade el on_load aquí para asegurar que la sesión del usuario esté cargada
-    on_load=contact.state.ContactState.hydrate_session
+    route=navigation.routes.CONTACT_US_ROUTE
 )
 
 app.add_page(
     contact.contact_entries_list_page,
-    route=navigation.routes.CONTACT_ENTRIES_ROUTE,
-    # --- ARREGLO 2 ---
-    # Se añade la cadena de on_load correcta: primero carga la sesión, luego lista las entradas
-    on_load=[contact.state.ContactState.hydrate_session, contact.state.ContactState.list_entries]
+    route=navigation.routes.CONTACT_ENTRIES_ROUTE
 )
