@@ -116,7 +116,7 @@ app.add_page(
 app.add_page(
     contact.contact_entry_list_page,  # <-- CAMBIO
     route=navigation.routes.CONTACT_POSTS_ROUTE,
-    on_load=contact.ContactEntryState.load_posts # <-- CAMBIO
+    on_load=contact.ContactEntryState.load_entrys # <-- CAMBIO
 )
 
 app.add_page(
@@ -127,11 +127,11 @@ app.add_page(
 app.add_page(
      contact.contact_entry_detail_page, # <-- CAMBIO
      route="/contact/[contact_id]",
-     on_load=contact.ContactEntryState.get_post_detail # <-- CAMBIO
+     on_load=contact.ContactEntryState.get_entry_detail # <-- CAMBIO
 )
 
 app.add_page(
      contact.contact_entry_edit_page, # <-- CAMBIO
      route="/contact/[contact_id]/edit",
-     on_load=contact.ContactEntryState.get_post_detail # <-- CAMBIO
+     on_load=contact.ContactEntryState.get_entry_detail # <-- CAMBIO
 )
