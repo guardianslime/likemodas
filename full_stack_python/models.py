@@ -1,3 +1,5 @@
+# full_stack_python/models.py
+
 from typing import Optional, List
 from datetime import datetime
 import reflex as rx
@@ -38,9 +40,7 @@ class UserInfo(rx.Model, table=True):
 
 
 class BlogPostModel(rx.Model, table=True):
-    # ¡CORRECCIÓN! Se hace obligatorio que un post tenga un autor eliminando `default=None`.
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    # ¡CORRECCIÓN! La relación con el autor ya no es opcional.
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     
     title: str
@@ -73,10 +73,6 @@ class BlogPostModel(rx.Model, table=True):
 
 
 class ContactEntryModel(rx.Model, table=True):
-    # ¡CORRECCIÓN! Se elimina el campo `user_id` que era redundante.
-    # La relación se maneja a través de `userinfo_id`.
-    
-    # ¡CORRECCIÓN! Se hace el tipo explícitamente Opcional para mayor claridad.
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
     
@@ -92,3 +88,10 @@ class ContactEntryModel(rx.Model, table=True):
         },
         nullable=False
     )
+
+    # --- ARREGLO FINAL ---
+    # Añadimos una propiedad para formatear la fecha de forma segura.
+    @rx.var
+    def created_at_formatted(self) -> str:
+        """Devuelve la fecha de creación formateada."""
+        return self.created_at.strftime("%Y-%m-%d %H:%M")

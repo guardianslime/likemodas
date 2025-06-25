@@ -5,14 +5,16 @@ import reflex_local_auth
 from ..ui.base import base_page
 from ..models import ContactEntryModel
 from .state import ContactV2State
-from .form import contact_v2_form  # <-- ARREGLO FINAL: de .forms a .form
+from .form import contact_v2_form
 
 def entry_list_item(entry: ContactEntryModel):
     """Muestra un item individual de la lista de entradas."""
     return rx.box(
         rx.heading(entry.first_name, size="5"),
         rx.text(entry.message),
-        rx.text(f"Enviado el: {entry.created_at.strftime('%Y-%m-%d %H:%M')}", size="2", color_scheme="gray"),
+        # --- ARREGLO FINAL ---
+        # Usamos la nueva propiedad formateada en lugar de llamar a strftime.
+        rx.text(f"Enviado el: {entry.created_at_formatted}", size="2", color_scheme="gray"),
         border="1px solid #ddd",
         padding="1em",
         border_radius="8px",
