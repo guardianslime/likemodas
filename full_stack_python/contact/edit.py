@@ -9,7 +9,7 @@ from .state import ContactEditFormState
 from .notfound import contact_post_not_found
 
 @reflex_local_auth.require_login
-def blog_post_edit_page() -> rx.Component:
+def contact_post_edit_page() -> rx.Component:
     my_form = forms.contact_post_edit_form()
     post = ContactEditFormState.post
     my_child = rx.cond(post,
