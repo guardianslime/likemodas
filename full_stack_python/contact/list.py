@@ -39,6 +39,6 @@ def contact_entry_list_page() -> rx.Component:
                 # CORRECCIÓN: El enlace ahora apunta a la ruta correcta.
                 href=navigation.routes.CONTACT_POST_ADD_ROUTE
             ),
-            rx.foreach(state.ContactPostState.entrys, contact_entry_list_item)
+            rx.foreach(state.ContactEntryState.entrys, contact_entry_list_item)
         )
     )
