@@ -24,27 +24,40 @@ class ContactState(SessionState):
         return "Thank you for your message!"
 
     async def hydrate_session(self):
-        """
-        Evento para asegurar que la sesión del usuario esté cargada 
-        antes de ejecutar otras lógicas.
-        """
+        """Asegura que la sesión del usuario esté cargada."""
         yield
 
     async def handle_submit(self, form_data: dict):
         """Maneja el envío del formulario."""
         self.form_data = form_data
-        with rx.session() as session:
-            user_info = self.authenticated_user_info
-            
-            db_entry = ContactEntryModel(
-                first_name=form_data.get("first_name", ""),
-                last_name=form_data.get("last_name"),
-                email=form_data.get("email"),
-                message=form_data.get("message", ""),
-                userinfo_id=user_info.id if user_info else None,
-            )
-            session.add(db_entry)
-            session.commit()
+        
+        try:
+            with rx.session() as session:
+                
+                # --- ARREGLO DEFINITIVO ---
+                # Usamos self.my_userinfo_id, que es la forma segura y consistente
+                # (igual que en el blog) para asegurar que asociamos el formulario al usuario.
+                user_id = self.my_userinfo_id
+                
+                print(f"--- INTENTANDO GUARDAR FORMULARIO ---")
+                print(f"Datos: {form_data}")
+                print(f"ID de Usuario a asociar: {user_id}")
+                
+                db_entry = ContactEntryModel(
+                    first_name=form_data.get("first_name", ""),
+                    last_name=form_data.get("last_name"),
+                    email=form_data.get("email"),
+                    message=form_data.get("message", ""),
+                    userinfo_id=user_id,  # Se asigna el ID obtenido de forma segura.
+                )
+                session.add(db_entry)
+                session.commit()
+                print("--- FORMULARIO GUARDADO EXITOSAMENTE EN LA BD ---")
+
+        except Exception as e:
+            # Si hay un error al guardar, lo veremos en los logs.
+            print(f"!!!!!!!!!! ERROR AL GUARDAR EN LA BASE DE DATOS: {e} !!!!!!!!!!!")
+
         return rx.redirect(navigation.routes.CONTACT_ENTRIES_ROUTE)
 
     async def list_entries(self):
@@ -53,8 +66,6 @@ class ContactState(SessionState):
             self.is_loading = True
             yield
             
-            # --- ARREGLO CLAVE ---
-            # Usamos `self.my_userinfo_id` que se carga de forma segura con la sesión.
             if not self.my_userinfo_id:
                 self.entries = []
             else:
