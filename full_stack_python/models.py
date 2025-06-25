@@ -15,9 +15,10 @@ class UserInfo(rx.Model, table=True):
     posts: List['BlogPostModel'] = Relationship(
         back_populates='userinfo'
     )
-    contact_entries: List['ContactPostModel'] = Relationship(
+    posts: List['ContactPostModel'] = Relationship(
         back_populates='userinfo'
-    ) 
+    )
+
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),

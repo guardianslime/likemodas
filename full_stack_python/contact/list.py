@@ -38,7 +38,7 @@ def contact_post_list_page() -> rx.Component:
             rx.heading("Contact Posts", size="5"),
             rx.link(
                 rx.button("New Post"),
-                href=navigation.routes.BLOG_POST_ADD_ROUTE
+                href=navigation.routes.CONTACT_POST_ADD_ROUTE
             ),
             # rx.foreach(["abc", "abc", "cde"], foreach_callback),
             rx.foreach(state.ContactPostState.posts, contact_post_list_item),
