@@ -14,7 +14,7 @@ def contact_post_detail_page() -> rx.Component:
     )
     my_child = rx.cond(state.ContactPostState.post, rx.vstack(
         rx.hstack(
-            rx.heading(state.ContactPostStat.post.title, size="9"),
+            rx.heading(state.ContactPostState.post.title, size="9"),
             edit_link_el,
             align='end'
         ),
