@@ -27,7 +27,6 @@ class ContactState(SessionState):
         Este evento se ejecuta en on_load para asegurar que authenticated_user_info
         esté disponible antes de que otros eventos como list_entries se ejecuten.
         """
-        # No se necesita código aquí, su ejecución en la cadena de eventos es suficiente.
         yield
 
     async def handle_submit(self, form_data: dict):
@@ -51,13 +50,22 @@ class ContactState(SessionState):
         self.form_data = {}
 
     async def list_entries(self):
-        """Carga las entradas de contacto solo para el usuario autenticado."""
-        user_info = self.authenticated_user_info
-        if not user_info:
-            self.entries = []
-            return
+        """Carga las entradas de contacto del usuario con manejo de estado de carga."""
+        try:
+            self.is_loading = True
+            yield
 
-        with rx.session() as session:
-            self.entries = session.exec(
-                rx.select(ContactEntryModel).where(ContactEntryModel.userinfo_id == user_info.id)
-            ).all()
+            user_info = self.authenticated_user_info
+            if not user_info:
+                self.entries = []
+            else:
+                with rx.session() as session:
+                    self.entries = session.exec(
+                        rx.select(ContactEntryModel).where(ContactEntryModel.userinfo_id == user_info.id)
+                    ).all()
+
+        except Exception as e:
+            print(f"!!!!!!!!!! DEBUG: OCURRIÓ UN ERROR EN list_entries: {e} !!!!!!!!!!!")
+        finally:
+            self.is_loading = False
+            yield
