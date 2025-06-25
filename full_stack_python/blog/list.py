@@ -1,9 +1,12 @@
+# full_stack_python/blog/list.py
+
 import reflex as rx 
 import reflex_local_auth
 from .. import navigation
 from ..ui.base import base_page
 from ..models import BlogPostModel
 from . import state
+from ..auth.state import SessionState # <-- AÑADIR IMPORT
 
 def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
     if post is None:
@@ -28,10 +31,9 @@ def blog_post_list_item(post: BlogPostModel):
         padding="1em"
     )
 
-# def foreach_callback(text):
-#     return rx.box(rx.text(text))
-
-@reflex_local_auth.require_login
+# --- ARREGLO ---
+# Añadimos on_load a require_login para asegurar que los datos del usuario se cargan
+@reflex_local_auth.require_login(on_load=SessionState.on_load)
 def blog_post_list_page() -> rx.Component:
     return base_page(
         rx.vstack(
@@ -40,7 +42,6 @@ def blog_post_list_page() -> rx.Component:
                 rx.button("New Post"),
                 href=navigation.routes.BLOG_POST_ADD_ROUTE
             ),
-            # rx.foreach(["abc", "abc", "cde"], foreach_callback),
             rx.foreach(state.BlogPostState.posts, blog_post_list_item),
             spacing="5",
             align="center",

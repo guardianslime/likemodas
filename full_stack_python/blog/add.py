@@ -1,9 +1,13 @@
+# full_stack_python/blog/add.py
+
 import reflex as rx 
 import reflex_local_auth
 from ..ui.base import base_page
 from . import forms
+from ..auth.state import SessionState # <-- AÑADIR IMPORT
 
-@reflex_local_auth.require_login
+# --- ARREGLO ---
+@reflex_local_auth.require_login(on_load=SessionState.on_load)
 def blog_post_add_page() -> rx.Component:
     my_form = forms.blog_post_add_form()
     my_child = rx.vstack(

@@ -6,14 +6,13 @@ from ..ui.base import base_page
 from ..models import ContactEntryModel
 from .state import ContactV2State
 from .form import contact_v2_form
+from ..auth.state import SessionState # <-- AÑADIR IMPORT
 
 def entry_list_item(entry: ContactEntryModel):
     """Muestra un item individual de la lista de entradas."""
     return rx.box(
         rx.heading(entry.first_name, size="5"),
         rx.text(entry.message),
-        # --- ARREGLO FINAL ---
-        # Usamos la nueva propiedad formateada en lugar de llamar a strftime.
         rx.text(f"Enviado el: {entry.created_at_formatted}", size="2", color_scheme="gray"),
         border="1px solid #ddd",
         padding="1em",
@@ -21,7 +20,8 @@ def entry_list_item(entry: ContactEntryModel):
         width="100%",
     )
 
-@reflex_local_auth.require_login
+# --- ARREGLO ---
+@reflex_local_auth.require_login(on_load=SessionState.on_load)
 def contact_v2_list_page() -> rx.Component:
     """Página que muestra las entradas enviadas por el usuario."""
     return base_page(
@@ -48,7 +48,8 @@ def contact_v2_list_page() -> rx.Component:
         )
     )
 
-@reflex_local_auth.require_login
+# --- ARREGLO ---
+@reflex_local_auth.require_login(on_load=SessionState.on_load)
 def contact_v2_add_page() -> rx.Component:
     """Página para enviar un nuevo mensaje."""
     return base_page(
