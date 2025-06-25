@@ -3,7 +3,7 @@ from reflex.style import toggle_color_mode
 
 from ..auth.state import SessionState
 from .. import navigation
-from ..navigation import routes # Asegúrate de que `routes` está importado
+from ..navigation import routes
 
 def sidebar_user_item() -> rx.Component:
     user_info_obj = SessionState.authenticated_user_info
@@ -57,7 +57,9 @@ def sidebar_logout_item() -> rx.Component:
             }
         ),
         cursor="pointer",
-        on_click=SessionState.logout
+        # --- ARREGLO DEFINITIVO ---
+        # En lugar de llamar a una función, redirigimos a la ruta de logout.
+        on_click=rx.redirect(navigation.routes.LOGOUT_ROUTE)
     )
 
 def sidebar_dark_mode_toggle_item() -> rx.Component:
@@ -100,9 +102,7 @@ def sidebar_items() -> rx.Component:
         sidebar_item("Pricing", routes.PRICING_ROUTE),
         sidebar_item("Articles", routes.ARTICLE_LIST_ROUTE),
         sidebar_item("Blog Posts", routes.BLOG_POSTS_ROUTE),
-        # --- NUEVO ENLACE AÑADIDO AQUÍ ---
         sidebar_item("Nuevo Contacto", routes.CONTACT_V2_ADD_ROUTE),
-        # ---------------------------------
         width="100%",
         align_items="start",
     )
