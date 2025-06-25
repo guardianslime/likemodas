@@ -15,7 +15,7 @@ from .auth.state import SessionState
 
 
 from .articles.detail import article_detail_page
-from .articles.list import article_public_list_page, article_public_list_component
+from .articles.list import article_public_list_page
 from .articles.state import ArticlePublicState
 
 from . import blog, contact, navigation, pages
@@ -60,7 +60,10 @@ app.add_page(
      title="register"
 )
 
-app.add_page(my_logout_page, route=reflex_local_auth.routes.LOGOUT_ROUTE)
+# --- CORRECCIÓN ---
+# Se define la ruta de logout manualmente, ya que reflex-local-auth no la proporciona.
+app.add_page(my_logout_page, route="/logout")
+
 
 app.add_page(pages.pricing_page, 
              route=navigation.routes.PRICING_ROUTE)
@@ -110,11 +113,9 @@ app.add_page(
      on_load=blog.BlogPostState.get_post_detail
 )
 
-# --- SECCIÓN DE CONTACTO CORREGIDA ---
 app.add_page(
     contact.contact_post_list_page,
     route=navigation.routes.CONTACT_POSTS_ROUTE,
-    # CORRECCIÓN 1: Se usa el estado correcto para cargar los posts de contacto.
     on_load=contact.ContactPostState.load_posts
 )
 
@@ -123,7 +124,6 @@ app.add_page(
      route=navigation.routes.CONTACT_POST_ADD_ROUTE,
 )
 
-# CORRECCIÓN 2: Se añade la página que faltaba para ver el detalle de un post de contacto.
 app.add_page(
      contact.contact_post_detail_page,
      route="/contact/[contact_id]",
@@ -135,4 +135,3 @@ app.add_page(
      route="/contact/[contact_id]/edit",
      on_load=contact.ContactPostState.get_post_detail
 )
-
