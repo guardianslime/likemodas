@@ -7,33 +7,33 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo
+from ..models import ContactPostModel, UserInfo
 
-BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
-if BLOG_POSTS_ROUTE.endswith("/"):
-    BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
+CONTACT_POSTS_ROUTE = navigation.routes.CONTACT_POSTS_ROUTE
+if CONTACT_POSTS_ROUTE.endswith("/"):
+    CONTACT_POSTS_ROUTE = CONTACT_POSTS_ROUTE[:-1]
 
-class BlogPostState(SessionState):
-    posts: List["BlogPostModel"] = []
-    post: Optional["BlogPostModel"] = None
+class ContactPostState(SessionState):
+    posts: List["ContactPostModel"] = []
+    post: Optional["ContactPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
 
     @rx.var
-    def blog_post_id(self) -> str:  # Añadida la anotación de tipo -> str
-        return self.router.page.params.get("blog_id", "")
+    def contact_post_id(self) -> str:  # Añadida la anotación de tipo -> str
+        return self.router.page.params.get("contact_id", "")
 
     @rx.var
-    def blog_post_url(self) -> str: # Añadida la anotación de tipo -> str
+    def contact_post_url(self) -> str: # Añadida la anotación de tipo -> str
         if not self.post:
-            return f"{BLOG_POSTS_ROUTE}"
-        return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
+            return f"{CONTACT_POSTS_ROUTE}"
+        return f"{CONTACT_POSTS_ROUTE}/{self.post.id}"
 
     @rx.var
-    def blog_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
+    def contact_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
         if not self.post:
-            return f"{BLOG_POSTS_ROUTE}"
-        return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
+            return f"{CONTACT_POSTS_ROUTE}"
+        return f"{CONTACT_POSTS_ROUTE}/{self.post.id}/edit"
 
     def get_post_detail(self):
         if self.my_userinfo_id is None:
@@ -42,15 +42,15 @@ class BlogPostState(SessionState):
             self.post_publish_active = False
             return
         lookups = (
-            (BlogPostModel.userinfo_id == self.my_userinfo_id) &
-            (BlogPostModel.id == self.blog_post_id)
+            (ContactPostModel.userinfo_id == self.my_userinfo_id) &
+            (ContactPostModel.id == self.contact_post_id)
         )
         with rx.session() as session:
-            if self.blog_post_id == "":
+            if self.contact_post_id == "":
                 self.post = None
                 return
-            sql_statement = select(BlogPostModel).options(
-                sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+            sql_statement = select(ContactPostModel).options(
+                sqlalchemy.orm.joinedload(ContactPostModel.userinfo).joinedload(UserInfo.user)
             ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
             # if result.userinfo: # db lookup
@@ -66,20 +66,20 @@ class BlogPostState(SessionState):
     def load_posts(self, *args, **kwargs):
         # if published_only:
         #     lookup_args = (
-        #         (BlogPostModel.publish_active == True) &
-        #         (BlogPostModel.publish_date < datetime.now())
+        #         (ContactPostModel.publish_active == True) &
+        #         (ContactPostModel.publish_date < datetime.now())
         #     )
         with rx.session() as session:
             result = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
+                select(ContactPostModel).options(
+                    sqlalchemy.orm.joinedload(ContactPostModel.userinfo)
+                ).where(ContactPostModel.userinfo_id == self.my_userinfo_id)
             ).all()
             self.posts = result
 
     def add_post(self, form_data: dict):
         with rx.session() as session:
-            post = BlogPostModel(**form_data)
+            post = ContactPostModel(**form_data)
             session.add(post)
             session.commit()
             session.refresh(post)
@@ -88,8 +88,8 @@ class BlogPostState(SessionState):
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
             post = session.exec(
-                select(BlogPostModel).where(
-                    BlogPostModel.id == post_id
+                select(ContactPostModel).where(
+                    ContactPostModel.id == post_id
                 )
             ).one_or_none()
             if post is None:
@@ -101,15 +101,15 @@ class BlogPostState(SessionState):
             session.refresh(post)
             self.post = post
 
-    def to_blog_post(self, edit_page=False):
+    def to_contact_post(self, edit_page=False):
         if not self.post:
-            return rx.redirect(BLOG_POSTS_ROUTE)
+            return rx.redirect(CONTACT_POSTS_ROUTE)
         if edit_page:
-            return rx.redirect(f"{self.blog_post_edit_url}")
-        return rx.redirect(f"{self.blog_post_url}")
+            return rx.redirect(f"{self.contact_post_edit_url}")
+        return rx.redirect(f"{self.contact_post_url}")
 
 
-class BlogAddPostFormState(BlogPostState):
+class ContactAddPostFormState(ContactPostState):
     form_data: dict = {}
 
     def handle_submit(self, form_data):
@@ -118,10 +118,10 @@ class BlogAddPostFormState(BlogPostState):
             data['userinfo_id'] = self.my_userinfo_id
         self.form_data = data
         self.add_post(data)
-        return self.to_blog_post(edit_page=True)
+        return self.to_contact_post(edit_page=True)
 
 
-class BlogEditFormState(BlogPostState):
+class ContactEditFormState(ContactPostState):
     form_data: dict = {}
 
     @rx.var
@@ -161,4 +161,4 @@ class BlogEditFormState(BlogPostState):
         updated_data['publish_active'] = publish_active
         updated_data['publish_date'] = final_publish_date
         self.save_post_edits(post_id, updated_data)
-        return self.to_blog_post()
+        return self.to_contact_post()

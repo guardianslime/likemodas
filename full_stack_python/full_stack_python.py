@@ -112,6 +112,30 @@ app.add_page(
      on_load=blog.BlogPostState.get_post_detail
 )
 
+app.add_page(
+    contact.contact_post_list_page,
+    route=navigation.routes.CONTACT_POSTS_ROUTE,
+    on_load=contact.BlogPostState.load_posts
+
+)
+
+app.add_page(
+     contact.contact_post_add_page,
+     route=navigation.routes.CONTACT_POST_ADD_ROUTE,
+)
+
+app.add_page(
+     contact.contact_post_detail_page,
+     route="/contact/[contact_id]",
+     on_load=contact.ContactPostState.get_post_detail
+)
+
+app.add_page(
+     contact.contact_post_edit_page,
+     route="/contact/[contact_id]/edit",
+     on_load=contact.ContactPostState.get_post_detail
+)
+
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
     contact.contact_entries_list_page,

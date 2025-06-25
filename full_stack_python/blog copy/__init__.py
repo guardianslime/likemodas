@@ -1,13 +1,13 @@
-from .add import blog_post_add_page
-from .detail import blog_post_detail_page
-from .edit import blog_post_edit_page
-from .list import blog_post_list_page
-from .state import BlogPostState
+from .add import contact_post_add_page
+from .detail import contact_post_detail_page
+from .edit import contact_post_edit_page
+from .list import contact_post_list_page
+from .state import ContactPostState
 
 __all__ = [
-    'blog_post_add_page',
-    'blog_post_detail_page',
-    'blog_post_edit_page',
-    'blog_post_list_page',
-    'BlogPostState'
+    'contact_post_add_page',
+    'contact_post_detail_page',
+    'contact_post_edit_page',
+    'contact_post_list_page',
+    'ContactPostState'
 ]

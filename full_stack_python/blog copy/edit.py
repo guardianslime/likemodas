@@ -5,13 +5,13 @@ from ..ui.base import base_page
 
 from . import forms
 
-from .state import BlogEditFormState
-from .notfound import blog_post_not_found
+from .state import ContactEditFormState
+from .notfound import contact_post_not_found
 
 @reflex_local_auth.require_login
 def blog_post_edit_page() -> rx.Component:
-    my_form = forms.blog_post_edit_form()
-    post = BlogEditFormState.post
+    my_form = forms.contact_post_edit_form()
+    post = ContactEditFormState.post
     my_child = rx.cond(post,
             rx.vstack(
                 rx.heading("Editing ", post.title, size="9"), 
@@ -38,6 +38,6 @@ def blog_post_edit_page() -> rx.Component:
                 align="center",
                 min_height="95vh",
             ), 
-            blog_post_not_found()
+            contact_post_not_found()
         )
     return base_page(my_child)
