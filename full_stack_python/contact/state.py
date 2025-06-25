@@ -1,42 +1,52 @@
-# full_stack_python/contact/state.py
+from __future__ import annotations
+import asyncio
 import reflex as rx
-from sqlmodel import select
-from ..models import ContactEntry
-from ..auth.state import AuthState
-from typing import Dict, List
 
-class ContactState(rx.State):
-    """State for the contact form page."""
-    form_data: Dict = {}
-    entries: List[ContactEntry] = []
-    submitted: bool = False
+from ..auth.state import SessionState
+from ..models import ContactEntryModel
 
-    def handle_submit(self, form_data: Dict):
-        """Handle the form submission."""
+class ContactState(SessionState):
+    """El estado para manejar el formulario de contacto."""
+
+    form_data: dict = {}
+    entries: list[ContactEntryModel] = []
+    did_submit: bool = False
+
+    @rx.var
+    def thank_you(self) -> str:
+        """Un componente que se muestra después de enviar el formulario."""
+        first_name = self.form_data.get("first_name", "")
+        if first_name:
+            return f"Thank you, {first_name}!"
+        return "Thank you for your message!"
+
+    async def handle_submit(self, form_data: dict):
+        """Maneja el envío del formulario."""
         self.form_data = form_data
-        auth_state = self.get_state(AuthState)
-        user_id = auth_state.user.id if auth_state.is_logged_in else None
 
         with rx.session() as session:
-            entry = ContactEntry(
-                name=self.form_data["name"],
-                email=self.form_data["email"],
-                message=self.form_data["message"],
-                user_id=user_id,
-            )
-            session.add(entry)
-            session.commit()
-        
-        self.submitted = True
-        self.form_data = {}
-        return self.load_entries
-
-    def load_entries(self):
-        """Load the contact entries from the database."""
-        with rx.session() as session:
-            self.entries = session.exec(select(ContactEntry)).all()
+            user_info = self.authenticated_user_info
             
-    def reset_form(self):
-        """Resets the form state to allow a new submission."""
-        self.submitted = False
+            db_entry = ContactEntryModel(
+                first_name=form_data.get("first_name", ""),
+                last_name=form_data.get("last_name"),
+                email=form_data.get("email"),
+                message=form_data.get("message", ""),
+                userinfo_id=user_info.id if user_info else None,
+            )
+            session.add(db_entry)
+            session.commit()
+
+        self.did_submit = True
+        
+        await asyncio.sleep(3)
+
+        self.did_submit = False
         self.form_data = {}
+
+    def list_entries(self):
+         """Carga todas las entradas de contacto desde la base de datos."""
+         with rx.session() as session:
+                self.entries = session.exec(
+                    rx.select(ContactEntryModel)
+                ).all()

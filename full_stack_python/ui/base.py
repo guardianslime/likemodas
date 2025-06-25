@@ -1,6 +1,6 @@
 import reflex as rx
 
-from ..auth.state import AuthState  # <-- LÍNEA CORRECTA
+from ..auth.state import SessionState
 from .nav import navbar
 from .dashboard import base_dashboard_page
 

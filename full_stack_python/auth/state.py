@@ -1,103 +1,82 @@
-# full_stack_python/auth/state.py
 import reflex as rx
-from sqlmodel import select
-from ..models import User
-from ..navigation import routes
-import bcrypt
+import reflex_local_auth
 
-class AuthState(rx.State):
-    """
-    The authentication state for the app.
-    """
-    user: User | None = None
+import sqlmodel
 
-    @rx.var
-    def is_logged_in(self) -> bool:
-        """
-        Check if the user is logged in.
-        """
-        return self.user is not None
+from ..models import UserInfo
 
-    def _set_auth_token(self, token: str):
-        """
-        Set the authentication token.
-        """
-        self.set_cookie("auth_token", token, same_site="lax")
 
-    def logout(self):
-        """
-        Log the user out.
-        """
-        self.user = None
-        self._set_auth_token("")
+class SessionState(reflex_local_auth.LocalAuthState):
+    @rx.var(cache=True)
+    def my_userinfo_id(self) -> str | None:
+        if self.authenticated_user_info is None:
+            return None
+        return self.authenticated_user_info.id
 
-    def check_login(self):
-        """
-        Check if the user is logged in.
-        """
-        if not self.is_logged_in and self.router.page.path != routes.LOGIN:
-            auth_token = self.get_cookie("auth_token")
-            if auth_token:
-                with rx.session() as session:
-                    self.user = session.exec(
-                        select(User).where(User.password_hash == auth_token)
-                    ).first()
-                    if self.user:
-                        return
-            # The user is not logged in, so redirect to the login page.
-            if self.router.page.path not in [
-                routes.LOGIN,
-                routes.REGISTER,
-                "/",
-            ] and not self.router.page.path.startswith("/blog"):
-                return rx.redirect(routes.LOGIN)
 
-    def _login(self, user: User):
-        """
-        Log the user in.
-        """
-        self.user = user
-        self._set_auth_token(self.user.password_hash)
+    @rx.var(cache=True)
+    def my_user_id(self) -> str | None:
+        if self.authenticated_user.id < 0:
+            return None
+        return self.authenticated_user.id
 
-    def login(self, form_data) -> rx.event.EventSpec:
-        """
-        Login a user.
-        """
+    @rx.var(cache=True)
+    def authenticated_username(self) -> str | None:
+        if self.authenticated_user.id < 0:
+            return None
+        return self.authenticated_user.username
+
+    @rx.var(cache=True)
+    def authenticated_user_info(self) -> UserInfo | None:
+        if self.authenticated_user.id < 0:
+            return None
         with rx.session() as session:
-            user = session.exec(
-                select(User).where(User.username == form_data["username"])
-            ).first()
-            if user and bcrypt.checkpw(
-                form_data["password"].encode("utf-8"), user.password_hash.encode("utf-8")
-            ):
-                self._login(user)
-                return rx.redirect(self.router.page.path or routes.HOME)
-            else:
-                return rx.window_alert("Invalid username or password.")
-
-    def register(self, form_data) -> rx.event.EventSpec:
-        """
-        Register a new user.
-        """
-        if form_data["password"] != form_data["confirm_password"]:
-            return rx.window_alert("Passwords do not match.")
+            result = session.exec(
+                sqlmodel.select(UserInfo).where(
+                    UserInfo.user_id == self.authenticated_user.id
+                ),
+            ).one_or_none()
+            if result is None:
+                return None
+            # database lookup
+            # result.user
+            # user_obj = result.user
+            # print(result.user)
+            return result
+    
+    def on_load(self):
+        if not self.is_authenticated:
+            return reflex_local_auth.LoginState.redir
+        print(self.is_authenticated)
+        print(self.authenticated_user_info)
         
-        password_hash = bcrypt.hashpw(
-            form_data["password"].encode("utf-8"), bcrypt.gensalt()
-        )
-        with rx.session() as session:
-            if session.exec(
-                select(User).where(User.username == form_data["username"])
-            ).first():
-                return rx.window_alert("Username already exists.")
-            
-            user = User(
-                username=form_data["username"],
-                password_hash=password_hash.decode("utf-8"),
-            )
-            session.add(user)
-            session.commit()
-            session.refresh(user)
+    def perform_logout(self):
+        self.do_logout()
+        return rx.redirect("/")
 
-        self._login(user)
-        return rx.redirect(routes.HOME)
+class MyRegisterState(reflex_local_auth.RegistrationState):
+    def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
+        username = form_data["username"]
+        password = form_data["password"]
+        validation_errors = self._validate_fields(
+            username, password, form_data["confirm_password"]
+        )
+        if validation_errors:
+            self.new_user_id = -1
+            return validation_errors
+        self._register_user(username, password)
+        return self.new_user_id
+        
+
+    def handle_registration_email(self, form_data):
+        new_user_id = self.handle_registration(form_data)
+        if isinstance(new_user_id, int) and new_user_id >= 0:
+            with rx.session() as session:
+                session.add(
+                    UserInfo(
+                        email=form_data["email"],
+                        user_id=self.new_user_id,
+                    )
+                )
+                session.commit()
+        return type(self).successful_registration
