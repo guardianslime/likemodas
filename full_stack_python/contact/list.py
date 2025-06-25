@@ -11,8 +11,9 @@ def contact_post_detail_link(child: rx.Component, post: ContactPostModel):
     post_id = post.id
     if post_id is None:
         return rx.fragment(child)
-    root_path = navigation.routes.CONTACT_POSTS_ROUTE
-    post_detail_url = f"{root_path}/{post_id}"
+    
+    # El router usará la ruta dinámica /contact/[contact_id]
+    post_detail_url = f"/contact/{post_id}"
     return rx.link(
         child,
         rx.heading("by ", post.userinfo.email),
@@ -28,9 +29,6 @@ def contact_post_list_item(post: ContactPostModel):
         padding="1em"
     )
 
-# def foreach_callback(text):
-#     return rx.box(rx.text(text))
-
 @reflex_local_auth.require_login
 def contact_post_list_page() -> rx.Component:
     return base_page(
@@ -38,12 +36,9 @@ def contact_post_list_page() -> rx.Component:
             rx.heading("Contact Posts", size="5"),
             rx.link(
                 rx.button("New Post"),
+                # CORRECCIÓN: El enlace ahora apunta a la ruta correcta.
                 href=navigation.routes.CONTACT_POST_ADD_ROUTE
             ),
-            # rx.foreach(["abc", "abc", "cde"], foreach_callback),
-            rx.foreach(state.ContactPostState.posts, contact_post_list_item),
-            spacing="5",
-            align="center",
-            min_height="85vh",
+            rx.foreach(state.ContactPostState.posts, contact_post_list_item)
         )
     )

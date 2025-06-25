@@ -4,7 +4,7 @@ from ..ui.base import base_page
 
 from . import state
 from .notfound import contact_post_not_found
-# @rx.page(route="/about")
+
 def contact_post_detail_page() -> rx.Component:
     con_edit = True
     edit_link = rx.link("Edit", href=f"{state.ContactPostState.contact_post_edit_url}")
@@ -14,6 +14,7 @@ def contact_post_detail_page() -> rx.Component:
     )
     my_child = rx.cond(state.ContactPostState.post, rx.vstack(
         rx.hstack(
+            # CORRECCIÓN: Se usa el nombre correcto 'ContactPostState'.
             rx.heading(state.ContactPostState.post.title, size="9"),
             edit_link_el,
             align='end'
