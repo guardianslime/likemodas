@@ -41,9 +41,8 @@ def contact_entries_list_page() -> rx.Component:
             align="center",
             min_height="85vh",
         ),
-        # --- ARREGLO PRINCIPAL AQUÍ ---
-        # Primero se verifica el login y luego se listan las entradas
-        on_load=[state.ContactState.check_login, state.ContactState.list_entries]
+        # ARREGLO: Usando la nueva función hydrate_session
+        on_load=[state.ContactState.hydrate_session, state.ContactState.list_entries]
     )
 
 def contact_page() -> rx.Component:
@@ -79,5 +78,5 @@ def contact_page() -> rx.Component:
             id='my-child'
         )
     
-    # Esta página necesita también el check_login para que el envío asocie al usuario
-    return base_page(my_child, on_load=state.ContactState.check_login)
+    # ARREGLO: Usando la nueva función hydrate_session
+    return base_page(my_child, on_load=state.ContactState.hydrate_session)

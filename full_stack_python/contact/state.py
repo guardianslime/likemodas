@@ -22,6 +22,14 @@ class ContactState(SessionState):
             return f"Thank you, {first_name}!"
         return "Thank you for your message!"
 
+    async def hydrate_session(self):
+        """
+        Este evento se ejecuta en on_load para asegurar que authenticated_user_info
+        esté disponible antes de que otros eventos como list_entries se ejecuten.
+        """
+        # No se necesita código aquí, su ejecución en la cadena de eventos es suficiente.
+        yield
+
     async def handle_submit(self, form_data: dict):
         """Maneja el envío del formulario."""
         self.form_data = form_data
@@ -44,27 +52,12 @@ class ContactState(SessionState):
 
     async def list_entries(self):
         """Carga las entradas de contacto solo para el usuario autenticado."""
-        print("--- DEBUG: El evento list_entries ha COMENZADO. ---")
-        try:
-            self.is_loading = True
-            yield
-            
-            user_info = self.authenticated_user_info
-            if not user_info:
-                print("--- DEBUG: No se encontró un usuario autenticado. Las entradas estarán vacías. ---")
-                self.entries = []
-                return
+        user_info = self.authenticated_user_info
+        if not user_info:
+            self.entries = []
+            return
 
-            print(f"--- DEBUG: Usuario autenticado ID: {user_info.id}. Buscando sus entradas... ---")
-            with rx.session() as session:
-                self.entries = session.exec(
-                    rx.select(ContactEntryModel).where(ContactEntryModel.userinfo_id == user_info.id)
-                ).all()
-                print(f"--- DEBUG: Consulta EJECUTADA. Se encontraron {len(self.entries)} entradas para este usuario. ---")
-
-        except Exception as e:
-            print(f"!!!!!!!!!! DEBUG: OCURRIÓ UN ERROR en list_entries: {e} !!!!!!!!!!!")
-        finally:
-            self.is_loading = False
-            yield
-            print("--- DEBUG: El evento list_entries ha FINALIZADO. ---")
+        with rx.session() as session:
+            self.entries = session.exec(
+                rx.select(ContactEntryModel).where(ContactEntryModel.userinfo_id == user_info.id)
+            ).all()
