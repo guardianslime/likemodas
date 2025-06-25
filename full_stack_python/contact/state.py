@@ -17,11 +17,8 @@ class ContactState(SessionState):
 
     @rx.var
     def thank_you(self) -> str:
-        """Un componente que se muestra después de enviar el formulario."""
-        first_name = self.form_data.get("first_name", "")
-        if first_name:
-            return f"Thank you, {first_name}!"
-        return "Thank you for your message!"
+        first_name = self.form_data.get("first_name") or ""
+        return f"Thank you {first_name}".strip() + "!"
 
     async def hydrate_session(self):
         """
