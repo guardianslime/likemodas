@@ -114,24 +114,24 @@ app.add_page(
 )
 
 app.add_page(
-    contact.contact_post_list_page,
+    contact.contact_entry_list_page,  # <-- CAMBIO
     route=navigation.routes.CONTACT_POSTS_ROUTE,
-    on_load=contact.ContactPostState.load_posts
+    on_load=contact.ContactEntryState.load_posts # <-- CAMBIO
 )
 
 app.add_page(
-     contact.contact_post_add_page,
+     contact.contact_entry_add_page, # <-- CAMBIO
      route=navigation.routes.CONTACT_POST_ADD_ROUTE,
 )
 
 app.add_page(
-     contact.contact_post_detail_page,
+     contact.contact_entry_detail_page, # <-- CAMBIO
      route="/contact/[contact_id]",
-     on_load=contact.ContactPostState.get_post_detail
+     on_load=contact.ContactEntryState.get_post_detail # <-- CAMBIO
 )
 
 app.add_page(
-     contact.contact_post_edit_page,
+     contact.contact_entry_edit_page, # <-- CAMBIO
      route="/contact/[contact_id]/edit",
-     on_load=contact.ContactPostState.get_post_detail
+     on_load=contact.ContactEntryState.get_post_detail # <-- CAMBIO
 )
