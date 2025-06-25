@@ -1,15 +1,14 @@
-# full_stack_python/blog/edit.py
-
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
+
+
 from . import forms
+
 from .state import BlogEditFormState
 from .notfound import blog_post_not_found
-from ..auth.state import SessionState # <-- AÑADIR IMPORT
 
-# --- ARREGLO ---
-@reflex_local_auth.require_login(on_load=SessionState.on_load)
+@reflex_local_auth.require_login
 def blog_post_edit_page() -> rx.Component:
     my_form = forms.blog_post_edit_form()
     post = BlogEditFormState.post

@@ -1,51 +1,82 @@
-# full_stack_python/auth/state.py
-
 import reflex as rx
 import reflex_local_auth
-from sqlmodel import select
-from typing import Optional
+
+import sqlmodel
 
 from ..models import UserInfo
 
+
 class SessionState(reflex_local_auth.LocalAuthState):
-    """La clase de estado de la sesión para la aplicación."""
+    @rx.var(cache=True)
+    def my_userinfo_id(self) -> str | None:
+        if self.authenticated_user_info is None:
+            return None
+        return self.authenticated_user_info.id
 
-    my_userinfo: Optional[UserInfo] = None
-    my_userinfo_id: Optional[int] = None
 
-    @rx.var
+    @rx.var(cache=True)
+    def my_user_id(self) -> str | None:
+        if self.authenticated_user.id < 0:
+            return None
+        return self.authenticated_user.id
+
+    @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
-        """Devuelve el nombre de usuario de la sesión autenticada."""
-        if self.authenticated_user:
-            return self.authenticated_user.username
-        return None
+        if self.authenticated_user.id < 0:
+            return None
+        return self.authenticated_user.username
 
-    @rx.var
+    @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
-        """Devuelve la información del usuario de la sesión autenticada."""
-        if self.is_authenticated and self.my_userinfo:
-            return self.my_userinfo
-        return None
-    
-    def on_load(self):
-        """
-        Carga la información del usuario (UserInfo) si hay una sesión autenticada.
-        Este evento debe ser llamado en las páginas que requieren datos del usuario.
-        """
-        if not self.is_authenticated or not self.user_id:
-            return
-        
-        # Evita recargar los datos si ya los tenemos
-        if self.my_userinfo is not None and self.my_userinfo.user_id == self.user_id:
-            return
-
+        if self.authenticated_user.id < 0:
+            return None
         with rx.session() as session:
             result = session.exec(
-                select(UserInfo).where(UserInfo.user_id == self.user_id)
+                sqlmodel.select(UserInfo).where(
+                    UserInfo.user_id == self.authenticated_user.id
+                ),
             ).one_or_none()
-            if result:
-                self.my_userinfo = result
-                self.my_userinfo_id = result.id
-            else:
-                self.my_userinfo = None
-                self.my_userinfo_id = None
+            if result is None:
+                return None
+            # database lookup
+            # result.user
+            # user_obj = result.user
+            # print(result.user)
+            return result
+    
+    def on_load(self):
+        if not self.is_authenticated:
+            return reflex_local_auth.LoginState.redir
+        print(self.is_authenticated)
+        print(self.authenticated_user_info)
+        
+    def perform_logout(self):
+        self.do_logout()
+        return rx.redirect("/")
+
+class MyRegisterState(reflex_local_auth.RegistrationState):
+    def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
+        username = form_data["username"]
+        password = form_data["password"]
+        validation_errors = self._validate_fields(
+            username, password, form_data["confirm_password"]
+        )
+        if validation_errors:
+            self.new_user_id = -1
+            return validation_errors
+        self._register_user(username, password)
+        return self.new_user_id
+        
+
+    def handle_registration_email(self, form_data):
+        new_user_id = self.handle_registration(form_data)
+        if isinstance(new_user_id, int) and new_user_id >= 0:
+            with rx.session() as session:
+                session.add(
+                    UserInfo(
+                        email=form_data["email"],
+                        user_id=self.new_user_id,
+                    )
+                )
+                session.commit()
+        return type(self).successful_registration

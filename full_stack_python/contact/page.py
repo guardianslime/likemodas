@@ -1,7 +1,6 @@
 # full_stack_python/contact/page.py
 
-import reflex as rx
-import reflex_local_auth  # ¡NUEVO! Importamos la autenticación.
+import reflex as rx 
 from ..ui.base import base_page
 from ..models import ContactEntryModel
 from . import form, state
@@ -21,19 +20,20 @@ def contact_entry_list_item(contact: ContactEntryModel):
         padding="1em"
     )
 
-# --- ARREGLO CLAVE ---
-# Se requiere que el usuario inicie sesión para ver esta página.
-@reflex_local_auth.require_login
 def contact_entries_list_page() -> rx.Component:
+    
+    # ¡MEJORA! Usamos rx.cond para mostrar un mensaje si la lista de entradas está vacía.
     return base_page(
         rx.vstack(
             rx.heading("Contact Entries", size="5"),
             rx.cond(
-                state.ContactState.entries,
+                state.ContactState.entries,  # Esto evalúa si la lista no está vacía
+                # Si hay entradas, las muestra con rx.foreach
                 rx.foreach(
                     state.ContactState.entries,
                     contact_entry_list_item
                 ),
+                # Si la lista está vacía, muestra este mensaje
                 rx.box(
                     rx.text("No contact entries have been submitted yet for your account."),
                     padding_top="2em"
@@ -43,6 +43,7 @@ def contact_entries_list_page() -> rx.Component:
             align="center",
             min_height="85vh",
         )
+        # ARREGLO: Se elimina el on_load de aquí para que lo gestione el app.add_page
     )
 
 def contact_page() -> rx.Component:
@@ -78,4 +79,5 @@ def contact_page() -> rx.Component:
             id='my-child'
         )
     
+    # ARREGLO: Se asegura de cargar la sesión del usuario al visitar la página.
     return base_page(my_child, on_load=state.ContactState.hydrate_session)
