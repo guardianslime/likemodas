@@ -20,7 +20,7 @@ from .articles.detail import article_detail_page
 from .articles.list import article_public_list_page, article_public_list_component
 from .articles.state import ArticlePublicState
 
-from . import blog, contact, navigation, pages
+from . import blog, contact, navigation, pages, contact_v2
 
 
 def index() -> rx.Component:
@@ -123,4 +123,14 @@ app.add_page(
     contact.contact_entries_list_page,
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
     on_load=contact.state.ContactState.list_entries
+)
+
+app.add_page(
+    contact_v2.page.contact_v2_add_page,
+    route=navigation.routes.CONTACT_V2_ADD_ROUTE
+)
+app.add_page(
+    contact_v2.page.contact_v2_list_page,
+    route=navigation.routes.CONTACT_ENTRIES_V2_ROUTE,
+    on_load=contact_v2.state.ContactV2State.list_entries  # Lógica de carga como el blog
 )
