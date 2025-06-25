@@ -15,7 +15,7 @@ class UserInfo(rx.Model, table=True):
     posts: List['BlogPostModel'] = Relationship(
         back_populates='userinfo'
     )
-    contact_entries: List['ContactEntryModel'] = Relationship(
+    contact_entries: List['ContactPostModel'] = Relationship(
         back_populates='userinfo'
     ) 
     created_at: datetime = Field(

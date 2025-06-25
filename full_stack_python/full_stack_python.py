@@ -115,7 +115,7 @@ app.add_page(
 app.add_page(
     contact.contact_post_list_page,
     route=navigation.routes.CONTACT_POSTS_ROUTE,
-    on_load=contact.BlogPostState.load_posts
+    on_load=contact.ContactPostState.load_posts
 
 )
 
