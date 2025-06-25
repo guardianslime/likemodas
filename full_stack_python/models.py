@@ -74,35 +74,32 @@ class BlogPostModel(rx.Model, table=True):
 
 class User(rx.Model, table=True):
     """User model."""
-    # Es buena práctica añadir un ID como clave primaria explícita.
-    id: int | None = Field(default=None, primary_key=True)
-    # Se usa Field() de sqlmodel para definir propiedades especiales.
+    id: Union[int, None] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
     password_hash: str
     enabled: bool = True
+    
+    # Se usa List en lugar de list para compatibilidad
+    contact_entries: List["ContactEntry"] = Relationship(back_populates="user")
 
-    # Relación para acceder a los formularios enviados por este usuario
-    contact_entries: list["ContactEntry"] = Relationship(back_populates="user")
 
-
-# --- Modelo de Entrada de Contacto corregido ---
+# --- Modelo de Entrada de Contacto corregido y compatible ---
 class ContactEntry(rx.Model, table=True):
     """Contact entry model."""
-    id: int | None = Field(default=None, primary_key=True)
+    id: Union[int, None] = Field(default=None, primary_key=True)
     name: str
     email: str
     message: str
+    
+    # Se usa Union en lugar de |
+    user_id: Union[int, None] = Field(default=None, foreign_key="user.id")
+    user: Union["User", None] = Relationship(back_populates="contact_entries")
 
-    # Columna para almacenar la ID del usuario que envió el formulario
-    user_id: int | None = Field(default=None, foreign_key="user.id")
-    # Relación para acceder al objeto User desde un ContactEntry
-    user: "User" | None = Relationship(back_populates="contact_entries")
 
-
-# --- Modelo de Blog corregido ---
+# --- Modelo de Blog corregido y compatible ---
 class Blog(rx.Model, table=True):
     """Blog model."""
-    id: int | None = Field(default=None, primary_key=True)
+    id: Union[int, None] = Field(default=None, primary_key=True)
     author: str
     title: str
     content: str
