@@ -1,8 +1,8 @@
-import reflex as rx
-# Asumo que la importación base es desde ui.base y no ui.base_page
-from ..ui.base import base as base_page 
+# guardianslime/full-stack-python/full-stack-python-8c473aa59b63fc9e7a7075ae9cbea38efb6553ed/full_stack_python/contact/page.py
+
+import reflex as rx 
+from ..ui.base import base_page
 from ..models import ContactEntryModel
-# Asumo que AuthState, que contiene check_login, está en state
 from . import form, state
 
 def contact_entry_list_item(contact: ContactEntryModel):
@@ -43,10 +43,7 @@ def contact_entries_list_page() -> rx.Component:
             align="center",
             min_height="85vh",
         ),
-        # --- CORRECCIÓN AQUÍ ---
-        # Se ha convertido on_load en una lista para primero verificar el login
-        # y luego cargar las entradas.
-        on_load=[state.ContactState.check_login, state.ContactState.list_entries]
+        on_load=state.ContactState.list_entries
     )
 
 def contact_page() -> rx.Component:
@@ -54,32 +51,32 @@ def contact_page() -> rx.Component:
     Página con el formulario de contacto.
     """
     my_child = rx.vstack(
-        rx.heading("Contact us", size="9"),
-        rx.cond(state.ContactState.did_submit, state.ContactState.thank_you, ""),
-        rx.desktop_only(
-            rx.box(
-                form.contact_form(),
-                width="50vw"
-            )
-        ),
-        rx.tablet_only(
-            rx.box(
-                form.contact_form(),
-                width="75vw"
-            )
-        ),
-        rx.mobile_only(
-            rx.box(
-                form.contact_form(),
-                id= "my-form-box",
-                width="85vw"
-            )
-        ),
-        spacing="5",
-        justify="center",
-        align="center",
-        min_height="85vh",
-        id='my-child'
-    )
+            rx.heading("Contact us", size="9"),
+            rx.cond(state.ContactState.did_submit, state.ContactState.thank_you, ""),
+            rx.desktop_only(
+                rx.box(
+                    form.contact_form(),
+                    width="50vw"
+                )
+            ),
+            rx.tablet_only(
+                rx.box(
+                    form.contact_form(),
+                    width="75vw"
+                )
+            ),
+            rx.mobile_only(
+                rx.box(
+                    form.contact_form(),
+                    id= "my-form-box",
+                    width="85vw"
+                )
+            ),
+            spacing="5",
+            justify="center",
+            align="center",
+            min_height="85vh",
+            id='my-child'
+        )
     
     return base_page(my_child)
