@@ -12,36 +12,35 @@ class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key='localuser.id')
     user: LocalUser | None = Relationship()
+    
+    # Relación con BlogPostModel
     posts: List['BlogPostModel'] = Relationship(
         back_populates='userinfo'
     )
-    posts: List['ContactPostModel'] = Relationship(
+    
+    # CORRECCIÓN 1: Se actualiza el tipo a 'ContactPostModel'
+    # Relación con ContactPostModel
+    contact_entries: List['ContactPostModel'] = Relationship(
         back_populates='userinfo'
-    )
-
+    ) 
+    
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "server_default": sqlalchemy.func.now()
-        },
+        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
         nullable=False
     )
     updated_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "onupdate": sqlalchemy.func.now(),
-            "server_default": sqlalchemy.func.now()
-        },
+        sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
         nullable=False
     )
 
 
 class BlogPostModel(rx.Model, table=True):
-    # ¡CORRECCIÓN! Se hace obligatorio que un post tenga un autor eliminando `default=None`.
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    # ¡CORRECCIÓN! La relación con el autor ya no es opcional.
+    # Esta relación es correcta, se vincula con 'posts' en UserInfo
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     
     title: str
@@ -49,18 +48,13 @@ class BlogPostModel(rx.Model, table=True):
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "server_default": sqlalchemy.func.now()
-        },
+        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
         nullable=False
     )
     updated_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "onupdate": sqlalchemy.func.now(),
-            "server_default": sqlalchemy.func.now()
-        },
+        sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
         nullable=False
     )
     publish_active: bool = False
@@ -72,28 +66,23 @@ class BlogPostModel(rx.Model, table=True):
     )
 
 class ContactPostModel(rx.Model, table=True):
-    # ¡CORRECCIÓN! Se hace obligatorio que un post tenga un autor eliminando `default=None`.
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    # ¡CORRECCIÓN! La relación con el autor ya no es opcional.
-    userinfo: "UserInfo" = Relationship(back_populates="posts")
+    
+    # CORRECCIÓN 2: Se corrige 'back_populates' para que apunte a 'contact_entries'
+    userinfo: "UserInfo" = Relationship(back_populates="contact_entries")
     
     title: str
     content: str
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "server_default": sqlalchemy.func.now()
-        },
+        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
         nullable=False
     )
     updated_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "onupdate": sqlalchemy.func.now(),
-            "server_default": sqlalchemy.func.now()
-        },
+        sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
         nullable=False
     )
     publish_active: bool = False
@@ -103,6 +92,3 @@ class ContactPostModel(rx.Model, table=True):
         sa_column_kwargs={},
         nullable=True
     )
-
-
-

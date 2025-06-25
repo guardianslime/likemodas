@@ -16,5 +16,11 @@ providers = ['python']
   apt_packages = ["git", "nodejs", "npm", "unzip", "parallel", "build-essential"]
 
 # Fase de inicio: Cómo se ejecuta tu aplicación.
-# Se ejecuta únicamente el backend de Reflex en el host 0.0.0.0 y puerto 8000.
-startCmd = "uvicorn full_stack_python.full_stack_python:app --host 0.0.0.0 --port $PORT"
+[phases.start]
+  # ¡CORRECCIÓN! 
+  # 1. Se ejecuta 'reflex db migrate' para aplicar cualquier cambio en la base de datos.
+  # 2. '&&' asegura que el siguiente comando solo se ejecute si la migración tiene éxito.
+  # 3. 'reflex run --env prod' inicia la aplicación en modo de producción, que es más robusto y usa gunicorn/uvicorn optimizados.
+  #    $PORT es una variable que Railway proporciona automáticamente.
+  cmd = "reflex db migrate && reflex run --env prod --http-port $PORT"
+
