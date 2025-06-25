@@ -14,18 +14,26 @@ def contact_post_detail_page() -> rx.Component:
     )
     my_child = rx.cond(state.ContactPostState.post, rx.vstack(
         rx.hstack(
-            # CORRECCIÓN: Se usa el nombre correcto 'ContactPostState'.
             rx.heading(state.ContactPostState.post.title, size="9"),
             edit_link_el,
             align='end'
         ),
-        rx.text("User info id", state.ContactPostState.post.userinfo_id),
-        rx.text("User info: ", state.ContactPostState.post.userinfo.to_string()),
-        rx.text("User: ", state.ContactPostState.post.userinfo.user.to_string()),
-        rx.text(state.ContactPostState.post.publish_date),
-        rx.text(
-            state.ContactPostState.post.content,
-            white_space='pre-wrap'
+        # --- CORRECCIÓN ---
+        # Se muestran atributos específicos como .email y .username
+        # en lugar de usar el método inexistente .to_string()
+        rx.text("Author Email: ", state.ContactPostState.post.userinfo.email),
+        rx.text("Author Username: ", state.ContactPostState.post.userinfo.user.username),
+        rx.text("Published on: ", state.ContactPostState.post.publish_date),
+        rx.box(
+            rx.text(
+                state.ContactPostState.post.content,
+                white_space='pre-wrap'
+            ),
+            border="1px solid #ddd",
+            padding="1em",
+            border_radius="8px",
+            margin_top="1em",
+            width="100%"
         ),
         spacing="5",
         align="center",
