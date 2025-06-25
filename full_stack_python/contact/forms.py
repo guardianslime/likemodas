@@ -7,7 +7,7 @@ from .state import (
 )
 
 
-def contact_post_add_form() -> rx.Component:
+def contact_entry_add_form() -> rx.Component:
     return rx.form(
             rx.vstack(
                 rx.hstack(
@@ -37,7 +37,7 @@ def contact_post_add_form() -> rx.Component:
 
 from .state import ContactEditFormState
 
-def contact_post_edit_form() -> rx.Component:
+def contact_entry_edit_form() -> rx.Component:
     entry = ContactEditFormState.entry
     title = entry.title
     publish_active = entry.publish_active
