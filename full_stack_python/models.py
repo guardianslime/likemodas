@@ -5,7 +5,7 @@ from reflex_local_auth.user import LocalUser
 
 import sqlalchemy
 from sqlmodel import Field, Relationship
-
+from typing import List, Union
 from . import utils
 
 class UserInfo(rx.Model, table=True):
@@ -78,8 +78,6 @@ class User(rx.Model, table=True):
     username: str = Field(unique=True, index=True)
     password_hash: str
     enabled: bool = True
-    
-    # Se usa List en lugar de list para compatibilidad
     contact_entries: List["ContactEntry"] = Relationship(back_populates="user")
 
 
@@ -90,8 +88,6 @@ class ContactEntry(rx.Model, table=True):
     name: str
     email: str
     message: str
-    
-    # Se usa Union en lugar de |
     user_id: Union[int, None] = Field(default=None, foreign_key="user.id")
     user: Union["User", None] = Relationship(back_populates="contact_entries")
 
