@@ -123,7 +123,9 @@ app.add_page(
     route=navigation.routes.CONTACT_US_ROUTE
 )
 
+# ARREGLO: Se añade el `on_load` aquí, imitando cómo funciona el blog.
 app.add_page(
     contact.contact_entries_list_page,
-    route=navigation.routes.CONTACT_ENTRIES_ROUTE
+    route=navigation.routes.CONTACT_ENTRIES_ROUTE,
+    on_load=[contact.state.ContactState.hydrate_session, contact.state.ContactState.list_entries]
 )

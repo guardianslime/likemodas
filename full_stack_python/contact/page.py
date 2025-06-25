@@ -42,9 +42,8 @@ def contact_entries_list_page() -> rx.Component:
             spacing="5",
             align="center",
             min_height="85vh",
-        ),
-        # ARREGLO: Primero carga la sesión, luego lista las entradas.
-        on_load=[state.ContactState.hydrate_session, state.ContactState.list_entries]
+        )
+        # ARREGLO: Se elimina el on_load de aquí para que lo gestione el app.add_page
     )
 
 def contact_page() -> rx.Component:
