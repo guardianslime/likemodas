@@ -22,13 +22,11 @@ def contact_entry_list_item(contact: ContactEntryModel):
 
 def contact_entries_list_page() -> rx.Component:
     
-    # ¡MEJORA! Usamos rx.cond para mostrar un mensaje si la lista de entradas está vacía.
     return base_page(
         rx.vstack(
             rx.heading("Contact Entries", size="5"),
             rx.cond(
-                state.ContactState.entries,  # Esto evalúa si la lista no está vacía
-                # Si hay entradas, las muestra con rx.foreach
+                state.ContactState.entries,
                 rx.foreach(
                     state.ContactState.entries,
                     contact_entry_list_item
@@ -43,7 +41,7 @@ def contact_entries_list_page() -> rx.Component:
             align="center",
             min_height="85vh",
         ),
-        # ARREGLO: Primero carga la sesión, luego lista las entradas.
+        # ARREGLO: Usando la nueva función hydrate_session
         on_load=[state.ContactState.hydrate_session, state.ContactState.list_entries]
     )
 
@@ -80,5 +78,5 @@ def contact_page() -> rx.Component:
             id='my-child'
         )
     
-    # ARREGLO: Se asegura de cargar la sesión del usuario al visitar la página.
+    # ARREGLO: Usando la nueva función hydrate_session
     return base_page(my_child, on_load=state.ContactState.hydrate_session)
