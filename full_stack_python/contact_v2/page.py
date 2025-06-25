@@ -5,7 +5,7 @@ import reflex_local_auth
 from ..ui.base import base_page
 from ..models import ContactEntryModel
 from .state import ContactV2State
-from . import forms
+from .forms import contact_v2_form  # <-- ARREGLO: Importamos la función directamente.
 
 def entry_list_item(entry: ContactEntryModel):
     """Muestra un item individual de la lista de entradas."""
@@ -52,7 +52,7 @@ def contact_v2_add_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Enviar un Nuevo Mensaje", size="7"),
-            forms.contact_v2_form(),
+            contact_v2_form(), # <-- ARREGLO: Usamos la función directamente.
             spacing="5",
             align="center",
             min_height="85vh",
