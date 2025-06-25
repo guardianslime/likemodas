@@ -4,10 +4,10 @@ from ..ui.base import base_page
 from . import forms
 
 @reflex_local_auth.require_login
-def contact_post_add_page() -> rx.Component:
-    my_form = forms.contact_post_add_form()
+def contact_entry_add_page() -> rx.Component:
+    my_form = forms.contact_entry_add_form()
     my_child = rx.vstack(
-            rx.heading("New Contact Post", size="9"), 
+            rx.heading("New Contact Entry", size="9"), 
             rx.desktop_only(
                 rx.box(
                     my_form,

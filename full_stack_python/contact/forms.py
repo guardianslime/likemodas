@@ -2,7 +2,7 @@ import reflex as rx
 
 
 from .state import (
-    ContactAddPostFormState,
+    ContactAddEntrytFormState,
     ContactEditFormState
 )
 
@@ -30,7 +30,7 @@ def contact_post_add_form() -> rx.Component:
                 ),
                 rx.button("Submit", type="submit"),
             ),
-            on_submit=ContactAddPostFormState.handle_submit,
+            on_submit=ContactAddEntrytFormState.handle_submit,
             reset_on_submit=True,
     )
 
@@ -38,16 +38,16 @@ def contact_post_add_form() -> rx.Component:
 from .state import ContactEditFormState
 
 def contact_post_edit_form() -> rx.Component:
-    post = ContactEditFormState.post
-    title = post.title
-    publish_active = post.publish_active
-    post_content = ContactEditFormState.post_content
+    entry = ContactEditFormState.entry
+    title = entry.title
+    publish_active = entry.publish_active
+    entry_content = ContactEditFormState.entry_content
     return rx.form(
             rx.box(
                 rx.input(
                     type='hidden',
-                    name='post_id',
-                    value=post.id
+                    name='entry_id',
+                    value=entry.id
                 ),
                 display='none'
             ),
@@ -64,8 +64,8 @@ def contact_post_edit_form() -> rx.Component:
                     width='100%',
                 ),
                 rx.text_area(
-                    value = post_content,
-                    on_change = ContactEditFormState.set_post_content,
+                    value = entry_content,
+                    on_change = ContactEditFormState.set_entry_content,
                     name='content',
                     placeholder='Your message',
                     required=True,
@@ -75,15 +75,15 @@ def contact_post_edit_form() -> rx.Component:
                 rx.flex(
                     rx.switch(
                         default_checked=ContactEditFormState.
-                        post_publish_active,
-                        on_change=ContactEditFormState.set_post_publish_active,
+                        entry_publish_active,
+                        on_change=ContactEditFormState.set_entry_publish_active,
                         name='publish_active',        
                     ),
                     rx.text("Publish Active"),
                     spacing="2",
                 ),
                 rx.cond(
-                    ContactEditFormState.post_publish_active,
+                    ContactEditFormState.entry_publish_active,
                     rx.box(
                         rx.hstack(
                             rx.input(

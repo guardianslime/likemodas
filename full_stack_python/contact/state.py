@@ -7,109 +7,109 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import ContactPostModel, UserInfo
+from ..models import ContactEntryModel, UserInfo
 
 CONTACT_POSTS_ROUTE = navigation.routes.CONTACT_POSTS_ROUTE
 if CONTACT_POSTS_ROUTE.endswith("/"):
     CONTACT_POSTS_ROUTE = CONTACT_POSTS_ROUTE[:-1]
 
-class ContactPostState(SessionState):
-    posts: List["ContactPostModel"] = []
-    post: Optional["ContactPostModel"] = None
-    post_content: str = ""
-    post_publish_active: bool = False
+class ContactEntryState(SessionState):
+    entrys: List["ContactEntryModel"] = []
+    entry: Optional["ContactEntryModel"] = None
+    entry_content: str = ""
+    entry_publish_active: bool = False
 
     @rx.var
-    def contact_post_id(self) -> str:  # Añadida la anotación de tipo -> str
+    def contact_entry_id(self) -> str:  # Añadida la anotación de tipo -> str
         return self.router.page.params.get("contact_id", "")
 
     @rx.var
-    def contact_post_url(self) -> str: # Añadida la anotación de tipo -> str
-        if not self.post:
+    def contact_entry_url(self) -> str: # Añadida la anotación de tipo -> str
+        if not self.entry:
             return f"{CONTACT_POSTS_ROUTE}"
-        return f"{CONTACT_POSTS_ROUTE}/{self.post.id}"
+        return f"{CONTACT_POSTS_ROUTE}/{self.entry.id}"
 
     @rx.var
-    def contact_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
-        if not self.post:
+    def contact_entry_edit_url(self) -> str: # Añadida la anotación de tipo -> str
+        if not self.entry:
             return f"{CONTACT_POSTS_ROUTE}"
-        return f"{CONTACT_POSTS_ROUTE}/{self.post.id}/edit"
+        return f"{CONTACT_POSTS_ROUTE}/{self.entry.id}/edit"
 
     def get_post_detail(self):
         if self.my_userinfo_id is None:
-            self.post = None
-            self.post_content = ""
-            self.post_publish_active = False
+            self.entry = None
+            self.entry_content = ""
+            self.entry_publish_active = False
             return
         lookups = (
-            (ContactPostModel.userinfo_id == self.my_userinfo_id) &
-            (ContactPostModel.id == self.contact_post_id)
+            (ContactEntryModel.userinfo_id == self.my_userinfo_id) &
+            (ContactEntryModel.id == self.contact_entry_id)
         )
         with rx.session() as session:
-            if self.contact_post_id == "":
-                self.post = None
+            if self.contact_entry_id == "":
+                self.entry = None
                 return
-            sql_statement = select(ContactPostModel).options(
-                sqlalchemy.orm.joinedload(ContactPostModel.userinfo).joinedload(UserInfo.user)
+            sql_statement = select(ContactEntryModel).options(
+                sqlalchemy.orm.joinedload(ContactEntryModel.userinfo).joinedload(UserInfo.user)
             ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
             # if result.userinfo: # db lookup
             #     print('working')
             #     result.userinfo.user
-            self.post = result
+            self.entry = result
             if result is None:
-                self.post_content = ""
+                self.entry_content = ""
                 return
-            self.post_content = self.post.content
-            self.post_publish_active = self.post.publish_active
+            self.entry_content = self.entry.content
+            self.entry_publish_active = self.entry.publish_active
 
     def load_posts(self, *args, **kwargs):
         # if published_only:
         #     lookup_args = (
-        #         (ContactPostModel.publish_active == True) &
-        #         (ContactPostModel.publish_date < datetime.now())
+        #         (ContactEntryModel.publish_active == True) &
+        #         (ContactEntryModel.publish_date < datetime.now())
         #     )
         with rx.session() as session:
             result = session.exec(
-                select(ContactPostModel).options(
-                    sqlalchemy.orm.joinedload(ContactPostModel.userinfo)
-                ).where(ContactPostModel.userinfo_id == self.my_userinfo_id)
+                select(ContactEntryModel).options(
+                    sqlalchemy.orm.joinedload(ContactEntryModel.userinfo)
+                ).where(ContactEntryModel.userinfo_id == self.my_userinfo_id)
             ).all()
-            self.posts = result
+            self.entrys = result
 
     def add_post(self, form_data: dict):
         with rx.session() as session:
-            post = ContactPostModel(**form_data)
-            session.add(post)
+            entry = ContactEntryModel(**form_data)
+            session.add(entry)
             session.commit()
-            session.refresh(post)
-            self.post = post
+            session.refresh(entry)
+            self.entry = entry
 
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
-            post = session.exec(
-                select(ContactPostModel).where(
-                    ContactPostModel.id == post_id
+            entry = session.exec(
+                select(ContactEntryModel).where(
+                    ContactEntryModel.id == post_id
                 )
             ).one_or_none()
-            if post is None:
+            if entry is None:
                 return
             for key, value in updated_data.items():
-                setattr(post, key, value)
-            session.add(post)
+                setattr(entry, key, value)
+            session.add(entry)
             session.commit()
-            session.refresh(post)
-            self.post = post
+            session.refresh(entry)
+            self.entry = entry
 
-    def to_contact_post(self, edit_page=False):
-        if not self.post:
+    def to_contact_entry(self, edit_page=False):
+        if not self.entry:
             return rx.redirect(CONTACT_POSTS_ROUTE)
         if edit_page:
-            return rx.redirect(f"{self.contact_post_edit_url}")
-        return rx.redirect(f"{self.contact_post_url}")
+            return rx.redirect(f"{self.contact_entry_edit_url}")
+        return rx.redirect(f"{self.contact_entry_url}")
 
 
-class ContactAddPostFormState(ContactPostState):
+class ContactAddPostFormState(ContactEntryState):
     form_data: dict = {}
 
     def handle_submit(self, form_data):
@@ -118,27 +118,27 @@ class ContactAddPostFormState(ContactPostState):
             data['userinfo_id'] = self.my_userinfo_id
         self.form_data = data
         self.add_post(data)
-        return self.to_contact_post(edit_page=True)
+        return self.to_contact_entry(edit_page=True)
 
 
-class ContactEditFormState(ContactPostState):
+class ContactEditFormState(ContactEntryState):
     form_data: dict = {}
 
     @rx.var
     def publish_display_date(self) -> str:
-        if not self.post:
+        if not self.entry:
             return datetime.now().strftime("%Y-%m-%d")
-        if not self.post.publish_date:
+        if not self.entry.publish_date:
             return datetime.now().strftime("%Y-%m-%d")
-        return self.post.publish_date.strftime("%Y-%m-%d")
+        return self.entry.publish_date.strftime("%Y-%m-%d")
 
     @rx.var
     def publish_display_time(self) -> str:
-        if not self.post:
+        if not self.entry:
             return datetime.now().strftime("%H:%M:%S")
-        if not self.post.publish_date:
+        if not self.entry.publish_date:
             return datetime.now().strftime("%H:%M:%S")
-        return self.post.publish_date.strftime("%H:%M:%S")
+        return self.entry.publish_date.strftime("%H:%M:%S")
 
     def handle_submit(self, form_data):
         self.form_data = form_data
@@ -161,4 +161,4 @@ class ContactEditFormState(ContactPostState):
         updated_data['publish_active'] = publish_active
         updated_data['publish_date'] = final_publish_date
         self.save_post_edits(post_id, updated_data)
-        return self.to_contact_post()
+        return self.to_contact_entry()

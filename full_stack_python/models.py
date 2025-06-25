@@ -18,9 +18,9 @@ class UserInfo(rx.Model, table=True):
         back_populates='userinfo'
     )
     
-    # CORRECCIÓN 1: Se actualiza el tipo a 'ContactPostModel'
-    # Relación con ContactPostModel
-    contact_entries: List['ContactPostModel'] = Relationship(
+    # CORRECCIÓN 1: Se actualiza el tipo a 'ContactEntryModel'
+    # Relación con ContactEntryModel
+    contact_entries: List['ContactEntryModel'] = Relationship(
         back_populates='userinfo'
     ) 
     
@@ -65,7 +65,7 @@ class BlogPostModel(rx.Model, table=True):
         nullable=True
     )
 
-class ContactPostModel(rx.Model, table=True):
+class ContactEntryModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     
     # CORRECCIÓN 2: Se corrige 'back_populates' para que apunte a 'contact_entries'

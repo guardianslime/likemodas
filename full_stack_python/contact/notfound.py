@@ -2,6 +2,6 @@ import reflex as rx
 
 def contact_post_not_found() -> rx.Component:
     return rx.hstack(
-        rx.heading("Contact PostNot Found"), spacing="5",
+        rx.heading("Contact EntryNot Found"), spacing="5",
         align="center",
         min_height="85vh")
