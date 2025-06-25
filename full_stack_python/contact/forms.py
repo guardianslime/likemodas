@@ -2,7 +2,7 @@ import reflex as rx
 
 
 from .state import (
-    ContactAddEntrytFormState,
+    ContactAddEntryFormState,
     ContactEditFormState
 )
 
@@ -30,7 +30,7 @@ def contact_post_add_form() -> rx.Component:
                 ),
                 rx.button("Submit", type="submit"),
             ),
-            on_submit=ContactAddEntrytFormState.handle_submit,
+            on_submit=ContactAddEntryFormState.handle_submit,
             reset_on_submit=True,
     )
 

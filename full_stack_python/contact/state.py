@@ -35,7 +35,7 @@ class ContactEntryState(SessionState):
             return f"{CONTACT_POSTS_ROUTE}"
         return f"{CONTACT_POSTS_ROUTE}/{self.entry.id}/edit"
 
-    def get_post_detail(self):
+    def get_entry_detail(self):
         if self.my_userinfo_id is None:
             self.entry = None
             self.entry_content = ""
@@ -63,7 +63,7 @@ class ContactEntryState(SessionState):
             self.entry_content = self.entry.content
             self.entry_publish_active = self.entry.publish_active
 
-    def load_posts(self, *args, **kwargs):
+    def load_entrys(self, *args, **kwargs):
         # if published_only:
         #     lookup_args = (
         #         (ContactEntryModel.publish_active == True) &
@@ -77,7 +77,7 @@ class ContactEntryState(SessionState):
             ).all()
             self.entrys = result
 
-    def add_post(self, form_data: dict):
+    def add_entry(self, form_data: dict):
         with rx.session() as session:
             entry = ContactEntryModel(**form_data)
             session.add(entry)
@@ -85,11 +85,11 @@ class ContactEntryState(SessionState):
             session.refresh(entry)
             self.entry = entry
 
-    def save_post_edits(self, post_id: int, updated_data: dict):
+    def save_entry_edits(self, entry_id: int, updated_data: dict):
         with rx.session() as session:
             entry = session.exec(
                 select(ContactEntryModel).where(
-                    ContactEntryModel.id == post_id
+                    ContactEntryModel.id == entry_id
                 )
             ).one_or_none()
             if entry is None:
@@ -109,7 +109,7 @@ class ContactEntryState(SessionState):
         return rx.redirect(f"{self.contact_entry_url}")
 
 
-class ContactAddPostFormState(ContactEntryState):
+class ContactAddEntryFormState(ContactEntryState):
     form_data: dict = {}
 
     def handle_submit(self, form_data):
@@ -117,7 +117,7 @@ class ContactAddPostFormState(ContactEntryState):
         if self.my_userinfo_id is not None:
             data['userinfo_id'] = self.my_userinfo_id
         self.form_data = data
-        self.add_post(data)
+        self.add_entry(data)
         return self.to_contact_entry(edit_page=True)
 
 
@@ -142,7 +142,7 @@ class ContactEditFormState(ContactEntryState):
 
     def handle_submit(self, form_data):
         self.form_data = form_data
-        post_id = form_data.pop('post_id')
+        entry_id = form_data.pop('entry_id')
         publish_date = None
         if 'publish_date' in form_data:
             publish_date = form_data.pop('publish_date')
@@ -160,5 +160,5 @@ class ContactEditFormState(ContactEntryState):
         updated_data = {**form_data}
         updated_data['publish_active'] = publish_active
         updated_data['publish_date'] = final_publish_date
-        self.save_post_edits(post_id, updated_data)
+        self.save_entry_edits(entry_id, updated_data)
         return self.to_contact_entry()
