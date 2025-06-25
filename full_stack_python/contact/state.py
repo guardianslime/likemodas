@@ -1,51 +1,52 @@
-from typing import List
+from __future__ import annotations
 import asyncio
-import reflex as rx 
-
-from sqlmodel import select
-
+import reflex as rx
 
 from ..auth.state import SessionState
 from ..models import ContactEntryModel
 
 class ContactState(SessionState):
+    """El estado para manejar el formulario de contacto."""
+
     form_data: dict = {}
-    entries: List['ContactEntryModel'] = []
+    entries: list[ContactEntryModel] = []
     did_submit: bool = False
 
     @rx.var
-    def thank_you(self):
-        first_name = self.form_data.get("first_name") or ""
-        return f"Thank you {first_name}".strip() + "!"
+    def thank_you(self) -> str:
+        """Un componente que se muestra después de enviar el formulario."""
+        first_name = self.form_data.get("first_name", "")
+        if first_name:
+            return f"Thank you, {first_name}!"
+        return "Thank you for your message!"
 
     async def handle_submit(self, form_data: dict):
-        """Handle the form submit."""
-        # print(form_data)
+        """Maneja el envío del formulario."""
         self.form_data = form_data
-        data = {}
-        for k,v in form_data.items():
-            if v == "" or v is None:
-                continue
-            data[k] = v
-        if self.my_user_id is not None:
-            data['user_id'] = self.my_user_id
-        if self.my_userinfo_id is not None:
-            data['userinfo_id'] = self.my_userinfo_id
+
         with rx.session() as session:
+            user_info = self.authenticated_user_info
+            
             db_entry = ContactEntryModel(
-                **data
+                first_name=form_data.get("first_name", ""),
+                last_name=form_data.get("last_name"),
+                email=form_data.get("email"),
+                message=form_data.get("message", ""),
+                userinfo_id=user_info.id if user_info else None,
             )
             session.add(db_entry)
             session.commit()
-            self.did_submit = True
-            yield
-        await asyncio.sleep(2)
+
+        self.did_submit = True
+        
+        await asyncio.sleep(3)
+
         self.did_submit = False
-        yield
+        self.form_data = {}
 
     def list_entries(self):
-        with rx.session() as session:
-            entries = session.exec(
-                select(ContactEntryModel)
-            ).all()
-            self.entries = entries
+         """Carga todas las entradas de contacto desde la base de datos."""
+         with rx.session() as session:
+                self.entries = session.exec(
+                    rx.select(ContactEntryModel)
+                ).all()
