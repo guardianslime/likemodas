@@ -15,7 +15,7 @@ from .auth.state import SessionState
 
 
 from .articles.detail import article_detail_page
-from .articles.list import article_public_list_page, article_public_list_component
+from .articles.list import article_public_list_page
 from .articles.state import ArticlePublicState
 
 from . import blog, contact, navigation, pages
@@ -57,16 +57,17 @@ app.add_page(
 app.add_page(
      my_register_page,
      route=reflex_local_auth.routes.REGISTER_ROUTE,
-     title="Register",
+     title="register"
 )
 
-app.add_page(
-     my_logout_page,
-     route=navigation.routes.LOGOUT_ROUTE,
-     title="Logout"
-)
+# --- CORRECCIÓN ---
+# Se define la ruta de logout manualmente, ya que reflex-local-auth no la proporciona.
+app.add_page(my_logout_page, route="/logout")
 
-#my pages
+
+app.add_page(pages.pricing_page, 
+             route=navigation.routes.PRICING_ROUTE)
+
 app.add_page(pages.about_page,
              route=navigation.routes.ABOUT_US_ROUTE)
 
@@ -112,11 +113,25 @@ app.add_page(
      on_load=blog.BlogPostState.get_post_detail
 )
 
-app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
-    contact.contact_entries_list_page,
-    route=navigation.routes.CONTACT_ENTRIES_ROUTE,
-    on_load=contact.ContactState.list_entries
+    contact.contact_entry_list_page,  # <-- CAMBIO
+    route=navigation.routes.CONTACT_POSTS_ROUTE,
+    on_load=contact.ContactEntryState.load_entrys # <-- CAMBIO
 )
-app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
+app.add_page(
+     contact.contact_entry_add_page, # <-- CAMBIO
+     route=navigation.routes.CONTACT_POST_ADD_ROUTE,
+)
+
+app.add_page(
+     contact.contact_entry_detail_page, # <-- CAMBIO
+     route="/contact/[contact_id]",
+     on_load=contact.ContactEntryState.get_entry_detail # <-- CAMBIO
+)
+
+app.add_page(
+     contact.contact_entry_edit_page, # <-- CAMBIO
+     route="/contact/[contact_id]/edit",
+     on_load=contact.ContactEntryState.get_entry_detail # <-- CAMBIO
+)
