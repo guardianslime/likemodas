@@ -3,6 +3,7 @@
 import reflex as rx
 import reflex_local_auth
 
+from full_stack_python.contact.page import contact_page
 from rxconfig import config
 from .ui.base import base_page
 
@@ -121,8 +122,8 @@ app.add_page(
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 app.add_page(
-    contact_pages.contact_entries_list_page,
+    contact_page.contact_entries_list_page,
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
-    on_load=contact_state.ContactEntryState.load_entries,
+    on_load=contact_page.ContactEntryState.load_entries,
 )
 
