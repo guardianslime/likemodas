@@ -39,8 +39,8 @@ class UserInfo(rx.Model, table=True):
 
 
 class BlogPostModel(rx.Model, table=True):
+    # ¡CORRECCIÓN! Se hace obligatorio que un post tenga un autor.
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    # Esta relación es correcta, se vincula con 'posts' en UserInfo
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     
     title: str
@@ -66,9 +66,9 @@ class BlogPostModel(rx.Model, table=True):
     )
 
 class ContactEntryModel(rx.Model, table=True):
+    # ¡CORRECCIÓN! Aseguramos larelación con 
+    # el autor.
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    
-    # CORRECCIÓN 2: Se corrige 'back_populates' para que apunte a 'contact_entries'
     userinfo: "UserInfo" = Relationship(back_populates="contact_entries")
     
     title: str
