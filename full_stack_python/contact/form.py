@@ -1,15 +1,22 @@
-# full_stack_python/contact/form.py
-
 import reflex as rx 
+
 from ..auth.state import SessionState
-# ¡CORRECCIÓN! Se elimina la importación de 'ContactState' de la parte superior del archivo.
-# from .state import ContactState
+from .state import ContactState
 
 def contact_form() -> rx.Component:
-    # ¡CORRECCIÓN! Se importa 'ContactState' DENTRO de la función que la necesita.
-    from .state import ContactState
-
     return rx.form(
+            # rx.cond(
+            #     SessionState.my_user_id,
+            #     rx.box(
+            #         rx.input(
+            #             type='hidden',
+            #             name='user_id',
+            #             value=SessionState.my_user_id
+            #         ),
+            #         display='none'
+            #     ),
+            #     rx.fragment('')
+            # ),
             rx.vstack(
                 rx.hstack(
                     rx.input(
