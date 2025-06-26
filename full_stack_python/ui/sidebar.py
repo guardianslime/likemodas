@@ -130,8 +130,8 @@ def sidebar_items() -> rx.Component:
         sidebar_item("Articles", "globe", navigation.routes.ARTICLE_LIST_ROUTE),
         sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
         sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
-        sidebar_item("Contactb", "newspaper", navigation.routes.CONTACT_POSTS_ROUTE),
-        sidebar_item("CCreate post", "square-library", navigation.routes.CONTACT_POST_ADD_ROUTE),
+        sidebar_item("Contact", "mail", navigation.routes.CONTACT_US_ROUTE),
+        sidebar_item("Contact History", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
         spacing="1",
         width="100%",
     )

@@ -35,6 +35,7 @@ def navbar() -> rx.Component:
                     navbar_link("About", navigation.routes.ABOUT_US_ROUTE),
                     navbar_link("Articles", navigation.routes.ARTICLE_LIST_ROUTE),
                     navbar_link("Pricing", navigation.routes.PRICING_ROUTE),
+                    navbar_link("Contact", navigation.routes.CONTACT_US_ROUTE),
                     spacing="5",
                 ),
                 rx.hstack(
@@ -90,6 +91,8 @@ def navbar() -> rx.Component:
                             on_click=navigation.NavState.to_blog),
                         rx.menu.item("Pricing",
                             on_click=navigation.NavState.to_pricing),
+                        rx.menu.item("Contact",
+                            on_click=navigation.NavState.to_contact),
                         rx.menu.separator(),
                         rx.menu.item("Log in",
                             on_click=navigation.NavState.
