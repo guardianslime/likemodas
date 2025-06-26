@@ -1,52 +1,89 @@
-from __future__ import annotations
-import asyncio
-import reflex as rx
+# full_stack_python/contact/page.py
 
-from ..auth.state import SessionState
+import reflex as rx 
+import reflex_local_auth
+from ..ui.base import base_page
 from ..models import ContactEntryModel
+from . import form, state
 
-class ContactState(SessionState):
-    """El estado para manejar el formulario de contacto."""
+def contact_entry_list_item(contact: ContactEntryModel):
+    """Muestra una entrada de contacto individual de forma más clara."""
+    return rx.box(
+        rx.heading(f"{contact.first_name} ({contact.email})", size="4"),
+        rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
+        rx.text(f"Received on: {contact.created_at.strftime('%Y-%m-%d %H:%M')}", size="2", color_scheme="gray"),
+        rx.cond(
+            contact.userinfo_id,
+            rx.text("Submitted by logged-in user", size="2", weight="bold"),
+            rx.text("Submitted by a guest", size="2", weight="bold"),
+        ),
+        padding="1em",
+        border="1px solid",
+        border_color=rx.color("gray", 6),
+        border_radius="0.5em",
+        width="100%"
+    )
 
-    form_data: dict = {}
-    entries: list[ContactEntryModel] = []
-    did_submit: bool = False
+@reflex_local_auth.require_login
+def contact_entries_list_page() -> rx.Component:
+    """Página que muestra la lista de entradas de contacto."""
+    return base_page(
+        rx.vstack(
+            rx.heading("Contact Entries", size="7"),
+            rx.foreach(
+                state.ContactState.entries,
+                contact_entry_list_item
+            ),
+            spacing="5",
+            align="center",
+            width="100%",
+            max_width="800px",
+            margin="auto",
+            min_height="85vh",
+        )
+    )
 
-    @rx.var
-    def thank_you(self) -> str:
-        """Un componente que se muestra después de enviar el formulario."""
-        first_name = self.form_data.get("first_name", "")
-        if first_name:
-            return f"Thank you, {first_name}!"
-        return "Thank you for your message!"
+def contact_page() -> rx.Component:
+    """
+    Página de contacto que muestra un mensaje de agradecimiento o el formulario,
+    manteniendo el diseño responsivo.
+    """
+    # ¡CORRECCIÓN! Aquí se soluciona el ValueError.
+    # Se define un componente condicional que envuelve la variable 'thank_you' en un rx.heading.
+    thank_you_or_form = rx.cond(
+        state.ContactState.did_submit,
+        rx.heading(state.ContactState.thank_you, size="5", text_align="center"),
+        form.contact_form()
+    )
 
-    async def handle_submit(self, form_data: dict):
-        """Maneja el envío del formulario."""
-        self.form_data = form_data
-
-        with rx.session() as session:
-            user_info = self.authenticated_user_info
+    my_child = rx.vstack(
+            rx.heading("Contact us", size="9"),
             
-            db_entry = ContactEntryModel(
-                first_name=form_data.get("first_name", ""),
-                last_name=form_data.get("last_name"),
-                email=form_data.get("email"),
-                message=form_data.get("message", ""),
-                userinfo_id=user_info.id if user_info else None,
-            )
-            session.add(db_entry)
-            session.commit()
-
-        self.did_submit = True
-        
-        await asyncio.sleep(3)
-
-        self.did_submit = False
-        self.form_data = {}
-
-    def list_entries(self):
-         """Carga todas las entradas de contacto desde la base de datos."""
-         with rx.session() as session:
-                self.entries = session.exec(
-                    rx.select(ContactEntryModel)
-                ).all()
+            # Se usa el componente condicional en cada vista responsiva.
+            rx.desktop_only(
+                rx.box(
+                    thank_you_or_form,
+                    width="50vw"
+                )
+            ),
+            rx.tablet_only(
+                rx.box(
+                    thank_you_or_form,
+                    width="75vw"
+                )
+            ),
+            rx.mobile_only(
+                rx.box(
+                    thank_you_or_form,
+                    id= "my-form-box",
+                    width="85vw"
+                )
+            ),
+            spacing="5",
+            justify="center",
+            align="center",
+            min_height="85vh",
+            id='my-child'
+        )
+    
+    return base_page(my_child)
