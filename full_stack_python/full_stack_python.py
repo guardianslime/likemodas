@@ -116,7 +116,7 @@ app.add_page(
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 # CÓDIGO CORREGIDO Y FINAl
-app.add_page(contact contact_page, route=navigation_routes.CONTACT_US_ROUTE) # type: ignore
+app.add_page(contact_page, route=navigation_routes.CONTACT_US_ROUTE) # type: ignore
 app.add_page(
     contact_entries_list_page,  # <--- ¡SOLUCIÓN! Se usa el nombre de la función importada directamente.
     route=navigation_routes.CONTACT_ENTRIES_ROUTE, # type: ignore
