@@ -112,14 +112,14 @@ app.add_page(
      route="/blog/[blog_id]/edit",
      on_load=blog.BlogPostState.get_post_detail
 )
+app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
     contact.contact_entries_list_page,
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
-    on_load=contact.ContactState.load_entries
+    on_load=contact.ContactEntryState.load_entries  # <-- ¡SOLUCIÓN! Se usa el nombre de clase correcto
 )
-app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 app.add_page(
     contact_page.contact_entries_list_page,
