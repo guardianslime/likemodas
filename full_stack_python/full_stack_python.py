@@ -86,9 +86,10 @@ app.add_page(
 # ... (resto de las líneas de app.add_page) ...
 
 # Páginas de Contacto (CORREGIDO para apuntar al estado de historial correcto)
-app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
+# full_stack_python/full_stack_python.py (solo la línea relevante)
+
 app.add_page(
     contact.contact_entries_list_page,
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
-    on_load=contact.ContactHistoryState.load_entries
+    on_load=contact.ContactState.load_entries
 )

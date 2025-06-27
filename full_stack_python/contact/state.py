@@ -1,33 +1,36 @@
 # full_stack_python/contact/state.py
 
 from __future__ import annotations
-from typing import List
-import reflex as rx
 import asyncio
+import reflex as rx
 from sqlmodel import select
 
-# Se importa SessionState solo para el estado que lo necesita.
+# Se importa SessionState para poder acceder al usuario autenticado
 from ..auth.state import SessionState
 from ..models import ContactEntryModel
 
-# --- ESTADO PARA EL FORMULARIO DE AÑADIR (SÍ necesita la sesión) ---
-class ContactAddFormState(SessionState):
+class ContactState(SessionState):
     """
-    Estado dedicado para manejar el envío del formulario de contacto.
-    Necesita heredar de SessionState para poder asociar el envío con el usuario si está logueado.
+    Un único estado simple que maneja tanto el formulario como la lista de entradas.
+    Basado en la lógica original que sí funcionaba.
     """
+    # Para el formulario
     form_data: dict = {}
     did_submit: bool = False
 
+    # Para la lista de entradas
+    entries: list[ContactEntryModel] = []
+
     @rx.var
     def thank_you_message(self) -> str:
+        """Mensaje de agradecimiento."""
         first_name = self.form_data.get("first_name", "")
         return f"¡Gracias, {first_name}!" if first_name else "¡Gracias por tu mensaje!"
 
     async def handle_submit(self, form_data: dict):
+        """Maneja el envío del formulario."""
         self.form_data = form_data
         with rx.session() as session:
-            # Se intenta obtener el usuario, pero no es obligatorio.
             user_info = self.authenticated_user_info
             db_entry = ContactEntryModel(
                 first_name=form_data.get("first_name", ""),
@@ -45,16 +48,8 @@ class ContactAddFormState(SessionState):
         self.did_submit = False
         yield
 
-# --- ESTADO PARA EL HISTORIAL (NO debe heredar de la sesión) ---
-class ContactHistoryState(rx.State):
-    """
-    Estado simple y aislado para mostrar el historial de todas las entradas.
-    No hereda de SessionState para evitar conflictos con el manejo de la sesión del usuario.
-    """
-    entries: List[ContactEntryModel] = []
-
     def load_entries(self):
-        """Carga TODAS las entradas de la base de datos, sin filtrar por usuario."""
+        """Carga TODAS las entradas de la base de datos."""
         with rx.session() as session:
             self.entries = session.exec(
                 select(ContactEntryModel).order_by(ContactEntryModel.id.desc())

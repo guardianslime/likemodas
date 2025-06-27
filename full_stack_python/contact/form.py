@@ -1,6 +1,7 @@
 # full_stack_python/contact/form.py
+
 import reflex as rx
-from .state import ContactAddFormState # Importa el estado correcto
+from .state import ContactState # Apunta al estado simple y único
 
 def contact_form() -> rx.Component:
     """El formulario para crear una nueva entrada de contacto."""
@@ -15,6 +16,6 @@ def contact_form() -> rx.Component:
             rx.text_area(name="message", placeholder="Tu mensaje", required=True, width='100%'),
             rx.button("Enviar", type="submit"),
         ),
-        on_submit=ContactAddFormState.handle_submit, # Usa el manejador del estado dedicado
+        on_submit=ContactState.handle_submit, # Usa el manejador del estado único
         reset_on_submit=True,
     )

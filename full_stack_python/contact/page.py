@@ -5,8 +5,7 @@ import reflex_local_auth
 from ..ui.base import base_page
 from ..models import ContactEntryModel
 from .form import contact_form
-# Importamos los dos estados nuevos y separados
-from .state import ContactHistoryState, ContactAddFormState
+from .state import ContactState # Importa el estado único
 
 def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
     """Muestra una entrada de contacto individual."""
@@ -24,26 +23,23 @@ def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
 
 @reflex_local_auth.require_login
 def contact_entries_list_page() -> rx.Component:
-    """
-    Página que muestra la lista de todas las entradas.
-    La PÁGINA sigue protegida por login, pero el ESTADO que carga los datos es independiente.
-    """
+    """Página que muestra la lista de todas las entradas."""
     return base_page(
         rx.vstack(
             rx.heading("Historial de Contacto", size="7"),
-            rx.foreach(ContactHistoryState.entries, contact_entry_list_item),
+            rx.foreach(ContactState.entries, contact_entry_list_item),
             spacing="5", align="center", width="100%", max_width="800px", margin="auto", min_height="85vh"
         )
     )
 
 def contact_page() -> rx.Component:
-    """La página principal de contacto que usa el estado del formulario."""
+    """La página principal de contacto."""
     return base_page(
         rx.vstack(
             rx.heading("Contáctanos", size="9"),
             rx.cond(
-                ContactAddFormState.did_submit,
-                rx.heading(ContactAddFormState.thank_you_message, size="5", text_align="center"),
+                ContactState.did_submit,
+                rx.heading(ContactState.thank_you_message, size="5", text_align="center"),
                 contact_form()
             ),
             spacing="5", justify="center", align="center", min_height="85vh",
