@@ -6,14 +6,15 @@ import reflex as rx
 import asyncio
 from sqlmodel import select
 
+# Se importa SessionState solo para el estado que lo necesita.
 from ..auth.state import SessionState
 from ..models import ContactEntryModel
 
-# --- ESTADO PARA EL FORMULARIO DE AÑADIR (NECESITA LA SESIÓN) ---
+# --- ESTADO PARA EL FORMULARIO DE AÑADIR (SÍ necesita la sesión) ---
 class ContactAddFormState(SessionState):
     """
     Estado dedicado para manejar el envío del formulario de contacto.
-    Necesita heredar de SessionState para asociar el envío con el usuario.
+    Necesita heredar de SessionState para poder asociar el envío con el usuario si está logueado.
     """
     form_data: dict = {}
     did_submit: bool = False
@@ -26,6 +27,7 @@ class ContactAddFormState(SessionState):
     async def handle_submit(self, form_data: dict):
         self.form_data = form_data
         with rx.session() as session:
+            # Se intenta obtener el usuario, pero no es obligatorio.
             user_info = self.authenticated_user_info
             db_entry = ContactEntryModel(
                 first_name=form_data.get("first_name", ""),
@@ -43,16 +45,16 @@ class ContactAddFormState(SessionState):
         self.did_submit = False
         yield
 
-# --- ESTADO PARA EL HISTORIAL (NO NECESITA LA SESIÓN DIRECTAMENTE) ---
+# --- ESTADO PARA EL HISTORIAL (NO debe heredar de la sesión) ---
 class ContactHistoryState(rx.State):
     """
-    Estado simple y aislado para mostrar el historial de entradas.
-    No hereda de SessionState para evitar conflictos.
+    Estado simple y aislado para mostrar el historial de todas las entradas.
+    No hereda de SessionState para evitar conflictos con el manejo de la sesión del usuario.
     """
     entries: List[ContactEntryModel] = []
 
     def load_entries(self):
-        """Carga TODAS las entradas de la base de datos."""
+        """Carga TODAS las entradas de la base de datos, sin filtrar por usuario."""
         with rx.session() as session:
             self.entries = session.exec(
                 select(ContactEntryModel).order_by(ContactEntryModel.id.desc())
