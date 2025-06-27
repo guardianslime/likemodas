@@ -81,9 +81,14 @@ app.add_page(
 )
 
 # Páginas de Contacto (Corregido para ser idéntico al patrón de Blog)
+# full_stack_python/full_stack_python.py (solo la línea relevante)
+
+# ... (resto de las líneas de app.add_page) ...
+
+# Páginas de Contacto (CORREGIDO para apuntar al estado de historial correcto)
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
     contact.contact_entries_list_page,
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
-    on_load=contact.ContactEntryState.load_entries
+    on_load=contact.ContactHistoryState.load_entries  # <-- ¡CAMBIO CLAVE!
 )
