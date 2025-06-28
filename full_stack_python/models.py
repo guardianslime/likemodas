@@ -9,6 +9,7 @@ from sqlmodel import Field, Relationship
 from . import utils
 
 # ... (Las clases UserInfo y BlogPostModel no cambian) ...
+
 class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key='localuser.id')
@@ -68,9 +69,9 @@ class ContactEntryModel(rx.Model, table=True):
         nullable=False
     )
 
-    # --- ¡INICIO DE LA CORRECCIÓN! ---
+    # --- ¡CORRECCIÓN! AÑADE ESTE MÉTODO ---
     @rx.var
     def created_at_formatted(self) -> str:
         """Un campo calculado que devuelve la fecha de creación como un string formateado."""
         return self.created_at.strftime("%Y-%m-%d %H:%M")
-    # --- FIN DE LA CORRECCIÓN ---
+    # ------------------------------------
