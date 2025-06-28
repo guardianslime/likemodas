@@ -1,5 +1,3 @@
-# full_stack_python/full_stack_python.py
-
 """Welcome to Reflex! This file outlines the steps to create a basic app."""
 
 import reflex as rx
@@ -18,7 +16,6 @@ from .articles.state import ArticlePublicState
 from . import blog, contact, navigation, pages
 
 # --- Definición de la Aplicación ---
-
 def index() -> rx.Component:
     """La página principal que redirige al dashboard si el usuario está autenticado."""
     return base_page(
@@ -41,7 +38,6 @@ app = rx.App(
 )
 
 # --- Registro de Páginas ---
-
 app.add_page(index, on_load=ArticlePublicState.load_posts)
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -62,7 +58,7 @@ app.add_page(
     on_load=ArticlePublicState.get_post_detail,
 )
 
-# Páginas de Blog (El patrón que funciona)
+# Páginas de Blog
 app.add_page(
     blog.blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
@@ -80,17 +76,12 @@ app.add_page(
     on_load=blog.BlogPostState.get_post_detail
 )
 
-# Páginas de Contacto (Corregido para ser idéntico al patrón de Blog)
-# full_stack_python/full_stack_python.py (solo la línea relevante)
-
-# ... (resto de las líneas de app.add_page) ...
-
-# Páginas de Contacto (CORREGIDO para apuntar al estado de historial correcto)
-# full_stack_python/full_stack_python.py (solo la línea relevante)
-app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE) # <-- ¡LÍNEA AÑADIDA!
-
+# --- INICIO DE LA CORRECCIÓN ---
+# Páginas de Contacto
+app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
     contact.contact_entries_list_page,
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
     on_load=contact.ContactState.load_entries
 )
+# --- FIN DE LA CORRECCIÓN ---
