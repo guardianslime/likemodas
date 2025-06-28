@@ -11,7 +11,6 @@ def base_dashboard_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             sidebar(),
             rx.box(
                 child,
-                rx.logo(),
                 #bg=rx.color("accent", 3),
                 padding="1em",
                 width="100%",    
