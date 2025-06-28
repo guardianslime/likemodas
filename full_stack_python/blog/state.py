@@ -85,6 +85,8 @@ class BlogPostState(SessionState):
             session.refresh(post)
             self.post = post
 
+# En full_stack_python/blog/state.py
+
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
             post = session.exec(
@@ -98,8 +100,16 @@ class BlogPostState(SessionState):
                 setattr(post, key, value)
             session.add(post)
             session.commit()
-            session.refresh(post)
-            self.post = post
+            
+            # --- MEJORA ---
+            # Después de guardar, recargamos el post con sus relaciones (userinfo y user)
+            # para asegurar que el estado (self.post) esté completo antes de redirigir.
+            reloaded_post = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+                ).where(BlogPostModel.id == post_id)
+            ).one_or_none()
+            self.post = reloaded_post
 
     def to_blog_post(self, edit_page=False):
         if not self.post:
