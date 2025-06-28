@@ -19,7 +19,7 @@ def contact_form() -> rx.Component:
             on_submit=ContactState.handle_submit, # Usa el manejador del estado único
             reset_on_submit=True,
     )
-    
+
     my_child = rx.vstack(
             rx.heading("Contact us", size="9"),
             rx.cond(ContactState.did_submit, rx.text("Submitted"), rx.button("Default")),
@@ -32,14 +32,14 @@ def contact_form() -> rx.Component:
             rx.tablet_only(
                 rx.box(
                     my_form,
-                    width="50vw",
+                    width="30vw",
                 )
             ),
             rx.mobile_only(
                 rx.box(
                     my_form,
                     id= "my-form-box",
-                    width="50vw",
+                    width="20vw",
                 )
             ),
             spacing="5",
