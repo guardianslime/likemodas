@@ -20,7 +20,7 @@ class FullStackPythonConfig(rx.Config):
     deploy_url: str = FRONTEND_URL
     
     # Lista de orígenes permitidos para CORS.
-    # Esto permite que tu frontend en Vercel se conecte al backend.
+    # Esto es crucial para que tu backend en Railway acepte la conexión de Vercel.
     cors_allowed_origins: list[str] = [
         FRONTEND_URL,
         "http://localhost:3000",
