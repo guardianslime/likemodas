@@ -18,8 +18,7 @@ COPY . .
 # Expone el puerto que usará Reflex (Railway lo mapeará).
 EXPOSE 8000
 
-# --- COMANDO DE INICIO DEFINITIVO ---
-# 1. 'reflex db init': Prepara la BD para las migraciones.
-# 2. 'reflex db migrate': Aplica las migraciones.
-# 3. 'uvicorn ...': Inicia el servidor directamente con soporte para proxy (WebSockets).
-CMD ["sh", "-c", "reflex db init && reflex db migrate && uvicorn simple_app.simple_app:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+# --- COMANDO DE INICIO FINAL Y RECOMENDADO ---
+# Usamos 'reflex run' con los argumentos correctos. Es el método oficial y más robusto.
+# Quitamos 'reflex db init' porque 'migrate' puede manejar la inicialización.
+CMD ["sh", "-c", "reflex db migrate && reflex run --env prod --backend-host 0.0.0.0 --backend-port 8000"]
