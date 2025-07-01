@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "build": "python3 -m pip install -r requirements.txt && reflex export --frontend-only"
+    "build": "python3 -m pip install -r requirements.txt && reflex export --frontend-only && ls -R .web"
   }
 }
