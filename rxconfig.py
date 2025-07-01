@@ -1,36 +1,32 @@
 import reflex as rx
 import os
-from typing import List, Optional, Dict, Any
+from typing import List
 
-# Define tus URLs de producción. Es una buena práctica tenerlas definidas.
-# La URL donde vivirá tu backend (Railway)
-BACKEND_PRODUCTION_URL = "web-production-50b7a.up.railway.app"
-# La URL donde vivirá tu frontend (Vercel)
-# EN TU ARCHIVO ACTUALMENTE
-# CÓDIGO CORREGIDO
-FRONTEND_PRODUCTION_URL = "https://full-stack-python.vercel.app"  # ¡Asegúrate que esta sea tu URL de Vercel!
+# --- CORRECCIÓN CLAVE ---
+# Lee las URLs desde las variables de entorno al inicio.
+# Si la variable no existe (en desarrollo local), usa un valor por defecto.
+API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+DEPLOY_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 
 class FullStackPythonConfig(rx.Config):
     app_name = "full_stack_python"
     telemetry_enabled = False
-    frontend_port = 3000
-    backend_port = 8000
     
-    # Usa os.getenv para leer la URL de la API. En local usará el default.
-    # En Vercel usará la variable de entorno que configuraremos.
-    api_url: str = os.getenv("API_URL", f"http://127.0.0.1:{backend_port}")
+    # Asigna las URLs leídas de las variables de entorno.
+    api_url: str = API_URL
+    deploy_url: str = DEPLOY_URL
 
-    # La URL pública del frontend. En Vercel, esto vendrá de una variable de entorno.
-    deploy_url: str = os.getenv("FRONTEND_URL", f"http://localhost:{frontend_port}")
-
-    # El CORS debe permitir tu PC, y AMBAS URLs de producción.
+    # Construye la lista de CORS dinámicamente a partir de las variables.
+    # Esto permite que tu backend acepte peticiones de tu frontend.
     cors_allowed_origins: List[str] = [
-        f"http://localhost:{frontend_port}",
-        BACKEND_PRODUCTION_URL,
-        FRONTEND_PRODUCTION_URL,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        API_URL,
+        DEPLOY_URL,
     ]
     
     db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
-    tailwind: Optional[Dict[str, Any]] = None
 
+# Crea la instancia de la configuración.
 config = FullStackPythonConfig()
