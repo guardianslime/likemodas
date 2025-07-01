@@ -4,7 +4,7 @@ import os
 # --- URLs de Producción ---
 # Estas son las URLs de tus servicios en la nube.
 # Las leemos de las variables de entorno para que el código sea flexible.
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://full-stack-python.vercel.appp")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://full-stack-python-1dqv-qgszd49vv-guardianslimes-projects.vercel.app")
 API_URL = os.getenv("API_URL", "https://web-production-50b7a.up.railway.app")
 
 class FullStackPythonConfig(rx.Config):
