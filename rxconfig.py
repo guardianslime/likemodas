@@ -1,36 +1,33 @@
 import reflex as rx
 import os
 
-# --- LECTURA DE VARIABLES DE ENTORNO ---
-# Lee la URL del frontend (para CORS en el backend). Usa un valor por defecto para desarrollo local.
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+# --- URLs DE PRODUCCIÓN DEFINIDAS MANUALMENTE ---
+# Ignoramos las variables de entorno y usamos los valores directamente.
+# Esta es la URL de tu frontend en Vercel.
+FRONTEND_URL_PROD = "https://full-stack-python-1dqv.vercel.app"
 
-# Lee la URL del backend (para que el frontend sepa a dónde conectar).
-# Lee "API_URL", que es el nombre de la variable que configuraste en Vercel.
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
+# Esta es la URL de tu backend en Railway.
+API_URL_PROD = "https://web-production-50b7a.up.railway.app"
 
 
 class FullStackPythonConfig(rx.Config):
-    # --- CORRECCIÓN CLAVE 1 ---
-    # El nombre de la app DEBE coincidir con el nombre de tu carpeta principal de código.
-    app_name = "full_stack_python" 
+    # Asegúrate de que este nombre coincida con tu carpeta de código principal.
+    app_name = "full_stack_python"
     
-    # Configura las URLs usando las variables leídas arriba.
-    api_url: str = API_URL
-    deploy_url: str = FRONTEND_URL
+    # --- CONFIGURACIÓN CLAVE ---
+    # Asignamos las URLs directamente.
+    api_url: str = API_URL_PROD
+    deploy_url: str = FRONTEND_URL_PROD
     
-    # Lista de orígenes permitidos para CORS.
-    # Esto es crucial para que tu backend en Railway acepte la conexión de Vercel.
+    # La lista de orígenes permitidos para CORS.
+    # Al definir la URL de Vercel aquí, el backend la aceptará.
     cors_allowed_origins: list[str] = [
-        FRONTEND_URL,
+        FRONTEND_URL_PROD,
         "http://localhost:3000",
     ]
     
-    # Configuración de la base de datos.
+    # La URL de la base de datos SÍ debe usar os.getenv,
+    # ya que Railway la inyecta de forma segura y garantizada.
     db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
-
-    # --- CORRECCIÓN CLAVE 2 ---
-    # Hemos eliminado la línea "socket: str = ..." que causaba el conflicto.
-    # Ahora Reflex usará su configuración por defecto, que es la correcta.
 
 config = FullStackPythonConfig()
