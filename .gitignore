@@ -1,4 +1,16 @@
-*.db
-*.py[cod]
-.web
+# .gitignore
+
+# Entorno virtual de Python
+.venv/
+venv/
+
+# Archivos de caché de Python
 __pycache__/
+*.pyc
+
+# Archivos generados por Reflex que NO se deben subir
+.web/
+assets/
+
+# Base de datos local
+*.db
