@@ -4,7 +4,7 @@ import os
 # --- URLs DE PRODUCCIÓN DEFINIDAS MANUALMENTE ---
 # Ignoramos las variables de entorno y usamos los valores directamente.
 # Esta es la URL de tu frontend en Vercel.
-FRONTEND_URL_PROD = "https://full-stack-python-1dqv.vercel.app"
+FRONTEND_URL_PROD = "https://full-stack-python.vercel.app"
 
 # Esta es la URL de tu backend en Railway.
 API_URL_PROD = "https://web-production-50b7a.up.railway.app"
