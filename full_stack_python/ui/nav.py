@@ -24,7 +24,7 @@ def navbar() -> rx.Component:
                     ),
                     rx.link(
                         rx.heading(
-                            "Likemodas", size="7", weight="bold"
+                            "Reflex", size="7", weight="bold"
                         ),
                         href=navigation.routes.HOME_ROUTE
                     ),
@@ -33,9 +33,9 @@ def navbar() -> rx.Component:
                 rx.hstack(
                     navbar_link("Home", navigation.routes.HOME_ROUTE),
                     navbar_link("About", navigation.routes.ABOUT_US_ROUTE),
-                    navbar_link("Articulos", navigation.routes.ARTICLE_LIST_ROUTE),
-                    navbar_link("Promociones", navigation.routes.PRICING_ROUTE),
-                    navbar_link("Contacto", navigation.routes.CONTACT_US_ROUTE),
+                    navbar_link("Articles", navigation.routes.ARTICLE_LIST_ROUTE),
+                    navbar_link("Pricing", navigation.routes.PRICING_ROUTE),
+                    navbar_link("Contact", navigation.routes.CONTACT_US_ROUTE),
                     spacing="5",
                 ),
                 rx.hstack(

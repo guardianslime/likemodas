@@ -1,37 +1,32 @@
-# full_stack_python/contact/state.py
-
 from __future__ import annotations
 import asyncio
 import reflex as rx
-from sqlmodel import select
 
-# Se importa SessionState para poder acceder al usuario autenticado
 from ..auth.state import SessionState
 from ..models import ContactEntryModel
 
 class ContactState(SessionState):
-    """
-    Un único estado simple que maneja tanto el formulario como la lista de entradas.
-    Basado en la lógica original que sí funcionaba.
-    """
-    # Para el formulario
+    """El estado para manejar el formulario de contacto."""
+
     form_data: dict = {}
+    entries: list[ContactEntryModel] = []
     did_submit: bool = False
 
-    # Para la lista de entradas
-    entries: list[ContactEntryModel] = []
-
     @rx.var
-    def thank_you_message(self) -> str:
-        """Mensaje de agradecimiento."""
+    def thank_you(self) -> str:
+        """Un componente que se muestra después de enviar el formulario."""
         first_name = self.form_data.get("first_name", "")
-        return f"¡Gracias, {first_name}!" if first_name else "¡Gracias por tu mensaje!"
+        if first_name:
+            return f"Thank you, {first_name}!"
+        return "Thank you for your message!"
 
     async def handle_submit(self, form_data: dict):
         """Maneja el envío del formulario."""
         self.form_data = form_data
+
         with rx.session() as session:
             user_info = self.authenticated_user_info
+            
             db_entry = ContactEntryModel(
                 first_name=form_data.get("first_name", ""),
                 last_name=form_data.get("last_name"),
@@ -43,14 +38,15 @@ class ContactState(SessionState):
             session.commit()
 
         self.did_submit = True
-        yield
-        await asyncio.sleep(4)
-        self.did_submit = False
-        yield
+        
+        await asyncio.sleep(3)
 
-    def load_entries(self):
-        """Carga TODAS las entradas de la base de datos."""
-        with rx.session() as session:
-            self.entries = session.exec(
-                select(ContactEntryModel).order_by(ContactEntryModel.id.desc())
-            ).all()
+        self.did_submit = False
+        self.form_data = {}
+
+    def list_entries(self):
+         """Carga todas las entradas de contacto desde la base de datos."""
+         with rx.session() as session:
+                self.entries = session.exec(
+                    rx.select(ContactEntryModel)
+                ).all()

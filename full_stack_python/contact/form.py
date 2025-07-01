@@ -1,21 +1,53 @@
-# full_stack_python/contact/form.py
+import reflex as rx 
 
-import reflex as rx
-from .state import ContactState # Apunta al estado simple y único
+from ..auth.state import SessionState
+from .state import ContactState
 
 def contact_form() -> rx.Component:
-    """El formulario para crear una nueva entrada de contacto."""
     return rx.form(
-        rx.vstack(
-            rx.hstack(
-                rx.input(name="first_name", placeholder="Nombre", width="100%"),
-                rx.input(name="last_name", placeholder="Apellido", width="100%"),
-                width="100%",
+            # rx.cond(
+            #     SessionState.my_user_id,
+            #     rx.box(
+            #         rx.input(
+            #             type='hidden',
+            #             name='user_id',
+            #             value=SessionState.my_user_id
+            #         ),
+            #         display='none'
+            #     ),
+            #     rx.fragment('')
+            # ),
+            rx.vstack(
+                rx.hstack(
+                    rx.input(
+                        name="first_name",
+                        placeholder="first name",
+                        required=False,
+                        type= "text",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="last_name",
+                        placeholder="Last Name",
+                        type="text",
+                        width="100%",
+                    ),
+                    width="100%",
+                ),
+                rx.input(
+                    name= "email",
+                    placeholder="Your email",
+                    type= "email",
+                    width="100%",
+                ), 
+                rx.text_area(
+                    name="message",
+                    placeholder="Your message",
+                    required=True,
+                    width='100%',
+                ),
+                rx.button("Submit", type="submit"),
             ),
-            rx.input(name="email", placeholder="Tu Email", type="email", width="100%"), 
-            rx.text_area(name="message", placeholder="Tu mensaje", required=True, width='100%'),
-            rx.button("Enviar", type="submit"),
-        ),
-        on_submit=ContactState.handle_submit, # Usa el manejador del estado único
-        reset_on_submit=True,
+            on_submit=ContactState.handle_submit,
+            reset_on_submit=True,
     )

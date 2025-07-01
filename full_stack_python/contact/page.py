@@ -1,47 +1,68 @@
-# full_stack_python/contact/page.py
-
 import reflex as rx 
-import reflex_local_auth
 from ..ui.base import base_page
 from ..models import ContactEntryModel
-from .form import contact_form
-from .state import ContactState # Importa el estado único
+from . import form, state
 
-def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
-    """Muestra una entrada de contacto individual."""
+def contact_entry_list_item(contact: ContactEntryModel):
+    """
+    Muestra una entrada de contacto individual.
+    La corrección está en la línea `rx.cond` para usar `contact.userinfo_id`.
+    """
     return rx.box(
-        rx.heading(f"{contact.first_name} ({contact.email})", size="4"),
-        rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
-        rx.text(f"Recibido el: {contact.created_at_formatted}", size="2", color_scheme="gray"),
+        rx.heading(contact.first_name),
+        rx.text("Messages:", contact.message),
+        # ¡CORRECCIÓN! Se cambió contact.user_id por contact.userinfo_id.
+        # Esto verifica si la entrada de contacto está asociada a un usuario.
         rx.cond(
             contact.userinfo_id,
-            rx.text("Enviado por un usuario registrado", size="2", weight="bold"),
-            rx.text("Enviado por un invitado", size="2", weight="bold"),
+            rx.text("User associated, ID:", f"{contact.userinfo_id}"),
+            rx.fragment("")  # No muestra nada si no hay un usuario asociado.
         ),
-        padding="1em", border="1px solid", border_color=rx.color("gray", 6), border_radius="0.5em", width="100%"
+        padding="1em"
     )
 
-@reflex_local_auth.require_login
 def contact_entries_list_page() -> rx.Component:
-    """Página que muestra la lista de todas las entradas."""
     return base_page(
         rx.vstack(
-            rx.heading("Historial de Contacto", size="7"),
-            rx.foreach(ContactState.entries, contact_entry_list_item),
-            spacing="5", align="center", width="100%", max_width="800px", margin="auto", min_height="85vh"
+            rx.heading("Contact Entries", size="5"),
+            rx.foreach(
+                state.ContactState.entries,
+                contact_entry_list_item
+            ),
+            spacing="5",
+            align="center",
+            min_height="85vh",
         )
     )
 
 def contact_page() -> rx.Component:
-    """La página principal de contacto."""
-    return base_page(
-        rx.vstack(
-            rx.heading("Contáctanos", size="9"),
-            rx.cond(
-                ContactState.did_submit,
-                rx.heading(ContactState.thank_you_message, size="5", text_align="center"),
-                contact_form()
+    my_child = rx.vstack(
+            rx.heading("Contact us", size="9"),
+            rx.cond(state.ContactState.did_submit, state.ContactState.thank_you, ""),
+            rx.desktop_only(
+                rx.box(
+                    form.contact_form(),
+                    width="50vw"
+                )
             ),
-            spacing="5", justify="center", align="center", min_height="85vh",
+            rx.tablet_only(
+                rx.box(
+                    form.contact_form(),
+                    width="50vw"
+                )
+            ),
+            rx.mobile_only(
+                rx.box(
+                    form.contact_form(),
+                    id= "my-form-box",
+                    width="50vw"
+                )
+            ),
+            spacing="5",
+            justify="center",
+            align="center",
+            min_height="85vh",
+            id='my-child'
         )
-    )
+    
+    return base_page(my_child)
