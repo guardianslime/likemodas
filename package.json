@@ -1,5 +1,0 @@
-{
-  "scripts": {
-    "build": "python -m pip install -r requirements.txt && reflex export --frontend-only"
-  }
-}

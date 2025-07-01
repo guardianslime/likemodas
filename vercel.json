@@ -1,12 +1,12 @@
 {
-  "version": 2,
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": ".web/out"
-      }
+      "src": "requirements.txt",
+      "use": "@vercel/python",
+      "config": { "runtime": "python3.12" }
     }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/" }
   ]
 }
