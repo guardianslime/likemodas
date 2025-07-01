@@ -23,8 +23,8 @@ class FullStackPythonConfig(rx.Config):
     # El CORS debe permitir tu PC, y AMBAS URLs de producción.
     cors_allowed_origins: List[str] = [
         f"http://localhost:{frontend_port}",
-        BACKEND_PRODUCTION_URL,
-        FRONTEND_PRODUCTION_URL,
+        API_URL_PROD,
+        FRONTEND_URL_PROD,
     ]
     
     db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
