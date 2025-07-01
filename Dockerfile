@@ -1,5 +1,5 @@
-# Usa una imagen base de Python 3.12 optimizada.
-FROM python:3.12-slim
+# Usa una imagen base de Python 3.11 optimizada.
+FROM python:3.11-slim
 
 # Permite a pip instalar paquetes
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
@@ -14,11 +14,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia todo el código de la aplicación
 COPY . .
-
-# Expone el puerto que usará Reflex (Railway lo mapeará)
+# Expone el puerto que usará Reflex
 EXPOSE 8000
 
 # --- CORRECCIÓN CLAVE ---
-# 1. Ejecuta la migración de la base de datos.
-# 2. Si la migración tiene éxito (gracias a '&&'), inicia el servidor.
-CMD reflex db migrate && reflex run --env prod --backend-host 0.0.0.0 --backend-port 8000
+# Se actualiza el comando para que coincida con la sintaxis de reflex==0.5.0
+# --host -> --backend-host
+# --port -> --backend-port
+# Se añade --backend-only para asegurar que solo el backend se ejecute en producción.
+CMD ["reflex", "run", "--backend-only", "--backend-host", "0.0.0.0", "--backend-port", "8000", "--loglevel", "info"]
