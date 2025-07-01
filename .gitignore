@@ -1,22 +1,14 @@
-!/.env.example
-# .states/  <- Es opcional, pero bueno ignorarlo
-# Archivos de entorno
-# Archivos de la base de datos local
-# Archivos de sistema operativo
-# Directorio de estados de Reflex
-# Directorios de build y assets de Reflex/Next.js
-# Directorios de caché y compilados de Python
+# .gitignore
+# Archivos de caché de Python
+# Archivos generados por Reflex que NO se deben subir
+# Base de datos local
 # Entorno virtual de Python
 *.db
 *.py[cod]
-.DS_Store
-.env*
-.next/
-.states
+*.pyc
 .venv/
 .web
 .web/
-Thumbs.db
 __pycache__/
-assets/external/
+assets/
 venv/
