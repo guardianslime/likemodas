@@ -1,1 +1,1 @@
-web: uvicorn full_stack_python.full_stack_python:app --host=0.0.0.0 --port=$PORT
+web: reflex db upgrade && uvicorn full_stack_python.full_stack_python:app --host=0.0.0.0 --port=$PORT
