@@ -19,6 +19,5 @@ COPY . .
 EXPOSE 8000
 
 # --- COMANDO DE INICIO FINAL Y RECOMENDADO ---
-# Usamos 'reflex run' con los argumentos correctos. Es el método oficial y más robusto.
-# Quitamos 'reflex db init' porque 'migrate' puede manejar la inicialización.
+# Este comando es genérico y funciona porque lee el 'app_name' del rxconfig.py
 CMD ["sh", "-c", "reflex db migrate && reflex run --env prod --backend-host 0.0.0.0 --backend-port 8000"]
