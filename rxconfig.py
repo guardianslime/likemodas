@@ -1,14 +1,11 @@
 import reflex as rx
 import os
-from typing import List, Optional, Dict, Any
+from typing import List
 
-# Define tus URLs de producción. Es una buena práctica tenerlas definidas.
-# La URL donde vivirá tu backend (Railway)
-BACKEND_PRODUCTION_URL = "full-stack-python-production.up.railway.app"
-# La URL donde vivirá tu frontend (Vercel)
-# EN TU ARCHIVO ACTUALMENTE
-# CÓDIGO CORREGIDO
-FRONTEND_PRODUCTION_URL = "https://full-stack-python.vercel.app"  # ¡Asegúrate que esta sea tu URL de Vercel!
+# --- URLs DE PRODUCCIÓN DEFINIDAS MANUALMENTE ---
+# Esto elimina cualquier error de las variables de entorno.
+FRONTEND_URL_PROD = "https://full-stack-python.vercel.app"
+API_URL_PROD = "full-stack-python-production.up.railway.app"
 
 class FullStackPythonConfig(rx.Config):
     app_name = "full_stack_python"
@@ -31,6 +28,5 @@ class FullStackPythonConfig(rx.Config):
     ]
     
     db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
-    tailwind: Optional[Dict[str, Any]] = None
 
 config = FullStackPythonConfig()
