@@ -5,12 +5,7 @@ FROM python:3.12-slim
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 WORKDIR /app
 
-# --- CORRECCIÓN CLAVE ---
-# Instala todas las dependencias de sistema necesarias:
-# build-essential: para compilar paquetes.
-# nodejs, npm: para el entorno de JavaScript.
-# unzip: para descomprimir archivos.
-# curl, ca-certificates: para descargar archivos de forma segura por la red.
+# Instala todas las dependencias de sistema necesarias.
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential nodejs npm unzip curl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copia e instala las dependencias de Python.
@@ -23,5 +18,6 @@ COPY . .
 # Expone el puerto que usará Reflex (Railway lo mapeará).
 EXPOSE 8000
 
-# Comando para iniciar el servidor de backend en modo producción.
-CMD ["reflex", "run", "--env", "prod", "--backend-host", "0.0.0.0", "--backend-port", "8000"]
+# --- CORRECCIÓN CLAVE ---
+# Añade --proxy-headers para que los WebSockets funcionen detrás del proxy de Railway.
+CMD ["sh", "-c", "reflex db migrate && reflex run --env prod --backend-host 0.0.0.0 --backend-port 8000 --proxy-headers"]
