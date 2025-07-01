@@ -1,2 +1,6 @@
 reflex
 reflex==0.5.0
+reflex-local-auth
+psycopg2
+sqlmodel
+sqlalchemy
