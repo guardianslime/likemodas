@@ -1,33 +1,36 @@
 import reflex as rx
 import os
+from typing import List, Optional, Dict, Any
 
-# --- LECTURA DE VARIABLES DE ENTORNO ---
-# Lee la URL del frontend (para CORS en el backend). Usa un valor por defecto para desarrollo local.
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-
-# Lee la URL del backend (para que el frontend sepa a dónde conectar). Usa un valor por defecto para desarrollo local.
-# ¡IMPORTANTE! Lee "API_URL", que es el nombre de la variable que configuraste en Vercel.
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
-
+# Define tus URLs de producción. Es una buena práctica tenerlas definidas.
+# La URL donde vivirá tu backend (Railway)
+BACKEND_PRODUCTION_URL = "full-stack-python-production.up.railway.app"
+# La URL donde vivirá tu frontend (Vercel)
+# EN TU ARCHIVO ACTUALMENTE
+# CÓDIGO CORREGIDO
+FRONTEND_PRODUCTION_URL = "https://full-stack-python.vercel.app"  # ¡Asegúrate que esta sea tu URL de Vercel!
 
 class FullStackPythonConfig(rx.Config):
-    # Asegúrate de que este nombre coincida con el de la carpeta principal de tu código.
-    # Si tu código está en 'simple_app/simple_app.py', debería ser "simple_app".
-    # Si está en 'full_stack_python/full_stack_python.py', es "full_stack_python".
-    app_name = "simple_app" 
+    app_name = "full_stack_python"
+    telemetry_enabled = False
+    frontend_port = 3000
+    backend_port = 8000
     
-    # Configura las URLs usando las variables leídas arriba.
-    api_url: str = API_URL
-    deploy_url: str = FRONTEND_URL
-    
-    # Lista de orígenes permitidos para CORS.
-    # Esto es crucial para que tu backend en Railway acepte la conexión de Vercel.
-    cors_allowed_origins: list[str] = [
-        FRONTEND_URL,
-        "http://localhost:3000",
+    # Usa os.getenv para leer la URL de la API. En local usará el default.
+    # En Vercel usará la variable de entorno que configuraremos.
+    api_url: str = os.getenv("API_URL", f"http://127.0.0.1:{backend_port}")
+
+    # La URL pública del frontend. En Vercel, esto vendrá de una variable de entorno.
+    deploy_url: str = os.getenv("FRONTEND_URL", f"http://localhost:{frontend_port}")
+
+    # El CORS debe permitir tu PC, y AMBAS URLs de producción.
+    cors_allowed_origins: List[str] = [
+        f"http://localhost:{frontend_port}",
+        BACKEND_PRODUCTION_URL,
+        FRONTEND_PRODUCTION_URL,
     ]
     
-    # Configuración de la base de datos.
     db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
+    tailwind: Optional[Dict[str, Any]] = None
 
 config = FullStackPythonConfig()
