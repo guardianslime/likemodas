@@ -13,10 +13,7 @@ providers = ['python']
   apt_packages = ["git", "nodejs", "npm", "unzip", "parallel", "build-essential"]
 
 # --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
-# Combinamos dos comandos:
-# 1. `alembic upgrade head`: Aplica las migraciones a la base de datos de producción.
-# 2. `reflex run ...`: Inicia la aplicación.
-# El `&&` se asegura de que el segundo comando solo se ejecute si el primero fue exitoso.
+# Cambiamos --host por --backend-host, que es el parámetro correcto.
 [start]
-  cmd = "alembic upgrade head && reflex run --backend-only --host 0.0.0.0 --port 8000 --loglevel info"
+  cmd = "alembic upgrade head && reflex run --backend-only --backend-host 0.0.0.0 --backend-port 8000 --loglevel info"
 # --- FIN DE LA CORRECCIÓN DEFINITIVA ---
