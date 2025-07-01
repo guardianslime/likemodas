@@ -1,3 +1,5 @@
+# alembic/env.py
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -5,7 +7,14 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# this is the Alembic Config object, which provides
+# Importamos reflex, que contiene la clase base rx.Model.
+import reflex as rx 
+
+# Lee la URL de la base de datos desde la variable de entorno
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
+# This is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
@@ -14,29 +23,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = None
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# Usamos rx.Model.metadata, que es el lugar correcto donde
+# Alembic puede encontrar todas las definiciones de tus tablas.
+target_metadata = rx.Model.metadata
 
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -52,16 +45,19 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
-
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
     """
+    configuration = context.config
+    if DATABASE_URL:
+        configuration.set_main_option("sqlalchemy.url", DATABASE_URL)
+        
+    # --- INICIO DE LA CORRECCIÓN FINAL ---
+    # El atributo correcto es "config_ini_section". Esto finalmente resolverá el error.
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration.get_section(configuration.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+    # --- FIN DE LA CORRECION FINAL ---
 
     with connectable.connect() as connection:
         context.configure(
