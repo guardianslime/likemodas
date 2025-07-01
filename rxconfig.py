@@ -2,7 +2,7 @@ import reflex as rx
 import os
 
 # --- URLs de Producción ---
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://full-stack-python-1dqv.vercel.app")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://full-stack-python.vercel.app")
 API_URL = os.getenv("API_URL", "https://web-production-50b7a.up.railway.app")
 
 class FullStackPythonConfig(rx.Config):
