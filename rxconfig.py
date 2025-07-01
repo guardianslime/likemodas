@@ -1,8 +1,24 @@
 import reflex as rx
+import os
 
-config = rx.Config(
-    app_name="nombre_de_tu_app",
-    api_url="https://web-production-50b7a.up.railway.app",  # Usa la URL pública de Railway con el puerto 8000
-    deploy_url="https://full-stack-python.vercel.appp",     # URL pública de tu frontend en Vercel
-    cors_allowed_origins=["https://full-stack-python.vercel.app"],  # Permite que el frontend acceda al backend
-)
+# --- URLs DE PRODUCCIÓN DEFINIDAS MANUALMENTE ---
+# Esto elimina cualquier error de las variables de entorno.
+FRONTEND_URL_PROD = "https://full-stack-python.vercel.app"
+API_URL_PROD = "https://web-production-50b7a.up.railway.app"
+
+class FullStackPythonConfig(rx.Config):
+    # --- CORRECCIÓN CLAVE ---
+    # El nombre de la app DEBE coincidir con el nombre de tu carpeta de código.
+    app_name = "full_stack_python"
+    
+    api_url: str = API_URL_PROD
+    deploy_url: str = FRONTEND_URL_PROD
+    
+    cors_allowed_origins: list[str] = [
+        FRONTEND_URL_PROD,
+        "http://localhost:3000",
+    ]
+    
+    db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
+
+config = FullStackPythonConfig()
