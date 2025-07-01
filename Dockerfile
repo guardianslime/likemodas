@@ -1,5 +1,5 @@
 # Usa una imagen base de Python 3.11 optimizada.
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Permite a pip instalar paquetes
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
