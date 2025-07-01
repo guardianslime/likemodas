@@ -1,33 +1,33 @@
 import reflex as rx
 import os
 
-# --- URLs DE PRODUCCIÓN DEFINIDAS MANUALMENTE ---
-# Ignoramos las variables de entorno y usamos los valores directamente.
-# Esta es la URL de tu frontend en Vercel.
-FRONTEND_URL_PROD = "https://full-stack-python.vercel.app"
+# --- CLASE DE CONFIGURACIÓN (simple) ---
+class FullStackPythonConfig(rx.Config):
+    pass
 
-# Esta es la URL de tu backend en Railway.
+# --- URLs DE PRODUCCIÓN DEFINIDAS MANUALMENTE ---
+# Aquí ponemos tus URLs directamente para que no haya dudas.
+FRONTEND_URL_PROD = "https://full-stack-python-1dqv.vercel.app"
 API_URL_PROD = "https://web-production-50b7a.up.railway.app"
 
-
-class FullStackPythonConfig(rx.Config):
+# --- CREACIÓN DE LA CONFIGURACIÓN ---
+# Creamos la instancia de la configuración pasando los valores directamente.
+# Este método es explícito y elimina cualquier ambigüedad.
+config = FullStackPythonConfig(
     # Asegúrate de que este nombre coincida con tu carpeta de código principal.
-    app_name = "full_stack_python"
+    app_name="full_stack_python",
     
-    # --- CONFIGURACIÓN CLAVE ---
     # Asignamos las URLs directamente.
-    api_url: str = API_URL_PROD
-    deploy_url: str = FRONTEND_URL_PROD
+    api_url=API_URL_PROD,
+    deploy_url=FRONTEND_URL_PROD,
     
     # La lista de orígenes permitidos para CORS.
-    # Al definir la URL de Vercel aquí, el backend la aceptará.
-    cors_allowed_origins: list[str] = [
+    cors_allowed_origins=[
         FRONTEND_URL_PROD,
         "http://localhost:3000",
-    ]
+    ],
     
     # La URL de la base de datos SÍ debe usar os.getenv,
     # ya que Railway la inyecta de forma segura y garantizada.
-    db_url: str = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
-
-config = FullStackPythonConfig()
+    db_url=os.getenv("DATABASE_URL", "sqlite:///reflex.db"),
+)
