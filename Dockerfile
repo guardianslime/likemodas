@@ -6,8 +6,12 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1
 WORKDIR /app
 
 # --- CORRECCIÓN CLAVE ---
-# Instala dependencias del sistema, INCLUYENDO unzip.
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential nodejs npm unzip && rm -rf /var/lib/apt/lists/*
+# Instala todas las dependencias de sistema necesarias:
+# build-essential: para compilar paquetes.
+# nodejs, npm: para el entorno de JavaScript.
+# unzip: para descomprimir archivos.
+# curl, ca-certificates: para descargar archivos de forma segura por la red.
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential nodejs npm unzip curl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copia e instala las dependencias de Python.
 COPY requirements.txt .
