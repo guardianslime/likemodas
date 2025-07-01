@@ -21,4 +21,4 @@ EXPOSE 8000
 # --- CORRECCIÓN CLAVE ---
 # 1. Ejecuta la migración de la base de datos.
 # 2. Si la migración tiene éxito (gracias a '&&'), inicia el servidor.
-CMD reflex db migrate && reflex run --env prod --backend-host 0.0.0.0 --port 8000
+CMD reflex db migrate && reflex run --env prod --backend-host 0.0.0.0 --backend-port 8000
