@@ -7,7 +7,7 @@ class FullStackPythonConfig(rx.Config):
 
 # --- URLs DE PRODUCCIÓN DEFINIDAS MANUALMENTE ---
 # Aquí ponemos tus URLs directamente para que no haya dudas.
-FRONTEND_URL_PROD = "https://full-stack-python-1dqv.vercel.app"
+FRONTEND_URL_PROD = "https://full-stack-python.vercel.app"
 API_URL_PROD = "https://web-production-50b7a.up.railway.app"
 
 # --- CREACIÓN DE LA CONFIGURACIÓN ---
