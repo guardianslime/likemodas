@@ -36,6 +36,13 @@ class BlogPostState(SessionState):
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
+    @rx.var
+    def post_publish_date_formatted(self) -> str:
+        """Formatea la fecha de publicación del post actual."""
+        if self.post and self.post.publish_date:
+            return self.post.publish_date.strftime("%Y-%m-%d %H:%M")
+        return ""
+    
     async def handle_upload(self, files: typing.Any):
         """
         Maneja la información de los archivos para la v0.5.0.
