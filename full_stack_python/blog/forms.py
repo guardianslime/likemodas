@@ -35,7 +35,7 @@ def image_upload_component(State: rx.State) -> rx.Component:
                 "maxWidth": "24rem", "height": "16rem", "borderWidth": "2px", "borderStyle": "dashed",
                 "borderColor": "#60a5fa", "borderRadius": "0.75rem", "cursor": "pointer",
             },
-            on_drop=State.handle_upload(rx.upload.files()),
+            on_drop=State.handle_upload,
         ),
         # Vista previa de la imagen que se está subiendo
         rx.flex(
