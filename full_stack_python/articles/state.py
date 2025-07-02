@@ -67,17 +67,29 @@ class ArticlePublicState(SessionState):
         return rx.clear_upload_files("upload_image")
     # --- FIN: CÓDIGO AÑADIDO ---
 
+    # En full_stack_python/articles/state.py
+
     def get_post_detail(self):
+        # --- INICIO DE LA MODIFICACIÓN ---
+        try:
+            # Intenta convertir el post_id de la URL a un número entero.
+            post_id_num = int(self.post_id)
+        except (ValueError, TypeError):
+            # Si no es un número válido (ej. "detial"), no hagas nada.
+            self.post = None
+            return
+        # --- FIN DE LA MODIFICACIÓN ---
+
         lookups = (
             (BlogPostModel.publish_active == True) &
             (BlogPostModel.publish_date < datetime.now()) &
-            (BlogPostModel.id == self.post_id)
+            # Usa la variable numérica en la consulta
+            (BlogPostModel.id == post_id_num)
         )
         with rx.session() as session:
+            # El chequeo de self.post_id == "" ya no es tan necesario, pero lo mantenemos por si acaso
             if self.post_id == "":
                 self.post = None
-                self.post_content = ""
-                self.post_publish_active = False
                 return
             sql_statement = select(BlogPostModel).options(
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
