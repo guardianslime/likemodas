@@ -3,6 +3,7 @@
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
+from . import forms
 # Importamos el estado necesario para el formulario
 from .state import BlogAddPostFormState
 
@@ -55,53 +56,18 @@ def image_upload_component(State: rx.State) -> rx.Component:
 
 @reflex_local_auth.require_login
 def blog_post_add_page() -> rx.Component:
-    # --- FORMULARIO INTEGRADO DIRECTAMENTE EN LA PÁGINA ---
-    my_form = rx.form(
-        rx.vstack(
-            rx.input(
-                name="title",
-                placeholder="Título del Artículo",
-                required=True,
-                width="100%",
-            ),
-            rx.heading("Imagen Principal", size="5", margin_top="1em"),
-            # Usamos el componente que acabamos de definir en este mismo archivo
-            image_upload_component(BlogAddPostFormState),
-            rx.text_area(
-                name="content",
-                placeholder="Escribe tu artículo aquí...",
-                required=True,
-                height='50vh',
-                width='100%',
-                margin_top="1em",
-            ),
-            rx.button("Guardar y Editar", type="submit", margin_top="1em"),
-        ),
-        on_submit=BlogAddPostFormState.handle_submit,
-        reset_on_submit=True,
-    )
-    # ----------------------------------------------------
-    
+    my_form = forms.blog_post_add_form()
+
     my_child = rx.vstack(
         rx.heading("New Blog Post", size="9"),
         rx.desktop_only(
-            rx.box(
-                my_form,
-                width="50vw"
-            )
+            rx.box(my_form, width="50vw")
         ),
         rx.tablet_only(
-            rx.box(
-                my_form,
-                width="75vw"
-            )
+            rx.box(my_form, width="75vw")
         ),
         rx.mobile_only(
-            rx.box(
-                my_form,
-                id= "my-form-box",
-                width="85vw"
-            )
+            rx.box(my_form, id= "my-form-box", width="85vw")
         ),
         spacing="5",
         align="center",
@@ -109,3 +75,5 @@ def blog_post_add_page() -> rx.Component:
     )
     
     return base_page(my_child)
+    # ----------------------------------------------------
+    

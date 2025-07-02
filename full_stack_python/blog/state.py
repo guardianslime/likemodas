@@ -1,6 +1,8 @@
+# full_stack_python/blog/state.py
+
 from datetime import datetime
 from typing import Optional, List
-import typing  # <-- Importación necesaria
+import typing
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
@@ -36,18 +38,12 @@ class BlogPostState(SessionState):
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
-    # --- FUNCIÓN CORREGIDA PARA VERSIÓN ANTIGUA DE REFLEX ---
     async def handle_upload(self, files: typing.Any):
-        """
-        Maneja la información de los archivos ya subidos automáticamente por rx.upload.
-        """
         for file in files:
-            # En versiones antiguas, 'file' es un diccionario. Se accede así:
             filename = file.get("filename")
             if filename:
                 self.img.append(f"/{filename}")
         return
-    # ----------------------------------------------------
 
     def get_post_detail(self):
         if self.my_userinfo_id is None:
@@ -63,10 +59,7 @@ class BlogPostState(SessionState):
             if self.blog_post_id == "":
                 self.post = None
                 return
-            sql_statement = select(BlogPostModel).options(
-                sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
-            ).where(lookups)
-            result = session.exec(sql_statement).one_or_none()
+            result = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where(lookups)).one_or_none()
             self.post = result
             if result is None:
                 self.post_content = ""
@@ -76,12 +69,7 @@ class BlogPostState(SessionState):
 
     def load_posts(self, *args, **kwargs):
         with rx.session() as session:
-            result = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
-            ).all()
-            self.posts = result
+            self.posts = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)).where(BlogPostModel.userinfo_id == self.my_userinfo_id)).all()
 
     def add_post(self, form_data: dict):
         with rx.session() as session:
@@ -96,11 +84,8 @@ class BlogPostState(SessionState):
 
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
-            post = session.exec(
-                select(BlogPostModel).where(BlogPostModel.id == post_id)
-            ).one_or_none()
-            if post is None:
-                return
+            post = session.exec(select(BlogPostModel).where(BlogPostModel.id == post_id)).one_or_none()
+            if post is None: return
             if self.img:
                 updated_data['image_url'] = self.img[0]
             for key, value in updated_data.items():
@@ -108,12 +93,7 @@ class BlogPostState(SessionState):
             session.add(post)
             session.commit()
             self.img = []
-            reloaded_post = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
-                ).where(BlogPostModel.id == post_id)
-            ).one_or_none()
-            self.post = reloaded_post
+            self.post = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where(BlogPostModel.id == post_id)).one_or_none()
 
     def to_blog_post(self, edit_page=False):
         if not self.post:
@@ -122,10 +102,8 @@ class BlogPostState(SessionState):
             return rx.redirect(f"{self.blog_post_edit_url}")
         return rx.redirect(f"{self.blog_post_url}")
 
-
 class BlogAddPostFormState(BlogPostState):
     form_data: dict = {}
-    img: list[str] = []  # <-- VARIABLE EXPLÍCITA AÑADIDA
 
     def handle_submit(self, form_data):
         data = form_data.copy()
@@ -135,46 +113,30 @@ class BlogAddPostFormState(BlogPostState):
         self.add_post(data)
         return self.to_blog_post(edit_page=True)
 
-
 class BlogEditFormState(BlogPostState):
     form_data: dict = {}
-    img: list[str] = []  # <-- VARIABLE EXPLÍCITA AÑADIDA
 
     @rx.var
     def publish_display_date(self) -> str:
-        if not self.post:
-            return datetime.now().strftime("%Y-%m-%d")
-        if not self.post.publish_date:
+        if not self.post or not self.post.publish_date:
             return datetime.now().strftime("%Y-%m-%d")
         return self.post.publish_date.strftime("%Y-%m-%d")
 
     @rx.var
     def publish_display_time(self) -> str:
-        if not self.post:
-            return datetime.now().strftime("%H:%M:%S")
-        if not self.post.publish_date:
+        if not self.post or not self.post.publish_date:
             return datetime.now().strftime("%H:%M:%S")
         return self.post.publish_date.strftime("%H:%M:%S")
 
     def handle_submit(self, form_data):
-        self.form_data = form_data
         post_id = form_data.pop('post_id')
-        publish_date = None
-        if 'publish_date' in form_data:
-            publish_date = form_data.pop('publish_date')
-        publish_time = None
-        if 'publish_time' in form_data:
-            publish_time = form_data.pop('publish_time')
-        publish_input_string = f"{publish_date} {publish_time}"
+        publish_date_str = form_data.pop('publish_date', None)
+        publish_time_str = form_data.pop('publish_time', None)
         try:
-            final_publish_date = datetime.strptime(publish_input_string, "%Y-%m-%d %H:%M:%S")
-        except:
+            final_publish_date = datetime.strptime(f"{publish_date_str} {publish_time_str}", "%Y-%m-%d %H:%M:%S")
+        except (ValueError, TypeError):
             final_publish_date = None
-        publish_active = False
-        if 'publish_active' in form_data:
-            publish_active = form_data.pop('publish_active') == "on"
-        updated_data = {**form_data}
-        updated_data['publish_active'] = publish_active
-        updated_data['publish_date'] = final_publish_date
-        self.save_post_edits(post_id, updated_data)
+        form_data['publish_active'] = form_data.get('publish_active') == "on"
+        form_data['publish_date'] = final_publish_date
+        self.save_post_edits(post_id, form_data)
         return self.to_blog_post()
