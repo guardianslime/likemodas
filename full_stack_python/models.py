@@ -28,14 +28,12 @@ class UserInfo(rx.Model, table=True):
         sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
         nullable=False
     )
-    pass
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
     content: str
-    image_url: Optional[str] = None  # <-- LÍNEA AÑADIDA
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -70,9 +68,10 @@ class ContactEntryModel(rx.Model, table=True):
         sa_column_kwargs={"server_default": sqlalchemy.func.now()},
         nullable=False
     )
-    pass
 
     # --- ¡CORRECCIÓN! AÑADE ESTE MÉTODO ---
-    @property
-    def created_at_formatted(self):
-        return self.created_at.strftime("%d/%m/%Y %H:%M")
+    @rx.var
+    def created_at_formatted(self) -> str:
+        """Un campo calculado que devuelve la fecha de creación como un string formateado."""
+        return self.created_at.strftime("%Y-%m-%d %H:%M")
+    # ------------------------------------
