@@ -1,5 +1,3 @@
-# full_stack_python/blog/forms.py
-
 import reflex as rx
 from .state import BlogAddPostFormState, BlogEditFormState
 
@@ -15,13 +13,9 @@ def image_upload_component(State: rx.State) -> rx.Component:
             border="2px dashed #ccc",
             padding="1rem",
         ),
-        rx.flex(
-            rx.foreach(
-                State.img,
-                lambda image: rx.image(src=image, height="8em", width="auto"),
-            ),
-            spacing="2",
-            margin_top="1rem",
+        rx.foreach(
+            State.img,
+            lambda image: rx.image(src=image, height="8em", width="auto"),
         ),
         on_drop=State.handle_upload,
         align="center",
@@ -37,6 +31,8 @@ def blog_post_add_form() -> rx.Component:
             image_upload_component(BlogAddPostFormState),
             rx.text_area(name="content", placeholder="Escribe tu artículo aquí...", required=True, height='50vh', width='100%'),
             rx.button("Guardar y Editar", type="submit", margin_top="1em"),
+            align_items="start",
+            spacing="4"
         ),
         on_submit=BlogAddPostFormState.handle_submit,
         reset_on_submit=True,

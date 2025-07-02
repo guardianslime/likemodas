@@ -1,5 +1,3 @@
-# full_stack_python/blog/state.py
-
 from datetime import datetime
 from typing import Optional, List
 import typing
@@ -39,6 +37,10 @@ class BlogPostState(SessionState):
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
     async def handle_upload(self, files: typing.Any):
+        """
+        Maneja la información de los archivos para la v0.5.0.
+        El archivo que llega es un diccionario.
+        """
         for file in files:
             filename = file.get("filename")
             if filename:
