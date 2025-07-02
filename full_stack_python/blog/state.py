@@ -18,35 +18,32 @@ class BlogPostState(SessionState):
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
+    
+    # --- 1. AÑADE LA VARIABLE PARA LAS IMÁGENES ---
+    img: list[str] = []
+    # ----------------------------------------------
 
     @rx.var
-    def blog_post_id(self) -> str:  # Añadida la anotación de tipo -> str
+    def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
     @rx.var
-    def blog_post_url(self) -> str: # Añadida la anotación de tipo -> str
+    def blog_post_url(self) -> str:
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
 
     @rx.var
-    def blog_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
+    def blog_post_edit_url(self) -> str:
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
-
-    # full_stack_python/blog/state.py
-
-# ... (otras importaciones y código de la clase State) ...
 
     async def handle_upload(self, files: list[rx.UploadFile]):
         """
         Maneja la información de los archivos ya subidos automáticamente por rx.upload.
         """
         for file in files:
-            # El componente ya subió el archivo al servidor.
-            # Solo necesitamos registrar el nombre del archivo en nuestro estado.
-            # El objeto 'file' es un modelo Pydantic que se comporta como un diccionario.
             self.img.append(f"/{file.filename}")
         return
 
@@ -68,9 +65,6 @@ class BlogPostState(SessionState):
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
             ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
-            # if result.userinfo: # db lookup
-            #     print('working')
-            #     result.userinfo.user
             self.post = result
             if result is None:
                 self.post_content = ""
@@ -79,11 +73,6 @@ class BlogPostState(SessionState):
             self.post_publish_active = self.post.publish_active
 
     def load_posts(self, *args, **kwargs):
-        # if published_only:
-        #     lookup_args = (
-        #         (BlogPostModel.publish_active == True) &
-        #         (BlogPostModel.publish_date < datetime.now())
-        #     )
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).options(
@@ -92,39 +81,49 @@ class BlogPostState(SessionState):
             ).all()
             self.posts = result
 
+    # --- 2. MÉTODO add_post MODIFICADO ---
     def add_post(self, form_data: dict):
+        """Añade un nuevo post a la base de datos, incluyendo la imagen."""
         with rx.session() as session:
+            # Si se subió una imagen, añade su URL a los datos del formulario
+            if self.img:
+                form_data['image_url'] = self.img[0]
+
             post = BlogPostModel(**form_data)
             session.add(post)
             session.commit()
             session.refresh(post)
             self.post = post
+            self.img = [] # Limpia la lista de imágenes después de guardar
+    # ------------------------------------
 
-# En full_stack_python/blog/state.py
-
+    # --- 3. MÉTODO save_post_edits MODIFICADO ---
     def save_post_edits(self, post_id: int, updated_data: dict):
+        """Guarda las ediciones de un post, incluyendo una posible nueva imagen."""
         with rx.session() as session:
             post = session.exec(
-                select(BlogPostModel).where(
-                    BlogPostModel.id == post_id
-                )
+                select(BlogPostModel).where(BlogPostModel.id == post_id)
             ).one_or_none()
             if post is None:
                 return
+
+            # Si se subió una nueva imagen, actualiza la URL
+            if self.img:
+                updated_data['image_url'] = self.img[0]
+
             for key, value in updated_data.items():
                 setattr(post, key, value)
             session.add(post)
             session.commit()
+            self.img = [] # Limpia la lista de imágenes
             
-            # --- MEJORA ---
-            # Después de guardar, recargamos el post con sus relaciones (userinfo y user)
-            # para asegurar que el estado (self.post) esté completo antes de redirigir.
             reloaded_post = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
                 ).where(BlogPostModel.id == post_id)
             ).one_or_none()
             self.post = reloaded_post
+    # -----------------------------------------
 
     def to_blog_post(self, edit_page=False):
         if not self.post:
