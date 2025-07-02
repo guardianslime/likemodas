@@ -27,6 +27,8 @@ def index() -> rx.Component:
         )
     )
 
+# --- INICIO DE LA CORRECCIÓN ---
+# Modificamos la definición de la app para incluir la carpeta estática.
 app = rx.App(
     theme=rx.theme(
         appearance="dark", 
@@ -35,8 +37,13 @@ app = rx.App(
         scaling="90%",
         radius="medium",
         accent_color="sky"
-    )
+    ),
+    static_paths={
+        "/": "uploaded_files/"  # Sirve la carpeta 'uploaded_files' en la URL raíz.
+    }
 )
+# --- FIN DE LA CORRECCIÓN ---
+
 
 # --- Registro de Páginas ---
 
@@ -48,8 +55,7 @@ app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
-
-app.add_static_files("/", static_dir="uploaded_files/")
+# La línea incorrecta 'app.add_static_files(...)' ha sido eliminada.
 
 # Páginas de Artículos
 app.add_page(
@@ -81,7 +87,6 @@ app.add_page(
     on_load=blog.BlogPostState.get_post_detail
 )
 
-# --- INICIO DE LA CORRECCIÓN ---
 # Páginas de Contacto
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
@@ -89,4 +94,3 @@ app.add_page(
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
     on_load=contact.ContactState.load_entries
 )
-# --- FIN DE LA CORRECCIÓN ---
