@@ -27,7 +27,7 @@ class BlogPostState(SessionState):
         """Devuelve la ruta de la primera imagen subida, o una imagen por defecto."""
         return self.img[0] if self.img else "/default_img.png"
     
-    async def handle_upload(self, files: list[rx.UploadFile]):
+    async def handle_upload(self, files: list):
         """Maneja la subida de archivos."""
         for file in files:
             upload_data = await file.read()
