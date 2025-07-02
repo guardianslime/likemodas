@@ -4,6 +4,7 @@ from .state import BlogAddPostFormState, BlogEditFormState
 def image_upload_component(State: rx.State) -> rx.Component:
     """Un componente para subir la imagen del post y mostrar una vista previa."""
     return rx.vstack(
+        # El on_drop ahora está dentro del componente correcto
         rx.upload(
             rx.box(
                 rx.icon(tag="cloud_upload", style={"width": "3rem", "height": "3rem"}),
@@ -12,12 +13,18 @@ def image_upload_component(State: rx.State) -> rx.Component:
             id="my_upload",
             border="2px dashed #ccc",
             padding="1rem",
+            # 👇 --- ESTA ES LA LÍNEA QUE SE MOVIÓ AQUÍ DENTRO ---
+            on_drop=State.handle_upload,
         ),
-        rx.foreach(
-            State.img,
-            lambda image: rx.image(src=image, height="8em", width="auto"),
+        # La vista previa de las imágenes se queda aquí
+        rx.flex(
+            rx.foreach(
+                State.img,
+                lambda image: rx.image(src=image, height="8em", width="auto"),
+            ),
+            spacing="2",
+            margin_top="1rem",
         ),
-        on_drop=State.handle_upload,
         align="center",
         width="100%",
     )
