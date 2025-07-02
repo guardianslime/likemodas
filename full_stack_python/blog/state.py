@@ -5,6 +5,7 @@ from typing import Optional, List, Any
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
+import os # 1. Importa la librería 'os'
 
 from .. import navigation
 from ..auth.state import SessionState
@@ -15,28 +16,42 @@ if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
 class BlogPostState(SessionState):
+    # ... (el resto de tus variables de estado no cambian) ...
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
     uploaded_image_url: str = ""
 
-    # --- FUNCIÓN DE SUBIDA CORRECTA ---
-    # Esta es la única versión que debe existir. Tiene la firma de tipos correcta que Reflex espera.
     async def handle_upload(self, files: list[rx.UploadFile]):
         """
         Maneja la subida del archivo de imagen.
         """
         if not files:
             return
+        
         file = files[0]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        file_path = f"{timestamp}_{file.filename}"
+        filename = f"{timestamp}_{file.filename}"
+        
+        # --- INICIO DE LA CORRECCIÓN ---
+        upload_dir = ".web/public"
+        
+        # 2. Crea el directorio si no existe. Esto soluciona el FileNotFoundError.
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # 3. Define la ruta completa del archivo
+        file_path = os.path.join(upload_dir, filename)
+        # --- FIN DE LA CORRECIÓN ---
+        
         upload_data = await file.read()
-        with open(f".web/public/{file_path}", "wb") as f:
+        with open(file_path, "wb") as f:
             f.write(upload_data)
-        self.uploaded_image_url = f"/{file_path}"
+        
+        # La URL pública no incluye ".web/public"
+        self.uploaded_image_url = f"/{filename}"
 
+    # ... (el resto de tus funciones y clases no necesitan cambios) ...
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
@@ -55,20 +70,19 @@ class BlogPostState(SessionState):
 
     @rx.var
     def post_publish_date_formatted(self) -> str:
-        """Formatea la fecha de publicación para la UI."""
         if self.post and self.post.publish_date:
             return self.post.publish_date.strftime("%Y-%m-%d %H:%M")
         return ""
 
-    # --- FUNCIÓN DUPLICADA ELIMINADA ---
-    # La otra función `handle_upload` que usaba `Any` y `self.img` ha sido eliminada para evitar errores.
-
     def get_post_detail(self):
         if self.my_userinfo_id is None:
             self.post = None; self.post_content = ""; self.post_publish_active = False; return
-        lookups = ((BlogPostModel.userinfo_id == self.my_userinfo_id) & (BlogPostModel.id == self.blog_post_id))
+        try:
+            post_id_num = int(self.blog_post_id)
+        except (ValueError, TypeError):
+            self.post = None; return
+        lookups = ((BlogPostModel.userinfo_id == self.my_userinfo_id) & (BlogPostModel.id == post_id_num))
         with rx.session() as session:
-            if self.blog_post_id == "": self.post = None; return
             result = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where(lookups)).one_or_none()
             self.post = result
             if result is None: self.post_content = ""; return
@@ -94,19 +108,12 @@ class BlogPostState(SessionState):
         with rx.session() as session:
             post = session.exec(select(BlogPostModel).where(BlogPostModel.id == post_id)).one_or_none()
             if post is None: return
-
-            # --- CORRECCIÓN AQUÍ ---
-            # Se usa `uploaded_image_url` en lugar de la variable inexistente `self.img`.
             if self.uploaded_image_url:
                 updated_data['image_url'] = self.uploaded_image_url
-
             for key, value in updated_data.items():
                 setattr(post, key, value)
             session.add(post)
             session.commit()
-
-            # --- CORRECCIÓN AQUÍ ---
-            # Se resetea la variable correcta y se refresca el post.
             self.uploaded_image_url = ""
             session.refresh(post)
             self.post = post
