@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
+import typing  # <-- AÑADE ESTA IMPORTACIÓN
 import reflex as rx
 
 import sqlalchemy
@@ -18,34 +19,23 @@ class BlogPostState(SessionState):
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
-
-    # --- AÑADE ESTO PARA LA SUBIDA DE IMÁGENES ---
     img: list[str] = []
 
     @rx.var
     def image_path(self) -> str:
         """Devuelve la ruta de la primera imagen subida, o una imagen por defecto."""
         return self.img[0] if self.img else "/default_img.png"
-    
-    async def handle_upload(self, files: list):
-        """Maneja la subida de archivos."""
+
+    # --- LÓGICA SIMPLIFICADA Y CORRECTA ---
+    async def handle_upload(self, files: typing.Any):
+        """
+        Maneja la información de los archivos ya subidos automáticamente por rx.upload.
+        """
         for file in files:
-            upload_data = await file.read()
-            outfile = rx.get_asset_path(file.filename)
-            
-            # Guarda el archivo en el directorio de assets
-            with open(outfile, "wb") as file_object:
-                file_object.write(upload_data)
-            
-            # Actualiza el estado con la ruta del nuevo archivo
+            # Simplemente registramos el nombre del archivo en el estado.
             self.img.append(f"/{file.filename}")
-    # ----------------------------------------------
-
-    # ... (variables calculadas blog_post_id, blog_post_url, etc. no cambian) ...
-
-    # ... (método get_post_detail no cambia) ...
-
-    # ... (método load_posts no cambia) ...
+        return
+    # ------------------------------------
 
     def add_post(self, form_data: dict):
         """Añade un nuevo post a la base de datos, incluyendo la imagen."""
@@ -87,18 +77,19 @@ class BlogPostState(SessionState):
             ).one_or_none()
             self.post = reloaded_post
 
+    # --- EL RESTO DE TUS MÉTODOS Y VARIABLES CALCULADAS ---
     @rx.var
-    def blog_post_id(self) -> str:  # Añadida la anotación de tipo -> str
+    def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
     @rx.var
-    def blog_post_url(self) -> str: # Añadida la anotación de tipo -> str
+    def blog_post_url(self) -> str:
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
 
     @rx.var
-    def blog_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
+    def blog_post_edit_url(self) -> str:
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
@@ -121,9 +112,6 @@ class BlogPostState(SessionState):
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
             ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
-            # if result.userinfo: # db lookup
-            #     print('working')
-            #     result.userinfo.user
             self.post = result
             if result is None:
                 self.post_content = ""
@@ -132,11 +120,6 @@ class BlogPostState(SessionState):
             self.post_publish_active = self.post.publish_active
 
     def load_posts(self, *args, **kwargs):
-        # if published_only:
-        #     lookup_args = (
-        #         (BlogPostModel.publish_active == True) &
-        #         (BlogPostModel.publish_date < datetime.now())
-        #     )
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).options(
@@ -144,40 +127,6 @@ class BlogPostState(SessionState):
                 ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
             ).all()
             self.posts = result
-
-    def add_post(self, form_data: dict):
-        with rx.session() as session:
-            post = BlogPostModel(**form_data)
-            session.add(post)
-            session.commit()
-            session.refresh(post)
-            self.post = post
-
-# En full_stack_python/blog/state.py
-
-    def save_post_edits(self, post_id: int, updated_data: dict):
-        with rx.session() as session:
-            post = session.exec(
-                select(BlogPostModel).where(
-                    BlogPostModel.id == post_id
-                )
-            ).one_or_none()
-            if post is None:
-                return
-            for key, value in updated_data.items():
-                setattr(post, key, value)
-            session.add(post)
-            session.commit()
-            
-            # --- MEJORA ---
-            # Después de guardar, recargamos el post con sus relaciones (userinfo y user)
-            # para asegurar que el estado (self.post) esté completo antes de redirigir.
-            reloaded_post = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
-                ).where(BlogPostModel.id == post_id)
-            ).one_or_none()
-            self.post = reloaded_post
 
     def to_blog_post(self, edit_page=False):
         if not self.post:
