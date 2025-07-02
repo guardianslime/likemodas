@@ -21,9 +21,11 @@ class BlogPostState(SessionState):
     post_publish_active: bool = False
     uploaded_image_url: str = ""
 
+    # --- FUNCIÓN DE SUBIDA CORRECTA ---
+    # Esta es la única versión que debe existir. Tiene la firma de tipos correcta que Reflex espera.
     async def handle_upload(self, files: list[rx.UploadFile]):
         """
-        Maneja la subida del archivo de imagen. ESTA ES LA FUNCIÓN CORRECTA.
+        Maneja la subida del archivo de imagen.
         """
         if not files:
             return
@@ -58,15 +60,10 @@ class BlogPostState(SessionState):
             return self.post.publish_date.strftime("%Y-%m-%d %H:%M")
         return ""
 
-    async def handle_upload(self, files: Any):
-        for file in files:
-            filename = file.get("filename")
-            if filename:
-                self.img.append(f"/{filename}")
-        return
+    # --- FUNCIÓN DUPLICADA ELIMINADA ---
+    # La otra función `handle_upload` que usaba `Any` y `self.img` ha sido eliminada para evitar errores.
 
     def get_post_detail(self):
-        # ... (sin cambios aquí) ...
         if self.my_userinfo_id is None:
             self.post = None; self.post_content = ""; self.post_publish_active = False; return
         lookups = ((BlogPostModel.userinfo_id == self.my_userinfo_id) & (BlogPostModel.id == self.blog_post_id))
@@ -79,13 +76,11 @@ class BlogPostState(SessionState):
             self.post_publish_active = self.post.publish_active
 
     def load_posts(self, *args, **kwargs):
-        # ... (sin cambios aquí) ...
         with rx.session() as session:
             self.posts = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)).where(BlogPostModel.userinfo_id == self.my_userinfo_id)).all()
 
     def add_post(self, form_data: dict):
         with rx.session() as session:
-            # 👇 CORRECCIÓN AQUÍ: Usa la variable correcta para guardar la URL de la imagen
             if self.uploaded_image_url:
                 form_data['image_url'] = self.uploaded_image_url
             post = BlogPostModel(**form_data)
@@ -93,17 +88,28 @@ class BlogPostState(SessionState):
             session.commit()
             session.refresh(post)
             self.post = post
-            # Resetea la URL de la imagen después de guardar
             self.uploaded_image_url = ""
 
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
             post = session.exec(select(BlogPostModel).where(BlogPostModel.id == post_id)).one_or_none()
             if post is None: return
-            if self.img: updated_data['image_url'] = self.img[0]
-            for key, value in updated_data.items(): setattr(post, key, value)
-            session.add(post); session.commit(); self.img = []
-            self.post = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where(BlogPostModel.id == post_id)).one_or_none()
+
+            # --- CORRECCIÓN AQUÍ ---
+            # Se usa `uploaded_image_url` en lugar de la variable inexistente `self.img`.
+            if self.uploaded_image_url:
+                updated_data['image_url'] = self.uploaded_image_url
+
+            for key, value in updated_data.items():
+                setattr(post, key, value)
+            session.add(post)
+            session.commit()
+
+            # --- CORRECCIÓN AQUÍ ---
+            # Se resetea la variable correcta y se refresca el post.
+            self.uploaded_image_url = ""
+            session.refresh(post)
+            self.post = post
 
     def to_blog_post(self, edit_page=False):
         if not self.post: return rx.redirect(BLOG_POSTS_ROUTE)
