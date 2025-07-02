@@ -1,5 +1,8 @@
 import reflex as rx
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 cors_origenes = os.getenv("CORS_ALLOWED_ORIGINS", "https://full-stack-python.vercel.app").split(",")
 
