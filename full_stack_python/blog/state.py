@@ -35,6 +35,21 @@ class BlogPostState(SessionState):
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
+    # full_stack_python/blog/state.py
+
+# ... (otras importaciones y código de la clase State) ...
+
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        """
+        Maneja la información de los archivos ya subidos automáticamente por rx.upload.
+        """
+        for file in files:
+            # El componente ya subió el archivo al servidor.
+            # Solo necesitamos registrar el nombre del archivo en nuestro estado.
+            # El objeto 'file' es un modelo Pydantic que se comporta como un diccionario.
+            self.img.append(f"/{file.filename}")
+        return
+
     def get_post_detail(self):
         if self.my_userinfo_id is None:
             self.post = None
