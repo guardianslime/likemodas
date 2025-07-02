@@ -19,6 +19,74 @@ class BlogPostState(SessionState):
     post_content: str = ""
     post_publish_active: bool = False
 
+    # --- AÑADE ESTO PARA LA SUBIDA DE IMÁGENES ---
+    img: list[str] = []
+
+    @rx.var
+    def image_path(self) -> str:
+        """Devuelve la ruta de la primera imagen subida, o una imagen por defecto."""
+        return self.img[0] if self.img else "/default_img.png"
+    
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        """Maneja la subida de archivos."""
+        for file in files:
+            upload_data = await file.read()
+            outfile = rx.get_asset_path(file.filename)
+            
+            # Guarda el archivo en el directorio de assets
+            with open(outfile, "wb") as file_object:
+                file_object.write(upload_data)
+            
+            # Actualiza el estado con la ruta del nuevo archivo
+            self.img.append(f"/{file.filename}")
+    # ----------------------------------------------
+
+    # ... (variables calculadas blog_post_id, blog_post_url, etc. no cambian) ...
+
+    # ... (método get_post_detail no cambia) ...
+
+    # ... (método load_posts no cambia) ...
+
+    def add_post(self, form_data: dict):
+        """Añade un nuevo post a la base de datos, incluyendo la imagen."""
+        with rx.session() as session:
+            # Si se subió una imagen, añade su URL a los datos del formulario
+            if self.img:
+                form_data['image_url'] = self.img[0]
+
+            post = BlogPostModel(**form_data)
+            session.add(post)
+            session.commit()
+            session.refresh(post)
+            self.post = post
+            self.img = [] # Limpia la lista de imágenes después de guardar
+
+    def save_post_edits(self, post_id: int, updated_data: dict):
+        """Guarda las ediciones de un post, incluyendo una posible nueva imagen."""
+        with rx.session() as session:
+            post = session.exec(select(BlogPostModel).where(BlogPostModel.id == post_id)).one_or_none()
+            if post is None:
+                return
+            
+            # Si se subió una nueva imagen, actualiza la URL
+            if self.img:
+                updated_data['image_url'] = self.img[0]
+
+            for key, value in updated_data.items():
+                setattr(post, key, value)
+            
+            session.add(post)
+            session.commit()
+            self.img = [] # Limpia la lista de imágenes
+
+            # Recarga el post para asegurar que los datos estén actualizados
+            reloaded_post = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+                ).where(BlogPostModel.id == post_id)
+            ).one_or_none()
+            self.post = reloaded_post
+
     @rx.var
     def blog_post_id(self) -> str:  # Añadida la anotación de tipo -> str
         return self.router.page.params.get("blog_id", "")
