@@ -1,10 +1,8 @@
 # rxconfig.py
 import reflex as rx
 import os
-from dotenv import load_dotenv
 
-# Carga las variables desde un archivo .env para pruebas locales
-load_dotenv()
+
 
 # Lee la lista de orígenes desde una variable de entorno, con valores por defecto
 cors_allowed_origins_str = os.getenv(
