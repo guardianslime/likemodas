@@ -56,31 +56,27 @@ def image_upload_component(State: rx.State) -> rx.Component:
 
 def blog_post_add_form() -> rx.Component:
     return rx.form(
-            rx.vstack(
-                rx.hstack(
-                    rx.input(
-                        name="title",
-                        placeholder="Titulo del Artículo",
-                        required=False,
-                        type= "text",
-                        width="100%",
-                    ),
-
-                    width="100%",
-                ),
-                rx.heading("Imagen Principal", size="5", margin_top="1em"),
-                image_upload_component(BlogAddPostFormState), # <-- AÑADE ESTO
-                rx.text_area(
-                    name="content",
-                    placeholder="Your message",
-                    required=True,
-                    height='50vh',
-                    width='100%',
-                ),
-                rx.button("Guardar y Editar", type="submit" margin_top="1em"),
+        rx.vstack(
+            rx.input(
+                name="title",
+                placeholder="Título del Artículo",
+                required=True,
+                width="100%",
             ),
-            on_submit=BlogAddPostFormState.handle_submit,
-            reset_on_submit=True,
+            rx.heading("Imagen Principal", size="5", margin_top="1em"),
+            image_upload_component(BlogAddPostFormState), # <-- AÑADE ESTO
+            rx.text_area(
+                name="content",
+                placeholder="Escribe tu artículo aquí...",
+                required=True,
+                height='50vh',
+                width='100%',
+                margin_top="1em",
+            ),
+            rx.button("Guardar y Editar", type="submit", margin_top="1em"),
+        ),
+        on_submit=BlogAddPostFormState.handle_submit,
+        reset_on_submit=True,
     )
 
 
