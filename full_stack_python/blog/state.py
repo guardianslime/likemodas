@@ -19,7 +19,29 @@ class BlogPostState(SessionState):
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
-    img: list[str] = []
+    uploaded_image_url: str = ""
+
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        """
+        Maneja la subida del archivo de imagen.
+        """
+        if not files:
+            return
+
+        file = files[0]
+        
+        # Crea un nombre de archivo único para evitar sobreescribir imágenes.
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_path = f"{timestamp}_{file.filename}"
+        
+        # Lee los datos y guárdalos en el directorio público.
+        upload_data = await file.read()
+        with open(f".web/public/{file_path}", "wb") as f:
+            f.write(upload_data)
+        
+        # Actualiza la variable de estado con la URL de la nueva imagen.
+        # La UI reaccionará a este cambio y mostrará la imagen.
+        self.uploaded_image_url = f"/{file_path}"
 
     @rx.var
     def blog_post_id(self) -> str:
