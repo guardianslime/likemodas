@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
-import typing
 import reflex as rx
+
 import sqlalchemy
 from sqlmodel import select
 
@@ -18,41 +18,22 @@ class BlogPostState(SessionState):
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
-    img: list[str] = []
 
     @rx.var
-    def blog_post_id(self) -> str:
+    def blog_post_id(self) -> str:  # Añadida la anotación de tipo -> str
         return self.router.page.params.get("blog_id", "")
 
     @rx.var
-    def blog_post_url(self) -> str:
+    def blog_post_url(self) -> str: # Añadida la anotación de tipo -> str
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
 
     @rx.var
-    def blog_post_edit_url(self) -> str:
+    def blog_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
-
-    @rx.var
-    def post_publish_date_formatted(self) -> str:
-        """Formatea la fecha de publicación del post actual."""
-        if self.post and self.post.publish_date:
-            return self.post.publish_date.strftime("%Y-%m-%d %H:%M")
-        return ""
-    
-    async def handle_upload(self, files: typing.Any):
-        """
-        Maneja la información de los archivos para la v0.5.0.
-        El archivo que llega es un diccionario.
-        """
-        for file in files:
-            filename = file.get("filename")
-            if filename:
-                self.img.append(f"/{filename}")
-        return
 
     def get_post_detail(self):
         if self.my_userinfo_id is None:
@@ -68,7 +49,13 @@ class BlogPostState(SessionState):
             if self.blog_post_id == "":
                 self.post = None
                 return
-            result = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where(lookups)).one_or_none()
+            sql_statement = select(BlogPostModel).options(
+                sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+            ).where(lookups)
+            result = session.exec(sql_statement).one_or_none()
+            # if result.userinfo: # db lookup
+            #     print('working')
+            #     result.userinfo.user
             self.post = result
             if result is None:
                 self.post_content = ""
@@ -77,32 +64,52 @@ class BlogPostState(SessionState):
             self.post_publish_active = self.post.publish_active
 
     def load_posts(self, *args, **kwargs):
+        # if published_only:
+        #     lookup_args = (
+        #         (BlogPostModel.publish_active == True) &
+        #         (BlogPostModel.publish_date < datetime.now())
+        #     )
         with rx.session() as session:
-            self.posts = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)).where(BlogPostModel.userinfo_id == self.my_userinfo_id)).all()
+            result = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
+                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
+            ).all()
+            self.posts = result
 
     def add_post(self, form_data: dict):
         with rx.session() as session:
-            if self.img:
-                form_data['image_url'] = self.img[0]
             post = BlogPostModel(**form_data)
             session.add(post)
             session.commit()
             session.refresh(post)
             self.post = post
-            self.img = []
+
+# En full_stack_python/blog/state.py
 
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
-            post = session.exec(select(BlogPostModel).where(BlogPostModel.id == post_id)).one_or_none()
-            if post is None: return
-            if self.img:
-                updated_data['image_url'] = self.img[0]
+            post = session.exec(
+                select(BlogPostModel).where(
+                    BlogPostModel.id == post_id
+                )
+            ).one_or_none()
+            if post is None:
+                return
             for key, value in updated_data.items():
                 setattr(post, key, value)
             session.add(post)
             session.commit()
-            self.img = []
-            self.post = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where(BlogPostModel.id == post_id)).one_or_none()
+            
+            # --- MEJORA ---
+            # Después de guardar, recargamos el post con sus relaciones (userinfo y user)
+            # para asegurar que el estado (self.post) esté completo antes de redirigir.
+            reloaded_post = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+                ).where(BlogPostModel.id == post_id)
+            ).one_or_none()
+            self.post = reloaded_post
 
     def to_blog_post(self, edit_page=False):
         if not self.post:
@@ -110,6 +117,7 @@ class BlogPostState(SessionState):
         if edit_page:
             return rx.redirect(f"{self.blog_post_edit_url}")
         return rx.redirect(f"{self.blog_post_url}")
+
 
 class BlogAddPostFormState(BlogPostState):
     form_data: dict = {}
@@ -122,30 +130,45 @@ class BlogAddPostFormState(BlogPostState):
         self.add_post(data)
         return self.to_blog_post(edit_page=True)
 
+
 class BlogEditFormState(BlogPostState):
     form_data: dict = {}
 
     @rx.var
     def publish_display_date(self) -> str:
-        if not self.post or not self.post.publish_date:
+        if not self.post:
+            return datetime.now().strftime("%Y-%m-%d")
+        if not self.post.publish_date:
             return datetime.now().strftime("%Y-%m-%d")
         return self.post.publish_date.strftime("%Y-%m-%d")
 
     @rx.var
     def publish_display_time(self) -> str:
-        if not self.post or not self.post.publish_date:
+        if not self.post:
+            return datetime.now().strftime("%H:%M:%S")
+        if not self.post.publish_date:
             return datetime.now().strftime("%H:%M:%S")
         return self.post.publish_date.strftime("%H:%M:%S")
 
     def handle_submit(self, form_data):
+        self.form_data = form_data
         post_id = form_data.pop('post_id')
-        publish_date_str = form_data.pop('publish_date', None)
-        publish_time_str = form_data.pop('publish_time', None)
+        publish_date = None
+        if 'publish_date' in form_data:
+            publish_date = form_data.pop('publish_date')
+        publish_time = None
+        if 'publish_time' in form_data:
+            publish_time = form_data.pop('publish_time')
+        publish_input_string = f"{publish_date} {publish_time}"
         try:
-            final_publish_date = datetime.strptime(f"{publish_date_str} {publish_time_str}", "%Y-%m-%d %H:%M:%S")
-        except (ValueError, TypeError):
+            final_publish_date = datetime.strptime(publish_input_string, "%Y-%m-%d %H:%M:%S")
+        except:
             final_publish_date = None
-        form_data['publish_active'] = form_data.get('publish_active') == "on"
-        form_data['publish_date'] = final_publish_date
-        self.save_post_edits(post_id, form_data)
+        publish_active = False
+        if 'publish_active' in form_data:
+            publish_active = form_data.pop('publish_active') == "on"
+        updated_data = {**form_data}
+        updated_data['publish_active'] = publish_active
+        updated_data['publish_date'] = final_publish_date
+        self.save_post_edits(post_id, updated_data)
         return self.to_blog_post()
