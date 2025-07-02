@@ -3,7 +3,7 @@ User-agent: *
 Allow: /
 
 # Host
-Host: https://full-stack-python.vercel.app
+Host: http://localhost:3000
 
 # Sitemaps
-Sitemap: https://full-stack-python.vercel.app/sitemap.xml
+Sitemap: http://localhost:3000/sitemap.xml
