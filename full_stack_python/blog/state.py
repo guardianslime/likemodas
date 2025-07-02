@@ -5,7 +5,7 @@ from typing import Optional, List, Any
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
-import os # 1. Importa la librería 'os'
+import os 
 
 from .. import navigation
 from ..auth.state import SessionState
@@ -16,7 +16,6 @@ if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
 class BlogPostState(SessionState):
-    # ... (el resto de tus variables de estado no cambian) ...
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
@@ -34,24 +33,24 @@ class BlogPostState(SessionState):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}_{file.filename}"
         
-        # --- INICIO DE LA CORRECCIÓN ---
         upload_dir = ".web/public"
-        
-        # 2. Crea el directorio si no existe. Esto soluciona el FileNotFoundError.
         os.makedirs(upload_dir, exist_ok=True)
-        
-        # 3. Define la ruta completa del archivo
         file_path = os.path.join(upload_dir, filename)
-        # --- FIN DE LA CORRECIÓN ---
         
         upload_data = await file.read()
         with open(file_path, "wb") as f:
             f.write(upload_data)
         
-        # La URL pública no incluye ".web/public"
-        self.uploaded_image_url = f"/{filename}"
+        # --- INICIO DE LA CORRECCIÓN ---
+        # 1. Obtenemos la URL base del backend (ej: https://...up.railway.app)
+        api_url = self.get_api_url()
+        
+        # 2. Creamos la URL completa de la imagen y la guardamos en el estado.
+        #    Esto asegura que el frontend (Vercel) sepa dónde encontrar la imagen (Railway).
+        self.uploaded_image_url = f"{api_url}/{filename}"
+        # --- FIN DE LA CORRECIÓN ---
 
-    # ... (el resto de tus funciones y clases no necesitan cambios) ...
+
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
