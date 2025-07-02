@@ -34,7 +34,6 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
     content: str
-    image_url: Optional[str] = None  # <-- AÑADE ESTA LÍNE
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -73,5 +72,6 @@ class ContactEntryModel(rx.Model, table=True):
     # --- ¡CORRECCIÓN! AÑADE ESTE MÉTODO ---
     @rx.var
     def created_at_formatted(self) -> str:
-        """Devuelve la fecha de creación formateada como un string."""
+        """Un campo calculado que devuelve la fecha de creación como un string formateado."""
         return self.created_at.strftime("%Y-%m-%d %H:%M")
+    # ------------------------------------

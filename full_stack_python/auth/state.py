@@ -7,29 +7,26 @@ from ..models import UserInfo
 
 
 class SessionState(reflex_local_auth.LocalAuthState):
-    # 👇 --- CAMBIO: de @rx.var(cache=True) a @rx.cached_var ---
-    @rx.cached_var
+    @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None:
         if self.authenticated_user_info is None:
             return None
         return self.authenticated_user_info.id
 
-    # 👇 --- CAMBIO: de @rx.var(cache=True) a @rx.cached_var ---
-    @rx.cached_var
+
+    @rx.var(cache=True)
     def my_user_id(self) -> str | None:
         if self.authenticated_user.id < 0:
             return None
         return self.authenticated_user.id
 
-    # 👇 --- CAMBIO: de @rx.var(cache=True) a @rx.cached_var ---
-    @rx.cached_var
+    @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
         if self.authenticated_user.id < 0:
             return None
         return self.authenticated_user.username
 
-    # 👇 --- CAMBIO: de @rx.var(cache=True) a @rx.cached_var ---
-    @rx.cached_var
+    @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
         if self.authenticated_user.id < 0:
             return None
@@ -41,6 +38,10 @@ class SessionState(reflex_local_auth.LocalAuthState):
             ).one_or_none()
             if result is None:
                 return None
+            # database lookup
+            # result.user
+            # user_obj = result.user
+            # print(result.user)
             return result
     
     def on_load(self):
@@ -52,8 +53,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def perform_logout(self):
         self.do_logout()
         return rx.redirect("/")
-    
-    
+
 class MyRegisterState(reflex_local_auth.RegistrationState):
     def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
         username = form_data["username"]
