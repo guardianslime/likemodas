@@ -34,7 +34,10 @@ class BlogPostState(SessionState):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}_{file.filename}"
         
-        upload_dir = ".web/public"
+        # --- CORRECCIÓN AQUÍ ---
+        # Cambiamos el directorio de subida a tu carpeta existente.
+        upload_dir = "uploaded_files"
+        
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, filename)
         
@@ -42,14 +45,8 @@ class BlogPostState(SessionState):
         with open(file_path, "wb") as f:
             f.write(upload_data)
         
-        # --- INICIO DE LA CORRECCIÓN ---
-        # 2. Obtenemos la URL del backend directamente desde la configuración.
-        #    Se convierte a string para asegurar compatibilidad.
         api_url = str(config.api_url)
-        
-        # 3. Creamos la URL completa de la imagen.
         self.uploaded_image_url = f"{api_url}/{filename}"
-        # --- FIN DE LA CORRECIÓN ---
 
 
     @rx.var

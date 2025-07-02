@@ -48,6 +48,9 @@ app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
+
+app.add_static_files("/", static_dir="uploaded_files/")
+
 # Páginas de Artículos
 app.add_page(
     article_public_list_page,
