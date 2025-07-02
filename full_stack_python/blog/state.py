@@ -23,24 +23,16 @@ class BlogPostState(SessionState):
 
     async def handle_upload(self, files: list[rx.UploadFile]):
         """
-        Maneja la subida del archivo de imagen.
+        Maneja la subida del archivo de imagen. ESTA ES LA FUNCIÓN CORRECTA.
         """
         if not files:
             return
-
         file = files[0]
-        
-        # Crea un nombre de archivo único para evitar sobreescribir imágenes.
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_path = f"{timestamp}_{file.filename}"
-        
-        # Lee los datos y guárdalos en el directorio público.
         upload_data = await file.read()
         with open(f".web/public/{file_path}", "wb") as f:
             f.write(upload_data)
-        
-        # Actualiza la variable de estado con la URL de la nueva imagen.
-        # La UI reaccionará a este cambio y mostrará la imagen.
         self.uploaded_image_url = f"/{file_path}"
 
     @rx.var
@@ -74,6 +66,7 @@ class BlogPostState(SessionState):
         return
 
     def get_post_detail(self):
+        # ... (sin cambios aquí) ...
         if self.my_userinfo_id is None:
             self.post = None; self.post_content = ""; self.post_publish_active = False; return
         lookups = ((BlogPostModel.userinfo_id == self.my_userinfo_id) & (BlogPostModel.id == self.blog_post_id))
@@ -86,15 +79,22 @@ class BlogPostState(SessionState):
             self.post_publish_active = self.post.publish_active
 
     def load_posts(self, *args, **kwargs):
+        # ... (sin cambios aquí) ...
         with rx.session() as session:
             self.posts = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)).where(BlogPostModel.userinfo_id == self.my_userinfo_id)).all()
 
     def add_post(self, form_data: dict):
         with rx.session() as session:
-            if self.img: form_data['image_url'] = self.img[0]
+            # 👇 CORRECCIÓN AQUÍ: Usa la variable correcta para guardar la URL de la imagen
+            if self.uploaded_image_url:
+                form_data['image_url'] = self.uploaded_image_url
             post = BlogPostModel(**form_data)
-            session.add(post); session.commit(); session.refresh(post)
-            self.post = post; self.img = []
+            session.add(post)
+            session.commit()
+            session.refresh(post)
+            self.post = post
+            # Resetea la URL de la imagen después de guardar
+            self.uploaded_image_url = ""
 
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
