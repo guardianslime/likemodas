@@ -6,6 +6,7 @@ import reflex as rx
 import sqlalchemy
 from sqlmodel import select
 import os 
+from rxconfig import config # 1. Importa la configuración de tu app
 
 from .. import navigation
 from ..auth.state import SessionState
@@ -42,11 +43,11 @@ class BlogPostState(SessionState):
             f.write(upload_data)
         
         # --- INICIO DE LA CORRECCIÓN ---
-        # 1. Obtenemos la URL base del backend (ej: https://...up.railway.app)
-        api_url = self.get_api_url()
+        # 2. Obtenemos la URL del backend directamente desde la configuración.
+        #    Se convierte a string para asegurar compatibilidad.
+        api_url = str(config.api_url)
         
-        # 2. Creamos la URL completa de la imagen y la guardamos en el estado.
-        #    Esto asegura que el frontend (Vercel) sepa dónde encontrar la imagen (Railway).
+        # 3. Creamos la URL completa de la imagen.
         self.uploaded_image_url = f"{api_url}/{filename}"
         # --- FIN DE LA CORRECIÓN ---
 
