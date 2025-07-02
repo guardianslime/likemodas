@@ -32,7 +32,7 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
     content: str
-    image_url: Optional[str] = None
+    image_url: Optional[str] = Field(default=None)
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),

@@ -1,9 +1,11 @@
+# state.py
+
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
-
 import sqlalchemy
 from sqlmodel import select
+import shutil # Importa shutil para mover archivos
 
 from .. import navigation
 from ..auth.state import SessionState
@@ -21,57 +23,48 @@ class ArticlePublicState(SessionState):
     limit: int = 20
 
     @rx.var
-    def post_id(self) -> str:  # Añadida la anotación de tipo -> str
+    def post_id(self) -> str:
         return self.router.page.params.get("article_id", "")
 
     @rx.var
-    def post_url(self) -> str: # Añadida la anotación de tipo -> str
+    def post_url(self) -> str:
         if not self.post:
             return f"{ARTICLE_LIST_ROUTE}"
         return f"{ARTICLE_LIST_ROUTE}/{self.post.id}"
 
-    def get_post_detail(self):
-        lookups = (
-            (BlogPostModel.publish_active == True) &
-            (BlogPostModel.publish_date < datetime.now()) &
-            (BlogPostModel.id == self.post_id)
-        )
-        with rx.session() as session:
-            if self.post_id == "":
-                self.post = None
-                self.post_content = ""
-                self.post_publish_active = False
-                return
-            sql_statement = select(BlogPostModel).options(
-                sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
-            ).where(lookups)
-            result = session.exec(sql_statement).one_or_none()
-            self.post = result
-            if result is None:
-                self.post_content = ""
-                return
-            self.post_content = self.post.content
-            self.post_publish_active = self.post.publish_active
+    # --- INICIO DE CAMBIOS ---
 
-    def set_limit_and_reload(self, new_limit: int=5):
-        self.limit = new_limit
-        self.load_posts
-        yield
+    # 1. Handler para la subida de la imagen
+async def handle_upload(self, files: list[rx.UploadFile]):
+    """Maneja la subida de la imagen del post."""
+    if not self.post or not files:
+        return
 
-    def load_posts(self, *args, **kwargs):
-        lookup_args = (
-            (BlogPostModel.publish_active == True) &
-            (BlogPostModel.publish_date < datetime.now())
-        )
-        with rx.session() as session:
-            result = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(lookup_args).limit(self.limit)
-            ).all()
-            self.posts = result
+    file = files[0]
+    upload_data = await file.read()
+    # Asegura un nombre de archivo único para evitar sobreescrituras
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    outfile_path = f".web/public/{timestamp}_{file.filename}"
+    
+    # Guardar el archivo en el directorio público
+    with open(outfile_path, "wb") as f:
+        f.write(upload_data)
+    
+    # La URL pública no incluye ".web/public"
+    image_url = f"/{timestamp}_{file.filename}"
+    
+    # Actualizar la URL de la imagen en la base de datos
+    with rx.session() as session:
+        # Volvemos a cargar el post desde la BD para asegurarnos de que trabajamos con el objeto correcto
+        db_post = session.get(BlogPostModel, self.post.id)
+        if db_post:
+            db_post.image_url = image_url
+            session.add(db_post)
+            session.commit()
+            session.refresh(db_post)
+            # Actualizar el estado local para que la UI reaccione
+            self.post = db_post
+    
+    # Limpia los archivos del componente de subida para permitir subir otro
+            return rx.clear_upload_files("upload_image")
 
-    def to_post(self):
-        if not self.post:
-            return rx.redirect(ARTICLE_LIST_ROUTE)
-        return rx.redirect(f"{self.post_url}")
