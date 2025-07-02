@@ -14,26 +14,10 @@ def article_card_link(post: BlogPostModel):
     return rx.card(
         rx.link(
             rx.flex(
-                rx.cond(
-                    post.image_url,
-                    rx.image(
-                        src=post.image_url,
-                        width="8em",
-                        height="8em",
-                        object_fit="cover",
-                        border_radius="0.5rem"
-                    ),
-                ),
-                # -------------------------
                 rx.box(
-                    rx.heading(post.title, size="4"),
-                    rx.cond(
-                        post.userinfo,
-                        rx.text(f"Autor: {post.userinfo.email}", size="2", color_scheme="gray")
-                    )
+                    rx.heading(post.title),
                 ),
-                spacing="4",
-                align_items="center",
+                spacing="2",
             ),
             href=post_detail_url
         ), 
