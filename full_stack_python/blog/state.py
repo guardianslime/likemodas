@@ -61,6 +61,10 @@ class BlogPostState(SessionState):
             logging.error(f"Error: {e}")
             logging.error(f"Tipo de error: {type(e)}")
             self.uploaded_image_url = ""
+    
+    def clear_uploaded_image(self):
+        """Resetea la URL de la imagen para limpiar la vista previa."""
+        self.uploaded_image_url = ""
 
     @rx.var
     def blog_post_id(self) -> str:

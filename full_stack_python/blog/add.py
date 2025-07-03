@@ -5,7 +5,6 @@ import reflex_local_auth
 
 from ..ui.base import base_page
 from . import forms
-# 👇 CORRECCIÓN AQUÍ: Importa el nombre correcto del estado
 from .state import BlogAddPostFormState
 
 @reflex_local_auth.require_login
@@ -15,7 +14,7 @@ def blog_post_add_page() -> rx.Component:
     image_uploader = rx.vstack(
         rx.upload(
             rx.text("Arrastra aquí tu imagen JPG/PNG o haz clic para seleccionar"),
-            border="2px dotted rgb(1007, 1014, 1280)",
+            border="2px dotted rgb(107, 114, 128)",
             padding="2em",
             width="100%",
             accept={
@@ -31,8 +30,10 @@ def blog_post_add_page() -> rx.Component:
             BlogAddPostFormState.uploaded_image_url,
             rx.box(
                 rx.text("Vista Previa:", weight="bold", margin_bottom="0.5em"),
+                # --- CORRECCIÓN FINAL ---
+                # Se elimina la función `rx.get_upload_url()` y se usa la URL del estado directamente.
                 rx.image(
-                    src=rx.get_upload_url(BlogAddPostFormState.uploaded_image_url),
+                    src=BlogAddPostFormState.uploaded_image_url,
                     height="15em",
                     width="auto",
                     border_radius="10px",
