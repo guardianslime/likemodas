@@ -32,7 +32,7 @@ def blog_post_add_page() -> rx.Component:
             rx.box(
                 rx.text("Vista Previa:", weight="bold", margin_bottom="0.5em"),
                 rx.image(
-                    src=rx.get_upload_url(BlogAddPostFormState.uploaded_image_name),
+                    src=rx.get_upload_url(BlogAddPostFormState.uploaded_image_url),
                     height="15em",
                     width="auto",
                     border_radius="10px",
