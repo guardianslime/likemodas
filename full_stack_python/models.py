@@ -13,7 +13,7 @@ class UserInfo(rx.Model, table=True):
     user_id: int = Field(foreign_key='localuser.id')
     user: Optional[LocalUser] = Relationship()
     posts: List['BlogPostModel'] = Relationship(back_populates='userinfo')
-    contact_entries: List['ContactEntryModel'] = Relationship(back_populates='userinfo') 
+    contact_entries: List['ContactEntryModel'] = Relationship(back_populates='userinfo')
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -32,11 +32,9 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
     content: str
-    
-    # --- CAMPO AÑADIDO ---
-    # Este campo faltaba. Es crucial para guardar la referencia a la imagen.
-    image_url: Optional[str] = Field(default=None)
-    
+    # --- CORRECCIÓN ---
+    # Se añade el campo para almacenar la URL de la imagen del post.
+    image_url: Optional[str] = None
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -60,7 +58,6 @@ class BlogPostModel(rx.Model, table=True):
 class ContactEntryModel(rx.Model, table=True):
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
-    
     first_name: str
     last_name: Optional[str] = None
     email: Optional[str] = None
@@ -74,5 +71,5 @@ class ContactEntryModel(rx.Model, table=True):
 
     @rx.var
     def created_at_formatted(self) -> str:
-        """Un campo calculado que devuelve la fecha de creación como un string formateado."""
+        """Devuelve la fecha de creación formateada para mostrarla en la UI."""
         return self.created_at.strftime("%Y-%m-%d %H:%M")

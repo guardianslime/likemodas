@@ -1,42 +1,41 @@
-import reflex as rx 
+# full_stack_python/articles/list.py
 
+import reflex as rx
 from .. import navigation
 from ..ui.base import base_page
 from ..models import BlogPostModel
 from . import state
 
-def article_card_link(post: BlogPostModel):
-    post_id = post.id
-    if post_id is None:
-        return rx.fragment("Not found")
-    root_path = navigation.routes.ARTICLE_LIST_ROUTE
-    post_detail_url = f"{root_path}/{post_id}"
+def article_card_link(post: BlogPostModel) -> rx.Component:
+    """Componente de tarjeta para un artículo, ahora con imagen."""
+    post_detail_url = f"{navigation.routes.ARTICLE_LIST_ROUTE}/{post.id}"
     return rx.card(
         rx.link(
             rx.flex(
-                rx.box(
-                    rx.heading(post.title),
+                # --- CORRECCIÓN: Se añade la imagen a la tarjeta ---
+                rx.cond(
+                    post.image_url,
+                    rx.image(
+                        src=post.image_url,
+                        width="8em",
+                        height="8em",
+                        object_fit="cover",
+                        border_radius="0.5rem"
+                    ),
                 ),
-                spacing="2",
+                rx.box(
+                    rx.heading(post.title, size="4"),
+                    rx.cond(
+                        post.userinfo,
+                        rx.text(f"Autor: {post.userinfo.email}", size="2", color_scheme="gray")
+                    )
+                ),
+                spacing="4",
+                align_items="center",
             ),
             href=post_detail_url
-        ), 
+        ),
         as_child=True
     )
-
-def article_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -> rx.Component:
-    return rx.grid(
-        rx.foreach(state.ArticlePublicState.posts,article_card_link),
-        columns=f'{columns}',
-        spacing= f'{spacing}',
-        on_mount=lambda: state.ArticlePublicState.set_limit_and_reload(limit)
-    )
-
-def article_public_list_page() -> rx.Component:
-    return base_page(
-        rx.box(
-            rx.heading("Published Articles", size="5"),
-            article_public_list_component(),      
-            min_height="85vh",
-        )
-    )
+    
+# ... (el resto del archivo no necesita cambios)

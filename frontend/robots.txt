@@ -1,9 +1,0 @@
-# *
-User-agent: *
-Allow: /
-
-# Host
-Host: https://full-stack-python.vercel.app
-
-# Sitemaps
-Sitemap: https://full-stack-python.vercel.app/sitemap.xml
