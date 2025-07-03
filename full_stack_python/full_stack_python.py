@@ -75,15 +75,15 @@ app.add_page(
     route=navigation.routes.BLOG_POSTS_ROUTE,
     on_load=blog.BlogPostState.load_posts
 )
-app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
+# --- CORRECCIÓN AQUÍ ---
+app.add_page(
+    blog.blog_post_add_page, 
+    route=navigation.routes.BLOG_POST_ADD_ROUTE,
+    on_load=blog.BlogAddPostFormState.clear_uploaded_image # <--- AÑADE ESTO
+)
 app.add_page(
     blog.blog_post_detail_page,
     route="/blog/[blog_id]",
-    on_load=blog.BlogPostState.get_post_detail
-)
-app.add_page(
-    blog.blog_post_edit_page,
-    route="/blog/[blog_id]/edit",
     on_load=blog.BlogPostState.get_post_detail
 )
 
