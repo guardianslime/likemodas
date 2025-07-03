@@ -6,6 +6,7 @@ import reflex as rx
 import sqlalchemy
 from sqlmodel import select
 import os 
+import logging # 1. Importa la librería de logging
 from rxconfig import config
 
 from .. import navigation
@@ -24,27 +25,48 @@ class BlogPostState(SessionState):
     uploaded_image_url: str = ""
 
     async def handle_upload(self, files: list[rx.UploadFile]):
+        logging.info("--- Iniciando subida de archivo ---")
         if not files:
+            logging.warning("handle_upload llamado sin archivos.")
             return
         
         file = files[0]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}_{file.filename}"
+        logging.info(f"Nombre de archivo generado: {filename}")
         
-        # --- CORRECCIÓN FINAL ---
-        # Apuntamos al directorio del volumen, que es una ruta absoluta y persistente.
-        upload_dir = "/data/uploads" 
-        
-        os.makedirs(upload_dir, exist_ok=True)
+        upload_dir = "/data/uploads"
         file_path = os.path.join(upload_dir, filename)
+        logging.info(f"Ruta de destino completa: {file_path}")
         
-        upload_data = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(upload_data)
-        
-        api_url = str(config.api_url)
-        self.uploaded_image_url = f"{api_url}/static/{filename}"
+        try:
+            # 2. Intentamos crear el directorio y escribir el archivo
+            logging.info(f"Asegurando que el directorio '{upload_dir}' exista...")
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            logging.info("Leyendo datos del archivo...")
+            upload_data = await file.read()
+            
+            logging.info(f"Escribiendo archivo en '{file_path}'...")
+            with open(file_path, "wb") as f:
+                f.write(upload_data)
+            
+            logging.info(f"¡ÉXITO! Archivo escrito correctamente en el volumen.")
+            
+            # 3. Solo si el archivo se guardó bien, creamos y asignamos la URL
+            api_url = str(config.api_url)
+            self.uploaded_image_url = f"{api_url}/static/{filename}"
+            logging.info(f"URL de imagen actualizada en el estado: {self.uploaded_image_url}")
 
+        except Exception as e:
+            # 4. Si algo falla, imprimimos el error en los logs de Railway
+            logging.error(f"!!!!!!!!!! ERROR AL ESCRIBIR EN EL VOLUMEN !!!!!!!!!")
+            logging.error(f"Error: {e}")
+            logging.error(f"Tipo de error: {type(e)}")
+            # No actualizamos la URL si hubo un error, para no mostrar un enlace roto.
+            self.uploaded_image_url = ""
+
+    # ... (El resto del archivo no cambia)
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
