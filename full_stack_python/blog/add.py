@@ -28,7 +28,7 @@ def blog_post_add_page() -> rx.Component:
             ),
         ),
         rx.cond(
-            BlogAddPostFormState.uploaded_image_name,
+            BlogAddPostFormState.uploaded_image_url,
             rx.box(
                 rx.text("Vista Previa:", weight="bold", margin_bottom="0.5em"),
                 rx.image(
