@@ -34,7 +34,7 @@ class BlogPostModel(rx.Model, table=True):
     content: str
     
     # --- CAMPO AÑADIDO ---
-    # Este campo faltaba. Es necesario para guardar la referencia a la imagen.
+    # Este campo faltaba. Es crucial para guardar la referencia a la imagen.
     image_url: Optional[str] = Field(default=None)
     
     created_at: datetime = Field(

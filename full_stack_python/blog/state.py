@@ -33,22 +33,26 @@ class BlogPostState(SessionState):
         file = files[0]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}_{file.filename}"
+        logging.info(f"Nombre de archivo generado: {filename}")
         
         upload_dir = "/data/uploads"
         file_path = os.path.join(upload_dir, filename)
+        logging.info(f"Ruta de destino completa: {file_path}")
         
         try:
+            logging.info(f"Asegurando que el directorio '{upload_dir}' exista...")
             os.makedirs(upload_dir, exist_ok=True)
+            
+            logging.info("Leyendo datos del archivo...")
             upload_data = await file.read()
+            
+            logging.info(f"Escribiendo archivo en '{file_path}'...")
             with open(file_path, "wb") as f:
                 f.write(upload_data)
+            
             logging.info(f"¡ÉXITO! Archivo escrito correctamente en el volumen.")
             
-            # --- INICIO DE LA CORRECCIÓN DE DIAGNÓSTICO ---
             api_url = str(config.api_url)
-            logging.info(f"--> API URL leída de config: {api_url}") # Imprime la URL que está usando.
-            # --- FIN DE LA CORRECCIÓN DE DIAGNÓSTICO ---
-            
             self.uploaded_image_url = f"{api_url}/static/{filename}"
             logging.info(f"URL de imagen actualizada en el estado: {self.uploaded_image_url}")
 
@@ -57,12 +61,11 @@ class BlogPostState(SessionState):
             logging.error(f"Error: {e}")
             logging.error(f"Tipo de error: {type(e)}")
             self.uploaded_image_url = ""
-    
+
     def clear_uploaded_image(self):
         """Resetea la URL de la imagen para limpiar la vista previa."""
         self.uploaded_image_url = ""
 
-    # ... (El resto de la clase no necesita cambios)
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")

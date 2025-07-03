@@ -31,7 +31,7 @@ def blog_post_add_page() -> rx.Component:
             rx.box(
                 rx.text("Vista Previa:", weight="bold", margin_bottom="0.5em"),
                 # --- CORRECCIÓN FINAL ---
-                # Se elimina la función `rx.get_upload_url()` y se usa la URL del estado directamente.
+                # Se usa la URL del estado directamente, sin rx.get_upload_url().
                 rx.image(
                     src=BlogAddPostFormState.uploaded_image_url,
                     height="15em",
