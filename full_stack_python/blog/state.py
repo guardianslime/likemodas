@@ -6,7 +6,7 @@ import reflex as rx
 import sqlalchemy
 from sqlmodel import select
 import os 
-import logging # 1. Importa la librería de logging
+import logging
 from rxconfig import config
 
 from .. import navigation
@@ -40,7 +40,6 @@ class BlogPostState(SessionState):
         logging.info(f"Ruta de destino completa: {file_path}")
         
         try:
-            # 2. Intentamos crear el directorio y escribir el archivo
             logging.info(f"Asegurando que el directorio '{upload_dir}' exista...")
             os.makedirs(upload_dir, exist_ok=True)
             
@@ -53,20 +52,16 @@ class BlogPostState(SessionState):
             
             logging.info(f"¡ÉXITO! Archivo escrito correctamente en el volumen.")
             
-            # 3. Solo si el archivo se guardó bien, creamos y asignamos la URL
             api_url = str(config.api_url)
             self.uploaded_image_url = f"{api_url}/static/{filename}"
             logging.info(f"URL de imagen actualizada en el estado: {self.uploaded_image_url}")
 
         except Exception as e:
-            # 4. Si algo falla, imprimimos el error en los logs de Railway
             logging.error(f"!!!!!!!!!! ERROR AL ESCRIBIR EN EL VOLUMEN !!!!!!!!!")
             logging.error(f"Error: {e}")
             logging.error(f"Tipo de error: {type(e)}")
-            # No actualizamos la URL si hubo un error, para no mostrar un enlace roto.
             self.uploaded_image_url = ""
 
-    # ... (El resto del archivo no cambia)
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
@@ -139,25 +134,11 @@ class BlogPostState(SessionState):
 
 class BlogAddPostFormState(BlogPostState):
     form_data: dict = {}
-    uploaded_image_name: str = ""  # ← Variable de estado para el nombre del archivo
-
-    @rx.event
-    async def handle_upload(self, files: list[rx.UploadFile]):
-        if files:
-            file = files[0]
-            data = await file.read()
-            path = rx.get_upload_dir() / file.name
-            with path.open("wb") as f:
-                f.write(data)
-            self.uploaded_image_name = file.name  # Guardas el nombre para usarlo en la vista previa
 
     def handle_submit(self, form_data: dict):
         data = form_data.copy()
         if self.my_userinfo_id is not None:
             data['userinfo_id'] = self.my_userinfo_id
-        # Puedes agregar el nombre de la imagen al post si lo necesitas:
-        if self.uploaded_image_name:
-            data['image'] = self.uploaded_image_name
         self.add_post(data)
         return self.to_blog_post(edit_page=True)
 
