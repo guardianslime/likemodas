@@ -39,9 +39,10 @@ app = rx.App(
     static_paths={
         "/static": "/data/uploads"
     },
-    cors_allowed_origins=[
-        "https://full-stack-python.vercel.app",
-    ]
+    # --- CAMBIO PARA DEPURACIÓN ---
+    # Abrimos CORS completamente para descartar que este sea el problema.
+    # Esto permite que CUALQUIER dominio se conecte a tu backend.
+    cors_allowed_origins=["*"]
 )
 
 
@@ -71,22 +72,22 @@ app.add_page(
 app.add_page(
     blog.blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
-    on_load=blog.state.BlogPostState.load_posts # CORRECCIÓN: Se añade '.state'
+    on_load=blog.state.BlogPostState.load_posts
 )
 app.add_page(
     blog.blog_post_add_page, 
     route=navigation.routes.BLOG_POST_ADD_ROUTE,
-    on_load=blog.state.BlogAddPostFormState.clear_uploaded_image # CORRECCIÓN: Se añade '.state'
+    on_load=blog.state.BlogAddPostFormState.clear_uploaded_image
 )
 app.add_page(
     blog.blog_post_detail_page,
     route="/blog/[blog_id]",
-    on_load=blog.state.BlogPostState.get_post_detail # CORRECCIÓN: Se añade '.state'
+    on_load=blog.state.BlogPostState.get_post_detail
 )
 app.add_page(
     blog.blog_post_edit_page,
     route="/blog/[blog_id]/edit",
-    on_load=blog.state.BlogPostState.get_post_detail # CORRECCIÓN: Se añade '.state'
+    on_load=blog.state.BlogPostState.get_post_detail
 )
 
 # Páginas de Contacto

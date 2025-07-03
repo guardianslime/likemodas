@@ -8,8 +8,6 @@ import sqlalchemy
 from sqlmodel import Field, Relationship
 from . import utils
 
-# ... (Las clases UserInfo y BlogPostModel no cambian) ...
-
 class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key='localuser.id')
@@ -34,6 +32,11 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
     content: str
+    
+    # --- CAMPO AÑADIDO ---
+    # Este campo faltaba. Es necesario para guardar la referencia a la imagen.
+    image_url: Optional[str] = Field(default=None)
+    
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -69,9 +72,7 @@ class ContactEntryModel(rx.Model, table=True):
         nullable=False
     )
 
-    # --- ¡CORRECCIÓN! AÑADE ESTE MÉTODO ---
     @rx.var
     def created_at_formatted(self) -> str:
         """Un campo calculado que devuelve la fecha de creación como un string formateado."""
         return self.created_at.strftime("%Y-%m-%d %H:%M")
-    # ------------------------------------
