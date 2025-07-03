@@ -15,23 +15,24 @@ def blog_post_add_page() -> rx.Component:
     image_uploader = rx.vstack(
         rx.upload(
             rx.text("Arrastra aquí tu imagen JPG/PNG o haz clic para seleccionar"),
-            border="2px dotted rgb(107, 114, 128)",
+            border="2px dotted rgb(1007, 1014, 1280)",
             padding="2em",
             width="100%",
             accept={
                 "image/png": [".png"],
                 "image/jpeg": [".jpg", ".jpeg"],
             },
-            # 👇 CORRECCIÓN AQUÍ: Usa el estado correcto
-            on_drop=BlogAddPostFormState.handle_upload(rx.upload_files()),
+            id="upload_img",
+            on_drop=BlogAddPostFormState.handle_upload(
+                rx.upload_files(upload_id="upload_img")
+            ),
         ),
         rx.cond(
-            # 👇 CORRECCIÓN AQUÍ: Usa el estado correcto
-            BlogAddPostFormState.uploaded_image_url,
+            BlogAddPostFormState.uploaded_image_name,
             rx.box(
                 rx.text("Vista Previa:", weight="bold", margin_bottom="0.5em"),
                 rx.image(
-                    src=BlogAddPostFormState.uploaded_image_url,
+                    src=rx.get_upload_url(BlogAddPostFormState.uploaded_image_name),
                     height="15em",
                     width="auto",
                     border_radius="10px",
@@ -42,20 +43,20 @@ def blog_post_add_page() -> rx.Component:
         ),
         align="center",
         spacing="2",
-        width="100%"
+        width="100%",
     )
     
     my_child = rx.vstack(
-            rx.heading("New Blog Post", size="9"),
-            rx.vstack(
-                image_uploader,
-                my_form,
-                spacing="5",
-                width=["85vw", "75vw", "50vw"]
-            ),
+        rx.heading("New Blog Post", size="9"),
+        rx.vstack(
+            image_uploader,
+            my_form,
             spacing="5",
-            align="center",
-            min_height="95vh",
-        )
+            width=["85vw", "75vw", "50vw"]
+        ),
+        spacing="5",
+        align="center",
+        min_height="95vh",
+    )
     
     return base_page(my_child)

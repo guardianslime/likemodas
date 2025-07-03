@@ -139,9 +139,25 @@ class BlogPostState(SessionState):
 
 class BlogAddPostFormState(BlogPostState):
     form_data: dict = {}
+    uploaded_image_name: str = ""  # ← Variable de estado para el nombre del archivo
+
+    @rx.event
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        if files:
+            file = files[0]
+            data = await file.read()
+            path = rx.get_upload_dir() / file.name
+            with path.open("wb") as f:
+                f.write(data)
+            self.uploaded_image_name = file.name  # Guardas el nombre para usarlo en la vista previa
+
     def handle_submit(self, form_data: dict):
         data = form_data.copy()
-        if self.my_userinfo_id is not None: data['userinfo_id'] = self.my_userinfo_id
+        if self.my_userinfo_id is not None:
+            data['userinfo_id'] = self.my_userinfo_id
+        # Puedes agregar el nombre de la imagen al post si lo necesitas:
+        if self.uploaded_image_name:
+            data['image'] = self.uploaded_image_name
         self.add_post(data)
         return self.to_blog_post(edit_page=True)
 
