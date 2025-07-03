@@ -4,8 +4,9 @@ import reflex as rx
 import reflex_local_auth
 from rxconfig import config
 
-# --- CORRECCIÓN: Importar paquetes completos para evitar errores de importación ---
-from . import articles, auth, blog, contact, navigation, pages, ui
+# --- CORRECCIÓN: Se añade 'utils' a la lista de importaciones ---
+# Es importante que todos los paquetes de tu app estén aquí.
+from . import articles, auth, blog, contact, navigation, pages, ui, utils
 
 def index() -> rx.Component:
     """La página principal que redirige al dashboard si el usuario está autenticado."""
@@ -29,7 +30,7 @@ app = rx.App(
     )
 )
 
-# --- CORRECCIÓN: Registro de páginas usando la notación de punto ---
+# --- Registro de páginas usando la notación de punto ---
 
 # Página principal
 app.add_page(index, on_load=articles.state.ArticlePublicState.load_posts)
