@@ -17,7 +17,6 @@ if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
 class BlogPostState(SessionState):
-    # ... (variables de estado sin cambios)
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
@@ -32,7 +31,10 @@ class BlogPostState(SessionState):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}_{file.filename}"
         
-        upload_dir = "uploaded_files"
+        # --- CORRECCIÓN FINAL ---
+        # Apuntamos al directorio del volumen, que es una ruta absoluta y persistente.
+        upload_dir = "/data/uploads" 
+        
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, filename)
         
@@ -41,13 +43,8 @@ class BlogPostState(SessionState):
             f.write(upload_data)
         
         api_url = str(config.api_url)
-
-        # --- CORRECCIÓN AQUÍ ---
-        # Añadimos '/static' a la URL para evitar conflictos.
         self.uploaded_image_url = f"{api_url}/static/{filename}"
-        # --- FIN DE LA CORRECCIÓN ---
 
-    # ... (El resto de la clase no necesita cambios)
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
