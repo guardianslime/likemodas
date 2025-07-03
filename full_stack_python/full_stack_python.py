@@ -28,8 +28,7 @@ def index() -> rx.Component:
     )
 
 # --- INICIO DE LA CORRECCIÓN ---
-# Modificamos la definición de la app para que sirva la carpeta 'uploaded_files'
-# bajo la ruta URL '/static'.
+# Añadimos 'cors_allowed_origins' para dar permiso a Vercel.
 app = rx.App(
     theme=rx.theme(
         appearance="dark", 
@@ -41,7 +40,10 @@ app = rx.App(
     ),
     static_paths={
         "/static": "uploaded_files/"
-    }
+    },
+    cors_allowed_origins=[
+        "https://full-stack-python.vercel.app", # <-- El dominio de tu frontend
+    ]
 )
 # --- FIN DE LA CORRECCIÓN ---
 
