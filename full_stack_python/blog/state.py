@@ -6,7 +6,7 @@ import reflex as rx
 import sqlalchemy
 from sqlmodel import select
 import os 
-from rxconfig import config # 1. Importa la configuración de tu app
+from rxconfig import config
 
 from .. import navigation
 from ..auth.state import SessionState
@@ -17,6 +17,7 @@ if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
 class BlogPostState(SessionState):
+    # ... (variables de estado sin cambios)
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
@@ -24,9 +25,6 @@ class BlogPostState(SessionState):
     uploaded_image_url: str = ""
 
     async def handle_upload(self, files: list[rx.UploadFile]):
-        """
-        Maneja la subida del archivo de imagen.
-        """
         if not files:
             return
         
@@ -34,10 +32,7 @@ class BlogPostState(SessionState):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}_{file.filename}"
         
-        # --- CORRECCIÓN AQUÍ ---
-        # Cambiamos el directorio de subida a tu carpeta existente.
         upload_dir = "uploaded_files"
-        
         os.makedirs(upload_dir, exist_ok=True)
         file_path = os.path.join(upload_dir, filename)
         
@@ -46,9 +41,13 @@ class BlogPostState(SessionState):
             f.write(upload_data)
         
         api_url = str(config.api_url)
-        self.uploaded_image_url = f"{api_url}/{filename}"
 
+        # --- CORRECCIÓN AQUÍ ---
+        # Añadimos '/static' a la URL para evitar conflictos.
+        self.uploaded_image_url = f"{api_url}/static/{filename}"
+        # --- FIN DE LA CORRECCIÓN ---
 
+    # ... (El resto de la clase no necesita cambios)
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")

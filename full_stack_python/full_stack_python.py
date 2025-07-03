@@ -28,7 +28,8 @@ def index() -> rx.Component:
     )
 
 # --- INICIO DE LA CORRECCIÓN ---
-# Modificamos la definición de la app para incluir la carpeta estática.
+# Modificamos la definición de la app para que sirva la carpeta 'uploaded_files'
+# bajo la ruta URL '/static'.
 app = rx.App(
     theme=rx.theme(
         appearance="dark", 
@@ -39,7 +40,7 @@ app = rx.App(
         accent_color="sky"
     ),
     static_paths={
-        "/": "uploaded_files/"  # Sirve la carpeta 'uploaded_files' en la URL raíz.
+        "/static": "uploaded_files/"
     }
 )
 # --- FIN DE LA CORRECCIÓN ---
@@ -54,8 +55,6 @@ app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
-
-# La línea incorrecta 'app.add_static_files(...)' ha sido eliminada.
 
 # Páginas de Artículos
 app.add_page(
