@@ -73,9 +73,21 @@ class ContactEntryModel(rx.Model, table=True):
         nullable=False
     )
 
-    # --- ¡CORRECCIÓN! ASEGÚRATE DE QUE ESTE MÉTODO EXISTA ---
-    @rx.var
-    def created_at_formatted(self) -> str:
-        """Un campo calculado que devuelve la fecha de creación como un string formateado."""
-        return self.created_at.strftime("%Y-%m-%d %H:%M")
+def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
+    """Muestra una entrada de contacto individual."""
+    return rx.box(
+        rx.heading(f"{contact.first_name} ({contact.email})", size="4"),
+        rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
+        
+        # --- SOLUCIÓN DEFINITIVA ---
+        # Usamos .to_string() sin argumentos. Esto es compatible y evitará el error.
+        rx.text(f"Recibido el: {contact.created_at.to_string()}", size="2", color_scheme="gray"),
+        # ---------------------------
 
+        rx.cond(
+            contact.userinfo_id,
+            rx.text("Enviado por un usuario registrado", size="2", weight="bold"),
+            rx.text("Enviado por un invitado", size="2", weight="bold"),
+        ),
+        padding="1em", border="1px solid", border_color=rx.color("gray", 6), border_radius="0.5em", width="100%"
+    )
