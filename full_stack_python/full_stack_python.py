@@ -1,7 +1,17 @@
 import reflex as rx
+import os
 
 class State(rx.State):
     uploaded_files: list[str] = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Inicializar la lista con los archivos ya guardados en el volumen
+        upload_dir = rx.get_upload_dir()
+        if upload_dir.exists():
+            self.uploaded_files = [
+                f.name for f in upload_dir.iterdir() if f.is_file()
+            ]
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -10,7 +20,8 @@ class State(rx.State):
             path = rx.get_upload_dir() / file.name
             with path.open("wb") as f:
                 f.write(data)
-            self.uploaded_files.append(file.name)
+            if file.name not in self.uploaded_files:
+                self.uploaded_files.append(file.name)
 
 def index():
     return rx.vstack(
