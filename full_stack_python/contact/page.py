@@ -12,10 +12,12 @@ def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
     return rx.box(
         rx.heading(f"{contact.first_name} ({contact.email})", size="4"),
         rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
+        
         # --- ¡CORRECCIÓN CLAVE! ---
-        # Formateamos la fecha directamente aquí usando .to_string()
-        rx.text(f"Recibido el: {contact.created_at.to_string(format='%Y-%m-%d %H:%M')}", size="2", color_scheme="gray"),
+        # Llamamos a la propiedad computada del modelo.
+        rx.text(f"Recibido el: {contact.created_at_formatted}", size="2", color_scheme="gray"),
         # -------------------------
+
         rx.cond(
             contact.userinfo_id,
             rx.text("Enviado por un usuario registrado", size="2", weight="bold"),
