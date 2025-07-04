@@ -24,29 +24,6 @@ def image_upload_component() -> rx.Component:
         ),
     )
 
-def blog_post_add_form() -> rx.Component:
-    return rx.form(
-        rx.vstack(
-            rx.input(
-                name="title",
-                placeholder="Título",
-                required=True,
-                width="100%",
-            ),
-            rx.text_area(
-                name="content",
-                placeholder="Contenido de la publicación",
-                required=True,
-                height='30vh',
-                width='100%',
-            ),
-            image_upload_component(),
-            rx.button("Crear Publicación", type="submit"),
-        ),
-        on_submit=BlogAddPostFormState.handle_submit,
-        reset_on_submit=True,
-    )
-
 def blog_post_edit_form() -> rx.Component:
     post = BlogEditFormState.post
     return rx.form(
@@ -93,13 +70,15 @@ def blog_post_edit_form() -> rx.Component:
                 BlogEditFormState.post_publish_active,
                 rx.hstack(
                     rx.input(
-                        default_value=BlogEditFormState.publish_display_date,
+                        # --- ¡CAMBIO AQUÍ! ---
+                        default_value=BlogEditFormState.publish_date_str,
                         type='date',
                         name='publish_date',
                         width='100%'
                     ),
                     rx.input(
-                        default_value=BlogEditFormState.publish_display_time,
+                        # --- ¡Y CAMBIO AQUÍ! ---
+                        default_value=BlogEditFormState.publish_time_str,
                         type='time',
                         name='publish_time',
                         width='100%'
