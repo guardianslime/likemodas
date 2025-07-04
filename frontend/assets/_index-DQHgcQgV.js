@@ -1,1 +1,0 @@
-import{w as t,a as n}from"./chunk-NL6KNZEE-e0xCEjrm.js";import{j as o}from"./emotion-react.browser.esm-BR9WLlWT.js";import{p as r}from"./text-CZQyevk3.js";import"./jsx-runtime-D_zvdyIk.js";const s=t(function(){return o(n.Fragment,{},o(r,{as:"p"},"¡Funciona!"),o("title",{},"FullStackPython | Index"),o("meta",{content:"favicon.ico",property:"og:image"}))});export{s as default};
