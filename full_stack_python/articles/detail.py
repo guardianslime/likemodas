@@ -1,11 +1,9 @@
+# full_stack_python/articles/detail.py
+
 import reflex as rx 
-
 from ..ui.base import base_page
-
 from . import state
-
 from ..blog.notfound import blog_post_not_found
-
 
 def article_detail_page() -> rx.Component:
     my_child = rx.cond(state.ArticlePublicState.post, rx.vstack(
@@ -13,8 +11,12 @@ def article_detail_page() -> rx.Component:
             rx.heading(state.ArticlePublicState.post.title, size="9"),
             align='end'
         ),
-        rx.text("By ", state.ArticlePublicState.post.userinfo.user.username),
+        rx.text("Por ", state.ArticlePublicState.post.userinfo.user.username),
         rx.text(state.ArticlePublicState.post.publish_date),
+        rx.cond(
+            state.ArticlePublicState.post.image_filename,
+            rx.image(src=rx.get_upload_url(state.ArticlePublicState.post.image_filename), width="100%", max_width="600px")
+        ),
         rx.text(
             state.ArticlePublicState.post.content,
             white_space='pre-wrap'

@@ -1,13 +1,14 @@
+# full_stack_python/blog/state.py
+
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
-
 import sqlalchemy
 from sqlmodel import select
-
 from .. import navigation
 from ..auth.state import SessionState
 from ..models import BlogPostModel, UserInfo
+import asyncio
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
 if BLOG_POSTS_ROUTE.endswith("/"):
@@ -19,21 +20,39 @@ class BlogPostState(SessionState):
     post_content: str = ""
     post_publish_active: bool = False
 
+    # --- ¡NUEVO! Para la subida de imágenes ---
+    uploaded_image: Optional[str] = None
+
     @rx.var
-    def blog_post_id(self) -> str:  # Añadida la anotación de tipo -> str
+    def image_url(self) -> str:
+        if self.post and self.post.image_filename:
+            return rx.get_upload_url(self.post.image_filename)
+        return ""
+    # ------------------------------------
+
+    @rx.var
+    def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
     @rx.var
-    def blog_post_url(self) -> str: # Añadida la anotación de tipo -> str
+    def blog_post_url(self) -> str:
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
 
     @rx.var
-    def blog_post_edit_url(self) -> str: # Añadida la anotación de tipo -> str
+    def blog_post_edit_url(self) -> str:
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
+
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        file = files[0]
+        data = await file.read()
+        path = rx.get_upload_dir() / file.name
+        with path.open("wb") as f:
+            f.write(data)
+        self.uploaded_image = file.name
 
     def get_post_detail(self):
         if self.my_userinfo_id is None:
@@ -53,9 +72,6 @@ class BlogPostState(SessionState):
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
             ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
-            # if result.userinfo: # db lookup
-            #     print('working')
-            #     result.userinfo.user
             self.post = result
             if result is None:
                 self.post_content = ""
@@ -64,11 +80,6 @@ class BlogPostState(SessionState):
             self.post_publish_active = self.post.publish_active
 
     def load_posts(self, *args, **kwargs):
-        # if published_only:
-        #     lookup_args = (
-        #         (BlogPostModel.publish_active == True) &
-        #         (BlogPostModel.publish_date < datetime.now())
-        #     )
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).options(
@@ -85,8 +96,6 @@ class BlogPostState(SessionState):
             session.refresh(post)
             self.post = post
 
-# En full_stack_python/blog/state.py
-
     def save_post_edits(self, post_id: int, updated_data: dict):
         with rx.session() as session:
             post = session.exec(
@@ -100,10 +109,6 @@ class BlogPostState(SessionState):
                 setattr(post, key, value)
             session.add(post)
             session.commit()
-            
-            # --- MEJORA ---
-            # Después de guardar, recargamos el post con sus relaciones (userinfo y user)
-            # para asegurar que el estado (self.post) esté completo antes de redirigir.
             reloaded_post = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
@@ -126,6 +131,8 @@ class BlogAddPostFormState(BlogPostState):
         data = form_data.copy()
         if self.my_userinfo_id is not None:
             data['userinfo_id'] = self.my_userinfo_id
+        if self.uploaded_image:
+            data['image_filename'] = self.uploaded_image
         self.form_data = data
         self.add_post(data)
         return self.to_blog_post(edit_page=True)
@@ -168,6 +175,8 @@ class BlogEditFormState(BlogPostState):
         if 'publish_active' in form_data:
             publish_active = form_data.pop('publish_active') == "on"
         updated_data = {**form_data}
+        if self.uploaded_image:
+            updated_data['image_filename'] = self.uploaded_image
         updated_data['publish_active'] = publish_active
         updated_data['publish_date'] = final_publish_date
         self.save_post_edits(post_id, updated_data)

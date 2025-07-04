@@ -5,14 +5,17 @@ import reflex_local_auth
 from ..ui.base import base_page
 from ..models import ContactEntryModel
 from .form import contact_form
-from .state import ContactState # Importa el estado único
+from .state import ContactState
 
 def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
     """Muestra una entrada de contacto individual."""
     return rx.box(
         rx.heading(f"{contact.first_name} ({contact.email})", size="4"),
         rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
-        rx.text(f"Recibido el: {contact.created_at_formatted}", size="2", color_scheme="gray"),
+        # --- ¡CORRECCIÓN CLAVE! ---
+        # Formateamos la fecha directamente aquí usando .to_string()
+        rx.text(f"Recibido el: {contact.created_at.to_string(format='%Y-%m-%d %H:%M')}", size="2", color_scheme="gray"),
+        # -------------------------
         rx.cond(
             contact.userinfo_id,
             rx.text("Enviado por un usuario registrado", size="2", weight="bold"),

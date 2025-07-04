@@ -8,7 +8,7 @@ import sqlalchemy
 from sqlmodel import Field, Relationship
 from . import utils
 
-# ... (Las clases UserInfo y BlogPostModel no cambian) ...
+# ... (Las clases UserInfo no cambian) ...
 
 class UserInfo(rx.Model, table=True):
     email: str
@@ -23,7 +23,8 @@ class UserInfo(rx.Model, table=True):
         nullable=False
     )
     updated_at: datetime = Field(
-        default_factory=utils.timing.get_utc_now,
+   
+      default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
         nullable=False
@@ -34,10 +35,12 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
     content: str
+    image_filename: Optional[str] = None  # ¡NUEVO CAMPO!
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={"server_default": sqlalchemy.func.now()},
+      
         nullable=False
     )
     updated_at: datetime = Field(
@@ -52,6 +55,7 @@ class BlogPostModel(rx.Model, table=True):
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={},
         nullable=True
+  
     )
 
 class ContactEntryModel(rx.Model, table=True):
@@ -69,9 +73,3 @@ class ContactEntryModel(rx.Model, table=True):
         nullable=False
     )
 
-    # --- ¡CORRECCIÓN! AÑADE ESTE MÉTODO ---
-    @rx.var
-    def created_at_formatted(self) -> str:
-        """Un campo calculado que devuelve la fecha de creación como un string formateado."""
-        return self.created_at.strftime("%Y-%m-%d %H:%M")
-    # ------------------------------------

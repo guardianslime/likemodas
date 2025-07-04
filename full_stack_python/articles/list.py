@@ -1,5 +1,6 @@
-import reflex as rx 
+# full_stack_python/articles/list.py
 
+import reflex as rx 
 from .. import navigation
 from ..ui.base import base_page
 from ..models import BlogPostModel
@@ -15,9 +16,14 @@ def article_card_link(post: BlogPostModel):
         rx.link(
             rx.flex(
                 rx.box(
+                    rx.cond(
+                        post.image_filename,
+                        rx.image(src=rx.get_upload_url(post.image_filename), width="100%", height="200px", object_fit="cover")
+                    ),
                     rx.heading(post.title),
                 ),
                 spacing="2",
+                direction="column"
             ),
             href=post_detail_url
         ), 
@@ -26,7 +32,7 @@ def article_card_link(post: BlogPostModel):
 
 def article_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -> rx.Component:
     return rx.grid(
-        rx.foreach(state.ArticlePublicState.posts,article_card_link),
+        rx.foreach(state.ArticlePublicState.posts, article_card_link),
         columns=f'{columns}',
         spacing= f'{spacing}',
         on_mount=lambda: state.ArticlePublicState.set_limit_and_reload(limit)
@@ -35,7 +41,7 @@ def article_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -
 def article_public_list_page() -> rx.Component:
     return base_page(
         rx.box(
-            rx.heading("Published Articles", size="5"),
+            rx.heading("Artículos Publicados", size="5"),
             article_public_list_component(),      
             min_height="85vh",
         )
