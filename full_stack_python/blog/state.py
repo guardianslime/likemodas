@@ -9,7 +9,6 @@ from .. import navigation
 from ..auth.state import SessionState
 from ..models import BlogPostModel, UserInfo
 import asyncio
-# La importación de moment se ha eliminado
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
 if BLOG_POSTS_ROUTE.endswith("/"):
@@ -22,16 +21,24 @@ class BlogPostState(SessionState):
     post_publish_active: bool = False
     uploaded_image: Optional[str] = None
 
-    # --- ¡NUEVAS VARIABLES! ---
-    # Guardaremos la fecha y hora como strings simples para evitar errores
     publish_date_str: str = ""
     publish_time_str: str = ""
-    # ---------------------------
 
     @rx.var
     def image_url(self) -> str:
+        """
+        Calcula la URL de la imagen de forma segura sin llamar a funciones
+        que rompen la serialización del estado en esta versión de Reflex.
+        """
+        # --- ¡CORRECCIÓN APLICADA AQUÍ! ---
+        # Primero revisa si hay una imagen recién subida para la vista previa.
+        if self.uploaded_image:
+            return f"/_upload/{self.uploaded_image}"
+        
+        # Si no, usa la imagen guardada en la publicación.
         if self.post and self.post.image_filename:
-            return rx.get_upload_url(self.post.image_filename)
+            return f"/_upload/{self.post.image_filename}"
+            
         return ""
 
     @rx.var
@@ -84,20 +91,15 @@ class BlogPostState(SessionState):
                 self.post_content = self.post.content
                 self.post_publish_active = self.post.publish_active
 
-                # --- ¡NUEVA LÓGICA! ---
-                # Aquí populamos los strings de fecha y hora
                 if self.post.publish_date:
                     self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
                     self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
                 else:
-                    # Si no hay fecha, usamos la actual como default
                     now = datetime.now()
                     self.publish_date_str = now.strftime("%Y-%m-%d")
                     self.publish_time_str = now.strftime("%H:%M:%S")
-                # -----------------------
 
     def load_posts(self, *args, **kwargs):
-        # ... este método no cambia
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).options(
@@ -106,7 +108,6 @@ class BlogPostState(SessionState):
             ).all()
             self.posts = result
 
-    # ... los métodos add_post, save_post_edits y to_blog_post no cambian
     def add_post(self, form_data: dict):
         with rx.session() as session:
             post = BlogPostModel(**form_data)
@@ -159,8 +160,6 @@ class BlogAddPostFormState(BlogPostState):
 
 class BlogEditFormState(BlogPostState):
     form_data: dict = {}
-
-    # --- ¡HEMOS ELIMINADO LOS @rx.var DE AQUÍ! ---
 
     def handle_submit(self, form_data):
         self.form_data = form_data
