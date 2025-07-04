@@ -4,6 +4,7 @@ import reflex as rx
 from .state import BlogAddPostFormState, BlogEditFormState, BlogPostState
 
 def image_upload_component() -> rx.Component:
+    """Componente para la subida de imágenes."""
     return rx.vstack(
         rx.upload(
             rx.text("Arrastra una imagen aquí o haz clic para seleccionarla"),
@@ -24,7 +25,32 @@ def image_upload_component() -> rx.Component:
         ),
     )
 
+def blog_post_add_form() -> rx.Component:
+    """El formulario para AÑADIR una nueva publicación de blog."""
+    return rx.form(
+        rx.vstack(
+            rx.input(
+                name="title",
+                placeholder="Título",
+                required=True,
+                width="100%",
+            ),
+            rx.text_area(
+                name="content",
+                placeholder="Contenido de la publicación",
+                required=True,
+                height='30vh',
+                width='100%',
+            ),
+            image_upload_component(),
+            rx.button("Crear Publicación", type="submit"),
+        ),
+        on_submit=BlogAddPostFormState.handle_submit,
+        reset_on_submit=True,
+    )
+
 def blog_post_edit_form() -> rx.Component:
+    """El formulario para EDITAR una publicación de blog existente."""
     post = BlogEditFormState.post
     return rx.form(
         rx.box(
@@ -70,14 +96,12 @@ def blog_post_edit_form() -> rx.Component:
                 BlogEditFormState.post_publish_active,
                 rx.hstack(
                     rx.input(
-                        # --- ¡CAMBIO AQUÍ! ---
                         default_value=BlogEditFormState.publish_date_str,
                         type='date',
                         name='publish_date',
                         width='100%'
                     ),
                     rx.input(
-                        # --- ¡Y CAMBIO AQUÍ! ---
                         default_value=BlogEditFormState.publish_time_str,
                         type='time',
                         name='publish_time',
