@@ -78,9 +78,14 @@ def blog_post_edit_form() -> rx.Component:
                 height='30vh',
                 width='100%',
             ),
+            # --- CORRECCIÓN: Usa la nueva variable para la vista previa ---
             rx.cond(
-                BlogEditFormState.image_url,
-                rx.image(src=BlogEditFormState.image_url, width="200px")
+                BlogEditFormState.image_preview_url != "",
+                rx.image(
+                    src=BlogEditFormState.image_preview_url, 
+                    width="200px",
+                    height="auto",
+                )
             ),
             image_upload_component(),
             rx.flex(

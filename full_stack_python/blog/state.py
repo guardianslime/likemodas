@@ -20,26 +20,13 @@ class BlogPostState(SessionState):
     post_content: str = ""
     post_publish_active: bool = False
     uploaded_image: Optional[str] = None
-
     publish_date_str: str = ""
     publish_time_str: str = ""
 
-    @rx.var
-    def image_url(self) -> str:
-        """
-        Calcula la URL de la imagen de forma segura sin llamar a funciones
-        que rompen la serialización del estado en esta versión de Reflex.
-        """
-        # --- ¡CORRECCIÓN APLICADA AQUÍ! ---
-        # Primero revisa si hay una imagen recién subida para la vista previa.
-        if self.uploaded_image:
-            return f"/_upload/{self.uploaded_image}"
-        
-        # Si no, usa la imagen guardada en la publicación.
-        if self.post and self.post.image_filename:
-            return f"/_upload/{self.post.image_filename}"
-            
-        return ""
+    # --- NUEVO: Variable simple para la vista previa ---
+    image_preview_url: str = ""
+
+    # --- ELIMINADO: El @rx.var def image_url(self) se ha quitado ---
 
     @rx.var
     def blog_post_id(self) -> str:
@@ -64,6 +51,8 @@ class BlogPostState(SessionState):
         with path.open("wb") as f:
             f.write(data)
         self.uploaded_image = file.name
+        # --- NUEVO: Actualiza la vista previa al instante ---
+        self.image_preview_url = f"/_upload/{file.name}"
 
     def get_post_detail(self):
         if self.my_userinfo_id is None:
@@ -87,9 +76,16 @@ class BlogPostState(SessionState):
             self.post = result
             if result is None:
                 self.post_content = ""
+                self.image_preview_url = "" # <-- CORRECCIÓN: Limpia la URL si no hay post
             else:
                 self.post_content = self.post.content
                 self.post_publish_active = self.post.publish_active
+
+                # --- NUEVO: Establece la URL de la vista previa al cargar ---
+                if self.post.image_filename:
+                    self.image_preview_url = f"/_upload/{self.post.image_filename}"
+                else:
+                    self.image_preview_url = ""
 
                 if self.post.publish_date:
                     self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
@@ -99,6 +95,7 @@ class BlogPostState(SessionState):
                     self.publish_date_str = now.strftime("%Y-%m-%d")
                     self.publish_time_str = now.strftime("%H:%M:%S")
 
+    # ... (El resto de la clase y las subclases no cambian) ...
     def load_posts(self, *args, **kwargs):
         with rx.session() as session:
             result = session.exec(
@@ -143,7 +140,6 @@ class BlogPostState(SessionState):
             return rx.redirect(f"{self.blog_post_edit_url}")
         return rx.redirect(f"{self.blog_post_url}")
 
-
 class BlogAddPostFormState(BlogPostState):
     form_data: dict = {}
 
@@ -156,7 +152,6 @@ class BlogAddPostFormState(BlogPostState):
         self.form_data = data
         self.add_post(data)
         return self.to_blog_post(edit_page=True)
-
 
 class BlogEditFormState(BlogPostState):
     form_data: dict = {}

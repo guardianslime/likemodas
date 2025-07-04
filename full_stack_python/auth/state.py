@@ -1,24 +1,27 @@
+# full_stack_python/auth/state.py
+
 import reflex as rx
 import reflex_local_auth
-
 import sqlmodel
-
 from ..models import UserInfo
-
 
 class SessionState(reflex_local_auth.LocalAuthState):
     @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None:
         if self.authenticated_user_info is None:
             return None
-        return self.authenticated_user_info.id
-
+        # --- ¡CORRECCIÓN! ---
+        # Se convierte el ID (que es un número) a un string para que coincida
+        # con el tipo de dato que la función promete devolver.
+        return str(self.authenticated_user_info.id)
 
     @rx.var(cache=True)
     def my_user_id(self) -> str | None:
         if self.authenticated_user.id < 0:
             return None
-        return self.authenticated_user.id
+        # --- ¡CORRECCIÓN! ---
+        # El ID de usuario también debe ser un string.
+        return str(self.authenticated_user.id)
 
     @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
@@ -36,12 +39,6 @@ class SessionState(reflex_local_auth.LocalAuthState):
                     UserInfo.user_id == self.authenticated_user.id
                 ),
             ).one_or_none()
-            if result is None:
-                return None
-            # database lookup
-            # result.user
-            # user_obj = result.user
-            # print(result.user)
             return result
     
     def on_load(self):
@@ -49,7 +46,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
             return reflex_local_auth.LoginState.redir
         print(self.is_authenticated)
         print(self.authenticated_user_info)
-        
+    
     def perform_logout(self):
         self.do_logout()
         return rx.redirect("/")
@@ -66,7 +63,6 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
             return validation_errors
         self._register_user(username, password)
         return self.new_user_id
-        
 
     def handle_registration_email(self, form_data):
         new_user_id = self.handle_registration(form_data)
