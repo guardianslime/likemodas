@@ -73,3 +73,9 @@ class ContactEntryModel(rx.Model, table=True):
         nullable=False
     )
 
+    # --- ¡CORRECCIÓN! ASEGÚRATE DE QUE ESTE MÉTODO EXISTA ---
+    @rx.var
+    def created_at_formatted(self) -> str:
+        """Un campo calculado que devuelve la fecha de creación como un string formateado."""
+        return self.created_at.strftime("%Y-%m-%d %H:%M")
+
