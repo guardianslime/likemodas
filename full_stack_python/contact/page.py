@@ -3,23 +3,21 @@
 import reflex as rx 
 import reflex_local_auth
 from ..ui.base import base_page
-from ..models import ContactEntryModel
+# from ..models import ContactEntryModel  <--- ELIMINA ESTA LÍNEA
 from .form import contact_form
 from .state import ContactState
 
-def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
-    """Muestra una entrada de contacto individual."""
+def contact_entry_list_item(contact: dict) -> rx.Component:
+    """Muestra una entrada de contacto individual desde un diccionario."""
     return rx.box(
-        rx.heading(f"{contact.first_name} ({contact.email})", size="4"),
-        rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
+        rx.heading(f"{contact['first_name']} ({contact['email']})", size="4"),
+        rx.text(contact['message'], white_space="pre-wrap", margin_y="0.5em"),
         
-        # --- ¡CORRECCIÓN CLAVE! ---
-        # Llamamos a la propiedad computada del modelo.
-        rx.text(f"Recibido el: {contact.created_at_formatted}", size="2", color_scheme="gray"),
-        # -------------------------
-
+        # Usamos la clave del diccionario que ya viene formateada
+        rx.text(f"Recibido el: {contact['created_at_formatted']}", size="2", color_scheme="gray"),
+        
         rx.cond(
-            contact.userinfo_id,
+            contact['userinfo_id'],
             rx.text("Enviado por un usuario registrado", size="2", weight="bold"),
             rx.text("Enviado por un invitado", size="2", weight="bold"),
         ),
@@ -32,7 +30,8 @@ def contact_entries_list_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Historial de Contacto", size="7"),
-            rx.foreach(ContactState.entries, contact_entry_list_item),
+            # Iteramos sobre la nueva lista pre-procesada
+            rx.foreach(ContactState.entries_with_formatted_date, contact_entry_list_item),
             spacing="5", align="center", width="100%", max_width="800px", margin="auto", min_height="85vh"
         )
     )
