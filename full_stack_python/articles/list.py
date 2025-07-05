@@ -4,9 +4,10 @@ import reflex as rx
 from .. import navigation
 from ..ui.base import base_page
 from ..models import BlogPostModel
-from .state import ArticlePublicState # Importamos el estado directamente
+from .state import ArticlePublicState
 
 def article_card_link(post: BlogPostModel):
+    # ... (esta función no cambia)
     post_id = post.id
     if post_id is None:
         return rx.fragment("Not found")
@@ -29,19 +30,23 @@ def article_card_link(post: BlogPostModel):
         as_child=True, width="100%",
     )
 
-def article_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -> rx.Component:
+def article_public_list_component(columns:int=3, spacing:int=5) -> rx.Component:
+    """Componente que muestra la lista de artículos. Ya no maneja la carga."""
     return rx.grid(
         rx.foreach(ArticlePublicState.posts, article_card_link),
-        columns=f'{columns}', spacing= f'{spacing}', width="100%",
+        columns=f'{columns}',
+        spacing= f'{spacing}',
+        width="100%",
     )
 
 def article_public_list_page() -> rx.Component:
+    """Página completa de la lista de artículos."""
     return base_page(
         rx.box(
             rx.heading("Artículos Publicados", size="5"),
             article_public_list_component(),      
             min_height="85vh",
-            # La carga de datos se dispara cuando la página se monta
-            on_mount=ArticlePublicState.load_posts
-        )
+        ),
+        # La carga de datos se dispara cuando la página se monta
+        on_mount=ArticlePublicState.load_posts
     )

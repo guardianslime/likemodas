@@ -16,7 +16,7 @@ if ARTICLE_LIST_ROUTE.endswith("/"):
 class ArticlePublicState(SessionState):
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
-    limit: int = 20
+    limit: int = 10
 
     @rx.var
     def post_images(self) -> list[PostImageModel]:
@@ -55,7 +55,7 @@ class ArticlePublicState(SessionState):
         self.limit = new_limit
         return self.load_posts()
 
-    def load_posts(self, *args, **kwargs):
+    def load_posts(self):
         with rx.session() as session:
             self.posts = session.exec(
                 select(BlogPostModel).options(
@@ -64,7 +64,7 @@ class ArticlePublicState(SessionState):
                 ).where(
                     (BlogPostModel.publish_active == True) &
                     (BlogPostModel.publish_date < datetime.now())
-                ).limit(self.limit)
+                ).order_by(BlogPostModel.publish_date.desc()).limit(self.limit)
             ).all()
 
     def to_post(self):

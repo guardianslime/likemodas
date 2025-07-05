@@ -57,17 +57,14 @@ class BlogPostState(SessionState):
             if file.name not in self.uploaded_images:
                 self.uploaded_images.append(file.name)
 
-    def _load_post_by_id(self, post_id: int) -> Optional[BlogPostModel]:
-        """Función interna para cargar un post con sus relaciones de forma segura."""
-        if not post_id:
-            return None
+    def load_posts(self):
         with rx.session() as session:
-            return session.exec(
+            self.posts = session.exec(
                 select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo),
                     sqlalchemy.orm.selectinload(BlogPostModel.images)
-                ).where(BlogPostModel.id == post_id)
-            ).one_or_none()
+                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id).order_by(BlogPostModel.id.desc())
+            ).all()
 
     def get_post_detail(self):
         """Carga los detalles de un post para las páginas de detalle y edición."""
