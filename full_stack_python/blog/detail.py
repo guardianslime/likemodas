@@ -25,18 +25,23 @@ def blog_post_detail_page() -> rx.Component:
             rx.text("Este post aún no ha sido publicado.")
         ),
         rx.divider(width="100%"),
-        rx.grid(
-            # --- ¡CORRECCIÓN AQUÍ! ---
-            # Hacemos lo mismo: aseguramos que 'post.images' no sea undefined.
-            rx.foreach(
-                rx.cond(post.images, post.images, []),
-                lambda img: rx.image(
-                    src=f"/_upload/{img.filename}", 
-                    width="100%", height="auto", border_radius="md"
-                )
-            ),
-            columns="3", spacing="4", width="100%", margin_y="1em",
+
+        # --- CORRECCIÓN FINAL ---
+        # Envolvemos TODA la galería en un rx.cond.
+        rx.cond(
+            post.images,
+            rx.grid(
+                rx.foreach(
+                    post.images,
+                    lambda img: rx.image(
+                        src=f"/_upload/{img.filename}", 
+                        width="100%", height="auto", border_radius="md"
+                    )
+                ),
+                columns="3", spacing="4", width="100%", margin_y="1em",
+            )
         ),
+
         rx.text(post.content, white_space='pre-wrap'),
         spacing="5", align="start", min_height="85vh", width="100%"
     )

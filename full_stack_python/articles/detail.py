@@ -19,19 +19,24 @@ def article_detail_page() -> rx.Component:
             rx.text(post.publish_date.to_string()),
         ),
         rx.divider(),
-        rx.grid(
-            # --- ¡CORRECCIÓN AQUÍ! ---
-            # Nos aseguramos de que 'post.images' exista antes de pasarlo a foreach.
-            # Si no existe, le pasamos una lista vacía [].
-            rx.foreach(
-                rx.cond(post.images, post.images, []),
-                lambda img: rx.image(
-                    src=rx.get_upload_url(img.filename),
-                    width="100%", height="auto", border_radius="md"
-                )
-            ),
-            columns="3", spacing="4", width="100%", margin_y="1em",
+
+        # --- CORRECCIÓN FINAL ---
+        # Envolvemos TODA la galería en un rx.cond.
+        # Solo se renderizará si la lista post.images existe y tiene contenido.
+        rx.cond(
+            post.images,
+            rx.grid(
+                rx.foreach(
+                    post.images,
+                    lambda img: rx.image(
+                        src=rx.get_upload_url(img.filename),
+                        width="100%", height="auto", border_radius="md"
+                    )
+                ),
+                columns="3", spacing="4", width="100%", margin_y="1em",
+            )
         ),
+
         rx.text(post.content, white_space='pre-wrap'),
         spacing="5", align="start", min_height="85vh",
     )
