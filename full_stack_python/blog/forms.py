@@ -1,27 +1,54 @@
+# full_stack_python/blog/forms.py
+
 import reflex as rx
 from .state import BlogPostState
 import os
 
 def image_upload_component() -> rx.Component:
+    """Componente para la subida de múltiples imágenes."""
     return rx.upload(
-        rx.text("Arrastra imágenes aquí o haz clic"), id="image_upload",
+        rx.text("Arrastra imágenes aquí o haz clic"),
+        id="image_upload",
         accept={"image/png": [".png"], "image/jpeg": [".jpg", ".jpeg"]},
         multiple=True, max_files=10, border="2px dashed #60a5fa", padding="2em",
         on_drop=BlogPostState.handle_upload(rx.upload_files(upload_id="image_upload")),
     )
 
 def blog_post_form() -> rx.Component:
+    """Un único formulario para crear y editar posts."""
     return rx.form(
         rx.vstack(
-            rx.input(default_value=BlogPostState.post.title if BlogPostState.post else "", name="title", placeholder="Título", required=True, width='100%'),
-            rx.text_area(value=BlogPostState.post_content, on_change=BlogPostState.set_post_content, placeholder='Escribe aquí...', required=True, height='30vh', width='100%'),
+            # --- ¡CORRECCIÓN AQUÍ! ---
+            # Se reemplaza el if/else de Python por rx.cond de Reflex.
+            rx.input(
+                default_value=rx.cond(BlogPostState.post, BlogPostState.post.title, ""),
+                name="title", 
+                placeholder="Título de la publicación", 
+                required=True, 
+                width='100%'
+            ),
+            rx.text_area(
+                value=BlogPostState.post_content,
+                on_change=BlogPostState.set_post_content,
+                placeholder='Escribe aquí tu publicación...',
+                required=True, height='30vh', width='100%'
+            ),
             rx.heading("Imágenes", size="4", margin_top="1em"),
             rx.grid(
                 rx.foreach(
                     BlogPostState.preview_image_urls,
                     lambda url: rx.box(
                         rx.image(src=url, width="100px", height="100px", object_fit="cover", border_radius="sm"),
-                        rx.icon_button("trash-2", on_click=BlogPostState.delete_image(url), size="1", position="absolute", top="2px", right="2px", color_scheme="red", variant="soft"),
+                        rx.icon_button(
+                            "trash-2",
+                            on_click=BlogPostState.delete_image(url),
+                            size="1",
+                            position="absolute",
+                            top="2px",
+                            right="2px",
+                            color_scheme="red",
+                            variant="soft",
+                        ),
                         position="relative",
                     )
                 ),
@@ -29,7 +56,10 @@ def blog_post_form() -> rx.Component:
             ),
             image_upload_component(),
             rx.flex(
-                rx.switch(is_checked=BlogPostState.post_publish_active, on_change=BlogPostState.set_post_publish_active),
+                rx.switch(
+                    is_checked=BlogPostState.post_publish_active,
+                    on_change=BlogPostState.set_post_publish_active
+                ),
                 rx.text("Publicar"),
                 spacing="2", margin_top="1em",
             ),
