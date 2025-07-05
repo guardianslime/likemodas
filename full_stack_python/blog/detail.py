@@ -3,9 +3,21 @@
 import reflex as rx 
 from ..ui.base import base_page
 from . import state
-from ..blog.notfound import blog_post_not_found
+# --- CORRECCIÓN: Se elimina la importación problemática ---
+# from ..blog.notfound import blog_post_not_found
 
 def article_detail_page() -> rx.Component:
+    
+    # --- CORRECCIÓN: Se define el componente "no encontrado" localmente ---
+    article_not_found = rx.vstack(
+        rx.heading("Artículo No Encontrado", size="9"),
+        rx.text("El artículo que buscas no existe o no está disponible."),
+        spacing="5",
+        justify="center",
+        align="center",
+        min_height="85vh",
+    )
+
     my_child = rx.cond(
         state.ArticlePublicState.post,
         rx.vstack(
@@ -19,9 +31,6 @@ def article_detail_page() -> rx.Component:
                 rx.text(state.ArticlePublicState.post.publish_date.to_string()),
             ),
             rx.divider(),
-
-            # --- ¡CORRECCIÓN AQUÍ! ---
-            # Muestra una galería con todas las imágenes del post.
             rx.grid(
                 rx.foreach(
                     state.ArticlePublicState.post.images,
@@ -37,7 +46,6 @@ def article_detail_page() -> rx.Component:
                 width="100%",
                 margin_y="1em",
             ),
-
             rx.text(
                 state.ArticlePublicState.post.content,
                 white_space='pre-wrap'
@@ -46,6 +54,7 @@ def article_detail_page() -> rx.Component:
             align="start",
             min_height="85vh",
         ),
-        blog_post_not_found()
+        # Se usa el componente local en lugar del importado
+        article_not_found
     )
     return base_page(my_child)
