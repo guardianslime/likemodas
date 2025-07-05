@@ -1,46 +1,57 @@
-# full_stack_python/articles/state.py
-from datetime import datetime
-from typing import Optional, List
-import reflex as rx
-import sqlalchemy
-from sqlmodel import select
-from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo, PostImageModel
+# full_stack_python/contact/state.py
 
-class ArticlePublicState(SessionState):
-    posts: List["BlogPostModel"] = []
-    post: Optional["BlogPostModel"] = None
-    limit: int = 10
+from __future__ import annotations
+import asyncio
+import reflex as rx
+from sqlmodel import select
+# --- ¡CORRECCIÓN! ---
+# Importamos 'Any' para especificar el tipo del diccionario.
+from typing import Any
+
+from ..auth.state import SessionState
+from ..models import ContactEntryModel
+
+class ContactState(SessionState):
+    # --- ¡CORRECCIÓN! ---
+    # Se especifica el tipo del diccionario para evitar el VarTypeError.
+    form_data: dict[str, Any] = {}
+    did_submit: bool = False
+    entries: list[ContactEntryModel] = []
 
     @rx.var
-    def post_id(self) -> int:
-        try:
-            return int(self.router.page.params.get("article_id", 0))
-        except:
-            return 0
+    def entries_with_formatted_date(self) -> list[dict]:
+        processed_entries = []
+        for entry in self.entries:
+            entry_dict = entry.dict()
+            entry_dict["created_at_formatted"] = entry.created_at.strftime("%Y-%m-%d %H:%M")
+            processed_entries.append(entry_dict)
+        return processed_entries
 
-    def get_post_detail(self):
-        with rx.session() as session:
-            if not self.post_id: self.post = None; return
-            self.post = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.selectinload(BlogPostModel.images)
-                ).where(
-                    (BlogPostModel.publish_active == True) &
-                    (BlogPostModel.publish_date < datetime.now()) &
-                    (BlogPostModel.id == self.post_id)
-                )
-            ).one_or_none()
+    @rx.var
+    def thank_you_message(self) -> str:
+        first_name = self.form_data.get("first_name", "")
+        return f"¡Gracias, {first_name}!" if first_name else "¡Gracias por tu mensaje!"
 
-    def load_posts(self):
+    async def handle_submit(self, form_data: dict):
+        self.form_data = form_data
         with rx.session() as session:
-            self.posts = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo),
-                    sqlalchemy.orm.selectinload(BlogPostModel.images)
-                ).where(
-                    (BlogPostModel.publish_active == True) &
-                    (BlogPostModel.publish_date < datetime.now())
-                ).order_by(BlogPostModel.publish_date.desc()).limit(self.limit)
+            user_info = self.authenticated_user_info
+            db_entry = ContactEntryModel(
+                first_name=form_data.get("first_name", ""),
+                last_name=form_data.get("last_name"),
+                email=form_data.get("email"),
+                message=form_data.get("message", ""),
+                userinfo_id=user_info.id if user_info else None,
+            )
+            session.add(db_entry)
+            session.commit()
+        self.did_submit = True
+        yield
+        await asyncio.sleep(4)
+        self.did_submit = False
+
+    def load_entries(self):
+        with rx.session() as session:
+            self.entries = session.exec(
+                select(ContactEntryModel).order_by(ContactEntryModel.id.desc())
             ).all()

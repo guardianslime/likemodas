@@ -1,78 +1,106 @@
-# full_stack_python/auth/state.py
+# full_stack_python/blog/state.py
 
+from datetime import datetime
+from typing import Optional, List, Any
 import reflex as rx
-import reflex_local_auth
-import sqlmodel
-from ..models import UserInfo
+import sqlalchemy
+from sqlmodel import select
+from .. import navigation
+from ..auth.state import SessionState
+from ..models import BlogPostModel, UserInfo, PostImageModel
+import os
 
-class SessionState(reflex_local_auth.LocalAuthState):
-    @rx.var(cache=True)
-    def my_userinfo_id(self) -> str | None:
-        if self.authenticated_user_info is None:
-            return None
-        # --- ¡CORRECCIÓN! ---
-        # Se convierte el ID (que es un número) a un string para que coincida
-        # con el tipo de dato que la función promete devolver.
-        return str(self.authenticated_user_info.id)
+class BlogPostState(SessionState):
+    post: Optional[BlogPostModel] = None
+    posts: List[BlogPostModel] = []
+    
+    post_content: str = ""
+    post_publish_active: bool = False
+    uploaded_images: list[str] = []
+    publish_date_str: str = ""
+    publish_time_str: str = ""
 
-    @rx.var(cache=True)
-    def my_user_id(self) -> str | None:
-        if self.authenticated_user.id < 0:
-            return None
-        # --- ¡CORRECCIÓN! ---
-        # El ID de usuario también debe ser un string.
-        return str(self.authenticated_user.id)
+    @rx.var
+    def preview_image_urls(self) -> list[str]:
+        urls = []
+        if self.post and self.post.images:
+            for img in self.post.images:
+                urls.append(f"/_upload/{img.filename}")
+        for filename in self.uploaded_images:
+            if f"/_upload/{filename}" not in urls:
+                urls.append(f"/_upload/{filename}")
+        return urls
 
-    @rx.var(cache=True)
-    def authenticated_username(self) -> str | None:
-        if self.authenticated_user.id < 0:
-            return None
-        return self.authenticated_user.username
-
-    @rx.var(cache=True)
-    def authenticated_user_info(self) -> UserInfo | None:
-        if self.authenticated_user.id < 0:
-            return None
+    @rx.var
+    def blog_post_id(self) -> int:
+        try: return int(self.router.page.params.get("blog_id", 0))
+        except: return 0
+            
+    def get_post_detail(self):
+        self.uploaded_images = []
+        if not self.blog_post_id: self.post = None; return
         with rx.session() as session:
-            result = session.exec(
-                sqlmodel.select(UserInfo).where(
-                    UserInfo.user_id == self.authenticated_user.id
-                ),
+            self.post = session.exec(
+                select(BlogPostModel).options(sqlalchemy.orm.selectinload(BlogPostModel.images))
+                .where(BlogPostModel.id == self.blog_post_id)
             ).one_or_none()
-            return result
-    
-    def on_load(self):
-        if not self.is_authenticated:
-            return reflex_local_auth.LoginState.redir
-        print(self.is_authenticated)
-        print(self.authenticated_user_info)
-    
-    def perform_logout(self):
-        self.do_logout()
-        return rx.redirect("/")
+        if self.post:
+            self.post_content = self.post.content
+            self.post_publish_active = self.post.publish_active
+            if self.post.publish_date:
+                self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
+                self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
+            else:
+                self.publish_date_str, self.publish_time_str = "", ""
+        else:
+            return rx.redirect("/blog")
 
-class MyRegisterState(reflex_local_auth.RegistrationState):
-    def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
-        username = form_data["username"]
-        password = form_data["password"]
-        validation_errors = self._validate_fields(
-            username, password, form_data["confirm_password"]
-        )
-        if validation_errors:
-            self.new_user_id = -1
-            return validation_errors
-        self._register_user(username, password)
-        return self.new_user_id
+    def load_posts(self):
+        with rx.session() as session:
+            self.posts = session.exec(
+                select(BlogPostModel).options(sqlalchemy.orm.selectinload(BlogPostModel.images))
+                .where(BlogPostState.userinfo_id == self.my_userinfo_id).order_by(BlogPostModel.id.desc())
+            ).all()
 
-    def handle_registration_email(self, form_data):
-        new_user_id = self.handle_registration(form_data)
-        if isinstance(new_user_id, int) and new_user_id >= 0:
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        for file in files:
+            data = await file.read()
+            path = rx.get_upload_dir() / file.name
+            with path.open("wb") as f: f.write(data)
+            if file.name not in self.uploaded_images:
+                self.uploaded_images.append(file.name)
+
+    def delete_preview_image(self, url: str):
+        filename_to_delete = os.path.basename(url)
+        self.uploaded_images = [f for f in self.uploaded_images if f != filename_to_delete]
+        if self.post:
             with rx.session() as session:
-                session.add(
-                    UserInfo(
-                        email=form_data["email"],
-                        user_id=self.new_user_id,
-                    )
-                )
+                img_to_delete = session.exec(
+                    select(PostImageModel).where(PostImageModel.blog_post_id == self.post.id, PostImageModel.filename == filename_to_delete)
+                ).one_or_none()
+                if img_to_delete:
+                    session.delete(img_to_delete); session.commit()
+            return self.get_post_detail
+
+    def handle_submit(self, form_data: dict[str, Any]):
+        post_id = self.blog_post_id if self.blog_post_id > 0 else None
+        with rx.session() as session:
+            db_post = session.get(BlogPostModel, post_id) if post_id else BlogPostModel(userinfo_id=self.my_userinfo_id)
+            db_post.title, db_post.content = form_data.get("title"), self.post_content
+            db_post.publish_active = self.post_publish_active
+            if self.publish_date_str and self.publish_time_str:
+                try:
+                    db_post.publish_date = datetime.strptime(f"{self.publish_date_str} {self.publish_time_str}", "%Y-%m-%d %H:%M:%S")
+                except (ValueError, TypeError):
+                    db_post.publish_date = None
+            else:
+                db_post.publish_date = None
+            session.add(db_post); session.commit(); session.refresh(db_post)
+            post_id = db_post.id
+            if self.uploaded_images:
+                existing_filenames = {img.filename for img in db_post.images}
+                for filename in self.uploaded_images:
+                    if filename not in existing_filenames:
+                        session.add(PostImageModel(filename=filename, blog_post_id=post_id))
                 session.commit()
-        return type(self).successful_registration
+        return rx.redirect(f"/blog/{post_id}/edit")
