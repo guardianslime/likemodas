@@ -11,9 +11,16 @@ from .auth.state import SessionState
 from .articles.detail import article_detail_page
 from .articles.list import article_public_list_page
 from .articles.state import ArticlePublicState
-from .blog.state import BlogPostState
 
-from . import blog, contact, navigation, pages
+# --- ¡CORRECCIÓN #1: Importaciones directas! ---
+from .blog.state import BlogPostState
+from .blog.list import blog_post_list_page
+from .blog.add import blog_post_add_page
+from .blog.detail import blog_post_detail_page
+from .blog.edit import blog_post_edit_page
+
+# Se importan los paquetes que no causan conflicto
+from . import contact, navigation, pages
 
 # --- Definición de la Aplicación ---
 def index() -> rx.Component:
@@ -59,24 +66,22 @@ app.add_page(
     on_load=ArticlePublicState.get_post_detail,
 )
 
+# --- ¡CORRECCIÓN #2: Se usan las referencias directas! ---
 # Páginas de Blog
 app.add_page(
-    blog.blog_post_list_page,
+    blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
-    # --- ¡CORRECCIÓN CON LAMBDA! ---
     on_load=lambda: BlogPostState.load_posts
 )
-app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
+app.add_page(blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(
-    blog.blog_post_detail_page,
+    blog_post_detail_page,
     route="/blog/[blog_id]",
-    # --- ¡CORRECCIÓN CON LAMBDA! ---
     on_load=lambda: BlogPostState.get_post_detail
 )
 app.add_page(
-    blog.blog_post_edit_page,
+    blog_post_edit_page,
     route="/blog/[blog_id]/edit",
-    # --- ¡CORRECCIÓN CON LAMBDA! ---
     on_load=lambda: BlogPostState.get_post_detail
 )
 
