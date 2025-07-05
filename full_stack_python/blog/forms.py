@@ -39,7 +39,14 @@ def blog_post_edit_form() -> rx.Component:
     post = BlogEditFormState.post
     return rx.form(
         rx.box(
-            rx.input(type='hidden', name='post_id', value=rx.cond(post, post.id, "")),
+            # --- CORRECCIÓN FINAL ---
+            # El valor ahora viene de una variable de texto simple (post_id_str),
+            # lo que elimina cualquier ambigüedad para el compilador.
+            rx.input(
+                type='hidden', 
+                name='post_id', 
+                value=BlogPostState.post_id_str
+            ),
             display='none'
         ),
         rx.vstack(
