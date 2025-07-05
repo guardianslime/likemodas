@@ -1,3 +1,5 @@
+# full_stack_python/articles/state.py
+
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -18,6 +20,7 @@ class ArticlePublicState(SessionState):
 
     @rx.var
     def post_images(self) -> list[PostImageModel]:
+        """Devuelve de forma segura la lista de imágenes del post, o una lista vacía."""
         if self.post and self.post.images:
             return self.post.images
         return []
@@ -45,6 +48,12 @@ class ArticlePublicState(SessionState):
                     (BlogPostModel.id == self.post_id)
                 )
             ).one_or_none()
+
+    # --- ¡MÉTODO RESTAURADO! ---
+    # Esta es la función que faltaba.
+    def set_limit_and_reload(self, new_limit: int = 5):
+        self.limit = new_limit
+        return self.load_posts
 
     def load_posts(self, *args, **kwargs):
         with rx.session() as session:
