@@ -14,12 +14,12 @@ def landing_component() -> rx.Component:
         ),
         rx.divider(),
         rx.heading("Recent Articles", size="5"),
-        article_public_list_component(columns=1, limit=1),
+        # --- CORRECCIÓN: Se elimina el argumento 'limit' ---
+        article_public_list_component(columns=1),
         spacing="5",
         justify="center",
         align="center",
         min_height="85vh",
         id="my-child",
-        # La carga de datos se dispara cuando este componente se monta
         on_mount=ArticlePublicState.load_posts
     )
