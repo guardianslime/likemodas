@@ -19,9 +19,11 @@ class BlogPostState(SessionState):
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
+    image_preview_url: str = ""
     uploaded_images: list[str] = []
     publish_date_str: str = ""
     publish_time_str: str = ""
+    post_id_str: str = ""
     
     @rx.var
     def preview_image_urls(self) -> list[str]:
@@ -59,8 +61,8 @@ class BlogPostState(SessionState):
     def get_post_detail(self):
         self.uploaded_images = []
         if self.my_userinfo_id is None:
-            self.post = None
-            return
+            self.post = None; return
+        
         with rx.session() as session:
             if self.blog_post_id == "":
                 self.post = None
@@ -68,7 +70,7 @@ class BlogPostState(SessionState):
             result = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.selectinload(BlogPost_model.images)
+                    sqlalchemy.orm.selectinload(BlogPostModel.images)
                 ).where(
                     (BlogPostModel.userinfo_id == self.my_userinfo_id) &
                     (BlogPostModel.id == self.blog_post_id)
@@ -78,6 +80,9 @@ class BlogPostState(SessionState):
             if result:
                 self.post_content = self.post.content
                 self.post_publish_active = self.post.publish_active
+                if self.post.images:
+                    # Corrección para usar la nueva relación de imágenes
+                    self.image_preview_url = f"/_upload/{self.post.images[0].filename}" if self.post.images else ""
                 if self.post.publish_date:
                     self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
                     self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
@@ -85,6 +90,11 @@ class BlogPostState(SessionState):
                     now = datetime.now()
                     self.publish_date_str = now.strftime("%Y-%m-%d")
                     self.publish_time_str = now.strftime("%H:%M:%S")
+            else:
+                # Limpiar todo si no hay post
+                self.post_content = ""
+                self.image_preview_url = ""
+                self.post_id_str = ""
     # ... (load_posts y to_blog_post no cambian) ...
 
     def add_post_and_images(self, form_data: dict, image_filenames: list[str]):
