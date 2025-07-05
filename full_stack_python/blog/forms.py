@@ -76,8 +76,7 @@ def blog_post_edit_form() -> rx.Component:
             rx.heading("Imágenes", size="4", margin_top="1em"),
             rx.grid(
                 rx.foreach(
-                    # --- ¡CORRECCIÓN AQUÍ! ---
-                    # Usamos BlogPostState, que es donde se define la variable.
+                    # Usar BlogPostState, donde se definió la variable.
                     BlogPostState.preview_image_urls,
                     lambda url: rx.image(src=url, width="100px", height="100px", object_fit="cover", border_radius="sm")
                 ),
