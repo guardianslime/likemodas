@@ -1,31 +1,17 @@
 # full_stack_python/blog/forms.py
-
 import reflex as rx
 from .state import BlogPostState
 import os
 
-def image_upload_component() -> rx.Component:
-    """Componente para la subida de múltiples imágenes."""
-    return rx.upload(
-        rx.text("Arrastra imágenes aquí o haz clic"),
-        id="image_upload",
-        accept={"image/png": [".png"], "image/jpeg": [".jpg", ".jpeg"]},
-        multiple=True, max_files=10, border="2px dashed #60a5fa", padding="2em",
-        on_drop=BlogPostState.handle_upload(rx.upload_files(upload_id="image_upload")),
-    )
-
 def blog_post_form() -> rx.Component:
     """Un único formulario para crear y editar posts."""
-    post = BlogPostState.post # Creamos un alias para que el código sea más corto
     return rx.form(
         rx.vstack(
-            # --- ¡CORRECCIÓN AQUÍ! ---
-            # Se reemplaza el if/else de Python por rx.cond de Reflex.
             rx.input(
-                default_value=rx.cond(post, post.title, ""),
-                name="title", 
-                placeholder="Título de la publicación", 
-                required=True, 
+                default_value=BlogPostState.post.title if BlogPostState.post else "",
+                name="title",
+                placeholder="Título de la publicación",
+                required=True,
                 width='100%'
             ),
             rx.text_area(
@@ -35,9 +21,11 @@ def blog_post_form() -> rx.Component:
                 required=True, height='30vh', width='100%'
             ),
             rx.heading("Imágenes", size="4", margin_top="1em"),
+            
+            # Galería de vista previa con botón de borrado
             rx.grid(
                 rx.foreach(
-                    BlogPostState.preview_image_urls,
+                    BlogPostState.image_previews,
                     lambda url: rx.box(
                         rx.image(src=url, width="100px", height="100px", object_fit="cover", border_radius="sm"),
                         rx.icon_button(
@@ -52,7 +40,13 @@ def blog_post_form() -> rx.Component:
                 ),
                 columns="5", spacing="2", width="100%"
             ),
-            image_upload_component(),
+            rx.upload(
+                rx.text("Arrastra imágenes aquí o haz clic"),
+                id="image_upload",
+                accept={"image/png": [".png"], "image/jpeg": [".jpg", ".jpeg"]},
+                multiple=True, max_files=10, border="2px dashed #60a5fa", padding="2em",
+                on_drop=BlogPostState.handle_upload(rx.upload_files(upload_id="image_upload")),
+            ),
             rx.flex(
                 rx.switch(is_checked=BlogPostState.post_publish_active, on_change=BlogPostState.set_post_publish_active),
                 rx.text("Publicar"),
@@ -70,5 +64,5 @@ def blog_post_form() -> rx.Component:
             spacing="4", align_items="start"
         ),
         on_submit=BlogPostState.handle_submit,
-        reset_on_submit=True, # Resetea el formulario al crear, pero no afecta la edición
+        reset_on_submit=True
     )
