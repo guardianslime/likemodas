@@ -1,17 +1,22 @@
+# full_stack_python/blog/state.py
+
 from datetime import datetime
-from typing import Optional, List
+# --- ¡CORRECCIÓN! ---
+# Importamos 'Any' para especificar el tipo del diccionario.
+from typing import Optional, List, Any 
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
 from .. import navigation
 from ..auth.state import SessionState
 from ..models import BlogPostModel, UserInfo, PostImageModel
+import asyncio
 import os
 
+# ... (El resto de la clase BlogPostState no cambia) ...
 class BlogPostState(SessionState):
     post: Optional[BlogPostModel] = None
     posts: List[BlogPostModel] = []
-    
     post_content: str = ""
     post_publish_active: bool = False
     uploaded_images: list[str] = []
@@ -90,12 +95,11 @@ class BlogPostState(SessionState):
 
     def handle_submit(self, form_data: dict):
         post_id = self.blog_post_id if self.blog_post_id > 0 else None
-        
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id) if post_id else BlogPostModel(userinfo_id=self.my_userinfo_id)
-            db_post.title = form_data.get("title"); db_post.content = self.post_content
+            db_post.title = form_data.get("title")
+            db_post.content = self.post_content
             db_post.publish_active = self.post_publish_active
-            
             if self.publish_date_str and self.publish_time_str:
                 try:
                     db_post.publish_date = datetime.strptime(f"{self.publish_date_str} {self.publish_time_str}", "%Y-%m-%d %H:%M:%S")
@@ -103,17 +107,22 @@ class BlogPostState(SessionState):
                     db_post.publish_date = None
             else:
                 db_post.publish_date = None
-            
             session.add(db_post); session.commit(); session.refresh(db_post)
             post_id = db_post.id
-
-            # Sincronizar imágenes nuevas
             if self.uploaded_images:
                 existing_filenames = {img.filename for img in db_post.images}
                 for filename in self.uploaded_images:
                     if filename not in existing_filenames:
                         session.add(PostImageModel(filename=filename, blog_post_id=post_id))
                 session.commit()
-
-        # Recargar la página de edición para mostrar el estado final
         return rx.redirect(f"/blog/{post_id}/edit")
+
+
+class BlogAddPostFormState(BlogPostState):
+    # En versiones anteriores, esta clase estaba separada. La mantenemos por consistencia
+    # aunque la lógica principal ahora esté en BlogPostState.
+    pass
+
+class BlogEditFormState(BlogPostState):
+    # Igual que la anterior, la mantenemos por ahora.
+    pass
