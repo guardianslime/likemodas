@@ -48,23 +48,12 @@ def blog_post_add_form() -> rx.Component:
         reset_on_submit=True,
     )
 
-# full_stack_python/blog/forms.py
-
-# ... (El resto del archivo no cambia) ...
-
 def blog_post_edit_form() -> rx.Component:
     """El formulario para EDITAR una publicación de blog existente."""
     post = BlogEditFormState.post
     return rx.form(
         rx.box(
-            # --- CORRECCIÓN FINAL ---
-            # Ahora el valor viene de una variable de texto simple (post_id_str),
-            # lo que elimina cualquier ambigüedad para el compilador.
-            rx.input(
-                type='hidden', 
-                name='post_id', 
-                value=BlogEditFormState.post_id_str
-            ),
+            rx.input(type='hidden', name='post_id', value=rx.cond(post, post.id, "")),
             display='none'
         ),
         rx.vstack(
@@ -87,7 +76,9 @@ def blog_post_edit_form() -> rx.Component:
             rx.heading("Imágenes", size="4", margin_top="1em"),
             rx.grid(
                 rx.foreach(
-                    BlogEditFormState.preview_image_urls,
+                    # --- ¡CORRECCIÓN AQUÍ! ---
+                    # Usamos BlogPostState, que es donde se define la variable.
+                    BlogPostState.preview_image_urls,
                     lambda url: rx.image(src=url, width="100px", height="100px", object_fit="cover", border_radius="sm")
                 ),
                 columns="5",
