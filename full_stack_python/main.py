@@ -1,10 +1,12 @@
 import reflex as rx
 
 class State(rx.State):
+    """Estado de la app."""
     uploaded_files: list[str] = []
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
+        """Maneja la subida de archivos."""
         for file in files:
             data = await file.read()
             path = rx.get_upload_dir() / file.name
@@ -29,12 +31,21 @@ def index():
             padding="2em",
         ),
         rx.button(
-            "Subir imagen",
+            "Subir imágenes",
             on_click=State.handle_upload(rx.upload_files(upload_id="image_upload")),
         ),
-        rx.foreach(
-            State.uploaded_files,
-            lambda filename: rx.image(src=rx.get_upload_url(filename), width="300px"),
+        rx.grid(
+            rx.foreach(
+                State.uploaded_files,
+                lambda filename: rx.image(
+                    src=rx.get_upload_url(filename),
+                    width="200px",
+                    height="auto",
+                    style={"objectFit": "cover", "margin": "0.5em"},
+                ),
+            ),
+            columns="3",
+            spacing="2",
         ),
         padding="2em"
     )
