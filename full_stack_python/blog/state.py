@@ -1,22 +1,19 @@
 # full_stack_python/blog/state.py
 
 from datetime import datetime
-# --- ¡CORRECCIÓN! ---
-# Importamos 'Any' para especificar el tipo del diccionario.
-from typing import Optional, List, Any 
+from typing import Optional, List, Any
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
 from .. import navigation
 from ..auth.state import SessionState
 from ..models import BlogPostModel, UserInfo, PostImageModel
-import asyncio
 import os
 
-# ... (El resto de la clase BlogPostState no cambia) ...
 class BlogPostState(SessionState):
     post: Optional[BlogPostModel] = None
     posts: List[BlogPostModel] = []
+    
     post_content: str = ""
     post_publish_active: bool = False
     uploaded_images: list[str] = []
@@ -36,10 +33,34 @@ class BlogPostState(SessionState):
 
     @rx.var
     def blog_post_id(self) -> int:
-        try:
-            return int(self.router.page.params.get("blog_id", 0))
-        except:
-            return 0
+        try: return int(self.router.page.params.get("blog_id", 0))
+        except: return 0
+            
+    def get_post_detail(self):
+        self.uploaded_images = []
+        if not self.blog_post_id: self.post = None; return
+        with rx.session() as session:
+            self.post = session.exec(
+                select(BlogPostModel).options(sqlalchemy.orm.selectinload(BlogPostModel.images))
+                .where(BlogPostModel.id == self.blog_post_id)
+            ).one_or_none()
+        if self.post:
+            self.post_content = self.post.content
+            self.post_publish_active = self.post.publish_active
+            if self.post.publish_date:
+                self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
+                self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
+            else:
+                self.publish_date_str, self.publish_time_str = "", ""
+        else:
+            return rx.redirect("/blog")
+
+    def load_posts(self):
+        with rx.session() as session:
+            self.posts = session.exec(
+                select(BlogPostModel).options(sqlalchemy.orm.selectinload(BlogPostModel.images))
+                .where(BlogPostState.userinfo_id == self.my_userinfo_id).order_by(BlogPostModel.id.desc())
+            ).all()
 
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
@@ -55,50 +76,17 @@ class BlogPostState(SessionState):
         if self.post:
             with rx.session() as session:
                 img_to_delete = session.exec(
-                    select(PostImageModel).where(
-                        PostImageModel.blog_post_id == self.post.id,
-                        PostImageModel.filename == filename_to_delete
-                    )
+                    select(PostImageModel).where(PostImageModel.blog_post_id == self.post.id, PostImageModel.filename == filename_to_delete)
                 ).one_or_none()
                 if img_to_delete:
-                    session.delete(img_to_delete)
-                    session.commit()
+                    session.delete(img_to_delete); session.commit()
             return self.get_post_detail
 
-    def get_post_detail(self):
-        self.uploaded_images = []
-        if not self.blog_post_id: self.post = None; return
-        with rx.session() as session:
-            self.post = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.selectinload(BlogPostModel.images)
-                ).where(BlogPostModel.id == self.blog_post_id)
-            ).one_or_none()
-        if self.post:
-            self.post_content = self.post.content
-            self.post_publish_active = self.post.publish_active
-            if self.post.publish_date:
-                self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
-                self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
-            else:
-                self.publish_date_str = ""; self.publish_time_str = ""
-        else:
-            return rx.redirect("/blog")
-
-    def load_posts(self):
-        with rx.session() as session:
-            self.posts = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.selectinload(BlogPostModel.images)
-                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id).order_by(BlogPostModel.id.desc())
-            ).all()
-
-    def handle_submit(self, form_data: dict):
+    def handle_submit(self, form_data: dict[str, Any]):
         post_id = self.blog_post_id if self.blog_post_id > 0 else None
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id) if post_id else BlogPostModel(userinfo_id=self.my_userinfo_id)
-            db_post.title = form_data.get("title")
-            db_post.content = self.post_content
+            db_post.title, db_post.content = form_data.get("title"), self.post_content
             db_post.publish_active = self.post_publish_active
             if self.publish_date_str and self.publish_time_str:
                 try:
@@ -116,13 +104,3 @@ class BlogPostState(SessionState):
                         session.add(PostImageModel(filename=filename, blog_post_id=post_id))
                 session.commit()
         return rx.redirect(f"/blog/{post_id}/edit")
-
-
-class BlogAddPostFormState(BlogPostState):
-    # En versiones anteriores, esta clase estaba separada. La mantenemos por consistencia
-    # aunque la lógica principal ahora esté en BlogPostState.
-    pass
-
-class BlogEditFormState(BlogPostState):
-    # Igual que la anterior, la mantenemos por ahora.
-    pass
