@@ -1,5 +1,3 @@
-# full_stack_python/blog/state.py
-
 from datetime import datetime
 from typing import Optional, List, Any
 import reflex as rx
@@ -13,7 +11,6 @@ import os
 class BlogPostState(SessionState):
     post: Optional[BlogPostModel] = None
     posts: List[BlogPostModel] = []
-    
     post_content: str = ""
     post_publish_active: bool = False
     uploaded_images: list[str] = []
@@ -35,7 +32,7 @@ class BlogPostState(SessionState):
     def blog_post_id(self) -> int:
         try: return int(self.router.page.params.get("blog_id", 0))
         except: return 0
-            
+
     def get_post_detail(self):
         self.uploaded_images = []
         if not self.blog_post_id: self.post = None; return
@@ -59,7 +56,7 @@ class BlogPostState(SessionState):
         with rx.session() as session:
             self.posts = session.exec(
                 select(BlogPostModel).options(sqlalchemy.orm.selectinload(BlogPostModel.images))
-                .where(BlogPostState.userinfo_id == self.my_userinfo_id).order_by(BlogPostModel.id.desc())
+                .where(BlogPostModel.userinfo_id == self.my_userinfo_id).order_by(BlogPostModel.id.desc())
             ).all()
 
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -82,17 +79,16 @@ class BlogPostState(SessionState):
                     session.delete(img_to_delete); session.commit()
             return self.get_post_detail
 
-    def handle_submit(self, form_data: dict[str, Any]):
+    def handle_submit(self, form_data: dict):
         post_id = self.blog_post_id if self.blog_post_id > 0 else None
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id) if post_id else BlogPostModel(userinfo_id=self.my_userinfo_id)
-            db_post.title, db_post.content = form_data.get("title"), self.post_content
+            db_post.title = form_data.get("title")
+            db_post.content = self.post_content
             db_post.publish_active = self.post_publish_active
             if self.publish_date_str and self.publish_time_str:
-                try:
-                    db_post.publish_date = datetime.strptime(f"{self.publish_date_str} {self.publish_time_str}", "%Y-%m-%d %H:%M:%S")
-                except (ValueError, TypeError):
-                    db_post.publish_date = None
+                try: db_post.publish_date = datetime.strptime(f"{self.publish_date_str} {self.publish_time_str}", "%Y-%m-%d %H:%M:%S")
+                except (ValueError, TypeError): db_post.publish_date = None
             else:
                 db_post.publish_date = None
             session.add(db_post); session.commit(); session.refresh(db_post)

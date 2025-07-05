@@ -1,4 +1,3 @@
-# full_stack_python/models.py
 from typing import Optional, List
 from datetime import datetime
 import reflex as rx
