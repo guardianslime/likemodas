@@ -1,23 +1,19 @@
+# full_stack_python/blog/edit.py
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
-from . import forms
-from .state import BlogEditFormState
-from ..ui.components import not_found_component
+from .forms import blog_post_form
+from .state import BlogPostState
 
 @reflex_local_auth.require_login
 def blog_post_edit_page() -> rx.Component:
-    post = BlogEditFormState.post
-    
-    edit_view = rx.vstack(
-        rx.heading("Editando: ", post.title, size="9"),
-        rx.desktop_only(rx.box(forms.blog_post_edit_form(), width="50vw")),
-        rx.tablet_only(rx.box(forms.blog_post_edit_form(), width="75vw")),
-        rx.mobile_only(rx.box(forms.blog_post_edit_form(), id="my-form-box", width="85vw")),
-        spacing="5", align="center", min_height="95vh",
-    )
-    
     return base_page(
-        rx.cond(post, edit_view, not_found_component(title="Publicación no encontrada")),
-        on_mount=BlogEditFormState.get_post_detail
+        rx.vstack(
+            rx.heading("Editando Publicación", size="9"),
+            blog_post_form(), # Usamos el formulario unificado
+            width=["90%", "80%", "60%"],
+            margin="auto",
+            spacing="5"
+        ),
+        on_mount=BlogPostState.get_post_detail
     )
