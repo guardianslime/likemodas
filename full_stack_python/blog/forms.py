@@ -53,8 +53,8 @@ def blog_post_edit_form() -> rx.Component:
     post = BlogEditFormState.post
     return rx.form(
         rx.box(
-            # --- ¡CORRECCIÓN AQUÍ! ---
-            # Usamos rx.cond para evitar pasar 'None' como valor.
+            # --- LA CORRECCIÓN ESTÁ EN ESTA LÍNEA ---
+            # Usamos rx.cond para que el valor nunca sea None, eliminando la advertencia.
             rx.input(
                 type='hidden', 
                 name='post_id', 
@@ -64,7 +64,7 @@ def blog_post_edit_form() -> rx.Component:
         ),
         rx.vstack(
             rx.input(
-                default_value=post.title,
+                default_value=rx.cond(post, post.title, ""),
                 name="title",
                 placeholder="Título",
                 required=True,
@@ -92,7 +92,7 @@ def blog_post_edit_form() -> rx.Component:
             image_upload_component(),
             rx.flex(
                 rx.switch(
-                    default_checked=BlogEditFormState.post_publish_active,
+                    is_checked=BlogEditFormState.post_publish_active,
                     on_change=BlogEditFormState.set_post_publish_active,
                     name='publish_active',
                 ),
@@ -104,13 +104,15 @@ def blog_post_edit_form() -> rx.Component:
                 BlogEditFormState.post_publish_active,
                 rx.hstack(
                     rx.input(
-                        default_value=BlogEditFormState.publish_date_str,
+                        value=BlogEditFormState.publish_date_str,
+                        on_change=BlogEditFormState.set_publish_date_str,
                         type='date',
                         name='publish_date',
                         width='100%'
                     ),
                     rx.input(
-                        default_value=BlogEditFormState.publish_time_str,
+                        value=BlogEditFormState.publish_time_str,
+                        on_change=BlogEditFormState.set_publish_time_str,
                         type='time',
                         name='publish_time',
                         width='100%'
