@@ -22,34 +22,37 @@ class BlogPostState(SessionState):
     uploaded_images: list[str] = []
     publish_date_str: str = ""
     publish_time_str: str = ""
-    image_preview_url: str = ""
+    
+    @rx.var
+    def preview_image_urls(self) -> list[str]:
+        urls = []
+        if self.post:
+            for img in self.post.images:
+                urls.append(f"/_upload/{img.filename}")
+        for filename in self.uploaded_images:
+            if f"/_upload/{filename}" not in urls:
+                urls.append(f"/_upload/{filename}")
+        return urls
 
-    # --- NUEVO: Variable simple para el ID del post ---
-    post_id_str: str = ""
-
-    # ... (El resto de los @rx.var no cambian) ...
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
     @rx.var
     def blog_post_url(self) -> str:
-        if not self.post:
-            return f"{BLOG_POSTS_ROUTE}"
+        if not self.post: return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
 
     @rx.var
     def blog_post_edit_url(self) -> str:
-        if not self.post:
-            return f"{BLOG_POSTS_ROUTE}"
+        if not self.post: return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
-    
+
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
             data = await file.read()
             path = rx.get_upload_dir() / file.name
-            with path.open("wb") as f:
-                f.write(data)
+            with path.open("wb") as f: f.write(data)
             if file.name not in self.uploaded_images:
                 self.uploaded_images.append(file.name)
 
@@ -58,39 +61,23 @@ class BlogPostState(SessionState):
         if self.my_userinfo_id is None:
             self.post = None
             return
-            
-        lookups = (
-            (BlogPostModel.userinfo_id == self.my_userinfo_id) &
-            (BlogPostModel.id == self.blog_post_id)
-        )
         with rx.session() as session:
             if self.blog_post_id == "":
                 self.post = None
                 return
-            
-            sql_statement = select(BlogPostModel).options(
-                sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
-                sqlalchemy.orm.selectinload(BlogPostModel.images)
-            ).where(lookups)
-            result = session.exec(sql_statement).one_or_none()
-            
+            result = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.selectinload(BlogPost_model.images)
+                ).where(
+                    (BlogPostModel.userinfo_id == self.my_userinfo_id) &
+                    (BlogPostModel.id == self.blog_post_id)
+                )
+            ).one_or_none()
             self.post = result
-            if result is None:
-                self.post_content = ""
-                self.image_preview_url = ""
-                self.post_id_str = "" # Limpiar ID
-            else:
+            if result:
                 self.post_content = self.post.content
                 self.post_publish_active = self.post.publish_active
-                
-                # --- NUEVO: Asignamos el ID a nuestra variable segura ---
-                self.post_id_str = str(self.post.id)
-                
-                if self.post.image_filename:
-                    self.image_preview_url = f"/_upload/{self.post.image_filename}"
-                else:
-                    self.image_preview_url = ""
-
                 if self.post.publish_date:
                     self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
                     self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
