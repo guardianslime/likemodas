@@ -9,6 +9,8 @@ def blog_post_add_page() -> rx.Component:
         rx.vstack(
             rx.heading("Crear Nueva Publicación", size="9"),
             blog_post_form(),
-            width=["95%", "80%", "70%"], margin="auto", spacing="5"
+            width=["95%", "80%", "70%"],
+            margin="auto",
+            spacing="5"
         )
     )
