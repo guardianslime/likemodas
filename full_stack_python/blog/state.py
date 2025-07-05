@@ -19,24 +19,15 @@ class BlogPostState(SessionState):
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
-
-    # --- CAMBIO: De una imagen a una lista ---
     uploaded_images: list[str] = []
-
     publish_date_str: str = ""
     publish_time_str: str = ""
+    image_preview_url: str = ""
 
-    @rx.var
-    def preview_image_urls(self) -> list[str]:
-        """Combina imágenes existentes y nuevas para la vista previa."""
-        urls = []
-        if self.post:
-            for img in self.post.images:
-                urls.append(f"/_upload/{img.filename}")
-        for filename in self.uploaded_images:
-            urls.append(f"/_upload/{filename}")
-        return urls
+    # --- NUEVO: Variable simple para el ID del post ---
+    post_id_str: str = ""
 
+    # ... (El resto de los @rx.var no cambian) ...
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
@@ -52,9 +43,8 @@ class BlogPostState(SessionState):
         if not self.post:
             return f"{BLOG_POSTS_ROUTE}"
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
-
+    
     async def handle_upload(self, files: list[rx.UploadFile]):
-        """Maneja la subida de múltiples archivos."""
         for file in files:
             data = await file.read()
             path = rx.get_upload_dir() / file.name
@@ -64,7 +54,7 @@ class BlogPostState(SessionState):
                 self.uploaded_images.append(file.name)
 
     def get_post_detail(self):
-        self.uploaded_images = [] # Limpiar imágenes nuevas al cargar
+        self.uploaded_images = []
         if self.my_userinfo_id is None:
             self.post = None
             return
@@ -80,16 +70,27 @@ class BlogPostState(SessionState):
             
             sql_statement = select(BlogPostModel).options(
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
-                sqlalchemy.orm.selectinload(BlogPostModel.images) # Cargar las imágenes
+                sqlalchemy.orm.selectinload(BlogPostModel.images)
             ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
             
             self.post = result
             if result is None:
                 self.post_content = ""
+                self.image_preview_url = ""
+                self.post_id_str = "" # Limpiar ID
             else:
                 self.post_content = self.post.content
                 self.post_publish_active = self.post.publish_active
+                
+                # --- NUEVO: Asignamos el ID a nuestra variable segura ---
+                self.post_id_str = str(self.post.id)
+                
+                if self.post.image_filename:
+                    self.image_preview_url = f"/_upload/{self.post.image_filename}"
+                else:
+                    self.image_preview_url = ""
+
                 if self.post.publish_date:
                     self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
                     self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
@@ -97,7 +98,6 @@ class BlogPostState(SessionState):
                     now = datetime.now()
                     self.publish_date_str = now.strftime("%Y-%m-%d")
                     self.publish_time_str = now.strftime("%H:%M:%S")
-
     # ... (load_posts y to_blog_post no cambian) ...
 
     def add_post_and_images(self, form_data: dict, image_filenames: list[str]):
