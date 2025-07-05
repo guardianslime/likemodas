@@ -16,9 +16,11 @@ if ARTICLE_LIST_ROUTE.endswith("/"):
 class ArticlePublicState(SessionState):
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
-    
+    limit: int = 20
+
     @rx.var
     def post_images(self) -> list[PostImageModel]:
+        """Devuelve de forma segura la lista de imágenes del post, o una lista vacía."""
         if self.post and self.post.images:
             return self.post.images
         return []
@@ -27,19 +29,20 @@ class ArticlePublicState(SessionState):
     def post_id(self) -> str:
         return self.router.page.params.get("article_id", "")
 
+    @rx.var
+    def post_url(self) -> str:
+        if not self.post: return f"{ARTICLE_LIST_ROUTE}"
+        return f"{ARTICLE_LIST_ROUTE}/{self.post.id}"
+
     def get_post_detail(self):
         with rx.session() as session:
             if self.post_id == "":
                 self.post = None
                 return
-            
-            # --- ¡CORRECCIÓN AQUÍ! ---
-            # Añadimos .options(sqlalchemy.orm.selectinload(BlogPostModel.images))
-            # para cargar las imágenes junto con el post.
             result = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.selectinload(BlogPostModel.images)
+                    sqlalchemy.orm.selectinload(BlogPostModel.images) # Eager loading
                 ).where(
                     (BlogPostModel.publish_active == True) &
                     (BlogPostModel.publish_date < datetime.now()) &
@@ -49,17 +52,19 @@ class ArticlePublicState(SessionState):
             self.post = result
 
     def load_posts(self, *args, **kwargs):
-        lookup_args = (
-            (BlogPostModel.publish_active == True) &
-            (BlogPostModel.publish_date < datetime.now())
-        )
         with rx.session() as session:
-            # --- ¡CORRECCIÓN AQUÍ! ---
-            # También cargamos las imágenes para la lista de artículos.
             result = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo),
-                    sqlalchemy.orm.selectinload(BlogPostModel.images)
-                ).where(lookup_args).limit(self.limit)
+                    sqlalchemy.orm.selectinload(BlogPostModel.images) # Eager loading
+                ).where(
+                    (BlogPostModel.publish_active == True) &
+                    (BlogPostModel.publish_date < datetime.now())
+                ).limit(self.limit)
             ).all()
             self.posts = result
+
+    def to_post(self):
+        if not self.post:
+            return rx.redirect(ARTICLE_LIST_ROUTE)
+        return rx.redirect(self.post_url)
