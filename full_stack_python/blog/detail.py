@@ -3,12 +3,12 @@
 import reflex as rx 
 from ..ui.base import base_page
 from . import state
-# --- CORRECCIÓN: Se elimina la importación problemática ---
-# from ..blog.notfound import blog_post_not_found
+
+# La importación a 'blog.notfound' se ha eliminado para romper el ciclo.
 
 def article_detail_page() -> rx.Component:
     
-    # --- CORRECCIÓN: Se define el componente "no encontrado" localmente ---
+    # Se define el componente "no encontrado" aquí mismo para no depender del blog.
     article_not_found = rx.vstack(
         rx.heading("Artículo No Encontrado", size="9"),
         rx.text("El artículo que buscas no existe o no está disponible."),
@@ -54,7 +54,6 @@ def article_detail_page() -> rx.Component:
             align="start",
             min_height="85vh",
         ),
-        # Se usa el componente local en lugar del importado
         article_not_found
     )
     return base_page(my_child)
