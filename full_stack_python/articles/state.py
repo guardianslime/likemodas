@@ -54,8 +54,3 @@ class ContactState(SessionState):
             self.entries = session.exec(
                 select(ContactEntryModel).order_by(ContactEntryModel.id.desc())
             ).all()
-
-    def to_post(self):
-        if not self.post:
-            return rx.redirect(ARTICLE_LIST_ROUTE)
-        return rx.redirect(self.post_url)
