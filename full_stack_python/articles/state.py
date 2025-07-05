@@ -1,57 +1,61 @@
-# full_stack_python/contact/state.py
-
-from __future__ import annotations
-import asyncio
 import reflex as rx
-from sqlmodel import select
-# --- ¡CORRECCIÓN! ---
-# Importamos 'Any' para especificar el tipo del diccionario.
-from typing import Any
+import reflex_local_auth
+from rxconfig import config
 
-from ..auth.state import SessionState
-from ..models import ContactEntryModel
+# --- Módulos y Componentes ---
+from .ui.base import base_page
+from .auth.pages import my_login_page, my_register_page, my_logout_page
+from .auth.state import SessionState
 
-class ContactState(SessionState):
-    # --- ¡CORRECCIÓN! ---
-    # Se especifica el tipo del diccionario para evitar el VarTypeError.
-    form_data: dict[str, Any] = {}
-    did_submit: bool = False
-    entries: list[ContactEntryModel] = []
+# --- ¡Importaciones directas y explícitas para todo! ---
+from .articles.state import ArticlePublicState
+from .articles.list import article_public_list_page
+from .articles.detail import article_detail_page
+from .blog.state import BlogPostState
+from .blog.list import blog_post_list_page
+from .blog.add import blog_post_add_page
+from .blog.detail import blog_post_detail_page
+from .blog.edit import blog_post_edit_page
+from .contact.state import ContactState
+from .contact.page import contact_page, contact_entries_list_page
+from . import navigation, pages
 
-    @rx.var
-    def entries_with_formatted_date(self) -> list[dict]:
-        processed_entries = []
-        for entry in self.entries:
-            entry_dict = entry.dict()
-            entry_dict["created_at_formatted"] = entry.created_at.strftime("%Y-%m-%d %H:%M")
-            processed_entries.append(entry_dict)
-        return processed_entries
+def index() -> rx.Component:
+    """La página principal que redirige al dashboard."""
+    return base_page(
+        rx.cond(
+            SessionState.is_authenticated,
+            pages.dashboard_component(),
+            pages.landing_component(),
+        )
+    )
 
-    @rx.var
-    def thank_you_message(self) -> str:
-        first_name = self.form_data.get("first_name", "")
-        return f"¡Gracias, {first_name}!" if first_name else "¡Gracias por tu mensaje!"
+app = rx.App(
+    theme=rx.theme(
+        appearance="dark", has_background=True, panel_background="solid",
+        scaling="90%", radius="medium", accent_color="sky"
+    )
+)
 
-    async def handle_submit(self, form_data: dict):
-        self.form_data = form_data
-        with rx.session() as session:
-            user_info = self.authenticated_user_info
-            db_entry = ContactEntryModel(
-                first_name=form_data.get("first_name", ""),
-                last_name=form_data.get("last_name"),
-                email=form_data.get("email"),
-                message=form_data.get("message", ""),
-                userinfo_id=user_info.id if user_info else None,
-            )
-            session.add(db_entry)
-            session.commit()
-        self.did_submit = True
-        yield
-        await asyncio.sleep(4)
-        self.did_submit = False
+# --- Registro de Páginas (usando on_mount en cada página) ---
+app.add_page(index)
+app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
+app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
+app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
+app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
+app.add_page(pages.protected_page, route="/protected/")
+app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
-    def load_entries(self):
-        with rx.session() as session:
-            self.entries = session.exec(
-                select(ContactEntryModel).order_by(ContactEntryModel.id.desc())
-            ).all()
+# Páginas de Artículos
+app.add_page(article_public_list_page, route=navigation.routes.ARTICLE_LIST_ROUTE)
+app.add_page(article_detail_page, route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]")
+
+# Páginas de Blog
+app.add_page(blog_post_list_page, route=navigation.routes.BLOG_POSTS_ROUTE)
+app.add_page(blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
+app.add_page(blog_post_detail_page, route="/blog/[blog_id]")
+app.add_page(blog_post_edit_page, route="/blog/[blog_id]/edit")
+
+# Páginas de Contacto
+app.add_page(contact_page, route=navigation.routes.CONTACT_US_ROUTE)
+app.add_page(contact_entries_list_page, route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=ContactState.load_entries)

@@ -1,5 +1,3 @@
-# full_stack_python/full_stack_python.py
-
 import reflex as rx
 import reflex_local_auth
 from rxconfig import config
@@ -9,15 +7,18 @@ from .ui.base import base_page
 from .auth.pages import my_login_page, my_register_page, my_logout_page
 from .auth.state import SessionState
 
-# --- Importaciones directas y explícitas ---
-from .articles.detail import article_detail_page
+# --- ¡Importaciones directas y explícitas para todo! ---
+from .articles.state import ArticlePublicState
 from .articles.list import article_public_list_page
+from .articles.detail import article_detail_page
+from .blog.state import BlogPostState
+from .blog.list import blog_post_list_page
 from .blog.add import blog_post_add_page
 from .blog.detail import blog_post_detail_page
 from .blog.edit import blog_post_edit_page
-from .blog.list import blog_post_list_page
-
-from . import contact, navigation, pages
+from .contact.state import ContactState
+from .contact.page import contact_page, contact_entries_list_page
+from . import navigation, pages
 
 def index() -> rx.Component:
     """La página principal que redirige al dashboard."""
@@ -36,7 +37,7 @@ app = rx.App(
     )
 )
 
-# --- Registro de Páginas (usando on_mount en cada página en lugar de on_load aquí) ---
+# --- Registro de Páginas (usando on_mount en cada página) ---
 app.add_page(index)
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -56,5 +57,5 @@ app.add_page(blog_post_detail_page, route="/blog/[blog_id]")
 app.add_page(blog_post_edit_page, route="/blog/[blog_id]/edit")
 
 # Páginas de Contacto
-app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
-app.add_page(contact.contact_entries_list_page, route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=contact.ContactState.load_entries)
+app.add_page(contact_page, route=navigation.routes.CONTACT_US_ROUTE)
+app.add_page(contact_entries_list_page, route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=ContactState.load_entries)
