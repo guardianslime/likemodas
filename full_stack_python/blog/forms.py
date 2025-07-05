@@ -53,8 +53,6 @@ def blog_post_edit_form() -> rx.Component:
     post = BlogEditFormState.post
     return rx.form(
         rx.box(
-            # --- LA CORRECCIÓN ESTÁ EN ESTA LÍNEA ---
-            # Usamos rx.cond para que el valor nunca sea None, eliminando la advertencia.
             rx.input(
                 type='hidden', 
                 name='post_id', 
