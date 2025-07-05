@@ -1,4 +1,4 @@
-"""Welcome to Reflex! This file outlines the steps to create a basic app."""
+# full_stack_python/full_stack_python.py
 
 import reflex as rx
 import reflex_local_auth
@@ -12,11 +12,14 @@ from .articles.detail import article_detail_page
 from .articles.list import article_public_list_page
 from .articles.state import ArticlePublicState
 
+# --- ¡CORRECCIÓN #1! ---
+# Importamos BlogPostState directamente para evitar errores de importación circular.
+from .blog.state import BlogPostState
+
 # Se importan los paquetes completos para usar la notación paquete.componente
 from . import blog, contact, navigation, pages
 
 # --- Definición de la Aplicación ---
-
 def index() -> rx.Component:
     """La página principal que redirige al dashboard si el usuario está autenticado."""
     return base_page(
@@ -64,21 +67,22 @@ app.add_page(
 app.add_page(
     blog.blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
-    on_load=blog.BlogPostState.load_posts
+    # --- ¡CORRECCIÓN #2! ---
+    # Usamos la referencia directa a BlogPostState que importamos arriba.
+    on_load=BlogPostState.load_posts
 )
 app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(
     blog.blog_post_detail_page,
     route="/blog/[blog_id]",
-    on_load=blog.BlogPostState.get_post_detail
+    on_load=BlogPostState.get_post_detail
 )
 app.add_page(
     blog.blog_post_edit_page,
     route="/blog/[blog_id]/edit",
-    on_load=blog.BlogPostState.get_post_detail
+    on_load=BlogPostState.get_post_detail
 )
 
-# --- INICIO DE LA CORRECCIÓN ---
 # Páginas de Contacto
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
@@ -86,4 +90,3 @@ app.add_page(
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
     on_load=contact.ContactState.load_entries
 )
-# --- FIN DE LA CORRECCIÓN ---
