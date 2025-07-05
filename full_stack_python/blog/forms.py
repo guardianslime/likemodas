@@ -1,7 +1,5 @@
-# full_stack_python/blog/forms.py
 import reflex as rx
 from .state import BlogPostState
-import os
 
 def blog_post_form() -> rx.Component:
     """Un único formulario para crear y editar posts."""
@@ -9,30 +7,21 @@ def blog_post_form() -> rx.Component:
         rx.vstack(
             rx.input(
                 default_value=BlogPostState.post.title if BlogPostState.post else "",
-                name="title",
-                placeholder="Título de la publicación",
-                required=True,
-                width='100%'
+                name="title", placeholder="Título de la publicación", required=True, width='100%'
             ),
             rx.text_area(
-                value=BlogPostState.post_content,
-                on_change=BlogPostState.set_post_content,
-                placeholder='Escribe aquí tu publicación...',
-                required=True, height='30vh', width='100%'
+                value=BlogPostState.post_content, on_change=BlogPostState.set_post_content,
+                placeholder='Escribe aquí tu publicación...', required=True, height='30vh', width='100%'
             ),
             rx.heading("Imágenes", size="4", margin_top="1em"),
-            
-            # Galería de vista previa con botón de borrado
             rx.grid(
                 rx.foreach(
-                    BlogPostState.image_previews,
+                    BlogPostState.image_previews, # Itera sobre la lista simple de URLs
                     lambda url: rx.box(
                         rx.image(src=url, width="100px", height="100px", object_fit="cover", border_radius="sm"),
                         rx.icon_button(
-                            "trash-2",
-                            on_click=BlogPostState.delete_preview_image(url),
-                            size="1",
-                            position="absolute", top="2px", right="2px",
+                            "trash-2", on_click=BlogPostState.delete_preview_image(url),
+                            size="1", position="absolute", top="2px", right="2px",
                             color_scheme="red", variant="soft",
                         ),
                         position="relative",
@@ -41,8 +30,7 @@ def blog_post_form() -> rx.Component:
                 columns="5", spacing="2", width="100%"
             ),
             rx.upload(
-                rx.text("Arrastra imágenes aquí o haz clic"),
-                id="image_upload",
+                rx.text("Arrastra imágenes aquí o haz clic"), id="image_upload",
                 accept={"image/png": [".png"], "image/jpeg": [".jpg", ".jpeg"]},
                 multiple=True, max_files=10, border="2px dashed #60a5fa", padding="2em",
                 on_drop=BlogPostState.handle_upload(rx.upload_files(upload_id="image_upload")),
