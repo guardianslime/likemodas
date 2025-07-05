@@ -1,27 +1,18 @@
 import reflex as rx
-import os
 
 class State(rx.State):
+    """Estado de la app."""
     uploaded_files: list[str] = []
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Inicializar la lista con los archivos ya guardados en el volumen
-        upload_dir = rx.get_upload_dir()
-        if upload_dir.exists():
-            self.uploaded_files = [
-                f.name for f in upload_dir.iterdir() if f.is_file()
-            ]
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
+        """Maneja la subida de archivos."""
         for file in files:
             data = await file.read()
             path = rx.get_upload_dir() / file.name
             with path.open("wb") as f:
                 f.write(data)
-            if file.name not in self.uploaded_files:
-                self.uploaded_files.append(file.name)
+            self.uploaded_files.append(file.name)
 
 def index():
     return rx.vstack(
@@ -40,12 +31,21 @@ def index():
             padding="2em",
         ),
         rx.button(
-            "Subir imagen",
+            "Subir imágenes",
             on_click=State.handle_upload(rx.upload_files(upload_id="image_upload")),
         ),
-        rx.foreach(
-            State.uploaded_files,
-            lambda filename: rx.image(src=rx.get_upload_url(filename), width="300px"),
+        rx.grid(
+            rx.foreach(
+                State.uploaded_files,
+                lambda filename: rx.image(
+                    src=rx.get_upload_url(filename),
+                    width="200px",
+                    height="auto",
+                    style={"objectFit": "cover", "margin": "0.5em"},
+                ),
+            ),
+            columns="3",
+            spacing="2",
         ),
         padding="2em"
     )
