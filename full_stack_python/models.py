@@ -5,8 +5,17 @@ from datetime import datetime
 import reflex as rx
 from reflex_local_auth.user import LocalUser
 import sqlalchemy
-from sqlmodel import Field, Relationship
+from sqlmodel import Field, Relationship, JSON, Column
 from . import utils
+
+# --- NUEVO MODELO PARA LAS IMÁGENES ---
+class PostImageModel(rx.Model, table=True):
+    filename: str
+    blog_post_id: int = Field(foreign_key="blogpostmodel.id")
+    blog_post: "BlogPostModel" = Relationship(back_populates="images")
+    
+    __table_args__ = {"extend_existing": True}
+
 
 class UserInfo(rx.Model, table=True):
     email: str
@@ -29,8 +38,6 @@ class UserInfo(rx.Model, table=True):
         },
         nullable=False,
     )
-    
-    # --- AÑADE ESTA LÍNEA ---
     __table_args__ = {"extend_existing": True}
 
 
@@ -39,7 +46,11 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
     content: str
-    image_filename: Optional[str] = None
+    
+    # --- CAMBIO IMPORTANTE ---
+    # Se elimina 'image_filename' y se añade la relación con múltiples imágenes
+    images: List["PostImageModel"] = Relationship(back_populates="blog_post", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -62,15 +73,12 @@ class BlogPostModel(rx.Model, table=True):
         sa_column_kwargs={},
         nullable=True,
     )
-
-    # --- AÑADE ESTA LÍNEA ---
     __table_args__ = {"extend_existing": True}
 
 
 class ContactEntryModel(rx.Model, table=True):
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
-
     first_name: str
     last_name: Optional[str] = None
     email: Optional[str] = None
@@ -81,6 +89,4 @@ class ContactEntryModel(rx.Model, table=True):
         sa_column_kwargs={"server_default": sqlalchemy.func.now()},
         nullable=False,
     )
-
-    # --- AÑADE ESTA LÍNEA ---
     __table_args__ = {"extend_existing": True}

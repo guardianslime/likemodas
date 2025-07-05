@@ -4,23 +4,22 @@ import reflex as rx
 from .state import BlogAddPostFormState, BlogEditFormState, BlogPostState
 
 def image_upload_component() -> rx.Component:
-    """Componente para la subida de imágenes."""
+    """Componente para la subida de múltiples imágenes."""
     return rx.vstack(
         rx.upload(
-            rx.text("Arrastra una imagen aquí o haz clic para seleccionarla"),
+            rx.text("Arrastra imágenes aquí o haz clic para seleccionarlas"),
             id="image_upload",
             accept={
                 "image/png": [".png"],
                 "image/jpeg": [".jpg", ".jpeg"],
-                "image/gif": [".gif"],
-                "image/webp": [".webp"],
             },
-            max_files=1,
+            multiple=True,
+            max_files=10,
             border="2px dashed #60a5fa",
             padding="2em",
         ),
         rx.button(
-            "Subir imagen",
+            "Subir imágenes",
             on_click=BlogPostState.handle_upload(rx.upload_files(upload_id="image_upload")),
         ),
     )
@@ -54,11 +53,7 @@ def blog_post_edit_form() -> rx.Component:
     post = BlogEditFormState.post
     return rx.form(
         rx.box(
-            rx.input(
-                type='hidden',
-                name='post_id',
-                value=post.id
-            ),
+            rx.input(type='hidden', name='post_id', value=post.id),
             display='none'
         ),
         rx.vstack(
@@ -78,14 +73,15 @@ def blog_post_edit_form() -> rx.Component:
                 height='30vh',
                 width='100%',
             ),
-            # --- CORRECCIÓN: Usa la nueva variable para la vista previa ---
-            rx.cond(
-                BlogEditFormState.image_preview_url != "",
-                rx.image(
-                    src=BlogEditFormState.image_preview_url, 
-                    width="200px",
-                    height="auto",
-                )
+            rx.heading("Imágenes", size="4", margin_top="1em"),
+            rx.grid(
+                rx.foreach(
+                    BlogEditFormState.preview_image_urls,
+                    lambda url: rx.image(src=url, width="100px", height="100px", object_fit="cover", border_radius="sm")
+                ),
+                columns="5",
+                spacing="2",
+                width="100%"
             ),
             image_upload_component(),
             rx.flex(
@@ -96,6 +92,7 @@ def blog_post_edit_form() -> rx.Component:
                 ),
                 rx.text("Publicar"),
                 spacing="2",
+                margin_top="1em",
             ),
             rx.cond(
                 BlogEditFormState.post_publish_active,
@@ -115,7 +112,9 @@ def blog_post_edit_form() -> rx.Component:
                     width='100%'
                 ),
             ),
-            rx.button("Guardar Cambios", type="submit"),
+            rx.button("Guardar Cambios", type="submit", margin_top="1em"),
+            spacing="4",
+            align_items="start"
         ),
         on_submit=BlogEditFormState.handle_submit,
     )

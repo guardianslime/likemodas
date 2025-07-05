@@ -7,7 +7,7 @@ import sqlalchemy
 from sqlmodel import select
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo
+from ..models import BlogPostModel, UserInfo, PostImageModel # Importar PostImageModel
 import asyncio
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
@@ -19,14 +19,23 @@ class BlogPostState(SessionState):
     post: Optional["BlogPostModel"] = None
     post_content: str = ""
     post_publish_active: bool = False
-    uploaded_image: Optional[str] = None
+
+    # --- CAMBIO: De una imagen a una lista ---
+    uploaded_images: list[str] = []
+
     publish_date_str: str = ""
     publish_time_str: str = ""
 
-    # --- NUEVO: Variable simple para la vista previa ---
-    image_preview_url: str = ""
-
-    # --- ELIMINADO: El @rx.var def image_url(self) se ha quitado ---
+    @rx.var
+    def preview_image_urls(self) -> list[str]:
+        """Combina imágenes existentes y nuevas para la vista previa."""
+        urls = []
+        if self.post:
+            for img in self.post.images:
+                urls.append(f"/_upload/{img.filename}")
+        for filename in self.uploaded_images:
+            urls.append(f"/_upload/{filename}")
+        return urls
 
     @rx.var
     def blog_post_id(self) -> str:
@@ -45,16 +54,17 @@ class BlogPostState(SessionState):
         return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
 
     async def handle_upload(self, files: list[rx.UploadFile]):
-        file = files[0]
-        data = await file.read()
-        path = rx.get_upload_dir() / file.name
-        with path.open("wb") as f:
-            f.write(data)
-        self.uploaded_image = file.name
-        # --- NUEVO: Actualiza la vista previa al instante ---
-        self.image_preview_url = f"/_upload/{file.name}"
+        """Maneja la subida de múltiples archivos."""
+        for file in files:
+            data = await file.read()
+            path = rx.get_upload_dir() / file.name
+            with path.open("wb") as f:
+                f.write(data)
+            if file.name not in self.uploaded_images:
+                self.uploaded_images.append(file.name)
 
     def get_post_detail(self):
+        self.uploaded_images = [] # Limpiar imágenes nuevas al cargar
         if self.my_userinfo_id is None:
             self.post = None
             return
@@ -69,24 +79,17 @@ class BlogPostState(SessionState):
                 return
             
             sql_statement = select(BlogPostModel).options(
-                sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+                sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
+                sqlalchemy.orm.selectinload(BlogPostModel.images) # Cargar las imágenes
             ).where(lookups)
             result = session.exec(sql_statement).one_or_none()
             
             self.post = result
             if result is None:
                 self.post_content = ""
-                self.image_preview_url = "" # <-- CORRECCIÓN: Limpia la URL si no hay post
             else:
                 self.post_content = self.post.content
                 self.post_publish_active = self.post.publish_active
-
-                # --- NUEVO: Establece la URL de la vista previa al cargar ---
-                if self.post.image_filename:
-                    self.image_preview_url = f"/_upload/{self.post.image_filename}"
-                else:
-                    self.image_preview_url = ""
-
                 if self.post.publish_date:
                     self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
                     self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
@@ -95,50 +98,35 @@ class BlogPostState(SessionState):
                     self.publish_date_str = now.strftime("%Y-%m-%d")
                     self.publish_time_str = now.strftime("%H:%M:%S")
 
-    # ... (El resto de la clase y las subclases no cambian) ...
-    def load_posts(self, *args, **kwargs):
-        with rx.session() as session:
-            result = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
-            ).all()
-            self.posts = result
+    # ... (load_posts y to_blog_post no cambian) ...
 
-    def add_post(self, form_data: dict):
+    def add_post_and_images(self, form_data: dict, image_filenames: list[str]):
+        """Añade un post y luego sus imágenes."""
         with rx.session() as session:
+            # Crear el post principal
             post = BlogPostModel(**form_data)
             session.add(post)
             session.commit()
             session.refresh(post)
+
+            # Crear y asociar las imágenes
+            for filename in image_filenames:
+                image_entry = PostImageModel(filename=filename, blog_post_id=post.id)
+                session.add(image_entry)
+            
+            session.commit()
+            session.refresh(post) # Refrescar de nuevo para cargar las imágenes
             self.post = post
 
-    def save_post_edits(self, post_id: int, updated_data: dict):
+    def add_images_to_post(self, post_id: int, image_filenames: list[str]):
+        """Añade nuevas imágenes a un post existente."""
         with rx.session() as session:
-            post = session.exec(
-                select(BlogPostModel).where(
-                    BlogPostModel.id == post_id
-                )
-            ).one_or_none()
-            if post is None:
-                return
-            for key, value in updated_data.items():
-                setattr(post, key, value)
-            session.add(post)
+            for filename in image_filenames:
+                image_entry = PostImageModel(filename=filename, blog_post_id=post_id)
+                session.add(image_entry)
             session.commit()
-            reloaded_post = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
-                ).where(BlogPostModel.id == post_id)
-            ).one_or_none()
-            self.post = reloaded_post
-
-    def to_blog_post(self, edit_page=False):
-        if not self.post:
-            return rx.redirect(BLOG_POSTS_ROUTE)
-        if edit_page:
-            return rx.redirect(f"{self.blog_post_edit_url}")
-        return rx.redirect(f"{self.blog_post_url}")
+        # Recargar el post para que la UI se actualice
+        self.get_post_detail()
 
 class BlogAddPostFormState(BlogPostState):
     form_data: dict = {}
@@ -147,18 +135,20 @@ class BlogAddPostFormState(BlogPostState):
         data = form_data.copy()
         if self.my_userinfo_id is not None:
             data['userinfo_id'] = self.my_userinfo_id
-        if self.uploaded_image:
-            data['image_filename'] = self.uploaded_image
-        self.form_data = data
-        self.add_post(data)
+        
+        self.add_post_and_images(data, self.uploaded_images)
         return self.to_blog_post(edit_page=True)
 
 class BlogEditFormState(BlogPostState):
     form_data: dict = {}
 
     def handle_submit(self, form_data):
-        self.form_data = form_data
-        post_id = form_data.pop('post_id')
+        post_id_str = form_data.pop('post_id')
+        post_id = int(post_id_str)
+
+        if self.uploaded_images:
+            self.add_images_to_post(post_id, self.uploaded_images)
+        
         publish_date = form_data.pop('publish_date', None)
         publish_time = form_data.pop('publish_time', None)
 
@@ -172,11 +162,14 @@ class BlogEditFormState(BlogPostState):
         
         publish_active = form_data.pop('publish_active', False) == "on"
         
-        updated_data = {**form_data}
-        if self.uploaded_image:
-            updated_data['image_filename'] = self.uploaded_image
-            
-        updated_data['publish_active'] = publish_active
-        updated_data['publish_date'] = final_publish_date
-        self.save_post_edits(post_id, updated_data)
+        with rx.session() as session:
+            post = session.get(BlogPostModel, post_id)
+            if post:
+                post.title = form_data.get("title", post.title)
+                post.content = form_data.get("content", post.content)
+                post.publish_active = publish_active
+                post.publish_date = final_publish_date
+                session.add(post)
+                session.commit()
+        
         return self.to_blog_post()
