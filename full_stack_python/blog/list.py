@@ -20,6 +20,7 @@ def blog_post_list_item(post: BlogPostModel):
                         height="150px",
                         object_fit="cover",
                     ),
+                    # Placeholder si no hay imagen
                     rx.box(
                         rx.icon("image", size=48, color_scheme="gray"),
                         width="100%",
@@ -48,9 +49,8 @@ def blog_post_list_page() -> rx.Component:
         SessionState.is_authenticated,
         rx.grid(
             rx.foreach(BlogPostState.posts, blog_post_list_item),
-            # --- ¡CORRECCIÓN AQUÍ! ---
-            # Usamos rx.breakpoints para definir columnas responsivas correctamente.
-            columns=rx.breakpoints(default="1", sm="2", md="3", lg="4"),
+            # --- ¡CORRECCIÓN! Se cambia 'default' por 'initial' ---
+            columns=rx.breakpoints(initial="1", sm="2", md="3", lg="4"),
             spacing="4",
             width="100%",
         ),
