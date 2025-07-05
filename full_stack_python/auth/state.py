@@ -1,26 +1,24 @@
-# full_stack_python/auth/state.py
-
 import reflex as rx
 import reflex_local_auth
+
 import sqlmodel
+
 from ..models import UserInfo
 
-# La línea 'from ..auth.state import SessionState' se ha eliminado porque es una auto-importación incorrecta.
 
 class SessionState(reflex_local_auth.LocalAuthState):
-    """Estado de la sesión que maneja la información del usuario autenticado."""
-
     @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None:
         if self.authenticated_user_info is None:
             return None
-        return str(self.authenticated_user_info.id)
+        return self.authenticated_user_info.id
+
 
     @rx.var(cache=True)
     def my_user_id(self) -> str | None:
         if self.authenticated_user.id < 0:
             return None
-        return str(self.authenticated_user.id)
+        return self.authenticated_user.id
 
     @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
@@ -38,32 +36,47 @@ class SessionState(reflex_local_auth.LocalAuthState):
                     UserInfo.user_id == self.authenticated_user.id
                 ),
             ).one_or_none()
+            if result is None:
+                return None
+            # database lookup
+            # result.user
+            # user_obj = result.user
+            # print(result.user)
             return result
     
+    def on_load(self):
+        if not self.is_authenticated:
+            return reflex_local_auth.LoginState.redir
+        print(self.is_authenticated)
+        print(self.authenticated_user_info)
+        
     def perform_logout(self):
         self.do_logout()
         return rx.redirect("/")
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
-    """Estado para manejar el registro de nuevos usuarios."""
-    def handle_registration_email(self, form_data: dict):
-        # El método _validate_fields ya está en la clase base
+    def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
+        username = form_data["username"]
+        password = form_data["password"]
         validation_errors = self._validate_fields(
-            form_data["username"], form_data["password"], form_data["confirm_password"]
+            username, password, form_data["confirm_password"]
         )
         if validation_errors:
+            self.new_user_id = -1
             return validation_errors
-            
-        # El método _register_user ya está en la clase base y devuelve el ID
-        new_user_id = self._register_user(form_data["username"], form_data["password"])
+        self._register_user(username, password)
+        return self.new_user_id
         
+
+    def handle_registration_email(self, form_data):
+        new_user_id = self.handle_registration(form_data)
         if isinstance(new_user_id, int) and new_user_id >= 0:
             with rx.session() as session:
                 session.add(
                     UserInfo(
                         email=form_data["email"],
-                        user_id=new_user_id,
+                        user_id=self.new_user_id,
                     )
                 )
                 session.commit()
-        return self.successful_registration
+        return type(self).successful_registration

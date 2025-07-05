@@ -1,19 +1,35 @@
-import reflex as rx
+import reflex as rx 
 import reflex_local_auth
 from ..ui.base import base_page
-from .forms import blog_post_form
-from .state import BlogPostState
+from . import forms
 
 @reflex_local_auth.require_login
 def blog_post_add_page() -> rx.Component:
-    return base_page(
-        rx.vstack(
-            rx.heading("Crear Nueva Publicación", size="9"),
-            blog_post_form(),
-            width=["95%", "80%", "70%"],
-            margin="auto",
-            spacing="5"
-        ),
-        # Limpiamos el estado al montar la página de "crear"
-        on_mount=BlogPostState.get_post_detail
-    )
+    my_form = forms.blog_post_add_form()
+    my_child = rx.vstack(
+            rx.heading("New Blog Post", size="9"), 
+            rx.desktop_only(
+                rx.box(
+                    my_form,
+                    width="50vw"
+                )
+            ),
+            rx.tablet_only(
+                rx.box(
+                    my_form,
+                    width="75vw"
+                )
+            ),
+            rx.mobile_only(
+                rx.box(
+                    my_form,
+                    id= "my-form-box",
+                    width="85vw"
+                )
+            ),
+            spacing="5",
+            align="center",
+            min_height="95vh",
+        )
+    
+    return base_page(my_child)

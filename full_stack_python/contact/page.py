@@ -3,21 +3,18 @@
 import reflex as rx 
 import reflex_local_auth
 from ..ui.base import base_page
-# from ..models import ContactEntryModel  <--- ELIMINA ESTA LÍNEA
+from ..models import ContactEntryModel
 from .form import contact_form
-from .state import ContactState
+from .state import ContactState # Importa el estado único
 
-def contact_entry_list_item(contact: dict) -> rx.Component:
-    """Muestra una entrada de contacto individual desde un diccionario."""
+def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
+    """Muestra una entrada de contacto individual."""
     return rx.box(
-        rx.heading(f"{contact['first_name']} ({contact['email']})", size="4"),
-        rx.text(contact['message'], white_space="pre-wrap", margin_y="0.5em"),
-        
-        # Usamos la clave del diccionario que ya viene formateada
-        rx.text(f"Recibido el: {contact['created_at_formatted']}", size="2", color_scheme="gray"),
-        
+        rx.heading(f"{contact.first_name} ({contact.email})", size="4"),
+        rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
+        rx.text(f"Recibido el: {contact.created_at_formatted}", size="2", color_scheme="gray"),
         rx.cond(
-            contact['userinfo_id'],
+            contact.userinfo_id,
             rx.text("Enviado por un usuario registrado", size="2", weight="bold"),
             rx.text("Enviado por un invitado", size="2", weight="bold"),
         ),
@@ -30,8 +27,7 @@ def contact_entries_list_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Historial de Contacto", size="7"),
-            # Iteramos sobre la nueva lista pre-procesada
-            rx.foreach(ContactState.entries_with_formatted_date, contact_entry_list_item),
+            rx.foreach(ContactState.entries, contact_entry_list_item),
             spacing="5", align="center", width="100%", max_width="800px", margin="auto", min_height="85vh"
         )
     )
