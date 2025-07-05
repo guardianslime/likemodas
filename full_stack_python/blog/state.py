@@ -24,6 +24,13 @@ class BlogPostState(SessionState):
     publish_date_str: str = ""
     publish_time_str: str = ""
     post_id_str: str = ""
+
+    @rx.var
+    def post_images(self) -> list[PostImageModel]:
+        """Devuelve de forma segura la lista de imágenes del post, o una lista vacía."""
+        if self.post and self.post.images:
+            return self.post.images
+        return []
     
     @rx.var
     def preview_image_urls(self) -> list[str]:

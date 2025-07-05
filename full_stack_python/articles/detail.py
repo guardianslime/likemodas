@@ -23,18 +23,15 @@ def article_detail_page() -> rx.Component:
         # --- CORRECCIÓN FINAL ---
         # Envolvemos TODA la galería en un rx.cond.
         # Solo se renderizará si la lista post.images existe y tiene contenido.
-        rx.cond(
-            post.images,
-            rx.grid(
-                rx.foreach(
-                    post.images,
-                    lambda img: rx.image(
-                        src=rx.get_upload_url(img.filename),
-                        width="100%", height="auto", border_radius="md"
-                    )
-                ),
-                columns="3", spacing="4", width="100%", margin_y="1em",
-            )
+        rx.grid(
+            rx.foreach(
+                state.ArticlePublicState.post_images,
+                lambda img: rx.image(
+                    src=rx.get_upload_url(img.filename),
+                    width="100%", height="auto", border_radius="md"
+                )
+            ),
+            columns="3", spacing="4", width="100%", margin_y="1em",
         ),
 
         rx.text(post.content, white_space='pre-wrap'),
@@ -42,9 +39,5 @@ def article_detail_page() -> rx.Component:
     )
 
     return base_page(
-        rx.cond(
-            post,
-            article_view,
-            not_found_component(title="Artículo No Encontrado")
-        )
+        rx.cond(post, article_view, not_found_component(title="Artículo No Encontrado"))
     )

@@ -7,7 +7,7 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo
+from ..models import BlogPostModel, UserInfo, PostImageModel 
 
 ARTICLE_LIST_ROUTE = navigation.routes.ARTICLE_LIST_ROUTE
 if ARTICLE_LIST_ROUTE.endswith("/"):
@@ -19,6 +19,13 @@ class ArticlePublicState(SessionState):
     post_content: str = ""
     post_publish_active: bool = False
     limit: int = 20
+
+    @rx.var
+    def post_images(self) -> list[PostImageModel]:
+        """Devuelve de forma segura la lista de imágenes del post, o una lista vacía."""
+        if self.post and self.post.images:
+            return self.post.images
+        return []
 
     @rx.var
     def post_id(self) -> str:  # Añadida la anotación de tipo -> str

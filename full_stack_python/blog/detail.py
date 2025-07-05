@@ -28,18 +28,15 @@ def blog_post_detail_page() -> rx.Component:
 
         # --- CORRECCIÓN FINAL ---
         # Envolvemos TODA la galería en un rx.cond.
-        rx.cond(
-            post.images,
-            rx.grid(
-                rx.foreach(
-                    post.images,
-                    lambda img: rx.image(
-                        src=f"/_upload/{img.filename}", 
-                        width="100%", height="auto", border_radius="md"
-                    )
-                ),
-                columns="3", spacing="4", width="100%", margin_y="1em",
-            )
+        rx.grid(
+            rx.foreach(
+                BlogPostState.post_images, # <-- Usa la nueva propiedad segura
+                lambda img: rx.image(
+                    src=f"/_upload/{img.filename}", 
+                    width="100%", height="auto", border_radius="md"
+                )
+            ),
+            columns="3", spacing="4", width="100%", margin_y="1em",
         ),
 
         rx.text(post.content, white_space='pre-wrap'),
