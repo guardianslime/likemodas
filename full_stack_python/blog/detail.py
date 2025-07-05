@@ -4,7 +4,20 @@ import reflex as rx
 from ..ui.base import base_page
 from . import state
 
+from ..ui.components import not_found_component
+
 # La importación a 'blog.notfound' se ha eliminado para romper el ciclo.
+def blog_post_detail_page() -> rx.Component:
+    edit_link = rx.link("Editar", href=state.BlogPostState.blog_post_edit_url)
+    
+    my_child = rx.cond(
+        state.BlogPostState.post,
+        rx.vstack(
+            # ... (todo el vstack del detalle del post no cambia) ...
+        ),
+        # --- ACTUALIZACIÓN: Usamos el componente compartido ---
+        not_found_component(title="Publicación no encontrada")
+    )
 
 def article_detail_page() -> rx.Component:
     
