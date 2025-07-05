@@ -23,6 +23,14 @@ def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
         href=post_detail_url
     )
 
+def blog_post_list_page() -> rx.Component:
+    return base_page(
+        rx.vstack(
+            ...,
+            on_mount=BlogPostState.load_posts # <-- AÑADIR
+        )
+    )
+
 def blog_post_list_item(post: BlogPostModel):
     return rx.box(
         blog_post_detail_link(    

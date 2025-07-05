@@ -18,5 +18,6 @@ def blog_post_edit_page() -> rx.Component:
     )
     
     return base_page(
-        rx.cond(post, edit_view, not_found_component(title="Publicación no encontrada"))
+        rx.cond(post, edit_view, not_found_component(title="Publicación no encontrada")),
+        on_mount=BlogEditFormState.get_post_detail
     )

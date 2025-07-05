@@ -23,5 +23,6 @@ def article_detail_page() -> rx.Component:
     )
 
     return base_page(
-        rx.cond(post, article_view, not_found_component(title="Artículo No Encontrado"))
+        rx.cond(post, article_view, not_found_component(title="Artículo No Encontrado")),
+        on_mount=state.ArticlePublicState.get_post_detail # <-- AÑADIR
     )

@@ -43,10 +43,9 @@ def article_card_link(post: BlogPostModel):
 def article_public_list_component(columns:int=3, spacing:int=5, limit:int=100) -> rx.Component:
     return rx.grid(
         rx.foreach(state.ArticlePublicState.posts, article_card_link),
-        columns=f'{columns}',
-        spacing= f'{spacing}',
-        width="100%",
-        on_mount=lambda: state.ArticlePublicState.set_limit_and_reload(limit)
+        columns=f'{columns}', spacing=f'{spacing}', width="100%",
+        # --- CAMBIO: La carga de datos se mueve aquí ---
+        on_mount=state.ArticlePublicState.set_limit_and_reload(limit)
     )
 
 def article_public_list_page() -> rx.Component:

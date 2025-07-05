@@ -32,5 +32,6 @@ def blog_post_detail_page() -> rx.Component:
     )
 
     return base_page(
-        rx.cond(post, detail_view, not_found_component(title="Publicación no encontrada"))
+        rx.cond(post, detail_view, not_found_component(title="Publicación no encontrada")),
+        on_mount=BlogPostState.get_post_detail
     )
