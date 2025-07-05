@@ -51,11 +51,11 @@ class ArticlePublicState(SessionState):
             ).one_or_none()
             self.post = result
 
-    # --- ¡MÉTODO AÑADIDO! ---
-    # Esta es la función que faltaba.
     def set_limit_and_reload(self, new_limit: int = 5):
         self.limit = new_limit
-        return self.load_posts
+        # --- ¡CORRECCIÓN AQUÍ! ---
+        # Se añaden los paréntesis para EJECUTAR el evento.
+        return self.load_posts()
 
     def load_posts(self, *args, **kwargs):
         with rx.session() as session:
