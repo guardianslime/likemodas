@@ -42,7 +42,7 @@ class ArticlePublicState(SessionState):
             result = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.selectinload(BlogPostModel.images) # Eager loading
+                    sqlalchemy.orm.selectinload(BlogPostModel.images)
                 ).where(
                     (BlogPostModel.publish_active == True) &
                     (BlogPostModel.publish_date < datetime.now()) &
@@ -51,12 +51,18 @@ class ArticlePublicState(SessionState):
             ).one_or_none()
             self.post = result
 
+    # --- ¡MÉTODO AÑADIDO! ---
+    # Esta es la función que faltaba.
+    def set_limit_and_reload(self, new_limit: int = 5):
+        self.limit = new_limit
+        return self.load_posts
+
     def load_posts(self, *args, **kwargs):
         with rx.session() as session:
             result = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo),
-                    sqlalchemy.orm.selectinload(BlogPostModel.images) # Eager loading
+                    sqlalchemy.orm.selectinload(BlogPostModel.images)
                 ).where(
                     (BlogPostModel.publish_active == True) &
                     (BlogPostModel.publish_date < datetime.now())
