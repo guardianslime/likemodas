@@ -19,13 +19,6 @@ class ArticlePublicState(SessionState):
     limit: int = 10
 
     @rx.var
-    def post_images(self) -> list[PostImageModel]:
-        """Devuelve de forma segura la lista de imágenes del post, o una lista vacía."""
-        if self.post and self.post.images:
-            return self.post.images
-        return []
-
-    @rx.var
     def post_id(self) -> str:
         return self.router.page.params.get("article_id", "")
 

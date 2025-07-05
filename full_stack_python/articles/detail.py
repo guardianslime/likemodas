@@ -13,7 +13,7 @@ def article_detail_page() -> rx.Component:
         rx.divider(),
         rx.grid(
             rx.foreach(
-                state.ArticlePublicState.post_images,
+                post.images,
                 lambda img: rx.image(src=rx.get_upload_url(img.filename), width="100%", height="auto", border_radius="md")
             ),
             columns="3", spacing="4", width="100%", margin_y="1em",

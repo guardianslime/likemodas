@@ -25,7 +25,7 @@ def blog_post_detail_page() -> rx.Component:
         rx.divider(width="100%"),
         rx.grid(
             rx.foreach(
-                BlogPostState.post_images, # Usamos la propiedad segura
+                post.images,
                 lambda img: rx.image(src=f"/_upload/{img.filename}", width="100%", height="auto", border_radius="md")
             ),
             columns="3", spacing="4", width="100%", margin_y="1em",
