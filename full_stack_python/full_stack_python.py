@@ -11,12 +11,8 @@ from .auth.state import SessionState
 from .articles.detail import article_detail_page
 from .articles.list import article_public_list_page
 from .articles.state import ArticlePublicState
-
-# --- ¡CORRECCIÓN #1! ---
-# Importamos BlogPostState directamente para evitar errores de importación circular.
 from .blog.state import BlogPostState
 
-# Se importan los paquetes completos para usar la notación paquete.componente
 from . import blog, contact, navigation, pages
 
 # --- Definición de la Aplicación ---
@@ -67,20 +63,21 @@ app.add_page(
 app.add_page(
     blog.blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
-    # --- ¡CORRECCIÓN #2! ---
-    # Usamos la referencia directa a BlogPostState que importamos arriba.
-    on_load=BlogPostState.load_posts
+    # --- ¡CORRECCIÓN CON LAMBDA! ---
+    on_load=lambda: BlogPostState.load_posts
 )
 app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(
     blog.blog_post_detail_page,
     route="/blog/[blog_id]",
-    on_load=BlogPostState.get_post_detail
+    # --- ¡CORRECCIÓN CON LAMBDA! ---
+    on_load=lambda: BlogPostState.get_post_detail
 )
 app.add_page(
     blog.blog_post_edit_page,
     route="/blog/[blog_id]/edit",
-    on_load=BlogPostState.get_post_detail
+    # --- ¡CORRECCIÓN CON LAMBDA! ---
+    on_load=lambda: BlogPostState.get_post_detail
 )
 
 # Páginas de Contacto
