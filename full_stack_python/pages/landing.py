@@ -1,10 +1,12 @@
-import reflex as rx 
+# full_stack_python/pages/landing.py
+
+import reflex as rx
 from .. import navigation
 from ..articles.list import article_public_list_component
+from ..articles.state import ArticlePublicState
 
 def landing_component() -> rx.Component:
     return rx.vstack(
-        # rx.theme_panel(default_open=True),
         rx.heading("Bienvenidos a Likemodas", size="9"),
         rx.link(
             rx.button("About us", color_scheme='gray'),
@@ -16,7 +18,8 @@ def landing_component() -> rx.Component:
         spacing="5",
         justify="center",
         align="center",
-        # text_align="center",
         min_height="85vh",
-        id="my-child"
+        id="my-child",
+        # La carga de datos se dispara cuando este componente se monta
+        on_mount=ArticlePublicState.load_posts
     )

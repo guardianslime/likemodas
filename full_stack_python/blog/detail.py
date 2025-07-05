@@ -1,3 +1,5 @@
+# full_stack_python/blog/detail.py
+
 import reflex as rx 
 from ..ui.base import base_page
 from .state import BlogPostState
@@ -7,6 +9,7 @@ def blog_post_detail_page() -> rx.Component:
     post = BlogPostState.post
     edit_link = rx.link("Editar", href=BlogPostState.blog_post_edit_url)
     
+    # Vista de detalle que se renderiza solo si 'post' existe
     detail_view = rx.vstack(
         rx.hstack(
             rx.heading(post.title, size="9"),
@@ -22,7 +25,7 @@ def blog_post_detail_page() -> rx.Component:
         rx.divider(width="100%"),
         rx.grid(
             rx.foreach(
-                BlogPostState.post_images,
+                BlogPostState.post_images, # Usamos la propiedad segura
                 lambda img: rx.image(src=f"/_upload/{img.filename}", width="100%", height="auto", border_radius="md")
             ),
             columns="3", spacing="4", width="100%", margin_y="1em",
@@ -32,6 +35,11 @@ def blog_post_detail_page() -> rx.Component:
     )
 
     return base_page(
-        rx.cond(post, detail_view, not_found_component(title="Publicación no encontrada")),
+        rx.cond(
+            post,
+            detail_view,
+            not_found_component(title="Publicación no encontrada")
+        ),
+        # La carga de datos se dispara cuando la página se monta
         on_mount=BlogPostState.get_post_detail
     )
