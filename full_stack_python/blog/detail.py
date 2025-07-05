@@ -1,39 +1,50 @@
-# full_stack_python/blog/detail.py
+# full_stack_python/articles/detail.py
 
 import reflex as rx 
 from ..ui.base import base_page
 from . import state
-from .notfound import blog_post_not_found
+from ..blog.notfound import blog_post_not_found
 
-def blog_post_detail_page() -> rx.Component:
-    edit_link = rx.link("Editar", href=state.BlogPostState.blog_post_edit_url)
-    
+def article_detail_page() -> rx.Component:
     my_child = rx.cond(
-        (state.BlogPostState.post) & (state.BlogPostState.post.userinfo) & (state.BlogPostState.post.userinfo.user),
+        state.ArticlePublicState.post,
         rx.vstack(
             rx.hstack(
-                rx.heading(state.BlogPostState.post.title, size="9"),
-                # --- NUEVO: Botón para editar ---
-                edit_link,
-                align='end', justify='between', width="100%"
+                rx.heading(state.ArticlePublicState.post.title, size="9"),
+                align='end'
             ),
-            rx.text(...), # autor
-            rx.text(...), # fecha
-            rx.divider(width="100%"),
+            rx.text("Por ", state.ArticlePublicState.post.userinfo.user.username),
+            rx.cond(
+                state.ArticlePublicState.post.publish_date,
+                rx.text(state.ArticlePublicState.post.publish_date.to_string()),
+            ),
+            rx.divider(),
 
-            # --- CAMBIO: Mostrar galería de imágenes ---
+            # --- ¡CORRECCIÓN AQUÍ! ---
+            # Muestra una galería con todas las imágenes del post.
             rx.grid(
                 rx.foreach(
-                    state.BlogPostState.post.images,
-                    lambda img: rx.image(src=f"/_upload/{img.filename}", width="100%", height="auto", border_radius="md")
+                    state.ArticlePublicState.post.images,
+                    lambda img: rx.image(
+                        src=rx.get_upload_url(img.filename),
+                        width="100%",
+                        height="auto",
+                        border_radius="md"
+                    )
                 ),
                 columns="3",
                 spacing="4",
-                width="100%"
+                width="100%",
+                margin_y="1em",
             ),
 
-            rx.text(state.BlogPostState.post.content, white_space='pre-wrap'),
-            spacing="5", align="start", min_height="85vh", width="100%"
+            rx.text(
+                state.ArticlePublicState.post.content,
+                white_space='pre-wrap'
+            ),
+            spacing="5",
+            align="start",
+            min_height="85vh",
         ),
         blog_post_not_found()
     )
