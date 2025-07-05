@@ -35,16 +35,8 @@ app = rx.App(
         scaling="90%",
         radius="medium",
         accent_color="sky"
-    ),
-    static_paths={
-        "/static": "/data/uploads"
-    },
-    # --- CAMBIO PARA DEPURACIÓN ---
-    # Abrimos CORS completamente para descartar que este sea el problema.
-    # Esto permite que CUALQUIER dominio se conecte a tu backend.
-    cors_allowed_origins=["*"]
+    )
 )
-
 
 # --- Registro de Páginas ---
 
@@ -72,24 +64,21 @@ app.add_page(
 app.add_page(
     blog.blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
-    on_load=blog.state.BlogPostState.load_posts
+    on_load=blog.BlogPostState.load_posts
 )
-app.add_page(
-    blog.blog_post_add_page, 
-    route=navigation.routes.BLOG_POST_ADD_ROUTE,
-    on_load=blog.state.BlogAddPostFormState.clear_uploaded_image
-)
+app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(
     blog.blog_post_detail_page,
     route="/blog/[blog_id]",
-    on_load=blog.state.BlogPostState.get_post_detail
+    on_load=blog.BlogPostState.get_post_detail
 )
 app.add_page(
     blog.blog_post_edit_page,
     route="/blog/[blog_id]/edit",
-    on_load=blog.state.BlogPostState.get_post_detail
+    on_load=blog.BlogPostState.get_post_detail
 )
 
+# --- INICIO DE LA CORRECCIÓN ---
 # Páginas de Contacto
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
@@ -97,3 +86,4 @@ app.add_page(
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
     on_load=contact.ContactState.load_entries
 )
+# --- FIN DE LA CORRECCIÓN ---
