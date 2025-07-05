@@ -12,19 +12,19 @@ from .articles.detail import article_detail_page
 from .articles.list import article_public_list_page
 from .articles.state import ArticlePublicState
 
-# --- ¡CORRECCIÓN #1: Importaciones directas! ---
+# --- ¡Importaciones directas y explícitas! ---
 from .blog.state import BlogPostState
 from .blog.list import blog_post_list_page
 from .blog.add import blog_post_add_page
 from .blog.detail import blog_post_detail_page
 from .blog.edit import blog_post_edit_page
 
-# Se importan los paquetes que no causan conflicto
 from . import contact, navigation, pages
 
-# --- Definición de la Aplicación ---
+# ... (El resto del archivo no cambia, las llamadas a app.add_page ya usan las referencias directas)
+# ... (Te lo incluyo completo por si acaso)
+
 def index() -> rx.Component:
-    """La página principal que redirige al dashboard si el usuario está autenticado."""
     return base_page(
         rx.cond(
             SessionState.is_authenticated,
@@ -44,8 +44,6 @@ app = rx.App(
     )
 )
 
-# --- Registro de Páginas ---
-
 app.add_page(index, on_load=ArticlePublicState.load_posts)
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -54,7 +52,6 @@ app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
-# Páginas de Artículos
 app.add_page(
     article_public_list_page,
     route=navigation.routes.ARTICLE_LIST_ROUTE,
@@ -66,8 +63,6 @@ app.add_page(
     on_load=ArticlePublicState.get_post_detail,
 )
 
-# --- ¡CORRECCIÓN #2: Se usan las referencias directas! ---
-# Páginas de Blog
 app.add_page(
     blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
@@ -85,7 +80,6 @@ app.add_page(
     on_load=lambda: BlogPostState.get_post_detail
 )
 
-# Páginas de Contacto
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
     contact.contact_entries_list_page,
