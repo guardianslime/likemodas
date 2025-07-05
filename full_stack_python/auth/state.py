@@ -1,78 +1,85 @@
-# full_stack_python/auth/state.py
+# full_stack_python/blog/state.py
 
+from datetime import datetime
+from typing import Optional, List
 import reflex as rx
-import reflex_local_auth
-import sqlmodel
-from ..models import UserInfo
+import sqlalchemy
+from sqlmodel import select
+from .. import navigation
+from ..auth.state import SessionState
+from ..models import BlogPostModel, UserInfo, PostImageModel
+import asyncio
 
-class SessionState(reflex_local_auth.LocalAuthState):
-    @rx.var(cache=True)
-    def my_userinfo_id(self) -> str | None:
-        if self.authenticated_user_info is None:
-            return None
-        # --- ¡CORRECCIÓN! ---
-        # Se convierte el ID (que es un número) a un string para que coincida
-        # con el tipo de dato que la función promete devolver.
-        return str(self.authenticated_user_info.id)
+BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
+if BLOG_POSTS_ROUTE.endswith("/"):
+    BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
-    @rx.var(cache=True)
-    def my_user_id(self) -> str | None:
-        if self.authenticated_user.id < 0:
-            return None
-        # --- ¡CORRECCIÓN! ---
-        # El ID de usuario también debe ser un string.
-        return str(self.authenticated_user.id)
+class BlogPostState(SessionState):
+    posts: List["BlogPostModel"] = []
+    post: Optional["BlogPostModel"] = None
+    post_content: str = ""
+    post_publish_active: bool = False
+    uploaded_images: list[str] = []
+    publish_date_str: str = ""
+    publish_time_str: str = ""
+    post_id_str: str = ""
 
-    @rx.var(cache=True)
-    def authenticated_username(self) -> str | None:
-        if self.authenticated_user.id < 0:
-            return None
-        return self.authenticated_user.username
+    @rx.var
+    def post_images(self) -> list[PostImageModel]:
+        if self.post and self.post.images:
+            return self.post.images
+        return []
 
-    @rx.var(cache=True)
-    def authenticated_user_info(self) -> UserInfo | None:
-        if self.authenticated_user.id < 0:
-            return None
+    @rx.var
+    def preview_image_urls(self) -> list[str]:
+        urls = []
+        if self.post and self.post.images:
+            for img in self.post.images:
+                urls.append(f"/_upload/{img.filename}")
+        for filename in self.uploaded_images:
+            if f"/_upload/{filename}" not in urls:
+                urls.append(f"/_upload/{filename}")
+        return urls
+
+    # ... (los @rx.var blog_post_id, url y edit_url no cambian) ...
+
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        # ... (este método no cambia) ...
+
+    def get_post_detail(self):
+        self.uploaded_images = []
+        if self.my_userinfo_id is None:
+            self.post = None; return
+            
         with rx.session() as session:
+            if self.blog_post_id == "":
+                self.post = None; return
+            
+            # --- ¡VERIFICACIÓN Y CORRECCIÓN! ---
+            # Nos aseguramos de que aquí también se carguen las imágenes.
             result = session.exec(
-                sqlmodel.select(UserInfo).where(
-                    UserInfo.user_id == self.authenticated_user.id
-                ),
-            ).one_or_none()
-            return result
-    
-    def on_load(self):
-        if not self.is_authenticated:
-            return reflex_local_auth.LoginState.redir
-        print(self.is_authenticated)
-        print(self.authenticated_user_info)
-    
-    def perform_logout(self):
-        self.do_logout()
-        return rx.redirect("/")
-
-class MyRegisterState(reflex_local_auth.RegistrationState):
-    def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
-        username = form_data["username"]
-        password = form_data["password"]
-        validation_errors = self._validate_fields(
-            username, password, form_data["confirm_password"]
-        )
-        if validation_errors:
-            self.new_user_id = -1
-            return validation_errors
-        self._register_user(username, password)
-        return self.new_user_id
-
-    def handle_registration_email(self, form_data):
-        new_user_id = self.handle_registration(form_data)
-        if isinstance(new_user_id, int) and new_user_id >= 0:
-            with rx.session() as session:
-                session.add(
-                    UserInfo(
-                        email=form_data["email"],
-                        user_id=self.new_user_id,
-                    )
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.selectinload(BlogPostModel.images)
+                ).where(
+                    (BlogPostModel.userinfo_id == self.my_userinfo_id) &
+                    (BlogPostModel.id == self.blog_post_id)
                 )
-                session.commit()
-        return type(self).successful_registration
+            ).one_or_none()
+            
+            self.post = result
+            # ... (la lógica de if result/else no cambia) ...
+
+    def load_posts(self, *args, **kwargs):
+        with rx.session() as session:
+            # --- ¡CORRECCIÓN AQUÍ! ---
+            # Cargamos las imágenes también en la lista del blog.
+            result = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo),
+                    sqlalchemy.orm.selectinload(BlogPostModel.images)
+                ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
+            ).all()
+            self.posts = result
+
+    # ... (el resto de la clase y subclases no cambian) ...
