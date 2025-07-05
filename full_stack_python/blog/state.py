@@ -1,5 +1,3 @@
-# full_stack_python/blog/state.py
-
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -23,6 +21,12 @@ class BlogPostState(SessionState):
     publish_date_str: str = ""
     publish_time_str: str = ""
     post_id_str: str = ""
+
+    @rx.var
+    def post_images(self) -> list[PostImageModel]:
+        if self.post and self.post.images:
+            return self.post.images
+        return []
 
     @rx.var
     def preview_image_urls(self) -> list[str]:
@@ -58,7 +62,6 @@ class BlogPostState(SessionState):
                 self.uploaded_images.append(file.name)
 
     def _load_post_by_id(self, post_id: int):
-        """Función interna para cargar un post con sus imágenes."""
         with rx.session() as session:
             return session.exec(
                 select(BlogPostModel).options(
@@ -70,8 +73,7 @@ class BlogPostState(SessionState):
     def get_post_detail(self):
         self.uploaded_images = []
         if not self.my_userinfo_id or not self.blog_post_id:
-            self.post = None
-            return
+            self.post = None; return
         
         self.post = self._load_post_by_id(int(self.blog_post_id))
         if self.post:
@@ -93,7 +95,7 @@ class BlogPostState(SessionState):
             self.posts = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo),
-                    sqlalchemy.orm.selectinload(BlogPostModel.images) 
+                    sqlalchemy.orm.selectinload(BlogPostModel.images)
                 ).where(BlogPostModel.userinfo_id == self.my_userinfo_id)
             ).all()
 
@@ -104,28 +106,20 @@ class BlogPostState(SessionState):
 
 
 class BlogAddPostFormState(BlogPostState):
-    form_data: dict = {}
     def handle_submit(self, form_data: dict):
         with rx.session() as session:
             post_data = form_data.copy()
             post_data['userinfo_id'] = self.my_userinfo_id
-            
             post_obj = BlogPostModel(**post_data)
-            session.add(post_obj)
-            session.commit()
-            session.refresh(post_obj)
+            session.add(post_obj); session.commit(); session.refresh(post_obj)
             post_id = post_obj.id
-
             for filename in self.uploaded_images:
                 session.add(PostImageModel(filename=filename, blog_post_id=post_id))
             session.commit()
-        
         self.post = self._load_post_by_id(post_id)
         return self.to_blog_post(edit_page=True)
 
-
 class BlogEditFormState(BlogPostState):
-    form_data: dict = {}
     def handle_submit(self, form_data: dict):
         post_id = int(form_data.pop('post_id'))
         if self.uploaded_images:
@@ -133,7 +127,6 @@ class BlogEditFormState(BlogPostState):
                 for filename in self.uploaded_images:
                     session.add(PostImageModel(filename=filename, blog_post_id=post_id))
                 session.commit()
-        
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
             if post:
@@ -147,8 +140,6 @@ class BlogEditFormState(BlogPostState):
                         post.publish_date = datetime.strptime(f"{publish_date_str} {publish_time_str}", "%Y-%m-%d %H:%M:%S")
                     except (ValueError, TypeError):
                         post.publish_date = None
-                session.add(post)
-                session.commit()
-        
+                session.add(post); session.commit()
         self.post = self._load_post_by_id(post_id)
         return self.to_blog_post()

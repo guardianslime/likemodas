@@ -1,5 +1,3 @@
-# full_stack_python/articles/state.py
-
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -20,7 +18,6 @@ class ArticlePublicState(SessionState):
 
     @rx.var
     def post_images(self) -> list[PostImageModel]:
-        """Devuelve de forma segura la lista de imágenes del post, o una lista vacía."""
         if self.post and self.post.images:
             return self.post.images
         return []
@@ -37,9 +34,8 @@ class ArticlePublicState(SessionState):
     def get_post_detail(self):
         with rx.session() as session:
             if self.post_id == "":
-                self.post = None
-                return
-            result = session.exec(
+                self.post = None; return
+            self.post = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.selectinload(BlogPostModel.images)
@@ -49,17 +45,10 @@ class ArticlePublicState(SessionState):
                     (BlogPostModel.id == self.post_id)
                 )
             ).one_or_none()
-            self.post = result
-
-    def set_limit_and_reload(self, new_limit: int = 5):
-        self.limit = new_limit
-        # --- ¡CORRECCIÓN AQUÍ! ---
-        # Se añaden los paréntesis para EJECUTAR el evento.
-        return self.load_posts()
 
     def load_posts(self, *args, **kwargs):
         with rx.session() as session:
-            result = session.exec(
+            self.posts = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo),
                     sqlalchemy.orm.selectinload(BlogPostModel.images)
@@ -68,7 +57,6 @@ class ArticlePublicState(SessionState):
                     (BlogPostModel.publish_date < datetime.now())
                 ).limit(self.limit)
             ).all()
-            self.posts = result
 
     def to_post(self):
         if not self.post:
