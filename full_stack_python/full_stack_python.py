@@ -1,5 +1,4 @@
 import reflex as rx
-import os
 
 class State(rx.State):
     publicaciones: list[list[str]] = []
@@ -7,13 +6,17 @@ class State(rx.State):
     img_idx: int = 0  # Índice de la imagen actual en galería
 
     @rx.event
-    async def on_startup(self):
-        # Cargar imágenes persistentes al iniciar la app
+    async def cargar_publicadas(self):
+        # Cargar todas las imágenes que estén en el directorio de uploads
         upload_dir = rx.get_upload_dir()
         if upload_dir.exists():
             archivos = [f.name for f in upload_dir.iterdir() if f.is_file()]
-            if archivos and not self.publicaciones:
-                self.publicaciones.append(archivos)
+            # Solo agregamos si aún no están en publicaciones
+            imagenes_actuales = {img for grupo in self.publicaciones for img in grupo}
+            nuevas = [f for f in archivos if f not in imagenes_actuales]
+            if nuevas:
+                self.publicaciones.append(nuevas)
+                self.img_idx = 0  # Reiniciar índice al entrar
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -40,7 +43,7 @@ class State(rx.State):
     def imagenes(self) -> list[str]:
         # Junta todas las imágenes publicadas de todas las publicaciones
         return [img for grupo in self.publicaciones for img in grupo]
-    
+
     @rx.var
     def num_imagenes(self) -> int:
         return len(self.imagenes)
@@ -141,5 +144,5 @@ def galeria():
 
 app = rx.App()
 app.add_page(index, route="/")
-app.add_page(galeria, route="/galeria")
-app.add_event_handler("startup", State.on_startup)
+# Agrega el trigger on_load para llamar a cargar_publicadas cada vez que alguien entra a /galeria
+app.add_page(galeria, route="/galeria", on_load=State.cargar_publicadas)
