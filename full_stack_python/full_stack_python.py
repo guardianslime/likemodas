@@ -13,11 +13,20 @@ class State(rx.State):
             with path.open("wb") as f:
                 f.write(data)
             nombres.append(file.name)
-        self.publicaciones.append(nombres)
+        # Al subir nuevas imágenes, reemplaza la última publicación
+        if nombres:
+            self.publicaciones = [nombres]
+
+    @rx.event
+    def eliminar_imagen(self, nombre):
+        if self.publicaciones and nombre in self.publicaciones[0]:
+            self.publicaciones[0].remove(nombre)
+            # Si eliminas todas, borra la publicación
+            if not self.publicaciones[0]:
+                self.publicaciones = []
 
     @rx.var
     def imagenes(self) -> list[str]:
-        # Junta todas las imágenes de todas las publicaciones
         return [img for grupo in self.publicaciones for img in grupo]
     
     @rx.var
@@ -50,16 +59,28 @@ def index():
             border="2px dashed #60a5fa",
             padding="2em",
         ),
-        rx.text("Previsualización:"),
-        rx.hstack(
-            rx.foreach(
-                rx.selected_files("image_upload"),
-                lambda f: rx.image(src=f, width="150px"),
-            ),
-        ),
         rx.button(
             "Subir imágenes",
             on_click=State.handle_upload(rx.upload_files(upload_id="image_upload")),
+        ),
+        rx.text("Previsualización:"),
+        rx.cond(
+            State.imagenes,
+            rx.hstack(
+                rx.foreach(
+                    State.imagenes,
+                    lambda f: rx.vstack(
+                        rx.image(src=rx.get_upload_url(f), width="150px"),
+                        rx.button(
+                            "Eliminar",
+                            on_click=State.eliminar_imagen(f),
+                            size="1",
+                            color_scheme="red",
+                        ),
+                    ),
+                ),
+            ),
+            rx.text("No hay imágenes para previsualizar."),
         ),
         rx.link("Ver galería", href="/galeria"),
         padding="2em"
