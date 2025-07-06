@@ -2,6 +2,7 @@ import reflex as rx
 
 class State(rx.State):
     publicaciones: list[list[str]] = []
+    img_idx: int = 0  # Índice de la imagen actual en galería
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -13,6 +14,21 @@ class State(rx.State):
                 f.write(data)
             nombres.append(file.name)
         self.publicaciones.append(nombres)
+
+    @rx.var
+    def imagenes(self) -> list[str]:
+        # Junta todas las imágenes de todas las publicaciones
+        return [img for grupo in self.publicaciones for img in grupo]
+
+    @rx.event
+    def siguiente(self):
+        if self.imagenes and self.img_idx < len(self.imagenes) - 1:
+            self.img_idx += 1
+
+    @rx.event
+    def anterior(self):
+        if self.img_idx > 0:
+            self.img_idx -= 1
 
 def index():
     return rx.vstack(
@@ -41,19 +57,34 @@ def index():
             "Subir imágenes",
             on_click=State.handle_upload(rx.upload_files(upload_id="image_upload")),
         ),
-        rx.text("Publicaciones:"),
-        rx.foreach(
-            State.publicaciones,
-            lambda grupo: rx.hstack(
-                rx.foreach(
-                    grupo,
-                    lambda filename: rx.image(src=rx.get_upload_url(filename), width="150px"),
+        rx.link("Ver galería", href="/galeria"),
+        padding="2em"
+    )
+
+def galeria():
+    return rx.center(
+        rx.cond(
+            State.imagenes,
+            rx.vstack(
+                rx.image(
+                    src=rx.get_upload_url(State.imagenes[State.img_idx]),
+                    width="400px",
                 ),
-                margin_bottom="1em"
+                rx.hstack(
+                    rx.button("Anterior", on_click=State.anterior, disabled=State.img_idx == 0),
+                    rx.button(
+                        "Siguiente",
+                        on_click=State.siguiente,
+                        disabled=State.img_idx == rx.len(State.imagenes) - 1,
+                    ),
+                ),
+                rx.text(f"{State.img_idx + 1} / {rx.len(State.imagenes)}"),
             ),
+            rx.text("No hay imágenes publicadas."),
         ),
         padding="2em"
     )
 
 app = rx.App()
 app.add_page(index, route="/")
+app.add_page(galeria, route="/galeria")
