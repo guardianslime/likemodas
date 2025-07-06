@@ -6,12 +6,12 @@ class State(rx.State):
     # Imágenes seleccionadas pero no subidas aún (previsualización local)
     previsualizacion: list[str] = []
 
-    @rx.event
+  
     def actualizar_previsualizacion(self, archivos):
         # Actualiza la lista de previsualización con los nombres de los archivos seleccionados
         self.previsualizacion = archivos
 
-    @rx.event
+
     async def handle_upload(self, files: list[rx.UploadFile]):
         nombres = []
         for file in files:
