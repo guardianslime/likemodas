@@ -16,11 +16,13 @@ class State(rx.State):
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
             data = await file.read()
-            path = rx.get_upload_dir() / file.name
+            # 👇 CORRECCIÓN AQUÍ
+            path = rx.get_upload_dir() / file.filename
             with path.open("wb") as f:
                 f.write(data)
-            if file.name not in self.uploaded_files:
-                self.uploaded_files.append(file.name)
+            # 👇 Y CORRECCIÓN AQUÍ
+            if file.filename not in self.uploaded_files:
+                self.uploaded_files.append(file.filename)
 
 def index():
     return rx.vstack(
