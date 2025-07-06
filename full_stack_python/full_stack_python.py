@@ -1,9 +1,19 @@
 import reflex as rx
+import os
 
 class State(rx.State):
     publicaciones: list[list[str]] = []
     imagenes_temporales: list[str] = []
     img_idx: int = 0  # Índice de la imagen actual en galería
+
+    @rx.event
+    async def on_startup(self):
+        # Cargar imágenes persistentes al iniciar la app
+        upload_dir = rx.get_upload_dir()
+        if upload_dir.exists():
+            archivos = [f.name for f in upload_dir.iterdir() if f.is_file()]
+            if archivos and not self.publicaciones:
+                self.publicaciones.append(archivos)
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -60,10 +70,7 @@ def index():
             multiple=True,
             border="2px dashed #60a5fa",
             padding="2em",
-        ),
-        rx.button(
-            "Subir imágenes",
-            on_click=State.handle_upload(rx.upload_files(upload_id="image_upload")),
+            on_drop=State.handle_upload(rx.upload_files(upload_id="image_upload")),
         ),
         rx.text("Previsualización:"),
         rx.cond(
@@ -135,3 +142,4 @@ def galeria():
 app = rx.App()
 app.add_page(index, route="/")
 app.add_page(galeria, route="/galeria")
+app.add_event_handler("startup", State.on_startup)
