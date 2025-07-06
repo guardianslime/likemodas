@@ -2,31 +2,33 @@ import reflex as rx
 
 class State(rx.State):
     publicaciones: list[list[str]] = []
+    imagenes_temporales: list[str] = []
     img_idx: int = 0  # Índice de la imagen actual en galería
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
-        nombres = []
         for file in files:
             data = await file.read()
             path = rx.get_upload_dir() / file.name
             with path.open("wb") as f:
                 f.write(data)
-            nombres.append(file.name)
-        # Al subir nuevas imágenes, reemplaza la última publicación
-        if nombres:
-            self.publicaciones = [nombres]
+            if file.name not in self.imagenes_temporales:
+                self.imagenes_temporales.append(file.name)
 
     @rx.event
-    def eliminar_imagen(self, nombre):
-        if self.publicaciones and nombre in self.publicaciones[0]:
-            self.publicaciones[0].remove(nombre)
-            # Si eliminas todas, borra la publicación
-            if not self.publicaciones[0]:
-                self.publicaciones = []
+    def eliminar_imagen_temp(self, nombre):
+        if nombre in self.imagenes_temporales:
+            self.imagenes_temporales.remove(nombre)
+
+    @rx.event
+    def publicar(self):
+        if self.imagenes_temporales:
+            self.publicaciones.append(self.imagenes_temporales.copy())
+            self.imagenes_temporales = []
 
     @rx.var
     def imagenes(self) -> list[str]:
+        # Junta todas las imágenes publicadas de todas las publicaciones
         return [img for grupo in self.publicaciones for img in grupo]
     
     @rx.var
@@ -65,15 +67,15 @@ def index():
         ),
         rx.text("Previsualización:"),
         rx.cond(
-            State.imagenes,
+            State.imagenes_temporales,
             rx.hstack(
                 rx.foreach(
-                    State.imagenes,
+                    State.imagenes_temporales,
                     lambda f: rx.vstack(
                         rx.image(src=rx.get_upload_url(f), width="150px"),
                         rx.button(
                             "Eliminar",
-                            on_click=State.eliminar_imagen(f),
+                            on_click=State.eliminar_imagen_temp(f),
                             size="1",
                             color_scheme="red",
                         ),
@@ -81,6 +83,12 @@ def index():
                 ),
             ),
             rx.text("No hay imágenes para previsualizar."),
+        ),
+        rx.button(
+            "Publicar",
+            on_click=State.publicar,
+            disabled=~State.imagenes_temporales,
+            color_scheme="green"
         ),
         rx.link("Ver galería", href="/galeria"),
         padding="2em"
