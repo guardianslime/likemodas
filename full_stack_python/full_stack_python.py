@@ -71,14 +71,28 @@ def index():
             rx.hstack(
                 rx.foreach(
                     State.imagenes_temporales,
-                    lambda f: rx.vstack(
+                    lambda f: rx.box(
                         rx.image(src=rx.get_upload_url(f), width="150px"),
-                        rx.button(
-                            "Eliminar",
+                        rx.icon(
+                            tag="trash",
+                            style={
+                                "position": "absolute",
+                                "top": "8px",
+                                "right": "8px",
+                                "cursor": "pointer",
+                                "color": "red",
+                                "background": "white",
+                                "borderRadius": "50%",
+                                "padding": "2px",
+                                "boxShadow": "0 1px 2px rgba(0,0,0,0.15)",
+                            },
                             on_click=State.eliminar_imagen_temp(f),
-                            size="1",
-                            color_scheme="red",
                         ),
+                        style={
+                            "position": "relative",
+                            "display": "inline-block",
+                            "margin": "8px",
+                        },
                     ),
                 ),
             ),
