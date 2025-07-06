@@ -1,9 +1,18 @@
 import reflex as rx
+import os
 
 class State(rx.State):
     uploaded_files: list[str] = []
 
-    @rx.event
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Inicializar la lista con los archivos ya guardados en el volumen
+        upload_dir = rx.get_upload_dir()
+        if upload_dir.exists():
+            self.uploaded_files = [
+                f.name for f in upload_dir.iterdir() if f.is_file()
+            ]
+
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
             data = await file.read()
