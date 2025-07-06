@@ -1,7 +1,15 @@
 import reflex as rx
 
 class State(rx.State):
+    # Imágenes que el usuario ha subido (por publicación)
     publicaciones: list[list[str]] = []
+    # Imágenes seleccionadas pero no subidas aún (previsualización local)
+    previsualizacion: list[str] = []
+
+    @rx.event
+    def actualizar_previsualizacion(self, archivos):
+        # Actualiza la lista de previsualización con los nombres de los archivos seleccionados
+        self.previsualizacion = archivos
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -12,7 +20,9 @@ class State(rx.State):
             with path.open("wb") as f:
                 f.write(data)
             nombres.append(file.name)
+        # Añade la publicación (grupo de imágenes) y limpia la previsualización
         self.publicaciones.append(nombres)
+        self.previsualizacion = []
 
 def index():
     return rx.vstack(
@@ -29,18 +39,25 @@ def index():
             multiple=True,
             border="2px dashed #60a5fa",
             padding="2em",
+            # Actualiza la previsualización al seleccionar archivos
+            on_change=State.actualizar_previsualizacion(rx.selected_files("image_upload")),
         ),
         rx.text("Previsualización:"),
-        rx.hstack(
-            rx.foreach(
-                rx.selected_files("image_upload"),
-                lambda f: rx.image(src=f, width="150px"),
+        rx.cond(
+            State.previsualizacion,
+            rx.hstack(
+                rx.foreach(
+                    State.previsualizacion,
+                    lambda f: rx.image(src=f, width="150px"),
+                ),
             ),
         ),
         rx.button(
             "Subir imágenes",
             on_click=State.handle_upload(rx.upload_files(upload_id="image_upload")),
+            disabled=~State.previsualizacion,
         ),
+        rx.divider(),
         rx.text("Publicaciones:"),
         rx.foreach(
             State.publicaciones,
