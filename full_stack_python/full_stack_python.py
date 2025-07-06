@@ -19,10 +19,14 @@ class State(rx.State):
     def imagenes(self) -> list[str]:
         # Junta todas las imágenes de todas las publicaciones
         return [img for grupo in self.publicaciones for img in grupo]
+    
+    @rx.var
+    def num_imagenes(self) -> int:
+        return len(self.imagenes)
 
     @rx.event
     def siguiente(self):
-        if self.imagenes and self.img_idx < len(self.imagenes) - 1:
+        if self.img_idx < self.num_imagenes - 1:
             self.img_idx += 1
 
     @rx.event
@@ -64,7 +68,7 @@ def index():
 def galeria():
     return rx.center(
         rx.cond(
-            State.imagenes,
+            State.num_imagenes > 0,
             rx.vstack(
                 rx.image(
                     src=rx.get_upload_url(State.imagenes[State.img_idx]),
@@ -75,10 +79,10 @@ def galeria():
                     rx.button(
                         "Siguiente",
                         on_click=State.siguiente,
-                        disabled=State.img_idx == rx.len(State.imagenes) - 1,
+                        disabled=State.img_idx == State.num_imagenes - 1,
                     ),
                 ),
-                rx.text(f"{State.img_idx + 1} / {rx.len(State.imagenes)}"),
+                rx.text(f"{State.img_idx + 1} / {State.num_imagenes}"),
             ),
             rx.text("No hay imágenes publicadas."),
         ),
