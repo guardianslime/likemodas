@@ -13,7 +13,6 @@ class State(rx.State):
                 f.name for f in upload_dir.iterdir() if f.is_file()
             ]
 
-    @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
             data = await file.read()
