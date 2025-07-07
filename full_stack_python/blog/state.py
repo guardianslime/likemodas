@@ -165,5 +165,39 @@ class BlogAddPostFormState(BlogPostState):
 
 # Clase para el blog público, esta se mantiene igual.
 class BlogPublicState(SessionState):
-    # ... (código sin cambios)
-    pass
+    """Gestiona la carga de todos los posts para la vista pública."""
+    posts: List[BlogPostModel] = []
+    post: Optional[BlogPostModel] = None
+
+    @rx.var
+    def current_blog_id(self) -> str:
+        """Obtiene el ID del post desde la URL, que viene como 'blog_id'."""
+        return self.router.page.params.get("blog_id", "")
+
+    def load_all_posts(self):
+        """Carga todos los posts de todos los usuarios."""
+        with rx.session() as session:
+            self.posts = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.images),
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
+                ).where(BlogPostModel.publish_active == True) # Opcional: mostrar solo los activos
+                 .order_by(BlogPostModel.id.desc())
+            ).all()
+
+    def get_post_detail(self):
+        """Obtiene el detalle de un post público."""
+        with rx.session() as session:
+            self.post = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.images),
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+                ).where(BlogPostModel.id == self.current_blog_id)
+            ).one_or_none()
+            
+    @rx.var
+    def post_updated_at_formatted(self) -> str:
+        """Devuelve la fecha de actualización formateada."""
+        if self.post and self.post.updated_at:
+            return self.post.updated_at.strftime("%d de %B, %Y")
+        return "Fecha no disponible"
