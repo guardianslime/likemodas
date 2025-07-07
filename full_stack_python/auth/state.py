@@ -12,25 +12,25 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def my_userinfo_id(self) -> str | None:
         if self.authenticated_user_info is None:
             return None
-        # CORREGIDO: Convertimos el ID (int) a un string.
+        # CORREGIDO: Convertimos el ID numérico a un string.
         return str(self.authenticated_user_info.id)
 
     @rx.var(cache=True)
     def my_user_id(self) -> str | None:
-        if self.authenticated_user.id < 0:
+        if not self.is_authenticated:
             return None
-        # CORREGIDO: Convertimos el ID (int) a un string.
+        # CORREGIDO: Convertimos el ID numérico a un string.
         return str(self.authenticated_user.id)
 
     @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
-        if self.authenticated_user.id < 0:
+        if not self.is_authenticated:
             return None
         return self.authenticated_user.username
 
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
-        if self.authenticated_user.id < 0:
+        if not self.is_authenticated:
             return None
         with rx.session() as session:
             result = session.exec(
@@ -43,12 +43,11 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def on_load(self):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
-        print(self.is_authenticated)
-        print(self.authenticated_user_info)
 
     def perform_logout(self):
         self.do_logout()
         return rx.redirect("/")
+
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
     def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
