@@ -16,17 +16,19 @@ def blog_post_add_form() -> rx.Component:
     )
 
 def blog_post_edit_form() -> rx.Component:
-    """Este formulario ahora usa el estado unificado BlogPostState."""
+    """Este formulario ahora usa las nuevas propiedades seguras del estado."""
     return rx.form(
         rx.vstack(
-            # CORRECCIÓN CLAVE: Usar rx.cond para un acceso seguro y eliminar la advertencia
-            rx.input(name='post_id', value=rx.cond(BlogPostState.post, BlogPostState.post.id, ""), type='hidden'),
+            # CORREGIDO: Usar las nuevas propiedades seguras
+            rx.input(name='post_id', value=BlogPostState.post_id_str, type='hidden'),
+            
             rx.input(
-                default_value=rx.cond(BlogPostState.post, BlogPostState.post.title, "Cargando..."),
+                default_value=BlogPostState.post_title,
                 name="title",
                 placeholder="Title",
                 width='100%',
             ),
+            
             rx.text_area(
                 value=BlogPostState.post_content,
                 on_change=BlogPostState.set_post_content,
@@ -34,6 +36,8 @@ def blog_post_edit_form() -> rx.Component:
                 height='50vh',
                 width='100%',
             ),
+            
+            # ... (el resto del formulario: rx.flex, rx.cond, rx.button se quedan igual) ...
             rx.flex(
                 rx.switch(
                     is_checked=BlogPostState.post_publish_active,

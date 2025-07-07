@@ -12,10 +12,10 @@ from .notfound import blog_post_not_found
 @reflex_local_auth.require_login
 def blog_post_edit_page() -> rx.Component:
     my_child = rx.cond(
-        # Comprueba contra el estado unificado
         BlogPostState.post,
         rx.vstack(
-            rx.heading("Editando ", BlogPostState.post.title, size="9"),
+            # CORREGIDO: Usar la nueva propiedad segura 'post_title'
+            rx.heading("Editando ", BlogPostState.post_title, size="9"),
             rx.box(
                 forms.blog_post_edit_form(),
                 width=["90vw", "80vw", "70vw", "60vw"]

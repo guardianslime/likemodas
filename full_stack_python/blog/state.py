@@ -23,16 +23,23 @@ class BlogPostState(SessionState):
     # --- Variables de la lista y detalle ---
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
-    
-    # --- Variables para el formulario de edición ---
     post_content: str = ""
     post_publish_active: bool = False
     edit_form_data: dict = {}
-
-    # --- Variables para el formulario de añadir ---
     imagenes_temporales: list[str] = []
 
     # --- Propiedades Calculadas ---
+
+    @rx.var
+    def post_title(self) -> str:
+        """Devuelve el título del post de forma segura, o un texto por defecto."""
+        return self.post.title if self.post else "Cargando..."
+
+    @rx.var
+    def post_id_str(self) -> str:
+        """Devuelve el ID del post como string de forma segura."""
+        return str(self.post.id) if self.post else ""
+
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
