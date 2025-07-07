@@ -1,3 +1,6 @@
+#full_stack_python/auth/forms.py
+
+
 import reflex as rx
 import reflex_local_auth
 from reflex_local_auth.pages.components import input_100w, MIN_WIDTH
@@ -40,5 +43,3 @@ def my_register_form() -> rx.Component:
         ),
         on_submit=MyRegisterState.handle_registration_email,
     )
-
-

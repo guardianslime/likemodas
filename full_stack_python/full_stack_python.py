@@ -1,3 +1,6 @@
+#full_stack_python/full_stack_python.py
+
+
 """Welcome to Reflex! This file outlines the steps to create a basic app."""
 
 import reflex as rx
@@ -78,7 +81,7 @@ app.add_page(
     on_load=blog.BlogPostState.get_post_detail
 )
 
-# --- INICIO DE LA CORRECCIÓN ---
+
 # Páginas de Contacto
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
@@ -86,4 +89,3 @@ app.add_page(
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
     on_load=contact.ContactState.load_entries
 )
-# --- FIN DE LA CORRECCIÓN ---

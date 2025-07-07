@@ -1,3 +1,5 @@
+#full_stack_python/articles/detail.py
+
 import reflex as rx 
 
 from ..ui.base import base_page

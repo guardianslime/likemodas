@@ -1,3 +1,6 @@
+#full_stack_python/blog/__init__.py
+
+
 from .add import blog_post_add_page
 from .detail import blog_post_detail_page
 from .edit import blog_post_edit_page

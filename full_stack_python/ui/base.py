@@ -1,3 +1,5 @@
+#full_stack_python/ui/base.py
+
 import reflex as rx
 
 from ..auth.state import SessionState
@@ -26,4 +28,3 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         base_dashboard_page(child, *args, **kwargs),
         base_layout_component(child, *args, **kwargs),
     )
-
