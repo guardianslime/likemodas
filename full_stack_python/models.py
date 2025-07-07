@@ -25,7 +25,7 @@ class UserInfo(rx.Model, table=True):
     user_id: int = Field(foreign_key='localuser.id')
     user: Optional[LocalUser] = Relationship()
     posts: List['BlogPostModel'] = Relationship(back_populates='userinfo')
-    contact_entries: List['ContactEntryModel'] = Relationship(back_populates='userinfo') 
+    contact_entries: List['ContactEntryModel'] = Relationship(back_populates='userinfo')
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -44,13 +44,13 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
     content: str
-    
+
     # --- RELACIÓN CON IMÁGENES ---
     images: List[PostImageModel] = Relationship(
         back_populates="post",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"} # Para borrar en cascada
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    
+
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
@@ -70,19 +70,20 @@ class BlogPostModel(rx.Model, table=True):
         sa_column_kwargs={},
         nullable=True
     )
-    
-    # --- PROPIEDAD CALCULADA PARA LA IMAGEN DE PORTADA ---
-    @rx.var
+
+    # CORREGIDO: @rx.var no es válido en rx.Model, se usa @property
+    @property
     def cover_image(self) -> str:
         """Devuelve la primera imagen o una por defecto si no hay."""
         if self.images:
             return self.images[0].img_name
-        return "/image_placeholder.svg" # Asegúrate de tener esta imagen en /assets
+        # Asegúrate de tener esta imagen en /assets
+        return "image_placeholder.svg"
 
 class ContactEntryModel(rx.Model, table=True):
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
-    
+
     first_name: str
     last_name: Optional[str] = None
     email: Optional[str] = None
