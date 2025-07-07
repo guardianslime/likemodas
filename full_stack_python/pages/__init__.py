@@ -1,5 +1,3 @@
-#full_stack_python/pages/__init__.py
-
 from .about import about_page
 from .dashboard import dashboard_component
 from .landing import landing_component

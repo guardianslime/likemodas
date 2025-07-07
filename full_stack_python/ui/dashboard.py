@@ -1,5 +1,3 @@
-#full_stazk_python/ui/dashboard.oy
-
 import reflex as rx
 
 from .sidebar import sidebar
@@ -23,3 +21,4 @@ def base_dashboard_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         # padding="10em",
         # id="my-base-container",
     )
+

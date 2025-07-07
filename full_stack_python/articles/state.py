@@ -1,5 +1,3 @@
-#full_stack_python/articles/state.py
-
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx

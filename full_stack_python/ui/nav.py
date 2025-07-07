@@ -1,6 +1,3 @@
-#full_stack_python/nav.py
-
-
 import reflex as rx
 import reflex_local_auth
 from .. import navigation

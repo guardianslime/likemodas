@@ -1,5 +1,3 @@
-#full_stack_python/blog/list.py
-
 import reflex as rx 
 import reflex_local_auth
 from .. import navigation

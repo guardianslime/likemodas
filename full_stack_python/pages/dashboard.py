@@ -1,5 +1,3 @@
-#full_stack_python/pages/dashboard.py
-
 import reflex as rx 
 
 from ..articles.list import article_public_list_component

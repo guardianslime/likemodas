@@ -1,5 +1,3 @@
-#full_stack_python/navigation/routes.py
-
 HOME_ROUTE="/"
 ABOUT_US_ROUTE="/about"
 ARTICLE_LIST_ROUTE="/articles"

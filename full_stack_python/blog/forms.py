@@ -1,5 +1,3 @@
-#full_stack_python/blog/forms.oy
-
 import reflex as rx 
 
 
@@ -111,4 +109,3 @@ def blog_post_edit_form() -> rx.Component:
             ),
             on_submit=BlogEditFormState.handle_submit,
     )
-

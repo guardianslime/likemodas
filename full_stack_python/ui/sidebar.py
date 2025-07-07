@@ -1,5 +1,3 @@
-#full_stack_python/ui/sidebar.py
-
 import reflex as rx
 from reflex.style import toggle_color_mode
 

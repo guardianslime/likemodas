@@ -1,5 +1,3 @@
-#full_stack_python/navigation/state.py
-
 import reflex as rx
 import reflex_local_auth
 from . import routes
@@ -32,3 +30,4 @@ class NavState(rx.State):
         return rx.redirect(routes.CONTACT_US_ROUTE)
     def to_pricing(self):
         return rx.redirect(routes.PRICING_ROUTE)
+    

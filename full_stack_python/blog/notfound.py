@@ -1,5 +1,3 @@
-#full_stack_python/blog/notfound.py
-
 import reflex as rx
 
 def blog_post_not_found() -> rx.Component:
