@@ -72,12 +72,6 @@ class ContactEntryModel(rx.Model, table=True):
     # --- ¡CORRECCIÓN! AÑADE ESTE MÉTODO ---
     @rx.var
     def created_at_formatted(self) -> str:
-        """
-        Devuelve la fecha y hora de creación en un formato legible.
-        Ejemplo: "Jul 07, 2025 03:30 PM"
-        """
-        # Si created_at no existe, devuelve un string vacío para evitar errores.
-        if not self.created_at:
-            return ""
-        # Formatea la fecha. Puedes ajustar el formato a tu gusto.
-        return self.created_at.strftime("%b %d, %Y %I:%M %p")
+        """Un campo calculado que devuelve la fecha de creación como un string formateado."""
+        return self.created_at.strftime("%Y-%m-%d %H:%M")
+    # ------------------------------------
