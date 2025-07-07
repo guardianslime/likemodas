@@ -57,7 +57,6 @@ class BlogPostModel(rx.Model, table=True):
 class ContactEntryModel(rx.Model, table=True):
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
-    
     first_name: str
     last_name: Optional[str] = None
     email: Optional[str] = None
@@ -69,9 +68,11 @@ class ContactEntryModel(rx.Model, table=True):
         nullable=False
     )
 
-    # --- ¡CORRECCIÓN! AÑADE ESTE MÉTODO ---
-    @rx.var
+    @property
     def created_at_formatted(self) -> str:
-        """Un campo calculado que devuelve la fecha de creación como un string formateado."""
+        """Devuelve la fecha de creación como string formateado."""
         return self.created_at.strftime("%Y-%m-%d %H:%M")
-    # ------------------------------------
+
+    def dict(self, **kwargs):
+        # Incluye el campo calculado en la serialización
+        return super().dict(**kwargs) | {"created_at_formatted": self.created_at_formatted}
