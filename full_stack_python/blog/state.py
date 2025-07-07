@@ -19,9 +19,13 @@ class BlogPostState(SessionState):
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
     
-    # --- ESTADO PARA LA CARGA DE IMÁGENES ---
+    # Declaramos explícitamente post_content aquí.
+    post_content: str = ""
+    # También declaramos la variable para el switch de publicación
+    post_publish_active: bool = False
+    
     imagenes_temporales: list[str] = []
-
+ 
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
@@ -58,6 +62,7 @@ class BlogPostState(SessionState):
             #     os.remove(path)
 
     def get_post_detail(self):
+        """Al cargar el post, también poblamos las variables de estado del formulario."""
         if self.my_userinfo_id is None:
             return
         
@@ -66,7 +71,6 @@ class BlogPostState(SessionState):
                 self.post = None
                 return
             
-            # Cargar el post con sus imágenes y datos de usuario
             result = session.exec(
                 select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.images),
@@ -78,6 +82,13 @@ class BlogPostState(SessionState):
             ).one_or_none()
             
             self.post = result
+            # Si el post se carga con éxito, actualizamos las otras variables
+            if self.post:
+                self.post_content = self.post.content
+                self.post_publish_active = self.post.publish_active
+            else:
+                self.post_content = ""
+                self.post_publish_active = False
 
     def load_posts(self, *args, **kwargs):
         """Carga solo los posts del usuario autenticado."""
@@ -173,7 +184,7 @@ class BlogAddPostFormState(BlogPostState):
             return rx.window_alert("Error: Debes iniciar sesión para publicar.")
         
         self.add_post(form_data)
-        return self.to_blog_list()
+        return rx.redirect(BLOG_POSTS_ROUTE)
 
 
 # --- NUEVO ESTADO PARA LA PÁGINA PÚBLICA ---
