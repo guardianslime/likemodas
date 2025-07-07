@@ -84,7 +84,8 @@ def blog_post_list_page() -> rx.Component:
                 state.BlogPostState.posts,
                 rx.grid(
                     rx.foreach(state.BlogPostState.posts, blog_post_list_item),
-                    columns=["1", "2", "3"], # Responsive columns
+                    # CORREGIDO: Usar un diccionario para columnas responsivas
+                    columns={ "initial": "1", "sm": "2", "md": "3" },
                     spacing="4",
                     width="100%",
                     margin_top="2em"

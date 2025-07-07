@@ -56,7 +56,8 @@ def blog_post_detail_page() -> rx.Component:
                     state.BlogPostState.post.images,
                     post_image_gallery_item
                 ),
-                columns=["1", "2", "3"],
+                # CORREGIDO: Usar un diccionario para columnas responsivas
+                columns={ "initial": "1", "sm": "2", "md": "3" },
                 spacing="4",
                 width="100%"
             ),

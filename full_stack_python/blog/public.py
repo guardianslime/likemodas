@@ -44,7 +44,8 @@ def blog_public_page() -> rx.Component:
             rx.text("Descubre las publicaciones de todos nuestros usuarios.", text_align="center"),
             rx.grid(
                 rx.foreach(BlogPublicState.posts, public_blog_card),
-                columns=["1", "2", "3", "4"],
+                # CORREGIDO: Usar un diccionario para columnas responsivas
+                columns={ "initial": "1", "sm": "2", "md": "3", "lg": "4" },
                 spacing="4",
                 width="100%",
                 margin_top="2em"
