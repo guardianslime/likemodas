@@ -7,30 +7,28 @@ from ..models import UserInfo
 
 
 class SessionState(reflex_local_auth.LocalAuthState):
-    
     @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None:
         if self.authenticated_user_info is None:
             return None
-        # CORREGIDO: Convertimos el ID numérico a un string.
-        return str(self.authenticated_user_info.id)
+        return self.authenticated_user_info.id
+
 
     @rx.var(cache=True)
     def my_user_id(self) -> str | None:
-        if not self.is_authenticated:
+        if self.authenticated_user.id < 0:
             return None
-        # CORREGIDO: Convertimos el ID numérico a un string.
-        return str(self.authenticated_user.id)
+        return self.authenticated_user.id
 
     @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
-        if not self.is_authenticated:
+        if self.authenticated_user.id < 0:
             return None
         return self.authenticated_user.username
 
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
-        if not self.is_authenticated:
+        if self.authenticated_user.id < 0:
             return None
         with rx.session() as session:
             result = session.exec(
@@ -38,16 +36,23 @@ class SessionState(reflex_local_auth.LocalAuthState):
                     UserInfo.user_id == self.authenticated_user.id
                 ),
             ).one_or_none()
+            if result is None:
+                return None
+            # database lookup
+            # result.user
+            # user_obj = result.user
+            # print(result.user)
             return result
-
+    
     def on_load(self):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
-
+        print(self.is_authenticated)
+        print(self.authenticated_user_info)
+        
     def perform_logout(self):
         self.do_logout()
         return rx.redirect("/")
-
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
     def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore

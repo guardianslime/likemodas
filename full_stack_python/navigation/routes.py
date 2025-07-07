@@ -3,7 +3,6 @@ ABOUT_US_ROUTE="/about"
 ARTICLE_LIST_ROUTE="/articles"
 BLOG_POSTS_ROUTE="/blog"
 BLOG_POST_ADD_ROUTE ="/blog/add"
-BLOG_PUBLIC_ROUTE = "/blog/public" # <-- NUEVA RUTA
 CONTACT_US_ROUTE="/contact"
 CONTACT_ENTRIES_ROUTE="/contact/entries"
 LOGOUT_ROUTE="/logout"

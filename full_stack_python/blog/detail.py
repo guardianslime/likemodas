@@ -5,70 +5,61 @@ from ..ui.base import base_page
 from . import state
 from .notfound import blog_post_not_found
 
-def post_image_gallery_item(image: state.PostImageModel) -> rx.Component:
-    """Muestra una imagen de la galería del post."""
-    return rx.image(
-        src=rx.get_upload_url(image.img_name),
-        width="100%",
-        height="auto",
-        border_radius="0.5em"
-    )
-
 def blog_post_detail_page() -> rx.Component:
-    post_is_loaded = (state.BlogPostState.post) & (state.BlogPostState.post.userinfo) & (state.BlogPostState.post.userinfo.user)
+    edit_link = rx.link("Editar", href=state.BlogPostState.blog_post_edit_url)
 
+    # La corrección principal está aquí. Se verifica que todos los objetos anidados
+    # (post, post.userinfo, post.userinfo.user) existan antes de renderizar.
     my_child = rx.cond(
-        post_is_loaded,
+        (state.BlogPostState.post) & 
+        (state.BlogPostState.post.userinfo) & 
+        (state.BlogPostState.post.userinfo.user),
+        
+        # Si todo existe, se muestra el contenido del post.
         rx.vstack(
-            # Título y botón de editar
             rx.hstack(
                 rx.heading(state.BlogPostState.post.title, size="9"),
-                rx.link(
-                    rx.button("Editar Post"),
-                    href=state.BlogPostState.blog_post_edit_url
-                ),
-                align='center',
+                edit_link,
+                align='end',
                 justify='between',
                 width="100%"
             ),
             
-            # Información del autor y fecha
-            rx.hstack(
-                rx.text("Publicado por: ", rx.code(state.BlogPostState.post.userinfo.user.username)),
-                rx.spacer(),
-                rx.text(f"Última actualización: {state.BlogPostState.post.updated_at.to_string()}"),
-                width="100%",
-                color_scheme="gray"
+            # --- CORRECCIÓN CLAVE ---
+            # Se reemplaza .to_string() por atributos reales del modelo como .username y .email.
+            rx.text(
+                "Publicado por: ", 
+                rx.code(state.BlogPostState.post.userinfo.user.username),
+                " (",
+                rx.code(state.BlogPostState.post.userinfo.email),
+                ")"
             ),
             
+            # Se muestra la fecha de publicación solo si existe para evitar errores.
+            rx.cond(
+                state.BlogPostState.post.publish_date,
+                rx.text(
+                    "Fecha de publicación: ",
+                    state.BlogPostState.post.publish_date.to_string() # .to_string() en objetos datetime sí es válido.
+                ),
+                rx.text("Este post aún no ha sido publicado.")
+            ),
+
             rx.divider(width="100%"),
             
-            # Contenido de texto
+            # El contenido del post.
             rx.text(
                 state.BlogPostState.post.content,
                 white_space='pre-wrap'
             ),
             
-            # Galería de imágenes
-            rx.heading("Imágenes", size="6", margin_top="1.5em"),
-            rx.grid(
-                rx.foreach(
-                    state.BlogPostState.post.images,
-                    post_image_gallery_item
-                ),
-                # CORREGIDO: Usar un diccionario para columnas responsivas
-                columns={ "initial": "1", "sm": "2", "md": "3" },
-                spacing="4",
-                width="100%"
-            ),
-            
             spacing="5",
-            align="start",
+            align="start", # Alinear a la izquierda para mejor legibilidad.
             min_height="85vh",
-            width="100%",
-            max_width="900px",
-            margin="auto"
+            width="100%"
         ),
+        
+        # Si algo falla en la condición, se muestra la página de "no encontrado".
         blog_post_not_found()
     )
     
