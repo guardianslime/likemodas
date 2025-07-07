@@ -1,113 +1,64 @@
-import reflex as rx 
+# full_stack_python/blog/forms.py
 
-
-from .state import (
-    BlogAddPostFormState,
-    BlogEditFormState
-)
-
+import reflex as rx
+from .state import BlogAddPostFormState, BlogPostState
 
 def blog_post_add_form() -> rx.Component:
+    # Este formulario para añadir posts no cambia.
     return rx.form(
-            rx.vstack(
-                rx.hstack(
-                    rx.input(
-                        name="title",
-                        placeholder="Title",
-                        required=False,
-                        type= "text",
-                        width="100%",
-                    ),
-
-                    width="100%",
-                ),
-                rx.text_area(
-                    name="content",
-                    placeholder="Your message",
-                    required=True,
-                    height='50vh',
-                    width='100%',
-                ),
-                rx.button("Submit", type="submit"),
-            ),
-            on_submit=BlogAddPostFormState.handle_submit,
-            reset_on_submit=True,
+        rx.vstack(
+            rx.input(name="title", placeholder="Title", required=True, width="100%"),
+            rx.text_area(name="content", placeholder="Your message", required=True, height='50vh', width='100%'),
+            rx.button("Submit", type="submit"),
+        ),
+        on_submit=BlogAddPostFormState.handle_submit,
+        reset_on_submit=True,
     )
 
-
-from .state import BlogEditFormState
-
 def blog_post_edit_form() -> rx.Component:
-    # --- Se eliminaron las asignaciones de variables locales que causaban el error ---
-    # post = BlogEditFormState.post <--- ELIMINADO
-    # title = post.title <--- ELIMINADO
-    # post_content = BlogEditFormState.post_content <--- ELIMINADO
-
+    """Este formulario ahora usa el estado unificado BlogPostState."""
     return rx.form(
-        rx.box(
-            rx.input(
-                type='hidden',
-                name='post_id',
-                # Se accede directamente a la variable de estado aquí
-                value=BlogEditFormState.post.id
-            ),
-            display='none'
-        ),
         rx.vstack(
-            rx.hstack(
-                rx.input(
-                    # Se usa default_value para el valor inicial y se conecta al estado
-                    default_value=BlogEditFormState.post.title,
-                    name="title",
-                    placeholder="Title",
-                    required=True,
-                    type='text',
-                    width='100%',
-                ),
+            rx.input(name='post_id', value=BlogPostState.post.id, type='hidden'),
+            rx.input(
+                default_value=BlogPostState.post.title,
+                name="title",
+                placeholder="Title",
                 width='100%',
             ),
             rx.text_area(
-                # El valor se conecta directamente a la variable de estado
-                value=BlogEditFormState.post_content,
-                on_change=BlogEditFormState.set_post_content,
+                value=BlogPostState.post_content,
+                on_change=BlogPostState.set_post_content,
                 name='content',
-                placeholder='Your message',
-                required=True,
                 height='50vh',
                 width='100%',
             ),
             rx.flex(
                 rx.switch(
-                    # Se conecta directamente al estado
-                    default_checked=BlogEditFormState.post_publish_active,
-                    on_change=BlogEditFormState.set_post_publish_active,
+                    is_checked=BlogPostState.post_publish_active,
+                    on_change=BlogPostState.set_post_publish_active,
                     name='publish_active',
                 ),
                 rx.text("Publish Active"),
                 spacing="2",
             ),
             rx.cond(
-                BlogEditFormState.post_publish_active,
-                rx.box(
-                    rx.hstack(
-                        rx.input(
-                            default_value=BlogEditFormState.publish_display_date,
-                            type='date',
-                            name='publish_date',
-                            width='100%'
-                        ),
-                        rx.input(
-                            default_value=BlogEditFormState.publish_display_time,
-                            type='time',
-                            name='publish_time',
-                            width='100%'
-                        ),
-                    width='100%'
+                BlogPostState.post_publish_active,
+                rx.hstack(
+                    rx.input(
+                        default_value=BlogPostState.publish_display_date,
+                        type='date',
+                        name='publish_date',
                     ),
-                    width='100%'
+                    rx.input(
+                        default_value=BlogPostState.publish_display_time,
+                        type='time',
+                        name='publish_time',
+                    ),
                 )
             ),
             rx.button("Guardar Cambios", type="submit"),
         ),
-        on_submit=BlogEditFormState.handle_submit,
+        # Apunta al nuevo manejador de submit para la edición
+        on_submit=BlogPostState.handle_edit_submit,
     )
