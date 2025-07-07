@@ -19,9 +19,10 @@ def blog_post_edit_form() -> rx.Component:
     """Este formulario ahora usa el estado unificado BlogPostState."""
     return rx.form(
         rx.vstack(
-            rx.input(name='post_id', value=BlogPostState.post.id, type='hidden'),
+            # CORRECCIÓN CLAVE: Usar rx.cond para un acceso seguro y eliminar la advertencia
+            rx.input(name='post_id', value=rx.cond(BlogPostState.post, BlogPostState.post.id, ""), type='hidden'),
             rx.input(
-                default_value=BlogPostState.post.title,
+                default_value=rx.cond(BlogPostState.post, BlogPostState.post.title, "Cargando..."),
                 name="title",
                 placeholder="Title",
                 width='100%',
@@ -59,6 +60,5 @@ def blog_post_edit_form() -> rx.Component:
             ),
             rx.button("Guardar Cambios", type="submit"),
         ),
-        # Apunta al nuevo manejador de submit para la edición
         on_submit=BlogPostState.handle_edit_submit,
     )
