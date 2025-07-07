@@ -183,7 +183,8 @@ class BlogPublicState(SessionState):
     post: Optional[BlogPostModel] = None
 
     @rx.var
-    def article_id(self) -> str:
+    def current_blog_id(self) -> str:
+        """Obtiene el ID del post desde la URL, que viene como 'blog_id'."""
         return self.router.page.params.get("blog_id", "")
 
     def load_all_posts(self):
