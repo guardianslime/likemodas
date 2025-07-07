@@ -1,148 +1,96 @@
+"""Welcome to Reflex! This file outlines the steps to create a basic app."""
+
 import reflex as rx
+import reflex_local_auth
+from rxconfig import config
 
-class State(rx.State):
-    publicaciones: list[list[str]] = []
-    imagenes_temporales: list[str] = []
-    img_idx: int = 0  # Índice de la imagen actual en galería
+# --- Módulos y Componentes ---
+from .ui.base import base_page
+from .auth.pages import my_login_page, my_register_page, my_logout_page
+from .auth.state import SessionState
+from .articles.detail import article_detail_page
+from .articles.list import article_public_list_page
+from .articles.state import ArticlePublicState
 
-    @rx.event
-    async def cargar_publicadas(self):
-        # Cargar todas las imágenes que estén en el directorio de uploads
-        upload_dir = rx.get_upload_dir()
-        if upload_dir.exists():
-            archivos = [f.name for f in upload_dir.iterdir() if f.is_file()]
-            # Solo agregamos si aún no están en publicaciones
-            imagenes_actuales = {img for grupo in self.publicaciones for img in grupo}
-            nuevas = [f for f in archivos if f not in imagenes_actuales]
-            if nuevas:
-                self.publicaciones.append(nuevas)
-                self.img_idx = 0  # Reiniciar índice al entrar
+# Se importan los paquetes completos para usar la notación paquete.componente
+from . import blog, contact, navigation, pages
 
-    @rx.event
-    async def handle_upload(self, files: list[rx.UploadFile]):
-        for file in files:
-            data = await file.read()
-            path = rx.get_upload_dir() / file.name
-            with path.open("wb") as f:
-                f.write(data)
-            if file.name not in self.imagenes_temporales:
-                self.imagenes_temporales.append(file.name)
+# --- Definición de la Aplicación ---
 
-    @rx.event
-    def eliminar_imagen_temp(self, nombre):
-        if nombre in self.imagenes_temporales:
-            self.imagenes_temporales.remove(nombre)
-
-    @rx.event
-    def publicar(self):
-        if self.imagenes_temporales:
-            self.publicaciones.append(self.imagenes_temporales.copy())
-            self.imagenes_temporales = []
-
-    @rx.var
-    def imagenes(self) -> list[str]:
-        # Junta todas las imágenes publicadas de todas las publicaciones
-        return [img for grupo in self.publicaciones for img in grupo]
-
-    @rx.var
-    def num_imagenes(self) -> int:
-        return len(self.imagenes)
-
-    @rx.event
-    def siguiente(self):
-        if self.img_idx < self.num_imagenes - 1:
-            self.img_idx += 1
-
-    @rx.event
-    def anterior(self):
-        if self.img_idx > 0:
-            self.img_idx -= 1
-
-def index():
-    return rx.vstack(
-        rx.upload(
-            rx.text("Arrastra imágenes aquí o haz clic para seleccionarlas"),
-            id="image_upload",
-            accept={
-                "image/png": [".png"],
-                "image/jpeg": [".jpg", ".jpeg"],
-                "image/gif": [".gif"],
-                "image/webp": [".webp"],
-            },
-            max_files=10,
-            multiple=True,
-            border="2px dashed #60a5fa",
-            padding="2em",
-            on_drop=State.handle_upload(rx.upload_files(upload_id="image_upload")),
-        ),
-        rx.text("Previsualización:"),
+def index() -> rx.Component:
+    """La página principal que redirige al dashboard si el usuario está autenticado."""
+    return base_page(
         rx.cond(
-            State.imagenes_temporales,
-            rx.hstack(
-                rx.foreach(
-                    State.imagenes_temporales,
-                    lambda f: rx.box(
-                        rx.image(src=rx.get_upload_url(f), width="150px"),
-                        rx.icon(
-                            tag="trash",
-                            style={
-                                "position": "absolute",
-                                "top": "8px",
-                                "right": "8px",
-                                "cursor": "pointer",
-                                "color": "red",
-                                "background": "white",
-                                "borderRadius": "50%",
-                                "padding": "2px",
-                                "boxShadow": "0 1px 2px rgba(0,0,0,0.15)",
-                            },
-                            on_click=State.eliminar_imagen_temp(f),
-                        ),
-                        style={
-                            "position": "relative",
-                            "display": "inline-block",
-                            "margin": "8px",
-                        },
-                    ),
-                ),
-            ),
-            rx.text("No hay imágenes para previsualizar."),
-        ),
-        rx.button(
-            "Publicar",
-            on_click=State.publicar,
-            disabled=~State.imagenes_temporales,
-            color_scheme="green"
-        ),
-        rx.link("Ver galería", href="/galeria"),
-        padding="2em"
+            SessionState.is_authenticated,
+            pages.dashboard_component(),
+            pages.landing_component(),
+        )
     )
 
-def galeria():
-    return rx.center(
-        rx.cond(
-            State.num_imagenes > 0,
-            rx.vstack(
-                rx.image(
-                    src=rx.get_upload_url(State.imagenes[State.img_idx]),
-                    width="400px",
-                ),
-                rx.hstack(
-                    rx.button("Anterior", on_click=State.anterior, disabled=State.img_idx == 0),
-                    rx.button(
-                        "Siguiente",
-                        on_click=State.siguiente,
-                        disabled=State.img_idx == State.num_imagenes - 1,
-                    ),
-                ),
-                rx.text(f"{State.img_idx + 1} / {State.num_imagenes}"),
-            ),
-            rx.text("No hay imágenes publicadas."),
-        ),
-        padding="2em"
+app = rx.App(
+    theme=rx.theme(
+        appearance="dark", 
+        has_background=True, 
+        panel_background="solid",
+        scaling="90%",
+        radius="medium",
+        accent_color="sky"
     )
+)
 
-app = rx.App()
-app.add_page(index, route="/")
-# Agrega el trigger on_load para llamar a cargar_publicadas cada vez que alguien entra a /galeria
-app.add_page(galeria, route="/galeria", on_load=State.cargar_publicadas)
+# --- Registro de Páginas ---
+
+app.add_page(index, on_load=ArticlePublicState.load_posts)
+app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
+app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
+app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
+app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
+app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
+app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
+
+# Páginas de Artículos
+app.add_page(
+    article_public_list_page,
+    route=navigation.routes.ARTICLE_LIST_ROUTE,
+    on_load=ArticlePublicState.load_posts,
+)
+app.add_page(
+    article_detail_page,
+    route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
+    on_load=ArticlePublicState.get_post_detail,
+)
+
+# Páginas de Blog
+app.add_page(
+    blog.blog_post_list_page,
+    route=navigation.routes.BLOG_POSTS_ROUTE,
+    on_load=blog.BlogPostState.load_posts
+)
+
+app.add_page(
+    blog.blog_public_page,
+    route=navigation.routes.BLOG_PUBLIC_ROUTE,
+    on_load=blog.BlogPublicState.load_all_posts # Carga todos los posts
+)
+
+app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
+app.add_page(
+    blog.blog_post_detail_page,
+    route="/blog/[blog_id]",
+    on_load=blog.BlogPostState.get_post_detail
+)
+app.add_page(
+    blog.blog_post_edit_page,
+    route="/blog/[blog_id]/edit",
+    on_load=blog.BlogPostState.get_post_detail
+)
+
+# --- INICIO DE LA CORRECCIÓN ---
+# Páginas de Contacto
+app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
+app.add_page(
+    contact.contact_entries_list_page,
+    route=navigation.routes.CONTACT_ENTRIES_ROUTE,
+    on_load=contact.ContactState.load_entries
+)
+# --- FIN DE LA CORRECCIÓN ---
