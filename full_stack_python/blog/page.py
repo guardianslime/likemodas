@@ -35,8 +35,8 @@ def blog_public_page():
                                 rx.text(post.title, weight="bold"),
                                 rx.text(
                                     rx.cond(
-                                        post.price > 0,
-                                        rx.format("${:.2f}", post.price),
+                                        post.price != 0,
+                                        f"${{post.price:.2f}}",
                                         "$0.00"
                                     ),
                                     color="gray"
