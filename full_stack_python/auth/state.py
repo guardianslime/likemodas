@@ -1,24 +1,27 @@
+# full_stack_python/auth/state.py
+
 import reflex as rx
 import reflex_local_auth
-
 import sqlmodel
-
 from ..models import UserInfo
 
-
 class SessionState(reflex_local_auth.LocalAuthState):
+
     @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None:
         if self.authenticated_user_info is None:
             return None
-        return self.authenticated_user_info.id
-
+        # --- CORRECCIÓN ---
+        # Convierte el ID (que es un entero) a string para que coincida con el tipo de retorno.
+        return str(self.authenticated_user_info.id)
 
     @rx.var(cache=True)
     def my_user_id(self) -> str | None:
         if self.authenticated_user.id < 0:
             return None
-        return self.authenticated_user.id
+        # --- CORRECCIÓN ---
+        # Convierte el ID del usuario a string también.
+        return str(self.authenticated_user.id)
 
     @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
@@ -36,12 +39,6 @@ class SessionState(reflex_local_auth.LocalAuthState):
                     UserInfo.user_id == self.authenticated_user.id
                 ),
             ).one_or_none()
-            if result is None:
-                return None
-            # database lookup
-            # result.user
-            # user_obj = result.user
-            # print(result.user)
             return result
     
     def on_load(self):
@@ -65,12 +62,15 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
             self.new_user_id = -1
             return validation_errors
         self._register_user(username, password)
-        return self.new_user_id
-        
+        # Asegúrate de que handle_registration devuelva un evento válido al final
+        return type(self).successful_registration
 
     def handle_registration_email(self, form_data):
-        new_user_id = self.handle_registration(form_data)
-        if isinstance(new_user_id, int) and new_user_id >= 0:
+        # Llama a la lógica de registro base
+        registration_event = self.handle_registration(form_data)
+        
+        # Si el registro fue exitoso (no hubo errores de validación)
+        if self.new_user_id >= 0:
             with rx.session() as session:
                 session.add(
                     UserInfo(
@@ -79,4 +79,4 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
                     )
                 )
                 session.commit()
-        return type(self).successful_registration
+        return registration_event
