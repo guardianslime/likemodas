@@ -150,6 +150,13 @@ class BlogAddFormState(SessionState):
         self.content = ""
         self.price = ""
         return rx.redirect("/blog/page")
+    
+    @rx.event
+    def set_price_from_input(self, value: str):
+        try:
+            self.price = float(value)
+        except ValueError:
+            self.price = 0.0
 
 
 # ───────────────────────────────
