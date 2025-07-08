@@ -1,5 +1,3 @@
-# full_stack_python/articles/state.py (CORREGIDO)
-
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -23,9 +21,6 @@ class ArticlePublicState(SessionState):
     def post_id(self) -> str:
         return self.router.page.params.get("article_id", "")
 
-    # --- CORRECCIÓN CLAVE ---
-    # Se aplica el mismo patrón seguro que en BlogPostState.
-    # El acceso a .id solo ocurre si 'self.post' existe, evitando el error.
     @rx.var
     def post_url(self) -> str:
         if self.post and self.post.id is not None:
@@ -33,7 +28,6 @@ class ArticlePublicState(SessionState):
         return ARTICLE_LIST_ROUTE
 
     def get_post_detail(self):
-        # Usamos try-except para manejar el caso en que post_id no sea un entero válido
         try:
             post_id_int = int(self.post_id)
         except (ValueError, TypeError):

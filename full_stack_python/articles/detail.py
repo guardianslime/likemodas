@@ -1,12 +1,9 @@
-# full_stack_python/articles/detail.py (CORREGIDO)
-
 import reflex as rx
 from ..ui.base import base_page
 from . import state
 from ..blog.notfound import blog_post_not_found
 
 def article_detail_page() -> rx.Component:
-    # Condición: existe el post, el userinfo y el user
     condition = (
         state.ArticlePublicState.post
         & state.ArticlePublicState.post.userinfo
@@ -20,17 +17,11 @@ def article_detail_page() -> rx.Component:
                 align="end"
             ),
             rx.text("By ", state.ArticlePublicState.post.userinfo.user.username),
-            
-            # --- CORRECCIÓN ---
-            # Reemplazamos el 'or' de Python con 'rx.cond'.
-            # Si la fecha de publicación existe (no es None), la mostramos.
-            # Si no existe, no mostramos nada (usando un fragmento vacío).
             rx.cond(
                 state.ArticlePublicState.post.publish_date,
                 rx.text(state.ArticlePublicState.post.publish_date.to_string()),
                 rx.fragment()
             ),
-
             rx.text(
                 state.ArticlePublicState.post.content,
                 white_space="pre-wrap"

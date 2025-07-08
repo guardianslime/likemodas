@@ -45,17 +45,13 @@ class BlogPostModel(rx.Model, table=True):
     updated_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "onupdate": sqlalchemy.func.now(),
-            "server_default": sqlalchemy.func.now(),
-        },
+        sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
         nullable=False,
     )
     publish_active: bool = False
     publish_date: Optional[datetime] = Field(
         default=None,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={},
         nullable=True,
     )
 
@@ -63,15 +59,11 @@ class BlogPostModel(rx.Model, table=True):
     def created_at_formatted(self) -> str:
         return self.created_at.strftime("%Y-%m-%d")
 
-    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-    # Añadimos la propiedad para formatear la fecha de publicación.
-    # Maneja el caso en que la fecha sea None.
     @property
     def publish_date_formatted(self) -> str:
         if not self.publish_date:
             return ""
         return self.publish_date.strftime("%d-%m-%Y")
-
 
 # ... (Clase ContactEntryModel sin cambios) ...
 class ContactEntryModel(rx.Model, table=True):
