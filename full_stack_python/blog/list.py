@@ -1,52 +1,54 @@
 # full_stack_python/blog/list.py (CORREGIDO)
-
 import reflex as rx
 import reflex_local_auth
-from .. import navigation
 from ..ui.base import base_page
 from ..models import BlogPostModel
-from . import state
-
-def blog_post_detail_link(child: rx.Component, post: BlogPostModel):
-    # Primero, las guardas para post y post.id
-    if post is None or post.id is None:
-        return rx.fragment(child)
-    
-    post_detail_url = f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
-    
-    return rx.link(
-        child,
-        # --- CORRECCIÓN CLAVE ---
-        # Verificamos que post.userinfo exista antes de intentar acceder a .email
-        rx.cond(
-            post.userinfo,
-            rx.heading("by ", post.userinfo.email),
-            rx.heading("by Anonymous") # Fallback por si no hay autor
-        ),
-        href=post_detail_url
-    )
+from .. import navigation
+from .state import BlogPostState
 
 def blog_post_list_item(post: BlogPostModel):
-    return rx.box(
-        blog_post_detail_link(
-            rx.heading(post.title),
-            post
+    return rx.link(
+        rx.card(
+            rx.vstack(
+                rx.heading(post.title, size="4"),
+                rx.cond(
+                    post.publish_active,
+                    rx.badge("Publicado", color_scheme="green"),
+                    rx.badge("Borrador", color_scheme="gray")
+                ),
+                rx.text(f"Creado: {post.created_at.strftime('%Y-%m-%d')}", size="2"),
+                align="start",
+            )
         ),
-        padding="1em"
+        href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
     )
 
 @reflex_local_auth.require_login
 def blog_post_list_page() -> rx.Component:
     return base_page(
         rx.vstack(
-            rx.heading("Blog Posts", size="5"),
-            rx.link(
-                rx.button("New Post"),
-                href=navigation.routes.BLOG_POST_ADD_ROUTE
+            rx.hstack(
+                rx.heading("Mis Posts", size="7"),
+                rx.spacer(),
+                rx.link(rx.button("Nuevo Post"), href=navigation.routes.BLOG_POST_ADD_ROUTE),
+                justify="between",
+                width="100%"
             ),
-            rx.foreach(state.BlogPostState.posts, blog_post_list_item),
-            spacing="5",
-            align="center",
-            min_height="85vh",
+            rx.divider(),
+            rx.cond(
+                BlogPostState.posts,
+                # --- CORRECCIÓN ---
+                # Se cambió 'rx.responsive_grid' por el nombre correcto: 'rx.grid'
+                rx.grid(
+                    rx.foreach(BlogPostState.posts, blog_post_list_item),
+                    columns=[1, 2, 3],
+                    spacing="4"
+                ),
+                rx.center(rx.text("Aún no has escrito ningún post."), padding_y="4em")
+            ),
+            spacing="4",
+            width="100%",
+            max_width="960px",
+            margin="auto",
         )
     )
