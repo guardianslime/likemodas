@@ -13,8 +13,8 @@ def blog_post_add_form():
             rx.input(
                 placeholder="Precio",
                 type="number",
-                value=BlogAddFormState.price,
-                on_change=BlogAddFormState.set_price,
+                value=str(BlogAddFormState.price),  # ✅ Conversión segura
+                on_change=lambda e: BlogAddFormState.set_price(float(e)),  # ✅ Conversión explícita
                 required=True,
             ),
             rx.text_area(
@@ -49,11 +49,13 @@ def blog_post_add_form():
         ),
         on_submit=BlogAddFormState.submit,
     )
+
 def blog_post_edit_form() -> rx.Component:
     return rx.cond(
         BlogEditFormState.post,
         rx.form(
             rx.vstack(
+                # ID oculto
                 rx.input(
                     type="hidden",
                     name="post_id",
@@ -63,9 +65,10 @@ def blog_post_edit_form() -> rx.Component:
                         ""
                     ),
                 ),
+                # Título
                 rx.input(
                     name="title",
-                    value = rx.cond(
+                    value=rx.cond(
                         BlogEditFormState.post.title,
                         BlogEditFormState.post.title,
                         ""
@@ -74,7 +77,22 @@ def blog_post_edit_form() -> rx.Component:
                     required=True,
                     width="100%",
                 ),
-               rx.text_area(
+                # Precio
+                rx.input(
+                    name="price",
+                    type="number",
+                    value=rx.cond(
+                        BlogEditFormState.post.price is not None,
+                        str(BlogEditFormState.post.price),
+                        "0.0"
+                    ),
+                    on_change=lambda e: BlogEditFormState.set_price(float(e)),
+                    placeholder="Precio",
+                    required=True,
+                    width="100%",
+                ),
+                # Contenido
+                rx.text_area(
                     name="content",
                     value=rx.cond(
                         BlogEditFormState.post_content != "",
@@ -87,6 +105,7 @@ def blog_post_edit_form() -> rx.Component:
                     height="40vh",
                     width="100%",
                 ),
+                # Switch para publicar
                 rx.flex(
                     rx.switch(
                         name="publish_active",
@@ -96,6 +115,7 @@ def blog_post_edit_form() -> rx.Component:
                     rx.text("Publicar"),
                     spacing="2",
                 ),
+                # Campos de fecha y hora si se publica
                 rx.cond(
                     BlogEditFormState.post_publish_active,
                     rx.hstack(
