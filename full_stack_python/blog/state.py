@@ -268,6 +268,8 @@ class BlogEditFormState(BlogPostState):
     
     @rx.event
     def set_price(self, value: str):
+        if self.post is None:
+            return
         try:
             self.post.price = float(value)
         except ValueError:
