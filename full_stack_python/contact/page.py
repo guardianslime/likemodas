@@ -6,9 +6,15 @@ from .form import contact_form
 from .state import ContactState
 
 def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
-    """Muestra una entrada de contacto individual."""
     return rx.box(
-        rx.heading(f"{contact.first_name} ({contact.email or 'sin email'})", size="4"),
+        rx.heading(
+            rx.cond(
+                contact.email,
+                f"{contact.first_name} ({contact.email})",
+                f"{contact.first_name} (sin email)"
+            ),
+            size="4"
+        ),
         rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
         rx.text(f"Recibido el: {contact.created_at_formatted}", size="2", color_scheme="gray"),
         rx.cond(
