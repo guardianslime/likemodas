@@ -103,7 +103,7 @@ class BlogPostState(SessionState):
 class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
-    price: float = 0.0
+    price: str = ""  # ← capturamos como string para validación sencilla
     temp_images: list[str] = []
 
     @rx.event
@@ -125,11 +125,17 @@ class BlogAddFormState(SessionState):
     def submit(self):
         if self.my_userinfo_id is None:
             return rx.window_alert("Inicia sesión.")
+
+        try:
+            parsed_price = float(self.price)
+        except ValueError:
+            return rx.window_alert("Precio inválido.")
+
         with rx.session() as session:
             post = BlogPostModel(
-                title=self.title,
-                content=self.content,
-                price=self.price,
+                title=self.title.strip(),
+                content=self.content.strip(),
+                price=parsed_price,
                 images=self.temp_images.copy(),
                 userinfo_id=self.my_userinfo_id,
                 publish_active=True,
@@ -138,7 +144,11 @@ class BlogAddFormState(SessionState):
             session.add(post)
             session.commit()
             session.refresh(post)
+
         self.temp_images = []
+        self.title = ""
+        self.content = ""
+        self.price = ""
         return rx.redirect("/blog/page")
 
 

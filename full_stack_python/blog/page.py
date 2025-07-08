@@ -48,3 +48,4 @@ def blog_public_page():
             padding="2em"
         )
     )
+

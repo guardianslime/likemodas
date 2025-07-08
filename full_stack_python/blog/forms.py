@@ -1,34 +1,35 @@
 import reflex as rx
 from .state import BlogAddFormState, BlogEditFormState
 
-def blog_post_add_form():
+def blog_add_form():
     return rx.form(
         rx.vstack(
-            rx.input("title", placeholder="Nombre del producto", required=True),
-            rx.input("price", placeholder="Precio", type="number", required=True),
-            rx.text_area("content", placeholder="Descripción del producto", required=True),
+            rx.input(
+                placeholder="Nombre del producto",
+                value=BlogAddFormState.title,
+                on_change=BlogAddFormState.set_title,
+            ),
+            rx.input(
+                placeholder="Precio",
+                value=BlogAddFormState.price,
+                on_change=BlogAddFormState.set_price,
+                type_="number"
+            ),
+            rx.text_area(
+                placeholder="Descripción",
+                value=BlogAddFormState.content,
+                on_change=BlogAddFormState.set_content,
+            ),
             rx.upload(
-                rx.text("Subir imágenes del producto"),
-                id="blog_upload",
+                accept=["image/*"],
                 multiple=True,
                 max_files=5,
-                accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
-                on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
+                on_drop=BlogAddFormState.handle_upload,
+                style={"border": "1px dotted", "padding": "2em"},
+                children="Subir imágenes del producto"
             ),
-            rx.cond(
-                BlogAddFormState.temp_images,
-                rx.hstack(
-                    rx.foreach(
-                        BlogAddFormState.temp_images,
-                        lambda img: rx.box(
-                            rx.image(src=rx.get_upload_url(img), width="100px"),
-                            rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img)),
-                            style={"position": "relative", "margin": "0.5em"}
-                        )
-                    )
-                )
-            ),
-            rx.button("Publicar", type="submit", color_scheme="green"),
+            rx.button("Publicar", type_="submit"),
+            spacing="1em"
         ),
         on_submit=BlogAddFormState.submit
     )
