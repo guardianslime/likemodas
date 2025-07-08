@@ -1,5 +1,5 @@
 import reflex as rx
-from ..state import BlogViewState
+from full_stack_python.blog.state import BlogViewState
 
 def blog_post_view_page():
     return rx.center(
