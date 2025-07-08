@@ -19,7 +19,8 @@ class ArticlePublicState(SessionState):
 
     @rx.var
     def post_id(self) -> str:
-        return self.router.page.params.get("article_id", "")
+        # ✅ Actualizado para evitar el warning: usamos `url` en vez de `page`
+        return self.router.url.params.get("article_id", "")
 
     @rx.var
     def post_url(self) -> str:
