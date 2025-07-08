@@ -265,6 +265,13 @@ class BlogEditFormState(BlogPostState):
         if not self.post or not self.post.publish_date:
             return datetime.now().strftime("%H:%M:%S")
         return self.post.publish_date.strftime("%H:%M:%S")
+    
+    @rx.event
+    def set_price(self, value: str):
+        try:
+            self.post.price = float(value)
+        except ValueError:
+            self.post.price = 0.0
 
     def handle_submit(self, form_data: dict):
         post_id = int(form_data.pop("post_id", 0))
