@@ -26,7 +26,7 @@ def blog_public_page():
                                         "$0.00"
                                     ),
                                     color="gray"
-                                )
+                                ),
                                 spacing="2",
                                 align="start"
                             ),
