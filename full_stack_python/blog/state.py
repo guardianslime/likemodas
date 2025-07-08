@@ -266,14 +266,11 @@ class BlogEditFormState(BlogPostState):
             return datetime.now().strftime("%H:%M:%S")
         return self.post.publish_date.strftime("%H:%M:%S")
     
+    price_str: str = "0.0"  # valor intermedio para el campo
+
     @rx.event
     def set_price(self, value: str):
-        if self.post is None:
-            return
-        try:
-            self.post.price = float(value)
-        except ValueError:
-            self.post.price = 0.0
+        self.price_str = value
 
     def handle_submit(self, form_data: dict):
         post_id = int(form_data.pop("post_id", 0))

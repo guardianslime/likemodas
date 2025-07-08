@@ -33,7 +33,14 @@ def blog_public_page():
                                     )
                                 ),
                                 rx.text(post.title, weight="bold"),
-                                rx.text(f"${{post.price}}", color="gray"),  # ✅ Precio como texto
+                                rx.text(
+                                    rx.cond(
+                                        post.price != 0,
+                                        f"${{post.price:.2f}}",  # literal como string
+                                        "$0.00"
+                                    ),
+                                    color="gray"
+                                ),
                                 spacing="2",
                                 align="start"
                             ),
@@ -45,9 +52,10 @@ def blog_public_page():
                         box_shadow="md"
                     )
                 ),
-                columns="repeat(auto-fit, minmax(220px, 1fr))",
+                columns="repeat(auto-fit, minmax(180px, 1fr))",  # Ajuste dinámico con tamaño mínimo
+                max_width="1100px",  # Limita el ancho para máximo 6 columnas en pantallas grandes
                 spacing="4",
-                width="100%"
+                width="100%",
             ),
 
             spacing="6",

@@ -88,11 +88,7 @@ def blog_post_edit_form() -> rx.Component:
                 rx.input(
                     name="price",
                     type="number",
-                    value=rx.cond(
-                        BlogEditFormState.post & BlogEditFormState.post.price,
-                        str(BlogEditFormState.post.price),
-                        "0.0"
-                    ),
+                    value=BlogEditFormState.price_str,
                     on_change=BlogEditFormState.set_price,
                     placeholder="Precio",
                     required=True,
