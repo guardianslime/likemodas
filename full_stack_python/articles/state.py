@@ -1,7 +1,8 @@
+# full_stack_python/articles/state.py (CORREGIDO)
+
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
-
 import sqlalchemy
 from sqlmodel import select
 
@@ -16,47 +17,43 @@ if ARTICLE_LIST_ROUTE.endswith("/"):
 class ArticlePublicState(SessionState):
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
-    post_content: str = ""
-    post_publish_active: bool = False
     limit: int = 20
 
     @rx.var
-    def post_id(self) -> str:  # Añadida la anotación de tipo -> str
+    def post_id(self) -> str:
         return self.router.page.params.get("article_id", "")
 
+    # --- CORRECCIÓN CLAVE ---
+    # Se aplica el mismo patrón seguro que en BlogPostState.
+    # El acceso a .id solo ocurre si 'self.post' existe, evitando el error.
     @rx.var
-    def post_url(self) -> str: # Añadida la anotación de tipo -> str
-        if not self.post:
-            return f"{ARTICLE_LIST_ROUTE}"
-        return f"{ARTICLE_LIST_ROUTE}/{self.post.id}"
+    def post_url(self) -> str:
+        if self.post and self.post.id is not None:
+            return f"{ARTICLE_LIST_ROUTE}/{self.post.id}"
+        return ARTICLE_LIST_ROUTE
 
     def get_post_detail(self):
+        # Usamos try-except para manejar el caso en que post_id no sea un entero válido
+        try:
+            post_id_int = int(self.post_id)
+        except (ValueError, TypeError):
+            self.post = None
+            return
+
         lookups = (
             (BlogPostModel.publish_active == True) &
             (BlogPostModel.publish_date < datetime.now()) &
-            (BlogPostModel.id == self.post_id)
+            (BlogPostModel.id == post_id_int)
         )
         with rx.session() as session:
-            if self.post_id == "":
-                self.post = None
-                self.post_content = ""
-                self.post_publish_active = False
-                return
             sql_statement = select(BlogPostModel).options(
                 sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
             ).where(lookups)
-            result = session.exec(sql_statement).one_or_none()
-            self.post = result
-            if result is None:
-                self.post_content = ""
-                return
-            self.post_content = self.post.content
-            self.post_publish_active = self.post.publish_active
+            self.post = session.exec(sql_statement).one_or_none()
 
-    def set_limit_and_reload(self, new_limit: int=5):
+    def set_limit_and_reload(self, new_limit: int = 5):
         self.limit = new_limit
-        self.load_posts
-        yield
+        return self.load_posts
 
     def load_posts(self, *args, **kwargs):
         lookup_args = (
@@ -64,14 +61,9 @@ class ArticlePublicState(SessionState):
             (BlogPostModel.publish_date < datetime.now())
         )
         with rx.session() as session:
-            result = session.exec(
-                select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
-                ).where(lookup_args).limit(self.limit)
+            self.posts = session.exec(
+                select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo))
+                .where(lookup_args)
+                .limit(self.limit)
             ).all()
-            self.posts = result
-
-    def to_post(self):
-        if not self.post:
-            return rx.redirect(ARTICLE_LIST_ROUTE)
-        return rx.redirect(f"{self.post_url}")
