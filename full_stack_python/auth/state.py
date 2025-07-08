@@ -11,45 +11,42 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def my_userinfo_id(self) -> str | None:
         if self.authenticated_user_info is None:
             return None
-        # --- CORRECCIÓN ---
-        # Convierte el ID (que es un entero) a string para que coincida con el tipo de retorno.
         return str(self.authenticated_user_info.id)
 
     @rx.var(cache=True)
     def my_user_id(self) -> str | None:
-        if self.authenticated_user.id < 0:
+        if not self.authenticated_user or self.authenticated_user.id < 0:
             return None
-        # --- CORRECCIÓN ---
-        # Convierte el ID del usuario a string también.
         return str(self.authenticated_user.id)
 
     @rx.var(cache=True)
     def authenticated_username(self) -> str | None:
-        if self.authenticated_user.id < 0:
+        if not self.authenticated_user or self.authenticated_user.id < 0:
             return None
         return self.authenticated_user.username
 
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
-        if self.authenticated_user.id < 0:
+        if not self.authenticated_user or self.authenticated_user.id < 0:
             return None
         with rx.session() as session:
             result = session.exec(
                 sqlmodel.select(UserInfo).where(
                     UserInfo.user_id == self.authenticated_user.id
-                ),
+                )
             ).one_or_none()
             return result
-    
+
     def on_load(self):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
-        print(self.is_authenticated)
-        print(self.authenticated_user_info)
-        
+        print("Autenticado:", self.is_authenticated)
+        print("UserInfo:", self.authenticated_user_info)
+
     def perform_logout(self):
         self.do_logout()
         return rx.redirect("/")
+
 
 class MyRegisterState(reflex_local_auth.RegistrationState):
     def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore

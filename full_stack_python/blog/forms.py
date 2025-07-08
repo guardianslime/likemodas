@@ -1,5 +1,3 @@
-# full_stack_python/blog/forms.py (VERSIÓN UNIFICADA)
-
 import reflex as rx
 from .state import BlogAddFormState, BlogEditFormState
 
@@ -16,8 +14,8 @@ def blog_post_add_form() -> rx.Component:
                 name="content",
                 placeholder="Escribe tu contenido aquí...",
                 required=True,
-                height='40vh',
-                width='100%',
+                height="40vh",
+                width="100%",
             ),
             rx.button("Crear Post", type="submit"),
             spacing="4",
@@ -31,26 +29,38 @@ def blog_post_edit_form() -> rx.Component:
         BlogEditFormState.post,
         rx.form(
             rx.vstack(
-                rx.input(type='hidden', name='post_id', value=BlogEditFormState.post.id),
+                rx.input(
+                    type="hidden",
+                    name="post_id",
+                    value=rx.cond(
+                        BlogEditFormState.post.id,
+                        BlogEditFormState.post.id,
+                        ""
+                    ),
+                ),
                 rx.input(
                     name="title",
-                    default_value=BlogEditFormState.post.title,
+                    default_value=rx.cond(
+                        BlogEditFormState.post.title,
+                        BlogEditFormState.post.title,
+                        ""
+                    ),
                     placeholder="Título del Post",
                     required=True,
-                    width='100%',
+                    width="100%",
                 ),
                 rx.text_area(
-                    name='content',
-                    value=BlogEditFormState.post_content,
+                    name="content",
+                    value=BlogEditFormState.post_content or "",
                     on_change=BlogEditFormState.set_post_content,
-                    placeholder='Escribe tu contenido aquí...',
+                    placeholder="Escribe tu contenido aquí...",
                     required=True,
-                    height='40vh',
-                    width='100%',
+                    height="40vh",
+                    width="100%",
                 ),
                 rx.flex(
                     rx.switch(
-                        name='publish_active',
+                        name="publish_active",
                         is_checked=BlogEditFormState.post_publish_active,
                         on_change=BlogEditFormState.set_post_publish_active,
                     ),
@@ -61,13 +71,13 @@ def blog_post_edit_form() -> rx.Component:
                     BlogEditFormState.post_publish_active,
                     rx.hstack(
                         rx.input(
-                            name='publish_date',
-                            type='date',
+                            name="publish_date",
+                            type="date",
                             default_value=BlogEditFormState.publish_display_date,
                         ),
                         rx.input(
-                            name='publish_time',
-                            type='time',
+                            name="publish_time",
+                            type="time",
                             default_value=BlogEditFormState.publish_display_time,
                         ),
                         width="100%"
@@ -78,5 +88,5 @@ def blog_post_edit_form() -> rx.Component:
             ),
             on_submit=BlogEditFormState.handle_submit,
         ),
-        rx.center(rx.spinner(), height="50vh") # Muestra un spinner mientras carga
+        rx.center(rx.spinner(), height="50vh")
     )
