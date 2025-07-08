@@ -121,6 +121,12 @@ class BlogAddFormState(SessionState):
         if name in self.temp_images:
             self.temp_images.remove(name)
 
+    price: str = ""
+
+    @rx.event
+    def set_price(self, value: str):
+        self.price = value
+
     @rx.event
     def submit(self):
         if self.my_userinfo_id is None:
@@ -275,6 +281,7 @@ class BlogEditFormState(BlogPostState):
     def handle_submit(self, form_data: dict):
         post_id = int(form_data.pop("post_id", 0))
 
+        # Parsear la fecha y hora si existen
         final_publish_date = None
         if form_data.get("publish_date") and form_data.get("publish_time"):
             try:
@@ -283,9 +290,17 @@ class BlogEditFormState(BlogPostState):
             except ValueError:
                 pass
 
+        # Convertir el precio desde self.price_str
+        try:
+            form_data["price"] = float(self.price_str)
+        except ValueError:
+            return rx.window_alert("Precio inválido.")
+
+        # Convertir otros campos
         form_data["publish_active"] = form_data.get("publish_active") == "on"
         form_data["publish_date"] = final_publish_date
         form_data.pop("publish_time", None)
 
+        # Guardar en base de datos
         self._save_post_edits_to_db(post_id, form_data)
         return rx.redirect(self.blog_post_url)
