@@ -19,7 +19,7 @@ class ArticlePublicState(SessionState):
 
     @rx.var
     def post_id(self) -> str:
-        return self.router.session.current_page.params.get("article_id", "")
+        return self.router.page.params.get("article_id", "")
 
     @rx.var
     def post_url(self) -> str:
