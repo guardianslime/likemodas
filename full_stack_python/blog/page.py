@@ -7,7 +7,6 @@ def blog_public_page():
     return rx.center(
         rx.vstack(
             rx.heading("Publicaciones", size="5"),
-
             rx.grid(
                 rx.foreach(
                     BlogPublicState.posts,
@@ -35,8 +34,8 @@ def blog_public_page():
                                 rx.text(post.title, weight="bold"),
                                 rx.text(
                                     rx.cond(
-                                        post.price > 0,
-                                        rx.concat("$", rx.var(post.price).to_str()),
+                                        post.price,
+                                        "$" + post.price.to(str),
                                         "$0.00"
                                     ),
                                     color="gray"
@@ -44,13 +43,13 @@ def blog_public_page():
                                 spacing="2",
                                 align="start"
                             ),
-                            href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
+                            href=f"/public-post/{post.id}"
                         ),
                         padding="1em",
                         border="1px solid #ccc",
                         border_radius="8px",
                         box_shadow="md"
-                    )
+                    ),
                 ),
                 columns="repeat(auto-fit, minmax(180px, 1fr))",
                 max_width="1100px",
