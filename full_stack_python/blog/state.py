@@ -182,6 +182,24 @@ class BlogViewState(rx.State):
             return len(self.post.images) - 1
         return 0
 
+    @rx.var
+    def formatted_price(self) -> str:
+        if self.post and self.post.price is not None:
+            return f"${self.post.price:.2f}"
+        return ""
+
+    @rx.var
+    def content(self) -> str:
+        if self.post and self.post.content:
+            return self.post.content
+        return ""
+
+    @rx.var
+    def image_counter(self) -> str:
+        if self.post and self.post.images:
+            return f"{self.img_idx + 1} / {len(self.post.images)}"
+        return ""
+
     @rx.event
     def on_load(self):
         try:
@@ -201,6 +219,8 @@ class BlogViewState(rx.State):
     def anterior_imagen(self):
         if self.img_idx > 0:
             self.img_idx -= 1
+    
+
 
 
 # ───────────────────────────────

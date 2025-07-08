@@ -1,7 +1,6 @@
 import reflex as rx
 from full_stack_python.blog.state import BlogViewState
 
-
 def blog_post_view_page():
     return rx.center(
         rx.vstack(
@@ -16,32 +15,25 @@ def blog_post_view_page():
                 text_align="center"
             ),
 
-            # Imagen + navegación tipo slider
+            # Slider de imágenes
             rx.cond(
                 BlogViewState.post & BlogViewState.post.images,
                 rx.box(
                     rx.hstack(
-                        # Botón izquierdo
                         rx.button(
                             "←",
                             on_click=BlogViewState.anterior_imagen,
                             disabled=BlogViewState.img_idx == 0,
-                            size="1",  # ← Cambiado de 'sm' a '1' válido
+                            size="1",
                         ),
-                        # Imagen principal
                         rx.image(
-                            src=rx.cond(
-                                BlogViewState.post,
-                                rx.get_upload_url(BlogViewState.imagen_actual),
-                                ""
-                            ),
+                            src=rx.get_upload_url(BlogViewState.imagen_actual),
                             width="100%",
                             max_width="400px",
                             object_fit="contain",
                             border_radius="md",
-                            box_shadow="lg"
+                            box_shadow="lg",
                         ),
-                        # Botón derecho
                         rx.button(
                             "→",
                             on_click=BlogViewState.siguiente_imagen,
@@ -49,7 +41,7 @@ def blog_post_view_page():
                             size="1",
                         ),
                         justify="center",
-                        spacing="3",  # ← Corregido: no usar '1em'
+                        spacing="3",
                         wrap="wrap",
                     ),
                     width="100%",
@@ -65,49 +57,33 @@ def blog_post_view_page():
                 rx.text("No hay imágenes para mostrar.")
             ),
 
-            # Contador de imagen actual
-            rx.cond(
-                BlogViewState.post,
-                rx.text(
-                    rx.format(
-                        "{} / {}",
-                        BlogViewState.img_idx + 1,
-                        rx.var(BlogViewState.post.images).length()
-                    ),
-                    font_size="0.9em",
-                    color="gray.500"
-                ),
-                rx.text("")
+            # Contador
+            rx.text(
+                BlogViewState.image_counter,
+                font_size="0.9em",
+                color="gray.500",
             ),
 
-            # Precio (mueve hacia abajo correctamente)
-            rx.cond(
-                BlogViewState.post,
-                rx.text(
-                    rx.format("${:.2f}", BlogViewState.post.price),
-                    font_weight="bold",
-                    color="green.500",
-                    font_size="1.2em"
-                ),
-                rx.text("")
+            # Precio
+            rx.text(
+                BlogViewState.formatted_price,
+                font_weight="bold",
+                color="green.500",
+                font_size="1.2em",
             ),
 
-            # Contenido (descripción)
-            rx.cond(
-                BlogViewState.post,
-                rx.text(
-                    BlogViewState.post.content,
-                    padding_top="1em",
-                    font_size="1em",
-                    text_align="justify"
-                ),
-                rx.text("")
+            # Contenido
+            rx.text(
+                BlogViewState.content,
+                padding_top="1em",
+                font_size="1em",
+                text_align="justify",
             ),
 
             spacing="6",
             padding="2em",
             align="center",
             width="100%",
-            max_width="600px"
+            max_width="600px",
         )
     )
