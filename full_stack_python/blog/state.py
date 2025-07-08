@@ -3,6 +3,7 @@ from typing import Optional, List
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
+import sqlmodel
 
 from .. import navigation
 from ..auth.state import SessionState
@@ -13,8 +14,18 @@ if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
 class BlogPostState(SessionState):
+    posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
+
+    @rx.event
+    def load_posts(self):
+        with rx.session() as session:
+            self.posts = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.userinfo_id == SessionState.my_userinfo_id)
+                .order_by(BlogPostModel.created_at.desc())
+            ).all()
 
     @rx.var
     def post_id(self) -> str:
