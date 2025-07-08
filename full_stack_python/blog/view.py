@@ -52,16 +52,16 @@ def blog_post_view_page():
                             size="2",  # ← cambiado de "sm"
                         ),
                         justify="center",
-                        spacing="1em",
+                        spacing="4",
                         wrap="wrap",
                     ),
                     width="100%",
                     style={
                         "textAlign": "center",
-                        "padding": "1em",
+                        "padding": "4",
                         "@media (max-width: 500px)": {
                             "flexDirection": "column",
-                            "gap": "1em",
+                            "gap": "4",
                         },
                     }
                 ),
@@ -72,7 +72,7 @@ def blog_post_view_page():
             rx.text(
                 f"{BlogViewState.img_idx + 1} / "
                 f"{rx.cond(BlogViewState.post, len(BlogViewState.post.images), 1)}",
-                font_size="0.9em",
+                font_size="4",
                 color="gray.500"
             ),
 
@@ -85,7 +85,7 @@ def blog_post_view_page():
                 ),
                 font_weight="bold",
                 color="green.500",
-                font_size="1.2em"
+                font_size="4.2"
             ),
 
             # Contenido
@@ -95,13 +95,13 @@ def blog_post_view_page():
                     BlogViewState.post.content,
                     ""
                 ),
-                padding_top="1em",
-                font_size="1em",
+                padding_top="4",
+                font_size="4",
                 text_align="justify"
             ),
 
-            spacing="1.5em",
-            padding="2em",
+            spacing="4",
+            padding="8",
             align="center",
             width="100%",
             max_width="600px"
