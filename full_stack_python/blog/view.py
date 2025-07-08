@@ -25,7 +25,7 @@ def blog_post_view_page():
                             "←",
                             on_click=BlogViewState.anterior_imagen,
                             disabled=BlogViewState.img_idx == 0,
-                            size="sm",
+                            size="2",  # ← cambiado de "sm"
                         ),
                         # Imagen principal
                         rx.image(
@@ -49,7 +49,7 @@ def blog_post_view_page():
                                 BlogViewState.img_idx == BlogViewState.max_img_idx,
                                 True
                             ),
-                            size="sm",
+                            size="2",  # ← cambiado de "sm"
                         ),
                         justify="center",
                         spacing="1em",
