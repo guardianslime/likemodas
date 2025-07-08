@@ -40,7 +40,7 @@ def blog_post_edit_form() -> rx.Component:
                 ),
                 rx.input(
                     name="title",
-                    default_value=rx.cond(
+                    value = rx.cond(
                         BlogEditFormState.post.title,
                         BlogEditFormState.post.title,
                         ""
@@ -49,9 +49,13 @@ def blog_post_edit_form() -> rx.Component:
                     required=True,
                     width="100%",
                 ),
-                rx.text_area(
+               rx.text_area(
                     name="content",
-                    value=BlogEditFormState.post_content or "",
+                    value=rx.cond(
+                        BlogEditFormState.post_content != "",
+                        BlogEditFormState.post_content,
+                        ""
+                    ),
                     on_change=BlogEditFormState.set_post_content,
                     placeholder="Escribe tu contenido aquí...",
                     required=True,
