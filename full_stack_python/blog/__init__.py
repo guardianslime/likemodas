@@ -2,12 +2,19 @@ from .add import blog_post_add_page
 from .detail import blog_post_detail_page
 from .edit import blog_post_edit_page
 from .list import blog_post_list_page
-from .state import BlogPostState
+from .page import blog_public_page
+from .view import blog_post_view_page
+from .state import BlogPostState, BlogAddFormState, BlogPublicState, BlogViewState
 
 __all__ = [
     'blog_post_add_page',
     'blog_post_detail_page',
     'blog_post_edit_page',
     'blog_post_list_page',
-    'BlogPostState'
+    'blog_public_page',
+    'blog_post_view_page',
+    'BlogPostState',
+    'BlogAddFormState',
+    'BlogPublicState',
+    'BlogViewState',
 ]

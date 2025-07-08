@@ -51,6 +51,7 @@ app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
+
 # Páginas de Artículos
 app.add_page(
     article_public_list_page,
@@ -80,6 +81,10 @@ app.add_page(
     route="/blog/[blog_id]/edit",
     on_load=blog.BlogPostState.get_post_detail
 )
+
+app.add_page(blog_post_add_form, route="/blog/add", title="Agregar publicación")
+app.add_page(blog_public_page, route="/blog/page", title="Galería pública", on_load=BlogPublicState.on_load)
+app.add_page(blog_post_view_page, route="/blog/page/[id]", title="Detalle", on_load=BlogViewState.on_load)
 
 
 # Páginas de Contacto

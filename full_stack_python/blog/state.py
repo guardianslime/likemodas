@@ -89,12 +89,70 @@ class BlogPostState(SessionState):
             session.refresh(post)
             self.post = post
 
-class BlogAddFormState(BlogPostState):
-    def handle_submit(self, form_data: dict):
+class BlogAddFormState(SessionState):
+    title: str = ""
+    content: str = ""
+    price: float = 0.0
+    temp_images: list[str] = []
+
+    @rx.event
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        for file in files:
+            data = await file.read()
+            path = rx.get_upload_dir() / file.name
+            with path.open("wb") as f:
+                f.write(data)
+            if file.name not in self.temp_images:
+                self.temp_images.append(file.name)
+
+    @rx.event
+    def remove_image(self, name: str):
+        if name in self.temp_images:
+            self.temp_images.remove(name)
+
+    @rx.event
+    def submit(self):
         if self.my_userinfo_id is None:
-            return rx.window_alert("Error: Debes iniciar sesión para crear un post.")
-        self._add_post_to_db(form_data)
-        return rx.redirect(self.blog_post_edit_url)
+            return rx.window_alert("Inicia sesión.")
+        with rx.session() as session:
+            post = BlogPostModel(
+                title=self.title,
+                content=self.content,
+                price=self.price,
+                images=self.temp_images.copy(),
+                userinfo_id=self.my_userinfo_id,
+                publish_active=True,
+                publish_date=datetime.now()
+            )
+            session.add(post)
+            session.commit()
+            session.refresh(post)
+        self.temp_images = []
+        return rx.redirect("/blog/page")
+
+class BlogPublicState(rx.State):
+    posts: list[BlogPostModel] = []
+
+    def on_load(self):
+        with rx.session() as session:
+            self.posts = session.exec(
+                select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            ).all()
+
+class BlogViewState(rx.State):
+    post: Optional[BlogPostModel] = None
+
+    @rx.var
+    def post_id(self) -> str:
+        return self.router.page.params.get("id", "")
+
+    def on_load(self):
+        try:
+            pid = int(self.post_id)
+        except:
+            return
+        with rx.session() as session:
+            self.post = session.get(BlogPostModel, pid)
 
 class BlogEditFormState(BlogPostState):
     post_content: str = ""
