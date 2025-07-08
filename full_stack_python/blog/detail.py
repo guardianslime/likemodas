@@ -1,4 +1,5 @@
-# full_stack_python/blog/detail.py (VERSIÓN UNIFICADA)
+# full_stack_python/blog/detail.py (CORREGIDO)
+
 import reflex as rx
 from ..ui.base import base_page
 from . import state
@@ -27,14 +28,16 @@ def blog_post_detail_page() -> rx.Component:
                             "green", "gray"
                         )
                     ),
+                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                    # Usamos la nueva propiedad 'publish_date_formatted'
                     rx.cond(
                         state.BlogPostState.post.publish_date,
-                        rx.text(f"Publicado el: {state.BlogPostState.post.publish_date.strftime('%d-%m-%Y')}")
+                        rx.text(f"Publicado el: {state.BlogPostState.post.publish_date_formatted}")
                     ),
                     spacing="4"
                 ),
                 rx.divider(),
-                rx.markdown(state.BlogPostState.post.content),
+                rx.markdown(state.BlogPostState.post.content), # Usamos rx.markdown para renderizar contenido
                 spacing="5",
                 align="start",
                 width="100%",

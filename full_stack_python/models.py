@@ -8,25 +8,26 @@ import sqlalchemy
 from sqlmodel import Field, Relationship
 from . import utils
 
-# ... (UserInfo class no necesita cambios) ...
+# ... (Clase UserInfo sin cambios) ...
 class UserInfo(rx.Model, table=True):
-    # ... contenido de la clase UserInfo ...
     email: str
-    user_id: int = Field(foreign_key='localuser.id')
+    user_id: int = Field(foreign_key="localuser.id")
     user: Optional[LocalUser] = Relationship()
-    posts: List['BlogPostModel'] = Relationship(back_populates='userinfo')
-    contact_entries: List['ContactEntryModel'] = Relationship(back_populates='userinfo') 
+    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
+    contact_entries: List["ContactEntryModel"] = Relationship(
+        back_populates="userinfo"
+    )
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={"server_default": sqlalchemy.func.now()},
-        nullable=False
+        nullable=False,
     )
     updated_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
-        nullable=False
+        nullable=False,
     )
 
 
@@ -39,35 +40,43 @@ class BlogPostModel(rx.Model, table=True):
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={"server_default": sqlalchemy.func.now()},
-        nullable=False
+        nullable=False,
     )
     updated_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
-        nullable=False
+        sa_column_kwargs={
+            "onupdate": sqlalchemy.func.now(),
+            "server_default": sqlalchemy.func.now(),
+        },
+        nullable=False,
     )
     publish_active: bool = False
     publish_date: Optional[datetime] = Field(
         default=None,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={},
-        nullable=True
+        nullable=True,
     )
 
-    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-    # Añadimos una propiedad que formatea la fecha en el backend.
-    # Ahora podemos acceder a 'post.created_at_formatted' desde la UI.
     @property
     def created_at_formatted(self) -> str:
         return self.created_at.strftime("%Y-%m-%d")
 
+    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+    # Añadimos la propiedad para formatear la fecha de publicación.
+    # Maneja el caso en que la fecha sea None.
+    @property
+    def publish_date_formatted(self) -> str:
+        if not self.publish_date:
+            return ""
+        return self.publish_date.strftime("%d-%m-%Y")
 
-# ... (ContactEntryModel class no necesita cambios) ...
+
+# ... (Clase ContactEntryModel sin cambios) ...
 class ContactEntryModel(rx.Model, table=True):
-    # ... contenido de la clase ContactEntryModel ...
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
-    userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
+    userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
     first_name: str
     last_name: Optional[str] = None
     email: Optional[str] = None
@@ -76,7 +85,7 @@ class ContactEntryModel(rx.Model, table=True):
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={"server_default": sqlalchemy.func.now()},
-        nullable=False
+        nullable=False,
     )
 
     @property
@@ -85,5 +94,4 @@ class ContactEntryModel(rx.Model, table=True):
         return self.created_at.strftime("%Y-%m-%d %H:%M")
 
     def dict(self, **kwargs):
-        # Incluye el campo calculado en la serialización
         return super().dict(**kwargs) | {"created_at_formatted": self.created_at_formatted}
