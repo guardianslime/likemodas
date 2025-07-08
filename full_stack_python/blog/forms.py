@@ -1,7 +1,6 @@
 import reflex as rx
 from .state import BlogAddFormState, BlogEditFormState
 
-
 def blog_post_add_form() -> rx.Component:
     return rx.form(
         rx.vstack(
@@ -14,7 +13,7 @@ def blog_post_add_form() -> rx.Component:
             rx.input(
                 placeholder="Precio",
                 type="number",
-                value=BlogAddFormState.price,
+                value=str(BlogAddFormState.price),
                 on_change=BlogAddFormState.set_price_from_input,
                 required=True,
             ),
@@ -58,12 +57,12 @@ def blog_post_add_form() -> rx.Component:
         padding="2em",
     )
 
-
 def blog_post_edit_form() -> rx.Component:
     return rx.cond(
         BlogEditFormState.post,
         rx.form(
             rx.vstack(
+                # ID oculto
                 rx.input(
                     type="hidden",
                     name="post_id",
@@ -73,6 +72,7 @@ def blog_post_edit_form() -> rx.Component:
                         ""
                     ),
                 ),
+                # Título
                 rx.input(
                     name="title",
                     value=rx.cond(
@@ -84,15 +84,21 @@ def blog_post_edit_form() -> rx.Component:
                     required=True,
                     width="100%",
                 ),
+                # Precio (CORREGIDO)
                 rx.input(
                     name="price",
                     type="number",
-                    value=BlogEditFormState.price_str,
+                    value=rx.cond(
+                        BlogEditFormState.post & BlogEditFormState.post.price,
+                        str(BlogEditFormState.post.price),
+                        "0.0"
+                    ),
                     on_change=BlogEditFormState.set_price,
                     placeholder="Precio",
                     required=True,
                     width="100%",
                 ),
+                # Contenido
                 rx.text_area(
                     name="content",
                     value=rx.cond(
@@ -106,6 +112,7 @@ def blog_post_edit_form() -> rx.Component:
                     height="40vh",
                     width="100%",
                 ),
+                # Switch para publicar
                 rx.flex(
                     rx.switch(
                         name="publish_active",
@@ -115,6 +122,7 @@ def blog_post_edit_form() -> rx.Component:
                     rx.text("Publicar"),
                     spacing="2",
                 ),
+                # Campos de fecha y hora si se publica
                 rx.cond(
                     BlogEditFormState.post_publish_active,
                     rx.hstack(

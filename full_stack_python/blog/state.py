@@ -247,14 +247,12 @@ class BlogViewState(rx.State):
 class BlogEditFormState(BlogPostState):
     post_content: str = ""
     post_publish_active: bool = False
-    price_str: str = "0.0"  # ← para capturar string en input numérico
 
     def on_load_edit(self):
         self.get_post_detail()
         if self.post:
             self.post_content = self.post.content or ""
             self.post_publish_active = self.post.publish_active
-            self.price_str = str(self.post.price or 0.0)  # ← Cargar el valor inicial del precio
 
     @rx.var
     def publish_display_date(self) -> str:
@@ -267,21 +265,16 @@ class BlogEditFormState(BlogPostState):
         if not self.post or not self.post.publish_date:
             return datetime.now().strftime("%H:%M:%S")
         return self.post.publish_date.strftime("%H:%M:%S")
+    
+    price_str: str = "0.0"  # valor intermedio para el campo
 
     @rx.event
     def set_price(self, value: str):
-        self.price_str = value  # ← valor capturado directamente como string
+        self.price_str = value
 
     def handle_submit(self, form_data: dict):
         post_id = int(form_data.pop("post_id", 0))
 
-        # Convertir el string a float antes de guardar
-        try:
-            form_data["price"] = float(self.price_str)
-        except ValueError:
-            form_data["price"] = 0.0
-
-        # Fecha de publicación
         final_publish_date = None
         if form_data.get("publish_date") and form_data.get("publish_time"):
             try:
