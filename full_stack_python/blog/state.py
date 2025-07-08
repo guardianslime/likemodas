@@ -144,7 +144,7 @@ class BlogViewState(rx.State):
 
     @rx.var
     def post_id(self) -> str:
-        return self.router.page.params.get("post", "")
+        return self.router.page.params.get("public_post_id", "")
 
     def on_load(self):
         try:

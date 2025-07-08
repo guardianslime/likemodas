@@ -9,7 +9,7 @@ def blog_public_page():
             lambda post: rx.box(
                 rx.link(
                     rx.image(src=rx.get_upload_url(post.images[0]), width="200px"),
-                    href=f"/blog/public/{post.id}"  # <- ruta corregida
+                    href=f"/blog/public/{post.id}" # <- ruta corregida
                 ),
                 rx.text(post.title),
                 rx.text(f"${post.price:.2f}"),
