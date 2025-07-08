@@ -1,7 +1,7 @@
 import reflex as rx
 from .state import BlogAddFormState, BlogEditFormState
 
-def blog_post_add_form():
+def blog_post_add_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             rx.input(
@@ -13,8 +13,8 @@ def blog_post_add_form():
             rx.input(
                 placeholder="Precio",
                 type="number",
-                value=str(BlogAddFormState.price),  # ✅ Conversión segura
-                on_change=lambda e: BlogAddFormState.set_price(float(e)),  # ✅ Conversión explícita
+                value=str(BlogAddFormState.price),
+                on_change=BlogAddFormState.set_price_from_input,
                 required=True,
             ),
             rx.text_area(
@@ -38,16 +38,23 @@ def blog_post_add_form():
                         BlogAddFormState.temp_images,
                         lambda img: rx.box(
                             rx.image(src=rx.get_upload_url(img), width="100px"),
-                            rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img)),
-                            style={"position": "relative", "margin": "0.5em"}
-                        )
+                            rx.icon(
+                                tag="trash",
+                                on_click=BlogAddFormState.remove_image(img),
+                                color="red.500",
+                            ),
+                            style={"position": "relative", "margin": "0.5em"},
+                        ),
                     )
                 )
             ),
             rx.button("Publicar", type="submit", color_scheme="green"),
-            spacing="4"
+            spacing="4",
         ),
         on_submit=BlogAddFormState.submit,
+        width="100%",
+        max_width="600px",
+        padding="2em",
     )
 
 def blog_post_edit_form() -> rx.Component:
@@ -139,3 +146,4 @@ def blog_post_edit_form() -> rx.Component:
         ),
         rx.center(rx.spinner(), height="50vh")
     )
+
