@@ -1,4 +1,4 @@
-# full_stack_python/models.py
+# full_stack_python/models.py (CORREGIDO)
 
 from typing import Optional, List
 from datetime import datetime
@@ -8,9 +8,9 @@ import sqlalchemy
 from sqlmodel import Field, Relationship
 from . import utils
 
-# ... (Las clases UserInfo y BlogPostModel no cambian) ...
-
+# ... (UserInfo class no necesita cambios) ...
 class UserInfo(rx.Model, table=True):
+    # ... contenido de la clase UserInfo ...
     email: str
     user_id: int = Field(foreign_key='localuser.id')
     user: Optional[LocalUser] = Relationship()
@@ -28,6 +28,7 @@ class UserInfo(rx.Model, table=True):
         sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
         nullable=False
     )
+
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -54,7 +55,17 @@ class BlogPostModel(rx.Model, table=True):
         nullable=True
     )
 
+    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+    # Añadimos una propiedad que formatea la fecha en el backend.
+    # Ahora podemos acceder a 'post.created_at_formatted' desde la UI.
+    @property
+    def created_at_formatted(self) -> str:
+        return self.created_at.strftime("%Y-%m-%d")
+
+
+# ... (ContactEntryModel class no necesita cambios) ...
 class ContactEntryModel(rx.Model, table=True):
+    # ... contenido de la clase ContactEntryModel ...
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional['UserInfo'] = Relationship(back_populates="contact_entries")
     first_name: str

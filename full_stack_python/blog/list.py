@@ -1,4 +1,5 @@
 # full_stack_python/blog/list.py (CORREGIDO)
+
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
@@ -16,13 +17,16 @@ def blog_post_list_item(post: BlogPostModel):
                     rx.badge("Publicado", color_scheme="green"),
                     rx.badge("Borrador", color_scheme="gray")
                 ),
-                rx.text(f"Creado: {post.created_at.strftime('%Y-%m-%d')}", size="2"),
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                # Usamos la nueva propiedad 'created_at_formatted' en lugar de llamar a .strftime()
+                rx.text(f"Creado: {post.created_at_formatted}", size="2"),
                 align="start",
             )
         ),
         href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
     )
 
+# ... (El resto del archivo 'blog_post_list_page' no necesita cambios) ...
 @reflex_local_auth.require_login
 def blog_post_list_page() -> rx.Component:
     return base_page(
@@ -37,8 +41,6 @@ def blog_post_list_page() -> rx.Component:
             rx.divider(),
             rx.cond(
                 BlogPostState.posts,
-                # --- CORRECCIÓN ---
-                # Se cambió 'rx.responsive_grid' por el nombre correcto: 'rx.grid'
                 rx.grid(
                     rx.foreach(BlogPostState.posts, blog_post_list_item),
                     columns=[1, 2, 3],
