@@ -8,8 +8,12 @@ def blog_public_page():
             BlogPublicState.posts,
             lambda post: rx.box(
                 rx.link(
-                    rx.image(src=rx.get_upload_url(post.images[0]), width="200px"),
-                    href=f"/public-post/{post.id}" # <- ruta corregida
+                    rx.cond(
+                        post.images and len(post.images) > 0,
+                        rx.image(src=rx.get_upload_url(post.images[0]), width="200px"),
+                        rx.box("Sin imagen", width="200px", height="150px", bg="#eee", align="center", justify="center")
+                    ),
+                    href=f"/public-post/{post.id}"
                 ),
                 rx.text(post.title),
                 rx.text(f"${post.price:.2f}"),
