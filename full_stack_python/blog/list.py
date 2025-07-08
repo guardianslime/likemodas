@@ -17,8 +17,6 @@ def blog_post_list_item(post: BlogPostModel):
                     rx.badge("Publicado", color_scheme="green"),
                     rx.badge("Borrador", color_scheme="gray")
                 ),
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-                # Usamos la nueva propiedad 'created_at_formatted' en lugar de llamar a .strftime()
                 rx.text(f"Creado: {post.created_at_formatted}", size="2"),
                 align="start",
             )
@@ -26,7 +24,6 @@ def blog_post_list_item(post: BlogPostModel):
         href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
     )
 
-# ... (El resto del archivo 'blog_post_list_page' no necesita cambios) ...
 @reflex_local_auth.require_login
 def blog_post_list_page() -> rx.Component:
     return base_page(
@@ -43,8 +40,12 @@ def blog_post_list_page() -> rx.Component:
                 BlogPostState.posts,
                 rx.grid(
                     rx.foreach(BlogPostState.posts, blog_post_list_item),
-                    columns=[1, 2, 3],
-                    spacing="4"
+                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                    # La prop 'columns' espera un string CSS, no una lista de números.
+                    # Este valor crea una rejilla responsiva que se ajusta automáticamente.
+                    columns="repeat(auto-fit, minmax(280px, 1fr))",
+                    spacing="4",
+                    width="100%", # Asegura que la rejilla ocupe todo el ancho
                 ),
                 rx.center(rx.text("Aún no has escrito ningún post."), padding_y="4em")
             ),
