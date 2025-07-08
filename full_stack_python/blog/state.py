@@ -1,21 +1,20 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
-import sqlmodel
 
 from .. import navigation
 from ..auth.state import SessionState
 from ..models import BlogPostModel, UserInfo
 
-# Rutas útiles
+
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
 
-# ──────────────────────────────────────────────
-# ESTADO PARA MANEJO GENERAL DEL BLOG (privado)
-# ──────────────────────────────────────────────
+# ───────────────────────────────
+# Estado privado (mis publicaciones)
+# ───────────────────────────────
 
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
@@ -97,9 +96,9 @@ class BlogPostState(SessionState):
             self.post = post
 
 
-# ──────────────────────────────────────────────
-# ESTADO PARA CREAR PUBLICACIONES
-# ──────────────────────────────────────────────
+# ───────────────────────────────
+# Estado para añadir publicaciones
+# ───────────────────────────────
 
 class BlogAddFormState(SessionState):
     title: str = ""
@@ -143,9 +142,9 @@ class BlogAddFormState(SessionState):
         return rx.redirect("/blog/page")
 
 
-# ──────────────────────────────────────────────
-# ESTADO PARA VER LISTADO PÚBLICO
-# ──────────────────────────────────────────────
+# ───────────────────────────────
+# Estado para vista pública
+# ───────────────────────────────
 
 class BlogPublicState(rx.State):
     posts: list[BlogPostModel] = []
@@ -159,9 +158,9 @@ class BlogPublicState(rx.State):
             ).all()
 
 
-# ──────────────────────────────────────────────
-# ESTADO PARA DETALLE PÚBLICO /public-post/[id]
-# ──────────────────────────────────────────────
+# ───────────────────────────────
+# Vista detalle público
+# ───────────────────────────────
 
 class BlogViewState(rx.State):
     post: Optional[BlogPostModel] = None
@@ -177,11 +176,17 @@ class BlogViewState(rx.State):
             return self.post.images[self.img_idx]
         return ""
 
+    @rx.var
+    def max_img_idx(self) -> int:
+        if self.post and self.post.images:
+            return len(self.post.images) - 1
+        return 0
+
     @rx.event
     def on_load(self):
         try:
             pid = int(self.post_id)
-        except:
+        except ValueError:
             return
         with rx.session() as session:
             self.post = session.get(BlogPostModel, pid)
@@ -189,7 +194,7 @@ class BlogViewState(rx.State):
 
     @rx.event
     def siguiente_imagen(self):
-        if self.post and self.post.images and self.img_idx < len(self.post.images) - 1:
+        if self.img_idx < self.max_img_idx:
             self.img_idx += 1
 
     @rx.event
@@ -198,9 +203,9 @@ class BlogViewState(rx.State):
             self.img_idx -= 1
 
 
-# ──────────────────────────────────────────────
-# ESTADO PARA EDITAR PUBLICACIONES
-# ──────────────────────────────────────────────
+# ───────────────────────────────
+# Estado para editar publicaciones
+# ───────────────────────────────
 
 class BlogEditFormState(BlogPostState):
     post_content: str = ""

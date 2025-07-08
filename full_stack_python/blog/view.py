@@ -1,30 +1,109 @@
 import reflex as rx
-from .state import BlogViewState
+from ..state import BlogViewState
 
 def blog_post_view_page():
     return rx.center(
-        rx.cond(
-            BlogViewState.post & (BlogViewState.post.images != None),
-            rx.vstack(
-                rx.image(
-                    src=rx.get_upload_url(BlogViewState.imagen_actual),
-                    width="400px"
+        rx.vstack(
+            # Título
+            rx.heading(
+                rx.cond(
+                    BlogViewState.post,
+                    BlogViewState.post.title,
+                    "Cargando publicación..."
                 ),
-                rx.hstack(
-                    rx.button(
-                        "←",
-                        on_click=BlogViewState.anterior_imagen,
-                        disabled=BlogViewState.img_idx == 0
-                    ),
-                    rx.button(
-                        "→",
-                        on_click=BlogViewState.siguiente_imagen,
-                        disabled=BlogViewState.img_idx == rx.len(BlogViewState.post.images) - 1
-                    ),
-                ),
-                rx.text(f"Precio: ${BlogViewState.post.price}", weight="bold"),
-                rx.text(BlogViewState.post.content),
+                size="3",
+                text_align="center"
             ),
-            rx.text("Cargando publicación o no disponible."),
+
+            # Imagen + navegación tipo slider
+            rx.cond(
+                BlogViewState.post & BlogViewState.post.images,
+                rx.box(
+                    rx.hstack(
+                        # Botón izquierdo
+                        rx.button(
+                            "←",
+                            on_click=BlogViewState.anterior_imagen,
+                            disabled=BlogViewState.img_idx == 0,
+                            size="sm",
+                        ),
+                        # Imagen principal
+                        rx.image(
+                            src=rx.cond(
+                                BlogViewState.post,
+                                rx.get_upload_url(BlogViewState.post.images[BlogViewState.img_idx]),
+                                ""
+                            ),
+                            width="100%",
+                            max_width="400px",
+                            object_fit="contain",
+                            border_radius="md",
+                            box_shadow="lg"
+                        ),
+                        # Botón derecho
+                        rx.button(
+                            "→",
+                            on_click=BlogViewState.siguiente_imagen,
+                            disabled=rx.cond(
+                                BlogViewState.post,
+                                BlogViewState.img_idx == BlogViewState.max_img_idx,
+                                True
+                            ),
+                            size="sm",
+                        ),
+                        justify="center",
+                        spacing="1em",
+                        wrap="wrap",
+                    ),
+                    width="100%",
+                    style={
+                        "textAlign": "center",
+                        "padding": "1em",
+                        "@media (max-width: 500px)": {
+                            "flexDirection": "column",
+                            "gap": "1em",
+                        },
+                    }
+                ),
+                rx.text("No hay imágenes para mostrar.")
+            ),
+
+            # Contador de imagen actual
+            rx.text(
+                f"{BlogViewState.img_idx + 1} / "
+                f"{rx.cond(BlogViewState.post, len(BlogViewState.post.images), 1)}",
+                font_size="0.9em",
+                color="gray.500"
+            ),
+
+            # Precio
+            rx.text(
+                rx.cond(
+                    BlogViewState.post,
+                    f"${{BlogViewState.post.price:.2f}}",
+                    ""
+                ),
+                font_weight="bold",
+                color="green.500",
+                font_size="1.2em"
+            ),
+
+            # Contenido
+            rx.text(
+                rx.cond(
+                    BlogViewState.post,
+                    BlogViewState.post.content,
+                    ""
+                ),
+                padding_top="1em",
+                font_size="1em",
+                text_align="justify"
+            ),
+
+            spacing="1.5em",
+            padding="2em",
+            align="center",
+            width="100%",
+            max_width="600px"
         )
     )
