@@ -18,7 +18,7 @@ class BlogPostState(SessionState):
 
     @rx.var
     def blog_post_id(self) -> str:
-        return self.router.session.current_page.params.get("blog_id", "")
+        return self.router.page.params.get("blog_id", "")
 
     @rx.var
     def blog_post_url(self) -> str:
