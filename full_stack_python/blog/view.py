@@ -1,6 +1,7 @@
 import reflex as rx
 from full_stack_python.blog.state import BlogViewState
 
+
 def blog_post_view_page():
     return rx.center(
         rx.vstack(
@@ -25,13 +26,13 @@ def blog_post_view_page():
                             "←",
                             on_click=BlogViewState.anterior_imagen,
                             disabled=BlogViewState.img_idx == 0,
-                            size="2",  # ← cambiado de "sm"
+                            size="1",  # ← Cambiado de 'sm' a '1' válido
                         ),
                         # Imagen principal
                         rx.image(
                             src=rx.cond(
                                 BlogViewState.post,
-                                rx.get_upload_url(BlogViewState.post.images[BlogViewState.img_idx]),
+                                rx.get_upload_url(BlogViewState.imagen_actual),
                                 ""
                             ),
                             width="100%",
@@ -46,22 +47,22 @@ def blog_post_view_page():
                             on_click=BlogViewState.siguiente_imagen,
                             disabled=rx.cond(
                                 BlogViewState.post,
-                                BlogViewState.img_idx == BlogViewState.max_img_idx,
+                                BlogViewState.img_idx >= rx.var(BlogViewState.post.images).length() - 1,
                                 True
                             ),
-                            size="2",  # ← cambiado de "sm"
+                            size="1",  # ← Cambiado de 'sm' a '1' válido
                         ),
                         justify="center",
-                        spacing="4",
+                        spacing="3",  # ← Corregido: no usar '1em'
                         wrap="wrap",
                     ),
                     width="100%",
                     style={
                         "textAlign": "center",
-                        "padding": "4",
+                        "padding": "1em",
                         "@media (max-width: 500px)": {
                             "flexDirection": "column",
-                            "gap": "4",
+                            "gap": "1em",
                         },
                     }
                 ),
@@ -69,39 +70,46 @@ def blog_post_view_page():
             ),
 
             # Contador de imagen actual
-            rx.text(
-                f"{BlogViewState.img_idx + 1} / "
-                f"{rx.cond(BlogViewState.post, BlogViewState.post.images.length(), 1)}",
-                font_size="4",
-                color="gray.500"
-            ),
-
-            # Precio
-            rx.text(
-                rx.cond(
-                    BlogViewState.post,
-                    f"${{BlogViewState.post.price:.2f}}",
-                    ""
+            rx.cond(
+                BlogViewState.post,
+                rx.text(
+                    rx.format(
+                        "{} / {}",
+                        BlogViewState.img_idx + 1,
+                        rx.var(BlogViewState.post.images).length()
+                    ),
+                    font_size="0.9em",
+                    color="gray.500"
                 ),
-                font_weight="bold",
-                color="green.500",
-                font_size="4.2"
+                rx.text("")
             ),
 
-            # Contenido
-            rx.text(
-                rx.cond(
-                    BlogViewState.post,
+            # Precio (mueve hacia abajo correctamente)
+            rx.cond(
+                BlogViewState.post,
+                rx.text(
+                    rx.format("${:.2f}", BlogViewState.post.price),
+                    font_weight="bold",
+                    color="green.500",
+                    font_size="1.2em"
+                ),
+                rx.text("")
+            ),
+
+            # Contenido (descripción)
+            rx.cond(
+                BlogViewState.post,
+                rx.text(
                     BlogViewState.post.content,
-                    ""
+                    padding_top="1em",
+                    font_size="1em",
+                    text_align="justify"
                 ),
-                padding_top="4",
-                font_size="4",
-                text_align="justify"
+                rx.text("")
             ),
 
-            spacing="4",
-            padding="8",
+            spacing="6",
+            padding="2em",
             align="center",
             width="100%",
             max_width="600px"

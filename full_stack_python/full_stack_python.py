@@ -86,7 +86,12 @@ app.add_page(
     on_load=blog.BlogPostState.get_post_detail
 )
 app.add_page(blog_public_page, route="/blog/page", title="Galería pública", on_load=BlogPublicState.on_load)
-app.add_page(blog_post_view_page, route="/public-post/[public_post_id]", title="Detalle", on_load=BlogViewState.on_load)
+app.add_page(
+    blog.blog_post_view_page,
+    route="/public-post/[public_post_id]",
+    title="Detalle",
+    on_load=blog.BlogViewState.on_load,
+)
 
 
 # Páginas de Contacto
