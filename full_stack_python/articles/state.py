@@ -47,7 +47,7 @@ class ArticlePublicState(SessionState):
 
     def set_limit_and_reload(self, new_limit: int = 5):
         self.limit = new_limit
-        return self.load_posts
+        yield type(self).load_posts()
 
     def load_posts(self, *args, **kwargs):
         lookup_args = (
