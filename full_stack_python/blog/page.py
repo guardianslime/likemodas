@@ -19,7 +19,14 @@ def blog_public_page():
                                     rx.box("Sin imagen", width="200px", height="150px", bg="#eee", align="center", justify="center")
                                 ),
                                 rx.text(post.title, weight="bold"),
-                                rx.text(rx.format("${:.2f}", post.price), color="gray"),
+                                rx.text(
+                                    rx.cond(
+                                        post.price != 0,
+                                        f"${{post.price:.2f}}",  # Doble llave para escapar dentro del string
+                                        "$0.00"
+                                    ),
+                                    color="gray"
+                                )
                                 spacing="2",
                                 align="start"
                             ),
