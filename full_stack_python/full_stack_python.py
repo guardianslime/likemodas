@@ -85,11 +85,8 @@ app.add_page(
     route="/blog/[blog_id]/edit",
     on_load=blog.BlogPostState.get_post_detail
 )
-
-app.add_page(blog_post_add_form, route="/blog/add", title="Agregar publicación")
 app.add_page(blog_public_page, route="/blog/page", title="Galería pública", on_load=BlogPublicState.on_load)
 app.add_page(blog_post_view_page, route="/blog/page/[id]", title="Detalle", on_load=BlogViewState.on_load)
-
 
 # Páginas de Contacto
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
