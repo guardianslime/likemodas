@@ -19,7 +19,7 @@ def blog_public_page():
                                     rx.box("Sin imagen", width="200px", height="150px", bg="#eee", align="center", justify="center")
                                 ),
                                 rx.text(post.title, weight="bold"),
-                                rx.text(f"${post.price:.2f}" if post.price else "$0.00", color="gray"),
+                                rx.text(rx.format("${:.2f}", post.price), color="gray"),
                                 spacing="2",
                                 align="start"
                             ),
