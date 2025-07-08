@@ -9,9 +9,13 @@ from .. import navigation
 from ..auth.state import SessionState
 from ..models import BlogPostModel, UserInfo
 
-BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE
-if BLOG_POSTS_ROUTE.endswith("/"):
-    BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
+# Rutas útiles
+BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
+
+
+# ──────────────────────────────────────────────
+# ESTADO PARA MANEJO GENERAL DEL BLOG (privado)
+# ──────────────────────────────────────────────
 
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
@@ -20,42 +24,20 @@ class BlogPostState(SessionState):
 
     @rx.event
     def load_posts(self):
+        if self.my_userinfo_id is None:
+            self.posts = []
+            return
         with rx.session() as session:
             self.posts = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .where(BlogPostModel.userinfo_id == SessionState.my_userinfo_id)
+                select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo))
+                .where(BlogPostModel.userinfo_id == self.my_userinfo_id)
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
     @rx.var
-    def post_id(self) -> str:
-        return self.router.page.params.get("public_post_id", "")
-
-    @rx.var
-    def imagen_actual(self) -> str:
-        if self.post and self.post.images and len(self.post.images) > self.img_idx:
-            return self.post.images[self.img_idx]
-        return ""
-
-    @rx.event
-    def on_load(self):
-        try:
-            pid = int(self.post_id)
-        except:
-            return
-        with rx.session() as session:
-            self.post = session.get(BlogPostModel, pid)
-        self.img_idx = 0
-
-    @rx.event
-    def siguiente_imagen(self):
-        if self.post and self.post.images and self.img_idx < len(self.post.images) - 1:
-            self.img_idx += 1
-
-    @rx.event
-    def anterior_imagen(self):
-        if self.img_idx > 0:
-            self.img_idx -= 1
+    def blog_post_id(self) -> str:
+        return self.router.page.params.get("blog_id", "")
 
     @rx.var
     def blog_post_url(self) -> str:
@@ -80,29 +62,17 @@ class BlogPostState(SessionState):
             return
 
         with rx.session() as session:
-            lookups = (
-                (BlogPostModel.userinfo_id == self.my_userinfo_id) &
-                (BlogPostModel.id == post_id_int)
-            )
             self.post = session.exec(
                 select(BlogPostModel)
                 .options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo)
+                    .joinedload(UserInfo.user)
                 )
-                .where(lookups)
+                .where(
+                    (BlogPostModel.userinfo_id == self.my_userinfo_id) &
+                    (BlogPostModel.id == post_id_int)
+                )
             ).one_or_none()
-
-    def load_posts(self):
-        if self.my_userinfo_id is None:
-            self.posts = []
-            return
-        with rx.session() as session:
-            self.posts = session.exec(
-                select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo))
-                .where(BlogPostModel.userinfo_id == self.my_userinfo_id)
-                .order_by(BlogPostModel.created_at.desc())
-            ).all()
 
     def _add_post_to_db(self, form_data: dict):
         with rx.session() as session:
@@ -125,6 +95,11 @@ class BlogPostState(SessionState):
             session.commit()
             session.refresh(post)
             self.post = post
+
+
+# ──────────────────────────────────────────────
+# ESTADO PARA CREAR PUBLICACIONES
+# ──────────────────────────────────────────────
 
 class BlogAddFormState(SessionState):
     title: str = ""
@@ -167,22 +142,42 @@ class BlogAddFormState(SessionState):
         self.temp_images = []
         return rx.redirect("/blog/page")
 
+
+# ──────────────────────────────────────────────
+# ESTADO PARA VER LISTADO PÚBLICO
+# ──────────────────────────────────────────────
+
 class BlogPublicState(rx.State):
     posts: list[BlogPostModel] = []
 
     def on_load(self):
         with rx.session() as session:
             self.posts = session.exec(
-                select(BlogPostModel).where(BlogPostModel.publish_active == True)
+                select(BlogPostModel)
+                .where(BlogPostModel.publish_active == True)
+                .order_by(BlogPostModel.created_at.desc())
             ).all()
+
+
+# ──────────────────────────────────────────────
+# ESTADO PARA DETALLE PÚBLICO /public-post/[id]
+# ──────────────────────────────────────────────
 
 class BlogViewState(rx.State):
     post: Optional[BlogPostModel] = None
+    img_idx: int = 0
 
     @rx.var
     def post_id(self) -> str:
         return self.router.page.params.get("public_post_id", "")
 
+    @rx.var
+    def imagen_actual(self) -> str:
+        if self.post and self.post.images and len(self.post.images) > self.img_idx:
+            return self.post.images[self.img_idx]
+        return ""
+
+    @rx.event
     def on_load(self):
         try:
             pid = int(self.post_id)
@@ -190,6 +185,22 @@ class BlogViewState(rx.State):
             return
         with rx.session() as session:
             self.post = session.get(BlogPostModel, pid)
+        self.img_idx = 0
+
+    @rx.event
+    def siguiente_imagen(self):
+        if self.post and self.post.images and self.img_idx < len(self.post.images) - 1:
+            self.img_idx += 1
+
+    @rx.event
+    def anterior_imagen(self):
+        if self.img_idx > 0:
+            self.img_idx -= 1
+
+
+# ──────────────────────────────────────────────
+# ESTADO PARA EDITAR PUBLICACIONES
+# ──────────────────────────────────────────────
 
 class BlogEditFormState(BlogPostState):
     post_content: str = ""
