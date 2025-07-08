@@ -1,6 +1,8 @@
 # full_stack_python/models.py (CORREGIDO)
 
 from typing import Optional, List
+from sqlmodel import Field, Relationship
+from sqlalchemy import Column, JSON
 from datetime import datetime
 import reflex as rx
 from reflex_local_auth.user import LocalUser
