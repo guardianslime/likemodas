@@ -15,8 +15,8 @@ def blog_public_page():
                     ),
                     href=f"/public-post/{post.id}"
                 ),
-                rx.text(post.title),
-                rx.text(f"${post.price:.2f}"),
+                rx.text(post.title, weight="bold"),
+                rx.text(f"${post.price:.2f}", color="gray"),
                 padding="1em",
                 border="1px solid #ccc",
                 border_radius="8px",

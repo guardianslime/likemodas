@@ -13,12 +13,38 @@ if BLOG_POSTS_ROUTE.endswith("/"):
     BLOG_POSTS_ROUTE = BLOG_POSTS_ROUTE[:-1]
 
 class BlogPostState(SessionState):
-    posts: List[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
+    img_idx: int = 0
 
     @rx.var
-    def blog_post_id(self) -> str:
-        return self.router.page.params.get("blog_id", "")
+    def post_id(self) -> str:
+        return self.router.page.params.get("public_post_id", "")
+
+    @rx.var
+    def imagen_actual(self) -> str:
+        if self.post and self.post.images and len(self.post.images) > self.img_idx:
+            return self.post.images[self.img_idx]
+        return ""
+
+    @rx.event
+    def on_load(self):
+        try:
+            pid = int(self.post_id)
+        except:
+            return
+        with rx.session() as session:
+            self.post = session.get(BlogPostModel, pid)
+        self.img_idx = 0
+
+    @rx.event
+    def siguiente_imagen(self):
+        if self.post and self.post.images and self.img_idx < len(self.post.images) - 1:
+            self.img_idx += 1
+
+    @rx.event
+    def anterior_imagen(self):
+        if self.img_idx > 0:
+            self.img_idx -= 1
 
     @rx.var
     def blog_post_url(self) -> str:
