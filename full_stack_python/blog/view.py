@@ -71,7 +71,7 @@ def blog_post_view_page():
             # Contador de imagen actual
             rx.text(
                 f"{BlogViewState.img_idx + 1} / "
-                f"{rx.cond(BlogViewState.post, len(BlogViewState.post.images), 1)}",
+                f"{rx.cond(BlogViewState.post, BlogViewState.post.images.length(), 1)}",
                 font_size="4",
                 color="gray.500"
             ),
