@@ -4,9 +4,25 @@ from .state import BlogAddFormState, BlogEditFormState
 def blog_post_add_form():
     return rx.form(
         rx.vstack(
-            rx.input("title", placeholder="Nombre del producto", required=True),
-            rx.input("price", placeholder="Precio", type="number", required=True),
-            rx.text_area("content", placeholder="Descripción del producto", required=True),
+            rx.input(
+                placeholder="Nombre del producto",
+                value=BlogAddFormState.title,
+                on_change=BlogAddFormState.set_title,
+                required=True,
+            ),
+            rx.input(
+                placeholder="Precio",
+                type="number",
+                value=BlogAddFormState.price,
+                on_change=BlogAddFormState.set_price,
+                required=True,
+            ),
+            rx.text_area(
+                placeholder="Descripción del producto",
+                value=BlogAddFormState.content,
+                on_change=BlogAddFormState.set_content,
+                required=True,
+            ),
             rx.upload(
                 rx.text("Subir imágenes del producto"),
                 id="blog_upload",
@@ -29,10 +45,10 @@ def blog_post_add_form():
                 )
             ),
             rx.button("Publicar", type="submit", color_scheme="green"),
+            spacing="1em"
         ),
-        on_submit=BlogAddFormState.submit
+        on_submit=BlogAddFormState.submit,
     )
-
 def blog_post_edit_form() -> rx.Component:
     return rx.cond(
         BlogEditFormState.post,
