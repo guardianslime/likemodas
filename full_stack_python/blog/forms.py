@@ -45,7 +45,7 @@ def blog_post_add_form():
                 )
             ),
             rx.button("Publicar", type="submit", color_scheme="green"),
-            spacing="1em"
+            spacing="4"
         ),
         on_submit=BlogAddFormState.submit,
     )
