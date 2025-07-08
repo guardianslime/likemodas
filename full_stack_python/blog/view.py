@@ -45,12 +45,8 @@ def blog_post_view_page():
                         rx.button(
                             "→",
                             on_click=BlogViewState.siguiente_imagen,
-                            disabled=rx.cond(
-                                BlogViewState.post,
-                                BlogViewState.img_idx >= rx.var(BlogViewState.post.images).length() - 1,
-                                True
-                            ),
-                            size="1",  # ← Cambiado de 'sm' a '1' válido
+                            disabled=BlogViewState.img_idx >= BlogViewState.max_img_idx,
+                            size="1",
                         ),
                         justify="center",
                         spacing="3",  # ← Corregido: no usar '1em'
