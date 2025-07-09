@@ -13,33 +13,39 @@ def blog_public_page():
                     lambda post: rx.box(
                         rx.link(
                             rx.vstack(
-                                # Contenedor de imagen centrado
+                                # Imagen centrada en contenedor fijo
                                 rx.box(
                                     rx.cond(
                                         post.images & (post.images.length() > 0),
                                         rx.image(
                                             src=rx.get_upload_url(post.images[0]),
-                                            width="100%",
-                                            height="200px",  # Altura fija
+                                            width="auto",
+                                            height="100%",
+                                            max_height="180px",
                                             object_fit="cover",
                                             border_radius="md"
                                         ),
                                         rx.box(
                                             "Sin imagen",
-                                            width="100%",
-                                            height="200px",
-                                            bg="#eee",
-                                            align="center",
-                                            justify="center",
+                                            color="gray",
+                                            font_size="sm",
                                             display="flex",
+                                            align_items="center",
+                                            justify_content="center",
+                                            width="100%",
+                                            height="180px",
+                                            bg="#f5f5f5",
                                             border_radius="md"
                                         )
                                     ),
-                                    height="200px",  # Altura fija del contenedor
-                                    width="100%",
                                     display="flex",
+                                    align_items="center",
                                     justify_content="center",
-                                    align_items="center"
+                                    height="180px",
+                                    width="100%",
+                                    overflow="hidden",
+                                    border_radius="md",
+                                    bg="white"
                                 ),
                                 # Título
                                 rx.text(post.title, weight="bold"),
@@ -53,7 +59,8 @@ def blog_public_page():
                                     color="gray"
                                 ),
                                 spacing="2",
-                                align="start"
+                                align="start",
+                                width="100%"
                             ),
                             href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                         ),
@@ -61,11 +68,12 @@ def blog_public_page():
                         border="1px solid #ccc",
                         border_radius="8px",
                         box_shadow="md",
-                        min_height="280px"  # Altura total fija para que no brinque
+                        min_height="280px",
+                        bg="white"
                     )
                 ),
-                columns="repeat(auto-fit, minmax(200px, 1fr))",  # un poco más grande
-                max_width="1200px",  # espacio para hasta 6 columnas en pantallas grandes
+                columns="repeat(auto-fit, minmax(200px, 1fr))",
+                max_width="1200px",
                 spacing="4",
                 width="100%"
             ),
