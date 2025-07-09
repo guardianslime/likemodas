@@ -48,7 +48,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="100%"
+                                                padding_top="70%"  # 👈 Imagen ocupa el 70% del ancho
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -68,7 +68,7 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="460px"
+                                    min_height="500px"  # 👈 más alto para más espacio
                                 )
                             ),
                             columns="repeat(2, 1fr)",
@@ -115,7 +115,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="100%"
+                                                padding_top="70%"  # 👈 70%
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -135,7 +135,7 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="460px"
+                                    min_height="500px"
                                 )
                             ),
                             columns="repeat(3, 1fr)",
@@ -188,7 +188,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="100%"
+                                                padding_top="70%"  # 👈 aquí también
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -208,7 +208,7 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="460px"
+                                    min_height="500px"
                                 )
                             ),
                             columns="repeat(6, 1fr)",
