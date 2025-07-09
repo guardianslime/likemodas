@@ -59,7 +59,10 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border="1px solid #2c2c2c",
+                                    border=rx.color_mode_cond(
+                                        light="1px solid #e5e5e5",
+                                        dark="1px solid #1a1a1a"
+                                    ),
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
@@ -121,7 +124,10 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border="1px solid #2c2c2c",
+                                    border=rx.color_mode_cond(
+                                        light="1px solid #e5e5e5",
+                                        dark="1px solid #1a1a1a"
+                                    ),
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
@@ -189,7 +195,10 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border="1px solid #2c2c2c",
+                                    border=rx.color_mode_cond(
+                                        light="1px solid #e5e5e5",
+                                        dark="1px solid #1a1a1a"
+                                    ),
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
@@ -198,6 +207,7 @@ def blog_public_page():
                             columns="repeat(6, 1fr)",
                             spacing="6",
                             width="100%",
+                            max_width="11200px",
                             justify_content="center"
                         )
                     )
