@@ -189,7 +189,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="100%"
+                                                padding_top="100%"  # cuadrado
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -205,16 +205,16 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="3em",                          # ⬅️ TRIPLE del original
+                                    padding="9em",                          # ⬅️ TRIPLE del anterior
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md"
                                 )
                             ),
-                            columns="repeat(6, 1fr)",                      # ⬅️ se mantiene
-                            spacing="6",                                   # ⬅️ se mantiene
+                            columns="repeat(6, 1fr)",                      # ⬅️ no cambia
+                            spacing="6",                                   # ⬅️ no cambia
                             width="100%",
-                            max_width="4800px",                            # ⬅️ TRIPLE del original
+                            max_width="7200px",                            # ⬅️ TRIPLE del anterior
                             justify_content="center"
                         )
                     )
