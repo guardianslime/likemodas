@@ -7,10 +7,10 @@ def blog_public_page():
     return base_layout_component(
         rx.center(
             rx.vstack(
-                rx.heading("Publicaciones", size="6"),  # tamaño de título aumentado
+                rx.heading("Publicaciones", size="6"),
                 rx.fragment(
 
-                    # Mobile (2 columnas, tamaño x7)
+                    # Mobile
                     rx.mobile_only(
                         rx.grid(
                             rx.foreach(
@@ -23,9 +23,6 @@ def blog_public_page():
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
-                                                        position="absolute",
-                                                        top="0",
-                                                        left="0",
                                                         width="100%",
                                                         height="100%",
                                                         object_fit="cover",
@@ -33,9 +30,6 @@ def blog_public_page():
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
-                                                        position="absolute",
-                                                        top="0",
-                                                        left="0",
                                                         width="100%",
                                                         height="100%",
                                                         bg="#eee",
@@ -46,8 +40,8 @@ def blog_public_page():
                                                     )
                                                 ),
                                                 position="relative",
-                                                width="100%",
-                                                padding_top="100%"
+                                                width="350px",
+                                                height="350px"
                                             ),
                                             rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
@@ -77,7 +71,7 @@ def blog_public_page():
                         )
                     ),
 
-                    # Tablet (3 columnas, tamaño x7)
+                    # Tablet
                     rx.tablet_only(
                         rx.grid(
                             rx.foreach(
@@ -90,9 +84,6 @@ def blog_public_page():
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
-                                                        position="absolute",
-                                                        top="0",
-                                                        left="0",
                                                         width="100%",
                                                         height="100%",
                                                         object_fit="cover",
@@ -100,9 +91,6 @@ def blog_public_page():
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
-                                                        position="absolute",
-                                                        top="0",
-                                                        left="0",
                                                         width="100%",
                                                         height="100%",
                                                         bg="#eee",
@@ -113,8 +101,8 @@ def blog_public_page():
                                                     )
                                                 ),
                                                 position="relative",
-                                                width="100%",
-                                                padding_top="100%"
+                                                width="350px",
+                                                height="350px"
                                             ),
                                             rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
@@ -144,7 +132,7 @@ def blog_public_page():
                         )
                     ),
 
-                    # Desktop (6 columnas, tamaño x7)
+                    # Desktop
                     rx.desktop_only(
                         rx.grid(
                             rx.foreach(
@@ -157,9 +145,6 @@ def blog_public_page():
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
-                                                        position="absolute",
-                                                        top="0",
-                                                        left="0",
                                                         width="100%",
                                                         height="100%",
                                                         object_fit="cover",
@@ -173,9 +158,6 @@ def blog_public_page():
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
-                                                        position="absolute",
-                                                        top="0",
-                                                        left="0",
                                                         width="100%",
                                                         height="100%",
                                                         bg="#eee",
@@ -186,8 +168,8 @@ def blog_public_page():
                                                     )
                                                 ),
                                                 position="relative",
-                                                width="100%",
-                                                padding_top="100%"
+                                                width="350px",
+                                                height="350px"
                                             ),
                                             rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
@@ -213,7 +195,7 @@ def blog_public_page():
                             columns="repeat(6, 1fr)",
                             spacing="6",
                             width="100%",
-                            max_width="11200px",  # x7 del original
+                            max_width="11200px",
                             justify_content="center"
                         )
                     )
