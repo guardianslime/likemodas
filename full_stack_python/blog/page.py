@@ -153,6 +153,7 @@ def blog_public_page():
                                 lambda post: rx.box(
                                     rx.link(
                                         rx.vstack(
+                                            # Imagen cuadrada y grande
                                             rx.box(
                                                 rx.cond(
                                                     post.images & (post.images.length() > 0),
@@ -188,8 +189,9 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="100%"
+                                                padding_top="100%"  # Cuadrado real
                                             ),
+                                            # Texto debajo sin estirar caja
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
                                                 rx.cond(
@@ -207,17 +209,17 @@ def blog_public_page():
                                     padding="1em",
                                     border="1px solid #ccc",
                                     border_radius="8px",
-                                    box_shadow="md",
-                                    min_height="500px"
-                                ),
+                                    box_shadow="md"
+                                    # ❌ quitamos min_height
+                                )
                             ),
-                            columns="repeat(5, 1fr)",     # ✅ 5 columnas en lugar de 6
+                            columns="repeat(5, 1fr)",    # 5 columnas como catálogo
                             spacing="4",
                             width="100%",
-                            max_width="1600px",           # ✅ ocupa más pantalla de forma balanceada
+                            max_width="1600px",          # ancho total más amplio
                             justify_content="center"
-                        ),
-                    ),
+                        )
+                    )
                 ),
 
                 spacing="6",
