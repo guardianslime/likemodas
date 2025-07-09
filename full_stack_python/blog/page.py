@@ -20,31 +20,35 @@ def blog_public_page():
                                     rx.link(
                                         rx.vstack(
                                             rx.box(
-                                                rx.cond(
+                                                position="relative",
+                                                width="100%",
+                                                padding_top="100%",
+                                                children=rx.cond(
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
+                                                        position="absolute",
+                                                        top="0",
+                                                        left="0",
                                                         width="100%",
-                                                        height="270px",
+                                                        height="100%",
                                                         object_fit="cover",
                                                         border_radius="md"
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
+                                                        position="absolute",
+                                                        top="0",
+                                                        left="0",
                                                         width="100%",
-                                                        height="270px",
+                                                        height="100%",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
                                                         display="flex",
                                                         border_radius="md"
                                                     )
-                                                ),
-                                                height="270px",
-                                                width="100%",
-                                                display="flex",
-                                                justify_content="center",
-                                                align_items="center"
+                                                )
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -64,7 +68,7 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="400px"
+                                    min_height="460px"
                                 )
                             ),
                             columns="repeat(2, 1fr)",
@@ -83,31 +87,35 @@ def blog_public_page():
                                     rx.link(
                                         rx.vstack(
                                             rx.box(
-                                                rx.cond(
+                                                position="relative",
+                                                width="100%",
+                                                padding_top="100%",
+                                                children=rx.cond(
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
+                                                        position="absolute",
+                                                        top="0",
+                                                        left="0",
                                                         width="100%",
-                                                        height="270px",
+                                                        height="100%",
                                                         object_fit="cover",
                                                         border_radius="md"
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
+                                                        position="absolute",
+                                                        top="0",
+                                                        left="0",
                                                         width="100%",
-                                                        height="270px",
+                                                        height="100%",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
                                                         display="flex",
                                                         border_radius="md"
                                                     )
-                                                ),
-                                                height="270px",
-                                                width="100%",
-                                                display="flex",
-                                                justify_content="center",
-                                                align_items="center"
+                                                )
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -127,7 +135,7 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="400px"
+                                    min_height="460px"
                                 )
                             ),
                             columns="repeat(3, 1fr)",
@@ -146,12 +154,18 @@ def blog_public_page():
                                     rx.link(
                                         rx.vstack(
                                             rx.box(
-                                                rx.cond(
+                                                position="relative",
+                                                width="100%",
+                                                padding_top="100%",
+                                                children=rx.cond(
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
+                                                        position="absolute",
+                                                        top="0",
+                                                        left="0",
                                                         width="100%",
-                                                        height="270px",
+                                                        height="100%",
                                                         object_fit="cover",
                                                         border_radius="md",
                                                         style={
@@ -163,20 +177,18 @@ def blog_public_page():
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
+                                                        position="absolute",
+                                                        top="0",
+                                                        left="0",
                                                         width="100%",
-                                                        height="270px",
+                                                        height="100%",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
                                                         display="flex",
                                                         border_radius="md"
                                                     )
-                                                ),
-                                                height="270px",
-                                                width="100%",
-                                                display="flex",
-                                                justify_content="center",
-                                                align_items="center"
+                                                )
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -196,13 +208,13 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="400px"
+                                    min_height="460px"
                                 )
                             ),
                             columns="repeat(6, 1fr)",
                             spacing="4",
                             width="100%",
-                            max_width="1200px",
+                            max_width="1440px",
                             justify_content="center"
                         )
                     )
