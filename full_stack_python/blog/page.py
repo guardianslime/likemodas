@@ -62,7 +62,10 @@ def blog_public_page():
                     )
                 ),
                 # 👇 Responsivo: 2 columnas en móvil, más en desktop
-                columns=["repeat(2, 1fr)", "repeat(auto-fit, minmax(200px, 1fr))"],
+                columns=rx.breakpoints(
+                    base="repeat(2, 1fr)",  # móviles
+                    md="repeat(auto-fit, minmax(200px, 1fr))",  # desde tablets en adelante
+                ),
                 max_width="1200px",
                 spacing="4",
                 width="100%",
