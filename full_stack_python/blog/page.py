@@ -153,7 +153,7 @@ def blog_public_page():
                                 lambda post: rx.box(
                                     rx.link(
                                         rx.vstack(
-                                            # Imagen cuadrada y grande
+                                            # Imagen cuadrada, zoom al hover
                                             rx.box(
                                                 rx.cond(
                                                     post.images & (post.images.length() > 0),
@@ -189,9 +189,8 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="100%"  # Cuadrado real
+                                                padding_top="100%"
                                             ),
-                                            # Texto debajo sin estirar caja
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
                                                 rx.cond(
@@ -206,17 +205,16 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="1em",
+                                    padding="1.5em",                      # ⬅️ Aumentado un 50%
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md"
-                                    # ❌ quitamos min_height
                                 )
                             ),
-                            columns="repeat(5, 1fr)",    # 5 columnas como catálogo
-                            spacing="4",
+                            columns="repeat(6, 1fr)",                      # ⬅️ De 5 a 6 columnas
+                            spacing="6",                                   # ⬅️ Mayor separación
                             width="100%",
-                            max_width="1600px",          # ancho total más amplio
+                            max_width="2400px",                            # ⬅️ Mucho más ancho
                             justify_content="center"
                         )
                     )
