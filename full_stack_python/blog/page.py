@@ -20,10 +20,7 @@ def blog_public_page():
                                     rx.link(
                                         rx.vstack(
                                             rx.box(
-                                                position="relative",
-                                                width="100%",
-                                                padding_top="100%",
-                                                children=rx.cond(
+                                                rx.cond(
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
@@ -48,7 +45,10 @@ def blog_public_page():
                                                         display="flex",
                                                         border_radius="md"
                                                     )
-                                                )
+                                                ),
+                                                position="relative",
+                                                width="100%",
+                                                padding_top="100%"
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -87,10 +87,7 @@ def blog_public_page():
                                     rx.link(
                                         rx.vstack(
                                             rx.box(
-                                                position="relative",
-                                                width="100%",
-                                                padding_top="100%",
-                                                children=rx.cond(
+                                                rx.cond(
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
@@ -115,7 +112,10 @@ def blog_public_page():
                                                         display="flex",
                                                         border_radius="md"
                                                     )
-                                                )
+                                                ),
+                                                position="relative",
+                                                width="100%",
+                                                padding_top="100%"
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -154,10 +154,7 @@ def blog_public_page():
                                     rx.link(
                                         rx.vstack(
                                             rx.box(
-                                                position="relative",
-                                                width="100%",
-                                                padding_top="100%",
-                                                children=rx.cond(
+                                                rx.cond(
                                                     post.images & (post.images.length() > 0),
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
@@ -188,7 +185,10 @@ def blog_public_page():
                                                         display="flex",
                                                         border_radius="md"
                                                     )
-                                                )
+                                                ),
+                                                position="relative",
+                                                width="100%",
+                                                padding_top="100%"
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
