@@ -1,4 +1,5 @@
 import reflex as rx
+from ..ui.base import base_page  # Asegúrate de tener este import
 from full_stack_python.blog.state import BlogPublicState
 from full_stack_python.navigation import routes
 
