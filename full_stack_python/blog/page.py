@@ -7,69 +7,196 @@ def blog_public_page():
         rx.vstack(
             rx.heading("Publicaciones", size="5"),
 
-            rx.grid(
-                rx.foreach(
-                    BlogPublicState.posts,
-                    lambda post: rx.box(
-                        rx.link(
-                            rx.vstack(
-                                rx.box(
-                                    rx.cond(
-                                        post.images & (post.images.length() > 0),
-                                        rx.image(
-                                            src=rx.get_upload_url(post.images[0]),
-                                            width="100%",
-                                            height="200px",
-                                            object_fit="cover",
-                                            border_radius="md"
-                                        ),
+            rx.fragment(
+                # Móvil → 2 columnas
+                rx.mobile(
+                    rx.grid(
+                        rx.foreach(
+                            BlogPublicState.posts,
+                            lambda post: rx.box(
+                                rx.link(
+                                    rx.vstack(
                                         rx.box(
-                                            "Sin imagen",
-                                            width="100%",
+                                            rx.cond(
+                                                post.images & (post.images.length() > 0),
+                                                rx.image(
+                                                    src=rx.get_upload_url(post.images[0]),
+                                                    width="100%",
+                                                    height="200px",
+                                                    object_fit="cover",
+                                                    border_radius="md"
+                                                ),
+                                                rx.box(
+                                                    "Sin imagen",
+                                                    width="100%",
+                                                    height="200px",
+                                                    bg="#eee",
+                                                    align="center",
+                                                    justify="center",
+                                                    display="flex",
+                                                    border_radius="md"
+                                                )
+                                            ),
                                             height="200px",
-                                            bg="#eee",
-                                            align="center",
-                                            justify="center",
+                                            width="100%",
                                             display="flex",
-                                            border_radius="md"
-                                        )
+                                            justify_content="center",
+                                            align_items="center"
+                                        ),
+                                        rx.text(post.title, weight="bold"),
+                                        rx.text(
+                                            rx.cond(
+                                                post.price,
+                                                "$" + post.price.to(str),
+                                                "$0.00"
+                                            ),
+                                            color="gray"
+                                        ),
+                                        spacing="2",
+                                        align="start"
                                     ),
-                                    height="200px",
-                                    width="100%",
-                                    display="flex",
-                                    justify_content="center",
-                                    align_items="center"
+                                    href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                 ),
-                                rx.text(post.title, weight="bold"),
-                                rx.text(
-                                    rx.cond(
-                                        post.price,
-                                        "$" + post.price.to(str),
-                                        "$0.00"
-                                    ),
-                                    color="gray"
-                                ),
-                                spacing="2",
-                                align="start"
-                            ),
-                            href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
+                                padding="1em",
+                                border="1px solid #ccc",
+                                border_radius="8px",
+                                box_shadow="md",
+                                min_height="280px"
+                            )
                         ),
-                        padding="1em",
-                        border="1px solid #ccc",
-                        border_radius="8px",
-                        box_shadow="md",
-                        min_height="280px"
+                        columns="repeat(2, 1fr)",
+                        spacing="4",
+                        width="100%",
+                        justify_content="center"
                     )
                 ),
-                # 👇 Responsivo: 2 columnas en móvil, más en desktop
-                columns=rx.breakpoints(
-                    base="repeat(2, 1fr)",  # móviles
-                    md="repeat(auto-fit, minmax(200px, 1fr))",  # desde tablets en adelante
+
+                # Tablet → 3 columnas
+                rx.tablet(
+                    rx.grid(
+                        rx.foreach(
+                            BlogPublicState.posts,
+                            lambda post: rx.box(
+                                rx.link(
+                                    rx.vstack(
+                                        rx.box(
+                                            rx.cond(
+                                                post.images & (post.images.length() > 0),
+                                                rx.image(
+                                                    src=rx.get_upload_url(post.images[0]),
+                                                    width="100%",
+                                                    height="200px",
+                                                    object_fit="cover",
+                                                    border_radius="md"
+                                                ),
+                                                rx.box(
+                                                    "Sin imagen",
+                                                    width="100%",
+                                                    height="200px",
+                                                    bg="#eee",
+                                                    align="center",
+                                                    justify="center",
+                                                    display="flex",
+                                                    border_radius="md"
+                                                )
+                                            ),
+                                            height="200px",
+                                            width="100%",
+                                            display="flex",
+                                            justify_content="center",
+                                            align_items="center"
+                                        ),
+                                        rx.text(post.title, weight="bold"),
+                                        rx.text(
+                                            rx.cond(
+                                                post.price,
+                                                "$" + post.price.to(str),
+                                                "$0.00"
+                                            ),
+                                            color="gray"
+                                        ),
+                                        spacing="2",
+                                        align="start"
+                                    ),
+                                    href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
+                                ),
+                                padding="1em",
+                                border="1px solid #ccc",
+                                border_radius="8px",
+                                box_shadow="md",
+                                min_height="280px"
+                            )
+                        ),
+                        columns="repeat(3, 1fr)",
+                        spacing="4",
+                        width="100%",
+                        justify_content="center"
+                    )
                 ),
-                max_width="1200px",
-                spacing="4",
-                width="100%",
-                justify_content="center"
+
+                # Desktop → auto-fit
+                rx.desktop(
+                    rx.grid(
+                        rx.foreach(
+                            BlogPublicState.posts,
+                            lambda post: rx.box(
+                                rx.link(
+                                    rx.vstack(
+                                        rx.box(
+                                            rx.cond(
+                                                post.images & (post.images.length() > 0),
+                                                rx.image(
+                                                    src=rx.get_upload_url(post.images[0]),
+                                                    width="100%",
+                                                    height="200px",
+                                                    object_fit="cover",
+                                                    border_radius="md"
+                                                ),
+                                                rx.box(
+                                                    "Sin imagen",
+                                                    width="100%",
+                                                    height="200px",
+                                                    bg="#eee",
+                                                    align="center",
+                                                    justify="center",
+                                                    display="flex",
+                                                    border_radius="md"
+                                                )
+                                            ),
+                                            height="200px",
+                                            width="100%",
+                                            display="flex",
+                                            justify_content="center",
+                                            align_items="center"
+                                        ),
+                                        rx.text(post.title, weight="bold"),
+                                        rx.text(
+                                            rx.cond(
+                                                post.price,
+                                                "$" + post.price.to(str),
+                                                "$0.00"
+                                            ),
+                                            color="gray"
+                                        ),
+                                        spacing="2",
+                                        align="start"
+                                    ),
+                                    href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
+                                ),
+                                padding="1em",
+                                border="1px solid #ccc",
+                                border_radius="8px",
+                                box_shadow="md",
+                                min_height="280px"
+                            )
+                        ),
+                        columns="repeat(auto-fit, minmax(200px, 1fr))",
+                        max_width="1200px",
+                        spacing="4",
+                        width="100%",
+                        justify_content="center"
+                    )
+                )
             ),
 
             spacing="6",
