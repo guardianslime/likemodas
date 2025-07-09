@@ -25,14 +25,14 @@ def blog_public_page():
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
                                                         width="100%",
-                                                        height="240px",
+                                                        height="270px",
                                                         object_fit="cover",
                                                         border_radius="md"
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
                                                         width="100%",
-                                                        height="240px",
+                                                        height="270px",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
@@ -40,7 +40,7 @@ def blog_public_page():
                                                         border_radius="md"
                                                     )
                                                 ),
-                                                height="240px",
+                                                height="270px",
                                                 width="100%",
                                                 display="flex",
                                                 justify_content="center",
@@ -64,7 +64,8 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="380px"
+                                    min_height="400px",
+                                    max_width="300px"
                                 )
                             ),
                             columns="repeat(2, 1fr)",
@@ -88,14 +89,14 @@ def blog_public_page():
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
                                                         width="100%",
-                                                        height="240px",
+                                                        height="270px",
                                                         object_fit="cover",
                                                         border_radius="md"
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
                                                         width="100%",
-                                                        height="240px",
+                                                        height="270px",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
@@ -103,7 +104,7 @@ def blog_public_page():
                                                         border_radius="md"
                                                     )
                                                 ),
-                                                height="240px",
+                                                height="270px",
                                                 width="100%",
                                                 display="flex",
                                                 justify_content="center",
@@ -127,7 +128,8 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="380px"
+                                    min_height="400px",
+                                    max_width="300px"
                                 )
                             ),
                             columns="repeat(3, 1fr)",
@@ -151,7 +153,7 @@ def blog_public_page():
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
                                                         width="100%",
-                                                        height="240px",
+                                                        height="270px",
                                                         object_fit="cover",
                                                         border_radius="md",
                                                         style={
@@ -164,7 +166,7 @@ def blog_public_page():
                                                     rx.box(
                                                         "Sin imagen",
                                                         width="100%",
-                                                        height="240px",
+                                                        height="270px",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
@@ -172,7 +174,7 @@ def blog_public_page():
                                                         border_radius="md"
                                                     )
                                                 ),
-                                                height="240px",
+                                                height="270px",
                                                 width="100%",
                                                 display="flex",
                                                 justify_content="center",
@@ -196,7 +198,8 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="380px"
+                                    min_height="400px",
+                                    max_width="300px"
                                 )
                             ),
                             columns="repeat(6, 1fr)",
