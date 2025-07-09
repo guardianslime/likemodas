@@ -153,7 +153,7 @@ def blog_public_page():
                                 lambda post: rx.box(
                                     rx.link(
                                         rx.vstack(
-                                            # Imagen cuadrada, zoom al hover
+                                            # Imagen cuadrada con zoom
                                             rx.box(
                                                 rx.cond(
                                                     post.images & (post.images.length() > 0),
@@ -189,7 +189,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="100%"
+                                                padding_top="100%"  # Cuadrado
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -205,16 +205,16 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="1.5em",                      # ⬅️ Aumentado un 50%
+                                    padding="2em",                          # ⬅️ aumentado al doble
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md"
                                 )
                             ),
-                            columns="repeat(6, 1fr)",                      # ⬅️ De 5 a 6 columnas
-                            spacing="6",                                   # ⬅️ Mayor separación
+                            columns="repeat(6, 1fr)",                      # ⬅️ se mantiene igual
+                            spacing="6",                                   # ⬅️ se mantiene igual
                             width="100%",
-                            max_width="2400px",                            # ⬅️ Mucho más ancho
+                            max_width="3200px",                            # ⬅️ aumentado al doble
                             justify_content="center"
                         )
                     )
