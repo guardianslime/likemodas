@@ -43,7 +43,7 @@ def blog_public_page():
                                                 width="260px",
                                                 height="260px"
                                             ),
-                                            rx.text(post.title, weight="bold", size="6"),
+                                            rx.text(post.title, weight="bold", size="6", padding_left="3px"),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
@@ -51,14 +51,15 @@ def blog_public_page():
                                                     "$0.00"
                                                 ),
                                                 color="gray",
-                                                size="6"
+                                                size="6",
+                                                padding_left="3px"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border="1px solid #ccc",
+                                    border="1px solid #2c2c2c",
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
@@ -104,7 +105,7 @@ def blog_public_page():
                                                 width="260px",
                                                 height="260px"
                                             ),
-                                            rx.text(post.title, weight="bold", size="6"),
+                                            rx.text(post.title, weight="bold", size="6", padding_left="3px"),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
@@ -112,14 +113,15 @@ def blog_public_page():
                                                     "$0.00"
                                                 ),
                                                 color="gray",
-                                                size="6"
+                                                size="6",
+                                                padding_left="3px"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border="1px solid #ccc",
+                                    border="1px solid #2c2c2c",
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
@@ -171,7 +173,7 @@ def blog_public_page():
                                                 width="260px",
                                                 height="260px"
                                             ),
-                                            rx.text(post.title, weight="bold", size="6"),
+                                            rx.text(post.title, weight="bold", size="6", padding_left="3px"),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
@@ -179,14 +181,15 @@ def blog_public_page():
                                                     "$0.00"
                                                 ),
                                                 color="gray",
-                                                size="6"
+                                                size="6",
+                                                padding_left="3px"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border="1px solid #ccc",
+                                    border="1px solid #2c2c2c",
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
