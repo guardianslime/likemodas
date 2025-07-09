@@ -7,6 +7,9 @@ def blog_public_page():
     return base_layout_component(
         rx.center(
             rx.vstack(
+                # Botón para cambiar entre modo claro y oscuro
+                rx.color_mode_button(variant="ghost", position="absolute", top="1em", right="1em"),
+
                 rx.heading("Publicaciones", size="5"),
 
                 rx.fragment(
@@ -25,14 +28,14 @@ def blog_public_page():
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
                                                         width="100%",
-                                                        height="280px",
+                                                        height="180px",
                                                         object_fit="cover",
                                                         border_radius="md"
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
                                                         width="100%",
-                                                        height="280px",
+                                                        height="180px",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
@@ -40,7 +43,7 @@ def blog_public_page():
                                                         border_radius="md"
                                                     )
                                                 ),
-                                                height="280px",
+                                                height="180px",
                                                 width="100%",
                                                 display="flex",
                                                 justify_content="center",
@@ -64,7 +67,18 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="320px"
+                                    min_height="320px",
+                                    style={
+                                        "transition": "all 0.2s ease-in-out",
+                                        "_hover": {
+                                            "boxShadow": "0 0 0 2px rgba(255,255,255,0.2)",
+                                            "backgroundColor": rx.cond(
+                                                rx.color_mode() == "dark",
+                                                "#1a1a1a",
+                                                "#f0f0f0"
+                                            )
+                                        }
+                                    }
                                 )
                             ),
                             columns="repeat(2, 1fr)",
@@ -88,14 +102,14 @@ def blog_public_page():
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
                                                         width="100%",
-                                                        height="280px",
+                                                        height="180px",
                                                         object_fit="cover",
                                                         border_radius="md"
                                                     ),
                                                     rx.box(
                                                         "Sin imagen",
                                                         width="100%",
-                                                        height="280px",
+                                                        height="180px",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
@@ -103,7 +117,7 @@ def blog_public_page():
                                                         border_radius="md"
                                                     )
                                                 ),
-                                                height="280px",
+                                                height="180px",
                                                 width="100%",
                                                 display="flex",
                                                 justify_content="center",
@@ -127,7 +141,18 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="320px"
+                                    min_height="320px",
+                                    style={
+                                        "transition": "all 0.2s ease-in-out",
+                                        "_hover": {
+                                            "boxShadow": "0 0 0 2px rgba(255,255,255,0.2)",
+                                            "backgroundColor": rx.cond(
+                                                rx.color_mode() == "dark",
+                                                "#1a1a1a",
+                                                "#f0f0f0"
+                                            )
+                                        }
+                                    }
                                 )
                             ),
                             columns="repeat(3, 1fr)",
@@ -137,7 +162,7 @@ def blog_public_page():
                         )
                     ),
 
-                    # Vista solo en desktop: 6 columnas, con zoom al hover
+                    # Vista solo en desktop: 6 columnas, con zoom en imagen
                     rx.desktop_only(
                         rx.grid(
                             rx.foreach(
@@ -151,7 +176,7 @@ def blog_public_page():
                                                     rx.image(
                                                         src=rx.get_upload_url(post.images[0]),
                                                         width="100%",
-                                                        height="280px",
+                                                        height="180px",
                                                         object_fit="cover",
                                                         border_radius="md",
                                                         style={
@@ -164,7 +189,7 @@ def blog_public_page():
                                                     rx.box(
                                                         "Sin imagen",
                                                         width="100%",
-                                                        height="280px",
+                                                        height="180px",
                                                         bg="#eee",
                                                         align="center",
                                                         justify="center",
@@ -172,7 +197,7 @@ def blog_public_page():
                                                         border_radius="md"
                                                     )
                                                 ),
-                                                height="280px",
+                                                height="180px",
                                                 width="100%",
                                                 display="flex",
                                                 justify_content="center",
@@ -196,7 +221,18 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="320px"
+                                    min_height="320px",
+                                    style={
+                                        "transition": "all 0.2s ease-in-out",
+                                        "_hover": {
+                                            "boxShadow": "0 0 0 2px rgba(255,255,255,0.2)",
+                                            "backgroundColor": rx.cond(
+                                                rx.color_mode() == "dark",
+                                                "#1a1a1a",
+                                                "#f0f0f0"
+                                            )
+                                        }
+                                    }
                                 )
                             ),
                             columns="repeat(6, 1fr)",
