@@ -161,8 +161,8 @@ def blog_public_page():
                                                         position="absolute",
                                                         top="0",
                                                         left="0",
-                                                        width="200%",
-                                                        height="200%",
+                                                        width="100%",
+                                                        height="100%",
                                                         object_fit="cover",
                                                         border_radius="md",
                                                         style={
@@ -206,15 +206,15 @@ def blog_public_page():
                                     ),
                                     padding="1em",
                                     border="1px solid #ccc",
-                                    border_radius="2px",
+                                    border_radius="8px",
                                     box_shadow="md",
-                                    min_height="340px"  # ⬅️ más alto para dar espacio a todo
+                                    min_height="540px"  # ⬅️ más alto para dar espacio a todo
                                 )
                             ),
                             columns="repeat(6, 1fr)",
                             spacing="4",
-                            width="150%",
-                            max_width="1600px",  # ⬅️ más ancho para que ocupen más pantalla
+                            width="100%",
+                            max_width="1800px",  # ⬅️ más ancho para que ocupen más pantalla
                             justify_content="center"
                         )
                     )
