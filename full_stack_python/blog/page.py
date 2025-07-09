@@ -7,10 +7,10 @@ def blog_public_page():
     return base_layout_component(
         rx.center(
             rx.vstack(
-                rx.heading("Publicaciones", size="6"),  # tamaño de título aumentado
+                rx.heading("Publicaciones", size="6"),
                 rx.fragment(
 
-                    # Mobile (2 columnas, tamaño x7)
+                    # Mobile (2 columnas)
                     rx.mobile_only(
                         rx.grid(
                             rx.foreach(
@@ -77,7 +77,7 @@ def blog_public_page():
                         )
                     ),
 
-                    # Tablet (3 columnas, tamaño x7)
+                    # Tablet (3 columnas)
                     rx.tablet_only(
                         rx.grid(
                             rx.foreach(
@@ -144,7 +144,7 @@ def blog_public_page():
                         )
                     ),
 
-                    # Desktop (6 columnas, tamaño x7)
+                    # Desktop (6 columnas, muy grande y cuadrado)
                     rx.desktop_only(
                         rx.grid(
                             rx.foreach(
@@ -213,7 +213,7 @@ def blog_public_page():
                             columns="repeat(6, 1fr)",
                             spacing="6",
                             width="100%",
-                            max_width="11200px",  # x7 del original
+                            max_width="14000px",  # ⬅️ MÁS ancho = imágenes cuadradas más grandes
                             justify_content="center"
                         )
                     )
