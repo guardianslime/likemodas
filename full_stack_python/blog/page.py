@@ -8,8 +8,9 @@ def blog_public_page():
             rx.heading("Publicaciones", size="5"),
 
             rx.fragment(
-                # Móvil → 2 columnas
-                rx.mobile(
+
+                # Vista solo en móvil: 2 columnas
+                rx.mobile_only(
                     rx.grid(
                         rx.foreach(
                             BlogPublicState.posts,
@@ -71,8 +72,8 @@ def blog_public_page():
                     )
                 ),
 
-                # Tablet → 3 columnas
-                rx.tablet(
+                # Vista solo en tablet: 3 columnas
+                rx.tablet_only(
                     rx.grid(
                         rx.foreach(
                             BlogPublicState.posts,
@@ -134,8 +135,8 @@ def blog_public_page():
                     )
                 ),
 
-                # Desktop → auto-fit
-                rx.desktop(
+                # Vista solo en desktop: grid flexible
+                rx.desktop_only(
                     rx.grid(
                         rx.foreach(
                             BlogPublicState.posts,
@@ -191,9 +192,9 @@ def blog_public_page():
                             )
                         ),
                         columns="repeat(auto-fit, minmax(200px, 1fr))",
-                        max_width="1200px",
                         spacing="4",
                         width="100%",
+                        max_width="1200px",
                         justify_content="center"
                     )
                 )
