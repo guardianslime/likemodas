@@ -10,7 +10,7 @@ def blog_public_page():
                 rx.heading("Publicaciones", size="6"),
                 rx.fragment(
 
-                    # Mobile
+                    # Mobile (2 columnas)
                     rx.mobile_only(
                         rx.grid(
                             rx.foreach(
@@ -40,8 +40,8 @@ def blog_public_page():
                                                     )
                                                 ),
                                                 position="relative",
-                                                width="350px",
-                                                height="350px"
+                                                width="260px",
+                                                height="260px"
                                             ),
                                             rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
@@ -71,7 +71,7 @@ def blog_public_page():
                         )
                     ),
 
-                    # Tablet
+                    # Tablet (3 columnas)
                     rx.tablet_only(
                         rx.grid(
                             rx.foreach(
@@ -101,8 +101,8 @@ def blog_public_page():
                                                     )
                                                 ),
                                                 position="relative",
-                                                width="350px",
-                                                height="350px"
+                                                width="260px",
+                                                height="260px"
                                             ),
                                             rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
@@ -132,7 +132,7 @@ def blog_public_page():
                         )
                     ),
 
-                    # Desktop
+                    # Desktop (6 columnas)
                     rx.desktop_only(
                         rx.grid(
                             rx.foreach(
@@ -168,8 +168,8 @@ def blog_public_page():
                                                     )
                                                 ),
                                                 position="relative",
-                                                width="350px",
-                                                height="350px"
+                                                width="260px",
+                                                height="260px"
                                             ),
                                             rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
