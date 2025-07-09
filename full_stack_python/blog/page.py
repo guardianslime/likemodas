@@ -7,11 +7,10 @@ def blog_public_page():
     return base_layout_component(
         rx.center(
             rx.vstack(
-                rx.heading("Publicaciones", size="5"),
-
+                rx.heading("Publicaciones", size="6"),  # tamaño de título aumentado
                 rx.fragment(
 
-                    # Vista solo en móvil: 2 columnas
+                    # Mobile (2 columnas, tamaño x7)
                     rx.mobile_only(
                         rx.grid(
                             rx.foreach(
@@ -50,35 +49,35 @@ def blog_public_page():
                                                 width="100%",
                                                 padding_top="100%"
                                             ),
-                                            rx.text(post.title, weight="bold"),
+                                            rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
                                                     "$" + post.price.to(str),
                                                     "$0.00"
                                                 ),
-                                                color="gray"
+                                                color="gray",
+                                                size="6"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="1em",
+                                    padding="7em",
                                     border="1px solid #ccc",
                                     border_radius="8px",
-                                    box_shadow="md",
-                                    min_height="460px"
+                                    box_shadow="md"
                                 )
                             ),
                             columns="repeat(2, 1fr)",
-                            spacing="4",
+                            spacing="6",
                             width="100%",
                             justify_content="center"
                         )
                     ),
 
-                    # Vista solo en tablet: 3 columnas
+                    # Tablet (3 columnas, tamaño x7)
                     rx.tablet_only(
                         rx.grid(
                             rx.foreach(
@@ -117,35 +116,35 @@ def blog_public_page():
                                                 width="100%",
                                                 padding_top="100%"
                                             ),
-                                            rx.text(post.title, weight="bold"),
+                                            rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
                                                     "$" + post.price.to(str),
                                                     "$0.00"
                                                 ),
-                                                color="gray"
+                                                color="gray",
+                                                size="6"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="1em",
+                                    padding="7em",
                                     border="1px solid #ccc",
                                     border_radius="8px",
-                                    box_shadow="md",
-                                    min_height="460px"
+                                    box_shadow="md"
                                 )
                             ),
                             columns="repeat(3, 1fr)",
-                            spacing="4",
+                            spacing="6",
                             width="100%",
                             justify_content="center"
                         )
                     ),
 
-                    # Vista solo en desktop: 6 columnas, con zoom al hover
+                    # Desktop (6 columnas, tamaño x7)
                     rx.desktop_only(
                         rx.grid(
                             rx.foreach(
@@ -153,7 +152,6 @@ def blog_public_page():
                                 lambda post: rx.box(
                                     rx.link(
                                         rx.vstack(
-                                            # Imagen cuadrada con zoom al pasar
                                             rx.box(
                                                 rx.cond(
                                                     post.images & (post.images.length() > 0),
@@ -191,35 +189,35 @@ def blog_public_page():
                                                 width="100%",
                                                 padding_top="100%"
                                             ),
-                                            rx.text(post.title, weight="bold"),
+                                            rx.text(post.title, weight="bold", size="6"),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
                                                     "$" + post.price.to(str),
                                                     "$0.00"
                                                 ),
-                                                color="gray"
+                                                color="gray",
+                                                size="6"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="8em",                          # ✅ 8x padding
+                                    padding="7em",
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md"
                                 )
                             ),
-                            columns="repeat(6, 1fr)",                      # ✅ 6 columnas
-                            spacing="6",                                   # ✅ espaciado igual
+                            columns="repeat(6, 1fr)",
+                            spacing="6",
                             width="100%",
-                            max_width="6400px",                            # ✅ 8x ancho total
+                            max_width="11200px",  # x7 del original
                             justify_content="center"
                         )
                     )
                 ),
-
                 spacing="6",
                 width="100%",
                 padding="2em",
