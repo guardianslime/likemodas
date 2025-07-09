@@ -209,15 +209,15 @@ def blog_public_page():
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="500px"
-                                )
+                                ),
                             ),
                             columns="repeat(5, 1fr)",     # ✅ 5 columnas en lugar de 6
                             spacing="4",
                             width="100%",
                             max_width="1600px",           # ✅ ocupa más pantalla de forma balanceada
                             justify_content="center"
-                        )
-                    )
+                        ),
+                    ),
                 ),
 
                 spacing="6",
