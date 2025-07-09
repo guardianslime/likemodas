@@ -43,26 +43,34 @@ def blog_public_page():
                                                 width="260px",
                                                 height="260px"
                                             ),
-                                            rx.text(post.title, weight="bold", size="6", padding_left="3px"),
+                                            rx.text(
+                                                post.title,
+                                                weight="bold",
+                                                size="6",
+                                                padding_left="3px",
+                                                white_space="normal",
+                                                word_break="break-word",
+                                                color=rx.color_mode_cond("black", "white"),
+                                            ),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
                                                     "$" + post.price.to(str),
                                                     "$0.00"
                                                 ),
-                                                color="gray",
+                                                color=rx.color_mode_cond("black", "white"),
                                                 size="6",
-                                                padding_left="3px"
+                                                padding_left="3px",
+                                                white_space="normal",
+                                                word_break="break-word"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border=rx.color_mode_cond(
-                                        light="1px solid #e5e5e5",
-                                        dark="1px solid #1a1a1a"
-                                    ),
+                                    bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+                                    border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
@@ -108,26 +116,34 @@ def blog_public_page():
                                                 width="260px",
                                                 height="260px"
                                             ),
-                                            rx.text(post.title, weight="bold", size="6", padding_left="3px"),
+                                            rx.text(
+                                                post.title,
+                                                weight="bold",
+                                                size="6",
+                                                padding_left="3px",
+                                                white_space="normal",
+                                                word_break="break-word",
+                                                color=rx.color_mode_cond("black", "white"),
+                                            ),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
                                                     "$" + post.price.to(str),
                                                     "$0.00"
                                                 ),
-                                                color="gray",
+                                                color=rx.color_mode_cond("black", "white"),
                                                 size="6",
-                                                padding_left="3px"
+                                                padding_left="3px",
+                                                white_space="normal",
+                                                word_break="break-word"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border=rx.color_mode_cond(
-                                        light="1px solid #e5e5e5",
-                                        dark="1px solid #1a1a1a"
-                                    ),
+                                    bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+                                    border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
@@ -179,26 +195,34 @@ def blog_public_page():
                                                 width="260px",
                                                 height="260px"
                                             ),
-                                            rx.text(post.title, weight="bold", size="6", padding_left="3px"),
+                                            rx.text(
+                                                post.title,
+                                                weight="bold",
+                                                size="6",
+                                                padding_left="3px",
+                                                white_space="normal",
+                                                word_break="break-word",
+                                                color=rx.color_mode_cond("black", "white"),
+                                            ),
                                             rx.text(
                                                 rx.cond(
                                                     post.price,
                                                     "$" + post.price.to(str),
                                                     "$0.00"
                                                 ),
-                                                color="gray",
+                                                color=rx.color_mode_cond("black", "white"),
                                                 size="6",
-                                                padding_left="3px"
+                                                padding_left="3px",
+                                                white_space="normal",
+                                                word_break="break-word"
                                             ),
                                             spacing="2",
                                             align="start"
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    border=rx.color_mode_cond(
-                                        light="1px solid #e5e5e5",
-                                        dark="1px solid #1a1a1a"
-                                    ),
+                                    bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+                                    border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                                     border_radius="8px",
                                     box_shadow="md",
                                     min_height="380px"
