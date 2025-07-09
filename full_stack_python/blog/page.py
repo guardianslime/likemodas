@@ -58,11 +58,10 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="7em",
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="380px"  # ✅ Añadido
+                                    min_height="380px"
                                 )
                             ),
                             columns="repeat(2, 1fr)",
@@ -120,11 +119,10 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="7em",
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="380px"  # ✅ Añadido
+                                    min_height="380px"
                                 )
                             ),
                             columns="repeat(3, 1fr)",
@@ -188,17 +186,15 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="7em",
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="380px"  # ✅ Añadido
+                                    min_height="380px"
                                 )
                             ),
                             columns="repeat(6, 1fr)",
                             spacing="6",
                             width="100%",
-                            max_width="11200px",
                             justify_content="center"
                         )
                     )
