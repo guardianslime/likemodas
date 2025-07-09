@@ -193,7 +193,7 @@ def blog_public_page():
                                 min_height="280px"
                             )
                         ),
-                        columns="repeat(auto-fit, minmax(200px, 1fr))",
+                        columns="repeat(auto-fit, minmax(200px, 1fr))"
                         spacing="4",
                         width="100%",
                         max_width="1200px",
