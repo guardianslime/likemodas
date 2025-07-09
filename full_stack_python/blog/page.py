@@ -13,14 +13,13 @@ def blog_public_page():
                     lambda post: rx.box(
                         rx.link(
                             rx.vstack(
-                                # Contenedor de imagen centrado
                                 rx.box(
                                     rx.cond(
                                         post.images & (post.images.length() > 0),
                                         rx.image(
                                             src=rx.get_upload_url(post.images[0]),
                                             width="100%",
-                                            height="200px",  # Altura fija
+                                            height="200px",
                                             object_fit="cover",
                                             border_radius="md"
                                         ),
@@ -35,15 +34,13 @@ def blog_public_page():
                                             border_radius="md"
                                         )
                                     ),
-                                    height="200px",  # Altura fija del contenedor
+                                    height="200px",
                                     width="100%",
                                     display="flex",
                                     justify_content="center",
                                     align_items="center"
                                 ),
-                                # Título
                                 rx.text(post.title, weight="bold"),
-                                # Precio
                                 rx.text(
                                     rx.cond(
                                         post.price,
@@ -61,18 +58,21 @@ def blog_public_page():
                         border="1px solid #ccc",
                         border_radius="8px",
                         box_shadow="md",
-                        min_height="280px"  # Altura total fija para que no brinque
+                        min_height="280px"
                     )
                 ),
-                columns="repeat(auto-fit, minmax(200px, 1fr))",  # un poco más grande
-                max_width="1200px",  # espacio para hasta 6 columnas en pantallas grandes
+                # 👇 Responsivo: 2 columnas en móvil, más en desktop
+                columns=["repeat(2, 1fr)", "repeat(auto-fit, minmax(200px, 1fr))"],
+                max_width="1200px",
                 spacing="4",
-                width="100%"
+                width="100%",
+                justify_content="center"
             ),
 
             spacing="6",
             width="100%",
-            padding="2em"
+            padding="2em",
+            align="center"
         ),
         width="100%"
     )
