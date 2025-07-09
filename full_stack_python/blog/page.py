@@ -48,7 +48,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="70%"  # 👈 Imagen ocupa el 70% del ancho
+                                                padding_top="150%"  # 👈 Imagen ocupa el 150% del ancho
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -115,7 +115,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="70%"  # 👈 70%
+                                                padding_top="150%"  # 👈 150%
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -188,7 +188,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="70%"  # 👈 aquí también
+                                                padding_top="150%"  # 👈 aquí también
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
