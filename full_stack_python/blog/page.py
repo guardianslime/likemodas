@@ -153,7 +153,7 @@ def blog_public_page():
                                 lambda post: rx.box(
                                     rx.link(
                                         rx.vstack(
-                                            # Imagen cuadrada con zoom
+                                            # Imagen cuadrada con zoom al pasar
                                             rx.box(
                                                 rx.cond(
                                                     post.images & (post.images.length() > 0),
@@ -189,7 +189,7 @@ def blog_public_page():
                                                 ),
                                                 position="relative",
                                                 width="100%",
-                                                padding_top="100%"  # cuadrado
+                                                padding_top="100%"
                                             ),
                                             rx.text(post.title, weight="bold"),
                                             rx.text(
@@ -205,16 +205,16 @@ def blog_public_page():
                                         ),
                                         href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
                                     ),
-                                    padding="9em",                          # ⬅️ TRIPLE del anterior
+                                    padding="8em",                          # ✅ 8x padding
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md"
                                 )
                             ),
-                            columns="repeat(6, 1fr)",                      # ⬅️ no cambia
-                            spacing="6",                                   # ⬅️ no cambia
+                            columns="repeat(6, 1fr)",                      # ✅ 6 columnas
+                            spacing="6",                                   # ✅ espaciado igual
                             width="100%",
-                            max_width="7200px",                            # ⬅️ TRIPLE del anterior
+                            max_width="6400px",                            # ✅ 8x ancho total
                             justify_content="center"
                         )
                     )
