@@ -213,7 +213,7 @@ def blog_public_page():
                             ),
                             columns="repeat(6, 1fr)",
                             spacing="4",
-                            width="100%",
+                            width="200%",
                             max_width="1400px",  # ⬅️ más ancho para que ocupen más pantalla
                             justify_content="center"
                         )
