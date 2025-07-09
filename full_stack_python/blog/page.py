@@ -1,10 +1,11 @@
 import reflex as rx
-from ..ui.base import base_page  # Asegúrate de tener este import
+from ..ui.base import base_layout_component
 from full_stack_python.blog.state import BlogPublicState
 from full_stack_python.navigation import routes
 
 def blog_public_page():
-    return rx.center(
+    return base_layout_component(
+    rx.center(
         rx.vstack(
             rx.heading("Publicaciones", size="5"),
 
@@ -208,3 +209,4 @@ def blog_public_page():
         ),
         width="100%"
     )
+)

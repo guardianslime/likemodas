@@ -1,10 +1,11 @@
 import reflex as rx
-from ..ui.base import base_page  # Asegúrate de tener este import
+from ..ui.base import base_layout_component
 from full_stack_python.blog.state import BlogViewState
 
 
 def blog_post_view_page():
-    return rx.center(
+    return base_layout_component(
+    rx.center(
         rx.vstack(
             # Título
             rx.heading(
@@ -105,3 +106,4 @@ def blog_post_view_page():
             max_width="600px"
         )
     )
+)

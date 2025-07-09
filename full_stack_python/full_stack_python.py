@@ -53,8 +53,6 @@ app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
 app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
-app.add_page(blog_public_page, route=navigation.routes.PUBLIC_POST_ROUTE)
-app.add_page(blog_public_page, route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 
