@@ -64,8 +64,7 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="400px",
-                                    max_width="300px"
+                                    min_height="400px"
                                 )
                             ),
                             columns="repeat(2, 1fr)",
@@ -128,8 +127,7 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="400px",
-                                    max_width="300px"
+                                    min_height="400px"
                                 )
                             ),
                             columns="repeat(3, 1fr)",
@@ -198,8 +196,7 @@ def blog_public_page():
                                     border="1px solid #ccc",
                                     border_radius="8px",
                                     box_shadow="md",
-                                    min_height="400px",
-                                    max_width="300px"
+                                    min_height="400px"
                                 )
                             ),
                             columns="repeat(6, 1fr)",
