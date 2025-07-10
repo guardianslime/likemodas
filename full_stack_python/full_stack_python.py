@@ -89,8 +89,8 @@ app.add_page(blog_public_page, route="/blog/page", title="Galería pública", on
 app.add_page(
     blog.blog_post_view_page,
     route="/public-post/[public_post_id]",
-    title="Detalle",
-    on_load=blog.BlogViewState.on_load,
+    title="Detalle del producto",
+    on_load=blog.BlogViewState.on_load
 )
 
 
