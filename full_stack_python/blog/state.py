@@ -160,6 +160,59 @@ class BlogAddFormState(SessionState):
         except ValueError:
             self.price = 0.0
 
+class BlogEditFormState(BlogPostState):
+    post_content: str = ""
+    post_publish_active: bool = False
+
+    def on_load_edit(self):
+        self.get_post_detail()
+        if self.post:
+            self.post_content = self.post.content or ""
+            self.post_publish_active = self.post.publish_active
+
+    @rx.var
+    def publish_display_date(self) -> str:
+        if not self.post or not self.post.publish_date:
+            return datetime.now().strftime("%Y-%m-%d")
+        return self.post.publish_date.strftime("%Y-%m-%d")
+
+    @rx.var
+    def publish_display_time(self) -> str:
+        if not self.post or not self.post.publish_date:
+            return datetime.now().strftime("%H:%M:%S")
+        return self.post.publish_date.strftime("%H:%M:%S")
+
+    price_str: str = "0.0"
+
+    @rx.event
+    def set_price(self, value: str):
+        self.price_str = value
+
+    def handle_submit(self, form_data: dict):
+        post_id = int(form_data.pop("post_id", 0))
+
+        # Parsear fecha/hora
+        final_publish_date = None
+        if form_data.get("publish_date") and form_data.get("publish_time"):
+            try:
+                dt_str = f"{form_data['publish_date']} {form_data['publish_time']}"
+                final_publish_date = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                pass
+
+        # Validar precio
+        try:
+            form_data["price"] = float(self.price_str)
+        except ValueError:
+            return rx.window_alert("Precio inválido.")
+
+        form_data["publish_active"] = form_data.get("publish_active") == "on"
+        form_data["publish_date"] = final_publish_date
+        form_data.pop("publish_time", None)
+
+        self._save_post_edits_to_db(post_id, form_data)
+        return rx.redirect(self.blog_post_url)
+
 
 class BlogViewState(rx.State):
     post: Optional[BlogPostModel] = None
