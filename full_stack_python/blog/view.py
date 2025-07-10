@@ -5,82 +5,105 @@ from full_stack_python.blog.state import BlogViewState
 
 def blog_post_view_page():
     return base_layout_component(
-        rx.center(
+    rx.center(
+        rx.vstack(
+            # Título
+            rx.heading(
+                rx.cond(
+                    BlogViewState.post,
+                    BlogViewState.post.title,
+                    "Cargando publicación..."
+                ),
+                size="3",
+                text_align="center"
+            ),
+
+            # Imagen + navegación tipo slider
             rx.cond(
-                BlogViewState.post,
-                rx.hstack(
-                    # Imagen + flechas
-                    rx.box(
-                        rx.box(
-                            rx.image(
-                                src=rx.cond(
-                                    BlogViewState.imagen_actual != "",
-                                    rx.get_upload_url(BlogViewState.imagen_actual),
-                                    ""
-                                ),
-                                width="100%",
-                                height="100%",
-                                object_fit="cover",
-                                border_radius="md",
-                                style={
-                                    "transition": "transform 0.3s ease-in-out",
-                                    "_hover": {
-                                        "transform": "scale(1.03)"
-                                    }
-                                }
-                            ),
-                            width="100%",
-                            padding_top="100%",
-                            position="relative",
-                            border_radius="md",
-                            overflow="hidden"
-                        ),
-                        # Flecha izquierda
+                BlogViewState.post & BlogViewState.post.images,
+                rx.box(
+                    rx.hstack(
+                        # Botón izquierdo
                         rx.button(
                             "←",
-                            on_click=BlogViewState.imagen_anterior,
-                            position="absolute",
-                            left="0.5em",
-                            top="50%",
-                            transform="translateY(-50%)",
-                            z_index="2",
-                            variant="ghost"
+                            on_click=BlogViewState.anterior_imagen,
+                            disabled=BlogViewState.img_idx == 0,
+                            size="1",
                         ),
-                        # Flecha derecha
+                        # Imagen principal
+                        rx.image(
+                            src=rx.cond(
+                                BlogViewState.imagen_actual != "",
+                                rx.get_upload_url(BlogViewState.imagen_actual),
+                                ""
+                            ),
+                            width="100%",
+                            max_width="400px",
+                            object_fit="contain",
+                            border_radius="md",
+                            box_shadow="lg"
+                        ),
+                        # Botón derecho
                         rx.button(
                             "→",
-                            on_click=BlogViewState.imagen_siguiente,
-                            position="absolute",
-                            right="0.5em",
-                            top="50%",
-                            transform="translateY(-50%)",
-                            z_index="2",
-                            variant="ghost"
+                            on_click=BlogViewState.siguiente_imagen,
+                            disabled=BlogViewState.img_idx >= BlogViewState.max_img_idx,
+                            size="1",
                         ),
-                        width="400px",
-                        max_width="100%",
-                        position="relative"
+                        justify="center",
+                        spacing="3",
+                        wrap="wrap",
                     ),
-
-                    # Texto a la derecha
-                    rx.vstack(
-                        rx.heading(BlogViewState.post.title, size="6"),
-                        rx.text(BlogViewState.formatted_price, weight="bold", color="green", size="5"),
-                        rx.text(BlogViewState.content, white_space="pre-wrap"),
-                        spacing="4",
-                        align="start"
-                    ),
-
-                    spacing="8",
                     width="100%",
-                    max_width="1200px",
-                    align="start",
-                    justify="center",
-                    wrap="wrap"  # para evitar desbordes en pantallas pequeñas
+                    style={
+                        "textAlign": "center",
+                        "padding": "1em",
+                        "@media (max-width: 500px)": {
+                            "flexDirection": "column",
+                            "gap": "1em",
+                        },
+                    }
                 ),
-                rx.text("Cargando publicación...")
+                rx.text("No hay imágenes para mostrar.")
             ),
+
+            # Contador de imagen actual
+            rx.cond(
+                BlogViewState.image_counter != "",
+                rx.text(
+                    BlogViewState.image_counter,
+                    font_size="0.9em",
+                    color="gray.500"
+                ),
+            ),
+
+            # Precio (seguro con formateo)
+            rx.cond(
+                BlogViewState.formatted_price != "",
+                rx.text(
+                    BlogViewState.formatted_price,
+                    font_weight="bold",
+                    color="green.500",
+                    font_size="1.2em"
+                ),
+            ),
+
+            # Contenido (descripción)
+            rx.cond(
+                BlogViewState.content != "",
+                rx.text(
+                    BlogViewState.content,
+                    padding_top="1em",
+                    font_size="1em",
+                    text_align="justify"
+                ),
+            ),
+
+            spacing="6",
+            padding="2em",
+            align="center",
             width="100%",
-            padding="2em"
+            max_width="600px"
         )
     )
+)
