@@ -5,10 +5,10 @@
 
 import reflex as rx
 import reflex_local_auth
+
 from full_stack_python.blog.forms import blog_post_add_form
-from full_stack_python.public_post.view import blog_public_page
+from full_stack_python.public_post.view import public_post_detail_page
 from full_stack_python.public_post.state import BlogViewState
-from full_stack_python.public_post.view import blog_post_view_page, public_post_detail_page
 from rxconfig import config
 
 # --- Módulos y Componentes ---
