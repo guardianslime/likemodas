@@ -209,7 +209,7 @@ class BlogViewState(rx.State):
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
             return f"${self.post.price:.2f}"
-        return ""
+        return "$0.00"
 
     @rx.var
     def content(self) -> str:
@@ -223,6 +223,10 @@ class BlogViewState(rx.State):
             return f"{self.img_idx + 1} / {len(self.post.images)}"
         return ""
 
+    @rx.var
+    def has_post(self) -> bool:
+        return self.post is not None
+
     @rx.event
     def on_load(self):
         try:
@@ -234,14 +238,14 @@ class BlogViewState(rx.State):
         self.img_idx = 0
 
     @rx.event
-    def siguiente_imagen(self):
-        if self.img_idx < self.max_img_idx:
-            self.img_idx += 1
+    def imagen_siguiente(self):
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx + 1) % len(self.post.images)
 
     @rx.event
-    def anterior_imagen(self):
-        if self.img_idx > 0:
-            self.img_idx -= 1
+    def imagen_anterior(self):
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
     
 
 

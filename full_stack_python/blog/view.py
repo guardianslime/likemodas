@@ -7,21 +7,22 @@ def blog_post_view_page():
         rx.vstack(
             rx.heading(
                 rx.cond(
-                    BlogViewState.post.is_defined(),
+                    BlogViewState.has_post,
                     BlogViewState.post.title,
                     "Cargando..."
                 ),
                 size="6",
                 padding_bottom="1em"
             ),
+
             rx.hstack(
-                # Sección de la imagen + flechas
+                # Imagen con flechas de navegación
                 rx.box(
                     rx.box(
                         rx.image(
                             src=rx.cond(
-                                BlogViewState.post.images.length() > 0,
-                                rx.get_upload_url(BlogViewState.post.images[BlogViewState.imagen_actual]),
+                                BlogViewState.imagen_actual != "",
+                                rx.get_upload_url(BlogViewState.imagen_actual),
                                 "/no_image.png"
                             ),
                             width="100%",
@@ -33,6 +34,8 @@ def blog_post_view_page():
                         height="100%",
                         position="relative"
                     ),
+
+                    # Botón Izquierda
                     rx.button(
                         "◀",
                         position="absolute",
@@ -42,6 +45,8 @@ def blog_post_view_page():
                         on_click=BlogViewState.imagen_anterior,
                         variant="ghost"
                     ),
+
+                    # Botón Derecha
                     rx.button(
                         "▶",
                         position="absolute",
@@ -51,6 +56,7 @@ def blog_post_view_page():
                         on_click=BlogViewState.imagen_siguiente,
                         variant="ghost"
                     ),
+
                     width="60%",
                     max_width="600px",
                     height="500px",
@@ -59,26 +65,24 @@ def blog_post_view_page():
                     overflow="hidden",
                 ),
 
-                # Sección de información del post
+                # Info del producto
                 rx.box(
                     rx.vstack(
                         rx.text(
                             BlogViewState.post.title,
                             size="6",
                             font_weight="bold",
-                            margin_bottom="0.5em"
+                            margin_bottom="0.5em",
+                            white_space="pre-wrap"
                         ),
                         rx.text(
-                            rx.cond(
-                                BlogViewState.post.price,
-                                "$" + BlogViewState.post.price.to(str),
-                                "$0.00"
-                            ),
+                            BlogViewState.formatted_price,
                             size="5",
-                            color="gray"
+                            color="gray",
+                            white_space="pre-wrap"
                         ),
                         rx.text(
-                            BlogViewState.post.description,
+                            BlogViewState.content,
                             size="4",
                             margin_top="1em",
                             white_space="pre-wrap"
@@ -87,6 +91,7 @@ def blog_post_view_page():
                     width="40%",
                     padding="2em"
                 ),
+
                 spacing="6",
                 width="100%",
                 align_items="start",
