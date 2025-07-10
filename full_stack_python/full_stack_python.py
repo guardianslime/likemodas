@@ -10,6 +10,7 @@ from full_stack_python.blog.forms import blog_post_add_form
 from full_stack_python.public_post.view import public_post_detail_page
 from full_stack_python.public_post.state import BlogViewState
 from full_stack_python.blog.page import blog_public_page
+from full_stack_python.blog.state import BlogPublicState
 from rxconfig import config
 
 # --- Módulos y Componentes ---
