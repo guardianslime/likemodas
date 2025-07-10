@@ -8,8 +8,7 @@ class BlogViewState(rx.State):
 
     @rx.var
     def post_id(self) -> str:
-        return self.router.url.path_params.get("public_post_id", "")
-
+        return self.router.page.params.get("public_post_id", "")
     @rx.var
     def imagen_actual(self) -> str:
         if self.post and self.post.images and len(self.post.images) > self.img_idx:
