@@ -2,13 +2,14 @@ import reflex as rx
 from ..ui.base import base_layout_component
 from full_stack_python.blog.state import BlogViewState
 
+
 def blog_post_view_page():
     return base_layout_component(
         rx.center(
             rx.cond(
                 BlogViewState.post,
-                rx.responsive_grid(
-                    # Left section (image + nav arrows)
+                rx.hstack(
+                    # Imagen + flechas
                     rx.box(
                         rx.box(
                             rx.image(
@@ -19,95 +20,63 @@ def blog_post_view_page():
                                 ),
                                 width="100%",
                                 height="100%",
-                                max_width="500px",
-                                max_height="500px",
                                 object_fit="cover",
                                 border_radius="md",
-                                box_shadow="lg"
+                                style={
+                                    "transition": "transform 0.3s ease-in-out",
+                                    "_hover": {
+                                        "transform": "scale(1.03)"
+                                    }
+                                }
                             ),
-                            position="relative",
                             width="100%",
-                            height="100%",
-                            aspect_ratio="1 / 1",
+                            padding_top="100%",
+                            position="relative",
+                            border_radius="md",
+                            overflow="hidden"
                         ),
                         # Flecha izquierda
                         rx.button(
                             "←",
-                            on_click=BlogViewState.anterior_imagen,
-                            disabled=BlogViewState.img_idx == 0,
+                            on_click=BlogViewState.imagen_anterior,
                             position="absolute",
-                            left="-1.5em",  # fuera de la imagen, mitad de tarjeta
+                            left="0.5em",
                             top="50%",
                             transform="translateY(-50%)",
-                            z_index="1",
-                            variant="soft",
-                            size="4"
+                            z_index="2",
+                            variant="ghost"
                         ),
                         # Flecha derecha
                         rx.button(
                             "→",
-                            on_click=BlogViewState.siguiente_imagen,
-                            disabled=BlogViewState.img_idx >= BlogViewState.max_img_idx,
+                            on_click=BlogViewState.imagen_siguiente,
                             position="absolute",
-                            right="-1.5em",  # fuera de la imagen, mitad de tarjeta
+                            right="0.5em",
                             top="50%",
                             transform="translateY(-50%)",
-                            z_index="1",
-                            variant="soft",
-                            size="4"
+                            z_index="2",
+                            variant="ghost"
                         ),
-                        position="relative",
-                        display="flex",
-                        align_items="center",
-                        justify_content="center",
-                        max_width="500px",
-                        width="100%",
-                        height="auto",
-                        padding="1em"
+                        width="400px",
+                        max_width="100%",
+                        position="relative"
                     ),
 
-                    # Right section (text content)
+                    # Texto a la derecha
                     rx.vstack(
-                        rx.heading(
-                            BlogViewState.post.title,
-                            size="8",
-                            color=rx.color_mode_cond("black", "white"),
-                            width="100%",
-                        ),
-                        rx.text(
-                            BlogViewState.formatted_price,
-                            font_size="1.8em",
-                            font_weight="bold",
-                            color=rx.color_mode_cond("black", "white"),
-                            width="100%",
-                        ),
-                        rx.text(
-                            BlogViewState.content,
-                            white_space="normal",
-                            word_break="break-word",
-                            text_align="justify",
-                            color=rx.color_mode_cond("black", "white"),
-                            width="100%",
-                        ),
-                        rx.text(
-                            BlogViewState.image_counter,
-                            font_size="0.9em",
-                            color="gray",
-                            padding_top="0.5em"
-                        ),
-                        spacing="5",
-                        align="start",
-                        width="100%",
-                        padding="1em"
+                        rx.heading(BlogViewState.post.title, size="6"),
+                        rx.text(BlogViewState.formatted_price, weight="bold", color="green", size="5"),
+                        rx.text(BlogViewState.content, white_space="pre-wrap"),
+                        spacing="4",
+                        align="start"
                     ),
 
-                    columns=["1fr"] if rx.mobile_only() else ["1fr", "1fr"],
-                    spacing="6",
+                    spacing="8",
                     width="100%",
                     max_width="1200px",
-                    align_items="center",
-                    justify_content="center",
-                    position="relative"
+                    align="start",
+                    justify="center",
+                    wrap="wrap"  # para evitar desbordes en pantallas pequeñas
                 ),
                 rx.text("Cargando publicación...")
             ),
