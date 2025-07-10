@@ -74,6 +74,9 @@ def navbar() -> rx.Component:
                         height="auto",
                         border_radius="25%",
                     ),
+                    rx.heading(
+                        "Reflex", size="6", weight="bold"
+                    ),
                     align_items="center",
                 ),
                 rx.menu.root(

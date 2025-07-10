@@ -9,6 +9,7 @@ from full_stack_python.blog.forms import blog_post_add_form
 from full_stack_python.blog.page import blog_public_page
 from full_stack_python.blog.state import BlogPublicState, BlogViewState
 from full_stack_python.blog.view import blog_post_view_page
+from full_stack_python.public_post.view import public_post_detail_page
 from rxconfig import config
 
 # --- Módulos y Componentes ---
@@ -87,10 +88,9 @@ app.add_page(
 )
 app.add_page(blog_public_page, route="/blog/page", title="Galería pública", on_load=BlogPublicState.on_load)
 app.add_page(
-    blog.blog_post_view_page,
+    public_post_detail_page,
     route="/public-post/[public_post_id]",
-    title="Detalle del producto",
-    on_load=blog.BlogViewState.on_load
+    title="Publicación"
 )
 
 
