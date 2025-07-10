@@ -82,7 +82,7 @@ def blog_post_view_page():
                             BlogViewState.formatted_price,
                             size="5",
                             color=rx.cond(
-                                rx.color_mode() == "dark",
+                                rx.color_mode == "dark",
                                 "gray.400",
                                 "gray.700"
                             ),
@@ -94,7 +94,7 @@ def blog_post_view_page():
                             size="4",
                             white_space="pre-wrap",
                             color=rx.cond(
-                                rx.color_mode() == "dark",
+                                rx.color_mode == "dark",
                                 "gray.200",
                                 "gray.800"
                             ),
