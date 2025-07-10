@@ -93,6 +93,22 @@ class BlogPostState(SessionState):
             session.refresh(post)
             self.post = post
 
+# ───────────────────────────────
+# Estado para vista pública
+# ───────────────────────────────
+
+class BlogPublicState(rx.State):
+    posts: list[BlogPostModel] = []
+
+    def on_load(self):
+        with rx.session() as session:
+            self.posts = session.exec(
+                select(BlogPostModel)
+                .where(BlogPostModel.publish_active == True)
+                .order_by(BlogPostModel.created_at.desc())
+            ).all()
+
+
 
 # ───────────────────────────────
 # Estado para añadir publicaciones
