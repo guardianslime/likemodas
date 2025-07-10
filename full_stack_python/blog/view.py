@@ -70,7 +70,7 @@ def blog_post_view_page():
                             size="6",
                             font_weight="bold",
                             color=rx.cond(
-                                rx.color_mode() == "dark",
+                                rx.color_mode == "dark",
                                 "white",
                                 "black"
                             ),
