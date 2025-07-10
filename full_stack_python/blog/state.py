@@ -8,9 +8,7 @@ from .. import navigation
 from ..auth.state import SessionState
 from ..models import BlogPostModel, UserInfo
 
-
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
-
 
 # ───────────────────────────────
 # Estado privado (mis publicaciones)
@@ -103,7 +101,7 @@ class BlogPostState(SessionState):
 class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
-    price: str = ""  # ← capturamos como string para validación sencilla
+    price: str = ""
     temp_images: list[str] = []
 
     @rx.event
@@ -120,8 +118,6 @@ class BlogAddFormState(SessionState):
     def remove_image(self, name: str):
         if name in self.temp_images:
             self.temp_images.remove(name)
-
-    price: str = ""
 
     @rx.event
     def set_price(self, value: str):
@@ -156,7 +152,7 @@ class BlogAddFormState(SessionState):
         self.content = ""
         self.price = ""
         return rx.redirect("/blog/page")
-    
+
     @rx.event
     def set_price_from_input(self, value: str):
         try:
@@ -166,7 +162,7 @@ class BlogAddFormState(SessionState):
 
 
 # ───────────────────────────────
-# Estado para vista pública
+# Estado para vista pública (listado)
 # ───────────────────────────────
 
 class BlogPublicState(rx.State):
@@ -208,14 +204,12 @@ class BlogViewState(rx.State):
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
-            return f"${self.post.price:.2f}"
+            return f"${self.post.price:,.2f}"
         return "$0.00"
 
     @rx.var
     def content(self) -> str:
-        if self.post and self.post.content:
-            return self.post.content
-        return ""
+        return self.post.content if self.post and self.post.content else ""
 
     @rx.var
     def image_counter(self) -> str:
@@ -244,75 +238,5 @@ class BlogViewState(rx.State):
 
     @rx.event
     def imagen_anterior(self):
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
-    
-
-
-
-# ───────────────────────────────
-# Estado para editar publicaciones
-# ───────────────────────────────
-
-# Vista detalle público
-class BlogViewState(rx.State):
-    post: Optional[BlogPostModel] = None
-    img_idx: int = 0
-
-    @rx.var
-    def post_id(self) -> str:
-        return self.router.page.params.get("public_post_id", "")
-
-    @rx.var
-    def imagen_actual(self) -> str:
-        if self.post and self.post.images and len(self.post.images) > self.img_idx:
-            return self.post.images[self.img_idx]
-        return ""
-
-    @rx.var
-    def max_img_idx(self) -> int:
-        if self.post and self.post.images:
-            return len(self.post.images) - 1
-        return 0
-
-    @rx.var
-    def formatted_price(self) -> str:
-        if self.post and self.post.price is not None:
-            return f"${self.post.price:,.2f}"
-        return "$0.00"
-
-    @rx.var
-    def content(self) -> str:
-        if self.post and self.post.content:
-            return self.post.content
-        return ""
-
-    @rx.var
-    def image_counter(self) -> str:
-        if self.post and self.post.images:
-            return f"{self.img_idx + 1} / {len(self.post.images)}"
-        return ""
-
-    @rx.var
-    def has_post(self) -> bool:
-        return self.post is not None
-
-    @rx.event
-    def on_load(self):
-        try:
-            pid = int(self.post_id)
-        except ValueError:
-            return
-        with rx.session() as session:
-            self.post = session.get(BlogPostModel, pid)
-        self.img_idx = 0
-
-    @rx.event
-    def siguiente_imagen(self):
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx + 1) % len(self.post.images)
-
-    @rx.event
-    def anterior_imagen(self):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
