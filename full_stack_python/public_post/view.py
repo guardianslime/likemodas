@@ -7,7 +7,6 @@ def public_post_detail_page():
         rx.cond(
             BlogViewState.has_post,
             rx.hstack(
-                # Imagen + flechas
                 rx.box(
                     rx.box(
                         rx.image(
@@ -50,9 +49,8 @@ def public_post_detail_page():
                     height="500px",
                     position="relative",
                     border_radius="md",
-                    overflow="hidden",
+                    overflow="hidden"
                 ),
-                # Info
                 rx.box(
                     rx.vstack(
                         rx.text(
@@ -86,5 +84,6 @@ def public_post_detail_page():
         padding="2em",
         width="100%",
         max_width="1440px",
-        margin="0 auto"
+        margin="0 auto",
+        on_mount=BlogViewState.on_load
     )

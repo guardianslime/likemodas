@@ -8,7 +8,7 @@ class BlogViewState(rx.State):
 
     @rx.var
     def post_id(self) -> str:
-        return self.router.page.params.get("public_post_id", "")
+        return self.router.url.params.get("public_post_id", "")  # ⚠️ Usa .url en Reflex >= 0.8.1
 
     @rx.var
     def imagen_actual(self) -> str:
