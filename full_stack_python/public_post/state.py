@@ -8,7 +8,7 @@ class BlogViewState(rx.State):
 
     @rx.var
     def post_id(self) -> str:
-        return self.router.url.query.get("public_post_id", "")
+        return rx.get_query_params().get("public_post_id", "")
 
     @rx.var
     def imagen_actual(self) -> str:
