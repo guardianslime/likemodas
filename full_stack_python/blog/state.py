@@ -308,11 +308,11 @@ class BlogViewState(rx.State):
         self.img_idx = 0
 
     @rx.event
-    def imagen_siguiente(self):
+    def siguiente_imagen(self):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx + 1) % len(self.post.images)
 
     @rx.event
-    def imagen_anterior(self):
+    def anterior_imagen(self):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
