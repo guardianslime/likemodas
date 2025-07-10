@@ -1,89 +1,100 @@
 import reflex as rx
 from full_stack_python.blog.state import BlogViewState
+from full_stack_python.navigation import routes
 
 def blog_post_view_page():
-    return rx.center(
-        rx.hstack(
-            # Imagen con flechas a los lados
-            rx.box(
-                rx.hstack(
-                    rx.button(
-                        "←",
-                        on_click=BlogViewState.anterior_imagen,
-                        disabled=BlogViewState.img_idx == 0,
-                        size="3"
-                    ),
+    return rx.box(
+        rx.vstack(
+            rx.heading(
+                rx.cond(
+                    BlogViewState.post.is_defined(),
+                    BlogViewState.post.title,
+                    "Cargando..."
+                ),
+                size="6",
+                padding_bottom="1em"
+            ),
+            rx.hstack(
+                # Sección de la imagen + flechas
+                rx.box(
                     rx.box(
-                        rx.cond(
-                            BlogViewState.imagen_actual != "",
-                            rx.image(
-                                src=rx.get_upload_url(BlogViewState.imagen_actual),
-                                width="350px",
-                                height="350px",
-                                object_fit="cover",
-                                border_radius="md",
-                                box_shadow="lg"
+                        rx.image(
+                            src=rx.cond(
+                                BlogViewState.post.images.length() > 0,
+                                rx.get_upload_url(BlogViewState.post.images[BlogViewState.imagen_actual]),
+                                "/no_image.png"
                             ),
-                            rx.box(
-                                "Sin imagen",
-                                width="350px",
-                                height="350px",
-                                bg="#eee",
-                                align="center",
-                                justify="center",
-                                display="flex",
-                                border_radius="md"
-                            )
+                            width="100%",
+                            height="100%",
+                            object_fit="contain",
+                            border_radius="md"
                         ),
+                        width="100%",
+                        height="100%",
                         position="relative"
                     ),
                     rx.button(
-                        "→",
-                        on_click=BlogViewState.siguiente_imagen,
-                        disabled=BlogViewState.img_idx >= BlogViewState.max_img_idx,
-                        size="3"
+                        "◀",
+                        position="absolute",
+                        left="0.5em",
+                        top="50%",
+                        transform="translateY(-50%)",
+                        on_click=BlogViewState.imagen_anterior,
+                        variant="ghost"
                     ),
-                    spacing="3",
-                    align="center",
-                    justify="center"
+                    rx.button(
+                        "▶",
+                        position="absolute",
+                        right="0.5em",
+                        top="50%",
+                        transform="translateY(-50%)",
+                        on_click=BlogViewState.imagen_siguiente,
+                        variant="ghost"
+                    ),
+                    width="60%",
+                    max_width="600px",
+                    height="500px",
+                    position="relative",
+                    border_radius="md",
+                    overflow="hidden",
                 ),
+
+                # Sección de información del post
+                rx.box(
+                    rx.vstack(
+                        rx.text(
+                            BlogViewState.post.title,
+                            size="6",
+                            font_weight="bold",
+                            margin_bottom="0.5em"
+                        ),
+                        rx.text(
+                            rx.cond(
+                                BlogViewState.post.price,
+                                "$" + BlogViewState.post.price.to(str),
+                                "$0.00"
+                            ),
+                            size="5",
+                            color="gray"
+                        ),
+                        rx.text(
+                            BlogViewState.post.description,
+                            size="4",
+                            margin_top="1em",
+                            white_space="pre-wrap"
+                        )
+                    ),
+                    width="40%",
+                    padding="2em"
+                ),
+                spacing="6",
                 width="100%",
-                max_width="600px"
-            ),
-
-            # Información a la derecha
-            rx.box(
-                rx.vstack(
-                    rx.heading(
-                        BlogViewState.post.title if BlogViewState.post else "Cargando...",
-                        size="6",
-                        text_align="start"
-                    ),
-                    rx.text(
-                        BlogViewState.formatted_price,
-                        font_weight="bold",
-                        color="green.500",
-                        size="5"
-                    ),
-                    rx.text(
-                        BlogViewState.content,
-                        white_space="pre-wrap",
-                        max_width="400px",
-                        text_align="start"
-                    ),
-                    spacing="4",
-                    align="start"
-                ),
-                padding="2em",
-                max_width="500px"
-            ),
-
-            spacing="8",
-            wrap="wrap",
-            justify="center",
-            align="start",
-            width="100%"
+                align_items="start",
+                wrap="wrap"
+            )
         ),
+        padding="2em",
         width="100%",
-        padding="3em"
+        max_width="1440px",
+        margin="0 auto"
     )
