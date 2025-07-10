@@ -161,77 +161,6 @@ class BlogAddFormState(SessionState):
             self.price = 0.0
 
 
-class BlogEditFormState(BlogPostState):
-    post_content: str = ""
-    post_publish_active: bool = False
-    price_str: str = "0.0"
-
-    def on_load_edit(self):
-        self.get_post_detail()
-        if self.post:
-            self.post_content = self.post.content or ""
-            self.post_publish_active = self.post.publish_active
-
-    @rx.var
-    def publish_display_date(self) -> str:
-        if not self.post or not self.post.publish_date:
-            return datetime.now().strftime("%Y-%m-%d")
-        return self.post.publish_date.strftime("%Y-%m-%d")
-
-    @rx.var
-    def publish_display_time(self) -> str:
-        if not self.post or not self.post.publish_date:
-            return datetime.now().strftime("%H:%M:%S")
-        return self.post.publish_date.strftime("%H:%M:%S")
-
-    @rx.event
-    def set_price(self, value: str):
-        self.price_str = value
-
-    def handle_submit(self, form_data: dict):
-        post_id = int(form_data.pop("post_id", 0))
-
-        final_publish_date = None
-        if form_data.get("publish_date") and form_data.get("publish_time"):
-            try:
-                dt_str = f"{form_data['publish_date']} {form_data['publish_time']}"
-                final_publish_date = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
-            except ValueError:
-                pass
-
-        try:
-            form_data["price"] = float(self.price_str)
-        except ValueError:
-            return rx.window_alert("Precio inválido.")
-
-        form_data["publish_active"] = form_data.get("publish_active") == "on"
-        form_data["publish_date"] = final_publish_date
-        form_data.pop("publish_time", None)
-
-        self._save_post_edits_to_db(post_id, form_data)
-        return rx.redirect(self.blog_post_url)
-
-
-# ───────────────────────────────
-# Estado para vista pública (listado)
-# ───────────────────────────────
-
-class BlogPublicState(rx.State):
-    posts: list[BlogPostModel] = []
-
-    def on_load(self):
-        with rx.session() as session:
-            self.posts = session.exec(
-                select(BlogPostModel)
-                .where(BlogPostModel.publish_active == True)
-                .order_by(BlogPostModel.created_at.desc())
-            ).all()
-
-
-# ───────────────────────────────
-# Vista detalle público
-# ───────────────────────────────
-
 class BlogViewState(rx.State):
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
@@ -260,7 +189,9 @@ class BlogViewState(rx.State):
 
     @rx.var
     def content(self) -> str:
-        return self.post.content if self.post and self.post.content else ""
+        if self.post and self.post.content:
+            return self.post.content
+        return ""
 
     @rx.var
     def image_counter(self) -> str:
@@ -283,11 +214,11 @@ class BlogViewState(rx.State):
         self.img_idx = 0
 
     @rx.event
-    def imagen_siguiente(self):
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx + 1) % len(self.post.images)
-
-    @rx.event
-    def imagen_anterior(self):
+    def anterior_imagen(self):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
+
+    @rx.event
+    def siguiente_imagen(self):
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx + 1) % len(self.post.images)
