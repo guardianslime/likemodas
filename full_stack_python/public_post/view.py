@@ -6,7 +6,7 @@ from full_stack_python.ui.base import base_layout_component
 
 from full_stack_python.utils.timing import get_utc_now
 from full_stack_python.models import UserInfo, BlogPostModel
-from full_stack_python.models import UserInfo
+from full_stack_python.models import ContactEntryModel
 from typing import Optional, List
 from sqlmodel import Field, Relationship
 from sqlalchemy import Column, JSON
@@ -18,28 +18,6 @@ from sqlmodel import Field, Relationship
 
 
 # ... (Clase ContactEntryModel sin cambios) ...
-class ContactEntryModel(rx.Model, table=True):
-    userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
-    userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
-    first_name: str
-    last_name: Optional[str] = None
-    email: Optional[str] = None
-    message: str
-    created_at: datetime = Field(
-        default_factory=utils.timing.get_utc_now,
-        sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
-        nullable=False,
-    )
-
-    @property
-    def created_at_formatted(self) -> str:
-        """Devuelve la fecha de creación como string formateado."""
-        return self.created_at.strftime("%Y-%m-%d %H:%M")
-
-    def dict(self, **kwargs):
-        return super().dict(**kwargs) | {"created_at_formatted": self.created_at_formatted}
-
 
 def _image_section(width: str = "100%", height: str = "400px"):
     return rx.box(
