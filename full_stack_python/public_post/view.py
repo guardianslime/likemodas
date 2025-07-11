@@ -14,6 +14,7 @@ import sqlalchemy
 from sqlmodel import Field, Relationship
 from . import utils
 
+
 # ... (Clase UserInfo sin cambios) ...
 class UserInfo(rx.Model, table=True):
     email: str
