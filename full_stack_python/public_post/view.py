@@ -24,36 +24,30 @@ def public_post_detail_page() -> rx.Component:
             rx.cond(
                 BlogViewState.has_post,
                 rx.fragment(
-                    rx.hydration_only(
-                        rx.desktop_only(
-                            rx.hstack(
-                                _image_section(width="60%", height="500px"),
-                                _info_section(width="40%"),
-                                spacing="6",
-                                width="100%",
-                                align_items="start",
-                                wrap="wrap"
-                            )
+                    rx.desktop_only(
+                        rx.hstack(
+                            _image_section(width="60%", height="500px"),
+                            _info_section(width="40%"),
+                            spacing="6",
+                            width="100%",
+                            align_items="start",
+                            wrap="wrap"
                         )
                     ),
-                    rx.hydration_only(
-                        rx.tablet_only(
-                            rx.vstack(
-                                _image_section(width="100%", height="400px"),
-                                _info_section(width="100%"),
-                                spacing="4",
-                                width="100%",
-                            )
+                    rx.tablet_only(
+                        rx.vstack(
+                            _image_section(width="100%", height="400px"),
+                            _info_section(width="100%"),
+                            spacing="4",
+                            width="100%",
                         )
                     ),
-                    rx.hydration_only(
-                        rx.mobile_only(
-                            rx.vstack(
-                                _image_section(width="100%", height="300px"),
-                                _info_section(width="100%"),
-                                spacing="4",
-                                width="100%",
-                            )
+                    rx.mobile_only(
+                        rx.vstack(
+                            _image_section(width="100%", height="300px"),
+                            _info_section(width="100%"),
+                            spacing="4",
+                            width="100%",
                         )
                     )
                 ),
