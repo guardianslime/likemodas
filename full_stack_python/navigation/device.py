@@ -7,10 +7,8 @@ class DeviceState(rx.State):
     def on_mount(self):
         return rx.call_script(
             """
-            if (window.innerWidth < 768) {
-                DeviceState.set_is_mobile(true);
-            } else {
-                DeviceState.set_is_desktop(true);
-            }
+            const width = window.innerWidth;
+            DeviceState.set_is_mobile(width < 768);
+            DeviceState.set_is_desktop(width >= 768);
             """
         )

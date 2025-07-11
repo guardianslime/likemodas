@@ -23,24 +23,23 @@ def public_post_detail_page() -> rx.Component:
         rx.box(
             rx.cond(
                 BlogViewState.has_post,
-                rx.grid(
-                    rx.desktop_only(
-                        rx.grid(
-                            _image_section(width="100%", height="500px"),
-                            _info_section(width="100%"),
-                            template_columns="2fr 1fr",
-                            gap="2em",
-                            width="100%",
-                            max_width="1440px",
-                        )
+                rx.cond(
+                    DeviceState.is_desktop,
+                    # Layout para escritorio (dos columnas)
+                    rx.grid(
+                        _image_section(width="100%", height="500px"),
+                        _info_section(width="100%"),
+                        template_columns="2fr 1fr",
+                        gap="2em",
+                        width="100%",
+                        max_width="1440px",
                     ),
-                    rx.mobile_and_tablet(
-                        rx.vstack(
-                            _image_section(width="100%", height="350px"),
-                            _info_section(width="100%"),
-                            spacing="4",
-                            width="100%",
-                        )
+                    # Layout para móvil/tablet (vertical)
+                    rx.vstack(
+                        _image_section(width="100%", height="350px"),
+                        _info_section(width="100%"),
+                        spacing="4",
+                        width="100%",
                     ),
                 ),
                 rx.center(
@@ -50,10 +49,11 @@ def public_post_detail_page() -> rx.Component:
             padding="2em",
             width="100%",
             max_width="1440px",
-            margin="0 auto"
+            margin="0 auto",
         ),
-        on_mount=BlogViewState.on_load
+        on_mount=lambda: [BlogViewState.on_load(), DeviceState.on_mount()]
     )
+
 
 def _image_section(width: str = "100%", height: str = "400px"):
     return rx.box(
