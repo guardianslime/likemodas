@@ -18,6 +18,56 @@ from sqlmodel import Field, Relationship
 
 
 # ... (Clase ContactEntryModel sin cambios) ...
+def public_post_detail_page() -> rx.Component:
+    return base_layout_component(
+        rx.box(
+            rx.cond(
+                BlogViewState.has_post,
+                rx.fragment(
+                    rx.hydration_only(
+                        rx.desktop_only(
+                            rx.hstack(
+                                _image_section(width="60%", height="500px"),
+                                _info_section(width="40%"),
+                                spacing="6",
+                                width="100%",
+                                align_items="start",
+                                wrap="wrap"
+                            )
+                        )
+                    ),
+                    rx.hydration_only(
+                        rx.tablet_only(
+                            rx.vstack(
+                                _image_section(width="100%", height="400px"),
+                                _info_section(width="100%"),
+                                spacing="4",
+                                width="100%",
+                            )
+                        )
+                    ),
+                    rx.hydration_only(
+                        rx.mobile_only(
+                            rx.vstack(
+                                _image_section(width="100%", height="300px"),
+                                _info_section(width="100%"),
+                                spacing="4",
+                                width="100%",
+                            )
+                        )
+                    )
+                ),
+                rx.center(
+                    rx.text("Publicación no encontrada.", color="red")
+                )
+            ),
+            padding="2em",
+            width="100%",
+            max_width="1440px",
+            margin="0 auto"
+        ),
+        on_mount=BlogViewState.on_load
+    )
 
 def _image_section(width: str = "100%", height: str = "400px"):
     return rx.box(
