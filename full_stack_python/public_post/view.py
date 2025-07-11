@@ -23,14 +23,13 @@ def public_post_detail_page() -> rx.Component:
         rx.box(
             rx.cond(
                 BlogViewState.has_post,
-                rx.flex(
-                    _image_section(width="100%", height="400px"),
+                rx.grid(
+                    _image_section(width="100%", height="100%"),
                     _info_section(width="100%"),
-                    spacing="6",
+                    template_columns="repeat(auto-fit, minmax(300px, 1fr))",
+                    gap="2em",
                     width="100%",
                     max_width="1440px",
-                    wrap="wrap",
-                    direction="row",  # ✅ dirección horizontal por defecto
                     align_items="start",
                 ),
                 rx.center(
