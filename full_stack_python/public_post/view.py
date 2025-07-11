@@ -12,7 +12,7 @@ import reflex as rx
 from reflex_local_auth.user import LocalUser
 import sqlalchemy
 from sqlmodel import Field, Relationship
-from . import utils
+from full_stack_python.utils import timing
 
 # ... (Clase UserInfo sin cambios) ...
 class UserInfo(rx.Model, table=True):
