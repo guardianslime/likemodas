@@ -5,6 +5,7 @@ from full_stack_python.ui.base import base_layout_component
 # full_stack_python/models.py (CORREGIDO)
 
 from full_stack_python.utils.timing import get_utc_now
+from full_stack_python.models import UserInfo, BlogPostModel
 from full_stack_python.models import UserInfo
 from typing import Optional, List
 from sqlmodel import Field, Relationship
@@ -15,32 +16,6 @@ from reflex_local_auth.user import LocalUser
 import sqlalchemy
 from sqlmodel import Field, Relationship
 
-
-
-# ... (Clase UserInfo sin cambios) ...
-
-class BlogPostModel(rx.Model, table=True):
-    userinfo_id: int = Field(foreign_key="userinfo.id")
-    userinfo: "UserInfo" = Relationship(back_populates="posts")
-    title: str
-    content: str
-    price: float = 0.0
-    images: list[str] = Field(default=[], sa_column=Column(JSON))
-    publish_active: bool = False
-    publish_date: datetime = Field(default_factory=datetime.utcnow)
-
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    @property
-    def created_at_formatted(self) -> str:
-        return self.created_at.strftime("%Y-%m-%d")
-
-    @property
-    def publish_date_formatted(self) -> str:
-        if not self.publish_date:
-            return ""
-        return self.publish_date.strftime("%d-%m-%Y")
 
 # ... (Clase ContactEntryModel sin cambios) ...
 class ContactEntryModel(rx.Model, table=True):
