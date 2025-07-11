@@ -26,12 +26,12 @@ def public_post_detail_page() -> rx.Component:
                 rx.flex(
                     _image_section(width="100%", height="400px"),
                     _info_section(width="100%"),
-                    direction=rx.breakpoints("column", "column", "row"),
                     spacing="6",
                     width="100%",
                     max_width="1440px",
+                    wrap="wrap",
+                    direction="row",  # ✅ dirección horizontal por defecto
                     align_items="start",
-                    wrap="wrap"
                 ),
                 rx.center(
                     rx.text("Publicación no encontrada.", color="red")
