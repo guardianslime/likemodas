@@ -7,6 +7,7 @@ from full_stack_python.ui.base import base_layout_component
 from full_stack_python.utils.timing import get_utc_now
 from full_stack_python.models import UserInfo, BlogPostModel
 from full_stack_python.models import ContactEntryModel
+from full_stack_python.navigation import DeviceState
 from typing import Optional, List
 from sqlmodel import Field, Relationship
 from sqlalchemy import Column, JSON
