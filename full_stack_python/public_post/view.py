@@ -4,6 +4,7 @@ from full_stack_python.ui.base import base_layout_component
 
 # full_stack_python/models.py (CORREGIDO)
 
+from full_stack_python.utils.timing import get_utc_now
 from typing import Optional, List
 from sqlmodel import Field, Relationship
 from sqlalchemy import Column, JSON
@@ -25,18 +26,20 @@ class UserInfo(rx.Model, table=True):
         back_populates="userinfo"
     )
     created_at: datetime = Field(
-        default_factory=utils.timing.get_utc_now,
+        default_factory=get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={"server_default": sqlalchemy.func.now()},
         nullable=False,
     )
     updated_at: datetime = Field(
-        default_factory=utils.timing.get_utc_now,
+        default_factory=get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
+        sa_column_kwargs={
+            "onupdate": sqlalchemy.func.now(),
+            "server_default": sqlalchemy.func.now(),
+        },
         nullable=False,
     )
-
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
