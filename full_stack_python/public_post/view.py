@@ -5,6 +5,7 @@ from full_stack_python.ui.base import base_layout_component
 # full_stack_python/models.py (CORREGIDO)
 
 from full_stack_python.utils.timing import get_utc_now
+from full_stack_python.models import UserInfo
 from typing import Optional, List
 from sqlmodel import Field, Relationship
 from sqlalchemy import Column, JSON
@@ -15,30 +16,8 @@ import sqlalchemy
 from sqlmodel import Field, Relationship
 
 
+
 # ... (Clase UserInfo sin cambios) ...
-class UserInfo(rx.Model, table=True):
-    email: str
-    user_id: int = Field(foreign_key="localuser.id")
-    user: Optional[LocalUser] = Relationship()
-    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
-    contact_entries: List["ContactEntryModel"] = Relationship(
-        back_populates="userinfo"
-    )
-    created_at: datetime = Field(
-        default_factory=get_utc_now,
-        sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
-        nullable=False,
-    )
-    updated_at: datetime = Field(
-        default_factory=get_utc_now,
-        sa_type=sqlalchemy.DateTime(timezone=True),
-        sa_column_kwargs={
-            "onupdate": sqlalchemy.func.now(),
-            "server_default": sqlalchemy.func.now(),
-        },
-        nullable=False,
-    )
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
