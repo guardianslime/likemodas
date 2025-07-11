@@ -24,13 +24,24 @@ def public_post_detail_page() -> rx.Component:
             rx.cond(
                 BlogViewState.has_post,
                 rx.grid(
-                    _image_section(width="100%", height="100%"),
-                    _info_section(width="100%"),
-                    template_columns="repeat(auto-fit, minmax(300px, 1fr))",
-                    gap="2em",
-                    width="100%",
-                    max_width="1440px",
-                    align_items="start",
+                    rx.desktop_only(
+                        rx.grid(
+                            _image_section(width="100%", height="500px"),
+                            _info_section(width="100%"),
+                            template_columns="2fr 1fr",
+                            gap="2em",
+                            width="100%",
+                            max_width="1440px",
+                        )
+                    ),
+                    rx.mobile_and_tablet(
+                        rx.vstack(
+                            _image_section(width="100%", height="350px"),
+                            _info_section(width="100%"),
+                            spacing="4",
+                            width="100%",
+                        )
+                    ),
                 ),
                 rx.center(
                     rx.text("Publicación no encontrada.", color="red")

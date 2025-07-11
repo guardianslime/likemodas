@@ -1,6 +1,7 @@
 import reflex as rx
 import reflex_local_auth
 from .. import navigation
+from ..navigation import DeviceState
 
 def navbar_link(text: str, url: str) -> rx.Component:
     return rx.link(
@@ -10,7 +11,8 @@ def navbar_link(text: str, url: str) -> rx.Component:
 
 def navbar() -> rx.Component:
     return rx.box(
-        rx.desktop_only(
+        rx.cond(
+            DeviceState.is_desktop,
             rx.hstack(
                 rx.hstack(
                     rx.link(
@@ -51,9 +53,7 @@ def navbar() -> rx.Component:
                 ),
                 justify="between",
                 align_items="center",
-            )
-        ),
-        rx.mobile_and_tablet(
+            ),
             rx.hstack(
                 rx.hstack(
                     rx.image(
@@ -87,4 +87,6 @@ def navbar() -> rx.Component:
         bg=rx.color("accent", 3),
         padding="1em",
         width="100%",
+        on_mount=DeviceState.on_mount  # <- esto es clave
     )
+
