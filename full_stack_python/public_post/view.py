@@ -23,33 +23,15 @@ def public_post_detail_page() -> rx.Component:
         rx.box(
             rx.cond(
                 BlogViewState.has_post,
-                rx.fragment(
-                    rx.desktop_only(
-                        rx.hstack(
-                            _image_section(width="60%", height="500px"),
-                            _info_section(width="40%"),
-                            spacing="6",
-                            width="100%",
-                            align_items="start",
-                            wrap="wrap"
-                        )
-                    ),
-                    rx.tablet_only(
-                        rx.vstack(
-                            _image_section(width="100%", height="400px"),
-                            _info_section(width="100%"),
-                            spacing="4",
-                            width="100%",
-                        )
-                    ),
-                    rx.mobile_only(
-                        rx.vstack(
-                            _image_section(width="100%", height="300px"),
-                            _info_section(width="100%"),
-                            spacing="4",
-                            width="100%",
-                        )
-                    )
+                rx.flex(
+                    _image_section(width="100%", height="400px"),
+                    _info_section(width="100%"),
+                    direction=rx.breakpoints("column", "column", "row"),
+                    spacing="6",
+                    width="100%",
+                    max_width="1440px",
+                    align_items="start",
+                    wrap="wrap"
                 ),
                 rx.center(
                     rx.text("Publicación no encontrada.", color="red")
