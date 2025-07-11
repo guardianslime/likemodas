@@ -26,22 +26,22 @@ def public_post_detail_page() -> rx.Component:
                 BlogViewState.has_post,
                 rx.cond(
                     DeviceState.is_desktop,
-                    # Layout para escritorio (dos columnas)
+                    # 💻 VERSIÓN DE ESCRITORIO: imagen izquierda, texto derecha
                     rx.grid(
-                        _image_section(width="100%", height="500px"),
+                        _image_section(width="100%", height="550px"),
                         _info_section(width="100%"),
-                        template_columns="2fr 1fr",
+                        template_columns="3fr 2fr",
                         gap="2em",
                         width="100%",
                         max_width="1440px",
                     ),
-                    # Layout para móvil/tablet (vertical)
+                    # 📱 VERSIÓN MÓVIL/TABLET: imagen arriba, texto abajo
                     rx.vstack(
                         _image_section(width="100%", height="350px"),
                         _info_section(width="100%"),
                         spacing="4",
                         width="100%",
-                    ),
+                    )
                 ),
                 rx.center(
                     rx.text("Publicación no encontrada.", color="red")
