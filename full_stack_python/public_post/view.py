@@ -1,33 +1,36 @@
 import reflex as rx
-from full_stack_python.public_post.state import BlogViewState
 from full_stack_python.ui.base import base_layout_component
-from full_stack_python.navigation import DeviceState
+from full_stack_python.blog.state import BlogListState  # Ajusta el import si es diferente
+from full_stack_python.navigation.device import DeviceState
+from full_stack_python.components.blog_card import BlogCard  # Asegúrate que este exista
 
 
-def public_post_detail_page() -> rx.Component:
+def blog_post_list_page() -> rx.Component:
     return base_layout_component(
         rx.box(
             rx.cond(
-                BlogViewState.has_post,
-                # Solo un layout activo según el tamaño
-                rx.cond(
-                    DeviceState.is_desktop,
-                    layout_escritorio(),
-                    layout_movil()
+                DeviceState.is_desktop,
+                # 💻 Escritorio: grid de 3 columnas mínimo
+                rx.grid(
+                    *[BlogCard(post=p) for p in BlogListState.blog_posts],
+                    columns=[6],
+                    spacing="4",
+                    width="100%",
                 ),
-                rx.center(
-                    rx.text("Publicación no encontrada.", color="red")
+                # 📱 Móvil / tablet: 2 columnas o 1
+                rx.grid(
+                    *[BlogCard(post=p) for p in BlogListState.blog_posts],
+                    columns=[1, 2],
+                    spacing="4",
+                    width="100%",
                 )
             ),
-            padding="2em",
             width="100%",
+            padding="2em",
             max_width="1440px",
-            margin="0 auto",
+            margin="0 auto"
         ),
-        on_mount=lambda: [
-            BlogViewState.on_load(),
-            DeviceState.on_mount()
-        ],
+        on_mount=lambda: [BlogListState.load_posts(), DeviceState.on_mount()]
     )
 
 
