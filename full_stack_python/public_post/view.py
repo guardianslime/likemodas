@@ -5,6 +5,32 @@ from full_stack_python.navigation.device import DeviceState
 from full_stack_python.public_post.state import BlogCard  # Asegúrate que este exista
 from full_stack_python.public_post.state import BlogViewState
 
+def public_post_detail_page() -> rx.Component:
+    return base_layout_component(
+        rx.box(
+            rx.cond(
+                BlogViewState.has_post,
+                # Solo un layout activo según el tamaño
+                rx.cond(
+                    DeviceState.is_desktop,
+                    layout_escritorio(),
+                    layout_movil()
+                ),
+                rx.center(
+                    rx.text("Publicación no encontrada.", color="red")
+                )
+            ),
+            padding="2em",
+            width="100%",
+            max_width="1440px",
+            margin="0 auto",
+        ),
+        on_mount=lambda: [
+            BlogViewState.on_load(),
+            DeviceState.on_mount()
+        ],
+    )
+
 def blog_post_list_page() -> rx.Component:
     return base_layout_component(
         rx.box(
