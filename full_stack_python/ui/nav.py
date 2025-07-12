@@ -21,6 +21,7 @@ def navbar() -> rx.Component:
     )
 
 
+
 def navbar_desktop() -> rx.Component:
     return rx.hstack(
         rx.hstack(
