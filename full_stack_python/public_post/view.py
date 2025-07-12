@@ -46,7 +46,7 @@ def blog_post_list_page() -> rx.Component:
                             *[BlogCard(post=p) for p in BlogListState.blog_posts],
                             columns=[1, 2],
                             spacing="4",
-                            width="100%",
+                            width="50%",
                         )
                     ),
                 ],
