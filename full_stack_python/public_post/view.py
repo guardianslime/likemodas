@@ -1,47 +1,19 @@
 import reflex as rx
 from full_stack_python.public_post.state import BlogViewState
 from full_stack_python.ui.base import base_layout_component
-
-# full_stack_python/models.py (CORREGIDO)
-
-from full_stack_python.utils.timing import get_utc_now
-from full_stack_python.models import UserInfo, BlogPostModel
-from full_stack_python.models import ContactEntryModel
 from full_stack_python.navigation import DeviceState
-from typing import Optional, List
-from sqlmodel import Field, Relationship
-from sqlalchemy import Column, JSON
-from datetime import datetime
-import reflex as rx
-from reflex_local_auth.user import LocalUser
-import sqlalchemy
-from sqlmodel import Field, Relationship
 
 
-# ... (Clase ContactEntryModel sin cambios) ...
 def public_post_detail_page() -> rx.Component:
     return base_layout_component(
         rx.box(
             rx.cond(
                 BlogViewState.has_post,
+                # Solo un layout activo según el tamaño
                 rx.cond(
                     DeviceState.is_desktop,
-                    # Layout para escritorio (dos columnas)
-                    rx.grid(
-                        _image_section(width="100%", height="500px"),
-                        _info_section(width="100%"),
-                        template_columns="2fr 1fr",
-                        gap="2em",
-                        width="100%",
-                        max_width="1440px",
-                    ),
-                    # Layout para móvil/tablet (vertical)
-                    rx.vstack(
-                        _image_section(width="100%", height="350px"),
-                        _info_section(width="100%"),
-                        spacing="4",
-                        width="100%",
-                    ),
+                    layout_escritorio(),
+                    layout_movil()
                 ),
                 rx.center(
                     rx.text("Publicación no encontrada.", color="red")
@@ -52,11 +24,35 @@ def public_post_detail_page() -> rx.Component:
             max_width="1440px",
             margin="0 auto",
         ),
-        on_mount=lambda: [BlogViewState.on_load(), DeviceState.on_mount()]
+        on_mount=lambda: [
+            BlogViewState.on_load(),
+            DeviceState.on_mount()
+        ],
     )
 
 
-def _image_section(width: str = "100%", height: str = "400px"):
+def layout_escritorio() -> rx.Component:
+    return rx.grid(
+        _image_section(width="100%", height="550px"),
+        _info_section(width="100%"),
+        template_columns="3fr 2fr",
+        gap="2em",
+        width="100%",
+        max_width="1440px",
+        align_items="start"
+    )
+
+
+def layout_movil() -> rx.Component:
+    return rx.vstack(
+        _image_section(width="100%", height="350px"),
+        _info_section(width="100%"),
+        spacing="4",
+        width="100%"
+    )
+
+
+def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
     return rx.box(
         rx.box(
             rx.image(
@@ -99,11 +95,11 @@ def _image_section(width: str = "100%", height: str = "400px"):
         height=height,
         position="relative",
         border_radius="md",
-        overflow="hidden",
+        overflow="hidden"
     )
 
 
-def _info_section(width: str = "100%"):
+def _info_section(width: str = "100%") -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.text(
