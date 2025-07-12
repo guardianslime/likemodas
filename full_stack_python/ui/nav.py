@@ -10,10 +10,8 @@ def navbar_link(text: str, url: str) -> rx.Component:
 
 def navbar() -> rx.Component:
     return rx.box(
-        children=[
-            rx.desktop_only(navbar_desktop()),
-            rx.mobile_and_tablet(navbar_mobile()),
-        ],
+        rx.desktop_only(navbar_desktop()),
+        rx.mobile_and_tablet(navbar_mobile()),
         bg=rx.color("accent", 3),
         padding="1em",
         width="100%",
