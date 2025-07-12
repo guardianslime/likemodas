@@ -1,7 +1,7 @@
 import reflex as rx
 from full_stack_python.ui.base import base_layout_component
-from full_stack_python.public_post.state import BlogListState, BlogViewState
-from full_stack_python.public_post.state import BlogCard
+from full_stack_python.public_post.state import BlogViewState, BlogListState, BlogCard
+from full_stack_python.navigation.device import DeviceState
 
 
 def public_post_detail_page() -> rx.Component:
@@ -9,10 +9,10 @@ def public_post_detail_page() -> rx.Component:
         rx.box(
             rx.cond(
                 BlogViewState.has_post,
-                rx.fragment(
+                [
                     rx.desktop_only(layout_escritorio()),
                     rx.mobile_and_tablet(layout_movil()),
-                ),
+                ],
                 rx.center(rx.text("Publicación no encontrada.", color="red"))
             ),
             padding="2em",
@@ -20,37 +20,44 @@ def public_post_detail_page() -> rx.Component:
             max_width="1440px",
             margin="0 auto",
         ),
-        on_mount=BlogViewState.on_load,
+        on_mount=lambda: [
+            BlogViewState.on_load(),
+            DeviceState.on_mount()
+        ]
     )
 
 
 def blog_post_list_page() -> rx.Component:
     return base_layout_component(
         rx.box(
-            rx.fragment(
-                rx.desktop_only(
-                    rx.grid(
-                        *[BlogCard(post=p) for p in BlogListState.blog_posts],
-                        columns=[6],
-                        spacing="4",
-                        width="100%",
+            rx.cond(
+                BlogListState.blog_posts != [],
+                [
+                    rx.desktop_only(
+                        rx.grid(
+                            *[BlogCard(post=p) for p in BlogListState.blog_posts],
+                            columns=[6],
+                            spacing="4",
+                            width="100%",
+                        )
                     ),
-                ),
-                rx.mobile_and_tablet(
-                    rx.grid(
-                        *[BlogCard(post=p) for p in BlogListState.blog_posts],
-                        columns=[1, 2],
-                        spacing="4",
-                        width="100%",
+                    rx.mobile_and_tablet(
+                        rx.grid(
+                            *[BlogCard(post=p) for p in BlogListState.blog_posts],
+                            columns=[1, 2],
+                            spacing="4",
+                            width="100%",
+                        )
                     ),
-                ),
+                ],
+                rx.center(rx.text("No hay publicaciones disponibles.", color="red"))
             ),
             width="100%",
             padding="2em",
             max_width="1440px",
             margin="0 auto"
         ),
-        on_mount=BlogListState.load_posts,
+        on_mount=lambda: [BlogListState.load_posts(), DeviceState.on_mount()]
     )
 
 
@@ -62,7 +69,7 @@ def layout_escritorio() -> rx.Component:
         gap="2em",
         width="100%",
         max_width="1440px",
-        align_items="start"
+        align_items="start",
     )
 
 
