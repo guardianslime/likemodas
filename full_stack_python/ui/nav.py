@@ -15,10 +15,7 @@ def navbar() -> rx.Component:
         bg=rx.color("accent", 3),
         padding="1em",
         width="100%",
-        on_mount=rx.cond(
-            rx.window_is_available(),  # ✅ evita errores en exportación
-            DeviceState.on_mount
-        )
+        on_mount=DeviceState.on_mount  # solo aquí se monta el state
     )
 
 
