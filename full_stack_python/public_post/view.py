@@ -3,7 +3,7 @@ from full_stack_python.ui.base import base_layout_component
 from full_stack_python.blog.state import BlogListState  # Ajusta el import si es diferente
 from full_stack_python.navigation.device import DeviceState
 from full_stack_python.blog.components import BlogCard  # Asegúrate que este exista
-
+from full_stack_python.blog.state import BlogViewState
 
 def blog_post_list_page() -> rx.Component:
     return base_layout_component(
