@@ -58,3 +58,26 @@ class BlogViewState(rx.State):
     def anterior_imagen(self):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
+
+class BlogListState(rx.State):
+    blog_posts: list[BlogPostModel] = []
+
+    def load_posts(self):
+        self.blog_posts = list(BlogPostModel.select().order_by(BlogPostModel.created_at.desc()))
+
+def BlogCard(post: BlogPostModel) -> rx.Component:
+    return rx.box(
+        rx.link(
+            rx.vstack(
+                rx.heading(post.title, size="5"),
+                rx.text(post.publish_date_formatted, size="2", color="gray"),
+                rx.text(post.content[:100] + "...", size="3"),
+            ),
+            href=f"/public-post/{post.id}",
+        ),
+        border="1px solid #ccc",
+        border_radius="md",
+        padding="1em",
+        width="100%",
+    )
+

@@ -109,11 +109,6 @@ class BlogPublicState(rx.State):
             ).all()
 
 
-class BlogListState(rx.State):
-    blog_posts: list[BlogPostModel] = []
-
-    def load_posts(self):
-        self.blog_posts = list(BlogPostModel.select().order_by(BlogPostModel.created_at.desc()))
 
 # ───────────────────────────────
 # Estado para añadir publicaciones
