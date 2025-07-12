@@ -1,7 +1,6 @@
 import reflex as rx
 from full_stack_python.ui.base import base_layout_component
 from full_stack_python.public_post.state import BlogViewState, BlogListState, BlogCard
-# ✅ Ya no montamos DeviceState aquí, solo en navbar
 
 def public_post_detail_page() -> rx.Component:
     return base_layout_component(
@@ -21,7 +20,6 @@ def public_post_detail_page() -> rx.Component:
         ),
         on_mount=BlogViewState.on_load
     )
-
 
 def blog_post_list_page() -> rx.Component:
     return base_layout_component(
@@ -51,11 +49,10 @@ def blog_post_list_page() -> rx.Component:
             width="100%",
             padding="2em",
             max_width="1440px",
-            margin="0 auto"
+            margin="0 auto",
         ),
         on_mount=BlogListState.load_posts
     )
-
 
 def layout_escritorio() -> rx.Component:
     return rx.grid(
@@ -68,7 +65,6 @@ def layout_escritorio() -> rx.Component:
         align_items="start",
     )
 
-
 def layout_movil() -> rx.Component:
     return rx.vstack(
         _image_section(width="100%", height="350px"),
@@ -76,7 +72,6 @@ def layout_movil() -> rx.Component:
         spacing="4",
         width="100%"
     )
-
 
 def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
     return rx.box(
@@ -123,7 +118,6 @@ def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
         border_radius="md",
         overflow="hidden"
     )
-
 
 def _info_section(width: str = "100%") -> rx.Component:
     return rx.box(
