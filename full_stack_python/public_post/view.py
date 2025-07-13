@@ -1,27 +1,35 @@
 import reflex as rx
-from full_stack_python.ui.base import base_layout_component
+# Se importa base_page en lugar de base_layout_component
+from full_stack_python.ui.base import base_page
 from full_stack_python.public_post.state import BlogViewState, BlogListState, BlogCard
 
 
 def public_post_detail_page() -> rx.Component:
-    return base_layout_component(
-        rx.box(
-            rx.cond(
-                BlogViewState.has_post,
-                _responsive_layout(),
-                rx.center(rx.text("Publicación no encontrada.", color="red"))
-            ),
-            padding="2em",
-            width="100%",
-            max_width="1440px",
-            margin="0 auto",
+    """Página que muestra el detalle de una publicación pública."""
+    
+    # Se crea el contenido de la página como un componente hijo
+    my_child = rx.box(
+        rx.cond(
+            BlogViewState.has_post,
+            _responsive_layout(),
+            rx.center(rx.text("Publicación no encontrada.", color="red"))
         ),
+        padding="2em",
+        width="100%",
+        max_width="1440px",
+        margin="0 auto",
+    )
+
+    # Se envuelve el contenido con base_page para asegurar consistencia
+    return base_page(
+        my_child,
         on_mount=BlogViewState.on_load
     )
 
 
 def blog_post_list_page() -> rx.Component:
-    return base_layout_component(
+    """Página que muestra una lista de todas las publicaciones (si es necesario)."""
+    return base_page(
         rx.box(
             rx.cond(
                 BlogListState.blog_posts != [],
@@ -42,11 +50,12 @@ def blog_post_list_page() -> rx.Component:
     )
 
 def _responsive_layout() -> rx.Component:
+    """Layout responsivo para el detalle de la publicación."""
     return rx.grid(
         _image_section(),
         _info_section(),
         columns=rx.breakpoints(sm="1fr", lg="1fr 1fr"),
-        spacing="4",  # ✅ Fix: compatible con Reflex 0.8.1
+        spacing="4",
         align_items="start",
         width="100%",
         max_width="1440px",
@@ -54,6 +63,7 @@ def _responsive_layout() -> rx.Component:
 
 
 def _image_section(width: str = "100%", height: str = "550px") -> rx.Component:
+    """Sección que muestra la imagen principal y las flechas de navegación."""
     return rx.box(
         rx.box(
             rx.image(
@@ -92,7 +102,7 @@ def _image_section(width: str = "100%", height: str = "550px") -> rx.Component:
             box_size="2em"
         ),
         width=width,
-        max_width="600px",  # Fijo como en escritorio
+        max_width="600px",
         height=height,
         position="relative",
         border_radius="md",
@@ -101,6 +111,7 @@ def _image_section(width: str = "100%", height: str = "550px") -> rx.Component:
 
 
 def _info_section() -> rx.Component:
+    """Sección que muestra el título, precio y descripción."""
     return rx.box(
         rx.vstack(
             rx.text(
