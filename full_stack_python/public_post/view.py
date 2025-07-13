@@ -46,7 +46,7 @@ def _responsive_layout() -> rx.Component:
     return rx.flex(
         _image_section(width="100%", height="550px"),
         _info_section(width="100%"),
-        direction=["column", "column", "row"],  # móvil / tablet / escritorio
+        direction=rx.breakpoints(sm="column", md="column", lg="row"),  # ✅ fix final
         gap="2em",
         align="start",
         width="100%",
