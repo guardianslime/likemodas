@@ -1,12 +1,13 @@
+# full_stack_python/blog/list.py (CORREGIDO)
+
 import reflex as rx
 import reflex_local_auth
-from..ui.base import base_page
-from..models import BlogPostModel
-from.. import navigation
-from.state import BlogPostState
+from ..ui.base import base_page
+from ..models import BlogPostModel
+from .. import navigation
+from .state import BlogPostState
 
 def blog_post_list_item(post: BlogPostModel):
-    # La definición del item de la lista no necesita cambios.
     return rx.link(
         rx.card(
             rx.vstack(
@@ -39,20 +40,18 @@ def blog_post_list_page() -> rx.Component:
                 BlogPostState.posts,
                 rx.grid(
                     rx.foreach(BlogPostState.posts, blog_post_list_item),
-                    
-                    # --- ✨ CORRECCIÓN APLICADA ✨ ---
-                    # Se activa la regla de CSS Grid para una responsividad fluida.
-                    # Se usa un minmax ligeramente mayor para tarjetas más anchas en esta vista.
-                    columns="repeat(auto-fit, minmax(320px, 1fr))",
-                    
+                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                    # La prop 'columns' espera un string CSS, no una lista de números.
+                    # Este valor crea una rejilla responsiva que se ajusta automáticamente.
+                    columns="repeat(auto-fit, minmax(280px, 1fr))",
                     spacing="4",
-                    width="100%", # Asegura que la rejilla ocupe todo el ancho del contenedor.
+                    width="100%", # Asegura que la rejilla ocupe todo el ancho
                 ),
                 rx.center(rx.text("Aún no has escrito ningún post."), padding_y="4em")
             ),
             spacing="4",
             width="100%",
-            max_width="1200px", # Se ajusta el max_width para esta página específica.
+            max_width="960px",
             margin="auto",
         )
     )
