@@ -51,7 +51,7 @@ def _responsive_layout() -> rx.Component:
         _info_section(
             width=rx.breakpoints(sm="100%", md="100%", lg="50%")
         ),
-        direction=rx.breakpoints(sm="column", md="column", lg="row"),
+        direction=rx.breakpoints(sm="column", md="column", lg="row"),  # ✅ layout cambia según resolución
         gap="2em",
         align="start",
         width="100%",
@@ -114,23 +114,23 @@ def _info_section(width: str = "100%") -> rx.Component:
                 size="6",
                 font_weight="bold",
                 margin_bottom="0.5em",
-                text_align="right"  # ✅ Alineado a la derecha
+                text_align="left"
             ),
             rx.text(
                 BlogViewState.formatted_price,
                 size="5",
                 color="gray",
-                text_align="right"  # ✅ Alineado a la derecha
+                text_align="left"
             ),
             rx.text(
                 BlogViewState.content,
                 size="4",
                 margin_top="1em",
                 white_space="pre-wrap",
-                text_align="right"  # ✅ Alineado a la derecha
+                text_align="left"
             )
         ),
         width=width,
         padding="2em",
-        align="end"  # ✅ Alinea el vstack completo hacia la derecha
+        align="start"
     )
