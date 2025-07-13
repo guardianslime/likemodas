@@ -1,40 +1,41 @@
 import reflex as rx
-import reflex_local_auth
 from .. import navigation
 from ..navigation.device import DeviceState
 
 
-def search_bar() -> rx.Component:
-    return rx.input(
-        placeholder="Buscar productos...",
-        width=rx.breakpoints(sm="100%", md="70%", lg="40%"),
-        height="2.5em",
-        padding_x="1em",
-        border_radius="md",
-        border_width="1px",
-        border_color="gray",
-        background_color="white",
-        color="black",
-        font_size=rx.breakpoints(sm="1", md="2", lg="3"),
-    )
-
-
 def navbar() -> rx.Component:
-    return rx.box(
-        rx.vstack(
-            unified_navbar(),
-            rx.center(search_bar(), padding_y="1em"),
-            spacing="0",
-            width="100%",
-        ),
-        bg=rx.color("accent", 3),
-        padding="1em",
+    return rx.vstack(
+        search_bar(),       # 🔍 Barra de búsqueda arriba
+        unified_menu(),     # 📱 Menú hamburguesa reutilizado
         width="100%",
-        on_mount=DeviceState.on_mount,
+        spacing="0",
+        bg="white"
     )
 
 
-def unified_navbar() -> rx.Component:
+def search_bar() -> rx.Component:
+    return rx.box(
+        rx.center(
+            rx.input(
+                placeholder="Buscar productos...",
+                width=rx.breakpoints(sm="100%", md="70%", lg="40%"),
+                height="2.5em",
+                padding_x="1em",
+                border_radius="md",
+                border_width="1px",
+                border_color="gray",
+                background_color="white",
+                color="black",
+                font_size=rx.breakpoints(sm="1", md="2", lg="3"),
+            ),
+            padding_y="1em",
+        ),
+        width="100%",
+        border_bottom="1px solid #ccc"
+    )
+
+
+def unified_menu() -> rx.Component:
     return rx.hstack(
         rx.hstack(
             rx.image(
@@ -55,7 +56,7 @@ def unified_navbar() -> rx.Component:
             rx.menu.trigger(
                 rx.icon(
                     "menu",
-                    box_size=rx.breakpoints(sm="1.5em", md="2em", lg="2.5em")  # ✅ FIX aquí
+                    box_size=rx.breakpoints(sm="1.5em", md="2em", lg="2.5em")
                 )
             ),
             rx.menu.content(
@@ -74,4 +75,7 @@ def unified_navbar() -> rx.Component:
         justify="between",
         align_items="center",
         width="100%",
+        padding="1em",
+        bg=rx.color("accent", 3),
+        on_mount=DeviceState.on_mount,
     )
