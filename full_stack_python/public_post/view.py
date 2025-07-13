@@ -45,13 +45,17 @@ def blog_post_list_page() -> rx.Component:
 def _responsive_layout() -> rx.Component:
     return rx.flex(
         _image_section(
-            width=rx.breakpoints(sm="100%", md="100%", lg="50%"),
+            width=rx.breakpoints(sm="100%", lg="50%"),
             height="550px"
         ),
         _info_section(
-            width=rx.breakpoints(sm="100%", md="100%", lg="50%")
+            width=rx.breakpoints(sm="100%", lg="50%")
         ),
-        direction=rx.breakpoints(sm="column", md="column", lg="row"),  # ✅ layout cambia según resolución
+        direction=rx.breakpoints(
+            sm="column",  # ✅ móvil y tablet: texto abajo
+            md="column",  # ✅ incluso tablet grande: texto abajo
+            lg="row"      # ✅ solo escritorio real: texto a la derecha
+        ),
         gap="2em",
         align="start",
         width="100%",
