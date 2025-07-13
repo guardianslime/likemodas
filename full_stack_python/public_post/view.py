@@ -8,7 +8,7 @@ def public_post_detail_page() -> rx.Component:
         rx.box(
             rx.cond(
                 BlogViewState.has_post,
-                _responsive_layout(),  # ✅ NUEVO layout responsivo
+                _responsive_layout(),
                 rx.center(rx.text("Publicación no encontrada.", color="red"))
             ),
             padding="2em",
@@ -27,7 +27,7 @@ def blog_post_list_page() -> rx.Component:
                 BlogListState.blog_posts != [],
                 rx.grid(
                     *[BlogCard(post=p) for p in BlogListState.blog_posts],
-                    columns=["1fr", "1fr", "repeat(6, 1fr)"],  # Responsivo
+                    columns=["1fr", "1fr", "repeat(6, 1fr)"],
                     spacing="4",
                     width="100%",
                 ),
@@ -43,24 +43,22 @@ def blog_post_list_page() -> rx.Component:
 
 
 def _responsive_layout() -> rx.Component:
-    return rx.box(
+    return rx.flex(
         _image_section(
-            width="100%",
+            width=rx.breakpoints(sm="100%", md="100%", lg="50%"),
             height="550px"
         ),
-        _info_section(width="100%"),
-        style=rx.responsive_style(
-            {
-                "base": {"display": "flex", "flexDirection": "column"},  # sm y md
-                "lg": {"flexDirection": "row"},  # solo desktop
-            }
+        _info_section(
+            width=rx.breakpoints(sm="100%", md="100%", lg="50%")
         ),
+        direction=rx.breakpoints(sm="column", md="column", lg="row"),
         gap="2em",
-        align_items="start",
+        align="start",
         width="100%",
         max_width="1440px",
-        wrap="wrap"
+        wrap="wrap",
     )
+
 
 def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
     return rx.box(
@@ -101,7 +99,7 @@ def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
             box_size="2em"
         ),
         width=width,
-        max_width="600px",  # Tamaño fijo para todas las pantallas
+        max_width="600px",
         height=height,
         position="relative",
         border_radius="md",
