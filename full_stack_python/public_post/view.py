@@ -44,16 +44,15 @@ def blog_post_list_page() -> rx.Component:
 
 def _responsive_layout() -> rx.Component:
     return rx.flex(
-        _image_section(width="100%", height="550px"),
-        _info_section(width="100%"),
-        direction=rx.breakpoints(sm="column", md="column", lg="row"),  # ✅ fix final
+        _info_section(width="100%"),                          # ✅ Texto primero
+        _image_section(width="100%", height="550px"),         # ✅ Imagen después
+        direction=rx.breakpoints(sm="column", md="column", lg="row"),
         gap="2em",
         align="start",
         width="100%",
         max_width="1440px",
         wrap="wrap",
     )
-
 
 def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
     return rx.box(
