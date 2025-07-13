@@ -70,7 +70,7 @@ def blog_public_page():
                                         spacing="2",
                                         align="start"
                                     ),
-                                    href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
+                                    href=f"{routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}"
                                 ),
                                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
@@ -143,7 +143,7 @@ def blog_public_page():
                                         spacing="2",
                                         align="start"
                                     ),
-                                    href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
+                                    href=f"{routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}"
                                 ),
                                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
@@ -222,7 +222,7 @@ def blog_public_page():
                                         spacing="2",
                                         align="start"
                                     ),
-                                    href=f"{routes.PUBLIC_POST_ROUTE}/{post.id}"
+                                    href=f"{routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}"
                                 ),
                                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),

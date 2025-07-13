@@ -1,16 +1,13 @@
-#full_stack_python/full_stack_python.py
-
-
 """Welcome to Reflex! This file outlines the steps to create a basic app."""
 
 import reflex as rx
 import reflex_local_auth
 
-from full_stack_python.blog.forms import blog_post_add_form
-from full_stack_python.public_post.view import public_post_detail_page
-from full_stack_python.public_post.state import BlogViewState
+# --- ✨ CAMBIOS EN IMPORTS ---
+# Se importan los componentes y estados desde sus nuevas ubicaciones en el módulo 'blog'.
+from full_stack_python.blog.public_detail import blog_public_detail_page
 from full_stack_python.blog.page import blog_public_page
-from full_stack_python.blog.state import BlogPublicState
+from full_stack_python.blog.state import BlogPublicState, BlogViewState, BlogPostState
 from rxconfig import config
 
 # --- Módulos y Componentes ---
@@ -70,28 +67,38 @@ app.add_page(
     on_load=ArticlePublicState.get_post_detail,
 )
 
-# Páginas de Blog
+# --- ✨ RUTAS DE BLOG ACTUALIZADAS ✨ ---
+# Páginas de Blog (privadas y públicas)
 app.add_page(
     blog.blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
-    on_load=blog.BlogPostState.load_posts
+    on_load=BlogPostState.load_posts
 )
 app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(
     blog.blog_post_detail_page,
     route="/blog/[blog_id]",
-    on_load=blog.BlogPostState.get_post_detail
+    on_load=BlogPostState.get_post_detail
 )
 app.add_page(
     blog.blog_post_edit_page,
     route="/blog/[blog_id]/edit",
-    on_load=blog.BlogPostState.get_post_detail
+    on_load=BlogPostState.get_post_detail # Reutiliza get_post_detail para cargar los datos a editar
 )
-app.add_page(blog_public_page, route="/blog/page", title="Galería pública", on_load=BlogPublicState.on_load)
+
+# Página de la galería pública
 app.add_page(
-    public_post_detail_page,
-    route="/public-post/[public_post_id]",
-    title="Detalle público",
+    blog_public_page,
+    route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE,
+    title="Galería pública",
+    on_load=BlogPublicState.on_load
+)
+
+# Nueva página de detalle público
+app.add_page(
+    blog_public_detail_page,
+    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
+    title="Detalle de la Publicación",
     on_load=BlogViewState.on_load
 )
 
