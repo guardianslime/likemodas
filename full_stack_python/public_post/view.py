@@ -43,20 +43,23 @@ def blog_post_list_page() -> rx.Component:
 
 
 def _responsive_layout() -> rx.Component:
-    return rx.flex(
+    return rx.box(
         _image_section(
-            width=rx.breakpoints(sm="100%", lg="50%"),
+            width="100%",
             height="550px"
         ),
-        _info_section(
-            width=rx.breakpoints(sm="100%", lg="50%")
+        _info_section(width="100%"),
+        style=rx.responsive_style(
+            {
+                "base": {"display": "flex", "flexDirection": "column"},  # sm y md
+                "lg": {"flexDirection": "row"},  # solo desktop
+            }
         ),
-        direction=rx.breakpoints(sm="column", md="column", lg="row"),
         gap="2em",
-        align="start",
+        align_items="start",
         width="100%",
         max_width="1440px",
-        wrap="wrap",
+        wrap="wrap"
     )
 
 def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
