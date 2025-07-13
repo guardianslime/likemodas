@@ -44,8 +44,13 @@ def blog_post_list_page() -> rx.Component:
 
 def _responsive_layout() -> rx.Component:
     return rx.flex(
-        _info_section(width="100%"),                          # ✅ Texto primero
-        _image_section(width="100%", height="550px"),         # ✅ Imagen después
+        _image_section(
+            width=rx.breakpoints(sm="100%", md="100%", lg="50%"),
+            height="550px"
+        ),
+        _info_section(
+            width=rx.breakpoints(sm="100%", md="100%", lg="50%")
+        ),
         direction=rx.breakpoints(sm="column", md="column", lg="row"),
         gap="2em",
         align="start",
@@ -108,20 +113,24 @@ def _info_section(width: str = "100%") -> rx.Component:
                 BlogViewState.post.title,
                 size="6",
                 font_weight="bold",
-                margin_bottom="0.5em"
+                margin_bottom="0.5em",
+                text_align="right"  # ✅ Alineado a la derecha
             ),
             rx.text(
                 BlogViewState.formatted_price,
                 size="5",
-                color="gray"
+                color="gray",
+                text_align="right"  # ✅ Alineado a la derecha
             ),
             rx.text(
                 BlogViewState.content,
                 size="4",
                 margin_top="1em",
-                white_space="pre-wrap"
+                white_space="pre-wrap",
+                text_align="right"  # ✅ Alineado a la derecha
             )
         ),
         width=width,
-        padding="2em"
+        padding="2em",
+        align="end"  # ✅ Alinea el vstack completo hacia la derecha
     )
