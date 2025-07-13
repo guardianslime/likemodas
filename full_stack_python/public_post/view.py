@@ -43,24 +43,18 @@ def blog_post_list_page() -> rx.Component:
 
 
 def _responsive_layout() -> rx.Component:
-    return rx.flex(
-        _image_section(
-            width=rx.breakpoints(sm="100%", md="100%", lg="50%"),
-            height="550px"
-        ),
-        _info_section(
-            width=rx.breakpoints(sm="100%", md="100%", lg="50%")
-        ),
-        direction=rx.breakpoints(sm="column", md="column", lg="row"),
-        gap="2em",
-        align="start",
+    return rx.grid(
+        _image_section(),
+        _info_section(),
+        columns=rx.breakpoints(sm="1fr", lg="1fr 1fr"),  # Móvil: una columna. Escritorio: dos.
+        spacing="2em",
+        align_items="start",
         width="100%",
         max_width="1440px",
-        wrap="wrap",
     )
 
 
-def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
+def _image_section(width: str = "100%", height: str = "550px") -> rx.Component:
     return rx.box(
         rx.box(
             rx.image(
@@ -99,7 +93,7 @@ def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
             box_size="2em"
         ),
         width=width,
-        max_width="600px",
+        max_width="600px",  # Fijo como en escritorio
         height=height,
         position="relative",
         border_radius="md",
@@ -107,7 +101,7 @@ def _image_section(width: str = "100%", height: str = "400px") -> rx.Component:
     )
 
 
-def _info_section(width: str = "100%") -> rx.Component:
+def _info_section() -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.text(
@@ -115,23 +109,22 @@ def _info_section(width: str = "100%") -> rx.Component:
                 size="6",
                 font_weight="bold",
                 margin_bottom="0.5em",
-                text_align="left"
+                text_align=rx.breakpoints(sm="left", lg="left")
             ),
             rx.text(
                 BlogViewState.formatted_price,
                 size="5",
                 color="gray",
-                text_align="left"
+                text_align=rx.breakpoints(sm="left", lg="left")
             ),
             rx.text(
                 BlogViewState.content,
                 size="4",
                 margin_top="1em",
                 white_space="pre-wrap",
-                text_align="left"
+                text_align=rx.breakpoints(sm="left", lg="left")
             )
         ),
-        width=width,
         padding="2em",
         align="start"
     )
