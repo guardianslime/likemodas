@@ -51,11 +51,7 @@ def _responsive_layout() -> rx.Component:
         _info_section(
             width=rx.breakpoints(sm="100%", lg="50%")
         ),
-        direction=rx.breakpoints(
-            sm="column",  # ✅ móvil y tablet: texto abajo
-            md="column",  # ✅ incluso tablet grande: texto abajo
-            lg="row"      # ✅ solo escritorio real: texto a la derecha
-        ),
+        direction=rx.breakpoints(sm="column", md="column", lg="row"),
         gap="2em",
         align="start",
         width="100%",
