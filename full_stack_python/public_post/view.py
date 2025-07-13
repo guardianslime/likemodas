@@ -1,86 +1,71 @@
 import reflex as rx
-# Se importa base_page en lugar de base_layout_component
 from full_stack_python.ui.base import base_page
-from full_stack_python.public_post.state import BlogViewState, BlogListState, BlogCard
-
+from full_stack_python.public_post.state import BlogViewState
 
 def public_post_detail_page() -> rx.Component:
-    """Página que muestra el detalle de una publicación pública."""
-    
-    # Se crea el contenido de la página como un componente hijo
+    """
+    Página que muestra el detalle de una publicación pública,
+    con un layout responsivo explícito para evitar conflictos.
+    """
+    # El contenido de la página ahora usa un fragmento que elige el layout
+    # correcto según el tamaño de la pantalla.
     my_child = rx.box(
         rx.cond(
             BlogViewState.has_post,
-            _responsive_layout(),
+            rx.fragment(
+                # --- LAYOUT PARA ESCRITORIO ---
+                rx.desktop_only(
+                    rx.grid(
+                        _image_section(),
+                        _info_section(),
+                        columns="1fr 1fr", # Dos columnas lado a lado
+                        spacing="4",
+                        align_items="start",
+                        width="100%",
+                    )
+                ),
+                # --- LAYOUT PARA MÓVIL Y TABLET ---
+                rx.mobile_and_tablet(
+                    rx.vstack(
+                        _image_section(),
+                        _info_section(),
+                        spacing="4",
+                        align_items="center", # Centrado para vista móvil
+                        width="100%",
+                    )
+                ),
+            ),
+            # Mensaje si la publicación no se encuentra
             rx.center(rx.text("Publicación no encontrada.", color="red"))
         ),
-        padding="2em",
+        padding_y="2em",
         width="100%",
         max_width="1440px",
         margin="0 auto",
     )
 
-    # Se envuelve el contenido con base_page para asegurar consistencia
     return base_page(
         my_child,
         on_mount=BlogViewState.on_load
     )
 
 
-def blog_post_list_page() -> rx.Component:
-    """Página que muestra una lista de todas las publicaciones (si es necesario)."""
-    return base_page(
-        rx.box(
-            rx.cond(
-                BlogListState.blog_posts != [],
-                rx.grid(
-                    *[BlogCard(post=p) for p in BlogListState.blog_posts],
-                    columns=["1fr", "1fr", "repeat(6, 1fr)"],
-                    spacing="4",
-                    width="100%",
-                ),
-                rx.center(rx.text("No hay publicaciones disponibles.", color="red"))
-            ),
-            width="100%",
-            padding="2em",
-            max_width="1440px",
-            margin="0 auto",
-        ),
-        on_mount=BlogListState.load_posts
-    )
-
-def _responsive_layout() -> rx.Component:
-    """Layout responsivo para el detalle de la publicación."""
-    return rx.grid(
-        _image_section(),
-        _info_section(),
-        columns=rx.breakpoints(sm="1fr", lg="1fr 1fr"),
-        spacing="4",
-        align_items="start",
-        width="100%",
-        max_width="1440px",
-    )
-
-
-def _image_section(width: str = "100%", height: str = "550px") -> rx.Component:
+def _image_section() -> rx.Component:
     """Sección que muestra la imagen principal y las flechas de navegación."""
     return rx.box(
-        rx.box(
-            rx.image(
-                src=rx.cond(
-                    BlogViewState.imagen_actual != "",
-                    rx.get_upload_url(BlogViewState.imagen_actual),
-                    "/no_image.png"
-                ),
-                width="100%",
-                height="100%",
-                object_fit="contain",
-                border_radius="md"
+        rx.image(
+            src=rx.cond(
+                BlogViewState.imagen_actual != "",
+                rx.get_upload_url(BlogViewState.imagen_actual),
+                "/no_image.png"
             ),
             width="100%",
-            height="100%",
-            position="relative"
+            height="auto", # Altura automática para mantener la proporción
+            max_height="550px", # Altura máxima para evitar que sea muy grande
+            object_fit="contain",
+            border_radius="md"
         ),
+        # Flechas de navegación
         rx.icon(
             tag="arrow_big_left",
             position="absolute",
@@ -101,9 +86,9 @@ def _image_section(width: str = "100%", height: str = "550px") -> rx.Component:
             cursor="pointer",
             box_size="2em"
         ),
-        width=width,
+        # Estilos del contenedor
+        width="100%",
         max_width="600px",
-        height=height,
         position="relative",
         border_radius="md",
         overflow="hidden"
@@ -112,29 +97,28 @@ def _image_section(width: str = "100%", height: str = "550px") -> rx.Component:
 
 def _info_section() -> rx.Component:
     """Sección que muestra el título, precio y descripción."""
-    return rx.box(
-        rx.vstack(
-            rx.text(
-                BlogViewState.post.title,
-                size="6",
-                font_weight="bold",
-                margin_bottom="0.5em",
-                text_align=rx.breakpoints(sm="left", lg="left")
-            ),
-            rx.text(
-                BlogViewState.formatted_price,
-                size="5",
-                color="gray",
-                text_align=rx.breakpoints(sm="left", lg="left")
-            ),
-            rx.text(
-                BlogViewState.content,
-                size="4",
-                margin_top="1em",
-                white_space="pre-wrap",
-                text_align=rx.breakpoints(sm="left", lg="left")
-            )
+    return rx.vstack(
+        rx.text(
+            BlogViewState.post.title,
+            size="7", # Un poco más grande para el título
+            font_weight="bold",
+            margin_bottom="0.5em",
+            text_align="left", # Siempre alineado a la izquierda
         ),
-        padding="2em",
-        align="start"
+        rx.text(
+            BlogViewState.formatted_price,
+            size="6",
+            color="gray",
+            text_align="left",
+        ),
+        rx.text(
+            BlogViewState.content,
+            size="4",
+            margin_top="1em",
+            white_space="pre-wrap",
+            text_align="left",
+        ),
+        padding="1em",
+        align="start", # Alinea todo el contenido a la izquierda
+        width="100%",
     )
