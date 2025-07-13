@@ -41,13 +41,12 @@ def blog_post_list_page() -> rx.Component:
         on_mount=BlogListState.load_posts
     )
 
-
 def _responsive_layout() -> rx.Component:
     return rx.grid(
         _image_section(),
         _info_section(),
-        columns=rx.breakpoints(sm="1fr", lg="1fr 1fr"),  # Móvil: una columna. Escritorio: dos.
-        spacing="2em",
+        columns=rx.breakpoints(sm="1fr", lg="1fr 1fr"),
+        spacing="4",  # ✅ Fix: compatible con Reflex 0.8.1
         align_items="start",
         width="100%",
         max_width="1440px",
