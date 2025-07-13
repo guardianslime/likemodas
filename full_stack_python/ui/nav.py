@@ -4,80 +4,60 @@ from .. import navigation
 from ..navigation.device import DeviceState
 
 
-def navbar_link(text: str, url: str) -> rx.Component:
-    return rx.link(rx.text(text, size="4", weight="medium"), href=url)
+def search_bar() -> rx.Component:
+    return rx.input(
+        placeholder="Buscar productos...",
+        width=rx.breakpoints(sm="100%", md="70%", lg="40%"),
+        height="2.5em",
+        padding_x="1em",
+        border_radius="md",
+        border_width="1px",
+        border_color="gray",
+        background_color="white",
+        color="black",
+        font_size=rx.breakpoints(sm="1", md="2", lg="3"),
+    )
 
 
 def navbar() -> rx.Component:
     return rx.box(
-        rx.desktop_only(navbar_desktop()),
-        rx.mobile_and_tablet(navbar_mobile()),
+        rx.vstack(
+            unified_navbar(),
+            rx.center(search_bar(), padding_y="1em"),
+            spacing="0",
+            width="100%",
+        ),
         bg=rx.color("accent", 3),
         padding="1em",
         width="100%",
-        on_mount=DeviceState.on_mount  # solo aquí se monta el state
+        on_mount=DeviceState.on_mount,
     )
 
 
-def navbar_desktop() -> rx.Component:
-    return rx.hstack(
-        rx.hstack(
-            rx.link(
-                rx.image(
-                    src="/logo.jpg",
-                    width="2.25em",
-                    height="auto",
-                    border_radius="25%",
-                ),
-                href="/",
-            ),
-            rx.link(
-                rx.heading("Likemodas", size="7", weight="bold"),
-                href="/",
-            ),
-            align_items="center",
-        ),
-        rx.hstack(
-            navbar_link("Home", "/"),
-            navbar_link("About", "/about"),
-            navbar_link("Articulos", "/articles"),
-            navbar_link("Galería", "/blog/page"),
-            navbar_link("Promociones", "/pricing"),
-            navbar_link("Contacto", "/contact"),
-            spacing="5",
-        ),
-        rx.hstack(
-            rx.link(
-                rx.button("Register", size="3", variant="outline"),
-                href="/register",
-            ),
-            rx.link(
-                rx.button("Login", size="3", variant="outline"),
-                href="/login",
-            ),
-            spacing="4",
-            justify="end",
-        ),
-        justify="between",
-        align_items="center",
-        width="100%",
-    )
-
-
-def navbar_mobile() -> rx.Component:
+def unified_navbar() -> rx.Component:
     return rx.hstack(
         rx.hstack(
             rx.image(
                 src="/logo.jpg",
-                width="2em",
+                width=rx.breakpoints(sm="2em", md="2.5em", lg="3em"),
                 height="auto",
                 border_radius="25%",
             ),
-            rx.heading("Likemodas", size="6", weight="bold"),
+            rx.heading(
+                "Likemodas",
+                size=rx.breakpoints(sm="6", md="7", lg="8"),
+                weight="bold"
+            ),
             align_items="center",
         ),
+        rx.spacer(),
         rx.menu.root(
-            rx.menu.trigger(rx.icon("menu", size=30)),
+            rx.menu.trigger(
+                rx.icon(
+                    "menu",
+                    box_size=rx.breakpoints(sm="1.5em", md="2em", lg="2.5em")  # ✅ FIX aquí
+                )
+            ),
             rx.menu.content(
                 rx.menu.item("Home", on_click=navigation.NavState.to_home),
                 rx.menu.item("Articles", on_click=navigation.NavState.to_articles),
