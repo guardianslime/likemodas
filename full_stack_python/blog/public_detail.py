@@ -1,13 +1,44 @@
 # full_stack_python/blog/public_detail.py (CORREGIDO)
 
 import reflex as rx
-from ..ui.base import base_page
 from .state import BlogViewState 
+from ..ui.search_state import SearchState # Importar el estado de búsqueda
+
+def _public_detail_header() -> rx.Component:
+    """
+    Un encabezado simple y estable exclusivo para la página de detalle pública.
+    Contiene únicamente una barra de búsqueda para evitar conflictos de layout.
+    """
+    return rx.box(
+        rx.input(
+            placeholder="Buscar productos...",
+            value=SearchState.search_term,
+            on_change=SearchState.update_search,
+            on_blur=SearchState.search_action,
+            width="100%",
+            max_width="760px",
+            padding_y="0.75em",
+            padding_x="1em",
+            border_radius="full",
+            border_width="1px",
+            border_color="#ccc",
+            background_color="white",
+            color="black",
+        ),
+        # Estilos para centrar la barra de búsqueda
+        style={
+            "display": "flex",
+            "justify_content": "center",
+            "align_items": "center",
+            "width": "100%",
+            "padding": "1em",
+        }
+    )
 
 def blog_public_detail_page() -> rx.Component:
     """
     Página que muestra el detalle de una publicación pública,
-    con un layout responsivo único para evitar conflictos.
+    con un layout y encabezado personalizados para evitar conflictos de estilo.
     """
     my_child = rx.box(
         rx.cond(
@@ -15,7 +46,6 @@ def blog_public_detail_page() -> rx.Component:
             rx.grid(
                 _image_section(),
                 _info_section(),
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                 # Columnas responsivas: 1 para base, 2 para 'md' y superiores.
                 columns={"base": "1", "md": "2"},
                 spacing="4",
@@ -30,8 +60,11 @@ def blog_public_detail_page() -> rx.Component:
         margin="0 auto",
     )
 
-    return base_page(
+    # Se construye la página manualmente para usar el encabezado estable
+    return rx.fragment(
+        _public_detail_header(),
         my_child,
+        rx.color_mode.button(position="bottom-left"),
         on_load=BlogViewState.on_load
     )
 
