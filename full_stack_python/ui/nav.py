@@ -1,3 +1,5 @@
+# full_stack_python/ui/nav.py (CORREGIDO Y VERIFICADO)
+
 import reflex as rx
 from .. import navigation
 from ..navigation.device import DeviceState
@@ -7,10 +9,10 @@ from .search_state import SearchState
 def navbar() -> rx.Component:
     return rx.box(
         rx.hstack(
-            # 🖼 LOGO ampliado (para incluir texto en la imagen)
+            # 🖼 LOGO
             rx.image(
                 src="/logo.jpg",
-                width=rx.breakpoints(sm="6em", md="8em", lg="10em"),  # ✅ más ancho para contener texto
+                width=rx.breakpoints(sm="6em", md="8em", lg="10em"),
                 height="auto",
                 border_radius="md",
             ),
@@ -18,7 +20,7 @@ def navbar() -> rx.Component:
             # ☰ Menú hamburguesa
             rx.menu.root(
                 rx.menu.trigger(
-                    rx.icon("menu", box_size=rx.breakpoints(sm="2em", md="2.3em", lg="2.5em"))
+                     rx.icon("menu", box_size=rx.breakpoints(sm="2em", md="2.3em", lg="2.5em"))
                 ),
                 rx.menu.content(
                     rx.menu.item("Home", on_click=navigation.NavState.to_home),
