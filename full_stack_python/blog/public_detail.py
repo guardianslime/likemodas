@@ -1,8 +1,9 @@
 # full_stack_python/blog/public_detail.py (CORREGIDO)
 
 import reflex as rx
-from .state import BlogViewState 
-from ..ui.search_state import SearchState # Importar el estado de búsqueda
+from .state import BlogViewState
+# Asegúrate de tener esta importación
+from ..ui.search_state import SearchState
 
 def _public_detail_header() -> rx.Component:
     """
@@ -35,18 +36,19 @@ def _public_detail_header() -> rx.Component:
         }
     )
 
+
 def blog_public_detail_page() -> rx.Component:
     """
     Página que muestra el detalle de una publicación pública,
     con un layout y encabezado personalizados para evitar conflictos de estilo.
     """
+    # ✨ CORRECCIÓN AQUÍ: Se mueve 'on_load' al rx.box principal.
     my_child = rx.box(
         rx.cond(
             BlogViewState.has_post,
             rx.grid(
                 _image_section(),
                 _info_section(),
-                # Columnas responsivas: 1 para base, 2 para 'md' y superiores.
                 columns={"base": "1", "md": "2"},
                 spacing="4",
                 align_items="start",
@@ -58,14 +60,15 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
         max_width="1440px",
         margin="0 auto",
+        # El evento on_load se asigna aquí, al contenedor principal.
+        on_load=BlogViewState.on_load
     )
 
-    # Se construye la página manualmente para usar el encabezado estable
+    # El rx.fragment ahora solo agrupa los componentes sin manejar eventos.
     return rx.fragment(
         _public_detail_header(),
         my_child,
         rx.color_mode.button(position="bottom-left"),
-        on_load=BlogViewState.on_load
     )
 
 def _image_section() -> rx.Component:
