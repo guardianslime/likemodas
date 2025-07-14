@@ -1,4 +1,4 @@
-# full_stack_python/ui/nav.py (CORREGIDO)
+# full_stack_python/ui/nav.py (CORREGIDO Y VERIFICADO)
 
 import reflex as rx
 from .. import navigation
@@ -57,9 +57,7 @@ def navbar() -> rx.Component:
             spacing="4",
             wrap="wrap",
         ),
-        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-        # Se elimina la propiedad 'bg' para quitar el fondo azul.
-        # bg=rx.color("accent", 3),
+        bg=rx.color("accent", 3),
         padding_y="4",
         padding_x="6",
         width="100%",
