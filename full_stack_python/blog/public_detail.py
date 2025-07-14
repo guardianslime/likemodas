@@ -1,46 +1,13 @@
-# full_stack_python/blog/public_detail.py (CORREGIDO)
+# full_stack_python/blog/public_detail.py (RESTAURADO)
 
 import reflex as rx
+from ..ui.base import base_page
 from .state import BlogViewState 
-from ..ui.search_state import SearchState
-
-def _public_detail_header() -> rx.Component:
-    """
-    Un encabezado simple y estable exclusivo para la página de detalle pública.
-    Contiene únicamente una barra de búsqueda para evitar conflictos de layout.
-    """
-    return rx.box(
-        rx.input(
-            placeholder="Buscar productos...",
-            value=SearchState.search_term,
-            on_change=SearchState.update_search,
-            on_blur=SearchState.search_action,
-            width="100%",
-            max_width="760px",
-            padding_y="0.75em",
-            padding_x="1em",
-            border_radius="full",
-            border_width="1px",
-            border_color="#ccc",
-            background_color="white",
-            color="black",
-        ),
-        # Estilos para centrar la barra de búsqueda
-        style={
-            "display": "flex",
-            "justify_content": "center",
-            "align_items": "center",
-            "width": "100%",
-            "padding": "1em",
-        }
-    )
 
 def blog_public_detail_page() -> rx.Component:
     """
-    Página que muestra el detalle de una publicación pública,
-    con un layout y encabezado personalizados para evitar conflictos de estilo.
+    Página que muestra el detalle de una publicación pública.
     """
-    # ✨ CORRECCIÓN AQUÍ: Se elimina 'on_load' del componente rx.box.
     my_child = rx.box(
         rx.cond(
             BlogViewState.has_post,
@@ -60,12 +27,7 @@ def blog_public_detail_page() -> rx.Component:
         margin="0 auto",
     )
 
-    # El evento on_load se gestiona en app.add_page, por lo que se quita de aquí.
-    return rx.fragment(
-        _public_detail_header(),
-        my_child,
-        rx.color_mode.button(position="bottom-left"),
-    )
+    return base_page(my_child)
 
 def _image_section() -> rx.Component:
     """Sección que muestra la imagen principal y las flechas de navegación."""
