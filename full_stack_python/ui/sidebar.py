@@ -2,6 +2,7 @@
 
 import reflex as rx
 from reflex.style import toggle_color_mode
+import reflex_local_auth
 
 from ..auth.state import SessionState
 from .. import navigation
@@ -55,7 +56,7 @@ def sidebar_logout_item() -> rx.Component:
             align="center",
             style={
                 "_hover": {
-                    "cursor": "pointer", # css
+                    "cursor": "pointer",
                     "bg": rx.color("accent", 4),
                     "color": rx.color("accent", 11),
                 },
@@ -63,12 +64,23 @@ def sidebar_logout_item() -> rx.Component:
                 "border-radius": "0.5em",
             },
         ),
-        on_click=navigation.NavState.to_logout,
-        as_='button', # <button></button>
+        on_click=SessionState.perform_logout,
+        as_='button',
         underline="none",
         weight="medium",
         width="100%",
     )
+
+# --- ✨ NUEVO COMPONENTE ✨ ---
+# Botones para iniciar sesión y registrarse para usuarios no autenticados
+def sidebar_login_register_items() -> rx.Component:
+    return rx.vstack(
+        sidebar_item("Login", "log-in", reflex_local_auth.routes.LOGIN_ROUTE),
+        sidebar_item("Register", "user-plus", reflex_local_auth.routes.REGISTER_ROUTE),
+        spacing="1",
+        width="100%",
+    )
+
 
 def sidebar_dark_mode_toggle_item() -> rx.Component:
     return rx.box(
@@ -87,7 +99,7 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
             align="center",
             style={
                 "_hover": {
-                    "cursor": "pointer", # css
+                    "cursor": "pointer",
                     "bg": rx.color("accent", 4),
                     "color": rx.color("accent", 11),
                 },
@@ -96,7 +108,7 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
             },
         ),
         on_click=toggle_color_mode,
-        as_='button', # <button></button>
+        as_='button',
         underline="none",
         weight="medium",
         width="100%",
@@ -128,22 +140,35 @@ def sidebar_item(text: str, icon: str, href: str) -> rx.Component:
 
 def sidebar_items() -> rx.Component:
     return rx.vstack(
+        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+        # Se muestran items públicos y condicionalmente los privados.
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
-        sidebar_item("Articles", "globe", navigation.routes.ARTICLE_LIST_ROUTE),
-        sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
-        sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
+        sidebar_item("Galería Pública", "image", navigation.routes.BLOG_PUBLIC_PAGE_ROUTE),
         sidebar_item("Contact", "mail", navigation.routes.CONTACT_US_ROUTE),
-        sidebar_item("Contact History", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
+        
+        rx.cond(
+            SessionState.is_authenticated,
+            rx.vstack(
+                rx.divider(),
+                rx.heading("Mis Cosas", size="3", padding_x="0.5rem", margin_top="0.5em"),
+                sidebar_item("Mis Posts", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
+                sidebar_item("Crear Post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
+                sidebar_item("Historial Contacto", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
+                spacing="1",
+                width="100%",
+                align_items="start"
+            )
+        ),
         spacing="1",
         width="100%",
+        align_items="start"
     )
 
 
 def sidebar() -> rx.Component:
     # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-    # Se unifica el código usando la prop 'display' para la responsividad.
+    # La lógica para mostrar/ocultar items ahora está dentro de los componentes.
     return rx.box(
-        # Vista para Escritorio: Barra lateral visible
         rx.vstack(
             rx.hstack(
                 rx.image(
@@ -165,12 +190,21 @@ def sidebar() -> rx.Component:
             rx.vstack(
                 rx.vstack(
                     sidebar_dark_mode_toggle_item(),
-                    sidebar_logout_item(),
+                    # --- Lógica condicional para Login/Logout ---
+                    rx.cond(
+                        SessionState.is_authenticated,
+                        sidebar_logout_item(),
+                        sidebar_login_register_items(),
+                    ),
                     spacing="1",
                     width="100%",
                 ),
                 rx.divider(),
-                sidebar_user_item(),
+                # --- Lógica condicional para info de usuario ---
+                rx.cond(
+                    SessionState.is_authenticated,
+                    sidebar_user_item(),
+                ),
                 width="100%",
                 spacing="5",
             ),
@@ -180,24 +214,21 @@ def sidebar() -> rx.Component:
             bg=rx.color("accent", 3),
             align="start",
             height="100vh",
-            width="16em",
-            # Se oculta en móvil y tablet, se muestra en escritorio.
-            display=["none", "none", "flex", "flex"],
+            width="18em", # Un poco más ancha para que quepa el texto
+            display=["none", "none", "flex", "flex"], # Visible solo en desktop
         ),
-        # Vista para Móvil y Tablet: Menú de cajón (drawer)
+        # Menú tipo cajón para móvil
         rx.drawer.root(
             rx.drawer.trigger(
-                # El ícono de menú se muestra en móvil/tablet y se oculta en escritorio.
                 rx.icon("align-justify", size=30, display=["flex", "flex", "none", "none"])
             ),
             rx.drawer.overlay(z_index="5"),
             rx.drawer.portal(
                 rx.drawer.content(
+                    # ... El contenido del cajón es el mismo que el de la barra lateral ...
                     rx.vstack(
-                        rx.box(
-                            rx.drawer.close(
-                                rx.icon("x", size=30)
-                            ),
+                         rx.box(
+                            rx.drawer.close(rx.icon("x", size=30)),
                             width="100%",
                         ),
                         sidebar_items(),
@@ -205,12 +236,19 @@ def sidebar() -> rx.Component:
                         rx.vstack(
                             rx.vstack(
                                 sidebar_dark_mode_toggle_item(),
-                                sidebar_logout_item(),
+                                rx.cond(
+                                    SessionState.is_authenticated,
+                                    sidebar_logout_item(),
+                                    sidebar_login_register_items(),
+                                ),
                                 width="100%",
                                 spacing="1",
                             ),
                             rx.divider(margin="0"),
-                            sidebar_user_item(),
+                            rx.cond(
+                                SessionState.is_authenticated,
+                                sidebar_user_item(),
+                            ),
                             width="100%",
                             spacing="5",
                         ),
@@ -228,5 +266,4 @@ def sidebar() -> rx.Component:
             ),
             direction="left",
         ),
-        padding="1em",
     )
