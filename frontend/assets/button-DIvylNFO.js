@@ -1,1 +1,0 @@
-import{a}from"./chunk-QMGIS6GS-CgUBpFMi.js";import{aD as o,L as s}from"./createLucideIcon-B8ppYHJI.js";const m=a.forwardRef(({className:t,...r},e)=>a.createElement(o,{...r,ref:e,className:s("rt-Button",t)}));m.displayName="Button";export{m as o};
