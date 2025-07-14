@@ -12,13 +12,12 @@ def blog_public_detail_page() -> rx.Component:
     my_child = rx.box(
         rx.cond(
             BlogViewState.has_post,
-            # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-            # Se usa un único rx.grid que se adapta a todos los tamaños de pantalla.
             rx.grid(
                 _image_section(),
                 _info_section(),
-                # Columnas responsivas: 1 para móvil/tablet, 2 para escritorio.
-                columns=["1", "1", "2"],
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                # Columnas responsivas: 1 para base, 2 para 'md' y superiores.
+                columns={"base": "1", "md": "2"},
                 spacing="4",
                 align_items="start",
                 width="100%",

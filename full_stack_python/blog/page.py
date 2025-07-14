@@ -12,8 +12,6 @@ def blog_public_page():
         rx.vstack(
             rx.heading("Publicaciones", size="6"),
             
-            # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-            # Se usa un único rx.grid con columnas responsivas para todos los tamaños de pantalla.
             rx.grid(
                 rx.foreach(
                     BlogPublicState.posts,
@@ -84,8 +82,13 @@ def blog_public_page():
                         min_height="380px"
                     )
                 ),
-                # Columnas responsivas: 2 para móvil, 3 para tablet, 6 para desktop.
-                columns=["2", "3", "6"], 
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                # Se usa un diccionario para definir las columnas responsivas.
+                columns={
+                    "base": "2",
+                    "md": "3",
+                    "lg": "6",
+                },
                 spacing="6",
                 width="100%",
                 max_width="11200px",
