@@ -36,7 +36,7 @@ class BlogPostState(SessionState):
 
     @rx.var
     def blog_post_id(self) -> str:
-        return self.router.params.get("blog_public_id", "")
+        return self.router.page.params.get("blog_id", "")
 
     @rx.var
     def blog_post_url(self) -> str:
@@ -239,7 +239,7 @@ class BlogViewState(rx.State):
     @rx.var
     def post_id(self) -> str:
         # ✅ Código mejorado para obtener el ID de forma segura
-        return self.router.params.get("blog_public_id", "")
+        return self.router.page.params.get("blog_public_id", "")
 
     @rx.var
     def imagen_actual(self) -> str:
