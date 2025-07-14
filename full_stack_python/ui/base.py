@@ -1,57 +1,60 @@
-# full_stack_python/ui/base.py (REESTRUCTURADO)
+# full_stack_python/ui/base.py (CORREGIDO)
 
 import reflex as rx
 from .sidebar import sidebar
 from .search_state import SearchState
 from ..auth.state import SessionState
 
-def search_bar_component() -> rx.Component:
-    """La barra de búsqueda que aparecerá en la parte superior del contenido."""
-    return rx.hstack(
-        # El trigger del menú en móvil ahora está en el componente sidebar
-        rx.box(display=["flex", "flex", "none", "none"]), # Espacio para el trigger
-        rx.input(
-            placeholder="Buscar productos...",
-            value=SearchState.search_term,
-            on_change=SearchState.update_search,
-            on_blur=SearchState.search_action,
-            width="100%",
-            height=rx.breakpoints(sm="2.8em", md="3em", lg="3.3em"),
-            padding_x="4",
-            border_radius="full",
-            border_width="1px",
-            border_color="#ccc",
-            background_color="white",
-            color="black",
-            font_size=rx.breakpoints(sm="1", md="2", lg="3"),
-        ),
-        padding_y="2",
-        padding_x="4",
-        width="100%",
-        align_items="center",
-    )
-
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    """La plantilla base unificada para todas las páginas."""
+    """
+    La plantilla base unificada y persistente para todas las páginas de la aplicación.
+    """
     if not isinstance(child, rx.Component):
         child = rx.heading("This is not a valid child element")
 
     return rx.hstack(
-        sidebar(),  # La barra lateral siempre está presente
+        # La barra lateral siempre estará visible.
+        sidebar(),
+        
+        # El contenido principal de la página.
         rx.vstack(
-            search_bar_component(), # La barra de búsqueda siempre está presente
+            # La barra de búsqueda, ahora integrada en la plantilla principal.
+            rx.hstack(
+                 rx.input(
+                    placeholder="Buscar productos...",
+                    value=SearchState.search_term,
+                    on_change=SearchState.update_search,
+                    on_blur=SearchState.search_action,
+                    width="100%",
+                    height="40px",
+                    padding_x="4",
+                    border_radius="full",
+                    bg=rx.color("gray", 3),
+                    border_width="0px",
+                 ),
+                 padding="1em",
+                 width="100%",
+                 border_bottom=f"1px solid {rx.color('gray', 6)}",
+            ),
+            
+            # El contenido específico de cada página (el componente 'child').
             rx.box(
                 child,
                 padding="1em",
                 width="100%",
-                height="calc(100vh - 80px)", # Ajusta la altura para el scroll
-                overflow_y="auto", # Habilita el scroll vertical para el contenido
+                # Se ajusta la altura y se permite el scroll para el contenido
+                height="calc(100vh - 73px)", 
+                overflow_y="auto",
             ),
+            
+            # Botón para cambiar el modo de color.
             rx.color_mode.button(position="fixed", bottom="2em", right="2em", z_index="10"),
-            spacing="0",
+            
             width="100%",
-            align_items="stretch", # Estira los hijos para ocupar el ancho
+            height="100vh",
+            spacing="0",
+            align_items="stretch",
         ),
-        width="100%",
         align_items="start",
+        width="100%",
     )
