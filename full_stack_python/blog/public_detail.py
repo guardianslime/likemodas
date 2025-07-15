@@ -1,36 +1,35 @@
-# full_stack_python/blog/public_detail.py (VERSIÓN AISLADA)
+# full_stack_python/blog/public_detail.py (CÓDIGO CORREGIDO Y UNIFICADO)
 
 import reflex as rx
-from .state import BlogViewState 
-# Importamos directamente el menú flotante que creamos
-from ..ui.base import floating_hamburger_menu
+from .state import BlogViewState
+# ✨ CAMBIOS EN IMPORTS: Importamos los nuevos componentes unificados
+from ..ui.nav import public_navbar
+from ..ui.base import fixed_color_mode_button
 
-# --- ✨ NUEVO LAYOUT AUTÓNOMO Y AISLADO ✨ ---
+# --- LAYOUT AUTÓNOMO MODIFICADO ---
 def standalone_public_layout(child: rx.Component) -> rx.Component:
     """
-    Un layout completamente independiente solo para esta página.
-    No usa base_page, por lo que no hay factores externos de autenticación.
+    Un layout completamente independiente que ahora usa los componentes de UI unificados.
     """
     return rx.fragment(
-        floating_hamburger_menu(), # Usa el mismo menú flotante para consistencia visual
+        public_navbar(),          # <--- ✨ CAMBIO: Usa la nueva navbar superior
         rx.box(
             child,
             padding_y="2em",
-            # Añadimos padding para que el contenido no se oculte debajo del menú
-            padding_top="5rem", 
+            # Se ajusta el padding para que el contenido no se oculte debajo de la navbar
+            padding_top="6rem", 
             width="100%",
             max_width="1440px",
             margin="0 auto",
         ),
-        # Podemos añadir aquí el botón de cambio de tema si lo deseamos
-        rx.color_mode.button(position="bottom-left"),
+        fixed_color_mode_button(), # <--- ✨ CAMBIO: Usa el nuevo botón de tema fijo
     )
 
-# --- PÁGINA DE DETALLE MODIFICADA ---
+# --- PÁGINA DE DETALLE (SIN CAMBIOS EN SU LÓGICA INTERNA) ---
 def blog_public_detail_page() -> rx.Component:
     """
     Página que muestra el detalle de una publicación pública.
-    YA NO USA `base_page`. Usa su propio layout aislado.
+    Sigue usando su propio layout aislado, pero ahora con componentes consistentes.
     """
     content_grid = rx.cond(
         BlogViewState.has_post,
@@ -45,8 +44,6 @@ def blog_public_detail_page() -> rx.Component:
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
-    # --- LA CLAVE DEL AISLAMIENTO ---
-    # La página ahora devuelve directamente su layout autónomo.
     return standalone_public_layout(content_grid)
 
 
