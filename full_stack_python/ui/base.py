@@ -36,12 +36,21 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
 
 def public_navbar() -> rx.Component:
     return rx.box(
-        rx.menu.root(...),
+        rx.menu.root(
+            rx.menu.trigger(
+                rx.button("Opciones", variant="soft")
+            ),
+            rx.menu.content(
+                rx.menu.item("Inicio"),
+                rx.menu.item("Contacto"),
+                rx.menu.separator(),
+                rx.menu.item("Salir", color_scheme="red"),
+            ),
+        ),
         style={
             "display": "flex",
-            "justify_content": "flex-end", # Aligns menu to the right
+            "justify_content": "flex-end",
             "width": "100%",
             "padding": "1rem",
         },
-        #...
     )
