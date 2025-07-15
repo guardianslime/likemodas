@@ -1,8 +1,9 @@
-# full_stack_python/ui/nav.py (CÓDIGO CORREGIDO Y UNIFICADO)
+# full_stack_python/ui/nav.py (CÓDIGO CORREGIDO)
 
 import reflex as rx
 from .. import navigation
-from ..navigation.device import DeviceState
+# ✨ CAMBIO: Se importa el estado con el nuevo nombre.
+from ..navigation.device import NavDeviceState
 from .search_state import SearchState
 
 def public_navbar() -> rx.Component:
@@ -14,7 +15,7 @@ def public_navbar() -> rx.Component:
         rx.hstack(
             # Lado Izquierdo: Menú y Logo
             rx.hstack(
-                # Menú de Hamburguesa (lógica del menú flotante anterior)
+                # Menú de Hamburguesa
                 rx.menu.root(
                     rx.menu.trigger(
                         rx.button(rx.icon("menu", size=24), variant="soft", size="3")
@@ -32,7 +33,7 @@ def public_navbar() -> rx.Component:
                 # Logo
                 rx.image(
                     src="/logo.jpg",
-                    width="8em", # Ancho similar a "Likemodas"
+                    width="8em",
                     height="auto",
                     border_radius="md",
                 ),
@@ -46,7 +47,7 @@ def public_navbar() -> rx.Component:
                 value=SearchState.search_term,
                 on_change=SearchState.update_search,
                 on_blur=SearchState.search_action,
-                width=["60%", "65%", "70%", "72%"], # Responsivo
+                width=["60%", "65%", "70%", "72%"],
                 height=["2.5em", "2.8em", "3em", "3.3em"],
                 padding_x="4",
                 border_radius="full",
@@ -57,7 +58,6 @@ def public_navbar() -> rx.Component:
             align="center",
             width="100%",
         ),
-        # Estilos para la barra de navegación fija
         position="fixed",
         top="0",
         left="0",
@@ -65,10 +65,14 @@ def public_navbar() -> rx.Component:
         width="100%",
         padding="0.75rem 1rem",
         z_index="99",
-        bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"), # Fondo con transparencia
+        bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
         style={"backdrop_filter": "blur(10px)"},
-        on_mount=DeviceState.on_mount,
+        # ✨ CAMBIO: Se usa el on_mount del estado con el nuevo nombre.
+        on_mount=NavDeviceState.on_mount,
     )
+
+# ... (El resto del archivo, como la clase SearchState y la función navbar, permanecen igual)
+# ...
 
 
 # El resto del código del archivo (navbar original y SearchState) permanece igual.
