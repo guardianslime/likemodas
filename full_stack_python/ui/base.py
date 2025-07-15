@@ -23,14 +23,20 @@ def base_layout_component(child, *args, **kwargs) -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    Decide qué layout mostrar (público o privado) basado en si el usuario
-    ha iniciado sesión.
+    Decide qué layout mostrar de forma segura, manejando el estado de hidratación.
     """
     if not isinstance(child, rx.Component):
         child = rx.heading("This is not a valid child element")
     
+    # La estructura de `rx.cond` anidada es la solución.
     return rx.cond(
-        SessionState.is_authenticated,
-        base_dashboard_page(child, *args, **kwargs),  # Layout para usuarios autenticados
-        base_layout_component(child, *args, **kwargs), # Layout para visitantes públicos
+        SessionState.is_hydrated,  # 1. ¿Está el estado de sesión ya cargado?
+        # SI: El estado es fiable. Ahora decidimos el layout.
+        rx.cond(
+            SessionState.is_authenticated,
+            base_dashboard_page(child, *args, **kwargs),  # Hidratado y Autenticado
+            base_layout_component(child, *args, **kwargs), # Hidratado y Público
+        ),
+        # NO: El estado aún no está cargado. Mostramos un spinner.
+        rx.center(rx.spinner(), height="100vh") # Previene cualquier renderizado de layout.
     )
