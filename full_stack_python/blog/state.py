@@ -99,7 +99,7 @@ class BlogPostState(SessionState):
 # Estado para vista pública
 # ───────────────────────────────
 
-class BlogPublicState(rx.State):
+class BlogPublicState(SessionState):
     posts: list[BlogPostModel] = []
 
     def on_load(self):
@@ -232,7 +232,7 @@ class BlogEditFormState(BlogPostState):
         return rx.redirect(self.blog_post_url)
 
 
-class BlogViewState(rx.State):
+class BlogViewState(SessionState):
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
 

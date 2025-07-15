@@ -76,9 +76,10 @@ app.add_page(
 )
 app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(
-    blog.blog_post_detail_page,
-    route="/blog/[blog_id]",
-    on_load=BlogPostState.get_post_detail
+    blog_public_detail_page,
+    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
+    title="Detalle de la Publicación",
+    on_load=BlogViewState.on_load
 )
 app.add_page(
     blog.blog_post_edit_page,
