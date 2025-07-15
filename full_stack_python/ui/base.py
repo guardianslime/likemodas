@@ -22,21 +22,26 @@ def base_layout_component(child, *args, **kwargs) -> rx.Component:
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    """
-    Decide qué layout mostrar de forma segura, manejando el estado de hidratación.
-    """
     if not isinstance(child, rx.Component):
         child = rx.heading("This is not a valid child element")
-    
-    # La estructura de `rx.cond` anidada es la solución.
     return rx.cond(
-        SessionState.is_hydrated,  # 1. ¿Está el estado de sesión ya cargado?
-        # SI: El estado es fiable. Ahora decidimos el layout.
+        SessionState.is_hydrated,
         rx.cond(
             SessionState.is_authenticated,
-            base_dashboard_page(child, *args, **kwargs),  # Hidratado y Autenticado
-            base_layout_component(child, *args, **kwargs), # Hidratado y Público
+            base_dashboard_page(child, *args, **kwargs),
+            base_layout_component(child, *args, **kwargs),
         ),
-        # NO: El estado aún no está cargado. Mostramos un spinner.
-        rx.center(rx.spinner(), height="100vh") # Previene cualquier renderizado de layout.
+        rx.center(rx.spinner(), height="100vh")
+    )
+
+def public_navbar() -> rx.Component:
+    return rx.box(
+        rx.menu.root(...),
+        style={
+            "display": "flex",
+            "justify_content": "flex-end", # Aligns menu to the right
+            "width": "100%",
+            "padding": "1rem",
+        },
+        #...
     )
