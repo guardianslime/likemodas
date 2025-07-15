@@ -87,13 +87,6 @@ app.add_page(
     on_load=BlogPostState.get_post_detail # Reutiliza get_post_detail para cargar los datos a editar
 )
 
-# Página de la galería pública
-app.add_page(
-    blog_public_page,
-    route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE,
-    title="Galería pública",
-    on_load=BlogPublicState.on_load
-)
 
 # Nueva página de detalle público
 app.add_page(

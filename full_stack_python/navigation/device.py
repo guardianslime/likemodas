@@ -2,7 +2,6 @@
 
 import reflex as rx
 
-# ✨ CAMBIO: Se renombra la clase para mayor especificidad.
 class NavDeviceState(rx.State):
     """Maneja el estado del dispositivo (móvil o escritorio) para la UI."""
     is_mobile: bool = False
@@ -13,7 +12,8 @@ class NavDeviceState(rx.State):
             f"""
             const width = window.innerWidth;
             
-            # ✨ CAMBIO: Se usa el nuevo nombre del estado en el script.
+            // ✨ CORREGIDO: Se cambió el comentario de Python (#) a JavaScript (//).
+            // Se usa el nuevo nombre del estado en el script.
             if (window.nav_device_state) {{
                 nav_device_state.set_is_mobile(width < 768);
                 nav_device_state.set_is_desktop(width >= 768);
