@@ -4,7 +4,7 @@ import os
 
 
 
-cors_origenes = os.getenv("CORS_ALLOWED_ORIGINS", "https://full-stack-python.vercel.app").split(",")
+cors_origenes = os.getenv("CORS_ALLOWED_ORIGINS", "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app").split(",")
 
 config = rx.Config(
     app_name="full_stack_python",
