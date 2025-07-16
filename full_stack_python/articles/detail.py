@@ -1,79 +1,113 @@
+# full_stack_python/articles/detail.py
+
 import reflex as rx
 from ..ui.base import base_page
-from ..blog.state import BlogPostState
-from ..blog.notfound import blog_post_not_found
-from .. import navigation
+from ..auth.state import SessionState
+from ..models import BlogPostModel
+from typing import Optional
 
-def article_management_detail_page() -> rx.Component:
-    """
-    Página de detalle para administrar un post específico.
-    Muestra el contenido y las opciones para editar y eliminar.
-    """
-    return base_page(
-        rx.cond(
-            BlogPostState.post,
-            rx.vstack(
-                # Encabezado con título y botones de acción
-                rx.hstack(
-                    rx.heading(BlogPostState.post.title, size="9"),
-                    rx.spacer(),
-                    # Botón de Editar
-                    rx.link(
-                        rx.button("Editar Post", variant="soft"),
-                        href=BlogPostState.blog_post_edit_url,
-                    ),
-                    # Botón de Eliminar con confirmación
-                    rx.alert_dialog.root(
-                        rx.alert_dialog.trigger(
-                            rx.button("Eliminar", color_scheme="red")
-                        ),
-                        rx.alert_dialog.content(
-                            rx.alert_dialog.title("Confirmar Eliminación"),
-                            rx.alert_dialog.description(
-                                f"¿Seguro que quieres eliminar '{BlogPostState.post.title}'? Esta acción es irreversible."
-                            ),
-                            rx.flex(
-                                rx.alert_dialog.cancel(rx.button("Cancelar", variant="soft", color_scheme="gray")),
-                                rx.alert_dialog.action(
-                                    rx.button(
-                                        "Sí, eliminar",
-                                        color_scheme="red",
-                                        # Usamos el nuevo método con redirección
-                                        on_click=BlogPostState.delete_post_and_redirect(BlogPostState.post.id)
-                                    )
-                                ),
-                                spacing="3",
-                                margin_top="1em",
-                                justify="end",
-                            ),
-                        ),
-                    ),
-                    justify="between",
-                    width="100%",
-                ),
-                # Badges de estado y fecha
-                rx.hstack(
-                    rx.badge(
-                        "Publicado", color_scheme="green"
-                    ) if BlogPostState.post.publish_active else rx.badge(
-                        "Borrador", color_scheme="gray"
-                    ),
-                    rx.cond(
-                        BlogPostState.post.publish_date,
-                        rx.text(f"Publicado el: {BlogPostState.post.publish_date_formatted}"),
-                        rx.fragment(),
-                    ),
-                    spacing="4",
-                ),
-                rx.divider(),
-                # Contenido del post en Markdown
-                rx.markdown(BlogPostState.post.content),
-                spacing="5",
-                align="start",
-                width="100%",
-                max_width="960px",
-                margin="auto",
+# --- Estado Local para esta página ---
+class ArticleDetailState(SessionState):
+    post: Optional[BlogPostModel] = None
+    img_idx: int = 0
+
+    @rx.var
+    def article_id(self) -> str:
+        return self.router.page.params.get("article_id", "")
+
+    @rx.var
+    def imagen_actual(self) -> str:
+        if self.post and self.post.images and len(self.post.images) > self.img_idx:
+            return self.post.images[self.img_idx]
+        return ""
+
+    @rx.var
+    def formatted_price(self) -> str:
+        if self.post and self.post.price is not None:
+            return f"${self.post.price:,.2f}"
+        return "$0.00"
+
+    @rx.event
+    def on_load(self):
+        try:
+            pid = int(self.article_id)
+        except (ValueError, TypeError):
+            return
+        with rx.session() as session:
+            self.post = session.get(BlogPostModel, pid)
+        self.img_idx = 0
+
+    @rx.event
+    def siguiente_imagen(self):
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx + 1) % len(self.post.images)
+
+    @rx.event
+    def anterior_imagen(self):
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
+
+# --- Componentes visuales (copiados de blog/public_detail.py) ---
+def _image_section() -> rx.Component:
+    return rx.box(
+        rx.image(
+            src=rx.cond(
+                ArticleDetailState.imagen_actual != "",
+                rx.get_upload_url(ArticleDetailState.imagen_actual),
+                "/no_image.png"
             ),
-            blog_post_not_found()
-        )
+            width="100%",
+            height="auto",
+            max_height="550px",
+            object_fit="contain",
+            border_radius="md",
+        ),
+        rx.icon(tag="arrow_big_left", position="absolute", left="0.5em", top="50%", transform="translateY(-50%)", on_click=ArticleDetailState.anterior_imagen, cursor="pointer", box_size="2em"),
+        rx.icon(tag="arrow_big_right", position="absolute", right="0.5em", top="50%", transform="translateY(-50%)", on_click=ArticleDetailState.siguiente_imagen, cursor="pointer", box_size="2em"),
+        width="100%",
+        max_width="600px",
+        position="relative",
+        border_radius="md",
+        overflow="hidden"
     )
+
+def _info_section() -> rx.Component:
+    return rx.vstack(
+        rx.text(ArticleDetailState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
+        rx.text(ArticleDetailState.formatted_price, size="6", color="gray", text_align="left"),
+        rx.text(ArticleDetailState.post.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
+        padding="1em",
+        align="start",
+        width="100%",
+    )
+
+# --- Página de Detalle ---
+def article_detail_page() -> rx.Component:
+    """Página que muestra el detalle de una publicación, copiada de blog/public_detail.py."""
+    content_grid = rx.cond(
+        ArticleDetailState.post,
+        rx.grid(
+            _image_section(),
+            _info_section(),
+            columns={"base": "1", "md": "2"},
+            spacing="4",
+            align_items="start",
+            width="100%",
+            max_width="1120px",
+        ),
+        rx.center(rx.text("Publicación no encontrada.", color="red"))
+    )
+
+    page_content = rx.center(
+        rx.vstack(
+            rx.heading("Detalle del Producto", size="8", margin_bottom="1em"),
+            content_grid,
+            spacing="6",
+            width="100%",
+            padding="2em",
+            align="center",
+        ),
+        width="100%",
+    )
+    
+    return base_page(page_content)

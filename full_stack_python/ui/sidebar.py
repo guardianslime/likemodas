@@ -129,6 +129,7 @@ def sidebar_item(text: str, icon: str, href: str) -> rx.Component:
 def sidebar_items() -> rx.Component:
     return rx.vstack(
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
+        # ✅ Este enlace ahora funciona correctamente gracias al Paso 1
         sidebar_item("Articles", "globe", navigation.routes.ARTICLE_LIST_ROUTE),
         sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
         sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
