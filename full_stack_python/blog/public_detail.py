@@ -3,14 +3,13 @@
 import reflex as rx
 import reflex_local_auth
 from .state import BlogViewState
-# Se importan todos los componentes necesarios
 from .. import navigation
 from ..navigation.device import NavDeviceState
 from ..navigation.state import force_reload_go_to
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 
-
+# Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
 def _detail_page_navbar() -> rx.Component:
     """Una barra de navegación local solo para esta página, con estilo garantizado y recarga forzada."""
     return rx.box(
@@ -20,8 +19,6 @@ def _detail_page_navbar() -> rx.Component:
                     rx.menu.trigger(
                         rx.button(rx.icon("menu", size=24), variant="soft", size="3")
                     ),
-                    # ✨ CORREGIDO: Se usa la función force_reload_go_to en los on_click
-                    # para forzar la recarga de la página de destino.
                     rx.menu.content(
                         rx.menu.item("Home", on_click=force_reload_go_to(navigation.routes.HOME_ROUTE)),
                         rx.menu.item("Productos", on_click=force_reload_go_to(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE)),
@@ -36,7 +33,6 @@ def _detail_page_navbar() -> rx.Component:
                 align="center",
                 spacing="4",
             ),
-            
             rx.input(
                 placeholder="Buscar productos...",
                 value=SearchState.search_term,
@@ -63,9 +59,8 @@ def _detail_page_navbar() -> rx.Component:
         on_mount=NavDeviceState.on_mount,
     )
 
-
 def standalone_public_layout(child: rx.Component) -> rx.Component:
-    """Layout autónomo que usa la navbar local con recarga forzada."""
+    """Layout autónomo que usa la navbar local."""
     return rx.fragment(
         _detail_page_navbar(),
         rx.box(
@@ -73,15 +68,16 @@ def standalone_public_layout(child: rx.Component) -> rx.Component:
             padding_y="2em",
             padding_top="6rem",
             width="100%",
-            max_width="1440px",
             margin="0 auto",
         ),
         fixed_color_mode_button(),
     )
 
-
+# --- PÁGINA DE DETALLE MODIFICADA ---
 def blog_public_detail_page() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
+    
+    # Este es el contenido principal de la página (la imagen y la información).
     content_grid = rx.cond(
         BlogViewState.has_post,
         rx.grid(
@@ -91,13 +87,29 @@ def blog_public_detail_page() -> rx.Component:
             spacing="4",
             align_items="start",
             width="100%",
+            max_width="1120px", # Se añade un ancho máximo
         ),
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
-    return standalone_public_layout(content_grid)
+    # ✨ CAMBIO: Se envuelve el contenido en una estructura centrada con título.
+    # Esto imita el layout de la página de la galería.
+    page_content = rx.center(
+        rx.vstack(
+            rx.heading("Detalle del Producto", size="8", margin_bottom="1em"),
+            content_grid,
+            spacing="6",
+            width="100%",
+            padding="2em",
+            align="center",
+        ),
+        width="100%",
+    )
+    
+    return standalone_public_layout(page_content)
 
 
+# --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
     return rx.box(
         rx.image(
@@ -110,7 +122,7 @@ def _image_section() -> rx.Component:
             height="auto",
             max_height="550px",
             object_fit="contain",
-            border_radius="md"
+            border_radius="md",
         ),
         rx.icon(tag="arrow_big_left", position="absolute", left="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogViewState.anterior_imagen, cursor="pointer", box_size="2em"),
         rx.icon(tag="arrow_big_right", position="absolute", right="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogViewState.siguiente_imagen, cursor="pointer", box_size="2em"),
