@@ -1,51 +1,59 @@
-# full_stack_python/ui/base.py (CÓDIGO CORREGIDO Y UNIFICADO)
+# full_stack_python/ui/base.py
 
 import reflex as rx
 from ..auth.state import SessionState
-from .dashboard import base_dashboard_page
-from .nav import public_navbar # ✨ CAMBIO: Importamos la nueva navbar unificada
+from .nav import public_navbar 
+from .sidebar import sidebar
 
-# --- ✨ NUEVO BOTÓN DE MODO OSCURO FIJO ✨ ---
-def fixed_color_mode_button() -> rx.Component:
-    """
-    Un botón de cambio de tema que se mantiene fijo en la esquina inferior derecha.
-    Su posición es inmune al scroll o al layout de la página.
-    """
-    return rx.box(
-        rx.color_mode.button(),
-        position="fixed",
-        bottom="1.5rem",
-        right="1.5rem",
-        z_index="100", # Se asegura que esté por encima de otros elementos
-    )
-
-# --- LAYOUT PÚBLICO MODIFICADO ---
-def base_layout_component(child, *args, **kwargs) -> rx.Component:
-    """El layout para usuarios NO autenticados."""
-    return rx.fragment(
-        public_navbar(), # <--- ✨ CAMBIO: Usa la nueva navbar superior
+# --- ✨ LAYOUT PARA USUARIOS AUTENTICADOS (CON SIDEBAR) ✨ ---
+def protected_layout(child: rx.Component) -> rx.Component:
+    """El layout para usuarios autenticados, con la barra lateral."""
+    return rx.hstack(
+        sidebar(),
         rx.box(
             child,
             padding="1em",
-            # Añadimos padding superior para que el contenido no se oculte debajo de la navbar fija
-            padding_top="6rem", 
+            width="100%",    
+            id="my-content-area-el"
+        ),
+        align="start"
+    )
+
+# --- ✨ LAYOUT PARA PÁGINAS PÚBLICAS (CON NAVBAR SUPERIOR) ✨ ---
+def public_layout(child: rx.Component) -> rx.Component:
+    """El layout para usuarios no autenticados, con la barra de navegación superior."""
+    return rx.fragment(
+        public_navbar(),
+        rx.box(
+            child,
+            padding="1em",
+            padding_top="6rem", # Espacio para la navbar fija
             width="100%",
             id="my-content-area-el"
         ),
-        fixed_color_mode_button(), # <--- ✨ CAMBIO: Usa el nuevo botón de tema fijo
+        # Puedes añadir aquí el botón de modo oscuro si lo deseas para páginas públicas
+        # rx.color_mode.button(position="fixed", bottom="1.5rem", right="1.5rem")
     )
 
-# --- LAYOUT BASE PRINCIPAL (SIN CAMBIOS) ---
+# --- ✨ FUNCIÓN PRINCIPAL `base_page` ✨ ---
+# Esta función decide qué layout usar basado en el estado de autenticación.
+# Ya no necesita importar `base_dashboard_page` porque esa lógica ahora está aquí.
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
+    """
+    Función principal que envuelve todo el contenido y elige el layout
+    adecuado (público o protegido) según si el usuario está logueado.
+    """
     if not isinstance(child, rx.Component):
         child = rx.heading("This is not a valid child element")
+        
     return rx.cond(
         SessionState.is_hydrated,
         rx.cond(
             SessionState.is_authenticated,
-            base_dashboard_page(child, *args, **kwargs),
-            base_layout_component(child, *args, **kwargs),
+            protected_layout(child), # Si está autenticado, usa el layout con sidebar
+            public_layout(child),      # Si no, usa el layout público
         ),
+        # Muestra un spinner mientras se verifica el estado de autenticación
         rx.center(rx.spinner(), height="100vh")
     )
 
