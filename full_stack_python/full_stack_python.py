@@ -14,8 +14,8 @@ from rxconfig import config
 from .ui.base import base_page
 from .auth.pages import my_login_page, my_register_page, my_logout_page
 from .auth.state import SessionState
-from .articles.detail import ArticleDetailState, article_detail_page
-from .articles.list import article_public_list_page, articles_public_gallery_page
+from .articles.detail import article_detail_page
+from .articles.list import article_public_list_page
 from .articles.state import ArticlePublicState
 
 # Se importan los paquetes completos para usar la notación paquete.componente
@@ -57,16 +57,14 @@ app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 # Páginas de Artículos
 app.add_page(
-    articles_public_gallery_page,
+    article_public_list_page,
     route=navigation.routes.ARTICLE_LIST_ROUTE,
-    on_load=BlogPublicState.on_load, # Carga todos los posts públicos
+    on_load=ArticlePublicState.load_posts,
 )
-
-# Esta ruta ahora muestra el detalle de un post.
 app.add_page(
     article_detail_page,
     route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
-    on_load=ArticleDetailState.on_load, # Usa el estado local de la página
+    on_load=ArticlePublicState.get_post_detail,
 )
 
 # --- ✨ RUTAS DE BLOG ACTUALIZADAS ✨ ---
