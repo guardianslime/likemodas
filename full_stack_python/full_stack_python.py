@@ -34,7 +34,6 @@ def index() -> rx.Component:
     )
 
 app = rx.App(
-    telemetry_enabled=False, # <-- ESTA LÍNEA ELIMINA EL BOTÓN
     theme=rx.theme(
         appearance="dark", 
         has_background=True, 

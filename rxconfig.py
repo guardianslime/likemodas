@@ -37,6 +37,7 @@ cors_allowed_origins = list(
 
 config = rx.Config(
     app_name="full_stack_python",
+    telemetry_enabled=False, # <-- LÍNEA AGREGADA PARA ELIMINAR EL BOTÓN
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
