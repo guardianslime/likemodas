@@ -9,7 +9,7 @@ from ..navigation.state import force_reload_go_to
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 
-# Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
+# La navbar local no cambia, ya es correcta.
 def _detail_page_navbar() -> rx.Component:
     """Una barra de navegación local solo para esta página, con estilo garantizado y recarga forzada."""
     return rx.box(
@@ -47,13 +47,8 @@ def _detail_page_navbar() -> rx.Component:
             align="center",
             width="100%",
         ),
-        position="fixed",
-        top="0",
-        left="0",
-        right="0",
-        width="100%",
-        padding="0.75rem 1rem",
-        z_index="99",
+        position="fixed", top="0", left="0", right="0",
+        width="100%", padding="0.75rem 1rem", z_index="99",
         bg=rx.color_mode_cond("rgba(255, 255, 255, 0.8)", "rgba(29, 35, 48, 0.8)"),
         style={"backdrop_filter": "blur(10px)"},
         on_mount=NavDeviceState.on_mount,
@@ -65,8 +60,8 @@ def standalone_public_layout(child: rx.Component) -> rx.Component:
         _detail_page_navbar(),
         rx.box(
             child,
+            # Se elimina el padding superior de aquí para controlarlo en el contenedor principal
             padding_y="2em",
-            padding_top="6rem",
             width="100%",
             margin="0 auto",
         ),
@@ -75,9 +70,9 @@ def standalone_public_layout(child: rx.Component) -> rx.Component:
 
 # --- PÁGINA DE DETALLE MODIFICADA ---
 def blog_public_detail_page() -> rx.Component:
-    """Página que muestra el detalle de una publicación pública."""
+    """Página que muestra el detalle de una publicación pública con un layout controlado."""
     
-    # Este es el contenido principal de la página (la imagen y la información).
+    # El grid del producto se mantiene igual.
     content_grid = rx.cond(
         BlogViewState.has_post,
         rx.grid(
@@ -87,29 +82,33 @@ def blog_public_detail_page() -> rx.Component:
             spacing="4",
             align_items="start",
             width="100%",
-            max_width="1120px", # Se añade un ancho máximo
+            max_width="1120px",
         ),
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
-    # ✨ CAMBIO: Se envuelve el contenido en una estructura centrada con título.
-    # Esto imita el layout de la página de la galería.
-    page_content = rx.center(
-        rx.vstack(
-            rx.heading("Detalle del Producto", size="8", margin_bottom="1em"),
-            content_grid,
-            spacing="6",
-            width="100%",
-            padding="2em",
-            align="center",
-        ),
+    # ✨ CAMBIO RADICAL: Se reemplaza rx.center y rx.vstack por un único rx.box con estilos directos.
+    # Esto nos da control total sobre el layout para que coincida con la captura.
+    page_content = rx.box(
+        rx.heading("Detalle del Producto", size="8"),
+        content_grid,
+        # --- Parámetros de estilo para forzar el layout ---
+        display="flex",              # Usa Flexbox para alinear
+        flex_direction="column",     # Apila los elementos verticalmente
+        align_items="center",        # Centra los elementos horizontalmente
+        justify_content="center",    # Centra el bloque verticalmente (opcional)
+        spacing="6",                 # Espacio entre el título y el producto
         width="100%",
+        padding_top="6rem",          # Espacio para la navbar fija
+        padding_x="2em",             # Padding horizontal
+        min_height="100vh",          # Ocupa toda la altura de la pantalla
     )
     
+    # Usamos el layout autónomo como antes, pero ahora con el contenido estilizado.
     return standalone_public_layout(page_content)
 
 
-# --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
+# --- El resto de los componentes (_image_section, _info_section) no cambian ---
 def _image_section() -> rx.Component:
     return rx.box(
         rx.image(
@@ -118,19 +117,13 @@ def _image_section() -> rx.Component:
                 rx.get_upload_url(BlogViewState.imagen_actual),
                 "/no_image.png"
             ),
-            width="100%",
-            height="auto",
-            max_height="550px",
-            object_fit="contain",
-            border_radius="md",
+            width="100%", height="auto", max_height="550px",
+            object_fit="contain", border_radius="md",
         ),
         rx.icon(tag="arrow_big_left", position="absolute", left="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogViewState.anterior_imagen, cursor="pointer", box_size="2em"),
         rx.icon(tag="arrow_big_right", position="absolute", right="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogViewState.siguiente_imagen, cursor="pointer", box_size="2em"),
-        width="100%",
-        max_width="600px",
-        position="relative",
-        border_radius="md",
-        overflow="hidden"
+        width="100%", max_width="600px", position="relative",
+        border_radius="md", overflow="hidden"
     )
 
 def _info_section() -> rx.Component:
@@ -138,7 +131,5 @@ def _info_section() -> rx.Component:
         rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
         rx.text(BlogViewState.formatted_price, size="6", color="gray", text_align="left"),
         rx.text(BlogViewState.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-        padding="1em",
-        align="start",
-        width="100%",
+        padding="1em", align="start", width="100%",
     )
