@@ -1,13 +1,10 @@
+# full_stack_python/pages/dashboard.py
 import reflex as rx
+from ..articles.list import componente_de_prueba
 
 def dashboard_component() -> rx.Component:
-    """
-    Una versión simplificada del dashboard para solucionar el error de importación.
-    """
+    """Un dashboard que solo importa el componente de prueba."""
     return rx.vstack(
-        rx.heading("Bienvenido de regreso", size="7"),
-        rx.text("Panel de control principal."),
-        spacing="5",
-        padding="2em",
-        min_height="85vh",
+        rx.heading("Página de Prueba"),
+        componente_de_prueba(),
     )
