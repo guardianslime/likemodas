@@ -41,6 +41,15 @@ class BlogPostState(SessionState):
         return self.load_posts
 
     @rx.event
+    def delete_post_and_redirect(self, post_id: int):
+        """
+        Llama al evento de eliminación y, si tiene éxito, 
+        redirige a la lista de artículos.
+        """
+        yield self.delete_post(post_id) 
+        yield rx.redirect(navigation.routes.ARTICLE_LIST_ROUTE)
+
+    @rx.event
     def load_posts(self):
         if self.my_userinfo_id is None:
             self.posts = []
@@ -113,6 +122,21 @@ class BlogPostState(SessionState):
             session.commit()
             session.refresh(post)
             self.post = post
+
+
+class BlogPostState(SessionState):
+    # ... (código existente, incluyendo delete_post)
+
+    @rx.event
+    def delete_post_and_redirect(self, post_id: int):
+        """
+        Llama al evento de eliminación y, si tiene éxito, 
+        redirige a la lista de artículos.
+        """
+        # Se llama al evento de eliminación que ya creamos
+        yield self.delete_post(post_id) 
+        # Redirige a la página de administración de artículos
+        yield rx.redirect(navigation.routes.ARTICLE_LIST_ROUTE)
 
 # ───────────────────────────────
 # Estado para vista pública
