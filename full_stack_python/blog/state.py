@@ -188,7 +188,7 @@ class BlogAddFormState(SessionState):
         self.title = ""
         self.content = ""
         self.price = ""
-        return rx.redirect("/blog/page")
+        return rx.redirect("/articles")
 
     @rx.event
     def set_price_from_input(self, value: str):
