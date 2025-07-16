@@ -37,9 +37,9 @@ def _detail_page_navbar() -> rx.Component:
                 value=SearchState.search_term,
                 on_change=SearchState.update_search,
                 on_blur=SearchState.search_action,
-                # --- ✨ TAMAÑO AUMENTADO AQUÍ ✨ ---
-                [cite_start]width=["75%", "80%", "85%", "85%"], # Tamaño anterior: ["60%", "65%", "70%", "72%"] [cite: 111]
-                [cite_start]height=["2.8em", "3.1em", "3.4em", "3.7em"], # Tamaño anterior: ["2.5em", "2.8em", "3em", "3.3em"] [cite: 111]
+                # El texto inválido ha sido removido de las siguientes líneas
+                width=["75%", "80%", "85%", "85%"], 
+                height=["2.8em", "3.1em", "3.4em", "3.7em"],
                 padding_x="4",
                 border_radius="full",
             ),
