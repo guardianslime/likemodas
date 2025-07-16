@@ -8,65 +8,19 @@ from ..navigation.device import NavDeviceState
 from ..navigation.state import force_reload_go_to
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
+from ..ui.nav import public_navbar # Importamos la public_navbar unificada
 
 # Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
-def _detail_page_navbar() -> rx.Component:
-    """Una barra de navegación local solo para esta página, con estilo garantizado y recarga forzada."""
-    return rx.box(
-        rx.hstack(
-            rx.hstack(
-                rx.menu.root(
-                    rx.menu.trigger(
-                        rx.button(rx.icon("menu", size=24), variant="soft", size="3")
-                    ),
-                    rx.menu.content(
-                        rx.menu.item("Home", on_click=force_reload_go_to(navigation.routes.HOME_ROUTE)),
-                        rx.menu.item("Productos", on_click=force_reload_go_to(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE)),
-                        rx.menu.item("Pricing", on_click=force_reload_go_to(navigation.routes.PRICING_ROUTE)),
-                        rx.menu.item("Contact", on_click=force_reload_go_to(navigation.routes.CONTACT_US_ROUTE)),
-                        rx.menu.separator(),
-                        rx.menu.item("Login", on_click=force_reload_go_to(reflex_local_auth.routes.LOGIN_ROUTE)),
-                        rx.menu.item("Register", on_click=force_reload_go_to(reflex_local_auth.routes.REGISTER_ROUTE)),
-                    ),
-                ),
-                rx.image(src="/logo.jpg", width="8em", height="auto", border_radius="md"),
-                align="center",
-                spacing="4",
-            ),
-            rx.input(
-                placeholder="Buscar productos...",
-                value=SearchState.search_term,
-                on_change=SearchState.update_search,
-                on_blur=SearchState.search_action,
-                width=["60%", "65%", "70%", "72%"],
-                height=["2.5em", "2.8em", "3em", "3.3em"],
-                padding_x="4",
-                border_radius="full",
-            ),
-            justify="between",
-            align="center",
-            width="100%",
-        ),
-        position="fixed",
-        top="0",
-        left="0",
-        right="0",
-        width="100%",
-        padding="0.75rem 1rem",
-        z_index="99",
-        bg=rx.color_mode_cond("rgba(255, 255, 255, 0.8)", "rgba(29, 35, 48, 0.8)"),
-        style={"backdrop_filter": "blur(10px)"},
-        on_mount=NavDeviceState.on_mount,
-    )
+# ELIMINAMOS _detail_page_navbar() ya que usaremos public_navbar()
 
 def standalone_public_layout(child: rx.Component) -> rx.Component:
     """Layout autónomo que usa la navbar local."""
     return rx.fragment(
-        _detail_page_navbar(),
+        public_navbar(), # <--- CAMBIO: Ahora usa la public_navbar unificada
         rx.box(
             child,
             padding_y="2em",
-            padding_top="6rem",
+            padding_top="6rem", # Asegura el padding correcto para la navbar fija
             width="100%",
             margin="0 auto",
         ),
