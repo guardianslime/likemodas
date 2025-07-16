@@ -37,9 +37,9 @@ def _detail_page_navbar() -> rx.Component:
                 value=SearchState.search_term,
                 on_change=SearchState.update_search,
                 on_blur=SearchState.search_action,
-                # El texto inválido ha sido removido de las siguientes líneas
                 width=["75%", "80%", "85%", "85%"], 
-                height=["2.8em", "3.1em", "3.4em", "3.7em"],
+                # --- ✨ ALTURA (GROSOR) AUMENTADA AQUÍ ✨ ---
+                height=["3.2em", "3.6em", "4em", "4em"], # Se aumentó el grosor de la barra
                 padding_x="4",
                 border_radius="full",
             ),
