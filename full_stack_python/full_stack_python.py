@@ -34,6 +34,7 @@ def index() -> rx.Component:
     )
 
 app = rx.App(
+    show_reflex_banner=False,
     theme=rx.theme(
         appearance="dark", 
         has_background=True, 
@@ -42,7 +43,6 @@ app = rx.App(
         radius="medium",
         accent_color="sky"
     ),
-    reflex_badge=False, # <-- Añadir esta línea
 )
 
 # --- Registro de Páginas ---
