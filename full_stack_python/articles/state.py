@@ -12,14 +12,16 @@ ARTICLE_LIST_ROUTE = navigation.routes.ARTICLE_LIST_ROUTE
 if ARTICLE_LIST_ROUTE.endswith("/"):
     ARTICLE_LIST_ROUTE = ARTICLE_LIST_ROUTE[:-1]
 
-# --- ✨ NUEVA CLASE AÑADIDA A ESTE ARCHIVO ✨ ---
+
 class ArticleDetailState(SessionState):
     """Estado para la página de detalle de un artículo."""
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
 
+    # --- ✨ CORRECCIÓN 1: Renombrar la variable computada ---
     @rx.var
-    def article_id(self) -> str:
+    def post_id_from_route(self) -> str:
+        """Obtiene el ID del artículo desde el parámetro 'article_id' de la URL."""
         return self.router.page.params.get("article_id", "")
 
     @rx.var
@@ -37,7 +39,8 @@ class ArticleDetailState(SessionState):
     @rx.event
     def on_load(self):
         try:
-            pid = int(self.article_id)
+            # --- ✨ CORRECCIÓN 2: Usar el nuevo nombre de la variable ---
+            pid = int(self.post_id_from_route)
         except (ValueError, TypeError):
             return
         with rx.session() as session:
