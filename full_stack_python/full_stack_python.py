@@ -41,7 +41,8 @@ app = rx.App(
         scaling="90%",
         radius="medium",
         accent_color="sky"
-    )
+    ),
+    reflex_badge=False, # <-- Añadir esta línea
 )
 
 # --- Registro de Páginas ---
