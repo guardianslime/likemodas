@@ -21,6 +21,51 @@ class BlogPostState(SessionState):
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
 
+    # --- ✨ NUEVOS MÉTODOS Y VARS AÑADIDOS ✨ ---
+    @rx.var
+    def imagen_actual(self) -> str:
+        """Devuelve la URL de la imagen actual para el carrusel."""
+        if self.post and self.post.images and len(self.post.images) > self.img_idx:
+            return self.post.images[self.img_idx]
+        return ""
+
+    @rx.var
+    def formatted_price(self) -> str:
+        """Devuelve el precio del post formateado como moneda."""
+        if self.post and self.post.price is not None:
+            return f"${self.post.price:,.2f}"
+        return "$0.00"
+
+    @rx.event
+    def siguiente_imagen(self):
+        """Avanza a la siguiente imagen en el carrusel."""
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx + 1) % len(self.post.images)
+
+    @rx.event
+    def anterior_imagen(self):
+        """Retrocede a la imagen anterior en el carrusel."""
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
+    # --- FIN DE CAMBIOS ---
+
+    @rx.event
+    def delete_post(self, post_id: int):
+        """Elimina una publicación de la base de datos y recarga la lista."""
+        if self.my_userinfo_id is None:
+            return rx.window_alert("No estás autenticado.")
+        
+        with rx.session() as session:
+            post_to_delete = session.get(BlogPostModel, post_id)
+            
+            if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
+                session.delete(post_to_delete)
+                session.commit()
+            else:
+                return rx.window_alert("No tienes permiso para eliminar esta publicación o no fue encontrada.")
+                     
+        return self.load_posts
+
     @rx.event
     def load_posts(self):
         if self.my_userinfo_id is None:
@@ -30,19 +75,13 @@ class BlogPostState(SessionState):
             self.posts = session.exec(
                 select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo))
-                .where(BlogPostModel.userinfo_id == self.my_userinfo_id)
+                .where(BlogPostModel.userinfo_id == int(self.my_userinfo_id))
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
-
-    @rx.var
-    def blog_post_url(self) -> str:
-        if self.post and self.post.id is not None:
-            return f"{BLOG_POSTS_ROUTE}/{self.post.id}"
-        return BLOG_POSTS_ROUTE
 
     @rx.var
     def blog_post_edit_url(self) -> str:
@@ -68,32 +107,12 @@ class BlogPostState(SessionState):
                     .joinedload(UserInfo.user)
                 )
                 .where(
-                    (BlogPostModel.userinfo_id == self.my_userinfo_id) &
+                    (BlogPostModel.userinfo_id == int(self.my_userinfo_id)) &
                     (BlogPostModel.id == post_id_int)
                 )
             ).one_or_none()
-
-    def _add_post_to_db(self, form_data: dict):
-        with rx.session() as session:
-            post_data = form_data.copy()
-            post_data["userinfo_id"] = self.my_userinfo_id
-            post = BlogPostModel(**post_data)
-            session.add(post)
-            session.commit()
-            session.refresh(post)
-            self.post = post
-
-    def _save_post_edits_to_db(self, post_id: int, updated_data: dict):
-        with rx.session() as session:
-            post = session.get(BlogPostModel, post_id)
-            if post is None:
-                return
-            for key, value in updated_data.items():
-                setattr(post, key, value)
-            session.add(post)
-            session.commit()
-            session.refresh(post)
-            self.post = post
+        # Reiniciamos el índice de la imagen al cargar un nuevo post
+        self.img_idx = 0
 
 # ───────────────────────────────
 # Estado para vista pública
