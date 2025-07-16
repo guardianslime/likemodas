@@ -1,27 +1,22 @@
-"""Welcome to Reflex! This file outlines the steps to create a basic app."""
-
 import reflex as rx
 import reflex_local_auth
 
-# --- ✨ CAMBIOS EN IMPORTS ---
-# Se importan los componentes y estados desde sus nuevas ubicaciones en el módulo 'blog'.
 from full_stack_python.blog.public_detail import blog_public_detail_page
 from full_stack_python.blog.page import blog_public_page
 from full_stack_python.blog.state import BlogPublicState, BlogViewState, BlogPostState
 from rxconfig import config
 
-# --- Módulos y Componentes ---
 from .ui.base import base_page
 from .auth.pages import my_login_page, my_register_page, my_logout_page
 from .auth.state import SessionState
-from .articles.detail import article_detail_page
-from .articles.list import article_public_list_page
-from .articles.state import ArticlePublicState
 
-# Se importan los paquetes completos para usar la notación paquete.componente
+# --- ✨ CAMBIOS EN IMPORTS ✨ ---
+# Importamos las páginas de gestión que acabamos de limpiar.
+from .articles.list import manage_blog_posts_page
+from .articles.detail import article_management_detail_page
+
+# Importamos los paquetes completos para usar la notación paquete.componente
 from . import blog, contact, navigation, pages
-
-# --- Definición de la Aplicación ---
 
 def index() -> rx.Component:
     """La página principal que redirige al dashboard si el usuario está autenticado."""
@@ -46,7 +41,7 @@ app = rx.App(
 
 # --- Registro de Páginas ---
 
-app.add_page(index, on_load=ArticlePublicState.load_posts)
+app.add_page(index)
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
 app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
@@ -54,21 +49,23 @@ app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
-
-# Páginas de Artículos
+# --- ✨ RUTAS DE ARTÍCULOS CORREGIDAS Y POTENCIADAS ✨ ---
+# La ruta de artículos ahora apunta a la página de GESTIÓN de blog.
 app.add_page(
-    article_public_list_page,
+    manage_blog_posts_page,
     route=navigation.routes.ARTICLE_LIST_ROUTE,
-    on_load=ArticlePublicState.load_posts,
-)
-app.add_page(
-    article_detail_page,
-    route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
-    on_load=ArticlePublicState.get_post_detail,
+    on_load=BlogPostState.load_posts,
 )
 
-# --- ✨ RUTAS DE BLOG ACTUALIZADAS ✨ ---
-# Páginas de Blog (privadas y públicas)
+# La ruta de detalle ahora usa un parámetro consistente y carga los datos correctos.
+# Asegúrate de que tu `BlogPostState.get_post_detail` use "blog_id"
+app.add_page(
+    article_management_detail_page,
+    route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[blog_id]", 
+    on_load=BlogPostState.get_post_detail,
+)
+
+# --- Rutas de Blog (privadas y públicas) ---
 app.add_page(
     blog.blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
@@ -76,15 +73,9 @@ app.add_page(
 )
 app.add_page(blog.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(
-    blog_public_detail_page,
-    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
-    title="Detalle de la Publicación",
-    on_load=BlogViewState.on_load
-)
-app.add_page(
     blog.blog_post_edit_page,
     route="/blog/[blog_id]/edit",
-    on_load=BlogPostState.get_post_detail # Reutiliza get_post_detail para cargar los datos a editar
+    on_load=BlogPostState.get_post_detail 
 )
 
 # Página de la galería pública
@@ -94,8 +85,6 @@ app.add_page(
     title="Galería pública",
     on_load=BlogPublicState.on_load
 )
-
-# Nueva página de detalle público
 app.add_page(
     blog_public_detail_page,
     route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
@@ -103,8 +92,7 @@ app.add_page(
     on_load=BlogViewState.on_load
 )
 
-
-# Páginas de Contacto
+# --- Páginas de Contacto ---
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
     contact.contact_entries_list_page,

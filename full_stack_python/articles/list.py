@@ -6,15 +6,9 @@ from .. import navigation
 from ..blog.state import BlogPostState
 
 def _management_card(post: BlogPostModel) -> rx.Component:
-    """
-    Tarjeta de administración visual para un post.
-    Incluye imagen, título y un ícono de eliminación con confirmación.
-    Toda la tarjeta es un enlace a la página de detalle/edición.
-    """
     return rx.link(
         rx.card(
             rx.box(
-                # Sección de la imagen
                 rx.cond(
                     post.images & (post.images.length() > 0),
                     rx.image(
@@ -34,7 +28,6 @@ def _management_card(post: BlogPostModel) -> rx.Component:
                         border_radius="md",
                     ),
                 ),
-                # Ícono de eliminación con confirmación
                 rx.alert_dialog.root(
                     rx.alert_dialog.trigger(
                         rx.icon_button(
@@ -80,7 +73,6 @@ def _management_card(post: BlogPostModel) -> rx.Component:
             ),
             style={"_hover": {"transform": "scale(1.03)", "transition": "transform 0.2s ease-in-out"}},
         ),
-        # Enlace principal de la tarjeta
         href=f"{navigation.routes.ARTICLE_LIST_ROUTE}/{post.id}",
     )
 
