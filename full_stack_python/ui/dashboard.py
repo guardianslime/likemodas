@@ -1,26 +1,15 @@
 import reflex as rx
-from .sidebar import sidebar
+# Importa el nuevo componente de la galería
+from ..articles.list import articles_gallery_page
 
-def base_dashboard_page(child: rx.Component, *args, **kwargs) -> rx.Component:
+def dashboard_component() -> rx.Component:
     """
-    Define la estructura base para todas las páginas autenticadas,
-    colocando una barra lateral a la izquierda y el contenido principal a la derecha.
+    El componente del dashboard que se muestra al iniciar sesión.
+    Ahora mostrará la nueva galería de artículos.
     """
-    # Valida que el elemento hijo sea un componente válido de Reflex.
-    if not isinstance(child, rx.Component):
-        child = rx.heading("This is not a valid child element")
-        
-    # Devuelve un fragmento con la barra lateral y el contenido principal.
-    return rx.fragment(
-        rx.hstack(
-            sidebar(),
-            rx.box(
-                child,
-                padding="1em",
-                width="100%",    
-                id="my-content-area-el"
-            ),
-            # Asegura que la barra lateral y el contenido estén alineados en la parte superior.
-            align="start" 
-        ),
+    return rx.box(
+        rx.heading("Bienvenido de regreso", size="5", margin_bottom="1em"),
+        rx.divider(),
+        # Usa el nuevo componente de galería
+        articles_gallery_page(),
     )
