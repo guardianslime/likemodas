@@ -38,13 +38,14 @@ def _gallery_card(post: BlogPostModel):
                     position="relative",
                     width="100%",
                 ),
-                rx.text(
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                # Se usa rx.heading en lugar de rx.text con as_="h3"
+                rx.heading(
                     post.title,
                     weight="bold",
-                    size="5",
+                    size="4", # Ajusta el tamaño si es necesario
                     color=rx.color_mode_cond("black", "white"),
-                    as_="h3",
-                    mt="0.5em"
+                    margin_top="0.5em"
                 ),
                 rx.text(
                     rx.cond(post.price, "$" + post.price.to(str), "$0.00"),
@@ -53,7 +54,7 @@ def _gallery_card(post: BlogPostModel):
                 ),
                 spacing="2",
                 align="start",
-                p="0.5em"
+                padding="0.5em"
             ),
             # El enlace ahora apunta a la ruta de detalle DENTRO de la sección de blog
             href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
