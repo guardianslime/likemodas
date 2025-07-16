@@ -55,6 +55,8 @@ app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 # Páginas de Artículos
 app.add_page(
+    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+    # Se usa el nombre correcto de la función importada.
     articles_public_gallery_page,
     route=navigation.routes.ARTICLE_LIST_ROUTE,
     on_load=ArticlePublicState.load_posts,
@@ -64,6 +66,7 @@ app.add_page(
     route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
     on_load=ArticleDetailState.on_load,
 )
+
 
 # --- RUTAS DE BLOG ACTUALIZADAS ---
 # Páginas de Blog (privadas y públicas)
