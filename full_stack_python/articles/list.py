@@ -4,7 +4,7 @@ from ..blog.state import BlogPublicState # Usamos el estado público que ya func
 from ..navigation import routes
 
 def _gallery_card(post):
-    """Una tarjeta de la galería, copiada de blog/page.py."""
+    """Una tarjeta de la galería para un artículo."""
     return rx.box(
         rx.link(
             rx.vstack(
@@ -48,7 +48,6 @@ def _gallery_card(post):
                 spacing="2",
                 align="start"
             ),
-            # El enlace ahora apunta a la ruta de detalle de articles
             href=f"{routes.ARTICLE_LIST_ROUTE}/{post.id}"
         ),
         bg=rx.color_mode_cond("#f9f9f9", "#111111"),
@@ -58,27 +57,36 @@ def _gallery_card(post):
         min_height="380px"
     )
 
-def articles_public_gallery_page():
+# --- ✨ COMPONENTE REUTILIZABLE CREADO ✨ ---
+def article_public_list_component(columns: int = 4, limit: int = 100) -> rx.Component:
+    """Un componente que muestra una rejilla de artículos públicos."""
+    # Aunque el 'limit' se controla en el estado, se mantiene en la firma por consistencia.
+    # La prop 'columns' aquí no se usa directamente, se define en el grid que lo llama.
+    return rx.grid(
+        rx.foreach(
+            BlogPublicState.posts,
+            _gallery_card
+        ),
+        columns={
+            "base": "2",
+            "md": "3",
+            "lg": str(columns), # Usa el parámetro para definir las columnas
+        },
+        spacing="6",
+        width="100%",
+        max_width="11200px",
+        justify_content="center"
+    )
+
+# --- PÁGINA PÚBLICA ACTUALIZADA PARA USAR EL COMPONENTE ---
+def articles_public_gallery_page() -> rx.Component:
     """Página que muestra la galería de productos en la ruta /articles."""
     return base_page(
         rx.center(
             rx.vstack(
                 rx.heading("Galería de Publicaciones", size="7"),
-                rx.grid(
-                    rx.foreach(
-                        BlogPublicState.posts,
-                        _gallery_card
-                    ),
-                    columns={
-                        "base": "2",
-                        "md": "3",
-                        "lg": "6",
-                    },
-                    spacing="6",
-                    width="100%",
-                    max_width="11200px",
-                    justify_content="center"
-                ),
+                # Ahora la página simplemente llama al componente reutilizable
+                article_public_list_component(columns=6),
                 spacing="6",
                 width="100%",
                 padding="2em",
