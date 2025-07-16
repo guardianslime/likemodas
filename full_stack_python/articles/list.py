@@ -21,7 +21,7 @@ def blog_post_management_card(post: BlogPostModel) -> rx.Component:
     return rx.link(
         rx.card(
             rx.vstack(
-                # --- ✅ LÓGICA DE IMAGEN (YA ESTABA BIEN, PERO LA CONFIRMAMOS) ---
+                # Sección de la imagen
                 rx.box(
                     rx.cond(
                         post.images & (post.images.length() > 0),
@@ -44,6 +44,7 @@ def blog_post_management_card(post: BlogPostModel) -> rx.Component:
                     ),
                     width="100%",
                 ),
+                # Información del post
                 rx.vstack(
                     rx.heading(post.title, size="4", trim="both"),
                     rx.badge(
@@ -57,8 +58,7 @@ def blog_post_management_card(post: BlogPostModel) -> rx.Component:
                     padding_y="0.5em",
                 ),
                 rx.spacer(),
-                # --- ✨ CAMBIO IMPORTANTE ✨ ---
-                # Evitamos que el clic en los botones active el enlace de la tarjeta.
+                # Botones de Acción con stop_propagation para no activar el enlace principal
                 rx.hstack(
                     rx.link(
                         rx.button("Editar", variant="soft"),
@@ -100,8 +100,8 @@ def blog_post_management_card(post: BlogPostModel) -> rx.Component:
             ),
             size="2"
         ),
-        # --- ✨ AQUÍ SE AÑADE EL ENLACE PRINCIPAL ✨ ---
-        [cite_start]href=f"{navigation.routes.ARTICLE_LIST_ROUTE}/{post.id}", # [cite: 5]
+        # El enlace principal que envuelve toda la tarjeta
+        href=f"{navigation.routes.ARTICLE_LIST_ROUTE}/{post.id}",
         width="100%",
     )
 
