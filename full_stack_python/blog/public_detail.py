@@ -9,11 +9,13 @@ from ..navigation.state import force_reload_go_to
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 
-# La navbar local no cambia, ya es correcta.
+# ✨ CAMBIO: Se reconstruye la navbar con una estructura más robusta usando rx.spacer()
 def _detail_page_navbar() -> rx.Component:
-    """Una barra de navegación local solo para esta página, con estilo garantizado y recarga forzada."""
+    """Barra de navegación local con alineación corregida para esta página."""
     return rx.box(
+        # La estructura ahora es: [Grupo Izquierdo, Espaciador, Grupo Derecho]
         rx.hstack(
+            # Grupo Izquierdo: Menú y Logo
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
@@ -33,20 +35,24 @@ def _detail_page_navbar() -> rx.Component:
                 align="center",
                 spacing="4",
             ),
+            
+            rx.spacer(),  # El espaciador empuja todo lo que sigue hacia la derecha
+            
+            # Grupo Derecho: Barra de Búsqueda
             rx.input(
                 placeholder="Buscar productos...",
                 value=SearchState.search_term,
                 on_change=SearchState.update_search,
                 on_blur=SearchState.search_action,
-                width=["60%", "65%", "70%", "72%"],
+                width=["15em", "20em", "25em", "30em"], # Ancho ajustado
                 height=["2.5em", "2.8em", "3em", "3.3em"],
                 padding_x="4",
                 border_radius="full",
             ),
-            justify="between",
             align="center",
             width="100%",
         ),
+        # Los estilos del contenedor principal no cambian
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1rem", z_index="99",
         bg=rx.color_mode_cond("rgba(255, 255, 255, 0.8)", "rgba(29, 35, 48, 0.8)"),
@@ -54,25 +60,25 @@ def _detail_page_navbar() -> rx.Component:
         on_mount=NavDeviceState.on_mount,
     )
 
+
 def standalone_public_layout(child: rx.Component) -> rx.Component:
-    """Layout autónomo que usa la navbar local."""
+    """Layout autónomo que usa la navbar local corregida."""
     return rx.fragment(
         _detail_page_navbar(),
         rx.box(
             child,
-            # Se elimina el padding superior de aquí para controlarlo en el contenedor principal
             padding_y="2em",
+            padding_top="6rem",
             width="100%",
             margin="0 auto",
         ),
         fixed_color_mode_button(),
     )
 
-# --- PÁGINA DE DETALLE MODIFICADA ---
+
+# ✨ CAMBIO: Se revierte el layout del contenido a su estado original, sin el vstack/center.
 def blog_public_detail_page() -> rx.Component:
-    """Página que muestra el detalle de una publicación pública con un layout controlado."""
-    
-    # El grid del producto se mantiene igual.
+    """Página que muestra el detalle de una publicación pública."""
     content_grid = rx.cond(
         BlogViewState.has_post,
         rx.grid(
@@ -82,33 +88,15 @@ def blog_public_detail_page() -> rx.Component:
             spacing="4",
             align_items="start",
             width="100%",
-            max_width="1120px",
+            padding_x="2em" # Se añade un poco de padding para que no toque los bordes
         ),
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
-    # ✨ CAMBIO RADICAL: Se reemplaza rx.center y rx.vstack por un único rx.box con estilos directos.
-    # Esto nos da control total sobre el layout para que coincida con la captura.
-    page_content = rx.box(
-        rx.heading("Detalle del Producto", size="8"),
-        content_grid,
-        # --- Parámetros de estilo para forzar el layout ---
-        display="flex",              # Usa Flexbox para alinear
-        flex_direction="column",     # Apila los elementos verticalmente
-        align_items="center",        # Centra los elementos horizontalmente
-        justify_content="center",    # Centra el bloque verticalmente (opcional)
-        spacing="6",                 # Espacio entre el título y el producto
-        width="100%",
-        padding_top="6rem",          # Espacio para la navbar fija
-        padding_x="2em",             # Padding horizontal
-        min_height="100vh",          # Ocupa toda la altura de la pantalla
-    )
-    
-    # Usamos el layout autónomo como antes, pero ahora con el contenido estilizado.
-    return standalone_public_layout(page_content)
+    return standalone_public_layout(content_grid)
 
 
-# --- El resto de los componentes (_image_section, _info_section) no cambian ---
+# --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
     return rx.box(
         rx.image(
