@@ -5,7 +5,18 @@ from ..auth.state import SessionState
 from .nav import public_navbar 
 from .sidebar import sidebar
 
-# --- ✨ LAYOUT PARA USUARIOS AUTENTICADOS (CON SIDEBAR) ✨ ---
+# --- ✨ FUNCIÓN RESTAURADA ✨ ---
+def fixed_color_mode_button() -> rx.Component:
+    """Un botón de cambio de tema que se mantiene fijo en la esquina inferior derecha."""
+    return rx.box(
+        rx.color_mode.button(),
+        position="fixed",
+        bottom="1.5rem",
+        right="1.5rem",
+        z_index="100",
+    )
+
+# --- LAYOUT PARA USUARIOS AUTENTICADOS (CON SIDEBAR) ---
 def protected_layout(child: rx.Component) -> rx.Component:
     """El layout para usuarios autenticados, con la barra lateral."""
     return rx.hstack(
@@ -19,7 +30,7 @@ def protected_layout(child: rx.Component) -> rx.Component:
         align="start"
     )
 
-# --- ✨ LAYOUT PARA PÁGINAS PÚBLICAS (CON NAVBAR SUPERIOR) ✨ ---
+# --- LAYOUT PARA PÁGINAS PÚBLICAS (CON NAVBAR SUPERIOR) ---
 def public_layout(child: rx.Component) -> rx.Component:
     """El layout para usuarios no autenticados, con la barra de navegación superior."""
     return rx.fragment(
@@ -31,13 +42,11 @@ def public_layout(child: rx.Component) -> rx.Component:
             width="100%",
             id="my-content-area-el"
         ),
-        # Puedes añadir aquí el botón de modo oscuro si lo deseas para páginas públicas
-        # rx.color_mode.button(position="fixed", bottom="1.5rem", right="1.5rem")
+        # Se vuelve a usar el botón de modo oscuro aquí
+        fixed_color_mode_button()
     )
 
-# --- ✨ FUNCIÓN PRINCIPAL `base_page` ✨ ---
-# Esta función decide qué layout usar basado en el estado de autenticación.
-# Ya no necesita importar `base_dashboard_page` porque esa lógica ahora está aquí.
+# --- FUNCIÓN PRINCIPAL `base_page` ---
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
     Función principal que envuelve todo el contenido y elige el layout
