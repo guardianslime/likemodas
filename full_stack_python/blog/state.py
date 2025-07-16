@@ -22,6 +22,25 @@ class BlogPostState(SessionState):
     img_idx: int = 0
 
     @rx.event
+    def delete_post(self, post_id: int):
+        """Elimina una publicación de la base de datos y recarga la lista."""
+        if self.my_userinfo_id is None:
+            return rx.window_alert("No estás autenticado.")
+        
+        with rx.session() as session:
+            post_to_delete = session.get(BlogPostModel, post_id)
+            
+            # Verificación de seguridad: solo el propietario puede eliminar
+            if post_to_delete and post_to_delete.userinfo_id == self.my_userinfo_id:
+                session.delete(post_to_delete)
+                session.commit()
+            else:
+                return rx.window_alert("No tienes permiso para eliminar esta publicación o no fue encontrada.")
+                
+        # Recargamos la lista de posts para que la UI se actualice
+        return self.load_posts
+
+    @rx.event
     def load_posts(self):
         if self.my_userinfo_id is None:
             self.posts = []
