@@ -57,14 +57,14 @@ app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 # Páginas de Artículos
 app.add_page(
-    article_public_list_page,
+    articles_gallery_page,
     route=navigation.routes.ARTICLE_LIST_ROUTE,
-    on_load=ArticlePublicState.load_posts,
+    on_load=BlogPublicState.on_load,
 )
 app.add_page(
     article_detail_page,
     route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
-    on_load=ArticlePublicState.get_post_detail,
+    on_load=ArticleDetailState.on_load,
 )
 
 # --- ✨ RUTAS DE BLOG ACTUALIZADAS ✨ ---
