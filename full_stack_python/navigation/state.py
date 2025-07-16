@@ -2,6 +2,10 @@ import reflex as rx
 import reflex_local_auth
 from . import routes
 
+def force_reload_go_to(path: str):
+    """Navega a una URL forzando una recarga completa de la página."""
+    return rx.window_location(path)
+
 class NavState(rx.State):
     def to_home(self):
         return rx.redirect(routes.HOME_ROUTE)
