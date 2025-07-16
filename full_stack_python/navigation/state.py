@@ -4,7 +4,7 @@ from . import routes
 
 def force_reload_go_to(path: str):
     """Navega a una URL forzando una recarga completa de la página."""
-    return rx.window_location(path)
+    return rx.call_script(f"window.location.href = '{path}'")
 
 class NavState(rx.State):
     def to_home(self):
