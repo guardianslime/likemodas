@@ -34,7 +34,6 @@ def index() -> rx.Component:
     )
 
 app = rx.App(
-    show_reflex_banner=False,
     theme=rx.theme(
         appearance="dark", 
         has_background=True, 
