@@ -43,10 +43,6 @@ app = rx.App(
         radius="medium",
         accent_color="sky"
     ),
-    # ✨ AÑADE ESTA LÍNEA PARA INCLUIR EL SCRIPT DE SWIPER DESDE LA CDN ✨
-    head_components=[
-        rx.el.script(src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-element-bundle.min.js", defer=True),
-    ],
 )
 
 # --- Registro de Páginas ---

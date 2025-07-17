@@ -1,32 +1,35 @@
-# full_stack_python/ui/carousel.py (VERSIÓN CANÓNICA Y CORRECTA)
+# full_stack_python/ui/carousel.py (NUEVA VERSIÓN con react-responsive-carousel)
 
 import reflex as rx
+from reflex.components.component import NoSSRComponent
 
-# 1. Definimos una clase para el contenedor del carrusel.
-# El nombre de la clase (_SwiperContainer) es un identificador válido en Python y JS.
-class _SwiperContainer(rx.Component):
-    # La variable 'tag' le dice a Reflex qué etiqueta HTML renderizar.
-    # ¡Aquí es donde ponemos el nombre con guiones!
-    tag = "swiper-container"
+class Carousel(NoSSRComponent):
+    """
+    Wrapper para el componente react-responsive-carousel.
+    """
+    # La librería a instalar con npm
+    library = "react-responsive-carousel"
+    # El tag del componente principal
+    tag = "Carousel"
+    # Es una exportación nombrada
+    is_default = False
 
-# 2. Definimos una clase para cada diapositiva.
-class _SwiperSlide(rx.Component):
-    tag = "swiper-slide"
+    # Propiedades que podemos configurar
+    show_arrows: rx.Var[bool] = True
+    show_indicators: rx.Var[bool] = True
+    show_status: rx.Var[bool] = False
+    infinite_loop: rx.Var[bool] = True
+    auto_play: rx.Var[bool] = True
+    stop_on_hover: rx.Var[bool] = True
+    use_keyboard_arrows: rx.Var[bool] = True
+    swipeable: rx.Var[bool] = True
+    emulate_touch: rx.Var[bool] = True # Permite arrastrar con el mouse
 
+    def _get_imports(self) -> dict:
+        """Añade la importación del CSS necesario."""
+        imports = super()._get_imports()
+        imports[""] = imports.get("", set()) | {"react-responsive-carousel/lib/styles/carousel.min.css"}
+        return imports
 
-# 3. Creamos funciones "fábrica" para que sea fácil usar nuestros nuevos componentes.
-# Estas son las funciones que importarás y usarás en tus otras páginas.
-def swiper_container(*children, **props):
-    """Crea un componente <swiper-container>."""
-    return _SwiperContainer.create(
-        *children,
-        # Propiedades por defecto para el carrusel
-        pagination="true",
-        navigation="false",
-        loop="true",
-        **props,
-    )
-
-def swiper_slide(*children, **props):
-    """Crea un componente <swiper-slide>."""
-    return _SwiperSlide.create(*children, **props)
+# Creamos una instancia para usarla fácilmente
+carousel = Carousel.create

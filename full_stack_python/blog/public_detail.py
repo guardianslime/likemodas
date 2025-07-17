@@ -10,7 +10,7 @@ from ..navigation.state import force_reload_go_to
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar # Importamos la public_navbar unificada
-from ..ui.carousel import swiper_container, swiper_slide
+from ..ui.carousel import carousel 
 
 # Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
 # ELIMINAMOS _detail_page_navbar() ya que usaremos public_navbar()
@@ -134,27 +134,29 @@ def blog_public_detail_page() -> rx.Component:
 # --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
     """
-    Sección para el carrusel de imágenes del post, usando Swiper Elements.
+    Sección para el carrusel de imágenes, ahora usando react-responsive-carousel.
     """
     return rx.box(
         rx.cond(
             BlogViewState.post.images & (BlogViewState.post.images.length() > 0),
-            # Usamos el nuevo componente de carrusel basado en CDN
-            swiper_container(
+            # 👇 Usamos el nuevo componente 'carousel'
+            carousel(
                 rx.foreach(
                     BlogViewState.post.images,
-                    lambda image_url: swiper_slide(
-                        rx.image(
-                            src=rx.get_upload_url(image_url),
-                            width="100%",
-                            height="auto",
-                            max_height="550px",
-                            object_fit="contain",
-                        )
+                    # Cada imagen es un hijo directo del carrusel
+                    lambda image_url: rx.image(
+                        src=rx.get_upload_url(image_url),
+                        width="100%",
+                        height="auto",
+                        max_height="550px",
+                        object_fit="contain",
                     )
                 ),
-                # Puedes pasar propiedades directamente aquí
-                # pagination="true" está por defecto
+                # Configuramos el carrusel
+                show_indicators=True,
+                infinite_loop=True,
+                emulate_touch=True, # Clave para que funcione con el mouse
+                show_thumbs=False,  # Ocultamos las miniaturas de abajo
             ),
             # Mensaje si no hay imágenes
             rx.image(
@@ -169,8 +171,6 @@ def _image_section() -> rx.Component:
         width="100%",
         max_width="600px",
         position="relative",
-        border_radius="md",
-        overflow="hidden"
     )
 
 def _info_section() -> rx.Component:
