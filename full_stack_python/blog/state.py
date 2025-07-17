@@ -56,13 +56,9 @@ class BlogPostState(SessionState):
 
     @rx.event
     def load_posts(self):
-        if self.my_userinfo_id is None:
-            self.posts = []
-            return
+        if self.my_userinfo_id is None: self.posts = []; return
         with rx.session() as session:
-            self.posts = session.exec(
-                select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)).where(BlogPostModel.userinfo_id == int(self.my_userinfo_id)).order_by(BlogPostModel.created_at.desc())
-            ).all()
+            self.posts = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)).where(BlogPostModel.userinfo_id == int(self.my_userinfo_id)).order_by(BlogPostModel.created_at.desc())).all()
 
     @rx.var
     def blog_post_edit_url(self) -> str:
@@ -72,18 +68,11 @@ class BlogPostState(SessionState):
 
     def get_post_detail(self):
         blog_id_str = self.router.page.params.get("blog_id", "")
-        if not self.is_authenticated or self.my_userinfo_id is None:
-            self.post = None
-            return
-        try:
-            post_id_int = int(blog_id_str)
-        except (ValueError, TypeError):
-            self.post = None
-            return
+        if not self.is_authenticated or self.my_userinfo_id is None: self.post = None; return
+        try: post_id_int = int(blog_id_str)
+        except (ValueError, TypeError): self.post = None; return
         with rx.session() as session:
-            self.post = session.exec(
-                select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where((BlogPostModel.userinfo_id == int(self.my_userinfo_id)) & (BlogPostModel.id == post_id_int))
-            ).one_or_none()
+            self.post = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where((BlogPostModel.userinfo_id == int(self.my_userinfo_id)) & (BlogPostModel.id == post_id_int))).one_or_none()
 
 class BlogPublicState(SessionState):
     posts: list[BlogPostModel] = []
@@ -104,8 +93,7 @@ class BlogAddFormState(SessionState):
             if file.name not in self.temp_images:
                 self.temp_images.append(file.name)
     def remove_image(self, name: str):
-        if name in self.temp_images:
-            self.temp_images.remove(name)
+        if name in self.temp_images: self.temp_images.remove(name)
     def set_price(self, value: str): self.price = value
     def submit(self):
         if self.my_userinfo_id is None: return rx.window_alert("Inicia sesión.")
@@ -117,34 +105,22 @@ class BlogAddFormState(SessionState):
                 images=self.temp_images.copy(), userinfo_id=int(self.my_userinfo_id),
                 publish_active=True, publish_date=datetime.now()
             )
-            session.add(post)
-            session.commit()
+            session.add(post); session.commit()
         return rx.redirect("/blog")
     def set_price_from_input(self, value: str):
         try: self.price = float(value)
         except ValueError: self.price = 0.0
 
 class BlogEditFormState(BlogPostState):
-    form_title: str = ""
-    form_content: str = ""
-    form_price_str: str = "0.0"
-    form_publish_active: bool = False
-    form_publish_date_str: str = ""
-    form_publish_time_str: str = ""
+    form_title: str = ""; form_content: str = ""; form_price_str: str = "0.0"; form_publish_active: bool = False; form_publish_date_str: str = ""; form_publish_time_str: str = ""
     def on_load_edit(self):
         self.get_post_detail()
         if self.post:
-            self.form_title = self.post.title or ""
-            self.form_content = self.post.content or ""
-            self.form_price_str = str(self.post.price or "0.0")
-            self.form_publish_active = self.post.publish_active
+            self.form_title = self.post.title or ""; self.form_content = self.post.content or ""; self.form_price_str = str(self.post.price or "0.0"); self.form_publish_active = self.post.publish_active
             if self.post.publish_date:
-                self.form_publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
-                self.form_publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
+                self.form_publish_date_str = self.post.publish_date.strftime("%Y-%m-%d"); self.form_publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
             else:
-                now = datetime.now()
-                self.form_publish_date_str = now.strftime("%Y-%m-%d")
-                self.form_publish_time_str = now.strftime("%H:%M:%S")
+                now = datetime.now(); self.form_publish_date_str = now.strftime("%Y-%m-%d"); self.form_publish_time_str = now.strftime("%H:%M:%S")
     def set_form_title(self, value: str): self.form_title = value
     def set_form_content(self, value: str): self.form_content = value
     def set_form_price_str(self, value: str): self.form_price_str = value
@@ -153,58 +129,41 @@ class BlogEditFormState(BlogPostState):
     def set_form_publish_time_str(self, value: str): self.form_publish_time_str = value
     def handle_submit(self):
         if not self.post: return rx.window_alert("No se ha cargado ningún post para editar.")
-        post_id = self.post.id
-        final_publish_date = None
+        post_id = self.post.id; final_publish_date = None
         if self.form_publish_active and self.form_publish_date_str and self.form_publish_time_str:
-            try:
-                dt_str = f"{self.form_publish_date_str} {self.form_publish_time_str}"
-                final_publish_date = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+            try: dt_str = f"{self.form_publish_date_str} {self.form_publish_time_str}"; final_publish_date = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
             except ValueError: pass
         try: price_val = float(self.form_price_str)
         except ValueError: return rx.window_alert("Precio inválido.")
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, post_id)
             if post_to_update:
-                post_to_update.title = self.form_title
-                post_to_update.content = self.form_content
-                post_to_update.price = price_val
-                post_to_update.publish_active = self.form_publish_active
-                post_to_update.publish_date = final_publish_date
-                session.add(post_to_update)
-                session.commit()
+                post_to_update.title = self.form_title; post_to_update.content = self.form_content; post_to_update.price = price_val
+                post_to_update.publish_active = self.form_publish_active; post_to_update.publish_date = final_publish_date
+                session.add(post_to_update); session.commit()
         return rx.redirect(self.blog_post_edit_url)
 
 class BlogViewState(SessionState):
     post: Optional[BlogPostModel] = None
-
     @rx.var
     def post_image_urls(self) -> list[str]:
         if self.post and self.post.images:
             return [rx.get_upload_url(img) for img in self.post.images]
         return ["/no_image.png"]
-
     @rx.var
     def formatted_price(self) -> str:
-        if self.post and self.post.price is not None:
-            return f"${self.post.price:,.2f}"
+        if self.post and self.post.price is not None: return f"${self.post.price:,.2f}"
         return "$0.00"
-
     @rx.var
     def content(self) -> str:
-        if self.post and self.post.content:
-            return self.post.content
+        if self.post and self.post.content: return self.post.content
         return ""
-
     @rx.var
     def has_post(self) -> bool:
         return self.post is not None
-
     def on_load(self):
         post_id_str = self.router.page.params.get("blog_public_id", "")
-        try:
-            pid = int(post_id_str)
-        except (ValueError, TypeError):
-            self.post = None
-            return
+        try: pid = int(post_id_str)
+        except (ValueError, TypeError): self.post = None; return
         with rx.session() as session:
             self.post = session.get(BlogPostModel, pid)
