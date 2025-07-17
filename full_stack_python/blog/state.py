@@ -12,21 +12,26 @@ from ..models import BlogPostModel, UserInfo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# --- ESTA CLASE NO SE TOCA, YA ES CORRECTA ---
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
+
     @rx.var
     def formatted_price(self) -> str:
-        if self.post and self.post.price is not None: return f"${self.post.price:,.2f}"
+        if self.post and self.post.price is not None:
+            return f"${self.post.price:,.2f}"
         return "$0.00"
+
     @rx.var
     def post_image_urls(self) -> list[str]:
-        if self.post and self.post.images: return [rx.get_upload_url(img) for img in self.post.images]
+        if self.post and self.post.images:
+            return [rx.get_upload_url(img) for img in self.post.images]
         return ["/no_image.png"]
+
     @rx.event
     def delete_post(self, post_id: int):
-        if self.my_userinfo_id is None: return rx.window_alert("No estás autenticado.")
+        if self.my_userinfo_id is None:
+            return rx.window_alert("No estás autenticado.")
         with rx.session() as session:
             post_to_delete = session.get(BlogPostModel, post_id)
             if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
@@ -35,23 +40,32 @@ class BlogPostState(SessionState):
                     for image_name in post_to_delete.images:
                         try:
                             file_path = pathlib.Path(upload_dir) / image_name
-                            if file_path.is_file(): os.remove(file_path)
-                        except Exception as e: print(f"Error al eliminar el archivo {image_name}: {e}")
+                            if file_path.is_file():
+                                os.remove(file_path)
+                        except Exception as e:
+                            print(f"Error al eliminar el archivo {image_name}: {e}")
                 session.delete(post_to_delete)
                 session.commit()
                 return rx.redirect(BLOG_POSTS_ROUTE)
-            else: return rx.window_alert("No tienes permiso para eliminar esta publicación.")
+            else:
+                return rx.window_alert("No tienes permiso para eliminar esta publicación.")
+
     def handle_delete_confirm(self):
-        if self.post: return self.delete_post(self.post.id)
+        if self.post:
+            return self.delete_post(self.post.id)
+
     @rx.event
     def load_posts(self):
         if self.my_userinfo_id is None: self.posts = []; return
         with rx.session() as session:
             self.posts = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)).where(BlogPostModel.userinfo_id == int(self.my_userinfo_id)).order_by(BlogPostModel.created_at.desc())).all()
+
     @rx.var
     def blog_post_edit_url(self) -> str:
-        if self.post and self.post.id is not None: return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
+        if self.post and self.post.id is not None:
+            return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
         return BLOG_POSTS_ROUTE
+
     def get_post_detail(self):
         blog_id_str = self.router.page.params.get("blog_id", "")
         if not self.is_authenticated or self.my_userinfo_id is None: self.post = None; return
@@ -124,34 +138,25 @@ class BlogEditFormState(BlogPostState):
                 session.add(post_to_update); session.commit()
         return rx.redirect(self.blog_post_edit_url)
 
-
-# --- ✨ CAMBIO IMPORTANTE AQUÍ ✨ ---
-# Se cambia la herencia de SessionState a rx.State para simplificar la clase
 class BlogViewState(rx.State):
     post: Optional[BlogPostModel] = None
-
     @rx.var
     def post_image_urls(self) -> list[str]:
         if self.post and self.post.images:
             return [rx.get_upload_url(img) for img in self.post.images]
         return ["/no_image.png"]
-
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None: return f"${self.post.price:,.2f}"
         return "$0.00"
-
     @rx.var
     def content(self) -> str:
         if self.post and self.post.content: return self.post.content
         return ""
-
     @rx.var
     def has_post(self) -> bool:
         return self.post is not None
-
     def on_load(self):
-        # Esta lógica ya era correcta, se mantiene.
         post_id_str = self.router.page.params.get("blog_public_id", "")
         try: pid = int(post_id_str)
         except (ValueError, TypeError): self.post = None; return
