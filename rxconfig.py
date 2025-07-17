@@ -30,7 +30,7 @@ config = rx.Config(
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
 
-    # --- ✨ LÍNEAS ESENCIALES PARA EL CARRUSEL ✨ ---
+    # --- ✨ LÍNEAS ESENCIALES PARA EL CARRUSEL Y TEMA ✨ ---
     stylesheets=[
         "https://unpkg.com/swiper/swiper-bundle.min.css",
     ],

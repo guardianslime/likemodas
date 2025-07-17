@@ -81,17 +81,13 @@ class BlogPublicState(SessionState):
             self.posts = session.exec(select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
 
 class BlogAddFormState(SessionState):
-    title: str = ""
-    content: str = ""
-    price: str = ""
-    temp_images: list[str] = []
+    title: str = ""; content: str = ""; price: str = ""; temp_images: list[str] = []
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
             data = await file.read()
             path = rx.get_upload_dir() / file.name
             with path.open("wb") as f: f.write(data)
-            if file.name not in self.temp_images:
-                self.temp_images.append(file.name)
+            if file.name not in self.temp_images: self.temp_images.append(file.name)
     def remove_image(self, name: str):
         if name in self.temp_images: self.temp_images.remove(name)
     def set_price(self, value: str): self.price = value
