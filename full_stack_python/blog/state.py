@@ -301,20 +301,3 @@ class BlogViewState(SessionState):
     def anterior_imagen(self):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
-
-    start_x: int = 0
-
-    @rx.event
-    def on_touch_start(self, e: dict):
-        self.start_x = e.get("client_x", 0)
-
-    @rx.event
-    def on_touch_end(self, e: dict):
-        end_x = e.get("client_x", 0)
-        delta = end_x - self.start_x
-        if abs(delta) > 50:
-            if delta > 0:
-                yield self.anterior_imagen()
-            else:
-                yield self.siguiente_imagen()
-        self.start_x = 0
