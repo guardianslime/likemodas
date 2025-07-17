@@ -12,7 +12,6 @@ from ..models import BlogPostModel, UserInfo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# ... (Las clases BlogPostState, BlogAddFormState, etc. no necesitan cambios) ...
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
@@ -73,7 +72,7 @@ class BlogPostState(SessionState):
 
     def get_post_detail(self):
         blog_id_str = self.router.page.params.get("blog_id", "")
-        if self.my_userinfo_id is None:
+        if not self.is_authenticated or self.my_userinfo_id is None:
             self.post = None
             return
         try:
@@ -175,9 +174,6 @@ class BlogEditFormState(BlogPostState):
                 session.commit()
         return rx.redirect(self.blog_post_edit_url)
 
-# ───────────────────────────────
-# Estado para la vista pública de un post
-# ───────────────────────────────
 class BlogViewState(SessionState):
     post: Optional[BlogPostModel] = None
 
@@ -204,8 +200,6 @@ class BlogViewState(SessionState):
         return self.post is not None
 
     def on_load(self):
-        # --- ✨ CORRECCIÓN DE SERIALIZACIÓN ✨ ---
-        # Se lee el parámetro directamente del router, no de una @rx.var
         post_id_str = self.router.page.params.get("blog_public_id", "")
         try:
             pid = int(post_id_str)
