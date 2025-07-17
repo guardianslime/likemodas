@@ -1,14 +1,24 @@
-# full_stack_python/ui/carousel.py (VERSIÓN FINAL CON ACCESO DE DICCIONARIO)
+# full_stack_python/ui/carousel.py (VERSIÓN CANÓNICA Y CORRECTA)
 
 import reflex as rx
 
+# 1. Definimos una clase para el contenedor del carrusel.
+# El nombre de la clase (_SwiperContainer) es un identificador válido en Python y JS.
+class _SwiperContainer(rx.Component):
+    # La variable 'tag' le dice a Reflex qué etiqueta HTML renderizar.
+    # ¡Aquí es donde ponemos el nombre con guiones!
+    tag = "swiper-container"
+
+# 2. Definimos una clase para cada diapositiva.
+class _SwiperSlide(rx.Component):
+    tag = "swiper-slide"
+
+
+# 3. Creamos funciones "fábrica" para que sea fácil usar nuestros nuevos componentes.
+# Estas son las funciones que importarás y usarás en tus otras páginas.
 def swiper_container(*children, **props):
-    """
-    Crea un contenedor de carrusel usando el tag <swiper-container>.
-    Se utiliza el acceso de diccionario rx.el["tag-con-guion"] para crear la etiqueta.
-    """
-    # ✨ CORRECCIÓN FINAL: Usamos rx.el["..."] para crear la etiqueta con guion.
-    return rx.el["swiper-container"](
+    """Crea un componente <swiper-container>."""
+    return _SwiperContainer.create(
         *children,
         # Propiedades por defecto para el carrusel
         pagination="true",
@@ -18,11 +28,5 @@ def swiper_container(*children, **props):
     )
 
 def swiper_slide(*children, **props):
-    """
-    Crea una diapositiva del carrusel usando el tag <swiper-slide>.
-    """
-    # ✨ CORRECCIÓN FINAL: Usamos rx.el["..."] para crear la etiqueta con guion.
-    return rx.el["swiper-slide"](
-        *children,
-        **props
-    )
+    """Crea un componente <swiper-slide>."""
+    return _SwiperSlide.create(*children, **props)
