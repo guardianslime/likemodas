@@ -1,4 +1,4 @@
-# full_stack_python/ui/carousel.py (VERSIÓN FINAL CORREGIDA)
+# full_stack_python/ui/carousel.py (VERSIÓN FINAL)
 
 import reflex as rx
 from reflex.components.component import NoSSRComponent
@@ -9,9 +9,9 @@ class SwiperContainer(NoSSRComponent):
     Wrapper de Reflex para el componente de React Swiper.
     Proporciona un carrusel de imágenes deslizable.
     """
-    library = "swiper/react"
+    # ✨ CORRECCIÓN: La librería a instalar es 'swiper'.
+    library = "swiper"
     tag = "Swiper"
-    is_default = True
     lib_dependencies: List[str] = ["swiper"]
 
     pagination: rx.Var[bool] = True
@@ -24,25 +24,24 @@ class SwiperContainer(NoSSRComponent):
 
     def _get_imports(self) -> dict:
         """
-        ✨ CORRECCIÓN: Se elimina el uso de 'ImportVar' y se simplifica la
-        adición de los módulos 'Pagination' y 'Navigation' como strings.
+        ✨ CORRECCIÓN: Se especifica de dónde importar cada componente.
+        Swiper y SwiperSlide vienen de 'swiper/react'.
+        Los módulos vienen de 'swiper'.
         """
-        imports = super()._get_imports()
-        
-        # Añadir importaciones de CSS
-        imports[""] = imports.get("", set()) | {
-            "swiper/css",
-            "swiper/css/pagination",
-            "swiper/css/navigation",
+        return {
+            "swiper/react": {rx.ImportVar(tag=self.tag, is_default=True)},
+            "": {
+                "swiper/css",
+                "swiper/css/pagination",
+                "swiper/css/navigation",
+            },
+            "swiper": {
+                rx.ImportVar(tag="Pagination", is_default=False),
+                rx.ImportVar(tag="Navigation", is_default=False),
+            },
         }
-        
-        # Añadir importaciones de módulos JS desde la librería 'swiper'
-        imports["swiper"] = ["Pagination", "Navigation"]
-        
-        return imports
 
     def _get_props(self) -> dict:
-        """Pasa las props al componente de React, incluyendo los módulos activados."""
         props = super()._get_props()
         modules = []
         if self.pagination:
@@ -56,9 +55,13 @@ class SwiperContainer(NoSSRComponent):
 
 class SwiperSlide(NoSSRComponent):
     """Wrapper de Reflex para el componente React SwiperSlide."""
-    library = "swiper/react"
+    # ✨ CORRECCIÓN: La librería a instalar es 'swiper'.
+    library = "swiper"
     tag = "SwiperSlide"
-    is_default = False
+
+    def _get_imports(self) -> dict:
+        # Se asegura de importar SwiperSlide desde 'swiper/react'.
+        return {"swiper/react": {rx.ImportVar(tag=self.tag, is_default=False)}}
 
 # Creación de instancias simplificadas
 swiper_container = SwiperContainer.create
