@@ -8,28 +8,41 @@ from ..ui.carousel import carousel
 from ..ui.lightbox import lightbox
 
 def _image_section() -> rx.Component:
-    """Sección para el carrusel de imágenes del post."""
-    return carousel(
-        rx.foreach(
-            BlogPostState.post.images,
-            lambda image_url: rx.image(
-                src=rx.get_upload_url(image_url),
-                width="100%",
-                height="auto",
-                max_height="550px",
-                object_fit="contain",
-                # El clic para abrir el lightbox está solo en la imagen
-                on_click=BlogPostState.open_lightbox,
-                cursor="pointer",
-            )
+    """Sección para el carrusel de imágenes y el botón para ampliar."""
+    return rx.vstack(
+        # El carrusel de siempre, pero sin eventos de clic en las imágenes
+        carousel(
+            rx.foreach(
+                BlogPostState.post.images,
+                lambda image_url: rx.image(
+                    src=rx.get_upload_url(image_url),
+                    width="100%",
+                    height="auto",
+                    max_height="550px",
+                    object_fit="contain",
+                    # ✨ CORRECCIÓN: Se eliminó on_click y cursor de aquí
+                )
+            ),
+            # --- Configuración del carrusel ---
+            show_indicators=True,
+            infinite_loop=True,
+            emulate_touch=True,
+            show_thumbs=False,
+            auto_play=False,
+            show_arrows=True,
         ),
-        # Configuración del carrusel
-        show_indicators=True,
-        infinite_loop=True,
-        emulate_touch=True,
-        show_thumbs=False,
-        auto_play=False,
-        show_arrows=True,
+        # ✨ NUEVO: Botón para abrir el lightbox ✨
+        rx.button(
+            "Ampliar Imágenes",
+            on_click=BlogPostState.open_lightbox,
+            variant="soft",
+            margin_top="1em",
+            width="100%",
+        ),
+        spacing="4",
+        width="100%",
+        max_width="600px",
+        position="relative",
     )
 
 def _info_section() -> rx.Component:
