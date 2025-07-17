@@ -12,17 +12,9 @@ ARTICLE_LIST_ROUTE = navigation.routes.ARTICLE_LIST_ROUTE
 if ARTICLE_LIST_ROUTE.endswith("/"):
     ARTICLE_LIST_ROUTE = ARTICLE_LIST_ROUTE[:-1]
 
-
 class ArticleDetailState(SessionState):
-    """Estado para la página de detalle de un artículo."""
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
-
-    # --- ✨ CORRECCIÓN 1: Renombrar la variable computada ---
-    @rx.var
-    def post_id_from_route(self) -> str:
-        """Obtiene el ID del artículo desde el parámetro 'article_id' de la URL."""
-        return self.router.page.params.get("article_id", "")
 
     @rx.var
     def imagen_actual(self) -> str:
@@ -38,9 +30,11 @@ class ArticleDetailState(SessionState):
 
     @rx.event
     def on_load(self):
+        # --- ✨ CORRECCIÓN DE SERIALIZACIÓN ✨ ---
+        # Se lee el parámetro directamente del router, no de una @rx.var
+        article_id_str = self.router.page.params.get("article_id", "")
         try:
-            # --- ✨ CORRECCIÓN 2: Usar el nuevo nombre de la variable ---
-            pid = int(self.post_id_from_route)
+            pid = int(article_id_str)
         except (ValueError, TypeError):
             return
         with rx.session() as session:
@@ -57,30 +51,19 @@ class ArticleDetailState(SessionState):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
 
-
 class ArticlePublicState(SessionState):
-    """Estado para la lista pública de artículos."""
     posts: List["BlogPostModel"] = []
     post: Optional["BlogPostModel"] = None
     limit: int = 20
 
-    @rx.var
-    def post_id(self) -> str:
-        return self.router.page.params.get("article_id", "")
-
-    @rx.var
-    def post_url(self) -> str:
-        if self.post and self.post.id is not None:
-            return f"{ARTICLE_LIST_ROUTE}/{self.post.id}"
-        return ARTICLE_LIST_ROUTE
-
     def get_post_detail(self):
+        # --- ✨ CORRECCIÓN DE SERIALIZACIÓN ✨ ---
+        post_id_str = self.router.page.params.get("article_id", "")
         try:
-            post_id_int = int(self.post_id)
+            post_id_int = int(post_id_str)
         except (ValueError, TypeError):
             self.post = None
             return
-
         lookups = (
             (BlogPostModel.publish_active == True) &
             (BlogPostModel.publish_date < datetime.now()) &

@@ -12,9 +12,7 @@ from ..models import BlogPostModel, UserInfo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# ───────────────────────────────
-# Estado para el blog del usuario (privado)
-# ───────────────────────────────
+# ... (Las clases BlogPostState, BlogAddFormState, etc. no necesitan cambios) ...
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
@@ -74,8 +72,6 @@ class BlogPostState(SessionState):
         return BLOG_POSTS_ROUTE
 
     def get_post_detail(self):
-        # --- ✨ CORRECCIÓN DE SERIALIZACIÓN ✨ ---
-        # Se lee el parámetro directamente del router, no de una @rx.var
         blog_id_str = self.router.page.params.get("blog_id", "")
         if self.my_userinfo_id is None:
             self.post = None
@@ -90,18 +86,12 @@ class BlogPostState(SessionState):
                 select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where((BlogPostModel.userinfo_id == int(self.my_userinfo_id)) & (BlogPostModel.id == post_id_int))
             ).one_or_none()
 
-# ───────────────────────────────
-# Estado para vista pública de la galería
-# ───────────────────────────────
 class BlogPublicState(SessionState):
     posts: list[BlogPostModel] = []
     def on_load(self):
         with rx.session() as session:
             self.posts = session.exec(select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
 
-# ───────────────────────────────
-# Estado para añadir publicaciones
-# ───────────────────────────────
 class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
@@ -135,9 +125,6 @@ class BlogAddFormState(SessionState):
         try: self.price = float(value)
         except ValueError: self.price = 0.0
 
-# ───────────────────────────────
-# Estado para editar publicaciones
-# ───────────────────────────────
 class BlogEditFormState(BlogPostState):
     form_title: str = ""
     form_content: str = ""
