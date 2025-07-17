@@ -141,43 +141,42 @@ def blog_public_detail_page() -> rx.Component:
 
 # --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
-        """Sección para el carrusel, ahora con on_click para el lightbox en la imagen."""
-        return rx.box(
-            rx.cond(
-                BlogViewState.post.images & (BlogViewState.post.images.length() > 0),
-                carousel(
-                    rx.foreach(
-                        BlogViewState.post.images,
-                        lambda image_url: rx.image(
-                            src=rx.get_upload_url(image_url),
-                            width="100%",
-                            height="auto",
-                            max_height="550px",
-                            object_fit="contain",
-                            # 👇 Añadimos el on_click y el cursor a la imagen
-                            on_click=BlogViewState.open_lightbox,
-                            cursor="pointer"
-                        )
-                    ),
-                    show_indicators=True,
-                    infinite_loop=True,
-                    emulate_touch=True,
-                    show_thumbs=False,
+    """Sección para el carrusel, ahora con on_click para el lightbox."""
+    return rx.box(
+        rx.cond(
+            BlogViewState.post.images & (BlogViewState.post.images.length() > 0),
+            carousel(
+                rx.foreach(
+                    BlogViewState.post.images,
+                    lambda image_url: rx.image(
+                        src=rx.get_upload_url(image_url),
+                        width="100%",
+                        height="auto",
+                        max_height="550px",
+                        object_fit="contain",
+                    )
                 ),
-                rx.image(
-                    src="/no_image.png",
-                    width="100%",
-                    height="auto",
-                    max_height="550px",
-                    object_fit="contain",
-                    border_radius="md",
-                )
+                show_indicators=True,
+                infinite_loop=True,
+                emulate_touch=True,
+                show_thumbs=False,
             ),
-            # 👇 Se elimina el on_click y cursor de este rx.box
-            width="100%",
-            max_width="600px",
-            position="relative",
-        )
+            rx.image(
+                src="/no_image.png",
+                width="100%",
+                height="auto",
+                max_height="550px",
+                object_fit="contain",
+                border_radius="md",
+            )
+        ),
+        # 👇 Añadimos el on_click y el cursor al contenedor
+        on_click=BlogViewState.open_lightbox,
+        cursor="pointer",
+        width="100%",
+        max_width="600px",
+        position="relative",
+    )
 
 def _info_section() -> rx.Component:
     return rx.vstack(
