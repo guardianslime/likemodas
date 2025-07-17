@@ -10,7 +10,7 @@ from ..navigation.state import force_reload_go_to
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar # Importamos la public_navbar unificada
-from ..ui.carousel import swiper_container, swiper_slide 
+from ..ui.carousel import swiper_container, swiper_slide
 
 # Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
 # ELIMINAMOS _detail_page_navbar() ya que usaremos public_navbar()
@@ -134,12 +134,12 @@ def blog_public_detail_page() -> rx.Component:
 # --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
     """
-    Sección para el carrusel de imágenes del post, ahora usando Swiper.
+    Sección para el carrusel de imágenes del post, usando Swiper Elements.
     """
     return rx.box(
         rx.cond(
             BlogViewState.post.images & (BlogViewState.post.images.length() > 0),
-            # Usamos el nuevo componente de carrusel
+            # Usamos el nuevo componente de carrusel basado en CDN
             swiper_container(
                 rx.foreach(
                     BlogViewState.post.images,
@@ -150,20 +150,13 @@ def _image_section() -> rx.Component:
                             height="auto",
                             max_height="550px",
                             object_fit="contain",
-                            border_radius="md",
                         )
                     )
                 ),
-                # Propiedades para configurar el carrusel
-                pagination=True, # Muestra los puntos de paginación
-                loop=True,       # Permite el desplazamiento infinito
-                allow_touch_move=True, # Permite arrastrar con el mouse
-                style={
-                    "--swiper-pagination-color": rx.color("blue", 9),
-                    "--swiper-pagination-bullet-inactive-color": rx.color("gray", 9),
-                }
+                # Puedes pasar propiedades directamente aquí
+                # pagination="true" está por defecto
             ),
-            # Mensaje si no hay imágenes, igual que antes
+            # Mensaje si no hay imágenes
             rx.image(
                 src="/no_image.png",
                 width="100%",
@@ -174,7 +167,7 @@ def _image_section() -> rx.Component:
             )
         ),
         width="100%",
-        max_width="600px", # Mantenemos el ancho máximo del diseño original 
+        max_width="600px",
         position="relative",
         border_radius="md",
         overflow="hidden"
