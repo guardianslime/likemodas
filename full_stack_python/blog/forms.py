@@ -6,20 +6,20 @@ def blog_post_add_form() -> rx.Component:
         rx.vstack(
             rx.input(
                 placeholder="Nombre del producto",
-                value=BlogAddFormState.title,
+                name="title",
                 on_change=BlogAddFormState.set_title,
                 required=True,
             ),
             rx.input(
                 placeholder="Precio",
+                name="price",
                 type="number",
-                value=str(BlogAddFormState.price),
                 on_change=BlogAddFormState.set_price_from_input,
                 required=True,
             ),
             rx.text_area(
                 placeholder="Descripción del producto",
-                value=BlogAddFormState.content,
+                name="content",
                 on_change=BlogAddFormState.set_content,
                 required=True,
             ),
@@ -62,29 +62,14 @@ def blog_post_edit_form() -> rx.Component:
         BlogEditFormState.post,
         rx.form(
             rx.vstack(
-                # ID oculto
-                rx.input(
-                    type="hidden",
-                    name="post_id",
-                    value=rx.cond(
-                        BlogEditFormState.post.id,
-                        BlogEditFormState.post.id,
-                        ""
-                    ),
-                ),
-                # Título
+                rx.input(type="hidden", name="post_id", value=BlogEditFormState.post.id),
                 rx.input(
                     name="title",
-                    value=rx.cond(
-                        BlogEditFormState.post.title,
-                        BlogEditFormState.post.title,
-                        ""
-                    ),
+                    value=BlogEditFormState.post.title,
                     placeholder="Título del Post",
                     required=True,
                     width="100%",
                 ),
-                # Precio (CORREGIDO)
                 rx.input(
                     name="price",
                     value=BlogEditFormState.price_str,
@@ -93,21 +78,15 @@ def blog_post_edit_form() -> rx.Component:
                     required=True,
                     width="100%",
                 ),
-                # Contenido
                 rx.text_area(
                     name="content",
-                    value=rx.cond(
-                        BlogEditFormState.post_content != "",
-                        BlogEditFormState.post_content,
-                        ""
-                    ),
+                    value=BlogEditFormState.post_content,
                     on_change=BlogEditFormState.set_post_content,
                     placeholder="Escribe tu contenido aquí...",
                     required=True,
                     height="40vh",
                     width="100%",
                 ),
-                # Switch para publicar
                 rx.flex(
                     rx.switch(
                         name="publish_active",
@@ -117,19 +96,23 @@ def blog_post_edit_form() -> rx.Component:
                     rx.text("Publicar"),
                     spacing="2",
                 ),
-                # Campos de fecha y hora si se publica
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                 rx.cond(
                     BlogEditFormState.post_publish_active,
                     rx.hstack(
                         rx.input(
                             name="publish_date",
                             type="date",
-                            default_value=BlogEditFormState.publish_display_date,
+                            # Se usan las nuevas variables de estado
+                            value=BlogEditFormState.publish_date_str,
+                            on_change=BlogEditFormState.set_publish_date_str,
                         ),
                         rx.input(
                             name="publish_time",
                             type="time",
-                            default_value=BlogEditFormState.publish_display_time,
+                            # Se usan las nuevas variables de estado
+                            value=BlogEditFormState.publish_time_str,
+                            on_change=BlogEditFormState.set_publish_time_str,
                         ),
                         width="100%"
                     ),

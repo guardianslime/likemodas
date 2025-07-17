@@ -12,28 +12,24 @@ from ..models import BlogPostModel, UserInfo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# ───────────────────────────────
-# Estado para el blog del usuario (privado)
-# ───────────────────────────────
+# ... (La clase BlogPostState y BlogPublicState permanecen igual) ...
+
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
 
     @rx.var
     def formatted_price(self) -> str:
-        """Devuelve el precio del post formateado como moneda."""
         if self.post and self.post.price is not None:
             return f"${self.post.price:,.2f}"
         return "$0.00"
 
     @rx.var
     def post_image_urls(self) -> list[str]:
-        """Devuelve las URLs completas de las imágenes para el carrusel."""
         if self.post and self.post.images:
             return [rx.get_upload_url(img) for img in self.post.images]
         return ["/no_image.png"]
 
-    # --- Lógica de eliminación de post e imágenes ---
     @rx.event
     def delete_post(self, post_id: int):
         if self.my_userinfo_id is None:
@@ -43,7 +39,6 @@ class BlogPostState(SessionState):
             post_to_delete = session.get(BlogPostModel, post_id)
             
             if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
-                # 1. Borrar los archivos de imagen del servidor
                 if post_to_delete.images:
                     upload_dir = rx.get_upload_dir()
                     for image_name in post_to_delete.images:
@@ -54,20 +49,16 @@ class BlogPostState(SessionState):
                         except Exception as e:
                             print(f"Error al eliminar el archivo {image_name}: {e}")
 
-                # 2. Borrar el registro de la base de datos
                 session.delete(post_to_delete)
                 session.commit()
-                # 3. Redirigir a la lista de posts
                 return rx.redirect(BLOG_POSTS_ROUTE)
             else:
                 return rx.window_alert("No tienes permiso para eliminar esta publicación.")
 
     def handle_delete_confirm(self):
-        """Llama a la eliminación después de que el usuario confirma en el diálogo."""
         if self.post:
             return self.delete_post(self.post.id)
 
-    # --- Métodos para cargar datos ---
     @rx.event
     def load_posts(self):
         if self.my_userinfo_id is None:
@@ -110,9 +101,6 @@ class BlogPostState(SessionState):
                 )
             ).one_or_none()
 
-# ───────────────────────────────
-# Estado para vista pública de la galería
-# ───────────────────────────────
 class BlogPublicState(SessionState):
     posts: list[BlogPostModel] = []
 
@@ -124,9 +112,6 @@ class BlogPublicState(SessionState):
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
-# ───────────────────────────────
-# Estado para añadir publicaciones
-# ───────────────────────────────
 class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
@@ -149,39 +134,32 @@ class BlogAddFormState(SessionState):
         self.price = value
 
     def submit(self):
-        if self.my_userinfo_id is None:
-            return rx.window_alert("Inicia sesión.")
-        try:
-            parsed_price = float(self.price)
-        except (ValueError, TypeError):
-            return rx.window_alert("Precio inválido.")
+        if self.my_userinfo_id is None: return rx.window_alert("Inicia sesión.")
+        try: parsed_price = float(self.price)
+        except (ValueError, TypeError): return rx.window_alert("Precio inválido.")
         with rx.session() as session:
             post = BlogPostModel(
-                title=self.title.strip(),
-                content=self.content.strip(),
-                price=parsed_price,
-                images=self.temp_images.copy(),
-                userinfo_id=int(self.my_userinfo_id),
-                publish_active=True,
-                publish_date=datetime.now()
+                title=self.title.strip(), content=self.content.strip(), price=parsed_price,
+                images=self.temp_images.copy(), userinfo_id=int(self.my_userinfo_id),
+                publish_active=True, publish_date=datetime.now()
             )
             session.add(post)
             session.commit()
         return rx.redirect("/blog")
 
     def set_price_from_input(self, value: str):
-        try:
-            self.price = float(value)
-        except ValueError:
-            self.price = 0.0
+        try: self.price = float(value)
+        except ValueError: self.price = 0.0
 
-# ───────────────────────────────
-# Estado para editar publicaciones
-# ───────────────────────────────
+# --- ✨ CORRECCIONES EN ESTA CLASE ✨ ---
 class BlogEditFormState(BlogPostState):
     post_content: str = ""
     post_publish_active: bool = False
     price_str: str = "0.0"
+
+    # 1. Se añaden variables de estado para la fecha y hora
+    publish_date_str: str = ""
+    publish_time_str: str = ""
 
     def on_load_edit(self):
         self.get_post_detail()
@@ -189,6 +167,19 @@ class BlogEditFormState(BlogPostState):
             self.post_content = self.post.content or ""
             self.post_publish_active = self.post.publish_active
             self.price_str = str(self.post.price or "0.0")
+            
+            # 2. Se llenan las variables de estado con los valores del post o la fecha actual
+            if self.post.publish_date:
+                self.publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
+                self.publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
+            else:
+                now = datetime.now()
+                self.publish_date_str = now.strftime("%Y-%m-%d")
+                self.publish_time_str = now.strftime("%H:%M:%S")
+
+    # 3. Se eliminan las variables computadas (@rx.var) que causaban el error
+    # @rx.var publish_display_date
+    # @rx.var publish_display_time
 
     def set_price(self, value: str):
         self.price_str = value
@@ -217,9 +208,6 @@ class BlogEditFormState(BlogPostState):
                 session.commit()
         return rx.redirect(self.blog_post_url)
 
-# ───────────────────────────────
-# Estado para la vista pública de un post
-# ───────────────────────────────
 class BlogViewState(SessionState):
     post: Optional[BlogPostModel] = None
 
