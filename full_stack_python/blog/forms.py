@@ -62,57 +62,49 @@ def blog_post_edit_form() -> rx.Component:
         BlogEditFormState.post,
         rx.form(
             rx.vstack(
-                rx.input(type="hidden", name="post_id", value=BlogEditFormState.post.id),
+                # --- ✨ CORRECCIONES EN TODO EL FORMULARIO ✨ ---
+                # Cada campo ahora está vinculado a su propia variable de estado
                 rx.input(
                     name="title",
-                    value=BlogEditFormState.post.title,
+                    value=BlogEditFormState.form_title,
+                    on_change=BlogEditFormState.set_form_title,
                     placeholder="Título del Post",
-                    required=True,
-                    width="100%",
+                    required=True, width="100%",
                 ),
                 rx.input(
                     name="price",
-                    value=BlogEditFormState.price_str,
-                    on_change=BlogEditFormState.set_price,
+                    value=BlogEditFormState.form_price_str,
+                    on_change=BlogEditFormState.set_form_price_str,
                     placeholder="Precio",
-                    required=True,
-                    width="100%",
+                    required=True, width="100%",
                 ),
                 rx.text_area(
                     name="content",
-                    value=BlogEditFormState.post_content,
-                    on_change=BlogEditFormState.set_post_content,
+                    value=BlogEditFormState.form_content,
+                    on_change=BlogEditFormState.set_form_content,
                     placeholder="Escribe tu contenido aquí...",
-                    required=True,
-                    height="40vh",
-                    width="100%",
+                    required=True, height="40vh", width="100%",
                 ),
                 rx.flex(
                     rx.switch(
-                        name="publish_active",
-                        is_checked=BlogEditFormState.post_publish_active,
-                        on_change=BlogEditFormState.set_post_publish_active,
+                        is_checked=BlogEditFormState.form_publish_active,
+                        on_change=BlogEditFormState.set_form_publish_active,
                     ),
                     rx.text("Publicar"),
                     spacing="2",
                 ),
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                 rx.cond(
-                    BlogEditFormState.post_publish_active,
+                    BlogEditFormState.form_publish_active,
                     rx.hstack(
                         rx.input(
-                            name="publish_date",
                             type="date",
-                            # Se usan las nuevas variables de estado
-                            value=BlogEditFormState.publish_date_str,
-                            on_change=BlogEditFormState.set_publish_date_str,
+                            value=BlogEditFormState.form_publish_date_str,
+                            on_change=BlogEditFormState.set_form_publish_date_str,
                         ),
                         rx.input(
-                            name="publish_time",
                             type="time",
-                            # Se usan las nuevas variables de estado
-                            value=BlogEditFormState.publish_time_str,
-                            on_change=BlogEditFormState.set_publish_time_str,
+                            value=BlogEditFormState.form_publish_time_str,
+                            on_change=BlogEditFormState.set_form_publish_time_str,
                         ),
                         width="100%"
                     ),
