@@ -2,11 +2,18 @@ import reflex as rx
 import os
 
 # --- URLs de la aplicación ---
+# URL del backend donde corre la API de Reflex
 API_URL = "https://full-stack-python-production.up.railway.app"
+
+# URL principal del frontend desplegado en Vercel
 DEPLOY_URL = "https://full-stack-python.vercel.app"
+
+# URL de preview que causaba el error
 PREVIEW_URL = "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app"
 
+
 # --- Lista de orígenes permitidos por defecto ---
+# Incluye localhost, la URL de la API y las URLs de Vercel
 default_origins = [
     "http://localhost:3000",
     API_URL,
@@ -14,7 +21,11 @@ default_origins = [
     PREVIEW_URL,
 ]
 
+# Lee orígenes adicionales desde las variables de entorno, si existen
 additional_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+
+# Combina y limpia la lista final de orígenes
+# Se eliminan espacios en blanco y entradas vacías
 cors_allowed_origins = list(
     {
         origen.strip()
@@ -23,26 +34,11 @@ cors_allowed_origins = list(
     }
 )
 
+
 config = rx.Config(
     app_name="full_stack_python",
     show_built_with_reflex=False,
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
-
-    # --- ✨ LÍNEAS ESENCIALES PARA EL CARRUSEL Y TEMA ✨ ---
-    stylesheets=[
-        "https://unpkg.com/swiper/swiper-bundle.min.css",
-    ],
-    scripts=[
-        "https://unpkg.com/swiper/swiper-bundle.min.js",
-    ],
-    theme=rx.theme(
-        appearance="dark",
-        has_background=True,
-        panel_background="solid",
-        scaling="90%",
-        radius="medium",
-        accent_color="sky"
-    )
 )

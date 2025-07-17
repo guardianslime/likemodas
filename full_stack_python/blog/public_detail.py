@@ -1,3 +1,5 @@
+# full_stack_python/blog/public_detail.py (CÓDIGO CORREGIDO Y COMPLETO)
+
 import reflex as rx
 import reflex_local_auth
 from..navigation.state import NavState
@@ -7,13 +9,10 @@ from ..navigation.device import NavDeviceState
 from ..navigation.state import force_reload_go_to
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
-from ..ui.nav import public_navbar
+from ..ui.nav import public_navbar # Importamos la public_navbar unificada
 
-# --- Se importa el componente de carrusel ---
-from ..ui.carousel import swiper_carousel
-
-
-# Esta función se mantiene según tu estructura original.
+# Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
+# ELIMINAMOS _detail_page_navbar() ya que usaremos public_navbar()
 def _detail_page_navbar() -> rx.Component:
     """
     Una barra de navegación local que ahora es visual y funcionalmente idéntica
@@ -28,6 +27,9 @@ def _detail_page_navbar() -> rx.Component:
                         rx.button(rx.icon("menu", size=24), variant="soft", size="3")
                     ),
                     rx.menu.content(
+                        # --- CAMBIO 1: Lógica de Navegación Unificada ---
+                        # Se reemplaza `force_reload_go_to` por los métodos de `NavState`
+                        # para lograr una navegación SPA fluida y consistente.
                         rx.menu.item("Home", on_click=NavState.to_home),
                         rx.menu.item("Productos", on_click=NavState.to_pulic_galeri),
                         rx.menu.item("Pricing", on_click=NavState.to_pricing),
@@ -52,13 +54,18 @@ def _detail_page_navbar() -> rx.Component:
                 height=["2.5em", "2.8em", "3em", "3.3em"],
                 padding_x="4",
                 border_radius="full",
+                # --- CAMBIO 2: Corrección del Borde ---
+                # Se añade `border_width` para resolver el fallo visual de "reducción de grosor".
                 border_width="1px",
+                # --- CAMBIO 3: Alineación del Tamaño de Fuente ---
+                # Se añade `font_size` responsivo para una paridad visual completa.
                 font_size=rx.breakpoints(sm="2", md="3", lg="3"),
             ),
             justify="between",
             align="center",
             width="100%",
         ),
+        # Estilos del contenedor principal, ahora idénticos a `public_navbar`
         position="fixed",
         top="0",
         left="0",
@@ -66,20 +73,21 @@ def _detail_page_navbar() -> rx.Component:
         width="100%",
         padding="0.75rem 1rem",
         z_index="99",
+        # --- CAMBIO 4: Estandarización del Fondo ---
+        # Se utilizan los mismos valores de `public_navbar` para una apariencia perfecta.
         bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
         style={"backdrop_filter": "blur(10px)"},
         on_mount=NavDeviceState.on_mount,
     )
 
-# Esta función se mantiene según tu estructura original.
 def standalone_public_layout(child: rx.Component) -> rx.Component:
     """Layout autónomo que usa la navbar local."""
     return rx.fragment(
-        public_navbar(), 
+        public_navbar(), # <--- CAMBIO: Ahora usa la public_navbar unificada
         rx.box(
             child,
             padding_y="2em",
-            padding_top="6rem",
+            padding_top="6rem", # Asegura el padding correcto para la navbar fija
             width="100%",
             margin="0 auto",
         ),
@@ -90,21 +98,23 @@ def standalone_public_layout(child: rx.Component) -> rx.Component:
 def blog_public_detail_page() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
     
+    # Este es el contenido principal de la página (la imagen y la información).
     content_grid = rx.cond(
         BlogViewState.has_post,
         rx.grid(
-            # --- ✨ CORRECCIÓN AQUÍ: Se pasa un ID único al carrusel ✨ ---
-            swiper_carousel(image_urls=BlogViewState.post_image_urls, carousel_id="public-detail-page"),
+            _image_section(),
             _info_section(),
             columns={"base": "1", "md": "2"},
             spacing="4",
             align_items="start",
             width="100%",
-            max_width="1120px",
+            max_width="1120px", # Se añade un ancho máximo
         ),
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
+    # ✨ CAMBIO: Se envuelve el contenido en una estructura centrada con título.
+    # Esto imita el layout de la página de la galería.
     page_content = rx.center(
         rx.vstack(
             rx.heading("Detalle del Producto", size="8", margin_bottom="1em"),
@@ -120,10 +130,30 @@ def blog_public_detail_page() -> rx.Component:
     return standalone_public_layout(page_content)
 
 
-# --- Se elimina la función _image_section ya que fue reemplazada por el carrusel ---
-# (Esta sección ya estaba eliminada en el código que me pasaste, lo cual es correcto)
+# --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
+def _image_section() -> rx.Component:
+    return rx.box(
+        rx.image(
+            src=rx.cond(
+                BlogViewState.imagen_actual != "",
+                rx.get_upload_url(BlogViewState.imagen_actual),
+                "/no_image.png"
+            ),
+            width="100%",
+            height="auto",
+            max_height="550px",
+            object_fit="contain",
+            border_radius="md",
+        ),
+        rx.icon(tag="arrow_big_left", position="absolute", left="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogViewState.anterior_imagen, cursor="pointer", box_size="2em"),
+        rx.icon(tag="arrow_big_right", position="absolute", right="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogViewState.siguiente_imagen, cursor="pointer", box_size="2em"),
+        width="100%",
+        max_width="600px",
+        position="relative",
+        border_radius="md",
+        overflow="hidden"
+    )
 
-# Esta función se mantiene según tu estructura original.
 def _info_section() -> rx.Component:
     return rx.vstack(
         rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),

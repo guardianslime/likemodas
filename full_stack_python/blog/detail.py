@@ -2,8 +2,6 @@ import reflex as rx
 from ..ui.base import base_page
 from .state import BlogPostState
 from .notfound import blog_post_not_found
-# Se importa el nuevo componente de carrusel
-from ..ui.carousel import swiper_carousel
 
 # --- Componentes visuales (copiados y adaptados de articles/detail.py) ---
 def _image_section() -> rx.Component:
@@ -37,29 +35,13 @@ def _info_section() -> rx.Component:
         rx.text(BlogPostState.formatted_price, size="6", color="gray", text_align="left"),
         rx.text(BlogPostState.post.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
         rx.spacer(),
+        # --- ✨ Botones de Acción ✨ ---
         rx.hstack(
             rx.link(rx.button("Editar Post", variant="soft"), href=BlogPostState.blog_post_edit_url),
-            rx.alert_dialog.root(
-                rx.alert_dialog.trigger(
-                    rx.button("Eliminar Post", color_scheme="red")
-                ),
-                rx.alert_dialog.content(
-                    rx.alert_dialog.title("Confirmar Eliminación"),
-                    rx.alert_dialog.description(
-                        "¿Estás seguro de que quieres eliminar esta publicación? Esta acción es irreversible."
-                    ),
-                    rx.flex(
-                        rx.alert_dialog.cancel(
-                            rx.button("Cancelar", variant="soft", color_scheme="gray"),
-                        ),
-                        rx.alert_dialog.action(
-                            rx.button("Sí, eliminar", color_scheme="red", on_click=BlogPostState.handle_delete_confirm),
-                        ),
-                        spacing="3",
-                        margin_top="1em",
-                        justify="end",
-                    ),
-                ),
+            rx.button(
+                "Eliminar Post",
+                color_scheme="red",
+                on_click=BlogPostState.delete_post(BlogPostState.post.id)
             ),
             spacing="4",
             margin_top="2em"
@@ -69,15 +51,13 @@ def _info_section() -> rx.Component:
         width="100%",
     )
 
-
 # --- Página de Detalle de Post para usuarios logueados ---
 def blog_post_detail_page() -> rx.Component:
-    """Página de detalle con el nuevo carrusel y diálogo de borrado."""
+    """Página que muestra el detalle de un post del usuario, con el nuevo diseño."""
     content_grid = rx.cond(
         BlogPostState.post,
         rx.grid(
-            # --- ✨ CORRECCIÓN: Se pasa un ID único al carrusel ✨ ---
-            swiper_carousel(image_urls=BlogPostState.post_image_urls, carousel_id="blog-detail-page"),
+            _image_section(),
             _info_section(),
             columns={"base": "1", "md": "2"},
             spacing="4",
