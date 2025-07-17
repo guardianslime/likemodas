@@ -12,7 +12,9 @@ from ..models import BlogPostModel, UserInfo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# ... (Las clases BlogPostState y BlogPublicState no necesitan cambios) ...
+# ───────────────────────────────
+# Estado para el blog del usuario (privado)
+# ───────────────────────────────
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
@@ -66,21 +68,20 @@ class BlogPostState(SessionState):
             ).all()
 
     @rx.var
-    def blog_post_id(self) -> str:
-        return self.router.page.params.get("blog_id", "")
-
-    @rx.var
     def blog_post_edit_url(self) -> str:
         if self.post and self.post.id is not None:
             return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
         return BLOG_POSTS_ROUTE
 
     def get_post_detail(self):
+        # --- ✨ CORRECCIÓN DE SERIALIZACIÓN ✨ ---
+        # Se lee el parámetro directamente del router, no de una @rx.var
+        blog_id_str = self.router.page.params.get("blog_id", "")
         if self.my_userinfo_id is None:
             self.post = None
             return
         try:
-            post_id_int = int(self.blog_post_id)
+            post_id_int = int(blog_id_str)
         except (ValueError, TypeError):
             self.post = None
             return
@@ -89,12 +90,18 @@ class BlogPostState(SessionState):
                 select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)).where((BlogPostModel.userinfo_id == int(self.my_userinfo_id)) & (BlogPostModel.id == post_id_int))
             ).one_or_none()
 
+# ───────────────────────────────
+# Estado para vista pública de la galería
+# ───────────────────────────────
 class BlogPublicState(SessionState):
     posts: list[BlogPostModel] = []
     def on_load(self):
         with rx.session() as session:
             self.posts = session.exec(select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
 
+# ───────────────────────────────
+# Estado para añadir publicaciones
+# ───────────────────────────────
 class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
@@ -128,26 +135,23 @@ class BlogAddFormState(SessionState):
         try: self.price = float(value)
         except ValueError: self.price = 0.0
 
-# --- ✨ CORRECCIONES PRINCIPALES EN ESTA CLASE ✨ ---
+# ───────────────────────────────
+# Estado para editar publicaciones
+# ───────────────────────────────
 class BlogEditFormState(BlogPostState):
-    # Variables de estado separadas para cada campo del formulario
     form_title: str = ""
     form_content: str = ""
     form_price_str: str = "0.0"
     form_publish_active: bool = False
     form_publish_date_str: str = ""
     form_publish_time_str: str = ""
-
     def on_load_edit(self):
-        """Carga los datos del post y los prepara para el formulario."""
         self.get_post_detail()
         if self.post:
-            # Llena las variables del formulario con los datos del post cargado
             self.form_title = self.post.title or ""
             self.form_content = self.post.content or ""
             self.form_price_str = str(self.post.price or "0.0")
             self.form_publish_active = self.post.publish_active
-            
             if self.post.publish_date:
                 self.form_publish_date_str = self.post.publish_date.strftime("%Y-%m-%d")
                 self.form_publish_time_str = self.post.publish_date.strftime("%H:%M:%S")
@@ -155,34 +159,23 @@ class BlogEditFormState(BlogPostState):
                 now = datetime.now()
                 self.form_publish_date_str = now.strftime("%Y-%m-%d")
                 self.form_publish_time_str = now.strftime("%H:%M:%S")
-
-    # Setters para que los componentes del formulario sean "controlados"
     def set_form_title(self, value: str): self.form_title = value
     def set_form_content(self, value: str): self.form_content = value
     def set_form_price_str(self, value: str): self.form_price_str = value
     def set_form_publish_active(self, value: bool): self.form_publish_active = value
     def set_form_publish_date_str(self, value: str): self.form_publish_date_str = value
     def set_form_publish_time_str(self, value: str): self.form_publish_time_str = value
-
     def handle_submit(self):
-        """Maneja el envío del formulario usando las variables de estado."""
-        if not self.post:
-            return rx.window_alert("No se ha cargado ningún post para editar.")
-
+        if not self.post: return rx.window_alert("No se ha cargado ningún post para editar.")
         post_id = self.post.id
         final_publish_date = None
-        
         if self.form_publish_active and self.form_publish_date_str and self.form_publish_time_str:
             try:
                 dt_str = f"{self.form_publish_date_str} {self.form_publish_time_str}"
                 final_publish_date = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
             except ValueError: pass
-
-        try:
-            price_val = float(self.form_price_str)
-        except ValueError:
-            return rx.window_alert("Precio inválido.")
-            
+        try: price_val = float(self.form_price_str)
+        except ValueError: return rx.window_alert("Precio inválido.")
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, post_id)
             if post_to_update:
@@ -193,35 +186,42 @@ class BlogEditFormState(BlogPostState):
                 post_to_update.publish_date = final_publish_date
                 session.add(post_to_update)
                 session.commit()
-        
-        return rx.redirect(self.blog_post_url)
+        return rx.redirect(self.blog_post_edit_url)
 
+# ───────────────────────────────
+# Estado para la vista pública de un post
+# ───────────────────────────────
 class BlogViewState(SessionState):
     post: Optional[BlogPostModel] = None
-    @rx.var
-    def post_id(self) -> str:
-        return self.router.page.params.get("blog_public_id", "")
+
     @rx.var
     def post_image_urls(self) -> list[str]:
         if self.post and self.post.images:
             return [rx.get_upload_url(img) for img in self.post.images]
         return ["/no_image.png"]
+
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
             return f"${self.post.price:,.2f}"
         return "$0.00"
+
     @rx.var
     def content(self) -> str:
         if self.post and self.post.content:
             return self.post.content
         return ""
+
     @rx.var
     def has_post(self) -> bool:
         return self.post is not None
+
     def on_load(self):
+        # --- ✨ CORRECCIÓN DE SERIALIZACIÓN ✨ ---
+        # Se lee el parámetro directamente del router, no de una @rx.var
+        post_id_str = self.router.page.params.get("blog_public_id", "")
         try:
-            pid = int(self.post_id)
+            pid = int(post_id_str)
         except (ValueError, TypeError):
             self.post = None
             return
