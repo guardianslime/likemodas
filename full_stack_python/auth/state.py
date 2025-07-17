@@ -36,6 +36,11 @@ class SessionState(reflex_local_auth.LocalAuthState):
                 )
             ).one_or_none()
             return result
+        
+    @rx.var
+    def api_url_base(self) -> str:
+        """Devuelve la URL base de la API, eliminando /api al final si existe."""
+        return self.router.api_url.replace("/api", "")
 
     def on_load(self):
         if not self.is_authenticated:

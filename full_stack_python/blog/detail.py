@@ -7,32 +7,32 @@ from ..ui.lightbox import lightbox
 
 # --- Componentes visuales (copiados y adaptados de articles/detail.py) ---
 def _image_section() -> rx.Component:
-    """Sección para el carrusel de imágenes del post, usando react-responsive-carousel."""
+    """Sección para el carrusel de imágenes del post."""
     return rx.box(
         rx.cond(
             BlogPostState.post.images & (BlogPostState.post.images.length() > 0),
-            # Usamos el nuevo componente 'carousel'
             carousel(
                 rx.foreach(
                     BlogPostState.post.images,
-                    # Cada imagen es un hijo directo del carrusel
                     lambda image_url: rx.image(
                         src=rx.get_upload_url(image_url),
                         width="100%",
                         height="auto",
                         max_height="550px",
                         object_fit="contain",
+                        # ✨ CORRECCIÓN: El clic está solo en la imagen
+                        on_click=BlogPostState.open_lightbox,
+                        cursor="pointer",
                     )
                 ),
-                # Configuramos el carrusel
                 show_indicators=True,
                 infinite_loop=True,
-                emulate_touch=True, # Clave para que funcione con el mouse
+                emulate_touch=True,
                 show_thumbs=False,
-                # ✨ AÑADE ESTA LÍNEA PARA DESACTIVAR LA REPRODUCCIÓN AUTOMÁTICA ✨
                 auto_play=False,
+                show_arrows=True,
             ),
-            # Mensaje si no hay imágenes
+            # Imagen por defecto si no hay ninguna
             rx.image(
                 src="/no_image.png",
                 width="100%",
@@ -76,12 +76,8 @@ def blog_post_detail_page() -> rx.Component:
     content_grid = rx.cond(
         BlogPostState.post,
         rx.grid(
-            # 👇 Añadimos un on_click al contenedor de la imagen
-            rx.box(
-                _image_section(),
-                on_click=BlogPostState.open_lightbox,
-                cursor="pointer"
-            ),
+            # ✨ CORRECCIÓN: El rx.box ya no tiene el on_click
+            _image_section(),
             _info_section(),
             columns={"base": "1", "md": "2"},
             spacing="4",

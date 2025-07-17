@@ -36,6 +36,24 @@ class BlogPostState(SessionState):
             return f"${self.post.price:,.2f}"
         return "$0.00"
 
+    is_lightbox_open: bool = False
+    
+    @rx.var
+    def lightbox_slides(self) -> list[dict]:
+        """Prepara las imágenes con URLs absolutas para el lightbox."""
+        if not self.post or not self.post.images:
+            return []
+        # ✨ CORRECCIÓN: Usamos api_url_base para crear una URL absoluta.
+        return [{"src": f"{self.api_url_base}{rx.get_upload_url(img)}"} for img in self.post.images]
+
+    @rx.event
+    def open_lightbox(self):
+        self.is_lightbox_open = True
+
+    @rx.event
+    def close_lightbox(self):
+        self.is_lightbox_open = False
+
     @rx.event
     def siguiente_imagen(self):
         """Avanza a la siguiente imagen en el carrusel."""
@@ -300,20 +318,21 @@ class BlogViewState(SessionState):
         return self.post is not None
     
     is_lightbox_open: bool = False
-
+    
     @rx.var
     def lightbox_slides(self) -> list[dict]:
-        """Prepara las imágenes para el formato que necesita el lightbox."""
+        """Prepara las imágenes con URLs absolutas para el lightbox."""
         if not self.post or not self.post.images:
             return []
-        return [{"src": rx.get_upload_url(img)} for img in self.post.images]
+        # ✨ CORRECCIÓN: Usamos api_url_base para crear una URL absoluta.
+        return [{"src": f"{self.api_url_base}{rx.get_upload_url(img)}"} for img in self.post.images]
 
+    @rx.event
     def open_lightbox(self):
-        """Abre la vista ampliada de las imágenes."""
         self.is_lightbox_open = True
 
+    @rx.event
     def close_lightbox(self):
-        """Cierra la vista ampliada."""
         self.is_lightbox_open = False
 
     @rx.event
