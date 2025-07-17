@@ -10,7 +10,6 @@ from ..ui.lightbox import lightbox
 def _image_section() -> rx.Component:
     """Sección para el carrusel de imágenes y el botón para ampliar."""
     return rx.vstack(
-        # El carrusel de siempre, pero sin eventos de clic en las imágenes
         carousel(
             rx.foreach(
                 BlogPostState.post.images,
@@ -20,10 +19,8 @@ def _image_section() -> rx.Component:
                     height="auto",
                     max_height="550px",
                     object_fit="contain",
-                    # ✨ CORRECCIÓN: Se eliminó on_click y cursor de aquí
                 )
             ),
-            # --- Configuración del carrusel ---
             show_indicators=True,
             infinite_loop=True,
             emulate_touch=True,
@@ -31,7 +28,7 @@ def _image_section() -> rx.Component:
             auto_play=False,
             show_arrows=True,
         ),
-        # ✨ NUEVO: Botón para abrir el lightbox ✨
+        # Botón para abrir el lightbox
         rx.button(
             "Ampliar Imágenes",
             on_click=BlogPostState.open_lightbox,
@@ -72,7 +69,6 @@ def blog_post_detail_page() -> rx.Component:
     content_grid = rx.cond(
         BlogPostState.post,
         rx.grid(
-            # El contenedor ya no tiene el on_click
             _image_section(),
             _info_section(),
             columns={"base": "1", "md": "2"},
@@ -97,7 +93,6 @@ def blog_post_detail_page() -> rx.Component:
                 ),
                 width="100%",
             ),
-            # El componente lightbox está aquí para mostrarse cuando se active
             lightbox(
                 open=BlogPostState.is_lightbox_open,
                 close=BlogPostState.close_lightbox,

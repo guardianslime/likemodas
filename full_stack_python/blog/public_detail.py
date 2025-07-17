@@ -108,7 +108,6 @@ def standalone_public_layout(child: rx.Component) -> rx.Component:
 def _image_section() -> rx.Component:
     """Sección para el carrusel y el botón para ampliar en la vista pública."""
     return rx.vstack(
-        # El carrusel de siempre, pero sin eventos de clic en las imágenes
         carousel(
             rx.foreach(
                 BlogViewState.post.images,
@@ -118,17 +117,15 @@ def _image_section() -> rx.Component:
                     height="auto",
                     max_height="550px",
                     object_fit="contain",
-                    # ✨ CORRECCIÓN: Se eliminó on_click y cursor de aquí
                 )
             ),
-            # --- Configuración del carrusel ---
             show_indicators=True,
             infinite_loop=True,
             emulate_touch=True,
             show_thumbs=False,
             show_arrows=True,
         ),
-        # ✨ NUEVO: Botón para abrir el lightbox ✨
+        # Botón para abrir el lightbox
         rx.button(
             "Ampliar Imágenes",
             on_click=BlogViewState.open_lightbox,
@@ -157,7 +154,6 @@ def blog_public_detail_page() -> rx.Component:
     content_grid = rx.cond(
         BlogViewState.has_post,
         rx.grid(
-            # El contenedor ya no tiene el on_click
             _image_section(),
             _info_section(),
             columns={"base": "1", "md": "2"},
@@ -181,7 +177,6 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
     )
     
-    # Envolvemos el contenido con el layout y añadimos el lightbox
     return public_layout(
         rx.fragment(
             page_content,

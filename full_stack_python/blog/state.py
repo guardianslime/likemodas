@@ -12,38 +12,22 @@ from ..models import BlogPostModel, UserInfo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# ───────────────────────────────
-# Estado privado (mis publicaciones)
-# ───────────────────────────────
-
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
-    img_idx: int = 0
-
-    # --- ✨ NUEVOS MÉTODOS Y VARS AÑADIDOS ✨ ---
-    @rx.var
-    def imagen_actual(self) -> str:
-        """Devuelve la URL de la imagen actual para el carrusel."""
-        if self.post and self.post.images and len(self.post.images) > self.img_idx:
-            return self.post.images[self.img_idx]
-        return ""
 
     @rx.var
     def formatted_price(self) -> str:
-        """Devuelve el precio del post formateado como moneda."""
         if self.post and self.post.price is not None:
             return f"${self.post.price:,.2f}"
         return "$0.00"
-
+        
     is_lightbox_open: bool = False
     
     @rx.var
     def lightbox_slides(self) -> list[dict]:
-        """Prepara las imágenes con URLs absolutas para el lightbox."""
         if not self.post or not self.post.images:
             return []
-        # ✨ CORRECCIÓN: Usamos api_url_base para crear una URL absoluta.
         return [{"src": f"{self.api_url_base}{rx.get_upload_url(img)}"} for img in self.post.images]
 
     @rx.event
@@ -55,21 +39,7 @@ class BlogPostState(SessionState):
         self.is_lightbox_open = False
 
     @rx.event
-    def siguiente_imagen(self):
-        """Avanza a la siguiente imagen en el carrusel."""
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx + 1) % len(self.post.images)
-
-    @rx.event
-    def anterior_imagen(self):
-        """Retrocede a la imagen anterior en el carrusel."""
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
-    # --- FIN DE CAMBIOS ---
-
-    @rx.event
     def delete_post(self, post_id: int):
-        """Elimina una publicación de la base de datos y recarga la lista."""
         if self.my_userinfo_id is None:
             return rx.window_alert("No estás autenticado.")
         
@@ -106,23 +76,6 @@ class BlogPostState(SessionState):
         if self.post and self.post.id is not None:
             return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
         return BLOG_POSTS_ROUTE
-    
-    is_lightbox_open: bool = False
-
-    @rx.var
-    def lightbox_slides(self) -> list[dict]:
-        """Prepara las imágenes para el formato que necesita el lightbox."""
-        if not self.post or not self.post.images:
-            return []
-        return [{"src": rx.get_upload_url(img)} for img in self.post.images]
-
-    def open_lightbox(self):
-        """Abre la vista ampliada de las imágenes."""
-        self.is_lightbox_open = True
-
-    def close_lightbox(self):
-        """Cierra la vista ampliada."""
-        self.is_lightbox_open = False
 
     def get_post_detail(self):
         if self.my_userinfo_id is None:
@@ -146,12 +99,6 @@ class BlogPostState(SessionState):
                     (BlogPostModel.id == post_id_int)
                 )
             ).one_or_none()
-        # Reiniciamos el índice de la imagen al cargar un nuevo post
-        self.img_idx = 0
-
-# ───────────────────────────────
-# Estado para vista pública
-# ───────────────────────────────
 
 class BlogPublicState(SessionState):
     posts: list[BlogPostModel] = []
@@ -163,12 +110,6 @@ class BlogPublicState(SessionState):
                 .where(BlogPostModel.publish_active == True)
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
-
-
-
-# ───────────────────────────────
-# Estado para añadir publicaciones
-# ───────────────────────────────
 
 class BlogAddFormState(SessionState):
     title: str = ""
@@ -202,7 +143,7 @@ class BlogAddFormState(SessionState):
 
         try:
             parsed_price = float(self.price)
-        except ValueError:
+        except (ValueError, TypeError):
             return rx.window_alert("Precio inválido.")
 
         with rx.session() as session:
@@ -228,9 +169,9 @@ class BlogAddFormState(SessionState):
     @rx.event
     def set_price_from_input(self, value: str):
         try:
-            self.price = float(value)
+            self.price = value if value else "0"
         except ValueError:
-            self.price = 0.0
+            self.price = "0"
 
 class BlogEditFormState(BlogPostState):
     post_content: str = ""
@@ -241,6 +182,7 @@ class BlogEditFormState(BlogPostState):
         if self.post:
             self.post_content = self.post.content or ""
             self.post_publish_active = self.post.publish_active
+            self.price_str = str(self.post.price or "0.0")
 
     @rx.var
     def publish_display_date(self) -> str:
@@ -262,8 +204,6 @@ class BlogEditFormState(BlogPostState):
 
     def handle_submit(self, form_data: dict):
         post_id = int(form_data.pop("post_id", 0))
-
-        # Parsear fecha/hora
         final_publish_date = None
         if form_data.get("publish_date") and form_data.get("publish_time"):
             try:
@@ -271,8 +211,6 @@ class BlogEditFormState(BlogPostState):
                 final_publish_date = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
             except ValueError:
                 pass
-
-        # Validar precio
         try:
             form_data["price"] = float(self.price_str)
         except ValueError:
@@ -281,25 +219,14 @@ class BlogEditFormState(BlogPostState):
         form_data["publish_active"] = form_data.get("publish_active") == "on"
         form_data["publish_date"] = final_publish_date
         form_data.pop("publish_time", None)
-
-        self._save_post_edits_to_db(post_id, form_data)
-        return rx.redirect(self.blog_post_url)
-
+        return rx.redirect(self.blog_post_edit_url)
 
 class BlogViewState(SessionState):
     post: Optional[BlogPostModel] = None
-    img_idx: int = 0
 
     @rx.var
     def post_id(self) -> str:
-        # ✅ Código mejorado para obtener el ID de forma segura
         return self.router.page.params.get("blog_public_id", "")
-
-    @rx.var
-    def imagen_actual(self) -> str:
-        if self.post and self.post.images and len(self.post.images) > self.img_idx:
-            return self.post.images[self.img_idx]
-        return ""
 
     @rx.var
     def formatted_price(self) -> str:
@@ -316,15 +243,13 @@ class BlogViewState(SessionState):
     @rx.var
     def has_post(self) -> bool:
         return self.post is not None
-    
+        
     is_lightbox_open: bool = False
     
     @rx.var
     def lightbox_slides(self) -> list[dict]:
-        """Prepara las imágenes con URLs absolutas para el lightbox."""
         if not self.post or not self.post.images:
             return []
-        # ✨ CORRECCIÓN: Usamos api_url_base para crear una URL absoluta.
         return [{"src": f"{self.api_url_base}{rx.get_upload_url(img)}"} for img in self.post.images]
 
     @rx.event
@@ -343,14 +268,3 @@ class BlogViewState(SessionState):
             return
         with rx.session() as session:
             self.post = session.get(BlogPostModel, pid)
-        self.img_idx = 0
-
-    @rx.event
-    def siguiente_imagen(self):
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx + 1) % len(self.post.images)
-
-    @rx.event
-    def anterior_imagen(self):
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
