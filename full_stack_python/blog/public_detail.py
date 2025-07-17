@@ -62,7 +62,7 @@ def _image_section() -> rx.Component:
         tag="div",
         children=[
             rx.box(
-                children=[
+                children=[  # 👈 solo usamos children aquí
                     rx.image(
                         src=image_src,
                         width="100%",
