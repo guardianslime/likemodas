@@ -1,25 +1,30 @@
-# full_stack_python/ui/carousel.py (VERSIÓN FINAL CON CDN)
+# full_stack_python/ui/carousel.py (VERSIÓN FINAL CON rx.el.component)
 
 import reflex as rx
 
 def swiper_container(*children, **props):
     """
-    Crea un contenedor de carrusel usando el tag <swiper-container> de la CDN.
-    Reflex convierte rx.el.lo_que_sea en una etiqueta HTML <lo-que-sea>.
+    Crea un contenedor de carrusel usando el tag <swiper-container>.
+    Se utiliza rx.el.component(tag="...") para crear etiquetas con guiones.
     """
-    return rx.el.swiper_container(
+    # ✨ CORRECCIÓN: Usamos rx.el.component para crear la etiqueta con guion.
+    return rx.el.component(
+        tag="swiper-container",
         *children,
-        # Propiedades por defecto para el carrusel.
-        # Se pasan como strings porque son atributos HTML.
+        # Propiedades por defecto para el carrusel
         pagination="true",
-        navigation="false", # Las flechas de navegación están desactivadas
+        navigation="false",
         loop="true",
-        # Permite que se pasen otras propiedades personalizadas.
         **props,
     )
 
 def swiper_slide(*children, **props):
     """
-    Crea una diapositiva del carrusel usando el tag <swiper-slide> de la CDN.
+    Crea una diapositiva del carrusel usando el tag <swiper-slide>.
     """
-    return rx.el.swiper_slide(*children, **props)
+    # ✨ CORRECCIÓN: Usamos rx.el.component para crear la etiqueta con guion.
+    return rx.el.component(
+        tag="swiper-slide",
+        *children,
+        **props
+    )
