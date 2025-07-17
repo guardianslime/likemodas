@@ -9,7 +9,7 @@ from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar
 
-# --- ✨ NUEVO: Se importa el componente de carrusel ---
+# --- Se importa el componente de carrusel ---
 from ..ui.carousel import swiper_carousel
 
 
@@ -93,8 +93,8 @@ def blog_public_detail_page() -> rx.Component:
     content_grid = rx.cond(
         BlogViewState.has_post,
         rx.grid(
-            # --- ✨ CAMBIO: Se reemplaza la sección de imagen por el carrusel ✨ ---
-            swiper_carousel(image_urls=BlogViewState.post_image_urls),
+            # --- ✨ CORRECCIÓN AQUÍ: Se pasa un ID único al carrusel ✨ ---
+            swiper_carousel(image_urls=BlogViewState.post_image_urls, carousel_id="public-detail-page"),
             _info_section(),
             columns={"base": "1", "md": "2"},
             spacing="4",
@@ -120,12 +120,13 @@ def blog_public_detail_page() -> rx.Component:
     return standalone_public_layout(page_content)
 
 
-# --- ✨ Se elimina la función _image_section ya que fue reemplazada por el carrusel ---
+# --- Se elimina la función _image_section ya que fue reemplazada por el carrusel ---
+# (Esta sección ya estaba eliminada en el código que me pasaste, lo cual es correcto)
 
 # Esta función se mantiene según tu estructura original.
 def _info_section() -> rx.Component:
     return rx.vstack(
-        rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.em", text_align="left"),
+        rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
         rx.text(BlogViewState.formatted_price, size="6", color="gray", text_align="left"),
         rx.text(BlogViewState.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
         padding="1em",

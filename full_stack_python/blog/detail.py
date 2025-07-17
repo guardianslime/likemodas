@@ -37,7 +37,6 @@ def _info_section() -> rx.Component:
         rx.text(BlogPostState.formatted_price, size="6", color="gray", text_align="left"),
         rx.text(BlogPostState.post.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
         rx.spacer(),
-        # --- ✨ Botones de Acción con Diálogo de Confirmación ✨ ---
         rx.hstack(
             rx.link(rx.button("Editar Post", variant="soft"), href=BlogPostState.blog_post_edit_url),
             rx.alert_dialog.root(
@@ -70,14 +69,15 @@ def _info_section() -> rx.Component:
         width="100%",
     )
 
+
 # --- Página de Detalle de Post para usuarios logueados ---
 def blog_post_detail_page() -> rx.Component:
     """Página de detalle con el nuevo carrusel y diálogo de borrado."""
     content_grid = rx.cond(
         BlogPostState.post,
         rx.grid(
-            # Se reemplaza _image_section por el nuevo carrusel
-            swiper_carousel(image_urls=BlogPostState.post_image_urls),
+            # --- ✨ CORRECCIÓN: Se pasa un ID único al carrusel ✨ ---
+            swiper_carousel(image_urls=BlogPostState.post_image_urls, carousel_id="blog-detail-page"),
             _info_section(),
             columns={"base": "1", "md": "2"},
             spacing="4",

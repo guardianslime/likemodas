@@ -1,15 +1,16 @@
 import reflex as rx
 from typing import List
 
-def swiper_carousel(image_urls: rx.Var[List[str]]) -> rx.Component:
+def swiper_carousel(image_urls: rx.Var[List[str]], carousel_id: str) -> rx.Component:
     """
     Un componente de carrusel de imágenes deslizable (swipe) usando Swiper.js.
     
     Args:
         image_urls: Una variable de estado que contiene la lista de URLs de las imágenes.
+        carousel_id: Un ID único y estático para esta instancia del carrusel.
     """
-    # El ID único es crucial para que cada carrusel en la página funcione de forma independiente.
-    swiper_id = f"swiper-{rx.State.get_current_state().get_full_name()}"
+    # El ID único para el contenedor de Swiper se construye a partir del parámetro.
+    swiper_id = f"swiper-container-{carousel_id}"
     
     return rx.box(
         # Contenedor principal de Swiper
@@ -19,17 +20,17 @@ def swiper_carousel(image_urls: rx.Var[List[str]]) -> rx.Component:
                 rx.foreach(
                     image_urls,
                     lambda url: rx.box(
-                        rx.image(src=url, width="100%", height="auto", object_fit="contain"),
+                        rx.image(src=url, width="100%", height="auto", object_fit="contain", loading="lazy"),
                         class_name="swiper-slide",
                     ),
                 ),
                 class_name="swiper-wrapper",
             ),
-            # Botones de navegación (opcional, pero bueno tenerlos)
-            rx.box(class_name="swiper-button-next", color="white"),
-            rx.box(class_name="swiper-button-prev", color="white"),
-            # Paginación (puntos en la parte inferior)
-            rx.box(class_name="swiper-pagination"),
+            # Botones de navegación
+            rx.box(class_name=f"swiper-button-next swiper-nav-{carousel_id}", color="white"),
+            rx.box(class_name=f"swiper-button-prev swiper-nav-{carousel_id}", color="white"),
+            # Paginación
+            rx.box(class_name=f"swiper-pagination swiper-pag-{carousel_id}"),
             
             # Estilos y configuración
             class_name="swiper",
@@ -45,12 +46,12 @@ def swiper_carousel(image_urls: rx.Var[List[str]]) -> rx.Component:
             new Swiper('#{swiper_id}', {{
                 loop: true,
                 pagination: {{
-                    el: '#{swiper_id} .swiper-pagination',
+                    el: '.swiper-pag-{carousel_id}',
                     clickable: true,
                 }},
                 navigation: {{
-                    nextEl: '#{swiper_id} .swiper-button-next',
-                    prevEl: '#{swiper_id} .swiper-button-prev',
+                    nextEl: '.swiper-nav-{carousel_id}.swiper-button-next',
+                    prevEl: '.swiper-nav-{carousel_id}.swiper-button-prev',
                 }},
                 keyboard: true,
             }});
