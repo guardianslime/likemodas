@@ -139,7 +139,7 @@ def _image_section() -> rx.Component:
     )
 
     return rx.html(
-        tag="div",  # <- CORRECTO: así evitas conflicto con children
+        tag="div",  # ← CORRECTO
         children=[
             rx.box(
                 rx.image(
@@ -186,7 +186,7 @@ def _image_section() -> rx.Component:
                 position="relative",
                 border_radius="md",
                 overflow="hidden",
-            )
+            ),
         ],
         on_touch_start=BlogViewState.on_touch_start,
         on_touch_end=BlogViewState.on_touch_end,
