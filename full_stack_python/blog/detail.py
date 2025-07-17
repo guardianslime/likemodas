@@ -2,30 +2,48 @@ import reflex as rx
 from ..ui.base import base_page
 from .state import BlogPostState
 from .notfound import blog_post_not_found
+from ..ui.carousel import carousel
 
 # --- Componentes visuales (copiados y adaptados de articles/detail.py) ---
 def _image_section() -> rx.Component:
-    """Sección para el carrusel de imágenes del post."""
+    """Sección para el carrusel de imágenes del post, usando react-responsive-carousel."""
     return rx.box(
-        rx.image(
-            src=rx.cond(
-                BlogPostState.imagen_actual != "",
-                rx.get_upload_url(BlogPostState.imagen_actual),
-                "/no_image.png"
+        rx.cond(
+            BlogPostState.post.images & (BlogPostState.post.images.length() > 0),
+            # Usamos el nuevo componente 'carousel'
+            carousel(
+                rx.foreach(
+                    BlogPostState.post.images,
+                    # Cada imagen es un hijo directo del carrusel
+                    lambda image_url: rx.image(
+                        src=rx.get_upload_url(image_url),
+                        width="100%",
+                        height="auto",
+                        max_height="550px",
+                        object_fit="contain",
+                    )
+                ),
+                # Configuramos el carrusel
+                show_indicators=True,
+                infinite_loop=True,
+                emulate_touch=True, # Clave para que funcione con el mouse
+                show_thumbs=False,
+                # ✨ AÑADE ESTA LÍNEA PARA DESACTIVAR LA REPRODUCCIÓN AUTOMÁTICA ✨
+                auto_play=False,
             ),
-            width="100%",
-            height="auto",
-            max_height="550px",
-            object_fit="contain",
-            border_radius="md",
+            # Mensaje si no hay imágenes
+            rx.image(
+                src="/no_image.png",
+                width="100%",
+                height="auto",
+                max_height="550px",
+                object_fit="contain",
+                border_radius="md",
+            )
         ),
-        rx.icon(tag="arrow_big_left", position="absolute", left="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogPostState.anterior_imagen, cursor="pointer", box_size="2em", z_index=2, color="white", bg="rgba(0,0,0,0.3)", border_radius="full", padding="0.2em"),
-        rx.icon(tag="arrow_big_right", position="absolute", right="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogPostState.siguiente_imagen, cursor="pointer", box_size="2em", z_index=2, color="white", bg="rgba(0,0,0,0.3)", border_radius="full", padding="0.2em"),
         width="100%",
         max_width="600px",
         position="relative",
-        border_radius="md",
-        overflow="hidden"
     )
 
 def _info_section() -> rx.Component:
