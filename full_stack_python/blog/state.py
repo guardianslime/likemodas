@@ -305,14 +305,13 @@ class BlogViewState(SessionState):
     start_x: int = 0
 
     @rx.event
-    def on_touch_start(self, e: rx.Event):
-        self.start_x = e.client_x
+    def on_touch_start(self, e: dict):
+        self.start_x = e.get("client_x", 0)
 
     @rx.event
-    def on_touch_end(self, e: rx.Event):
-        if not self.start_x:
-            return
-        delta = e.client_x - self.start_x
+    def on_touch_end(self, e: dict):
+        end_x = e.get("client_x", 0)
+        delta = end_x - self.start_x
         if abs(delta) > 50:
             if delta > 0:
                 yield self.anterior_imagen()
