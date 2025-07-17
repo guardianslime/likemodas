@@ -1,4 +1,4 @@
-# full_stack_python/ui/carousel.py (CORREGIDO)
+# full_stack_python/ui/carousel.py (VERSIÓN FINAL)
 
 import reflex as rx
 from reflex.components.component import NoSSRComponent
@@ -9,15 +9,13 @@ class SwiperContainer(NoSSRComponent):
     Wrapper de Reflex para el componente de React Swiper.
     Proporciona un carrusel de imágenes deslizable.
     """
-    library = "swiper" # ✨ CORRECCIÓN 1: Usar el paquete principal.
+    # El componente principal viene de 'swiper/react'
+    library = "swiper/react"
     tag = "Swiper"
-    is_default = True # Swiper es la exportación por defecto de 'swiper/react'.
+    is_default = True
 
-    # ✨ CORRECCIÓN 2: Las dependencias ahora solo incluyen el paquete principal.
-    # Los CSS se importan directamente en el componente de React.
-    lib_dependencies: List[str] = [
-        "swiper",
-    ]
+    # La dependencia de npm es el paquete 'swiper'
+    lib_dependencies: List[str] = ["swiper"]
 
     # Propiedades de Swiper expuestas como Vars de Reflex.
     pagination: rx.Var[bool] = True
@@ -25,9 +23,8 @@ class SwiperContainer(NoSSRComponent):
     allow_touch_move: rx.Var[bool] = True
     loop: rx.Var[bool] = True
 
-    # ✨ CORRECCIÓN 3: Se registran los eventos que Swiper puede emitir.
-    # Esto resuelve el error de "ValueError: The Box does not take in an ... event trigger".
     def _get_custom_triggers(self) -> Set[str]:
+        """Registra los eventos que Swiper puede emitir para evitar errores de 'ValueError'."""
         return super()._get_custom_triggers() | {
             "on_slide_change",
             "on_init",
@@ -35,30 +32,46 @@ class SwiperContainer(NoSSRComponent):
             "on_touch_end",
         }
     
-    # Se añaden importaciones de CSS directamente al componente.
     def _get_imports(self):
+        """Define las importaciones de JS y CSS necesarias."""
         imports = super()._get_imports()
-        imports[""] = {
+
+        # ✨ CORRECCIÓN: Se asegura de manejar un conjunto (set) para los imports de CSS.
+        css_imports = imports.get("", set())
+        css_imports.update([
             "swiper/css",
             "swiper/css/pagination",
             "swiper/css/navigation",
-        }
-        # También se importa el módulo de paginación para que funcione `pagination=True`
-        imports[self.library] = imports[self.library] | {"Pagination"}
+        ])
+        imports[""] = css_imports
+
+        # ✨ CORRECCIÓN: Se importan los módulos 'Pagination' y 'Navigation' desde la librería 'swiper'.
+        # Esto se hace de forma segura, modificando el diccionario de componentes.
+        swiper_modules = imports.setdefault("swiper", {})
+        components = swiper_modules.setdefault("components", set())
+        components.update(["Pagination", "Navigation"])
+        
         return imports
 
-    # Se añaden los módulos que se usarán en el componente
     def _get_props(self) -> dict:
+        """Pasa las props al componente de React, incluyendo los módulos activados."""
         props = super()._get_props()
-        if "pagination" in props and props["pagination"]:
-            props["modules"] = [rx.vars.Var.create_safe("Pagination", _var_is_local=False)]
+        
+        modules = []
+        if self.pagination:
+            # Crea una referencia a la variable JS del módulo 'Pagination'
+            modules.append(rx.vars.Var.create_safe("Pagination", _var_is_local=False))
+        if self.navigation:
+            # Crea una referencia a la variable JS del módulo 'Navigation'
+            modules.append(rx.vars.Var.create_safe("Navigation", _var_is_local=False))
+        
+        if modules:
+            props["modules"] = modules
         return props
 
 
 class SwiperSlide(NoSSRComponent):
-    """
-    Wrapper de Reflex para el componente React SwiperSlide.
-    """
+    """Wrapper de Reflex para el componente React SwiperSlide."""
     library = "swiper/react"
     tag = "SwiperSlide"
     is_default = False
