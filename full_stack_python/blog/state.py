@@ -1,10 +1,12 @@
 # full_stack_python/blog/state.py
 
-from datetime import datetime
-from typing import Optional
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
+from datetime import datetime
+from typing import Optional
+import os
+import pathlib
 
 from .. import navigation
 from ..auth.state import SessionState
@@ -19,39 +21,13 @@ BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
-    img_idx: int = 0
+    
+    # Variable para controlar el diálogo de confirmación
+    show_delete_alert: bool = False
 
-    # --- ✨ NUEVOS MÉTODOS Y VARS AÑADIDOS ✨ ---
-    @rx.var
-    def imagen_actual(self) -> str:
-        """Devuelve la URL de la imagen actual para el carrusel."""
-        if self.post and self.post.images and len(self.post.images) > self.img_idx:
-            return self.post.images[self.img_idx]
-        return ""
-
-    @rx.var
-    def formatted_price(self) -> str:
-        """Devuelve el precio del post formateado como moneda."""
-        if self.post and self.post.price is not None:
-            return f"${self.post.price:,.2f}"
-        return "$0.00"
-
-    @rx.event
-    def siguiente_imagen(self):
-        """Avanza a la siguiente imagen en el carrusel."""
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx + 1) % len(self.post.images)
-
-    @rx.event
-    def anterior_imagen(self):
-        """Retrocede a la imagen anterior en el carrusel."""
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
-    # --- FIN DE CAMBIOS ---
-
+    # --- ✨ LÓGICA DE ELIMINACIÓN DE IMÁGENES ✨ ---
     @rx.event
     def delete_post(self, post_id: int):
-        """Elimina una publicación de la base de datos y recarga la lista."""
         if self.my_userinfo_id is None:
             return rx.window_alert("No estás autenticado.")
         
@@ -59,13 +35,44 @@ class BlogPostState(SessionState):
             post_to_delete = session.get(BlogPostModel, post_id)
             
             if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
+                # 1. Borrar los archivos de imagen del servidor
+                if post_to_delete.images:
+                    upload_dir = rx.get_upload_dir()
+                    for image_name in post_to_delete.images:
+                        try:
+                            file_path = pathlib.Path(upload_dir) / image_name
+                            if file_path.is_file():
+                                os.remove(file_path)
+                                print(f"Deleted file: {file_path}")
+                        except Exception as e:
+                            print(f"Error deleting file {image_name}: {e}")
+
+                # 2. Borrar el registro de la base de datos
                 session.delete(post_to_delete)
                 session.commit()
+                # 3. Redirigir a la lista de posts
+                return rx.redirect(BLOG_POSTS_ROUTE)
             else:
                 return rx.window_alert("No tienes permiso para eliminar esta publicación o no fue encontrada.")
-                     
-        return self.load_posts
 
+    def handle_delete_confirm(self):
+        """Llama a la eliminación después de la confirmación."""
+        self.show_delete_alert = False
+        return self.delete_post(self.post.id)
+
+    def cancel_delete(self):
+        """Cierra el diálogo de confirmación."""
+        self.show_delete_alert = False
+        
+    # --- ✨ VAR PARA EL NUEVO CARRUSEL ✨ ---
+    @rx.var
+    def post_image_urls(self) -> list[str]:
+        """Devuelve las URLs completas de las imágenes para el carrusel."""
+        if self.post and self.post.images:
+            return [rx.get_upload_url(img) for img in self.post.images]
+        return ["/no_image.png"]
+
+    # (El resto de métodos como load_posts, get_post_detail, etc., permanecen igual)
     @rx.event
     def load_posts(self):
         if self.my_userinfo_id is None:
@@ -301,3 +308,40 @@ class BlogViewState(SessionState):
     def anterior_imagen(self):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
+
+    @rx.var
+    def post_image_urls(self) -> list[str]:
+        """Devuelve las URLs completas para el carrusel de la vista pública."""
+        if self.post and self.post.images:
+            return [rx.get_upload_url(img) for img in self.post.images]
+        return ["/no_image.png"]
+
+    # (El resto de la clase permanece igual)
+    @rx.var
+    def post_id(self) -> str:
+        return self.router.page.params.get("blog_public_id", "")
+
+    @rx.var
+    def formatted_price(self) -> str:
+        if self.post and self.post.price is not None:
+            return f"${self.post.price:,.2f}"
+        return "$0.00"
+
+    @rx.var
+    def content(self) -> str:
+        if self.post and self.post.content:
+            return self.post.content
+        return ""
+
+    @rx.var
+    def has_post(self) -> bool:
+        return self.post is not None
+
+    @rx.event
+    def on_load(self):
+        try:
+            pid = int(self.post_id)
+        except (ValueError, TypeError):
+            return
+        with rx.session() as session:
+            self.post = session.get(BlogPostModel, pid)

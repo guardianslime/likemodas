@@ -41,4 +41,29 @@ config = rx.Config(
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
+
+    # --- ✨ AÑADIDOS PARA EL CARRUSEL Y TEMA ✨ ---
+    # Se añaden las hojas de estilo y scripts de Swiper.js
+    stylesheets=[
+        "https://unpkg.com/swiper/swiper-bundle.min.css",
+    ],
+    scripts=[
+        "https://unpkg.com/swiper/swiper-bundle.min.js",
+    ],
+    theme=rx.theme(
+        appearance="dark",
+        has_background=True,
+        panel_background="solid",
+        scaling="90%",
+        radius="medium",
+        accent_color="sky",
+        extend={
+            "breakpoints": {
+                "sm": "640px",
+                "md": "768px",
+                "lg": "1024px",
+                "xl": "1280px"
+            }
+        }
+    )
 )
