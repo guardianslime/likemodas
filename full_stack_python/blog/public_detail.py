@@ -10,6 +10,7 @@ from ..navigation.state import force_reload_go_to
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar # Importamos la public_navbar unificada
+from ..ui.carousel import swiper_container, swiper_slide 
 
 # Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
 # ELIMINAMOS _detail_page_navbar() ya que usaremos public_navbar()
@@ -132,23 +133,48 @@ def blog_public_detail_page() -> rx.Component:
 
 # --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
+    """
+    Sección para el carrusel de imágenes del post, ahora usando Swiper.
+    """
     return rx.box(
-        rx.image(
-            src=rx.cond(
-                BlogViewState.imagen_actual != "",
-                rx.get_upload_url(BlogViewState.imagen_actual),
-                "/no_image.png"
+        rx.cond(
+            BlogViewState.post.images & (BlogViewState.post.images.length() > 0),
+            # Usamos el nuevo componente de carrusel
+            swiper_container(
+                rx.foreach(
+                    BlogViewState.post.images,
+                    lambda image_url: swiper_slide(
+                        rx.image(
+                            src=rx.get_upload_url(image_url),
+                            width="100%",
+                            height="auto",
+                            max_height="550px",
+                            object_fit="contain",
+                            border_radius="md",
+                        )
+                    )
+                ),
+                # Propiedades para configurar el carrusel
+                pagination=True, # Muestra los puntos de paginación
+                loop=True,       # Permite el desplazamiento infinito
+                allow_touch_move=True, # Permite arrastrar con el mouse
+                style={
+                    "--swiper-pagination-color": rx.color("blue", 9),
+                    "--swiper-pagination-bullet-inactive-color": rx.color("gray", 9),
+                }
             ),
-            width="100%",
-            height="auto",
-            max_height="550px",
-            object_fit="contain",
-            border_radius="md",
+            # Mensaje si no hay imágenes, igual que antes
+            rx.image(
+                src="/no_image.png",
+                width="100%",
+                height="auto",
+                max_height="550px",
+                object_fit="contain",
+                border_radius="md",
+            )
         ),
-        rx.icon(tag="arrow_big_left", position="absolute", left="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogViewState.anterior_imagen, cursor="pointer", box_size="2em"),
-        rx.icon(tag="arrow_big_right", position="absolute", right="0.5em", top="50%", transform="translateY(-50%)", on_click=BlogViewState.siguiente_imagen, cursor="pointer", box_size="2em"),
         width="100%",
-        max_width="600px",
+        max_width="600px", # Mantenemos el ancho máximo del diseño original 
         position="relative",
         border_radius="md",
         overflow="hidden"
