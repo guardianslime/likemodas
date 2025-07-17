@@ -7,6 +7,7 @@ from .state import BlogViewState
 from .. import navigation
 from ..navigation.device import NavDeviceState
 from ..navigation.state import force_reload_go_to
+from ..ui.base import public_layout
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar # Importamos la public_navbar unificada
@@ -104,26 +105,57 @@ def standalone_public_layout(child: rx.Component) -> rx.Component:
     )
 
 # --- PÁGINA DE DETALLE MODIFICADA ---
+def _image_section() -> rx.Component:
+    """Sección para el carrusel, con on_click para el lightbox en la imagen."""
+    return carousel(
+        rx.foreach(
+            BlogViewState.post.images,
+            lambda image_url: rx.image(
+                src=rx.get_upload_url(image_url),
+                width="100%",
+                height="auto",
+                max_height="550px",
+                object_fit="contain",
+                # El clic para abrir el lightbox está solo en la imagen
+                on_click=BlogViewState.open_lightbox,
+                cursor="pointer",
+            )
+        ),
+        # Configuración del carrusel
+        show_indicators=True,
+        infinite_loop=True,
+        emulate_touch=True,
+        show_thumbs=False,
+        show_arrows=True,
+    )
+
+def _info_section() -> rx.Component:
+    return rx.vstack(
+        rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
+        rx.text(BlogViewState.formatted_price, size="6", color="gray", text_align="left"),
+        rx.text(BlogViewState.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
+        padding="1em",
+        align="start",
+        width="100%",
+    )
+
 def blog_public_detail_page() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
-    
-    # Este es el contenido principal de la página (la imagen y la información).
     content_grid = rx.cond(
         BlogViewState.has_post,
         rx.grid(
+            # El contenedor ya no tiene el on_click
             _image_section(),
             _info_section(),
             columns={"base": "1", "md": "2"},
             spacing="4",
             align_items="start",
             width="100%",
-            max_width="1120px", # Se añade un ancho máximo
+            max_width="1120px",
         ),
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
-    # ✨ CAMBIO: Se envuelve el contenido en una estructura centrada con título.
-    # Esto imita el layout de la página de la galería.
     page_content = rx.center(
         rx.vstack(
             rx.heading("Detalle del Producto", size="8", margin_bottom="1em"),
@@ -136,56 +168,14 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
     )
     
-    return standalone_public_layout(page_content)
-
-
-# --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
-def _image_section() -> rx.Component:
-    """Sección para el carrusel, con on_click para el lightbox en la imagen."""
-    return rx.box(
-        rx.cond(
-            BlogViewState.post.images & (BlogViewState.post.images.length() > 0),
-            carousel(
-                rx.foreach(
-                    BlogViewState.post.images,
-                    lambda image_url: rx.image(
-                        src=rx.get_upload_url(image_url),
-                        width="100%",
-                        height="auto",
-                        max_height="550px",
-                        object_fit="contain",
-                        # ✨ CORRECCIÓN: El clic está solo en la imagen
-                        on_click=BlogViewState.open_lightbox,
-                        cursor="pointer",
-                    )
-                ),
-                show_indicators=True,
-                infinite_loop=True,
-                emulate_touch=True,
-                show_thumbs=False,
-                show_arrows=True,
-            ),
-            rx.image(
-                src="/no_image.png",
-                width="100%",
-                height="auto",
-                max_height="550px",
-                object_fit="contain",
-                border_radius="md",
+    # Envolvemos el contenido con el layout y añadimos el lightbox
+    return public_layout(
+        rx.fragment(
+            page_content,
+            lightbox(
+                open=BlogViewState.is_lightbox_open,
+                close=BlogViewState.close_lightbox,
+                slides=BlogViewState.lightbox_slides,
             )
-        ),
-        # ✨ CORRECCIÓN: El on_click se ha eliminado de aquí
-        width="100%",
-        max_width="600px",
-        position="relative",
-    )
-
-def _info_section() -> rx.Component:
-    return rx.vstack(
-        rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
-        rx.text(BlogViewState.formatted_price, size="6", color="gray", text_align="left"),
-        rx.text(BlogViewState.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-        padding="1em",
-        align="start",
-        width="100%",
+        )
     )

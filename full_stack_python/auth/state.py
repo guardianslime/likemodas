@@ -4,16 +4,15 @@ import reflex as rx
 import reflex_local_auth
 import sqlmodel
 from ..models import UserInfo
-# ✨ 1. Importamos el config directamente
+# 1. Importamos el config directamente
 from rxconfig import config
 
 class SessionState(reflex_local_auth.LocalAuthState):
 
-    # ✨ 2. Corregimos la función para que use el config
+    # 2. Añadimos esta función para obtener la URL base
     @rx.var
     def api_url_base(self) -> str:
         """Devuelve la URL base de la API, eliminando /api al final si existe."""
-        # Obtenemos la api_url desde el objeto config importado
         api_url = config.api_url
         return api_url.replace("/api", "")
 
@@ -69,14 +68,10 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
             self.new_user_id = -1
             return validation_errors
         self._register_user(username, password)
-        # Asegúrate de que handle_registration devuelva un evento válido al final
         return type(self).successful_registration
 
     def handle_registration_email(self, form_data):
-        # Llama a la lógica de registro base
         registration_event = self.handle_registration(form_data)
-        
-        # Si el registro fue exitoso (no hubo errores de validación)
         if self.new_user_id >= 0:
             with rx.session() as session:
                 session.add(
