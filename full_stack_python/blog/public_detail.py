@@ -139,7 +139,7 @@ def _image_section() -> rx.Component:
     )
 
     return rx.html(
-        "div",
+        tag="div",  # <- CORRECTO: así evitas conflicto con children
         children=[
             rx.box(
                 rx.image(
