@@ -4,8 +4,18 @@ import reflex as rx
 import reflex_local_auth
 import sqlmodel
 from ..models import UserInfo
+# ✨ 1. Importamos el config directamente
+from rxconfig import config
 
 class SessionState(reflex_local_auth.LocalAuthState):
+
+    # ✨ 2. Corregimos la función para que use el config
+    @rx.var
+    def api_url_base(self) -> str:
+        """Devuelve la URL base de la API, eliminando /api al final si existe."""
+        # Obtenemos la api_url desde el objeto config importado
+        api_url = config.api_url
+        return api_url.replace("/api", "")
 
     @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None:
@@ -36,11 +46,6 @@ class SessionState(reflex_local_auth.LocalAuthState):
                 )
             ).one_or_none()
             return result
-        
-    @rx.var
-    def api_url_base(self) -> str:
-        """Devuelve la URL base de la API, eliminando /api al final si existe."""
-        return self.router.api_url.replace("/api", "")
 
     def on_load(self):
         if not self.is_authenticated:
