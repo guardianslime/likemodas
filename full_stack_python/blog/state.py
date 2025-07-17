@@ -88,6 +88,23 @@ class BlogPostState(SessionState):
         if self.post and self.post.id is not None:
             return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
         return BLOG_POSTS_ROUTE
+    
+    is_lightbox_open: bool = False
+
+    @rx.var
+    def lightbox_slides(self) -> list[dict]:
+        """Prepara las imágenes para el formato que necesita el lightbox."""
+        if not self.post or not self.post.images:
+            return []
+        return [{"src": rx.get_upload_url(img)} for img in self.post.images]
+
+    def open_lightbox(self):
+        """Abre la vista ampliada de las imágenes."""
+        self.is_lightbox_open = True
+
+    def close_lightbox(self):
+        """Cierra la vista ampliada."""
+        self.is_lightbox_open = False
 
     def get_post_detail(self):
         if self.my_userinfo_id is None:
@@ -281,6 +298,23 @@ class BlogViewState(SessionState):
     @rx.var
     def has_post(self) -> bool:
         return self.post is not None
+    
+    is_lightbox_open: bool = False
+
+    @rx.var
+    def lightbox_slides(self) -> list[dict]:
+        """Prepara las imágenes para el formato que necesita el lightbox."""
+        if not self.post or not self.post.images:
+            return []
+        return [{"src": rx.get_upload_url(img)} for img in self.post.images]
+
+    def open_lightbox(self):
+        """Abre la vista ampliada de las imágenes."""
+        self.is_lightbox_open = True
+
+    def close_lightbox(self):
+        """Cierra la vista ampliada."""
+        self.is_lightbox_open = False
 
     @rx.event
     def on_load(self):

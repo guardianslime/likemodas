@@ -11,6 +11,8 @@ from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar # Importamos la public_navbar unificada
 from ..ui.carousel import carousel 
+from ..ui.lightbox import lightbox
+
 
 # Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
 # ELIMINAMOS _detail_page_navbar() ya que usaremos public_navbar()
@@ -82,17 +84,23 @@ def _detail_page_navbar() -> rx.Component:
     )
 
 def standalone_public_layout(child: rx.Component) -> rx.Component:
-    """Layout autónomo que usa la navbar local."""
+    """Layout autónomo que ahora incluye el lightbox."""
     return rx.fragment(
-        public_navbar(), # <--- CAMBIO: Ahora usa la public_navbar unificada
+        public_navbar(),
         rx.box(
             child,
             padding_y="2em",
-            padding_top="6rem", # Asegura el padding correcto para la navbar fija
+            padding_top="6rem",
             width="100%",
             margin="0 auto",
         ),
         fixed_color_mode_button(),
+        # 👇 Añadimos el componente lightbox al layout
+        lightbox(
+            open=BlogViewState.is_lightbox_open,
+            close=BlogViewState.close_lightbox,
+            slides=BlogViewState.lightbox_slides,
+        )
     )
 
 # --- PÁGINA DE DETALLE MODIFICADA ---
@@ -133,17 +141,13 @@ def blog_public_detail_page() -> rx.Component:
 
 # --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
-    """
-    Sección para el carrusel de imágenes, ahora usando react-responsive-carousel.
-    """
+    """Sección para el carrusel, ahora con on_click para el lightbox."""
     return rx.box(
         rx.cond(
             BlogViewState.post.images & (BlogViewState.post.images.length() > 0),
-            # 👇 Usamos el nuevo componente 'carousel'
             carousel(
                 rx.foreach(
                     BlogViewState.post.images,
-                    # Cada imagen es un hijo directo del carrusel
                     lambda image_url: rx.image(
                         src=rx.get_upload_url(image_url),
                         width="100%",
@@ -152,13 +156,11 @@ def _image_section() -> rx.Component:
                         object_fit="contain",
                     )
                 ),
-                # Configuramos el carrusel
                 show_indicators=True,
                 infinite_loop=True,
-                emulate_touch=True, # Clave para que funcione con el mouse
-                show_thumbs=False,  # Ocultamos las miniaturas de abajo
+                emulate_touch=True,
+                show_thumbs=False,
             ),
-            # Mensaje si no hay imágenes
             rx.image(
                 src="/no_image.png",
                 width="100%",
@@ -168,6 +170,9 @@ def _image_section() -> rx.Component:
                 border_radius="md",
             )
         ),
+        # 👇 Añadimos el on_click y el cursor al contenedor
+        on_click=BlogViewState.open_lightbox,
+        cursor="pointer",
         width="100%",
         max_width="600px",
         position="relative",

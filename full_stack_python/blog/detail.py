@@ -3,6 +3,7 @@ from ..ui.base import base_page
 from .state import BlogPostState
 from .notfound import blog_post_not_found
 from ..ui.carousel import carousel
+from ..ui.lightbox import lightbox
 
 # --- Componentes visuales (copiados y adaptados de articles/detail.py) ---
 def _image_section() -> rx.Component:
@@ -71,11 +72,16 @@ def _info_section() -> rx.Component:
 
 # --- Página de Detalle de Post para usuarios logueados ---
 def blog_post_detail_page() -> rx.Component:
-    """Página que muestra el detalle de un post del usuario, con el nuevo diseño."""
+    """Página que muestra el detalle de un post, con lightbox."""
     content_grid = rx.cond(
         BlogPostState.post,
         rx.grid(
-            _image_section(),
+            # 👇 Añadimos un on_click al contenedor de la imagen
+            rx.box(
+                _image_section(),
+                on_click=BlogPostState.open_lightbox,
+                cursor="pointer"
+            ),
             _info_section(),
             columns={"base": "1", "md": "2"},
             spacing="4",
@@ -87,15 +93,23 @@ def blog_post_detail_page() -> rx.Component:
     )
 
     return base_page(
-        rx.center(
-            rx.vstack(
-                rx.heading("Detalle de mi Publicación", size="8", margin_bottom="1em"),
-                content_grid,
-                spacing="6",
+        rx.vstack(
+            rx.center(
+                rx.vstack(
+                    rx.heading("Detalle de mi Publicación", size="8", margin_bottom="1em"),
+                    content_grid,
+                    spacing="6",
+                    width="100%",
+                    padding="2em",
+                    align="center",
+                ),
                 width="100%",
-                padding="2em",
-                align="center",
             ),
-            width="100%",
+            # 👇 Añadimos el componente lightbox a la página
+            lightbox(
+                open=BlogPostState.is_lightbox_open,
+                close=BlogPostState.close_lightbox,
+                slides=BlogPostState.lightbox_slides,
+            )
         )
     )
