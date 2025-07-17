@@ -132,15 +132,17 @@ def blog_public_detail_page() -> rx.Component:
 
 # --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
+    image_src = rx.cond(
+        BlogViewState.imagen_actual != "",
+        rx.get_upload_url(BlogViewState.imagen_actual),
+        "/no_image.png"
+    )
+
     return rx.html(
         "div",
         rx.box(
             rx.image(
-                src=rx.cond(
-                    BlogViewState.imagen_actual != "",
-                    rx.get_upload_url(BlogViewState.imagen_actual),
-                    "/no_image.png"
-                ),
+                src=image_src,
                 width="100%",
                 height="auto",
                 max_height="550px",
@@ -161,7 +163,7 @@ def _image_section() -> rx.Component:
                 color="white",
                 bg="rgba(0,0,0,0.3)",
                 border_radius="full",
-                padding="0.2em"
+                padding="0.2em",
             ),
             rx.icon(
                 tag="arrow_big_right",
@@ -176,7 +178,7 @@ def _image_section() -> rx.Component:
                 color="white",
                 bg="rgba(0,0,0,0.3)",
                 border_radius="full",
-                padding="0.2em"
+                padding="0.2em",
             ),
             width="100%",
             max_width="600px",
@@ -184,7 +186,6 @@ def _image_section() -> rx.Component:
             border_radius="md",
             overflow="hidden",
         ),
-        # 👇 Aquí van las props del <div>
         on_touch_start=BlogViewState.on_touch_start,
         on_touch_end=BlogViewState.on_touch_end,
         on_mouse_down=BlogViewState.on_touch_start,
