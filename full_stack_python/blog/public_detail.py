@@ -132,7 +132,8 @@ def blog_public_detail_page() -> rx.Component:
 
 # --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
 def _image_section() -> rx.Component:
-    return rx.html.div(
+    return rx.html(
+        "div",
         rx.box(
             rx.image(
                 src=rx.cond(
@@ -183,7 +184,6 @@ def _image_section() -> rx.Component:
             border_radius="md",
             overflow="hidden",
         ),
-        # ⬇️ Aplicamos eventos en el contenedor html.div
         on_touch_start=BlogViewState.on_touch_start,
         on_touch_end=BlogViewState.on_touch_end,
         on_mouse_down=BlogViewState.on_touch_start,
