@@ -3,6 +3,8 @@
 from typing import Optional, List
 from . import utils
 from sqlmodel import Field, Relationship, Column, JSON
+# --- ✨ AÑADIDO: Importar String ---
+from sqlalchemy import String
 from datetime import datetime
 import reflex as rx
 from reflex_local_auth.user import LocalUser
@@ -16,11 +18,13 @@ class UserRole(str, enum.Enum):
 class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key="localuser.id")
+    
+    # --- ✨ CORRECCIÓN: Se define explícitamente la columna como String ---
     role: UserRole = Field(
-        default=UserRole.CUSTOMER, 
-        sa_column_kwargs={"server_default": UserRole.CUSTOMER.value},
-        nullable=False
+        default=UserRole.CUSTOMER,
+        sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False)
     )
+    # --- FIN DE CAMBIOS ---
     
     user: Optional[LocalUser] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
@@ -57,21 +61,16 @@ class PurchaseModel(rx.Model, table=True):
 
     @property
     def purchase_date_formatted(self) -> str:
-        """Devuelve la fecha de compra como un string formateado."""
         return self.purchase_date.strftime('%d-%m-%Y %H:%M')
 
-    # --- ✨ AÑADIDO: Propiedad para formatear la lista de items ---
     @property
     def items_formatted(self) -> list[str]:
-        """Devuelve una lista de strings de los items para el frontend."""
         if not self.items:
             return []
         return [
             f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)"
             for item in self.items
         ]
-    # --- FIN DE CAMBIOS ---
-
 
 class PurchaseItemModel(rx.Model, table=True):
     purchase_id: int = Field(foreign_key="purchasemodel.id")
