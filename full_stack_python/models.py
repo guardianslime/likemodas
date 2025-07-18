@@ -51,7 +51,13 @@ class PurchaseStatus(str, enum.Enum):
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    userinfo: "UserInfo" = Relationship(back_populates="purchases")
+    # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
+    # Se añade `sa_relationship_kwargs` para forzar la carga de `userinfo`.
+    userinfo: "UserInfo" = Relationship(
+        back_populates="purchases",
+        sa_relationship_kwargs={"lazy": "joined"}
+    )
+    # --- FIN DEL CAMBIO ---
     
     purchase_date: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     total_price: float
