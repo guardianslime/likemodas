@@ -1,12 +1,57 @@
-# full_stack_python/ui/nav.py (CÓDIGO CORREGIDO Y COMPLETO)
-
 import reflex as rx
 from .. import navigation
-# ✨ CORREGIDO: Se importa el nombre de clase correcto 'NavDeviceState'.
 from ..navigation.device import NavDeviceState
 from .search_state import SearchState
 from ..cart.state import CartState
 from ..auth.state import SessionState
+# Se importa el nuevo estado de notificaciones
+from ..notifications.state import NotificationState
+
+def notification_icon() -> rx.Component:
+    """Ícono de notificaciones con un menú desplegable."""
+    return rx.menu.root(
+        rx.menu.trigger(
+            rx.box(
+                rx.icon("bell", size=28),
+                rx.cond(
+                    NotificationState.unread_count > 0,
+                    rx.box(
+                        rx.text(NotificationState.unread_count, size="1", weight="bold"),
+                        position="absolute", top="-5px", right="-5px",
+                        padding="0 0.4em", border_radius="full",
+                        bg="red", color="white",
+                    )
+                ),
+                position="relative",
+                padding="0.5em",
+                cursor="pointer"
+            ),
+            # Al hacer clic, se marcan las notificaciones como leídas
+            on_click=NotificationState.mark_all_as_read
+        ),
+        rx.menu.content(
+            rx.cond(
+                NotificationState.notifications,
+                rx.foreach(
+                    NotificationState.notifications,
+                    lambda n: rx.menu.item(
+                        rx.box(
+                            # CORRECCIÓN: Se usa rx.cond para el estilo del texto
+                            rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
+                            rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
+                        ),
+                        on_click=lambda: rx.redirect(n.url) if n.url else None
+                    )
+                ),
+                rx.menu.item("No tienes notificaciones.")
+            ),
+            # Estilos del menú
+            bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
+            style={"backdrop_filter": "blur(10px)"},
+            max_height="300px",
+            overflow_y="auto"
+        )
+    )
 
 def public_navbar() -> rx.Component:
     """
@@ -15,25 +60,21 @@ def public_navbar() -> rx.Component:
     """
     return rx.box(
         rx.hstack(
-            # --- ✨ CAMBIO: Se crea un nuevo Hstack para el grupo izquierdo (Menú y Logo) ---
+            # --- Lado izquierdo (Menú y Logo) ---
             rx.hstack(
-                # --- Menú de Hamburguesa Dinámico ---
                 rx.menu.root(
                     rx.menu.trigger(
-                        # Se cambia a variante "ghost" y se añade color al ícono
                         rx.button(
-                            rx.icon("menu", size=24, color=rx.color_mode_cond("black", "white")), 
+                            rx.icon("menu", size=24, color=rx.color_mode_cond("black", "white")),
                             variant="ghost"
                         )
                     ),
-                    # --- Se añade estilo al panel del menú ---
                     rx.menu.content(
                         rx.menu.item("Home", on_click=navigation.NavState.to_home),
                         rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri),
                         rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
                         rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
                         rx.menu.separator(),
-                        
                         rx.cond(
                             SessionState.is_authenticated,
                             rx.fragment(
@@ -45,12 +86,10 @@ def public_navbar() -> rx.Component:
                                 rx.menu.item("Register", on_click=navigation.NavState.to_register),
                             )
                         ),
-                        # El fondo del menú ahora coincide con el de la barra de navegación
                         bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
                         style={"backdrop_filter": "blur(10px)"},
                     ),
                 ),
-                # Logo
                 rx.image(
                     src="/logo.jpg",
                     width="8em",
@@ -61,13 +100,13 @@ def public_navbar() -> rx.Component:
                 spacing="4"
             ),
             
-            # Centro: Barra de Búsqueda (sin cambios)
+            # --- Centro (Barra de Búsqueda) ---
             rx.input(
                 placeholder="Buscar productos...",
                 value=SearchState.search_term,
                 on_change=SearchState.update_search,
                 on_blur=SearchState.search_action,
-                width=["40%", "50%", "60%", "65%"], 
+                width=["40%", "50%", "60%", "65%"],
                 height=["2.5em", "2.8em", "3em", "3.3em"],
                 padding_x="4",
                 border_radius="full",
@@ -75,25 +114,32 @@ def public_navbar() -> rx.Component:
                 font_size=rx.breakpoints(sm="2", md="3", lg="3"),
             ),
             
-            # Lado Derecho: Carrito (se elimina el menú de aquí)
+            # --- Lado Derecho (Iconos) ---
             rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,
-                    rx.link(
-                        rx.box(
-                            rx.icon("shopping-cart", size=28),
-                            rx.cond(
-                                CartState.cart_items_count > 0,
-                                rx.box(
-                                    rx.text(CartState.cart_items_count, size="1", weight="bold"),
-                                    position="absolute", top="-5px", right="-5px",
-                                    padding="0 0.4em", border_radius="full",
-                                    bg="red", color="white",
-                                )
+                    # Se envuelve en un fragmento para añadir el nuevo ícono
+                    rx.fragment(
+                        # ÍCONO DE NOTIFICACIONES AÑADIDO
+                        notification_icon(),
+                        
+                        # Ícono del carrito (existente)
+                        rx.link(
+                            rx.box(
+                                rx.icon("shopping-cart", size=28),
+                                rx.cond(
+                                    CartState.cart_items_count > 0,
+                                    rx.box(
+                                        rx.text(CartState.cart_items_count, size="1", weight="bold"),
+                                        position="absolute", top="-5px", right="-5px",
+                                        padding="0 0.4em", border_radius="full",
+                                        bg="red", color="white",
+                                    )
+                                ),
+                                position="relative", padding="0.5em"
                             ),
-                            position="relative", padding="0.5em"
-                        ),
-                        href="/cart"
+                            href="/cart"
+                        )
                     )
                 ),
                 align="center",
@@ -113,13 +159,14 @@ def public_navbar() -> rx.Component:
         z_index="99",
         bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
         style={"backdrop_filter": "blur(10px)"},
-        on_mount=NavDeviceState.on_mount,
+        # CAMBIO: Se carga el estado de las notificaciones al montar la barra
+        on_mount=[NavDeviceState.on_mount, NotificationState.load_notifications],
     )
 
 
 def navbar() -> rx.Component:
     """
-    [cite_start]Navbar original y completo. Se mantiene aquí por si se necesita en otras partes. [cite: 459, 460, 461]
+    Navbar original y completo. [cite_start]Se mantiene aquí por si se necesita en otras partes. [cite: 312, 313]
     """
     return rx.box(
         # Grupo Izquierdo: Logo y Menú
@@ -128,22 +175,22 @@ def navbar() -> rx.Component:
                 src="/logo.jpg",
                 width=rx.breakpoints(sm="6em", md="8em", lg="10em"),
                 height="auto",
-                border_radius="md",
+                [cite_start]border_radius="md", [cite: 314]
             ),
             rx.menu.root(
                 rx.menu.trigger(
                     rx.icon("menu", box_size=rx.breakpoints(sm="2em", md="2.3em", lg="2.5em"))
                 ),
-                rx.menu.content(
-                    rx.menu.item("Home", on_click=navigation.NavState.to_home),
-                    rx.menu.item("Articles", on_click=navigation.NavState.to_articles),
-                    rx.menu.item("Blog", on_click=navigation.NavState.to_blog),
-                    rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri),
-                    rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
-                    rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
-                    rx.menu.separator(),
-                    rx.menu.item("Login", on_click=navigation.NavState.to_login),
-                    rx.menu.item("Register", on_click=navigation.NavState.to_register),
+                [cite_start]rx.menu.content( [cite: 315]
+                    [cite_start]rx.menu.item("Home", on_click=navigation.NavState.to_home), [cite: 315]
+                    [cite_start]rx.menu.item("Articles", on_click=navigation.NavState.to_articles), [cite: 315]
+                    [cite_start]rx.menu.item("Blog", on_click=navigation.NavState.to_blog), [cite: 315]
+                    [cite_start]rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri), [cite: 315]
+                    [cite_start]rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing), [cite: 316]
+                    [cite_start]rx.menu.item("Contact", on_click=navigation.NavState.to_contact), [cite: 316]
+                    [cite_start]rx.menu.separator(), [cite: 316]
+                    [cite_start]rx.menu.item("Login", on_click=navigation.NavState.to_login), [cite: 316]
+                    [cite_start]rx.menu.item("Register", on_click=navigation.NavState.to_register), [cite: 316]
                 ),
             ),
             style={
@@ -159,7 +206,7 @@ def navbar() -> rx.Component:
             on_change=SearchState.update_search,
             on_blur=SearchState.search_action,
             width=rx.breakpoints(sm="55%", md="65%", lg="72%"),
-            height=rx.breakpoints(sm="2.8em", md="3em", lg="3.3em"),
+            [cite_start]height=rx.breakpoints(sm="2.8em", md="3em", lg="3.3em"), [cite: 319]
             padding_x="4",
             border_radius="full",
             border_width="1px",
@@ -176,9 +223,8 @@ def navbar() -> rx.Component:
             "width": "100%",
             "padding_y": "0.75rem",
             "padding_x": "1rem",
-        },
-        # ✨ CORREGIDO: Se usa el on_mount del estado con el nombre correcto también aquí.
-        on_mount=NavDeviceState.on_mount,
+        [cite_start]}, [cite: 321]
+        [cite_start]on_mount=NavDeviceState.on_mount, [cite: 322]
     )
 
 

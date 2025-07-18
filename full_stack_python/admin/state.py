@@ -3,10 +3,11 @@
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
-from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel
+from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, NotificationModel
 import sqlalchemy
 from sqlmodel import select
 from datetime import datetime
+
 
 class AdminConfirmState(SessionState):
     """
@@ -46,21 +47,31 @@ class AdminConfirmState(SessionState):
     @rx.event
     def confirm_payment(self, purchase_id: int):
         """
-        Confirma un pago, actualiza su estado y fecha de confirmación.
+        Confirma un pago, actualiza su estado y crea una notificación para el usuario.
         """
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.PENDING:
+                # Actualizar la compra
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.utcnow()
                 session.add(purchase)
+
+                # --- ✨ LÓGICA AÑADIDA PARA CREAR NOTIFICACIÓN ---
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"🎉 ¡Tu pago de ${purchase.total_price:.2f} ha sido confirmado!",
+                    url="/my-purchases" # Redirige al historial de compras
+                )
+                session.add(notification)
+                # --- FIN DE LA LÓGICA AÑADIDA ---
+
                 session.commit()
                 
                 yield rx.toast.success(f"Pago de {purchase.userinfo.email} confirmado.")
                 yield self.load_pending_purchases
             else:
                 yield rx.toast.error("La compra no se pudo confirmar o ya fue procesada.")
-
     @rx.event
     def notify_admin_of_new_purchase(self):
         """
