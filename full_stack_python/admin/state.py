@@ -12,16 +12,20 @@ class AdminConfirmState(SessionState):
 
     def load_pending_purchases(self):
         with rx.session() as session:
-            # --- ✨ CORRECCIÓN: Se restaura la consulta completa con carga explícita (eager loading) ---
-            self.pending_purchases = session.exec(
+            # --- ✨ CORRECCIÓN: Se usa una consulta simple para obtener las compras ---
+            purchases = session.exec(
                 select(PurchaseModel)
-                .options(
-                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
-                )
                 .where(PurchaseModel.status == PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.asc())
-            ).unique().all() # Se usa .unique().all() para manejar correctamente los datos anidados
+            ).all()
+
+            # --- ✨ Se "despiertan" los datos anidados para asegurar que se carguen ---
+            # Esto evita errores en el frontend al forzar la carga de datos aquí.
+            for p in purchases:
+                _ = p.userinfo.user.username
+                _ = p.items_formatted
+
+            self.pending_purchases = purchases
 
     @rx.event
     def confirm_payment(self, purchase_id: int):

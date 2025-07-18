@@ -16,12 +16,15 @@ class PurchaseHistoryState(SessionState):
             return
 
         with rx.session() as session:
-            # --- ✨ CORRECCIÓN: Se restaura la consulta completa con carga explícita (eager loading) ---
-            self.purchases = session.exec(
+            # --- ✨ CORRECCIÓN: Se usa una consulta simple ---
+            purchases = session.exec(
                 select(PurchaseModel)
-                .options(
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
-                )
                 .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
-            ).unique().all() # Se usa .unique().all() para manejar correctamente los datos anidados
+            ).all()
+
+            # --- ✨ Se "despiertan" los datos anidados para asegurar su carga ---
+            for p in purchases:
+                _ = p.items_formatted
+            
+            self.purchases = purchases
