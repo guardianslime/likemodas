@@ -1,4 +1,5 @@
-# full_stack_python/purchases/page.py
+# full_stack_python/purchases/page.py (CORREGIDO Y COMPLETO)
+
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
@@ -10,7 +11,8 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
     return rx.card(
         rx.vstack(
             rx.hstack(
-                rx.text(f"Compra del: {purchase.purchase_date.strftime('%d-%m-%Y %H:%M')}", weight="bold"),
+                # --- ✨ CORRECCIÓN: Se usa la nueva propiedad formateada ---
+                rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold"),
                 rx.spacer(),
                 rx.badge(purchase.status.value, color_scheme="blue"),
                 justify="between",
@@ -37,7 +39,8 @@ def purchase_history_page() -> rx.Component:
                 CartState.purchase_successful,
                 rx.callout(
                     "¡Gracias por tu compra! Tu orden está pendiente de confirmación.",
-                    icon="check_circle",
+                    # --- ✨ CORRECCIÓN: Se cambia el nombre del ícono ---
+                    icon="check_circle_2",
                     color_scheme="green"
                 )
             ),
