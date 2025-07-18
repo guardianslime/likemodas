@@ -3,18 +3,19 @@
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
-# --- ✨ CORRECCIÓN: Se añaden importaciones faltantes ---
 from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel
 import sqlalchemy
+# --- ✨ CAMBIO: Se importa `select` desde sqlmodel ---
+from sqlmodel import select
 
 class AdminConfirmState(SessionState):
     pending_purchases: List[PurchaseModel] = []
 
     def load_pending_purchases(self):
-        with rx.session() as session: #
+        with rx.session() as session:
             self.pending_purchases = session.exec(
-                # La consulta ya estaba bien, pero fallaba por las importaciones
-                rx.select(PurchaseModel)
+                # --- ✨ CAMBIO: Se usa `select` de sqlmodel en lugar de `rx.select` ---
+                select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
@@ -27,7 +28,7 @@ class AdminConfirmState(SessionState):
     def confirm_payment(self, purchase_id: int):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            if purchase: #
+            if purchase:
                 purchase.status = PurchaseStatus.CONFIRMED
                 session.add(purchase)
                 session.commit()
