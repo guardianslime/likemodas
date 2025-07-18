@@ -12,7 +12,7 @@ from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar # Importamos la public_navbar unificada
 from ..ui.carousel import carousel 
-from ..ui.lightbox import lightbox
+
 
 
 # Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
@@ -105,38 +105,40 @@ def standalone_public_layout(child: rx.Component) -> rx.Component:
     )
 
 # --- PÁGINA DE DETALLE MODIFICADA ---
-def _image_section() -> rx.Component:
-    """Sección para el carrusel y el botón para ampliar en la vista pública."""
-    return rx.vstack(
-        carousel(
-            rx.foreach(
-                BlogViewState.post.images,
-                lambda image_url: rx.image(
-                    src=rx.get_upload_url(image_url),
-                    width="100%",
-                    height="auto",
-                    max_height="550px",
-                    object_fit="contain",
-                )
-            ),
-            show_indicators=True,
-            infinite_loop=True,
-            emulate_touch=True,
-            show_thumbs=False,
-            show_arrows=True,
-        ),
-        # Botón para abrir el lightbox
-        rx.button(
-            "Ampliar Imágenes",
-            on_click=BlogViewState.open_lightbox,
-            variant="soft",
-            margin_top="1em",
+def image_with_expand_button(image_url: str) -> rx.Component:
+    """Crea una caja con una imagen y un botón de expandir superpuesto."""
+    return rx.box(
+        rx.image(
+            src=rx.get_upload_url(image_url),
             width="100%",
+            height="auto",
+            max_height="550px",
+            object_fit="contain",
         ),
-        spacing="4",
-        width="100%",
-        max_width="600px",
+        rx.icon_button(
+            rx.icon(tag="expand"),
+            on_click=BlogViewState.open_modal(rx.get_upload_url(image_url)),
+            position="absolute",
+            top="0.5em",
+            right="0.5em",
+            variant="soft",
+            cursor="pointer",
+        ),
         position="relative",
+    )
+
+def _image_section() -> rx.Component:
+    """Sección para el carrusel de imágenes."""
+    return carousel(
+        rx.foreach(
+            BlogViewState.post.images,
+            image_with_expand_button
+        ),
+        show_indicators=True,
+        infinite_loop=True,
+        emulate_touch=True,
+        show_thumbs=False,
+        show_arrows=True,
     )
 
 def _info_section() -> rx.Component:
@@ -180,10 +182,16 @@ def blog_public_detail_page() -> rx.Component:
     return public_layout(
         rx.fragment(
             page_content,
-            lightbox(
-                open=BlogViewState.is_lightbox_open,
-                close=BlogViewState.close_lightbox,
-                slides=BlogViewState.lightbox_slides,
+            # Modal para mostrar la imagen ampliada
+            rx.modal(
+                rx.modal_body(
+                    rx.image(src=BlogViewState.modal_image_src, width="100%", height="auto")
+                ),
+                rx.modal_footer(
+                    rx.button("Cerrar", on_click=BlogViewState.close_modal)
+                ),
+                is_open=BlogViewState.show_modal,
+                size="5",
             )
         )
     )

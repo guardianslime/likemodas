@@ -22,21 +22,19 @@ class BlogPostState(SessionState):
             return f"${self.post.price:,.2f}"
         return "$0.00"
         
-    is_lightbox_open: bool = False
-    
-    @rx.var
-    def lightbox_slides(self) -> list[dict]:
-        if not self.post or not self.post.images:
-            return []
-        return [{"src": f"{self.api_url_base}{rx.get_upload_url(img)}"} for img in self.post.images]
+    show_modal: bool = False
+    modal_image_src: str = ""
 
     @rx.event
-    def open_lightbox(self):
-        self.is_lightbox_open = True
+    def open_modal(self, src: str):
+        """Abre el modal con la imagen seleccionada."""
+        self.show_modal = True
+        self.modal_image_src = f"{self.api_url_base}{src}"
 
     @rx.event
-    def close_lightbox(self):
-        self.is_lightbox_open = False
+    def close_modal(self):
+        """Cierra el modal."""
+        self.show_modal = False
 
     @rx.event
     def delete_post(self, post_id: int):
@@ -244,21 +242,19 @@ class BlogViewState(SessionState):
     def has_post(self) -> bool:
         return self.post is not None
         
-    is_lightbox_open: bool = False
-    
-    @rx.var
-    def lightbox_slides(self) -> list[dict]:
-        if not self.post or not self.post.images:
-            return []
-        return [{"src": f"{self.api_url_base}{rx.get_upload_url(img)}"} for img in self.post.images]
+    show_modal: bool = False
+    modal_image_src: str = ""
 
     @rx.event
-    def open_lightbox(self):
-        self.is_lightbox_open = True
+    def open_modal(self, src: str):
+        """Abre el modal con la imagen seleccionada."""
+        self.show_modal = True
+        self.modal_image_src = f"{self.api_url_base}{src}"
 
     @rx.event
-    def close_lightbox(self):
-        self.is_lightbox_open = False
+    def close_modal(self):
+        """Cierra el modal."""
+        self.show_modal = False
 
     @rx.event
     def on_load(self):

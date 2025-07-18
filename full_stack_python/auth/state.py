@@ -12,7 +12,6 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def api_url_base(self) -> str:
         """Devuelve la URL base de la API de forma robusta."""
         api_url = config.api_url
-        # Elimina "/api" del final si existe, para obtener la URL base.
         if api_url.endswith("/api"):
             return api_url[:-4]
         return api_url
@@ -50,8 +49,6 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def on_load(self):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
-        print("Autenticado:", self.is_authenticated)
-        print("UserInfo:", self.authenticated_user_info)
 
     def perform_logout(self):
         self.do_logout()
