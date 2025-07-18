@@ -30,6 +30,7 @@ class UserInfo(rx.Model, table=True):
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
+    notifications: List["NotificationModel"] = Relationship()
     
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
@@ -93,6 +94,29 @@ class PurchaseItemModel(rx.Model, table=True):
     
     quantity: int
     price_at_purchase: float
+
+class NotificationModel(rx.Model, table=True):
+    userinfo_id: int = Field(foreign_key="userinfo.id")
+    userinfo: "UserInfo" = Relationship()
+
+    message: str
+    is_read: bool = Field(default=False)
+    created_at: datetime = Field(
+        default_factory=utils.timing.get_utc_now,
+        sa_type=sqlalchemy.DateTime(timezone=True),
+        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
+        nullable=False,
+    )
+    url: Optional[str] = None # URL opcional para redirigir al hacer clic
+
+    @property
+    def created_at_formatted(self) -> str:
+        return self.created_at.strftime("%d-%m-%Y %H:%M")
+
+    def dict(self, **kwargs):
+        d = super().dict(**kwargs)
+        d["created_at_formatted"] = self.created_at_formatted
+        return d
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
