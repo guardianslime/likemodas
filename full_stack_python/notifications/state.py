@@ -30,7 +30,10 @@ class NotificationState(SessionState):
 
     @rx.event
     def mark_all_as_read(self):
-        """Marca todas las notificaciones como leídas en la BD y recarga el estado."""
+        """
+        Marca las notificaciones como leídas, fuerza la actualización de la UI
+        y luego recarga los datos.
+        """
         if not self.is_authenticated or not self.authenticated_user_info:
             return
 
@@ -38,7 +41,7 @@ class NotificationState(SessionState):
         if not unread_ids:
             return
 
-        # 1. Actualiza la base de datos
+        # 1. Actualiza la base de datos como antes
         with rx.session() as session:
             statement = (
                 rx.update(NotificationModel)
@@ -48,8 +51,12 @@ class NotificationState(SessionState):
             session.exec(statement)
             session.commit()
 
-        # --- ✨ CORRECCIÓN CLAVE ---
-        # 2. Vuelve a llamar al evento que carga las notificaciones.
-        # Esto recarga la lista desde la base de datos (donde ahora todas están leídas)
-        # y garantiza que la UI se actualice correctamente.
-        return self.load_notifications
+        # --- ✨ CORRECCIÓN CLAVE Y DEFINITIVA ---
+        # 2. Forzamos la actualización de la UI vaciando la lista localmente.
+        #    El `yield` envía este cambio al frontend de inmediato.
+        self.notifications = []
+        yield
+
+        # 3. Volvemos a llenar la lista con los datos actualizados (ya leídos)
+        #    para que sigan apareciendo en el menú si el usuario lo vuelve a abrir.
+        yield self.load_notifications()
