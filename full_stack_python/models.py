@@ -76,7 +76,8 @@ class PurchaseModel(rx.Model, table=True):
         if not self.items:
             return []
         return [
-            [cite_start]f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)" [cite: 378]
+            # [cite_start]👇 CORRECCIÓN: Se eliminó el "[cite: 378]"
+            f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)"
             for item in self.items
         ]
 
