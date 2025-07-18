@@ -1,5 +1,3 @@
-# full_stack_python/notifications/state.py (CÓDIGO REEMPLAZADO)
-
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
@@ -36,17 +34,24 @@ class NotificationState(SessionState):
         if not self.is_authenticated or not self.authenticated_user_info:
             return
 
-        # IDs de las notificaciones no leídas
         unread_ids = [n.id for n in self.notifications if not n.is_read]
         if not unread_ids:
-            return # No hacer nada si no hay nada que marcar
+            return
 
-        # Actualiza el estado local para que la UI reaccione al instante
-        for notification in self.notifications:
-            if not notification.is_read:
-                notification.is_read = True
+        # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
+        # 1. Se crea una nueva lista actualizada para forzar el re-renderizado de la UI.
+        updated_notifications = []
+        for n in self.notifications:
+            if not n.is_read:
+                # Crea una copia del objeto con is_read=True
+                n.is_read = True
+            updated_notifications.append(n)
         
-        # Actualiza la base de datos en segundo plano
+        # 2. Se reasigna la variable de estado, lo que garantiza que Reflex detecte el cambio.
+        self.notifications = updated_notifications
+        # --- FIN DE LA CORRECCIÓN ---
+        
+        # Actualiza la base de datos en segundo plano (esta parte estaba bien)
         with rx.session() as session:
             statement = (
                 rx.update(NotificationModel)
