@@ -1,4 +1,4 @@
-# full_stack_python/cart/page.py
+# full_stack_python/cart/page.py (CORREGIDO Y COMPLETO)
 
 import reflex as rx
 import reflex_local_auth
@@ -9,18 +9,22 @@ def cart_item_row(item: rx.Var) -> rx.Component:
     """Fila para un item en el carrito."""
     post = item[0]
     quantity = item[1]
-    return rx.tr(
-        rx.td(rx.text(post.title)),
-        rx.td(rx.hstack(
-            rx.button("-", on_click=CartState.remove_from_cart(post.id), size="1"),
-            rx.text(quantity),
-            rx.button("+", on_click=CartState.add_to_cart(post.id), size="1"),
-            align="center",
-            spacing="3"
-        )),
-        rx.td(rx.text(rx.cond(post.price, f"${post.price:.2f}", "$0.00"))),
-        rx.td(rx.text(f"${(post.price * quantity):.2f}")),
+    # --- ✨ CORRECCIÓN: Se usa la sintaxis de tabla modular ---
+    return rx.table.row(
+        rx.table.cell(rx.text(post.title)),
+        rx.table.cell(
+            rx.hstack(
+                rx.button("-", on_click=CartState.remove_from_cart(post.id), size="1"),
+                rx.text(quantity),
+                rx.button("+", on_click=CartState.add_to_cart(post.id), size="1"),
+                align="center",
+                spacing="3"
+            )
+        ),
+        rx.table.cell(rx.text(rx.cond(post.price, f"${post.price:.2f}", "$0.00"))),
+        rx.table.cell(rx.text(f"${(post.price * quantity):.2f}")),
     )
+# --- FIN DE CAMBIOS ---
 
 @reflex_local_auth.require_login
 def cart_page() -> rx.Component:
