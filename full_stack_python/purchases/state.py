@@ -3,7 +3,6 @@
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
-# --- ✨ CORRECCIÓN: Se añaden importaciones faltantes ---
 from ..models import PurchaseModel, UserInfo, PurchaseItemModel
 from sqlmodel import select
 import sqlalchemy
@@ -17,12 +16,12 @@ class PurchaseHistoryState(SessionState):
             return
 
         with rx.session() as session:
+            # --- ✨ CORRECCIÓN: Se añade .unique() antes de .all() ---
             self.purchases = session.exec(
                 select(PurchaseModel)
                 .options(
-                    # Esta consulta necesita PurchaseItemModel para funcionar
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
                 .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
-            ).all()
+            ).unique().all()

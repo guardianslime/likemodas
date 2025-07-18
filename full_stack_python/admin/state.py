@@ -5,16 +5,15 @@ from typing import List
 from ..auth.state import SessionState
 from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel
 import sqlalchemy
-# --- ✨ CAMBIO: Se importa `select` desde sqlmodel ---
 from sqlmodel import select
 
 class AdminConfirmState(SessionState):
     pending_purchases: List[PurchaseModel] = []
 
     def load_pending_purchases(self):
-        with rx.session() as session:
+        with rx.session() as session: 
+            # --- ✨ CORRECCIÓN: Se añade .unique() antes de .all() ---
             self.pending_purchases = session.exec(
-                # --- ✨ CAMBIO: Se usa `select` de sqlmodel en lugar de `rx.select` ---
                 select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
@@ -22,7 +21,7 @@ class AdminConfirmState(SessionState):
                 )
                 .where(PurchaseModel.status == PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.asc())
-            ).all()
+            ).unique().all()
 
     @rx.event
     def confirm_payment(self, purchase_id: int):
