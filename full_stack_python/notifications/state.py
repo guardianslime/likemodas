@@ -1,4 +1,4 @@
-# full_stack_python/notifications/state.py (ARCHIVO NUEVO)
+# full_stack_python/notifications/state.py (CÓDIGO REEMPLAZADO)
 
 import reflex as rx
 from typing import List
@@ -13,7 +13,7 @@ class NotificationState(SessionState):
     
     @rx.var
     def unread_count(self) -> int:
-        """Cuenta el número de notificaciones no leídas."""
+        """Cuenta solo las notificaciones no leídas."""
         return sum(1 for n in self.notifications if not n.is_read)
 
     @rx.event
@@ -32,23 +32,25 @@ class NotificationState(SessionState):
 
     @rx.event
     def mark_all_as_read(self):
-        """Marca todas las notificaciones como leídas."""
+        """Marca todas las notificaciones como leídas al abrir el menú."""
         if not self.is_authenticated or not self.authenticated_user_info:
             return
 
+        # IDs de las notificaciones no leídas
+        unread_ids = [n.id for n in self.notifications if not n.is_read]
+        if not unread_ids:
+            return # No hacer nada si no hay nada que marcar
+
+        # Actualiza el estado local para que la UI reaccione al instante
+        for notification in self.notifications:
+            if not notification.is_read:
+                notification.is_read = True
+        
+        # Actualiza la base de datos en segundo plano
         with rx.session() as session:
-            # Actualiza el estado local
-            for notification in self.notifications:
-                if not notification.is_read:
-                    notification.is_read = True
-            
-            # Actualiza la base de datos
             statement = (
                 rx.update(NotificationModel)
-                .where(
-                    NotificationModel.userinfo_id == self.authenticated_user_info.id,
-                    NotificationModel.is_read == False
-                )
+                .where(NotificationModel.id.in_(unread_ids))
                 .values(is_read=True)
             )
             session.exec(statement)

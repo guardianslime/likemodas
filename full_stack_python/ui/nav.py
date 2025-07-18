@@ -8,7 +8,7 @@ from ..auth.state import SessionState
 from ..notifications.state import NotificationState
 
 def notification_icon() -> rx.Component:
-    """Ícono de notificaciones con un menú desplegable."""
+    """Ícono de notificaciones que las marca como leídas al hacer clic."""
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
@@ -26,6 +26,7 @@ def notification_icon() -> rx.Component:
                 padding="0.5em",
                 cursor="pointer"
             ),
+            # --- CAMBIO CLAVE: Llama a la función de marcar como leído ---
             on_click=NotificationState.mark_all_as_read
         ),
         rx.menu.content(
@@ -35,11 +36,10 @@ def notification_icon() -> rx.Component:
                     NotificationState.notifications,
                     lambda n: rx.menu.item(
                         rx.box(
+                            # --- El texto vuelve a ser condicional (negrita si no está leído) ---
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
                             rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
                         ),
-                        # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
-                        # Se añade un tercer argumento a rx.cond para el caso "else".
                         on_click=rx.cond(
                             n.url, 
                             rx.redirect(n.url), 
