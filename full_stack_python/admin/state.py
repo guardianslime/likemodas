@@ -12,16 +12,13 @@ class AdminConfirmState(SessionState):
 
     def load_pending_purchases(self):
         with rx.session() as session: 
-            # --- ✨ CORRECCIÓN: Se añade .unique() antes de .all() ---
+            # --- ✨ CORRECCIÓN: Se simplifica la consulta eliminando .options() ---
+            # Ya no se necesita .unique().
             self.pending_purchases = session.exec(
                 select(PurchaseModel)
-                .options(
-                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
-                )
                 .where(PurchaseModel.status == PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.asc())
-            ).unique().all()
+            ).all()
 
     @rx.event
     def confirm_payment(self, purchase_id: int):
