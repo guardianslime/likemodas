@@ -1,11 +1,8 @@
-# full_stack_python/admin/page.py (CORREGIDO Y COMPLETO)
-
 import reflex as rx
 from ..ui.base import base_page
 from .state import AdminConfirmState, PaymentHistoryState
 from ..auth.admin_auth import require_admin
 from ..models import PurchaseModel
-
 
 def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
     return rx.card(
@@ -27,9 +24,6 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
                 rx.spacer(),
                 rx.button(
                     "Confirmar Pago",
-                    # --- ✨ CORRECCIÓN: Usar lambda para el evento on_click ---
-                    # Esto asegura que se pasa una referencia de función válida a Reflex
-                    # y evita el error de 'functools.partial'.
                     on_click=lambda: AdminConfirmState.confirm_payment(purchase.id),
                     color_scheme="green"
                 )
@@ -73,14 +67,13 @@ def confirmed_purchase_card(purchase: PurchaseModel) -> rx.Component:
             rx.hstack(
                 rx.text(f"Comprador: {purchase.userinfo.user.username} ({purchase.userinfo.email})", weight="bold"),
                 rx.spacer(),
-                # Usamos la nueva propiedad formateada
                 rx.text(f"Confirmado: {purchase.confirmed_at_formatted}")
             ),
             rx.divider(),
             rx.text("Items:"),
             rx.foreach(
                 purchase.items_formatted,
-                [cite_start]lambda item_str: rx.text(item_str) [cite: 2]
+                lambda item_str: rx.text(item_str)
             ),
             rx.divider(),
             rx.text(f"Total: ${purchase.total_price:.2f}", weight="bold", align_self="flex-end"),
@@ -89,10 +82,6 @@ def confirmed_purchase_card(purchase: PurchaseModel) -> rx.Component:
         )
     )
 
-# [cite_start]... (función admin_confirm_page existente) ... [cite: 6]
-
-
-# ✨ --- NUEVA PÁGINA PARA EL HISTORIAL --- ✨
 @require_admin
 def payment_history_page() -> rx.Component:
     return base_page(
@@ -102,7 +91,7 @@ def payment_history_page() -> rx.Component:
                 PaymentHistoryState.has_confirmed_purchases,
                 rx.foreach(
                     PaymentHistoryState.confirmed_purchases,
-                    confirmed_purchase_card # Usamos la nueva tarjeta
+                    confirmed_purchase_card
                 ),
                 rx.center(
                     rx.text("📜 Aún no hay pagos confirmados en el historial."),
@@ -114,7 +103,7 @@ def payment_history_page() -> rx.Component:
             ),
             spacing="5",
             width="100%",
-            [cite_start]max_width="1000px", [cite: 9]
+            max_width="1000px",
             align="center",
             padding="2em"
         )

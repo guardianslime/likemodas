@@ -1,14 +1,11 @@
-# full_stack_python/ui/sidebar.py (CORREGIDO Y COMPLETO)
-
 import reflex as rx
 from reflex.style import toggle_color_mode
 
 from ..auth.state import SessionState
 from .. import navigation
 from ..models import UserRole
-from ..admin.state import AdminConfirmState # ✨ AÑADIR IMPORTACIÓN
+from ..admin.state import AdminConfirmState
 
-# (Las funciones sidebar_user_item, sidebar_logout_item, etc. no cambian)
 def sidebar_user_item() -> rx.Component:
     user_info_obj = SessionState.authenticated_user_info
     username_via_user_abj = rx.cond(SessionState.authenticated_username, SessionState.authenticated_username, "Account")
@@ -50,6 +47,28 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
         on_click=toggle_color_mode, as_='button', underline="none", weight="medium", width="100%",
     )
 
+def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
+    """Componente de item del sidebar, ahora con indicador de notificación."""
+    return rx.link(
+        rx.hstack(
+            rx.icon(icon), 
+            rx.text(text, size="4"),
+            rx.spacer(),
+            rx.cond(
+                has_notification,
+                rx.box(
+                    width="8px",
+                    height="8px",
+                    bg="red",
+                    border_radius="50%",
+                )
+            ),
+            width="100%", padding_x="0.5rem", padding_y="0.75rem", align="center",
+            style={"_hover": {"bg": rx.color("accent", 4), "color": rx.color("accent", 11),}, "border-radius": "0.5em",},
+        ),
+        href=href, underline="none", weight="medium", width="100%",
+    )
+
 def sidebar_items() -> rx.Component:
     return rx.vstack(
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
@@ -59,7 +78,6 @@ def sidebar_items() -> rx.Component:
             SessionState.is_admin,
             rx.fragment(
                 sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
-                # 👇 CORRECCIÓN: Se eliminó el ""
                 sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
                 sidebar_item(
                     "Confirmar Pagos", 
@@ -77,40 +95,12 @@ def sidebar_items() -> rx.Component:
 
         sidebar_item("Contact", "mail", navigation.routes.CONTACT_US_ROUTE),
         sidebar_item("Contact History", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
-        [cite_start]spacing="1", [cite: 357]
-        [cite_start]width="100%", [cite: 357]
-    )
-
-
-def sidebar_items() -> rx.Component:
-    return rx.vstack(
-        sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
-        sidebar_item("Articles", "globe", navigation.routes.ARTICLE_LIST_ROUTE),
-        
-        rx.cond(
-            SessionState.is_admin,
-            rx.fragment(
-                sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
-                sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
-                # --- ✨ CAMBIO: Se pasa la variable de notificación ---
-                sidebar_item(
-                    "Confirmar Pagos", 
-                    "dollar-sign", 
-                    "/admin/confirm-payments",
-                    has_notification=AdminConfirmState.new_purchase_notification
-                )
-            )
-        ),
-
-        sidebar_item("Contact", "mail", navigation.routes.CONTACT_US_ROUTE),
-        sidebar_item("Contact History", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
         spacing="1",
         width="100%",
     )
 
 
 def sidebar() -> rx.Component:
-    # (El resto de la función sidebar no necesita cambios)
     return rx.box(
         rx.vstack(
             rx.hstack(
