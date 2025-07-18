@@ -1,4 +1,5 @@
-# full_stack_python/admin/page.py
+# full_stack_python/admin/page.py (CORREGIDO Y COMPLETO)
+
 import reflex as rx
 from ..ui.base import base_page
 from .state import AdminConfirmState
@@ -11,7 +12,8 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
             rx.hstack(
                 rx.text(f"Comprador: {purchase.userinfo.user.username} ({purchase.userinfo.email})", weight="bold"),
                 rx.spacer(),
-                rx.text(f"Fecha: {purchase.purchase_date.strftime('%d-%m-%Y')}")
+                # --- ✨ CORRECCIÓN: Se usa la propiedad computada en lugar de .strftime() ---
+                rx.text(f"Fecha: {purchase.purchase_date_formatted}")
             ),
             rx.divider(),
             rx.text("Items:"),
@@ -29,6 +31,7 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
                     color_scheme="green"
                 )
             ),
+
             spacing="3",
             width="100%"
         )
