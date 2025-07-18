@@ -16,7 +16,11 @@ class UserRole(str, enum.Enum):
 class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key="localuser.id")
-    role: UserRole = Field(default=UserRole.CUSTOMER, nullable=False)
+    role: UserRole = Field(
+        default=UserRole.CUSTOMER, 
+        sa_column_kwargs={"server_default": UserRole.CUSTOMER.value},
+        nullable=False
+    )
     
     user: Optional[LocalUser] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
