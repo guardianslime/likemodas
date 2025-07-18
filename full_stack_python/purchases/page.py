@@ -11,10 +11,10 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
     return rx.card(
         rx.vstack(
             rx.hstack(
-                # --- ✨ CORRECCIÓN: Se usa la nueva propiedad formateada ---
                 rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold"),
                 rx.spacer(),
-                rx.badge(purchase.status.value, color_scheme="blue"),
+                # --- ✨ CORRECCIÓN: Se convierte el Enum a string con .to(str) ---
+                rx.badge(purchase.status.to(str), color_scheme="blue"),
                 justify="between",
                 width="100%"
             ),
@@ -39,8 +39,8 @@ def purchase_history_page() -> rx.Component:
                 CartState.purchase_successful,
                 rx.callout(
                     "¡Gracias por tu compra! Tu orden está pendiente de confirmación.",
-                    # --- ✨ CORRECCIÓN: Se cambia el nombre del ícono ---
-                    icon="check_circle_2",
+                    # --- ✨ CORRECCIÓN: Se usa un nombre de ícono válido como "check" ---
+                    icon="check",
                     color_scheme="green"
                 )
             ),
