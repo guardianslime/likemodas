@@ -1,4 +1,4 @@
-# full_stack_python/admin/page.py (RECONSTRUIDO Y COMPLETO)
+# full_stack_python/admin/page.py (CORREGIDO Y COMPLETO)
 
 import reflex as rx
 from ..ui.base import base_page
@@ -7,9 +7,6 @@ from ..auth.admin_auth import require_admin
 from ..models import PurchaseModel
 
 def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
-    """
-    Una tarjeta visual para cada compra pendiente.
-    """
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -29,7 +26,10 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
                 rx.spacer(),
                 rx.button(
                     "Confirmar Pago",
-                    on_click=AdminConfirmState.confirm_payment(purchase.id),
+                    # --- ✨ CORRECCIÓN: Usar lambda para el evento on_click ---
+                    # Esto asegura que se pasa una referencia de función válida a Reflex
+                    # y evita el error de 'functools.partial'.
+                    on_click=lambda: AdminConfirmState.confirm_payment(purchase.id),
                     color_scheme="green"
                 )
             ),
@@ -40,14 +40,9 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
 
 @require_admin
 def admin_confirm_page() -> rx.Component:
-    """
-    Página donde los administradores pueden ver y confirmar pagos pendientes.
-    """
     return base_page(
         rx.vstack(
             rx.heading("Confirmar Pagos Pendientes", size="8"),
-            
-            # --- ✨ CORRECCIÓN: Se usa la variable computada 'has_pending_purchases' ---
             rx.cond(
                 AdminConfirmState.has_pending_purchases,
                 rx.foreach(
@@ -68,6 +63,5 @@ def admin_confirm_page() -> rx.Component:
             align="center",
             padding="2em"
         ),
-        # Limpia la notificación de nueva compra al visitar la página
         on_mount=AdminConfirmState.clear_notification
     )
