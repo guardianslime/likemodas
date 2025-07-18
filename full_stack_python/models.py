@@ -51,11 +51,21 @@ class PurchaseModel(rx.Model, table=True):
     
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
-    # --- ✨ AÑADIDO: Propiedad computada para formatear la fecha ---
     @property
     def purchase_date_formatted(self) -> str:
         """Devuelve la fecha de compra como un string formateado."""
         return self.purchase_date.strftime('%d-%m-%Y %H:%M')
+
+    # --- ✨ AÑADIDO: Propiedad para formatear la lista de items ---
+    @property
+    def items_formatted(self) -> list[str]:
+        """Devuelve una lista de strings de los items para el frontend."""
+        if not self.items:
+            return []
+        return [
+            f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)"
+            for item in self.items
+        ]
     # --- FIN DE CAMBIOS ---
 
 
