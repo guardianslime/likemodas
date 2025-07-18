@@ -30,7 +30,7 @@ class NotificationState(SessionState):
 
     @rx.event
     def mark_all_as_read(self):
-        """Marca todas las notificaciones como leídas al abrir el menú."""
+        """Marca todas las notificaciones como leídas en la BD y recarga el estado."""
         if not self.is_authenticated or not self.authenticated_user_info:
             return
 
@@ -38,20 +38,7 @@ class NotificationState(SessionState):
         if not unread_ids:
             return
 
-        # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
-        # 1. Se crea una nueva lista actualizada para forzar el re-renderizado de la UI.
-        updated_notifications = []
-        for n in self.notifications:
-            if not n.is_read:
-                # Crea una copia del objeto con is_read=True
-                n.is_read = True
-            updated_notifications.append(n)
-        
-        # 2. Se reasigna la variable de estado, lo que garantiza que Reflex detecte el cambio.
-        self.notifications = updated_notifications
-        # --- FIN DE LA CORRECCIÓN ---
-        
-        # Actualiza la base de datos en segundo plano (esta parte estaba bien)
+        # 1. Actualiza la base de datos
         with rx.session() as session:
             statement = (
                 rx.update(NotificationModel)
@@ -60,3 +47,9 @@ class NotificationState(SessionState):
             )
             session.exec(statement)
             session.commit()
+
+        # --- ✨ CORRECCIÓN CLAVE ---
+        # 2. Vuelve a llamar al evento que carga las notificaciones.
+        # Esto recarga la lista desde la base de datos (donde ahora todas están leídas)
+        # y garantiza que la UI se actualice correctamente.
+        return self.load_notifications
