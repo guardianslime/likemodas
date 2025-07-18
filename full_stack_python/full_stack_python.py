@@ -17,8 +17,8 @@ from .cart.page import cart_page
 from .cart.state import CartState
 from .purchases.page import purchase_history_page
 from .purchases.state import PurchaseHistoryState
-from .admin.page import admin_confirm_page
-from .admin.state import AdminConfirmState
+from .admin.page import admin_confirm_page, payment_history_page
+from .admin.state import AdminConfirmState, PaymentHistoryState
 
 from .articles.detail import article_detail_page, ArticleDetailState
 from .articles.list import articles_public_gallery_page
@@ -81,6 +81,12 @@ app.add_page(
     on_load=AdminConfirmState.load_pending_purchases
 )
 
+app.add_page(
+    payment_history_page,
+    route="/admin/payment-history",
+    title="Historial de Pagos",
+    on_load=PaymentHistoryState.load_confirmed_purchases
+)
 
 # --- Páginas de Artículos (Existentes) ---
 app.add_page(

@@ -66,11 +66,17 @@ class PurchaseModel(rx.Model, table=True):
         return self.purchase_date.strftime('%d-%m-%Y %H:%M')
 
     @property
+    def confirmed_at_formatted(self) -> str:
+        if not self.confirmed_at:
+            return "N/A"
+        return self.confirmed_at.strftime('%d-%m-%Y %H:%M')
+
+    @property
     def items_formatted(self) -> list[str]:
         if not self.items:
             return []
         return [
-            f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)"
+            [cite_start]f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)" [cite: 378]
             for item in self.items
         ]
 
@@ -78,11 +84,13 @@ class PurchaseModel(rx.Model, table=True):
     def dict(self, **kwargs):
         """
         Sobrescribe el método dict para incluir las propiedades computadas
-        y hacerlas accesibles en el frontend.
+        [cite_start]y hacerlas accesibles en el frontend. [cite: 379]
         """
         d = super().dict(**kwargs)
         d["purchase_date_formatted"] = self.purchase_date_formatted
         d["items_formatted"] = self.items_formatted
+        # ✨ --- AÑADIR LA NUEVA PROPIEDAD AL DICCIONARIO --- ✨
+        d["confirmed_at_formatted"] = self.confirmed_at_formatted
         return d
 
 class PurchaseItemModel(rx.Model, table=True):

@@ -50,26 +50,35 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
         on_click=toggle_color_mode, as_='button', underline="none", weight="medium", width="100%",
     )
 
-def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Componente de item del sidebar, ahora con indicador de notificación."""
-    return rx.link(
-        rx.hstack(
-            rx.icon(icon), 
-            rx.text(text, size="4"),
-            rx.spacer(),
-            rx.cond(
-                has_notification,
-                rx.box(
-                    width="8px",
-                    height="8px",
-                    bg="red",
-                    border_radius="50%",
+def sidebar_items() -> rx.Component:
+    return rx.vstack(
+        sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
+        sidebar_item("Articles", "globe", navigation.routes.ARTICLE_LIST_ROUTE),
+        
+        rx.cond(
+            SessionState.is_admin,
+            rx.fragment(
+                sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
+                [cite_start]sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE), [cite: 355]
+                sidebar_item(
+                    "Confirmar Pagos", 
+                    "dollar-sign", 
+                    "/admin/confirm-payments",
+                    [cite_start]has_notification=AdminConfirmState.new_purchase_notification [cite: 356]
+                ),
+                # ✨ --- NUEVO ENLACE AÑADIDO --- ✨
+                sidebar_item(
+                    "Historial de Pagos",
+                    "history", # Un ícono apropiado
+                    "/admin/payment-history" # La nueva ruta
                 )
-            ),
-            width="100%", padding_x="0.5rem", padding_y="0.75rem", align="center",
-            style={"_hover": {"bg": rx.color("accent", 4), "color": rx.color("accent", 11),}, "border-radius": "0.5em",},
+            )
         ),
-        href=href, underline="none", weight="medium", width="100%",
+
+        sidebar_item("Contact", "mail", navigation.routes.CONTACT_US_ROUTE),
+        sidebar_item("Contact History", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
+        [cite_start]spacing="1", [cite: 357]
+        [cite_start]width="100%", [cite: 357]
     )
 
 

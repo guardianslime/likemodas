@@ -2,9 +2,10 @@
 
 import reflex as rx
 from ..ui.base import base_page
-from .state import AdminConfirmState
+from .state import AdminConfirmState, PaymentHistoryState
 from ..auth.admin_auth import require_admin
 from ..models import PurchaseModel
+
 
 def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
     return rx.card(
@@ -64,4 +65,57 @@ def admin_confirm_page() -> rx.Component:
             padding="2em"
         ),
         on_mount=AdminConfirmState.clear_notification
+    )
+
+def confirmed_purchase_card(purchase: PurchaseModel) -> rx.Component:
+    return rx.card(
+        rx.vstack(
+            rx.hstack(
+                rx.text(f"Comprador: {purchase.userinfo.user.username} ({purchase.userinfo.email})", weight="bold"),
+                rx.spacer(),
+                # Usamos la nueva propiedad formateada
+                rx.text(f"Confirmado: {purchase.confirmed_at_formatted}")
+            ),
+            rx.divider(),
+            rx.text("Items:"),
+            rx.foreach(
+                purchase.items_formatted,
+                [cite_start]lambda item_str: rx.text(item_str) [cite: 2]
+            ),
+            rx.divider(),
+            rx.text(f"Total: ${purchase.total_price:.2f}", weight="bold", align_self="flex-end"),
+            spacing="3",
+            width="100%"
+        )
+    )
+
+# [cite_start]... (función admin_confirm_page existente) ... [cite: 6]
+
+
+# ✨ --- NUEVA PÁGINA PARA EL HISTORIAL --- ✨
+@require_admin
+def payment_history_page() -> rx.Component:
+    return base_page(
+        rx.vstack(
+            rx.heading("Historial de Pagos Confirmados", size="8"),
+            rx.cond(
+                PaymentHistoryState.has_confirmed_purchases,
+                rx.foreach(
+                    PaymentHistoryState.confirmed_purchases,
+                    confirmed_purchase_card # Usamos la nueva tarjeta
+                ),
+                rx.center(
+                    rx.text("📜 Aún no hay pagos confirmados en el historial."),
+                    padding="2em",
+                    bg=rx.color("gray", 2),
+                    border_radius="md",
+                    width="100%"
+                )
+            ),
+            spacing="5",
+            width="100%",
+            [cite_start]max_width="1000px", [cite: 9]
+            align="center",
+            padding="2em"
+        )
     )
