@@ -1,3 +1,5 @@
+# full_stack_python/navigation/state.py (CORREGIDO Y COMPLETO)
+
 import reflex as rx
 import reflex_local_auth
 from . import routes
@@ -36,6 +38,11 @@ class NavState(rx.State):
 
     def to_contact(self):
         return rx.redirect(routes.CONTACT_US_ROUTE)
+        
+    # --- ✨ NUEVO MÉTODO AÑADIDO ---
+    def to_my_purchases(self):
+        """Redirige a la página de historial de compras del usuario."""
+        return rx.redirect("/my-purchases")
 
     def to_pricing(self):
         return rx.redirect(routes.PRICING_ROUTE)

@@ -5,17 +5,67 @@ from .. import navigation
 # ✨ CORREGIDO: Se importa el nombre de clase correcto 'NavDeviceState'.
 from ..navigation.device import NavDeviceState
 from .search_state import SearchState
+from ..cart.state import CartState
+from ..auth.state import SessionState
 
 def public_navbar() -> rx.Component:
     """
     Una barra de navegación superior fija para todas las páginas públicas.
-    Integra el menú, el logo y la barra de búsqueda para una experiencia de usuario consistente.
+    Ahora incluye un ícono de carrito y un menú de usuario dinámico.
     """
     return rx.box(
         rx.hstack(
-            # Lado Izquierdo: Menú y Logo
+            # Lado Izquierdo: Logo
+            rx.image(
+                src="/logo.jpg",
+                width="8em",
+                height="auto",
+                border_radius="md",
+            ),
+            # Centro: Barra de Búsqueda
+            rx.input(
+                placeholder="Buscar productos...",
+                value=SearchState.search_term,
+                on_change=SearchState.update_search,
+                on_blur=SearchState.search_action,
+                width=["50%", "60%", "65%", "70%"], 
+                height=["2.5em", "2.8em", "3em", "3.3em"],
+                padding_x="4",
+                border_radius="full",
+                border_width="1px",
+                font_size=rx.breakpoints(sm="2", md="3", lg="3"),
+            ),
+            
+            # --- ✨ LADO DERECHO ACTUALIZADO ---
             rx.hstack(
-                # Menú de Hamburguesa
+                # --- Ícono del carrito de compras (solo para usuarios logueados) ---
+                rx.cond(
+                    SessionState.is_authenticated,
+                    rx.link(
+                        rx.box(
+                            rx.icon("shopping-cart", size=28),
+                            # Contador de productos en el carrito
+                            rx.cond(
+                                CartState.cart_items_count > 0,
+                                rx.box(
+                                    rx.text(CartState.cart_items_count, size="1", weight="bold"),
+                                    position="absolute",
+                                    top="-5px",
+                                    right="-5px",
+                                    padding="0 0.4em",
+                                    border_radius="full",
+                                    bg="red",
+                                    color="white",
+                                )
+                            ),
+                            position="relative",
+                            padding="0.5em"
+                        ),
+                        href="/cart"
+                    )
+                ),
+
+                # --- Menú de Hamburguesa Dinámico ---
                 rx.menu.root(
                     rx.menu.trigger(
                         rx.button(rx.icon("menu", size=24), variant="soft", size="3")
@@ -26,39 +76,32 @@ def public_navbar() -> rx.Component:
                         rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
                         rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
                         rx.menu.separator(),
-                        rx.menu.item("Login", on_click=navigation.NavState.to_login),
-                        rx.menu.item("Register", on_click=navigation.NavState.to_register),
+                        
+                        # --- Menú condicional para usuarios ---
+                        rx.cond(
+                            SessionState.is_authenticated,
+                            # Si está logueado
+                            rx.fragment(
+                                rx.menu.item("Mis Compras", on_click=navigation.NavState.to_my_purchases),
+                                rx.menu.item("Logout", on_click=navigation.NavState.to_logout),
+                            ),
+                            # Si NO está logueado
+                            rx.fragment(
+                                rx.menu.item("Login", on_click=navigation.NavState.to_login),
+                                rx.menu.item("Register", on_click=navigation.NavState.to_register),
+                            )
+                        )
                     ),
-                ),
-                # Logo
-                rx.image(
-                    src="/logo.jpg",
-                    width="8em",
-                    height="auto",
-                    border_radius="md",
                 ),
                 align="center",
                 spacing="4",
             ),
+            # --- FIN DE CAMBIOS ---
             
-            # Lado Derecho: Barra de Búsqueda
-            rx.input(
-                placeholder="Buscar productos...",
-                value=SearchState.search_term,
-                on_change=SearchState.update_search,
-                on_blur=SearchState.search_action,
-                width=["60%", "65%", "70%", "72%"], # Responsivo
-                height=["2.5em", "2.8em", "3em", "3.3em"],
-                padding_x="4",
-                border_radius="full",
-                border_width="1px",
-                font_size=rx.breakpoints(sm="2", md="3", lg="3"),
-            ),
             justify="between",
             align="center",
             width="100%",
         ),
-        # Estilos para la barra de navegación fija
         position="fixed",
         top="0",
         left="0",
@@ -66,9 +109,8 @@ def public_navbar() -> rx.Component:
         width="100%",
         padding="0.75rem 1rem",
         z_index="99",
-        bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"), # Fondo con transparencia
+        bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
         style={"backdrop_filter": "blur(10px)"},
-        # ✨ CORREGIDO: Se usa el on_mount del estado con el nombre correcto.
         on_mount=NavDeviceState.on_mount,
     )
 
