@@ -1,10 +1,11 @@
-# full_stack_python/admin/state.py (RECONSTRUIDO Y COMPLETO)
+# full_stack_python/admin/state.py (CORREGIDO)
 
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
 from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel
 import sqlalchemy
+from sqlmodel import select
 from datetime import datetime
 
 class AdminConfirmState(SessionState):
@@ -12,8 +13,6 @@ class AdminConfirmState(SessionState):
     Estado para que el administrador vea y confirme los pagos pendientes.
     """
     pending_purchases: List[PurchaseModel] = []
-    
-    # Notificación para el admin cuando hay nuevas compras
     new_purchase_notification: bool = False
 
     @rx.var
@@ -21,29 +20,29 @@ class AdminConfirmState(SessionState):
         """Verifica si hay compras pendientes."""
         return len(self.pending_purchases) > 0
 
-    @rx.background
-    async def load_pending_purchases(self):
+    # --- ✨ CORRECCIÓN CLAVE: Se reemplaza @rx.background por @rx.event ---
+    # El decorador @rx.background no es válido. @rx.event es el correcto para
+    # un método que se va a ejecutar al cargar la página (on_load).
+    @rx.event
+    def load_pending_purchases(self):
         """
         Carga las compras con estado 'PENDING' desde la base de datos.
         """
-        with self:
-            if not self.is_admin:
-                self.pending_purchases = []
-                return
+        if not self.is_admin:
+            self.pending_purchases = []
+            return
 
-            with rx.session() as session:
-                # --- ✨ CORRECCIÓN CLAVE: Sintaxis de consulta SQLModel/SQLAlchemy correcta ---
-                statement = (
-                    select(PurchaseModel)
-                    .options(
-                        sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                        sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
-                    )
-                    .where(PurchaseModel.status == PurchaseStatus.PENDING)
-                    .order_by(PurchaseModel.purchase_date.asc())
+        with rx.session() as session:
+            statement = (
+                select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
-                result = session.exec(statement).all()
-                self.pending_purchases = result
+                .where(PurchaseModel.status == PurchaseStatus.PENDING)
+                .order_by(PurchaseModel.purchase_date.asc())
+            )
+            self.pending_purchases = session.exec(statement).all()
 
     @rx.event
     def confirm_payment(self, purchase_id: int):
@@ -58,10 +57,7 @@ class AdminConfirmState(SessionState):
                 session.add(purchase)
                 session.commit()
                 
-                # --- ✨ NOTIFICACIÓN PARA EL ADMIN ---
                 yield rx.toast.success(f"Pago de {purchase.userinfo.email} confirmado.")
-                
-                # Recargamos la lista para que la compra confirmada desaparezca
                 yield self.load_pending_purchases
             else:
                 yield rx.toast.error("La compra no se pudo confirmar o ya fue procesada.")
