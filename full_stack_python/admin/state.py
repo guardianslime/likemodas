@@ -98,25 +98,17 @@ class PaymentHistoryState(SessionState):
 
     @rx.event
     def load_confirmed_purchases(self):
-        """
-        Carga las compras con estado 'CONFIRMED' desde la base de datos.
-        """
-        if not self.is_admin:
-            self.confirmed_purchases = []
-            return
-
+        # ...
         with rx.session() as session:
             statement = (
                 select(PurchaseModel)
                 .options(
-                    [cite_start]sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), [cite: 12]
-                    [cite_start]sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post) [cite: 12]
+                    # 👇 CORRECCIÓN: Se eliminó el "" de esta línea
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
-                # La clave es filtrar por el estado CONFIRMED
                 .where(PurchaseModel.status == PurchaseStatus.CONFIRMED)
-                # Ordenamos por fecha de confirmación, los más recientes primero
                 .order_by(PurchaseModel.confirmed_at.desc())
             )
-            # Usamos .unique() para evitar duplicados por el join con 'items'
-            [cite_start]self.confirmed_purchases = session.exec(statement).unique().all() [cite: 13]
+            self.confirmed_purchases = session.exec(statement).unique().all()
 
