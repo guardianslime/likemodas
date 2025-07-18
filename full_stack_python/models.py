@@ -19,14 +19,15 @@ class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key="localuser.id")
     
-    # --- ✨ CORRECCIÓN: Se define explícitamente la columna como String ---
     role: UserRole = Field(
         default=UserRole.CUSTOMER,
         sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False)
     )
-    # --- FIN DE CAMBIOS ---
     
-    user: Optional[LocalUser] = Relationship()
+    # --- ✨ CORRECCIÓN CLAVE #1 ---
+    # Se asegura que el objeto 'user' siempre se cargue junto con 'UserInfo'.
+    user: Optional[LocalUser] = Relationship(sa_relationship_kwargs={"lazy": "joined"})
+    
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
@@ -51,13 +52,12 @@ class PurchaseStatus(str, enum.Enum):
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
-    # Se añade `sa_relationship_kwargs` para forzar la carga de `userinfo`.
+    # --- ✨ CORRECCIÓN CLAVE #2 ---
+    # Se asegura que el objeto 'userinfo' siempre se cargue junto con 'PurchaseModel'.
     userinfo: "UserInfo" = Relationship(
         back_populates="purchases",
         sa_relationship_kwargs={"lazy": "joined"}
     )
-    # --- FIN DEL CAMBIO ---
     
     purchase_date: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     total_price: float
@@ -82,8 +82,10 @@ class PurchaseItemModel(rx.Model, table=True):
     purchase_id: int = Field(foreign_key="purchasemodel.id")
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     
+    # --- ✨ CORRECCIÓN CLAVE #3 ---
+    # Se asegura que el objeto 'blog_post' siempre se cargue junto con 'PurchaseItemModel'.
+    blog_post: "BlogPostModel" = Relationship(sa_relationship_kwargs={"lazy": "joined"})
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
-    blog_post: "BlogPostModel" = Relationship()
     
     quantity: int
     price_at_purchase: float
