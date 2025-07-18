@@ -54,7 +54,6 @@ class PurchaseModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
     
     purchase_date: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    # --- ✨ NUEVO CAMPO AÑADIDO ---
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
@@ -73,6 +72,17 @@ class PurchaseModel(rx.Model, table=True):
             f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)"
             for item in self.items
         ]
+
+    # --- ✨ CORRECCIÓN: AÑADE ESTE MÉTODO ---
+    def dict(self, **kwargs):
+        """
+        Sobrescribe el método dict para incluir las propiedades computadas
+        y hacerlas accesibles en el frontend.
+        """
+        d = super().dict(**kwargs)
+        d["purchase_date_formatted"] = self.purchase_date_formatted
+        d["items_formatted"] = self.items_formatted
+        return d
 
 class PurchaseItemModel(rx.Model, table=True):
     purchase_id: int = Field(foreign_key="purchasemodel.id")
