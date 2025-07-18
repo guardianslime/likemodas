@@ -182,16 +182,19 @@ def blog_public_detail_page() -> rx.Component:
     return public_layout(
         rx.fragment(
             page_content,
-            # Modal para mostrar la imagen ampliada
-            rx.modal(
-                rx.modal_body(
-                    rx.image(src=BlogViewState.modal_image_src, width="100%", height="auto")
+            # ✨ CORRECCIÓN FINAL: Usamos rx.radix.themes.dialog en lugar de rx.modal
+            rx.radix.themes.dialog.root(
+                rx.radix.themes.dialog.content(
+                    style={"max_width": "80vw", "max_height": "90vh"},
+                    rx.radix.themes.dialog.body(
+                        rx.image(src=BlogViewState.modal_image_src, width="100%", height="auto")
+                    ),
+                    rx.radix.themes.dialog.close(
+                        rx.icon_button(rx.icon(tag="x"), variant="soft", size="2", position="absolute", top="0.5em", right="0.5em")
+                    ),
                 ),
-                rx.modal_footer(
-                    rx.button("Cerrar", on_click=BlogViewState.close_modal)
-                ),
-                is_open=BlogViewState.show_modal,
-                size="5",
+                open=BlogViewState.show_modal,
+                on_open_change=BlogViewState.close_modal, # Permite cerrar haciendo clic fuera
             )
         )
     )
