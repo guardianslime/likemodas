@@ -12,10 +12,12 @@ class AdminConfirmState(SessionState):
 
     def load_pending_purchases(self):
         with rx.session() as session: 
-            # --- ✨ CORRECCIÓN: Se simplifica la consulta eliminando .options() ---
-            # Ya no se necesita .unique().
+            # --- ✨ CORRECCIÓN: Se restaura el `options` para cargar los datos del usuario ---
             self.pending_purchases = session.exec(
                 select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user)
+                )
                 .where(PurchaseModel.status == PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.asc())
             ).all()
