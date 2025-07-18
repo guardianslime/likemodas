@@ -26,7 +26,6 @@ def notification_icon() -> rx.Component:
                 padding="0.5em",
                 cursor="pointer"
             ),
-            # Al hacer clic, se marcan las notificaciones como leídas
             on_click=NotificationState.mark_all_as_read
         ),
         rx.menu.content(
@@ -40,13 +39,16 @@ def notification_icon() -> rx.Component:
                             rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
                         ),
                         # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
-                        # Se reemplaza el 'if n.url else' de Python por 'rx.cond'.
-                        on_click=rx.cond(n.url, rx.redirect(n.url))
+                        # Se añade un tercer argumento a rx.cond para el caso "else".
+                        on_click=rx.cond(
+                            n.url, 
+                            rx.redirect(n.url), 
+                            rx.toast.info("Esta notificación no tiene un enlace.")
+                        )
                     )
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            # Estilos del menú
             bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
             style={"backdrop_filter": "blur(10px)"},
             max_height="300px",
