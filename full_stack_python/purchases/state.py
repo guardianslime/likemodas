@@ -1,4 +1,4 @@
-# full_stack_python/purchases/state.py (CORREGIDO Y COMPLETO)
+# full_stack_python/purchases/state.py (CORREGIDO Y DEFINITIVO)
 
 import reflex as rx
 from typing import List
@@ -16,10 +16,12 @@ class PurchaseHistoryState(SessionState):
             return
 
         with rx.session() as session:
-            # --- ✨ CORRECCIÓN: Se simplifica la consulta eliminando .options() ---
-            # Ya no se necesita .unique() porque la consulta es simple.
+            # --- ✨ CORRECCIÓN: Se restaura la consulta completa con carga explícita (eager loading) ---
             self.purchases = session.exec(
                 select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
                 .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
-            ).all()
+            ).unique().all() # Se usa .unique().all() para manejar correctamente los datos anidados
