@@ -16,7 +16,6 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
             ),
             rx.divider(),
             rx.text("Items:"),
-            # --- ✨ CORRECCIÓN: Se itera sobre la propiedad formateada en lugar de la lista anidada ---
             rx.foreach(
                 purchase.items_formatted,
                 lambda item_str: rx.text(item_str)
@@ -42,8 +41,9 @@ def admin_confirm_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Confirmar Pagos Pendientes", size="8"),
+            # --- ✨ CORRECCIÓN: Condición más robusta para evitar el error ---
             rx.cond(
-                AdminConfirmState.pending_purchases,
+                (AdminConfirmState.pending_purchases) & (AdminConfirmState.pending_purchases.length() > 0),
                 rx.foreach(AdminConfirmState.pending_purchases, pending_purchase_card),
                 rx.text("No hay pagos pendientes de confirmación.")
             ),

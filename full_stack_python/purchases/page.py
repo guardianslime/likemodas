@@ -18,7 +18,6 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
                 width="100%"
             ),
             rx.divider(),
-            # --- ✨ CORRECCIÓN: Se itera sobre la nueva propiedad computada ---
             rx.foreach(
                 purchase.items_formatted,
                 lambda item_str: rx.text(item_str)
@@ -43,8 +42,9 @@ def purchase_history_page() -> rx.Component:
                     color_scheme="green"
                 )
             ),
+            # --- ✨ CORRECCIÓN: Condición más robusta para evitar el error ---
             rx.cond(
-                PurchaseHistoryState.purchases,
+                (PurchaseHistoryState.purchases) & (PurchaseHistoryState.purchases.length() > 0),
                 rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
                 rx.text("No tienes compras anteriores.")
             ),
