@@ -30,7 +30,7 @@ class UserInfo(rx.Model, table=True):
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
-    notifications: List["NotificationModel"] = Relationship()
+    notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
     
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
@@ -97,7 +97,7 @@ class PurchaseItemModel(rx.Model, table=True):
 
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    userinfo: "UserInfo" = Relationship()
+    userinfo: "UserInfo" = Relationship(back_populates="notifications", sa_relationship_kwargs={"overlaps": "notifications"})
 
     message: str
     is_read: bool = Field(default=False)
