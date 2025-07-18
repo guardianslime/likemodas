@@ -1,32 +1,32 @@
-# full_stack_python/auth/state.py
+# full_stack_python/auth/state.py (CORREGIDO Y COMPLETO)
 
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
-from ..models import UserInfo
+from ..models import UserInfo, UserRole # ✨ AÑADIDO: Importar UserRole
 
 class SessionState(reflex_local_auth.LocalAuthState):
 
     @rx.var(cache=True)
-    def my_userinfo_id(self) -> str | None:
+    def my_userinfo_id(self) -> str | None: #
         if self.authenticated_user_info is None:
             return None
         return str(self.authenticated_user_info.id)
 
     @rx.var(cache=True)
-    def my_user_id(self) -> str | None:
+    def my_user_id(self) -> str | None: #
         if not self.authenticated_user or self.authenticated_user.id < 0:
             return None
         return str(self.authenticated_user.id)
 
     @rx.var(cache=True)
-    def authenticated_username(self) -> str | None:
+    def authenticated_username(self) -> str | None: #
         if not self.authenticated_user or self.authenticated_user.id < 0:
             return None
         return self.authenticated_user.username
 
     @rx.var(cache=True)
-    def authenticated_user_info(self) -> UserInfo | None:
+    def authenticated_user_info(self) -> UserInfo | None: #
         if not self.authenticated_user or self.authenticated_user.id < 0:
             return None
         with rx.session() as session:
@@ -36,6 +36,16 @@ class SessionState(reflex_local_auth.LocalAuthState):
                 )
             ).one_or_none()
             return result
+
+    # --- ✨ AÑADIDO: Variables computadas para roles ---
+    @rx.var
+    def is_admin(self) -> bool:
+        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
+
+    @rx.var
+    def is_customer(self) -> bool:
+        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.CUSTOMER
+    # --- FIN DE CAMBIOS ---
 
     def on_load(self):
         if not self.is_authenticated:
@@ -48,8 +58,8 @@ class SessionState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/")
 
 
-class MyRegisterState(reflex_local_auth.RegistrationState):
-    def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore
+class MyRegisterState(reflex_local_auth.RegistrationState): #
+    def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore #
         username = form_data["username"]
         password = form_data["password"]
         validation_errors = self._validate_fields(
@@ -58,21 +68,19 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
         if validation_errors:
             self.new_user_id = -1
             return validation_errors
-        self._register_user(username, password)
-        # Asegúrate de que handle_registration devuelva un evento válido al final
+        self._register_user(username, password) #
         return type(self).successful_registration
 
     def handle_registration_email(self, form_data):
-        # Llama a la lógica de registro base
         registration_event = self.handle_registration(form_data)
         
-        # Si el registro fue exitoso (no hubo errores de validación)
         if self.new_user_id >= 0:
-            with rx.session() as session:
+            with rx.session() as session: #
                 session.add(
                     UserInfo(
                         email=form_data["email"],
                         user_id=self.new_user_id,
+                        # El rol por defecto es CUSTOMER según el modelo, no es necesario especificarlo aquí.
                     )
                 )
                 session.commit()

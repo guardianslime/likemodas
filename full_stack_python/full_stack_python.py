@@ -1,11 +1,11 @@
-"""Welcome to Reflex! This file outlines the steps to create a basic app."""
+# full_stack_python/full_stack_python.py (CORREGIDO Y COMPLETO)
 
 import reflex as rx
 import reflex_local_auth
 
 from full_stack_python.blog.public_detail import blog_public_detail_page
 from full_stack_python.blog.page import blog_public_page
-from full_stack_python.blog.state import BlogPublicState, BlogViewState, BlogPostState
+from full_stack_python.blog.state import BlogViewState, BlogPostState
 from rxconfig import config
 
 # --- Módulos y Componentes ---
@@ -13,13 +13,17 @@ from .ui.base import base_page
 from .auth.pages import my_login_page, my_register_page, my_logout_page
 from .auth.state import SessionState
 
-# --- ✨ CORRECCIÓN AQUÍ ✨ ---
-# Se importa cada clase de estado desde su archivo correcto.
+from .cart.page import cart_page
+from .cart.state import CartState
+from .purchases.page import purchase_history_page
+from .purchases.state import PurchaseHistoryState
+from .admin.page import admin_confirm_page
+from .admin.state import AdminConfirmState
+
 from .articles.detail import article_detail_page, ArticleDetailState
 from .articles.list import articles_public_gallery_page
 from .articles.state import ArticlePublicState
 
-# Se importan los paquetes completos para usar la notación paquete.componente
 from . import blog, contact, navigation, pages
 
 # --- Definición de la Aplicación ---
@@ -47,8 +51,6 @@ app = rx.App(
 
 # --- Registro de Páginas ---
 
-# --- ✨ Y SE USA EL ESTADO CORRECTO AQUÍ ✨ ---
-# La página de índice y la galería usan ArticlePublicState para cargar todos los posts.
 app.add_page(index, on_load=ArticlePublicState.load_posts)
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -58,19 +60,41 @@ app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 
-# Páginas de Artículos
+# --- Páginas de E-commerce ---
+app.add_page(
+    cart_page,
+    route="/cart",
+    title="Mi Carrito"
+)
+
+app.add_page(
+    purchase_history_page,
+    route="/my-purchases",
+    title="Mis Compras",
+    on_load=PurchaseHistoryState.load_purchases
+)
+
+app.add_page(
+    admin_confirm_page,
+    route="/admin/confirm-payments",
+    title="Confirmar Pagos",
+    on_load=AdminConfirmState.load_pending_purchases
+)
+
+
+# --- Páginas de Artículos (Existentes) ---
 app.add_page(
     articles_public_gallery_page,
     route=navigation.routes.ARTICLE_LIST_ROUTE,
-    on_load=ArticlePublicState.load_posts, # Se usa el estado público
+    on_load=ArticlePublicState.load_posts,
 )
 app.add_page(
     article_detail_page,
     route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
-    on_load=ArticleDetailState.on_load, # La página de detalle usa su propio estado
+    on_load=ArticleDetailState.on_load,
 )
 
-# Páginas de Blog (privadas y públicas)
+# --- Páginas de Blog (Privadas del Admin) ---
 app.add_page(
     blog.blog_post_list_page,
     route=navigation.routes.BLOG_POSTS_ROUTE,
@@ -88,15 +112,16 @@ app.add_page(
     on_load=blog.BlogEditFormState.on_load_edit
 )
 
-# Página de la galería pública
+# --- Página de la galería pública ---
 app.add_page(
     blog_public_page,
     route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE,
     title="Galería pública",
-    on_load=BlogPublicState.on_load
+    # --- ✨ CORRECCIÓN: Se usa CartState para cargar los posts ---
+    on_load=CartState.on_load
 )
 
-# Página de detalle público
+# --- Página de detalle público ---
 app.add_page(
     blog_public_detail_page,
     route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
@@ -104,7 +129,7 @@ app.add_page(
     on_load=BlogViewState.on_load
 )
 
-# Páginas de Contacto
+# --- Páginas de Contacto ---
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
 app.add_page(
     contact.contact_entries_list_page,

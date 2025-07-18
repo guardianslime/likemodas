@@ -1,10 +1,11 @@
-# full_stack_python/ui/sidebar.py (CORREGIDO)
+# full_stack_python/ui/sidebar.py (CORREGIDO Y COMPLETO)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
 
 from ..auth.state import SessionState
 from .. import navigation
+from ..models import UserRole
 
 def sidebar_user_item() -> rx.Component:
     user_info_obj = SessionState.authenticated_user_info
@@ -129,20 +130,23 @@ def sidebar_item(text: str, icon: str, href: str) -> rx.Component:
 def sidebar_items() -> rx.Component:
     return rx.vstack(
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
-        # ✅ Este enlace ahora funciona correctamente gracias al Paso 1
         sidebar_item("Articles", "globe", navigation.routes.ARTICLE_LIST_ROUTE),
         sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
         sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
         sidebar_item("Contact", "mail", navigation.routes.CONTACT_US_ROUTE),
         sidebar_item("Contact History", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
+        
+        # --- ✨ CORRECCIÓN: Se usa la nueva variable computada `is_admin` ---
+        rx.cond(
+            SessionState.is_admin,
+            sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments")
+        ),
         spacing="1",
         width="100%",
     )
 
 
 def sidebar() -> rx.Component:
-    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-    # Se unifica el código usando la prop 'display' para la responsividad.
     return rx.box(
         # Vista para Escritorio: Barra lateral visible
         rx.vstack(
@@ -182,13 +186,11 @@ def sidebar() -> rx.Component:
             align="start",
             height="100vh",
             width="16em",
-            # Se oculta en móvil y tablet, se muestra en escritorio.
             display=["none", "none", "flex", "flex"],
         ),
         # Vista para Móvil y Tablet: Menú de cajón (drawer)
         rx.drawer.root(
             rx.drawer.trigger(
-                # El ícono de menú se muestra en móvil/tablet y se oculta en escritorio.
                 rx.icon("align-justify", size=30, display=["flex", "flex", "none", "none"])
             ),
             rx.drawer.overlay(z_index="5"),
