@@ -7,6 +7,8 @@ from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseSt
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
+
+# Asegúrate de que esta importación (del paso anterior) esté presente
 from ..admin.state import AdminConfirmState
 
 class CartState(SessionState):
@@ -19,7 +21,7 @@ class CartState(SessionState):
     # Para mostrar un mensaje de éxito después de la compra
     purchase_successful: bool = False
 
-    # --- ✨ AÑADIDO: Variable y método para cargar los posts públicos ---
+    # Variable y método para cargar los posts públicos
     posts: list[BlogPostModel] = []
 
     def on_load(self):
@@ -30,7 +32,6 @@ class CartState(SessionState):
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
-    # --- FIN DE CAMBIOS ---
 
     @rx.var
     def cart_items_count(self) -> int:
@@ -55,7 +56,8 @@ class CartState(SessionState):
         """Calcula el precio total del carrito."""
         total = 0.0
         for post, quantity in self.cart_details:
-            total += post.price * quantity
+            if post and post.price:
+                total += post.price * quantity
         return total
 
     @rx.event
@@ -74,10 +76,10 @@ class CartState(SessionState):
             if self.cart[post_id] > 1:
                 self.cart[post_id] -= 1
             else:
-                del self.cart[post_id]
-
-    class CartState(SessionState):
-    # ... (código del estado existente) ...
+                # Usamos pop para asegurar que se elimine la clave
+                self.cart.pop(post_id, None)
+                # Forzamos la actualización para que la UI reaccione
+                self.cart = self.cart
 
     @rx.event
     def handle_checkout(self):
@@ -118,8 +120,8 @@ class CartState(SessionState):
         self.cart = {}
         self.purchase_successful = True
         
-        # --- ✨ NOTIFICACIÓN AL ADMIN Y AL USUARIO ---
-        yield AdminConfirmState.notify_admin_of_new_purchase() # Notifica al admin
-        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.") # Notifica al usuario
+        # 4. Enviar notificaciones y redirigir
+        yield AdminConfirmState.notify_admin_of_new_purchase()
+        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         
         return rx.redirect("/my-purchases")
