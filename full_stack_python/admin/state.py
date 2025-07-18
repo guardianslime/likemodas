@@ -14,7 +14,7 @@ class AdminConfirmState(SessionState):
         with rx.session() as session: #
             self.pending_purchases = session.exec(
                 # La consulta ya estaba bien, pero fallaba por las importaciones
-                select(PurchaseModel)
+                rx.select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
