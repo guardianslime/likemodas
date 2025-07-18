@@ -2,7 +2,8 @@ import reflex as rx
 from typing import List
 from ..auth.state import SessionState
 from ..models import NotificationModel
-from sqlmodel import select, col
+# --- ✨ 1. AÑADIR 'update' A LA IMPORTACIÓN ---
+from sqlmodel import select, col, update
 
 class NotificationState(SessionState):
     """Gestiona las notificaciones del usuario."""
@@ -41,19 +42,14 @@ class NotificationState(SessionState):
         if not unread_ids:
             return
 
-        # --- ✨ LÓGICA CLAVE INSPIRADA EN EL CARRITO ---
-        # 1. Actualizamos la lista localmente para un feedback visual instantáneo.
+        self.notifications = self.notifications.copy()
         for notification in self.notifications:
             notification.is_read = True
         
-        # 2. Reasignamos la lista (usando .copy() para crear una nueva referencia)
-        #    para forzar la actualización de la UI, similar a `self.cart = {}`.
-        self.notifications = self.notifications.copy()
-
-        # 3. Actualizamos la base de datos en segundo plano.
         with rx.session() as session:
             statement = (
-                rx.update(NotificationModel)
+                # --- ✨ 2. USAR 'update' EN LUGAR DE 'rx.update' ---
+                update(NotificationModel)
                 .where(NotificationModel.id.in_(unread_ids))
                 .values(is_read=True)
             )
