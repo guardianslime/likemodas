@@ -1,11 +1,13 @@
-# full_stack_python/blog/edit.py (VERSIÓN UNIFICADA)
+# full_stack_python/blog/edit.py (CORREGIDO)
 import reflex as rx
-import reflex_local_auth
+# --- ✨ CAMBIO: Se importa el decorador de admin ---
+from ..auth.admin_auth import require_admin
 from ..ui.base import base_page
 from . import forms
 from .state import BlogEditFormState
 
-@reflex_local_auth.require_login
+# --- ✨ CAMBIO: Se usa el decorador de admin ---
+@require_admin
 def blog_post_edit_page() -> rx.Component:
     return base_page(
         rx.vstack(

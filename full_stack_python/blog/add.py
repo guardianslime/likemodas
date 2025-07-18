@@ -1,11 +1,13 @@
-# full_stack_python/blog/add.py (VERSIÓN UNIFICADA)
+# full_stack_python/blog/add.py (CORREGIDO)
 import reflex as rx
-import reflex_local_auth
+# --- ✨ CAMBIO: Se importa el decorador de admin ---
+from ..auth.admin_auth import require_admin
 from .forms import blog_post_add_form
 from ..ui.base import base_page
 from . import forms
 
-@reflex_local_auth.require_login
+# --- ✨ CAMBIO: Se usa el decorador de admin ---
+@require_admin
 def blog_post_add_page() -> rx.Component:
     return base_page(
         rx.center(
