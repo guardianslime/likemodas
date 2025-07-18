@@ -36,11 +36,12 @@ def notification_icon() -> rx.Component:
                     NotificationState.notifications,
                     lambda n: rx.menu.item(
                         rx.box(
-                            # CORRECCIÓN: Se usa rx.cond para el estilo del texto
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
                             rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
                         ),
-                        on_click=lambda: rx.redirect(n.url) if n.url else None
+                        # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
+                        # Se reemplaza el 'if n.url else' de Python por 'rx.cond'.
+                        on_click=rx.cond(n.url, rx.redirect(n.url))
                     )
                 ),
                 rx.menu.item("No tienes notificaciones.")
