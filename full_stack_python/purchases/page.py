@@ -1,5 +1,4 @@
-# full_stack_python/purchases/page.py (CORREGIDO Y COMPLETO)
-
+# full_stack_python/purchases/page.py
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
@@ -11,16 +10,16 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
     return rx.card(
         rx.vstack(
             rx.hstack(
-                rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold"),
+                rx.text(f"Compra del: {purchase.purchase_date.strftime('%d-%m-%Y %H:%M')}", weight="bold"),
                 rx.spacer(),
-                rx.badge(purchase.status.to(str), color_scheme="blue"),
+                rx.badge(purchase.status.value, color_scheme="blue"),
                 justify="between",
                 width="100%"
             ),
             rx.divider(),
             rx.foreach(
-                purchase.items_formatted,
-                lambda item_str: rx.text(item_str)
+                purchase.items,
+                lambda item: rx.text(f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)")
             ),
             rx.divider(),
             rx.text(f"Total: ${purchase.total_price:.2f}", weight="bold", align_self="flex-end"),
@@ -38,13 +37,12 @@ def purchase_history_page() -> rx.Component:
                 CartState.purchase_successful,
                 rx.callout(
                     "¡Gracias por tu compra! Tu orden está pendiente de confirmación.",
-                    icon="check",
+                    icon="check_circle",
                     color_scheme="green"
                 )
             ),
-            # --- ✨ CORRECCIÓN: Condición más robusta para evitar el error ---
             rx.cond(
-                (PurchaseHistoryState.purchases) & (PurchaseHistoryState.purchases.length() > 0),
+                PurchaseHistoryState.purchases,
                 rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
                 rx.text("No tienes compras anteriores.")
             ),
