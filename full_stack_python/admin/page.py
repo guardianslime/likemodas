@@ -12,14 +12,14 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
             rx.hstack(
                 rx.text(f"Comprador: {purchase.userinfo.user.username} ({purchase.userinfo.email})", weight="bold"),
                 rx.spacer(),
-                # --- ✨ CORRECCIÓN: Se usa la propiedad computada en lugar de .strftime() ---
                 rx.text(f"Fecha: {purchase.purchase_date_formatted}")
             ),
             rx.divider(),
             rx.text("Items:"),
+            # --- ✨ CORRECCIÓN: Se itera sobre la propiedad formateada en lugar de la lista anidada ---
             rx.foreach(
-                purchase.items,
-                lambda item: rx.text(f"- {item.quantity}x {item.blog_post.title}")
+                purchase.items_formatted,
+                lambda item_str: rx.text(item_str)
             ),
             rx.divider(),
             rx.hstack(
