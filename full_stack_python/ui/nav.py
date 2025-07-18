@@ -8,7 +8,7 @@ from ..auth.state import SessionState
 from ..notifications.state import NotificationState
 
 def notification_icon() -> rx.Component:
-    """Ícono de notificaciones que las marca como leídas al hacer clic."""
+    """Ícono de notificaciones que las marca como leídas al abrir el menú."""
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
@@ -26,8 +26,6 @@ def notification_icon() -> rx.Component:
                 padding="0.5em",
                 cursor="pointer"
             ),
-            # --- CAMBIO CLAVE: Llama a la función de marcar como leído ---
-            on_click=NotificationState.mark_all_as_read
         ),
         rx.menu.content(
             rx.cond(
@@ -36,7 +34,6 @@ def notification_icon() -> rx.Component:
                     NotificationState.notifications,
                     lambda n: rx.menu.item(
                         rx.box(
-                            # --- El texto vuelve a ser condicional (negrita si no está leído) ---
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
                             rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
                         ),
@@ -53,7 +50,11 @@ def notification_icon() -> rx.Component:
             style={"backdrop_filter": "blur(10px)"},
             max_height="300px",
             overflow_y="auto"
-        )
+        ),
+        # --- ✨ CAMBIO CLAVE: Usamos el evento on_open_change ---
+        # Esto se dispara cuando el menú se abre, que es el momento perfecto
+        # para marcar las notificaciones como leídas.
+        on_open_change=lambda open: rx.cond(open, NotificationState.mark_all_as_read, None)
     )
 
 def public_navbar() -> rx.Component:

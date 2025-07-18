@@ -31,8 +31,8 @@ class NotificationState(SessionState):
     @rx.event
     def mark_all_as_read(self):
         """
-        Marca todas las notificaciones como leídas en la BD y luego
-        dispara el evento de recarga para sincronizar la UI.
+        Actualiza la UI al instante para que el contador desaparezca y luego
+        actualiza la base de datos en segundo plano.
         """
         if not self.is_authenticated or not self.authenticated_user_info:
             return
@@ -41,7 +41,16 @@ class NotificationState(SessionState):
         if not unread_ids:
             return
 
-        # 1. Actualiza la base de datos
+        # --- ✨ LÓGICA CLAVE INSPIRADA EN EL CARRITO ---
+        # 1. Actualizamos la lista localmente para un feedback visual instantáneo.
+        for notification in self.notifications:
+            notification.is_read = True
+        
+        # 2. Reasignamos la lista (usando .copy() para crear una nueva referencia)
+        #    para forzar la actualización de la UI, similar a `self.cart = {}`.
+        self.notifications = self.notifications.copy()
+
+        # 3. Actualizamos la base de datos en segundo plano.
         with rx.session() as session:
             statement = (
                 rx.update(NotificationModel)
@@ -50,9 +59,3 @@ class NotificationState(SessionState):
             )
             session.exec(statement)
             session.commit()
-
-        # --- ✨ CORRECCIÓN CLAVE Y CANÓNICA ---
-        # 2. Usamos 'yield' para llamar al evento de recarga.
-        #    Esta es la forma más robusta en Reflex para encadenar eventos
-        #    y asegurar que las actualizaciones de estado se procesen en orden.
-        yield NotificationState.load_notifications
