@@ -182,19 +182,35 @@ def blog_public_detail_page() -> rx.Component:
     return public_layout(
         rx.fragment(
             page_content,
-            # ✨ CORRECCIÓN FINAL: Se usan los nombres de componente correctos (PascalCase)
-            rx.radix.themes.DialogRoot(
-                rx.radix.themes.DialogContent(
-                    rx.radix.themes.DialogBody(
-                        rx.image(src=BlogViewState.modal_image_src, width="100%", height="auto", object_fit="contain")
+            # ✨ CORRECCIÓN FINAL: Un modal simple hecho con componentes básicos de Reflex
+            rx.cond(
+                BlogViewState.show_modal,
+                rx.box(
+                    rx.center(
+                        rx.vstack(
+                            rx.image(
+                                src=BlogViewState.modal_image_src,
+                                max_height="80vh",
+                                max_width="80vw",
+                                object_fit="contain",
+                            ),
+                            rx.button("Cerrar", on_click=BlogViewState.close_modal, margin_top="1em"),
+                            on_click_stop_propagation=True,
+                            padding="2em",
+                            bg=rx.color("mauve", 2),
+                            border_radius="1em",
+                        ),
+                        height="100%",
                     ),
-                    rx.radix.themes.DialogClose(
-                         rx.button("Cerrar", on_click=BlogViewState.close_modal, margin_top="1em", cursor="pointer")
-                    ),
-                    style={"max_width": "80vw", "max_height": "90vh", "padding": "1em"},
-                ),
-                open=BlogViewState.show_modal,
-                on_open_change=BlogViewState.close_modal,
+                    position="fixed",
+                    top="0",
+                    left="0",
+                    width="100vw",
+                    height="100vh",
+                    background_color="rgba(0, 0, 0, 0.8)",
+                    z_index="9999",
+                    on_click=BlogViewState.close_modal,
+                )
             )
         )
     )
