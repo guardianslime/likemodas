@@ -4,6 +4,7 @@ import reflex_local_auth
 from ..ui.base import base_page
 from .state import PurchaseHistoryState
 from ..cart.state import CartState
+from ..models import PurchaseModel
 
 def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
     return rx.card(

@@ -3,6 +3,7 @@ import reflex as rx
 from ..ui.base import base_page
 from .state import AdminConfirmState
 from ..auth.admin_auth import require_admin
+from ..models import PurchaseModel
 
 def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
     return rx.card(
