@@ -182,13 +182,13 @@ def blog_public_detail_page() -> rx.Component:
     return public_layout(
         rx.fragment(
             page_content,
-            # Modal para mostrar la imagen ampliada
-            rx.radix.themes.dialog.root(
-                rx.radix.themes.dialog.content(
-                    rx.radix.themes.dialog.body(
+            # ✨ CORRECCIÓN FINAL: Se usan los nombres de componente correctos (PascalCase)
+            rx.radix.themes.DialogRoot(
+                rx.radix.themes.DialogContent(
+                    rx.radix.themes.DialogBody(
                         rx.image(src=BlogViewState.modal_image_src, width="100%", height="auto", object_fit="contain")
                     ),
-                    rx.radix.themes.dialog.close(
+                    rx.radix.themes.DialogClose(
                          rx.button("Cerrar", on_click=BlogViewState.close_modal, margin_top="1em", cursor="pointer")
                     ),
                     style={"max_width": "80vw", "max_height": "90vh", "padding": "1em"},
@@ -198,4 +198,5 @@ def blog_public_detail_page() -> rx.Component:
             )
         )
     )
+
 
