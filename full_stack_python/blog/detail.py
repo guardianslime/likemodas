@@ -1,46 +1,49 @@
-# full_stack_python/blog/detail.py
-
 import reflex as rx
 from ..ui.base import base_page
 from .state import BlogPostState
 from .notfound import blog_post_not_found
 from ..ui.carousel import carousel
 
-def image_with_expand_button(image_url: str) -> rx.Component:
-    """Crea una caja con una imagen y un botón de expandir superpuesto."""
-    return rx.box(
-        rx.image(
-            src=rx.get_upload_url(image_url),
-            width="100%",
-            height="auto",
-            max_height="550px",
-            object_fit="contain",
-        ),
-        rx.icon_button(
-            rx.icon(tag="expand"),
-            on_click=BlogPostState.open_modal(rx.get_upload_url(image_url)),
-            position="absolute",
-            top="0.5em",
-            right="0.5em",
-            variant="soft",
-            cursor="pointer",
-        ),
-        position="relative",
-    )
-
+# --- Componentes visuales (copiados y adaptados de articles/detail.py) ---
 def _image_section() -> rx.Component:
-    """Sección para el carrusel de imágenes."""
-    return carousel(
-        rx.foreach(
-            BlogPostState.post.images,
-            image_with_expand_button
+    """Sección para el carrusel de imágenes del post, usando react-responsive-carousel."""
+    return rx.box(
+        rx.cond(
+            BlogPostState.post.images & (BlogPostState.post.images.length() > 0),
+            # Usamos el nuevo componente 'carousel'
+            carousel(
+                rx.foreach(
+                    BlogPostState.post.images,
+                    # Cada imagen es un hijo directo del carrusel
+                    lambda image_url: rx.image(
+                        src=rx.get_upload_url(image_url),
+                        width="100%",
+                        height="auto",
+                        max_height="550px",
+                        object_fit="contain",
+                    )
+                ),
+                # Configuramos el carrusel
+                show_indicators=True,
+                infinite_loop=True,
+                emulate_touch=True, # Clave para que funcione con el mouse
+                show_thumbs=False,
+                # ✨ AÑADE ESTA LÍNEA PARA DESACTIVAR LA REPRODUCCIÓN AUTOMÁTICA ✨
+                auto_play=False,
+            ),
+            # Mensaje si no hay imágenes
+            rx.image(
+                src="/no_image.png",
+                width="100%",
+                height="auto",
+                max_height="550px",
+                object_fit="contain",
+                border_radius="md",
+            )
         ),
-        show_indicators=True,
-        infinite_loop=True,
-        emulate_touch=True,
-        show_thumbs=False,
-        auto_play=False,
-        show_arrows=True,
+        width="100%",
+        max_width="600px",
+        position="relative",
     )
 
 def _info_section() -> rx.Component:
@@ -50,6 +53,7 @@ def _info_section() -> rx.Component:
         rx.text(BlogPostState.formatted_price, size="6", color="gray", text_align="left"),
         rx.text(BlogPostState.post.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
         rx.spacer(),
+        # --- ✨ Botones de Acción ✨ ---
         rx.hstack(
             rx.link(rx.button("Editar Post", variant="soft"), href=BlogPostState.blog_post_edit_url),
             rx.button(
@@ -65,8 +69,9 @@ def _info_section() -> rx.Component:
         width="100%",
     )
 
+# --- Página de Detalle de Post para usuarios logueados ---
 def blog_post_detail_page() -> rx.Component:
-    """Página que muestra el detalle de un post, con un modal para ampliar imágenes."""
+    """Página que muestra el detalle de un post del usuario, con el nuevo diseño."""
     content_grid = rx.cond(
         BlogPostState.post,
         rx.grid(
@@ -82,50 +87,15 @@ def blog_post_detail_page() -> rx.Component:
     )
 
     return base_page(
-        rx.fragment(
-            rx.center(
-                rx.vstack(
-                    rx.heading("Detalle de mi Publicación", size="8", margin_bottom="1em"),
-                    content_grid,
-                    spacing="6",
-                    width="100%",
-                    padding="2em",
-                    align="center",
-                ),
+        rx.center(
+            rx.vstack(
+                rx.heading("Detalle de mi Publicación", size="8", margin_bottom="1em"),
+                content_grid,
+                spacing="6",
                 width="100%",
+                padding="2em",
+                align="center",
             ),
-            # ✨ CORRECCIÓN FINAL: Un modal simple hecho con componentes básicos de Reflex
-            rx.cond(
-                BlogPostState.show_modal,
-                rx.box(
-                    rx.center(
-                        rx.vstack(
-                            rx.image(
-                                src=BlogPostState.modal_image_src,
-                                max_height="80vh",
-                                max_width="80vw",
-                                object_fit="contain",
-                            ),
-                            rx.button("Cerrar", on_click=BlogPostState.close_modal, margin_top="1em"),
-                            # Evita que el clic en la imagen cierre el modal
-                            on_click_stop_propagation=True,
-                            padding="2em",
-                            bg=rx.color("mauve", 2),
-                            border_radius="1em",
-                        ),
-                        height="100%",
-                    ),
-                    # Estilos del fondo oscuro
-                    position="fixed",
-                    top="0",
-                    left="0",
-                    width="100vw",
-                    height="100vh",
-                    background_color="rgba(0, 0, 0, 0.8)",
-                    z_index="9999",
-                    # Cierra el modal al hacer clic en el fondo
-                    on_click=BlogPostState.close_modal,
-                )
-            )
+            width="100%",
         )
     )

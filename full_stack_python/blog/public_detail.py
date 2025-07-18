@@ -7,13 +7,10 @@ from .state import BlogViewState
 from .. import navigation
 from ..navigation.device import NavDeviceState
 from ..navigation.state import force_reload_go_to
-from ..ui.base import public_layout
 from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar # Importamos la public_navbar unificada
 from ..ui.carousel import carousel 
-
-
 
 # Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
 # ELIMINAMOS _detail_page_navbar() ya que usaremos public_navbar()
@@ -85,74 +82,24 @@ def _detail_page_navbar() -> rx.Component:
     )
 
 def standalone_public_layout(child: rx.Component) -> rx.Component:
-    """Layout autónomo que ahora incluye el lightbox."""
+    """Layout autónomo que usa la navbar local."""
     return rx.fragment(
-        public_navbar(),
+        public_navbar(), # <--- CAMBIO: Ahora usa la public_navbar unificada
         rx.box(
             child,
             padding_y="2em",
-            padding_top="6rem",
+            padding_top="6rem", # Asegura el padding correcto para la navbar fija
             width="100%",
             margin="0 auto",
         ),
         fixed_color_mode_button(),
-        # 👇 Añadimos el componente lightbox al layout
-        lightbox(
-            open=BlogViewState.is_lightbox_open,
-            close=BlogViewState.close_lightbox,
-            slides=BlogViewState.lightbox_slides,
-        )
     )
 
 # --- PÁGINA DE DETALLE MODIFICADA ---
-def image_with_expand_button(image_url: str) -> rx.Component:
-    """Crea una caja con una imagen y un botón de expandir superpuesto."""
-    return rx.box(
-        rx.image(
-            src=rx.get_upload_url(image_url),
-            width="100%",
-            height="auto",
-            max_height="550px",
-            object_fit="contain",
-        ),
-        rx.icon_button(
-            rx.icon(tag="expand"),
-            on_click=BlogViewState.open_modal(rx.get_upload_url(image_url)),
-            position="absolute",
-            top="0.5em",
-            right="0.5em",
-            variant="soft",
-            cursor="pointer",
-        ),
-        position="relative",
-    )
-
-def _image_section() -> rx.Component:
-    """Sección para el carrusel de imágenes."""
-    return carousel(
-        rx.foreach(
-            BlogViewState.post.images,
-            image_with_expand_button
-        ),
-        show_indicators=True,
-        infinite_loop=True,
-        emulate_touch=True,
-        show_thumbs=False,
-        show_arrows=True,
-    )
-
-def _info_section() -> rx.Component:
-    return rx.vstack(
-        rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
-        rx.text(BlogViewState.formatted_price, size="6", color="gray", text_align="left"),
-        rx.text(BlogViewState.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-        padding="1em",
-        align="start",
-        width="100%",
-    )
-
 def blog_public_detail_page() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
+    
+    # Este es el contenido principal de la página (la imagen y la información).
     content_grid = rx.cond(
         BlogViewState.has_post,
         rx.grid(
@@ -162,11 +109,13 @@ def blog_public_detail_page() -> rx.Component:
             spacing="4",
             align_items="start",
             width="100%",
-            max_width="1120px",
+            max_width="1120px", # Se añade un ancho máximo
         ),
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
+    # ✨ CAMBIO: Se envuelve el contenido en una estructura centrada con título.
+    # Esto imita el layout de la página de la galería.
     page_content = rx.center(
         rx.vstack(
             rx.heading("Detalle del Producto", size="8", margin_bottom="1em"),
@@ -179,40 +128,57 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
     )
     
-    return public_layout(
-        rx.fragment(
-            page_content,
-            # ✨ CORRECCIÓN FINAL: Un modal simple hecho con componentes básicos de Reflex
-            rx.cond(
-                BlogViewState.show_modal,
-                rx.box(
-                    rx.center(
-                        rx.vstack(
-                            rx.image(
-                                src=BlogViewState.modal_image_src,
-                                max_height="80vh",
-                                max_width="80vw",
-                                object_fit="contain",
-                            ),
-                            rx.button("Cerrar", on_click=BlogViewState.close_modal, margin_top="1em"),
-                            on_click_stop_propagation=True,
-                            padding="2em",
-                            bg=rx.color("mauve", 2),
-                            border_radius="1em",
-                        ),
-                        height="100%",
-                    ),
-                    position="fixed",
-                    top="0",
-                    left="0",
-                    width="100vw",
-                    height="100vh",
-                    background_color="rgba(0, 0, 0, 0.8)",
-                    z_index="9999",
-                    on_click=BlogViewState.close_modal,
-                )
+    return standalone_public_layout(page_content)
+
+
+# --- Componentes de la sección de imagen e información (SIN CAMBIOS) ---
+def _image_section() -> rx.Component:
+    """
+    Sección para el carrusel de imágenes, ahora usando react-responsive-carousel.
+    """
+    return rx.box(
+        rx.cond(
+            BlogViewState.post.images & (BlogViewState.post.images.length() > 0),
+            # 👇 Usamos el nuevo componente 'carousel'
+            carousel(
+                rx.foreach(
+                    BlogViewState.post.images,
+                    # Cada imagen es un hijo directo del carrusel
+                    lambda image_url: rx.image(
+                        src=rx.get_upload_url(image_url),
+                        width="100%",
+                        height="auto",
+                        max_height="550px",
+                        object_fit="contain",
+                    )
+                ),
+                # Configuramos el carrusel
+                show_indicators=True,
+                infinite_loop=True,
+                emulate_touch=True, # Clave para que funcione con el mouse
+                show_thumbs=False,  # Ocultamos las miniaturas de abajo
+            ),
+            # Mensaje si no hay imágenes
+            rx.image(
+                src="/no_image.png",
+                width="100%",
+                height="auto",
+                max_height="550px",
+                object_fit="contain",
+                border_radius="md",
             )
-        )
+        ),
+        width="100%",
+        max_width="600px",
+        position="relative",
     )
 
-
+def _info_section() -> rx.Component:
+    return rx.vstack(
+        rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
+        rx.text(BlogViewState.formatted_price, size="6", color="gray", text_align="left"),
+        rx.text(BlogViewState.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
+        padding="1em",
+        align="start",
+        width="100%",
+    )

@@ -4,17 +4,8 @@ import reflex as rx
 import reflex_local_auth
 import sqlmodel
 from ..models import UserInfo
-from rxconfig import config
 
 class SessionState(reflex_local_auth.LocalAuthState):
-
-    @rx.var
-    def api_url_base(self) -> str:
-        """Devuelve la URL base de la API de forma robusta."""
-        api_url = config.api_url
-        if api_url.endswith("/api"):
-            return api_url[:-4]
-        return api_url
 
     @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None:
@@ -49,6 +40,8 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def on_load(self):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
+        print("Autenticado:", self.is_authenticated)
+        print("UserInfo:", self.authenticated_user_info)
 
     def perform_logout(self):
         self.do_logout()
@@ -66,10 +59,14 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
             self.new_user_id = -1
             return validation_errors
         self._register_user(username, password)
+        # Asegúrate de que handle_registration devuelva un evento válido al final
         return type(self).successful_registration
 
     def handle_registration_email(self, form_data):
+        # Llama a la lógica de registro base
         registration_event = self.handle_registration(form_data)
+        
+        # Si el registro fue exitoso (no hubo errores de validación)
         if self.new_user_id >= 0:
             with rx.session() as session:
                 session.add(
