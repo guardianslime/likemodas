@@ -166,7 +166,7 @@ def public_navbar() -> rx.Component:
 
 def navbar() -> rx.Component:
     """
-    Navbar original y completo. [cite_start]Se mantiene aquí por si se necesita en otras partes. [cite: 312, 313]
+    Navbar original y completo. Se mantiene aquí por si se necesita en otras partes.
     """
     return rx.box(
         # Grupo Izquierdo: Logo y Menú
@@ -175,22 +175,22 @@ def navbar() -> rx.Component:
                 src="/logo.jpg",
                 width=rx.breakpoints(sm="6em", md="8em", lg="10em"),
                 height="auto",
-                [cite_start]border_radius="md", [cite: 314]
+                border_radius="md",
             ),
             rx.menu.root(
                 rx.menu.trigger(
                     rx.icon("menu", box_size=rx.breakpoints(sm="2em", md="2.3em", lg="2.5em"))
                 ),
-                [cite_start]rx.menu.content( [cite: 315]
-                    [cite_start]rx.menu.item("Home", on_click=navigation.NavState.to_home), [cite: 315]
-                    [cite_start]rx.menu.item("Articles", on_click=navigation.NavState.to_articles), [cite: 315]
-                    [cite_start]rx.menu.item("Blog", on_click=navigation.NavState.to_blog), [cite: 315]
-                    [cite_start]rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri), [cite: 315]
-                    [cite_start]rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing), [cite: 316]
-                    [cite_start]rx.menu.item("Contact", on_click=navigation.NavState.to_contact), [cite: 316]
-                    [cite_start]rx.menu.separator(), [cite: 316]
-                    [cite_start]rx.menu.item("Login", on_click=navigation.NavState.to_login), [cite: 316]
-                    [cite_start]rx.menu.item("Register", on_click=navigation.NavState.to_register), [cite: 316]
+                rx.menu.content(
+                    rx.menu.item("Home", on_click=navigation.NavState.to_home),
+                    rx.menu.item("Articles", on_click=navigation.NavState.to_articles),
+                    rx.menu.item("Blog", on_click=navigation.NavState.to_blog),
+                    rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri),
+                    rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
+                    rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
+                    rx.menu.separator(),
+                    rx.menu.item("Login", on_click=navigation.NavState.to_login),
+                    rx.menu.item("Register", on_click=navigation.NavState.to_register),
                 ),
             ),
             style={
@@ -206,7 +206,7 @@ def navbar() -> rx.Component:
             on_change=SearchState.update_search,
             on_blur=SearchState.search_action,
             width=rx.breakpoints(sm="55%", md="65%", lg="72%"),
-            [cite_start]height=rx.breakpoints(sm="2.8em", md="3em", lg="3.3em"), [cite: 319]
+            height=rx.breakpoints(sm="2.8em", md="3em", lg="3.3em"),
             padding_x="4",
             border_radius="full",
             border_width="1px",
@@ -223,8 +223,8 @@ def navbar() -> rx.Component:
             "width": "100%",
             "padding_y": "0.75rem",
             "padding_x": "1rem",
-        [cite_start]}, [cite: 321]
-        [cite_start]on_mount=NavDeviceState.on_mount, [cite: 322]
+        },
+        on_mount=NavDeviceState.on_mount,
     )
 
 
