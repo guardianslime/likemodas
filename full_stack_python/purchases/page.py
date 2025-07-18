@@ -13,15 +13,15 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
             rx.hstack(
                 rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold"),
                 rx.spacer(),
-                # --- ✨ CORRECCIÓN: Se convierte el Enum a string con .to(str) ---
                 rx.badge(purchase.status.to(str), color_scheme="blue"),
                 justify="between",
                 width="100%"
             ),
             rx.divider(),
+            # --- ✨ CORRECCIÓN: Se itera sobre la nueva propiedad computada ---
             rx.foreach(
-                purchase.items,
-                lambda item: rx.text(f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)")
+                purchase.items_formatted,
+                lambda item_str: rx.text(item_str)
             ),
             rx.divider(),
             rx.text(f"Total: ${purchase.total_price:.2f}", weight="bold", align_self="flex-end"),
@@ -39,7 +39,6 @@ def purchase_history_page() -> rx.Component:
                 CartState.purchase_successful,
                 rx.callout(
                     "¡Gracias por tu compra! Tu orden está pendiente de confirmación.",
-                    # --- ✨ CORRECCIÓN: Se usa un nombre de ícono válido como "check" ---
                     icon="check",
                     color_scheme="green"
                 )
