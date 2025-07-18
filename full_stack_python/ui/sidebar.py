@@ -59,18 +59,18 @@ def sidebar_items() -> rx.Component:
             SessionState.is_admin,
             rx.fragment(
                 sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
-                [cite_start]sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE), [cite: 355]
+                # 👇 CORRECCIÓN: Se eliminó el ""
+                sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
                 sidebar_item(
                     "Confirmar Pagos", 
                     "dollar-sign", 
                     "/admin/confirm-payments",
-                    [cite_start]has_notification=AdminConfirmState.new_purchase_notification [cite: 356]
+                    has_notification=AdminConfirmState.new_purchase_notification
                 ),
-                # ✨ --- NUEVO ENLACE AÑADIDO --- ✨
                 sidebar_item(
                     "Historial de Pagos",
-                    "history", # Un ícono apropiado
-                    "/admin/payment-history" # La nueva ruta
+                    "history",
+                    "/admin/payment-history"
                 )
             )
         ),
