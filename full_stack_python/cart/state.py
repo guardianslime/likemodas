@@ -7,6 +7,7 @@ from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseSt
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
+from ..admin.state import AdminConfirmState
 
 class CartState(SessionState):
     """
@@ -75,6 +76,9 @@ class CartState(SessionState):
             else:
                 del self.cart[post_id]
 
+    class CartState(SessionState):
+    # ... (código del estado existente) ...
+
     @rx.event
     def handle_checkout(self):
         """
@@ -113,4 +117,9 @@ class CartState(SessionState):
         # 3. Limpiar el carrito y redirigir
         self.cart = {}
         self.purchase_successful = True
+        
+        # --- ✨ NOTIFICACIÓN AL ADMIN Y AL USUARIO ---
+        yield AdminConfirmState.notify_admin_of_new_purchase() # Notifica al admin
+        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.") # Notifica al usuario
+        
         return rx.redirect("/my-purchases")

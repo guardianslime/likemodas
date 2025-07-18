@@ -54,6 +54,8 @@ class PurchaseModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
     
     purchase_date: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    # --- ✨ NUEVO CAMPO AÑADIDO ---
+    confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
     

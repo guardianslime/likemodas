@@ -1,33 +1,80 @@
-# full_stack_python/admin/state.py
+# full_stack_python/admin/state.py (RECONSTRUIDO Y COMPLETO)
+
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
-from ..models import PurchaseModel, PurchaseStatus, UserInfo
+from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel
 import sqlalchemy
-
+from datetime import datetime
 
 class AdminConfirmState(SessionState):
+    """
+    Estado para que el administrador vea y confirme los pagos pendientes.
+    """
     pending_purchases: List[PurchaseModel] = []
+    
+    # Notificación para el admin cuando hay nuevas compras
+    new_purchase_notification: bool = False
 
-    def load_pending_purchases(self):
-        with rx.session() as session:
-            self.pending_purchases = session.exec(
-                rx.select(PurchaseModel)
-                .options(
-                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+    @rx.var
+    def has_pending_purchases(self) -> bool:
+        """Verifica si hay compras pendientes."""
+        return len(self.pending_purchases) > 0
+
+    @rx.background
+    async def load_pending_purchases(self):
+        """
+        Carga las compras con estado 'PENDING' desde la base de datos.
+        """
+        with self:
+            if not self.is_admin:
+                self.pending_purchases = []
+                return
+
+            with rx.session() as session:
+                # --- ✨ CORRECCIÓN CLAVE: Sintaxis de consulta SQLModel/SQLAlchemy correcta ---
+                statement = (
+                    select(PurchaseModel)
+                    .options(
+                        sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                        sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                    )
+                    .where(PurchaseModel.status == PurchaseStatus.PENDING)
+                    .order_by(PurchaseModel.purchase_date.asc())
                 )
-                .where(PurchaseModel.status == PurchaseStatus.PENDING)
-                .order_by(PurchaseModel.purchase_date.asc())
-            ).all()
+                result = session.exec(statement).all()
+                self.pending_purchases = result
 
     @rx.event
     def confirm_payment(self, purchase_id: int):
+        """
+        Confirma un pago, actualiza su estado y fecha de confirmación.
+        """
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            if purchase:
+            if purchase and purchase.status == PurchaseStatus.PENDING:
                 purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.utcnow()
                 session.add(purchase)
                 session.commit()
-        # Recargamos la lista para que la compra confirmada desaparezca
-        return self.load_pending_purchases
+                
+                # --- ✨ NOTIFICACIÓN PARA EL ADMIN ---
+                yield rx.toast.success(f"Pago de {purchase.userinfo.email} confirmado.")
+                
+                # Recargamos la lista para que la compra confirmada desaparezca
+                yield self.load_pending_purchases
+            else:
+                yield rx.toast.error("La compra no se pudo confirmar o ya fue procesada.")
+
+    @rx.event
+    def notify_admin_of_new_purchase(self):
+        """
+        Activa una notificación visual para el admin.
+        """
+        self.new_purchase_notification = True
+        yield rx.toast.info("¡Hay una nueva compra pendiente de aprobación!", duration=10000)
+
+    @rx.event
+    def clear_notification(self):
+        """Limpia la notificación después de ser vista."""
+        self.new_purchase_notification = False

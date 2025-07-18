@@ -35,16 +35,12 @@ def purchase_history_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Mi Historial de Compras", size="8"),
+            
+            # --- ✨ ELIMINADO: Se quita el rx.callout estático ---
+            # Ya no es necesario, la notificación se muestra con rx.toast al redirigir aquí.
+            
             rx.cond(
-                CartState.purchase_successful,
-                rx.callout(
-                    "¡Gracias por tu compra! Tu orden está pendiente de confirmación.",
-                    icon="check",
-                    color_scheme="green"
-                )
-            ),
-            rx.cond(
-                PurchaseHistoryState.purchases,
+                 PurchaseHistoryState.purchases,
                 rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
                 rx.text("No tienes compras anteriores.")
             ),

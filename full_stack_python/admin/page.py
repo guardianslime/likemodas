@@ -1,4 +1,4 @@
-# full_stack_python/admin/page.py (CORREGIDO Y COMPLETO)
+# full_stack_python/admin/page.py (RECONSTRUIDO Y COMPLETO)
 
 import reflex as rx
 from ..ui.base import base_page
@@ -7,6 +7,9 @@ from ..auth.admin_auth import require_admin
 from ..models import PurchaseModel
 
 def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
+    """
+    Una tarjeta visual para cada compra pendiente.
+    """
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -16,7 +19,6 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
             ),
             rx.divider(),
             rx.text("Items:"),
-            # --- ✨ CORRECCIÓN: Se itera sobre la propiedad formateada en lugar de la lista anidada ---
             rx.foreach(
                 purchase.items_formatted,
                 lambda item_str: rx.text(item_str)
@@ -31,7 +33,6 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
                     color_scheme="green"
                 )
             ),
-
             spacing="3",
             width="100%"
         )
@@ -39,18 +40,34 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
 
 @require_admin
 def admin_confirm_page() -> rx.Component:
+    """
+    Página donde los administradores pueden ver y confirmar pagos pendientes.
+    """
     return base_page(
         rx.vstack(
             rx.heading("Confirmar Pagos Pendientes", size="8"),
+            
+            # --- ✨ CORRECCIÓN: Se usa la variable computada 'has_pending_purchases' ---
             rx.cond(
-                AdminConfirmState.pending_purchases,
-                rx.foreach(AdminConfirmState.pending_purchases, pending_purchase_card),
-                rx.text("No hay pagos pendientes de confirmación.")
+                AdminConfirmState.has_pending_purchases,
+                rx.foreach(
+                    AdminConfirmState.pending_purchases,
+                    pending_purchase_card
+                ),
+                rx.center(
+                    rx.text("🎉 ¡Excelente! No hay pagos pendientes de confirmación."),
+                    padding="2em",
+                    bg=rx.color("green", 2),
+                    border_radius="md",
+                    width="100%"
+                )
             ),
             spacing="5",
             width="100%",
             max_width="1000px",
             align="center",
             padding="2em"
-        )
+        ),
+        # Limpia la notificación de nueva compra al visitar la página
+        on_mount=AdminConfirmState.clear_notification
     )
