@@ -31,8 +31,8 @@ class NotificationState(SessionState):
     @rx.event
     def mark_all_as_read(self):
         """
-        Marca las notificaciones como leídas, fuerza la actualización de la UI
-        y luego recarga los datos.
+        Marca todas las notificaciones como leídas en la BD y luego
+        dispara el evento de recarga para sincronizar la UI.
         """
         if not self.is_authenticated or not self.authenticated_user_info:
             return
@@ -41,7 +41,7 @@ class NotificationState(SessionState):
         if not unread_ids:
             return
 
-        # 1. Actualiza la base de datos como antes
+        # 1. Actualiza la base de datos
         with rx.session() as session:
             statement = (
                 rx.update(NotificationModel)
@@ -51,12 +51,8 @@ class NotificationState(SessionState):
             session.exec(statement)
             session.commit()
 
-        # --- ✨ CORRECCIÓN CLAVE Y DEFINITIVA ---
-        # 2. Forzamos la actualización de la UI vaciando la lista localmente.
-        #    El `yield` envía este cambio al frontend de inmediato.
-        self.notifications = []
-        yield
-
-        # 3. Volvemos a llenar la lista con los datos actualizados (ya leídos)
-        #    para que sigan apareciendo en el menú si el usuario lo vuelve a abrir.
-        yield self.load_notifications()
+        # --- ✨ CORRECCIÓN CLAVE Y CANÓNICA ---
+        # 2. Usamos 'yield' para llamar al evento de recarga.
+        #    Esta es la forma más robusta en Reflex para encadenar eventos
+        #    y asegurar que las actualizaciones de estado se procesen en orden.
+        yield NotificationState.load_notifications
