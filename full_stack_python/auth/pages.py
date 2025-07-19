@@ -4,6 +4,8 @@ import reflex_local_auth
 from reflex_local_auth.pages.login import LoginState, login_form
 from reflex_local_auth.pages.registration import RegistrationState, register_form
 
+from full_stack_python.ui import password_input
+
 from .. import navigation
 from ..ui.base import base_page, public_layout # ✨ 1. Importa public_layout
 
@@ -132,17 +134,15 @@ def reset_password_page() -> rx.Component:
                 rx.form(
                     rx.vstack(
                         rx.heading("Nueva Contraseña", size="7"),
-                        # ✨ CAMBIO: Usamos nuestro componente personalizado
+                        # ✨ CORRECCIÓN: Añade el guion bajo
                         password_input(
                             placeholder="Nueva contraseña",
                             on_change=ResetPasswordState.set_password,
-                            name="password"
                         ),
-                        # ✨ CAMBIO: Usamos nuestro componente personalizado
+                        # ✨ CORRECCIÓN: Añade el guion bajo
                         password_input(
                             placeholder="Confirmar nueva contraseña",
                             on_change=ResetPasswordState.set_confirm_password,
-                            name="confirm_password"
                         ),
                         rx.button("Guardar Contraseña", type="submit", width="100%"),
                         rx.cond(
