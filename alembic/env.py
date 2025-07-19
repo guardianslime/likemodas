@@ -72,7 +72,7 @@ def run_migrations_online() -> None:
     """
     # Se corrigió un typo del template original: config.config_ini_section -> config.config_main_section
     connectable = engine_from_config(
-        config.get_section(config.config_main_section, {}),
+        config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
