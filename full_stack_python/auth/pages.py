@@ -123,54 +123,53 @@ def forgot_password_page() -> rx.Component:
     )
 
 def reset_password_page() -> rx.Component:
-    return base_page(
-        rx.center(
-            rx.card(
-                rx.cond(
-                    ResetPasswordState.is_token_valid,
-                    # Si el token es válido, muestra el formulario
-                    rx.form(
-                        rx.vstack(
-                            rx.heading("Nueva Contraseña", size="7"),
-                            rx.input(
-                                placeholder="Nueva contraseña",
-                                on_change=ResetPasswordState.set_password,
-                                type="password",
-                                width="100%"
-                            ),
-                            rx.input(
-                                placeholder="Confirmar nueva contraseña",
-                                on_change=ResetPasswordState.set_confirm_password,
-                                type="password",
-                                width="100%"
-                            ),
-                            rx.button("Guardar Contraseña", type="submit", width="100%"),
-                            rx.cond(
-                                ResetPasswordState.message,
-                                rx.callout(
-                                    ResetPasswordState.message,
-                                    # ✨ ESTE ES EL CAMBIO 👇
-                                    icon="triangle_alert", # Cambia "alert_triangle" a "triangle_alert"
-                                    color_scheme="red",
-                                    width="100%"
-                                ),
-                            ),
-                            spacing="4"
-                        ),
-                        on_submit=ResetPasswordState.handle_reset_password
-                    ),
-                    # Si el token no es válido, muestra el mensaje de error
+    """Página para que el usuario establezca una nueva contraseña."""
+    page_content = rx.center(
+        rx.card(
+            rx.cond(
+                ResetPasswordState.is_token_valid,
+                # Si el token es válido, muestra el formulario
+                rx.form(
                     rx.vstack(
-                        rx.heading("Enlace no válido", size="7"),
-                        rx.text(ResetPasswordState.message),
-                        rx.link("Solicitar un nuevo enlace", href="/forgot-password"),
-                        spacing="4",
-                        align="center"
-                    )
+                        rx.heading("Nueva Contraseña", size="7"),
+                        rx.input(
+                            placeholder="Nueva contraseña",
+                            on_change=ResetPasswordState.set_password,
+                            type="password",
+                            width="100%"
+                        ),
+                        rx.input(
+                            placeholder="Confirmar nueva contraseña",
+                            on_change=ResetPasswordState.set_confirm_password,
+                            type="password",
+                            width="100%"
+                        ),
+                        rx.button("Guardar Contraseña", type="submit", width="100%"),
+                        rx.cond(
+                            ResetPasswordState.message,
+                            rx.callout(
+                                ResetPasswordState.message,
+                                icon="triangle_alert",
+                                color_scheme="red",
+                                width="100%"
+                            )
+                        ),
+                        spacing="4"
+                    ),
+                    on_submit=ResetPasswordState.handle_reset_password
+                ),
+                # Si el token no es válido, muestra el mensaje de error
+                rx.vstack(
+                    rx.heading("Enlace no válido", size="7"),
+                    rx.text(ResetPasswordState.message),
+                    rx.link("Solicitar un nuevo enlace", href="/forgot-password"),
+                    spacing="4",
+                    align="center"
                 )
-            ),
-            min_height="85vh"
+            )
         ),
-        # El evento se ejecuta en cuanto carga la página para validar el token
-        on_load=ResetPasswordState.on_load_check_token
+        min_height="85vh"
     )
+
+    # ✨ CAMBIO CRÍTICO: Usamos public_layout y eliminamos el parámetro on_load
+    return public_layout(page_content)

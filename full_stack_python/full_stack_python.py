@@ -3,6 +3,7 @@
 import reflex as rx
 import reflex_local_auth
 
+from full_stack_python.auth.reset_password_state import ResetPasswordState
 from full_stack_python.auth.verify_state import VerifyState
 from full_stack_python.blog.public_detail import blog_public_detail_page
 from full_stack_python.blog.page import blog_public_page
@@ -65,7 +66,12 @@ app.add_page(
 )
 
 app.add_page(forgot_password_page, route="/forgot-password")
-app.add_page(reset_password_page, route="/reset-password")
+
+app.add_page(
+    reset_password_page, 
+    route="/reset-password",
+    on_load=ResetPasswordState.on_load_check_token
+)
 
 app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
