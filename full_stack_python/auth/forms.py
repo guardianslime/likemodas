@@ -28,17 +28,15 @@ def my_register_form() -> rx.Component:
             rx.text("Email"),
             input_100w("email", type='email'),
             rx.text("Password"),
-            # ✨ CAMBIO: Usamos nuestro componente personalizado
+            # ✨ CAMBIO: Usamos nuestro componente personalizado sin 'on_change'
             password_input(
                 placeholder="Password",
-                on_change=reflex_local_auth.RegistrationState.set_password,
                 name="password"
             ),
             rx.text("Confirm password"),
-            # ✨ CAMBIO: Usamos nuestro componente personalizado
+            # ✨ CAMBIO: Usamos nuestro componente personalizado sin 'on_change'
             password_input(
                 placeholder="Confirm password",
-                on_change=reflex_local_auth.RegistrationState.set_confirm_password,
                 name="confirm_password"
             ),
             rx.button("Sign up", width="100%"),
