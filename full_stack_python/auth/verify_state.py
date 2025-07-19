@@ -1,12 +1,10 @@
-# full_stack_python/auth/verify_state.py (CORREGIDO)
-
 import reflex as rx
-import reflex_local_auth # No olvides importar esto
+import reflex_local_auth
+import sqlmodel  # ✨ 1. AÑADE ESTA IMPORTACIÓN
 from ..models import VerificationToken, UserInfo
 from datetime import datetime
-from ..auth.state import SessionState # Importa SessionState
+from ..auth.state import SessionState
 
-# ✨ CAMBIO 1: Hereda de SessionState para tener contexto de la sesión
 class VerifyState(SessionState): 
     message: str = "Verificando tu cuenta..."
     is_verified: bool = False
@@ -19,8 +17,9 @@ class VerifyState(SessionState):
             return
 
         with rx.session() as session:
+            # ✨ 2. CORRIGE rx.select a sqlmodel.select
             db_token = session.exec(
-                rx.select(VerificationToken).where(VerificationToken.token == token)
+                sqlmodel.select(VerificationToken).where(VerificationToken.token == token)
             ).one_or_none()
 
             if not db_token or datetime.utcnow() > db_token.expires_at:
@@ -34,10 +33,9 @@ class VerifyState(SessionState):
             if user_info:
                 user_info.is_verified = True
                 session.add(user_info)
-                session.delete(db_token) # El token es de un solo uso
+                session.delete(db_token)
                 session.commit()
 
-                # ✨ CAMBIO 2: Redirigir al login en lugar de solo cambiar el mensaje
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             
