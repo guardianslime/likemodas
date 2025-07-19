@@ -9,7 +9,11 @@ def register_error() -> rx.Component:
     return rx.cond(
         reflex_local_auth.RegistrationState.error_message != "",
         rx.callout(
-            reflex_local_auth.RegistrationState.error_message,
+            # ✨ Añade rx.text con white_space="pre-wrap"
+            rx.text(
+                reflex_local_auth.RegistrationState.error_message, 
+                white_space="pre-wrap"
+            ),
             icon="triangle_alert",
             color_scheme="red",
             role="alert",

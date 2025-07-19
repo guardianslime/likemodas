@@ -190,7 +190,11 @@ def reset_password_page() -> rx.Component:
                         rx.cond(
                             ResetPasswordState.message,
                             rx.callout(
-                                ResetPasswordState.message,
+                                # ✨ Añade rx.text con white_space="pre-wrap"
+                                rx.text(
+                                    ResetPasswordState.message,
+                                    white_space="pre-wrap"
+                                ),
                                 icon="triangle_alert",
                                 color_scheme="red",
                                 width="100%"
