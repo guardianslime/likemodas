@@ -50,7 +50,7 @@ def upgrade() -> None:
                existing_type=sa.TEXT(),
                type_=sqlmodel.sql.sqltypes.AutoString(),
                existing_nullable=False)
-    op.add_column('userinfo', sa.Column('is_verified', sa.Boolean(), nullable=False))
+    op.add_column('userinfo', sa.Column('is_verified', sa.Boolean(), nullable=False, server_default='false'))
     # ### end Alembic commands ###
 
 
