@@ -1,7 +1,6 @@
-# full_stack_python/auth/forgot_password_state.py
-
 import reflex as rx
 import secrets
+import sqlmodel  # ✨ 1. AÑADE ESTA IMPORTACIÓN
 from datetime import datetime, timedelta
 from ..models import UserInfo, PasswordResetToken
 from ..services.email_service import send_password_reset_email
@@ -18,8 +17,9 @@ class ForgotPasswordState(rx.State):
             return
 
         with rx.session() as session:
+            # ✨ 2. CORRIGE rx.select a sqlmodel.select
             user_info = session.exec(
-                rx.select(UserInfo).where(UserInfo.email == self.email)
+                sqlmodel.select(UserInfo).where(UserInfo.email == self.email)
             ).one_or_none()
 
             if user_info:
