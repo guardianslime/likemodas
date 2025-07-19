@@ -153,7 +153,8 @@ def reset_password_page() -> rx.Component:
                                     icon="triangle_alert", # Cambia "alert_triangle" a "triangle_alert"
                                     color_scheme="red",
                                     width="100%"
-                                )
+                                ),
+                            ),
                             spacing="4"
                         ),
                         on_submit=ResetPasswordState.handle_reset_password
