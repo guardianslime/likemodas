@@ -14,7 +14,7 @@ sys.path.insert(0, os.getcwd())
 
 # Importa la base de modelos de Reflex y tu archivo de modelos
 import reflex as rx
-from full_stack_python import models
+from likemodas import models
 # --- FIN DE CAMBIOS PARA REFLEX ---
 
 
