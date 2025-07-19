@@ -5,7 +5,7 @@ import reflex as rx
 from full_stack_python.cart.state import CartState
 from ..ui.base import base_page
 from ..ui.search_state import SearchState
-from ..blog.page import article_public_list_component # Reutilizamos el componente de la galería
+from ..articles.list import article_public_list_component # Reutilizamos el componente de la galería
 
 def search_results_page() -> rx.Component:
     """Página que muestra los resultados de la búsqueda."""
