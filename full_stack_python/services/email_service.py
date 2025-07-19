@@ -37,7 +37,7 @@ def send_verification_email(recipient_email: str, token: str):
 
     try:
         params = {
-            "from": "Likemodas <onboarding@resend.dev>", # Resend requiere este remitente en el plan gratuito
+            "from": "Verificación Likemodas <verify@mail.likemodas.com>", # Resend requiere este remitente en el plan gratuito
             "to": [recipient_email],
             "subject": "Verifica tu cuenta en Likemodas",
             "html": html_content,
