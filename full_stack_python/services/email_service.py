@@ -1,34 +1,24 @@
-import smtplib
-from email.message import EmailMessage
 import os
+import resend
 from dotenv import load_dotenv
 
-# Cargar las variables de entorno del archivo .env
+# Carga las variables de entorno (para desarrollo local)
 load_dotenv()
 
-def send_verification_email(recipient_email: str, token: str):
-    """Envía un correo de verificación al usuario."""
-    
-    EMAIL_USER = os.getenv("EMAIL_USER")
-    EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
-    EMAIL_HOST = os.getenv("EMAIL_HOST")
-    EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
-    APP_BASE_URL = os.getenv("APP_BASE_URL")
+# Configura Resend con la API Key
+resend.api_key = os.getenv("RESEND_API_KEY")
+APP_BASE_URL = os.getenv("APP_BASE_URL")
 
-    if not all([EMAIL_USER, EMAIL_PASSWORD, EMAIL_HOST, APP_BASE_URL]):
-        print("Error: Faltan variables de entorno para el envío de correo.")
+def send_verification_email(recipient_email: str, token: str):
+    """Envía un correo de verificación al usuario usando Resend."""
+
+    if not resend.api_key or not APP_BASE_URL:
+        print("Error: Falta la variable de entorno RESEND_API_KEY o APP_BASE_URL.")
         return
 
-    # Construir el enlace de verificación
     verification_link = f"{APP_BASE_URL}/verify-email?token={token}"
 
-    # Crear el mensaje del correo
-    msg = EmailMessage()
-    msg['Subject'] = "Verifica tu cuenta en Likemodas"
-    msg['From'] = EMAIL_USER
-    msg['To'] = recipient_email
-
-    # Contenido del correo en HTML
+    # Este es el contenido HTML del correo. Puedes diseñarlo como quieras.
     html_content = f"""
     <html>
     <body>
@@ -39,21 +29,20 @@ def send_verification_email(recipient_email: str, token: str):
                style="background-color: #007bff; color: white; padding: 15px 25px; text-align: center; text-decoration: none; display: inline-block; border-radius: 5px; font-size: 16px;">
                Verificar mi Correo
             </a>
-            <p style="margin-top: 20px;">Si no puedes hacer clic en el botón, copia y pega el siguiente enlace en tu navegador:</p>
-            <p><a href="{verification_link}">{verification_link}</a></p>
-            <p style="font-size: 12px; color: #888;">Si no te registraste, por favor ignora este correo.</p>
+            <p style="margin-top: 20px;">Si no te registraste, por favor ignora este correo.</p>
         </div>
     </body>
     </html>
     """
-    msg.add_header('Content-Type', 'text/html')
-    msg.set_payload(html_content)
 
     try:
-        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as smtp:
-            smtp.starttls()
-            smtp.login(EMAIL_USER, EMAIL_PASSWORD)
-            smtp.send_message(msg)
-            print(f"Correo de verificación enviado a {recipient_email}")
+        params = {
+            "from": "Likemodas <onboarding@resend.dev>", # Resend requiere este remitente en el plan gratuito
+            "to": [recipient_email],
+            "subject": "Verifica tu cuenta en Likemodas",
+            "html": html_content,
+        }
+        email = resend.Emails.send(params)
+        print(f"✅ Correo de verificación enviado a {recipient_email} vía Resend. ID: {email['id']}")
     except Exception as e:
-        print(f"Error al enviar el correo: {e}")
+        print(f"❌ ERROR al enviar el correo con Resend: {e}")
