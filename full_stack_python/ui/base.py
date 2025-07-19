@@ -17,13 +17,27 @@ def fixed_color_mode_button() -> rx.Component:
     )
 
 def protected_layout(child: rx.Component) -> rx.Component:
-    """El layout para usuarios autenticados (SOLO ADMINS), con la barra lateral."""
+    """El layout para usuarios autenticados, ahora comprueba la verificación."""
     return rx.hstack(
         sidebar(),
         rx.box(
-            child,
+            # Comprueba si el usuario está verificado
+            rx.cond(
+                SessionState.authenticated_user_info.is_verified,
+                child,  # Si está verificado, muestra el contenido
+                # Si no, muestra un mensaje de advertencia
+                rx.center(
+                    rx.vstack(
+                        rx.heading("Verificación Requerida"),
+                        rx.text("Por favor, revisa tu correo electrónico para verificar tu cuenta antes de continuar."),
+                        # Podrías añadir un botón para reenviar el correo aquí
+                        spacing="4"
+                    ),
+                    height="80vh"
+                )
+            ),
             padding="1em",
-            width="100%",    
+            width="100%",
             id="my-content-area-el"
         ),
         align="start"

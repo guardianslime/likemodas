@@ -8,6 +8,7 @@ from ..ui.base import base_page
 
 from .forms import my_register_form
 from .state import SessionState
+from .verify_state import VerifyState
 
 def my_login_page() -> rx.Component:
     return base_page(
@@ -51,4 +52,30 @@ def my_logout_page() -> rx.Component:
             min_height="85vh",
             id="my-child"
         )
+    )
+
+def verification_page() -> rx.Component:
+    """Página para que el usuario verifique su correo."""
+    return base_page(
+        rx.center(
+            rx.vstack(
+                rx.heading("Verificación de Correo", size="8"),
+                rx.text(VerifyState.message, text_align="center"),
+                rx.cond(
+                    VerifyState.is_verified,
+                    rx.link(
+                        rx.button("Ir a Iniciar Sesión"),
+                        href=reflex_local_auth.routes.LOGIN_ROUTE,
+                        margin_top="1em"
+                    )
+                ),
+                spacing="5",
+                padding="2em",
+                border_radius="md",
+                box_shadow="lg",
+                bg=rx.color("gray", 2)
+            ),
+            min_height="85vh"
+        ),
+        on_load=VerifyState.verify_token
     )

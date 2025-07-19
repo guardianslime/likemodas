@@ -3,7 +3,10 @@
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
-from ..models import UserInfo, UserRole 
+from ..models import UserInfo, UserRole, VerificationToken
+from ..services.email_service import send_verification_email
+from datetime import datetime, timedelta
+import secrets
 
 class SessionState(reflex_local_auth.LocalAuthState):
 
@@ -74,19 +77,39 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
         
         if self.new_user_id >= 0:
             with rx.session() as session:
-                
-                # --- ✨ LÓGICA DE ADMIN ÚNICO AÑADIDA AQUÍ ---
-                # Comprueba si el nombre de usuario es el del admin
+                # 1. Crear el UserInfo
                 is_admin_user = form_data.get("username") == "guardiantlemor01"
                 user_role = UserRole.ADMIN if is_admin_user else UserRole.CUSTOMER
                 
-                session.add(
-                    UserInfo(
-                        email=form_data["email"],
-                        user_id=self.new_user_id,
-                        # Asigna el rol correspondiente
-                        role=user_role
-                    )
+                new_user_info = UserInfo(
+                    email=form_data["email"],
+                    user_id=self.new_user_id,
+                    role=user_role
                 )
+                session.add(new_user_info)
                 session.commit()
+                session.refresh(new_user_info)
+
+                # ✨ --- LÓGICA DE VERIFICACIÓN AÑADIDA --- ✨
+                # 2. Crear el token de verificación
+                token_str = secrets.token_urlsafe(32)
+                expires = datetime.utcnow() + timedelta(hours=24) # El token dura 24 horas
+                
+                verification_token = VerificationToken(
+                    token=token_str,
+                    userinfo_id=new_user_info.id,
+                    expires_at=expires
+                )
+                session.add(verification_token)
+                session.commit()
+                
+                # 3. Enviar el correo electrónico
+                send_verification_email(
+                    recipient_email=new_user_info.email,
+                    token=token_str
+                )
+                # ✨ --- FIN DE LA LÓGICA --- ✨
+                
         return registration_event
+    
+

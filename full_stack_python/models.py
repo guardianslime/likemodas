@@ -5,7 +5,8 @@ from . import utils
 from sqlmodel import Field, Relationship, Column, JSON
 # --- ✨ AÑADIDO: Importar String ---
 from sqlalchemy import String
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets
 import reflex as rx
 from reflex_local_auth.user import LocalUser
 import sqlalchemy
@@ -24,10 +25,12 @@ class UserInfo(rx.Model, table=True):
         default=UserRole.CUSTOMER,
         sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False)
     )
+    is_verified: bool = Field(default=False, nullable=False)
     # --- FIN DE CAMBIOS ---
     
     user: Optional[LocalUser] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
+    verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
@@ -42,6 +45,20 @@ class UserInfo(rx.Model, table=True):
         default_factory=utils.timing.get_utc_now,
         sa_type=sqlalchemy.DateTime(timezone=True),
         sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()},
+        nullable=False,
+    )
+
+class VerificationToken(rx.Model, table=True):
+    """Almacena tokens de un solo uso para la verificación de correo."""
+    token: str = Field(unique=True, index=True)
+    userinfo_id: int = Field(foreign_key="userinfo.id")
+    expires_at: datetime
+    
+    userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
+
+    created_at: datetime = Field(
+        default_factory=utils.timing.get_utc_now,
+        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
         nullable=False,
     )
 

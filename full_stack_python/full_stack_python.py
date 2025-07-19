@@ -12,6 +12,7 @@ from rxconfig import config
 from .ui.base import base_page
 from .auth.pages import my_login_page, my_register_page, my_logout_page
 from .auth.state import SessionState
+from .auth.pages import my_login_page, my_register_page, my_logout_page, verification_page
 
 from .cart.page import cart_page
 from .cart.state import CartState
@@ -54,6 +55,8 @@ app = rx.App(
 app.add_page(index, on_load=ArticlePublicState.load_posts)
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
+# ✨ --- RUTA AÑADIDA --- ✨
+app.add_page(verification_page, route="/verify-email") 
 app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
