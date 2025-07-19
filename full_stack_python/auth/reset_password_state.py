@@ -14,8 +14,8 @@ class ResetPasswordState(SessionState):
     confirm_password: str = ""
 
     def on_load_check_token(self):
-        # ✨ CORRECCIÓN CRÍTICA: Usa .query_params para leer el token de la URL
-        self.token = self.router.page.query_params.get("token", "")
+        # ✨ CORRECCIÓN CRÍTICA: Volvemos a usar .params en lugar de .query_params
+        self.token = self.router.page.params.get("token", "")
         
         if not self.token:
             self.message = "Enlace no válido. Falta el token."
@@ -37,6 +37,7 @@ class ResetPasswordState(SessionState):
 
             self.is_token_valid = True
 
+    # ... (el resto de la clase se queda igual)
     def handle_reset_password(self):
         if not self.is_token_valid:
             self.message = "Token no válido. Por favor, solicita un nuevo enlace."
