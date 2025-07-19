@@ -3,6 +3,7 @@
 import reflex as rx
 import reflex_local_auth
 
+from full_stack_python.auth.verify_state import VerifyState
 from full_stack_python.blog.public_detail import blog_public_detail_page
 from full_stack_python.blog.page import blog_public_page
 from full_stack_python.blog.state import BlogViewState, BlogPostState
@@ -56,7 +57,12 @@ app.add_page(index, on_load=ArticlePublicState.load_posts)
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
 # ✨ --- RUTA AÑADIDA --- ✨
-app.add_page(verification_page, route="/verify-email") 
+app.add_page(
+    verification_page, 
+    route="/verify-email",
+    on_load=VerifyState.verify_token
+)
+
 app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.protected_page, route="/protected/", on_load=SessionState.on_load)
