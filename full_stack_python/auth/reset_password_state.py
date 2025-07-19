@@ -1,7 +1,7 @@
 import reflex as rx
 import reflex_local_auth
 import bcrypt
-import sqlmodel  # Asegúrate de que esta importación esté
+import sqlmodel
 from datetime import datetime
 from ..models import PasswordResetToken, LocalUser
 from ..auth.state import SessionState
@@ -14,14 +14,15 @@ class ResetPasswordState(SessionState):
     confirm_password: str = ""
 
     def on_load_check_token(self):
-        self.token = self.router.page.params.get("token", "")
+        # ✨ CORRECCIÓN CRÍTICA: Usa .query_params para leer el token de la URL
+        self.token = self.router.page.query_params.get("token", "")
+        
         if not self.token:
             self.message = "Enlace no válido. Falta el token."
             self.is_token_valid = False
             return
 
         with rx.session() as session:
-            # ✨ CORRECCIÓN 1: Usar sqlmodel.select para la consulta
             db_token = session.exec(
                 sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)
             ).one_or_none()
@@ -47,10 +48,9 @@ class ResetPasswordState(SessionState):
         
         if len(self.password) < 4:
             self.message = "La contraseña es demasiado corta."
-            return # ✨ CORRECCIÓN 2: Eliminé un 'return' extra que estaba aquí
+            return
 
         with rx.session() as session:
-            # Usamos una consulta 'where' para asegurar que el token sigue siendo válido
             db_token = session.exec(
                 sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)
             ).one_or_none()
