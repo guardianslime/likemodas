@@ -3,6 +3,7 @@ from typing import List
 from ..models import BlogPostModel
 from sqlmodel import select
 from datetime import datetime
+from .. import navigation
 
 class SearchState(rx.State):
     """El único y definitivo estado para la búsqueda."""
@@ -15,8 +16,9 @@ class SearchState(rx.State):
         """Ejecuta la búsqueda y redirige."""
         term = self.search_term.strip()
         if not term:
-            return rx.toast.error("Por favor, introduce un término de búsqueda.")
+            return rx.redirect(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE)
 
+        # La lógica para una búsqueda exitosa no cambia.
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -31,3 +33,4 @@ class SearchState(rx.State):
 
         self.search_performed = True
         return rx.redirect("/search-results")
+    

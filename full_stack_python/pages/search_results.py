@@ -5,26 +5,24 @@ import reflex as rx
 from full_stack_python.cart.state import CartState
 from ..ui.base import base_page
 from ..ui.search_state import SearchState
-from ..articles.list import article_public_list_component # Reutilizamos el componente de la galería
+# Se corrige la importación si es necesario, aunque en tu archivo ya parece estar bien
+from ..articles.list import article_public_list_component 
 
 def search_results_page() -> rx.Component:
     """Página que muestra los resultados de la búsqueda."""
     return base_page(
         rx.center(
             rx.vstack(
-                # Título dinámico que muestra lo que se buscó
                 rx.heading(f"Resultados para: '{SearchState.search_term}'", size="7"),
                 
                 rx.cond(
-                    # Verificamos si hay resultados
                     SearchState.search_results,
-                    # Si hay resultados, los mostramos en una rejilla
+                    # Si hay resultados, se muestra la rejilla (sin cambios aquí)
                     rx.grid(
                         rx.foreach(
                             SearchState.search_results,
-                            # Reutilizamos la tarjeta de producto existente
                             lambda post: rx.box(
-                                # ... (copiamos la estructura de la tarjeta de blog_public_page)
+                                # ... (la estructura de la tarjeta de producto no cambia)
                                 rx.vstack(
                                     rx.link(
                                         rx.vstack(
@@ -62,9 +60,11 @@ def search_results_page() -> rx.Component:
                         spacing="6",
                         width="100%",
                     ),
-                    # Si no hay resultados, mostramos un mensaje
+                    # --- ✨ CAMBIO CLAVE AQUÍ ✨ ---
+                    # Si no hay resultados, mostramos el mensaje personalizado.
                     rx.center(
-                        rx.text("😔 No se encontraron publicaciones que coincidan con tu búsqueda."),
+                        # Usamos un f-string para incluir el término de búsqueda en el mensaje.
+                        rx.text(f"😔 No se encontraron publicaciones con el nombre: '{SearchState.search_term}'"),
                         padding="4em",
                         min_height="40vh"
                     )
