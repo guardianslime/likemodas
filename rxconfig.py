@@ -6,7 +6,7 @@ import os
 API_URL = "https://full-stack-python-production.up.railway.app"
 
 # URL principal del frontend desplegado en Vercel
-DEPLOY_URL = "https://full-stack-python.vercel.app"
+DEPLOY_URL = "https://likemodas.com"
 
 # URL de preview que causaba el error
 PREVIEW_URL = "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app"
@@ -17,7 +17,8 @@ PREVIEW_URL = "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app"
 default_origins = [
     "http://localhost:3000",
     API_URL,
-    DEPLOY_URL,
+    DEPLOY_URL,  # <-- Ahora es https://likemodas.com
+    "https://www.likemodas.com",  # ✨ AÑADIDO: La versión 'www' es crucial
     PREVIEW_URL,
 ]
 
@@ -36,7 +37,7 @@ cors_allowed_origins = list(
 
 
 config = rx.Config(
-    app_name="full_stack_python",
+    app_name="Likemodas",
     show_built_with_reflex=False,
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     api_url=API_URL,
