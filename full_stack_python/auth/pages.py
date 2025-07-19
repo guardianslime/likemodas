@@ -67,11 +67,10 @@ def my_login_page() -> rx.Component:
                             rx.input(
                                 placeholder="Username",
                                 name="username", # El nombre es importante para el submit
-                                on_change=LoginState.set_username, 
+                                # ✨ CAMBIO: Se elimina la línea on_change
                                 width="100%"
                             ),
                             rx.text("Password"),
-                            # ✨ CAMBIO: Eliminamos on_change y pasamos el 'name'
                             _password_input(
                                 placeholder="Password",
                                 name="password",
