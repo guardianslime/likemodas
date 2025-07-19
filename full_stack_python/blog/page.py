@@ -85,9 +85,11 @@ def blog_public_page():
                 ),
                 # La configuración del grid se mantiene para la responsividad
                 columns={
-                    "base": "2",
-                    "md": "3",
-                    "lg": "6",
+                    "base": "2",  # 2 columnas en pantallas muy pequeñas (móviles)
+                    "sm": "3",    # 3 columnas en pantallas pequeñas (tabletas verticales)
+                    "md": "4",    # 4 columnas en pantallas medianas (tabletas horizontales)
+                    "lg": "5",    # 5 columnas en pantallas grandes (portátiles)
+                    "xl": "6",    # 6 columnas en pantallas extra grandes (escritorio)
                 },
                 spacing="6",
                 width="100%",
