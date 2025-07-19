@@ -65,7 +65,6 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     if not isinstance(child, rx.Component):
         child = rx.heading("This is not a valid child element")
 
-    # Componente que muestra el mensaje de "Verificación Requerida"
     verification_required_page = rx.center(
         rx.vstack(
             rx.heading("Verificación Requerida"),
@@ -84,8 +83,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             # 2. Si el usuario SÍ está autenticado...
             rx.cond(
                 ~SessionState.authenticated_user_info.is_verified,
-                # 2a. ...pero NO está verificado, muestra el mensaje de requerir verificación.
-                #      Usamos el layout correspondiente a su rol para mantener la consistencia visual.
+                # 2a. ...pero NO está verificado, muestra la página de requerir verificación.
                 rx.cond(
                     SessionState.is_admin,
                     protected_layout(verification_required_page),
@@ -99,7 +97,6 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 )
             )
         ),
-        # Muestra un spinner mientras carga el estado inicial
         rx.center(rx.spinner(), height="100vh")
     )
 
