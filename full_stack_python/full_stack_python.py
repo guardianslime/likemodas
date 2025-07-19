@@ -14,6 +14,7 @@ from .ui.base import base_page
 from .auth.pages import my_login_page, my_register_page, my_logout_page
 from .auth.state import SessionState
 from .auth.pages import my_login_page, my_register_page, my_logout_page, verification_page
+from .auth.pages import my_login_page, my_register_page, my_logout_page, verification_page, forgot_password_page, reset_password_page
 
 from .cart.page import cart_page
 from .cart.state import CartState
@@ -62,6 +63,9 @@ app.add_page(
     route="/verify-email",
     on_load=VerifyState.verify_token
 )
+
+app.add_page(forgot_password_page, route="/forgot-password")
+app.add_page(reset_password_page, route="/reset-password")
 
 app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
