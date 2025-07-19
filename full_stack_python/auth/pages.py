@@ -1,4 +1,5 @@
 import reflex as rx
+import reflex_local_auth
 
 from reflex_local_auth.pages.login import LoginState, login_form
 from reflex_local_auth.pages.registration import RegistrationState, register_form
