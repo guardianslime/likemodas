@@ -108,7 +108,8 @@ def forgot_password_page() -> rx.Component:
                             rx.callout(
                                 ForgotPasswordState.message,
                                 icon="info",
-                                color_scheme="green" if ForgotPasswordState.is_success else "red",
+                                # ✨ ESTE ES EL CAMBIO 👇
+                                color_scheme=rx.cond(ForgotPasswordState.is_success, "green", "red"),
                                 width="100%"
                             )
                         ),
