@@ -47,10 +47,10 @@ class ResetPasswordState(SessionState):
         
         if len(self.password) < 4:
             self.message = "La contraseña es demasiado corta."
-            return
+            return # ✨ CORRECCIÓN 2: Eliminé un 'return' extra que estaba aquí
 
         with rx.session() as session:
-            # ✨ CORRECCIÓN 2: Usar una consulta 'where' en lugar de 'session.get'
+            # Usamos una consulta 'where' para asegurar que el token sigue siendo válido
             db_token = session.exec(
                 sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)
             ).one_or_none()
