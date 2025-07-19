@@ -15,29 +15,27 @@ class SearchState(rx.State):
 
     def update_search(self, value: str):
         self.search_term = value
-        # Si el usuario borra el campo, reseteamos el estado
         if not self.search_term.strip():
             self.search_performed = False
             self.search_results = []
 
-    @rx.event
-    def perform_search(self):
+    @rx.event  # <--- AÑADE ESTE DECORADOR
+    def perform_search(self, form_data: dict): # Acepta form_data del on_submit
         """
         Ejecuta la búsqueda en la base de datos y redirige a la página de resultados.
         """
-        if not self.search_term.strip():
-            # No buscar si el campo está vacío
+        # Extraemos el valor del input del diccionario del formulario
+        self.search_term = form_data.get("search_input", "").strip()
+
+        if not self.search_term:
             return rx.toast.error("Por favor, introduce un término de búsqueda.")
 
         with rx.session() as session:
-            # Construimos la consulta
             statement = (
                 select(BlogPostModel)
                 .where(
-                    # Buscamos solo en publicaciones activas
                     BlogPostModel.publish_active == True,
                     BlogPostModel.publish_date < datetime.now(),
-                    # Usamos ilike para una búsqueda case-insensitive que contenga el término
                     BlogPostModel.title.ilike(f"%{self.search_term}%")
                 )
                 .order_by(BlogPostModel.created_at.desc())
@@ -45,5 +43,4 @@ class SearchState(rx.State):
             self.search_results = session.exec(statement).all()
         
         self.search_performed = True
-        # Redirigimos a la nueva página de resultados
         return rx.redirect("/search-results")
