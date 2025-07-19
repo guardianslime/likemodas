@@ -7,6 +7,7 @@ from sqlmodel import select
 from datetime import datetime
 
 class SearchState(rx.State):
+    """El único y definitivo estado para la búsqueda."""
     search_term: str = ""
     search_results: List[BlogPostModel] = []
     search_performed: bool = False
