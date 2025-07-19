@@ -60,21 +60,46 @@ def public_layout(child: rx.Component) -> rx.Component:
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
     Función principal que envuelve todo el contenido y elige el layout
-    adecuado según el rol del usuario.
+    adecuado según el rol y estado de verificación del usuario.
     """
     if not isinstance(child, rx.Component):
         child = rx.heading("This is not a valid child element")
-        
+
+    # Componente que muestra el mensaje de "Verificación Requerida"
+    verification_required_page = rx.center(
+        rx.vstack(
+            rx.heading("Verificación Requerida"),
+            rx.text("Por favor, revisa tu correo electrónico para verificar tu cuenta antes de continuar."),
+            spacing="4"
+        ),
+        height="80vh"
+    )
+
     return rx.cond(
         SessionState.is_hydrated,
-        # --- ✨ LÓGICA DE LAYOUT ACTUALIZADA ---
-        # Ahora, solo los administradores ven el layout protegido con la barra lateral.
-        # Los clientes logueados y los visitantes ven el layout público.
         rx.cond(
-            SessionState.is_admin,
-            protected_layout(child), 
-            public_layout(child),   
+            ~SessionState.is_authenticated,
+            # 1. Si el usuario NO está autenticado, muestra el layout público normal.
+            public_layout(child),
+            # 2. Si el usuario SÍ está autenticado...
+            rx.cond(
+                ~SessionState.authenticated_user_info.is_verified,
+                # 2a. ...pero NO está verificado, muestra el mensaje de requerir verificación.
+                #      Usamos el layout correspondiente a su rol para mantener la consistencia visual.
+                rx.cond(
+                    SessionState.is_admin,
+                    protected_layout(verification_required_page),
+                    public_layout(verification_required_page)
+                ),
+                # 2b. ...y SÍ está verificado, muestra el layout según su rol.
+                rx.cond(
+                    SessionState.is_admin,
+                    protected_layout(child),
+                    public_layout(child)
+                )
+            )
         ),
+        # Muestra un spinner mientras carga el estado inicial
         rx.center(rx.spinner(), height="100vh")
     )
 
