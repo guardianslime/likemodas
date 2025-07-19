@@ -88,38 +88,36 @@ def verification_page() -> rx.Component:
     #    Esto evita el bloqueo de la lógica de verificación.
     return public_layout(page_content)
 
-def forgot_password_page() -> rx.Component:
+def reset_password_page() -> rx.Component:
     return base_page(
         rx.center(
             rx.card(
-                rx.form(
-                    rx.vstack(
-                        rx.heading("Recuperar Contraseña", size="7"),
-                        rx.text("Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña."),
-                        rx.input(
-                            placeholder="Email",
-                            on_change=ForgotPasswordState.set_email,
-                            type="email",
-                            width="100%"
+                rx.cond(
+                    ResetPasswordState.is_token_valid,
+                    # ... (el formulario se queda igual)
+                    rx.form(
+                        rx.vstack(
+                            # ...
+                            rx.cond(
+                                ResetPasswordState.message,
+                                rx.callout(
+                                    ResetPasswordState.message,
+                                    # ✨ ESTE ES EL CAMBIO 👇
+                                    icon="triangle_alert", # Cambia "alert_triangle" a "triangle_alert"
+                                    color_scheme="red",
+                                    width="100%"
+                                )
+                            ),
+                            spacing="4"
                         ),
-                        rx.button("Enviar Enlace", type="submit", width="100%"),
-                        rx.cond(
-                            ForgotPasswordState.message,
-                            rx.callout(
-                                ForgotPasswordState.message,
-                                icon="info",
-                                # ✨ ESTE ES EL CAMBIO 👇
-                                color_scheme=rx.cond(ForgotPasswordState.is_success, "green", "red"),
-                                width="100%"
-                            )
-                        ),
-                        spacing="4"
+                        on_submit=ResetPasswordState.handle_reset_password
                     ),
-                    on_submit=ForgotPasswordState.handle_submit
+                    # ... (la otra parte del condicional se queda igual)
                 )
             ),
             min_height="85vh"
-        )
+        ),
+        on_load=ResetPasswordState.on_load_check_token
     )
 
 def reset_password_page() -> rx.Component:
