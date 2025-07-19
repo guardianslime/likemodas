@@ -29,6 +29,7 @@ from .articles.list import articles_public_gallery_page
 from .articles.state import ArticlePublicState
 
 from . import blog, contact, navigation, pages
+from .pages.search_results import search_results_page
 
 # --- Definición de la Aplicación ---
 
@@ -56,6 +57,13 @@ app = rx.App(
 # --- Registro de Páginas ---
 
 app.add_page(index, on_load=ArticlePublicState.load_posts)
+
+app.add_page(
+    search_results_page,
+    route="/search-results",
+    title="Resultados de Búsqueda"
+)
+
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
 # ✨ --- RUTA AÑADIDA --- ✨
@@ -161,3 +169,4 @@ app.add_page(
     route=navigation.routes.CONTACT_ENTRIES_ROUTE,
     on_load=contact.ContactState.load_entries
 )
+
