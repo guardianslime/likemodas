@@ -62,6 +62,20 @@ class VerificationToken(rx.Model, table=True):
         nullable=False,
     )
 
+class PasswordResetToken(rx.Model, table=True):
+    """Almacena tokens de un solo uso para el reseteo de contraseña."""
+    token: str = Field(unique=True, index=True)
+    user_id: int = Field(foreign_key="localuser.id") # Se enlaza a LocalUser directamente
+    expires_at: datetime
+    
+    user: "LocalUser" = Relationship()
+
+    created_at: datetime = Field(
+        default_factory=utils.timing.get_utc_now,
+        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
+        nullable=False,
+    )
+
 class PurchaseStatus(str, enum.Enum):
     PENDING = "pending_confirmation"
     CONFIRMED = "confirmed"
