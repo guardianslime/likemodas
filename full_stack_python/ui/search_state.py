@@ -11,19 +11,12 @@ class SearchState(rx.State):
     search_results: List[BlogPostModel] = []
     search_performed: bool = False
 
-    # Este es el setter por defecto, lo usaremos en el on_change del input
-    def set_search_term(self, value: str):
-        self.search_term = value
-        if not self.search_term.strip():
-            self.search_performed = False
-            self.search_results = []
-
-    @rx.event  # <--- ESTE DECORADOR ES LA CLAVE
-    def perform_search(self, form_data: dict):
+    @rx.event
+    def perform_search(self):
         """
-        Ejecuta la búsqueda desde el formulario y redirige.
+        Ejecuta la búsqueda usando el valor actual de search_term y redirige.
         """
-        term = form_data.get("search_input", "").strip()
+        term = self.search_term.strip()
         if not term:
             return rx.toast.error("Por favor, introduce un término de búsqueda.")
 
@@ -40,5 +33,4 @@ class SearchState(rx.State):
             self.search_results = session.exec(statement).all()
 
         self.search_performed = True
-        self.search_term = term  # Actualizamos el estado para mostrarlo en la página de resultados
         return rx.redirect("/search-results")

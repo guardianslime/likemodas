@@ -109,14 +109,16 @@ def public_navbar() -> rx.Component:
                 rx.input(
                     placeholder="Buscar productos...",
                     value=SearchState.search_term,
-                    on_change=SearchState.set_search_term, # Asumimos que quieres el estado actualizado en tiempo real
+                    on_change=SearchState.set_search_term,
+                    # Usamos on_blur para disparar la búsqueda cuando el campo pierde el foco.
+                    # También podrías usar on_key_down para buscar con la tecla "Enter".
+                    on_blur=SearchState.perform_search,
                     width=["40%", "50%", "60%", "65%"],
                     height=["2.5em", "2.8em", "3em", "3.3em"],
                     padding_x="4",
                     border_radius="full",
                     border_width="1px",
                     font_size=rx.breakpoints(sm="2", md="3", lg="3"),
-                    name="search_input" # Le damos un nombre al input
                 ),
                 on_submit=SearchState.perform_search, # ¡Aquí está la magia!
                 width="100%" # Hacemos que el form ocupe el espacio del input
