@@ -1,5 +1,3 @@
-# full_stack_python/ui/search_state.py
-
 import reflex as rx
 from typing import List
 from ..models import BlogPostModel
@@ -14,9 +12,7 @@ class SearchState(rx.State):
 
     @rx.event
     def perform_search(self):
-        """
-        Ejecuta la búsqueda usando el valor actual de search_term y redirige.
-        """
+        """Ejecuta la búsqueda y redirige."""
         term = self.search_term.strip()
         if not term:
             return rx.toast.error("Por favor, introduce un término de búsqueda.")
