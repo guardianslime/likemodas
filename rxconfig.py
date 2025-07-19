@@ -5,15 +5,15 @@ import os
 # URL del backend donde corre la API de Reflex
 API_URL = "https://full-stack-python-production.up.railway.app"
 
-# URL principal del frontend desplegado en Vercel
+# ✨ CAMBIO: URL principal del frontend actualizada a tu dominio personalizado
 DEPLOY_URL = "https://likemodas.com"
 
-# URL de preview que causaba el error
+# URL de preview (opcional, puedes mantenerla o eliminarla)
 PREVIEW_URL = "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app"
 
 
 # --- Lista de orígenes permitidos por defecto ---
-# Incluye localhost, la URL de la API y las URLs de Vercel
+# Incluye localhost, la URL de la API y AHORA tu dominio personalizado
 default_origins = [
     "http://localhost:3000",
     API_URL,
@@ -39,7 +39,7 @@ cors_allowed_origins = list(
 config = rx.Config(
     app_name="full_stack_python",
     show_built_with_reflex=False,
-    db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
+    db_url=os.getenv("DATABASE_URL"), # Es mejor práctica leer esto desde las variables de entorno
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
 )
