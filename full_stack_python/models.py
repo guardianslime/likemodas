@@ -67,8 +67,6 @@ class PasswordResetToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     user_id: int = Field(foreign_key="localuser.id") # Se enlaza a LocalUser directamente
     expires_at: datetime
-    
-    user: "LocalUser" = Relationship()
 
     created_at: datetime = Field(
         default_factory=utils.timing.get_utc_now,
