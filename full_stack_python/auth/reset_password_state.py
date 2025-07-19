@@ -14,9 +14,7 @@ class ResetPasswordState(SessionState):
     confirm_password: str = ""
 
     def on_load_check_token(self):
-        # ✨ CORRECCIÓN CRÍTICA: Volvemos a usar .params en lugar de .query_params
         self.token = self.router.page.params.get("token", "")
-        
         if not self.token:
             self.message = "Enlace no válido. Falta el token."
             self.is_token_valid = False
@@ -37,7 +35,6 @@ class ResetPasswordState(SessionState):
 
             self.is_token_valid = True
 
-    # ... (el resto de la clase se queda igual)
     def handle_reset_password(self):
         if not self.is_token_valid:
             self.message = "Token no válido. Por favor, solicita un nuevo enlace."
@@ -63,7 +60,10 @@ class ResetPasswordState(SessionState):
             user = session.get(LocalUser, db_token.user_id)
             if user:
                 hashed_password = bcrypt.hashpw(self.password.encode("utf-8"), bcrypt.gensalt())
-                user.password_hash = hashed_password.decode("utf-8")
+                
+                # ✨ CAMBIO CRÍTICO: Elimina .decode("utf-8") para guardar los bytes directamente
+                user.password_hash = hashed_password
+                
                 session.add(user)
                 session.delete(db_token)
                 session.commit()
