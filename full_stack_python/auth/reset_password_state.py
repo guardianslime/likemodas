@@ -1,8 +1,7 @@
-# full_stack_python/auth/reset_password_state.py
-
 import reflex as rx
 import reflex_local_auth
 import bcrypt
+import sqlmodel  # Asegúrate de que esta importación esté
 from datetime import datetime
 from ..models import PasswordResetToken, LocalUser
 from ..auth.state import SessionState
@@ -22,8 +21,9 @@ class ResetPasswordState(SessionState):
             return
 
         with rx.session() as session:
+            # ✨ CORRECCIÓN 1: Usar sqlmodel.select para la consulta
             db_token = session.exec(
-                rx.select(PasswordResetToken).where(PasswordResetToken.token == self.token)
+                sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)
             ).one_or_none()
 
             if not db_token or datetime.utcnow() > db_token.expires_at:
@@ -44,26 +44,27 @@ class ResetPasswordState(SessionState):
         if self.password != self.confirm_password:
             self.message = "Las contraseñas no coinciden."
             return
-
-        if len(self.password) < 4: # O la validación que prefieras
+        
+        if len(self.password) < 4:
             self.message = "La contraseña es demasiado corta."
             return
 
         with rx.session() as session:
-            # Obtenemos el token de nuevo para asegurarnos de que sigue siendo válido
-            db_token = session.get(PasswordResetToken, self.token)
-            if not db_token:
-                # Esto podría pasar si el usuario tarda mucho en la página
-                self.message = "El token ha expirado mientras estabas en esta página."
-                return
+            # ✨ CORRECCIÓN 2: Usar una consulta 'where' en lugar de 'session.get'
+            db_token = session.exec(
+                sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)
+            ).one_or_none()
 
-            # Buscamos al usuario y actualizamos su contraseña
+            if not db_token:
+                self.message = "El token ha expirado o ya fue utilizado."
+                return
+            
             user = session.get(LocalUser, db_token.user_id)
             if user:
                 hashed_password = bcrypt.hashpw(self.password.encode("utf-8"), bcrypt.gensalt())
                 user.password_hash = hashed_password.decode("utf-8")
                 session.add(user)
-                session.delete(db_token) # El token es de un solo uso
+                session.delete(db_token)
                 session.commit()
 
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
