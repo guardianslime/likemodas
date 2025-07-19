@@ -7,7 +7,8 @@ from reflex_local_auth.pages.registration import RegistrationState, register_for
 from .. import navigation
 from ..ui.base import base_page, public_layout # ✨ 1. Importa public_layout
 
-from .forms import my_register_form
+from .forms import my_register_form, my_login_form 
+
 from .state import SessionState
 from .verify_state import VerifyState
 from .forgot_password_state import ForgotPasswordState
@@ -20,7 +21,7 @@ def my_login_page() -> rx.Component:
                 LoginState.is_hydrated,
                 rx.card(
                     rx.vstack(
-                        login_form(),
+                        my_login_form(),
                         rx.link(
                             "¿Olvidaste tu contraseña?", 
                             href="/forgot-password", 
@@ -128,21 +129,20 @@ def reset_password_page() -> rx.Component:
         rx.card(
             rx.cond(
                 ResetPasswordState.is_token_valid,
-                # Si el token es válido, muestra el formulario
                 rx.form(
                     rx.vstack(
                         rx.heading("Nueva Contraseña", size="7"),
-                        rx.input(
+                        # ✨ CAMBIO: Usamos nuestro componente personalizado
+                        password_input(
                             placeholder="Nueva contraseña",
                             on_change=ResetPasswordState.set_password,
-                            type="password",
-                            width="100%"
+                            name="password"
                         ),
-                        rx.input(
+                        # ✨ CAMBIO: Usamos nuestro componente personalizado
+                        password_input(
                             placeholder="Confirmar nueva contraseña",
                             on_change=ResetPasswordState.set_confirm_password,
-                            type="password",
-                            width="100%"
+                            name="confirm_password"
                         ),
                         rx.button("Guardar Contraseña", type="submit", width="100%"),
                         rx.cond(
@@ -158,7 +158,6 @@ def reset_password_page() -> rx.Component:
                     ),
                     on_submit=ResetPasswordState.handle_reset_password
                 ),
-                # Si el token no es válido, muestra el mensaje de error
                 rx.vstack(
                     rx.heading("Enlace no válido", size="7"),
                     rx.text(ResetPasswordState.message),
@@ -170,6 +169,4 @@ def reset_password_page() -> rx.Component:
         ),
         min_height="85vh"
     )
-
-    # ✨ CAMBIO CRÍTICO: Usamos public_layout y eliminamos el parámetro on_load
     return public_layout(page_content)
