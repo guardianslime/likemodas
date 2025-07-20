@@ -30,6 +30,12 @@ def _info_section() -> rx.Component:
         rx.text(BlogPostState.post.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
         rx.spacer(),
         rx.hstack(
+            # ✨ --- NUEVO BOTÓN AÑADIDO --- ✨
+            rx.button(
+                rx.cond(BlogPostState.post.publish_active, "Despublicar", "Publicar"),
+                on_click=BlogPostState.toggle_publish_status(BlogPostState.post.id),
+                color_scheme=rx.cond(BlogPostState.post.publish_active, "yellow", "green")
+            ),
             rx.link(rx.button("Editar Post", variant="soft"), href=BlogPostState.blog_post_edit_url),
             rx.button("Eliminar Post", color_scheme="red", on_click=BlogPostState.delete_post(BlogPostState.post.id)),
             spacing="4",

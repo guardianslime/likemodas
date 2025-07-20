@@ -63,6 +63,30 @@ class BlogPostState(SessionState):
         self.img_idx = 0
 
     @rx.event
+    def toggle_publish_status(self, post_id: int):
+        """Cambia el estado de publicación de un post y actualiza la fecha."""
+        if not self.is_admin:
+            return rx.toast.error("No tienes permiso para esta acción.")
+        with rx.session() as session:
+            post = session.get(BlogPostModel, post_id)
+            if post and post.userinfo_id == int(self.my_userinfo_id):
+                # Cambia el estado de publicación
+                post.publish_active = not post.publish_active
+                
+                # Si se está publicando, actualiza la fecha de publicación a la actual
+                if post.publish_active:
+                    post.publish_date = datetime.utcnow()
+                    yield rx.toast.success("¡Publicación activada!")
+                else:
+                    yield rx.toast.info("Publicación desactivada.")
+                
+                session.add(post)
+                session.commit()
+        
+        # Recarga los detalles del post para actualizar la UI
+        yield type(self).get_post_detail
+
+    @rx.event
     def delete_post(self, post_id: int):
         if not self.is_admin: return
         with rx.session() as session:
