@@ -269,13 +269,35 @@ class BlogViewState(SessionState):
 
     @rx.event
     def on_load(self):
+        """
+        Carga el detalle de un post con mensajes de diagnóstico.
+        """
+        print("\n--- [DEBUG] Iniciando on_load en BlogViewState ---")
         try:
-            pid = int(self.post_id)
+            post_id_str = self.router.page.params.get("blog_public_id", "")
+            print(f"[DEBUG] ID extraído de la URL: '{post_id_str}'")
+            pid = int(post_id_str)
+            print(f"[DEBUG] ID convertido a entero: {pid}")
         except (ValueError, TypeError):
+            print("[DEBUG] Error: No se pudo convertir el ID a entero. Terminando on_load.")
             self.post = None
             return
 
         with rx.session() as session:
+            print(f"[DEBUG] Buscando en la BD el BlogPostModel con id={pid} SIN FILTROS...")
+            # Primero, busquemos el post solo por ID para ver si existe
+            post_sin_filtros = session.get(BlogPostModel, pid)
+            
+            if post_sin_filtros:
+                print("[DEBUG] -> ¡Éxito! Se encontró un post con ese ID.")
+                print(f"   - Título: {post_sin_filtros.title}")
+                print(f"   - publish_active: {post_sin_filtros.publish_active} (¿Es True?)")
+                print(f"   - publish_date: {post_sin_filtros.publish_date} (¿Es una fecha pasada?)")
+            else:
+                print(f"[DEBUG] -> ¡Fallo! No se encontró NINGÚN post con el ID={pid}.")
+
+            # Ahora, aplicamos la consulta completa con los filtros
+            print("[DEBUG] Aplicando la consulta con filtros (publish_active=True, publish_date < ahora)...")
             self.post = session.exec(
                 select(BlogPostModel).where(
                     BlogPostModel.id == pid,
@@ -283,8 +305,14 @@ class BlogViewState(SessionState):
                     BlogPostModel.publish_date < datetime.now()
                 )
             ).one_or_none()
+
+        if self.post:
+            print("[DEBUG] RESULTADO FINAL: El post CUMPLE las condiciones y se cargará.")
+        else:
+            print("[DEBUG] RESULTADO FINAL: El post NO CUMPLE las condiciones. Se mostrará 'Publicación no encontrada'.")
         
         self.img_idx = 0
+        print("--- [DEBUG] Finalizando on_load ---\n"
 
     @rx.event
     def siguiente_imagen(self):
