@@ -154,13 +154,6 @@ app.add_page(
     on_load=CommentState.on_load 
 )
 
-# --- Página de detalle público ---
-app.add_page(
-    blog_public_detail_page,
-    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
-    title="Detalle de la Publicación",
-    on_load=BlogViewState.on_load
-)
 
 # --- Páginas de Contacto ---
 app.add_page(contact.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
