@@ -126,8 +126,11 @@ def comment_section() -> rx.Component:
 # --- Página Principal ---
 def blog_public_detail_page() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
+    
+    # --- 👇 CAMBIO ÚNICO Y CLAVE AQUÍ ---
+    # En lugar de comprobar 'CommentState.has_post', comprobamos directamente 'CommentState.post'
     content_grid = rx.cond(
-        CommentState.has_post,
+        CommentState.post, # ANTES: CommentState.has_post
         rx.grid(
             _image_section(),
             _info_section(),
