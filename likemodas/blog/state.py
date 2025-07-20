@@ -263,14 +263,19 @@ class CommentState(SessionState):
             return
 
         with rx.session() as session:
+            # Cargar el post
             self.post = session.exec(
-                select(BlogPostModel).where(
+                select(BlogPostModel)
+                # <<< AÑADE ESTA LÍNEA >>>
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .where(
                     BlogPostModel.id == pid,
                     BlogPostModel.publish_active == True,
                     BlogPostModel.publish_date < datetime.utcnow()
                 )
             ).one_or_none()
             
+            # Si el post se encontró, cargar sus comentarios (esta parte ya estaba bien)
             if self.post:
                 statement = (
                     select(CommentModel)
@@ -280,12 +285,12 @@ class CommentState(SessionState):
                     )
                     .where(CommentModel.blog_post_id == self.post.id)
                     .order_by(CommentModel.created_at.desc())
-                )
-                self.comments = session.exec(statement).unique().all()
+                ) [cite: 756, 757]
+                self.comments = session.exec(statement).unique().all() [cite: 757]
         
-        self.img_idx = 0
-        self.new_comment_text = ""
-        self.new_comment_rating = 0
+        self.img_idx = 0 [cite: 757]
+        self.new_comment_text = "" [cite: 757]
+        self.new_comment_rating = 0 [cite: 757]
     
     # ✨ 3. CAMBIO: Nuevo método para establecer la calificación desde la UI
     @rx.event

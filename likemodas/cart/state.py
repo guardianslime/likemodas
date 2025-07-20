@@ -7,6 +7,7 @@ from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseSt
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
+from sqlalchemy.orm import joinedload
 
 # Asegúrate de que esta importación (del paso anterior) esté presente
 from ..admin.state import AdminConfirmState
@@ -29,10 +30,11 @@ class CartState(SessionState):
         with rx.session() as session:
             self.posts = session.exec(
                 select(BlogPostModel)
+                # <<< 2. AÑADE ESTA LÍNEA PARA CARGAR LOS COMENTARIOS >>>
+                .options(joinedload(BlogPostModel.comments))
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
-
     @rx.var
     def cart_items_count(self) -> int:
         """Devuelve el número total de items en el carrito."""
