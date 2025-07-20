@@ -9,6 +9,7 @@ import reflex as rx
 from reflex_local_auth.user import LocalUser
 import sqlalchemy
 import enum
+import math # Importa math para los cálculos
 
 # (Los ENUMs y otros modelos no cambian)
 class UserRole(str, enum.Enum):
@@ -24,6 +25,7 @@ class VoteType(str, enum.Enum):
     LIKE = "like"
     DISLIKE = "dislike"
 
+# (UserInfo y otros modelos no cambian)
 class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
     email: str
@@ -41,7 +43,6 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
-# (Otros modelos como VerificationToken, PasswordResetToken, etc., no cambian)
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -55,6 +56,7 @@ class PasswordResetToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
+# --- ✨ CAMBIOS AQUÍ ✨ ---
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
@@ -63,12 +65,26 @@ class BlogPostModel(rx.Model, table=True):
     price: float = 0.0
     images: list[str] = Field(default=[], sa_column=Column(JSON))
     publish_active: bool = False
-    # --- LÍNEAS CORREGIDAS ---
     publish_date: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
-    # --- FIN DE CORRECCIÓN ---
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
+    
+    # ✨ 1. Propiedad para contar las calificaciones
+    @property
+    def rating_count(self) -> int:
+        """Devuelve el número total de comentarios (calificaciones)."""
+        return len(self.comments)
+
+    # ✨ 2. Propiedad para calcular el promedio de la calificación
+    @property
+    def average_rating(self) -> float:
+        """Calcula la calificación promedio de todos los comentarios."""
+        if not self.comments:
+            return 0.0
+        total_rating = sum(comment.rating for comment in self.comments)
+        return total_rating / len(self.comments)
+
     @property
     def created_at_formatted(self) -> str:
         return self.created_at.strftime("%Y-%m-%d")
@@ -77,6 +93,7 @@ class BlogPostModel(rx.Model, table=True):
         if not self.publish_date:
             return ""
         return self.publish_date.strftime("%d-%m-%Y")
+# --- FIN DE CAMBIOS ---
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -147,15 +164,11 @@ class ContactEntryModel(rx.Model, table=True):
         d["created_at_formatted"] = self.created_at_formatted
         return d
 
-# --- ✨ CAMBIOS AQUÍ ✨ ---
 class CommentModel(rx.Model, table=True):
     content: str
-    # ✨ 1. CAMBIO: Se añade el campo de calificación (rating)
-    rating: int # Calificación de 1 a 5
-    # --- LÍNEAS CORREGIDAS ---
+    rating: int 
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
-    # --- FIN DE CORRECCIÓN ---
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
@@ -172,7 +185,6 @@ class CommentModel(rx.Model, table=True):
     def dislikes(self) -> int:
         return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
 
-# --- FIN DE CAMBIOS ---
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")
