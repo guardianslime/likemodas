@@ -70,7 +70,7 @@ class BlogPostState(SessionState):
             if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
                 session.delete(post_to_delete)
                 session.commit()
-        return self.load_posts
+        return type(self).load_posts # <<< LÍNEA CORREGIDA
 
 class BlogAddFormState(SessionState):
     """Estado para el formulario de AÑADIR posts."""
