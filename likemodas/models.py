@@ -198,7 +198,7 @@ class CommentVoteModel(rx.Model, table=True):
 
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    userinfo: "UserInfo" = Relationship(back_populates="notifications", sa_relationship_kwargs={"overlaps": "notifications"})
+    userinfo: "UserInfo" = Relationship(back_populates="notifications")
 
     message: str
     is_read: bool = Field(default=False)
