@@ -28,12 +28,11 @@ def _image_section() -> rx.Component:
 def _global_rating_display() -> rx.Component:
     """Muestra la calificación promedio global, incluyendo medias estrellas."""
     average_rating = CommentState.post.average_rating
-    # Usamos math.floor para obtener la parte entera del promedio
-    full_stars = rx.Var.range(average_rating.floor())
-    # Verificamos si hay media estrella
-    has_half_star = (average_rating - average_rating.floor()) >= 0.5
-    # Calculamos el número de estrellas vacías
-    empty_stars = rx.Var.range(5 - average_rating.ceil())
+    
+    # <<< LÍNEAS CORREGIDAS: Se usa rx.math.floor() y rx.math.ceil() >>>
+    full_stars = rx.Var.range(rx.math.floor(average_rating))
+    has_half_star = (average_rating - rx.math.floor(average_rating)) >= 0.5
+    empty_stars = rx.Var.range(5 - rx.math.ceil(average_rating))
 
     return rx.cond(
         CommentState.post.rating_count > 0,
