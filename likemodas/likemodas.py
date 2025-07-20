@@ -121,6 +121,7 @@ app.add_page(
     route=navigation.routes.ARTICLE_LIST_ROUTE,
     on_load=ArticlePublicState.load_posts,
 )
+
 app.add_page(
     article_detail_page,
     route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]",
@@ -150,7 +151,6 @@ app.add_page(
     blog_public_detail_page,
     route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
     title="Detalle de la Publicación",
-    # 👇 CAMBIAR BlogViewState por CommentState
     on_load=CommentState.on_load 
 )
 
