@@ -168,7 +168,7 @@ class BlogAddFormState(SessionState):
                 images=self.temp_images.copy(),
                 userinfo_id=self.my_userinfo_id,
                 publish_active=True,
-                publish_date=datetime.now()
+                publish_date=datetime.utcnow() # Cambiado de .now() a .utcnow()
             )
             session.add(post)
             session.commit()
@@ -302,7 +302,7 @@ class BlogViewState(SessionState):
                 select(BlogPostModel).where(
                     BlogPostModel.id == pid,
                     BlogPostModel.publish_active == True,
-                    BlogPostModel.publish_date < datetime.now()
+                    BlogPostModel.publish_date < datetime.utcnow()
                 )
             ).one_or_none()
 
