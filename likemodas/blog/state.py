@@ -312,7 +312,8 @@ class BlogViewState(SessionState):
             print("[DEBUG] RESULTADO FINAL: El post NO CUMPLE las condiciones. Se mostrará 'Publicación no encontrada'.")
         
         self.img_idx = 0
-        print("--- [DEBUG] Finalizando on_load ---\n"
+        # --- 👇 LÍNEA CORREGIDA ---
+        print("--- [DEBUG] Finalizando on_load ---\n")
 
     @rx.event
     def siguiente_imagen(self):
