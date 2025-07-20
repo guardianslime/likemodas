@@ -284,12 +284,26 @@ class BlogViewState(SessionState):
 
     @rx.event
     def on_load(self):
+        """
+        Carga el detalle de un post verificando que sea público y activo.
+        """
         try:
             pid = int(self.post_id)
         except (ValueError, TypeError):
+            self.post = None # Limpiamos el post si el ID no es válido
             return
+
         with rx.session() as session:
-            self.post = session.get(BlogPostModel, pid)
+            # Reemplazamos session.get() por una consulta completa que
+            # verifica el ID, si está activo y si la fecha de publicación ya pasó.
+            self.post = session.exec(
+                select(BlogPostModel).where(
+                    BlogPostModel.id == pid,
+                    BlogPostModel.publish_active == True,
+                    BlogPostModel.publish_date < datetime.now()
+                )
+            ).one_or_none()
+        
         self.img_idx = 0
 
     @rx.event
