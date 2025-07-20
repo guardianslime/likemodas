@@ -19,7 +19,7 @@ class SearchState(rx.State):
         """Ejecuta la búsqueda y redirige."""
         term = self.search_term.strip()
         if not term:
-            return rx.redirect(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE) [cite: 951]
+            return rx.redirect(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE) 
 
         with rx.session() as session:
             statement = (
