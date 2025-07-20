@@ -1,16 +1,15 @@
-# likemodas/blog/public_detail.py (VERSIÓN CORREGIDA)
+# likemodas/blog/public_detail.py (VERSIÓN CORREGIDA FINAL)
 
 import reflex as rx
-from ..navigation.state import NavState
-from .state import CommentState, SessionState # Usar CommentState y SessionState
-from ..ui.nav import public_navbar
+from .state import CommentState, SessionState
 from ..ui.carousel import carousel
 from ..cart.state import CartState
-from ..models import CommentModel # Importar el modelo de comentario
-from ..ui.base import standalone_public_layout # Importar el layout específico
+from ..models import CommentModel
+from ..ui.base import public_layout # 👈 CORRECCIÓN: Importamos el layout correcto
 
-# --- Sección de Imagen (sin cambios) ---
+# --- Sección de Imagen ---
 def _image_section() -> rx.Component:
+    # (Esta función no cambia, usa CommentState para obtener los datos)
     return rx.box(
         rx.cond(
             CommentState.post.images & (CommentState.post.images.length() > 0),
@@ -23,8 +22,9 @@ def _image_section() -> rx.Component:
         width="100%", max_width="600px", position="relative",
     )
 
-# --- Sección de Información (Corregida) ---
+# --- Sección de Información ---
 def _info_section() -> rx.Component:
+    # (Esta función no cambia, usa CommentState para obtener los datos)
     return rx.vstack(
         rx.text(CommentState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
         rx.text(CommentState.formatted_price, size="6", color="gray", text_align="left"),
@@ -32,7 +32,6 @@ def _info_section() -> rx.Component:
         rx.spacer(),
         rx.button(
             "Añadir al Carrito",
-            # CORRECCIÓN: Usar CommentState para obtener el id del post
             on_click=lambda: CartState.add_to_cart(CommentState.post.id),
             width="100%",
             size="3",
@@ -41,10 +40,10 @@ def _info_section() -> rx.Component:
         padding="1em",
         align="start",
         width="100%",
-        min_height="350px", # Ayuda a alinear el botón verticalmente
+        min_height="350px",
     )
 
-# --- Componentes de Comentarios (Los que ya tenías) ---
+# --- Componentes de Comentarios (sin cambios) ---
 def _comment_form() -> rx.Component:
     return rx.cond(
         SessionState.is_authenticated,
@@ -107,9 +106,9 @@ def comment_section() -> rx.Component:
         spacing="5", width="100%", max_width="900px", align="center", padding_top="1em",
     )
 
-
-# --- Página Principal (Corregida para integrar todo) ---
+# --- Página Principal ---
 def blog_public_detail_page() -> rx.Component:
+    """Página que muestra el detalle de una publicación pública."""
     content_grid = rx.cond(
         CommentState.has_post,
         rx.grid(
@@ -128,8 +127,7 @@ def blog_public_detail_page() -> rx.Component:
         rx.vstack(
             rx.heading("Detalle del Producto", size="8", margin_bottom="1em"),
             content_grid,
-            # INTEGRACIÓN: Aquí se añade la sección de comentarios
-            comment_section(),
+            comment_section(), # Se añade la sección de comentarios
             spacing="6",
             width="100%",
             padding="2em",
@@ -138,6 +136,5 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
     )
     
-    # Asegúrate de usar un layout que no dependa de base_page para evitar conflictos de estado
-    # (standalone_public_layout es una buena práctica si lo tienes definido)
-    return standalone_public_layout(page_content)
+    # 👈 CORRECCIÓN: Usamos el layout público importado de ui.base
+    return public_layout(page_content)
