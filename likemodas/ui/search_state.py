@@ -33,7 +33,7 @@ class SearchState(rx.State):
                 )
                 .order_by(BlogPostModel.created_at.desc())
             )
-            self.search_results = session.exec(statement).all()
+            self.search_results = session.exec(statement).unique().all()
 
         self.search_performed = True [cite: 953]
         return rx.redirect("/search-results") [cite: 953]
