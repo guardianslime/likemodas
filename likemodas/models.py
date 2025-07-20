@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN CORREGIDA Y COMPLETA)
+# likemodas/models.py (VERSIÓN ACTUALIZADA)
 
 from typing import Optional, List
 from . import utils
@@ -10,7 +10,7 @@ from reflex_local_auth.user import LocalUser
 import sqlalchemy
 import enum
 
-# Definición de ENUMs
+# (Los ENUMs y otros modelos no cambian)
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
@@ -24,15 +24,12 @@ class VoteType(str, enum.Enum):
     LIKE = "like"
     DISLIKE = "dislike"
 
-# --- Definición de Modelos ---
-
 class UserInfo(rx.Model, table=True):
-    __tablename__ = "userinfo" # Asegura un nombre de tabla único
+    __tablename__ = "userinfo"
     email: str
     user_id: int = Field(foreign_key="localuser.id")
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
     is_verified: bool = Field(default=False, nullable=False)
-
     user: Optional[LocalUser] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
@@ -41,10 +38,10 @@ class UserInfo(rx.Model, table=True):
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
     comments: List["CommentModel"] = Relationship(back_populates="userinfo")
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
-    
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
+# (Otros modelos como VerificationToken, PasswordResetToken, etc., no cambian)
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -69,9 +66,7 @@ class BlogPostModel(rx.Model, table=True):
     publish_date: datetime = Field(default_factory=datetime.utcnow)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
-
     @property
     def created_at_formatted(self) -> str:
         return self.created_at.strftime("%Y-%m-%d")
@@ -89,7 +84,6 @@ class PurchaseModel(rx.Model, table=True):
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
-
     @property
     def purchase_date_formatted(self) -> str:
         return self.purchase_date.strftime('%d-%m-%Y %H:%M')
@@ -103,7 +97,6 @@ class PurchaseModel(rx.Model, table=True):
         if not self.items:
             return []
         return [f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)" for item in self.items]
-
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
         d["purchase_date_formatted"] = self.purchase_date_formatted
@@ -152,9 +145,14 @@ class ContactEntryModel(rx.Model, table=True):
         d["created_at_formatted"] = self.created_at_formatted
         return d
 
+# --- ✨ CAMBIOS AQUÍ ✨ ---
 class CommentModel(rx.Model, table=True):
     content: str
+    # ✨ 1. CAMBIO: Se añade el campo de calificación (rating)
+    rating: int # Calificación de 1 a 5
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    # ✨ 2. CAMBIO: Se añade 'updated_at' para futuras ediciones
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": datetime.utcnow}, nullable=False)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
@@ -171,6 +169,7 @@ class CommentModel(rx.Model, table=True):
     def dislikes(self) -> int:
         return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
 
+# --- FIN DE CAMBIOS ---
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")

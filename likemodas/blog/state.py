@@ -1,4 +1,4 @@
-# likemodas/blog/state.py (VERSIÓN FINAL Y DESACOPLADA)
+# likemodas/blog/state.py (VERSIÓN ACTUALIZADA)
 
 from datetime import datetime
 from typing import Optional, List
@@ -12,14 +12,14 @@ from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, Vo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# --- ESTADOS PARA PÁGINAS DE ADMINISTRACIÓN ---
+# --- ESTADOS PARA PÁGINAS DE ADMINISTRACIÓN (No cambian) ---
 
 class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
-
+    # ... (el resto del código de BlogPostState no cambia)
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
@@ -78,7 +78,7 @@ class BlogAddFormState(SessionState):
     content: str = ""
     price: float = 0.0
     temp_images: list[str] = []
-
+    # ... (el resto del código de BlogAddFormState no cambia)
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
@@ -125,7 +125,7 @@ class BlogEditFormState(BlogPostState):
     post_content: str = ""
     post_publish_active: bool = False
     price_str: str = "0.0"
-
+    # ... (el resto del código de BlogEditFormState no cambia)
     @rx.event
     def on_load_edit(self):
         self.get_post_detail()
@@ -180,15 +180,17 @@ class BlogEditFormState(BlogPostState):
         
         return rx.redirect(f"/blog/{post_id}")
 
-
 # --- ESTADO PARA LA PÁGINA PÚBLICA (BLOG Y COMENTARIOS) ---
-
+# --- ✨ CAMBIOS PRINCIPALES AQUÍ ✨ ---
 class CommentState(SessionState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
     comments: list[CommentModel] = []
     new_comment_text: str = ""
+    
+    # ✨ 1. CAMBIO: Se añade estado para la calificación
+    new_comment_rating: int = 0
 
     # --- Variables Computadas (Propiedades) ---
     @rx.var
@@ -212,10 +214,13 @@ class CommentState(SessionState):
         if self.post and self.post.images and len(self.post.images) > self.img_idx:
             return self.post.images[self.img_idx]
         return ""
+    
+    # ✨ 2. CAMBIO: Se divide la lógica de 'user_can_comment' en dos partes para más claridad
 
     @rx.var
-    def user_can_comment(self) -> bool:
-        if not self.is_authenticated or not self.post:
+    def user_has_purchased(self) -> bool:
+        """Verifica si el usuario ha comprado este producto."""
+        if not self.is_authenticated or not self.post or not self.authenticated_user_info:
             return False
         with rx.session() as session:
             purchase_record = session.exec(
@@ -226,6 +231,25 @@ class CommentState(SessionState):
                 )
             ).first()
             return purchase_record is not None
+
+    @rx.var
+    def user_has_commented(self) -> bool:
+        """Verifica si el usuario ya ha comentado en este producto."""
+        if not self.is_authenticated or not self.post or not self.authenticated_user_info:
+            return False
+        with rx.session() as session:
+            existing_comment = session.exec(
+                select(CommentModel).where(
+                    CommentModel.userinfo_id == self.authenticated_user_info.id,
+                    CommentModel.blog_post_id == self.post.id
+                )
+            ).first()
+            return existing_comment is not None
+
+    @rx.var
+    def user_can_comment(self) -> bool:
+        """Determina si el formulario de comentario debe mostrarse."""
+        return self.user_has_purchased and not self.user_has_commented
 
     # --- Event Handlers (Métodos de Lógica) ---
     @rx.event
@@ -239,7 +263,6 @@ class CommentState(SessionState):
             return
 
         with rx.session() as session:
-            # Cargar el post
             self.post = session.exec(
                 select(BlogPostModel).where(
                     BlogPostModel.id == pid,
@@ -248,7 +271,6 @@ class CommentState(SessionState):
                 )
             ).one_or_none()
             
-            # Si el post se encontró, cargar sus comentarios
             if self.post:
                 statement = (
                     select(CommentModel)
@@ -262,28 +284,43 @@ class CommentState(SessionState):
                 self.comments = session.exec(statement).unique().all()
         
         self.img_idx = 0
+        self.new_comment_text = ""
+        self.new_comment_rating = 0
     
-    # --- 👇 MÉTODOS RESTAURADOS ---
+    # ✨ 3. CAMBIO: Nuevo método para establecer la calificación desde la UI
+    @rx.event
+    def set_new_comment_rating(self, rating: int):
+        """Actualiza la calificación seleccionada por el usuario."""
+        self.new_comment_rating = rating
+    
+    # ✨ 4. CAMBIO: Se actualiza 'add_comment' para guardar la calificación
     @rx.event
     def add_comment(self, form_data: dict):
-        """Añade un nuevo comentario a la base de datos."""
+        """Añade un nuevo comentario con calificación a la base de datos."""
         content = form_data.get("comment_text", "").strip()
+        
         if not self.user_can_comment or not self.post or not content:
-            return rx.toast.error("No tienes permiso para comentar en este producto.")
+            return rx.toast.error("No tienes permiso para comentar o el texto está vacío.")
+        
+        if self.new_comment_rating == 0:
+            return rx.toast.error("Por favor, selecciona una calificación de 1 a 5 estrellas.")
 
         with rx.session() as session:
             comment = CommentModel(
                 content=content,
+                rating=self.new_comment_rating, # Se guarda la calificación
                 userinfo_id=self.authenticated_user_info.id,
                 blog_post_id=self.post.id
             )
             session.add(comment)
             session.commit()
         
+        # Resetea los campos y recarga todo para mostrar el nuevo comentario
         self.new_comment_text = ""
-        # Volver a cargar los comentarios para mostrar el nuevo
+        self.new_comment_rating = 0
         return self.on_load()
 
+    # (El resto de los métodos como handle_vote, siguiente_imagen, etc., no cambian)
     @rx.event
     def handle_vote(self, comment_id: int, vote_type_str: str):
         """Gestiona un voto (like/dislike) en un comentario."""
@@ -314,7 +351,6 @@ class CommentState(SessionState):
                 session.add(new_vote)
             
             session.commit()
-        # Volver a cargar los comentarios para actualizar los contadores
         return self.on_load()
 
     @rx.event

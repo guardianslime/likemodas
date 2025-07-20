@@ -1,15 +1,14 @@
-# likemodas/blog/public_detail.py (VERSIÓN CORREGIDA FINAL)
+# likemodas/blog/public_detail.py (VERSIÓN ACTUALIZADA)
 
 import reflex as rx
 from .state import CommentState, SessionState
 from ..ui.carousel import carousel
 from ..cart.state import CartState
 from ..models import CommentModel
-from ..ui.base import public_layout # 👈 CORRECCIÓN: Importamos el layout correcto
+from ..ui.base import public_layout
 
-# --- Sección de Imagen ---
+# --- Secciones de Imagen e Información (no cambian) ---
 def _image_section() -> rx.Component:
-    # (Esta función no cambia, usa CommentState para obtener los datos)
     return rx.box(
         rx.cond(
             CommentState.post.images & (CommentState.post.images.length() > 0),
@@ -22,9 +21,7 @@ def _image_section() -> rx.Component:
         width="100%", max_width="600px", position="relative",
     )
 
-# --- Sección de Información ---
 def _info_section() -> rx.Component:
-    # (Esta función no cambia, usa CommentState para obtener los datos)
     return rx.vstack(
         rx.text(CommentState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
         rx.text(CommentState.formatted_price, size="6", color="gray", text_align="left"),
@@ -43,35 +40,69 @@ def _info_section() -> rx.Component:
         min_height="350px",
     )
 
-# --- Componentes de Comentarios (sin cambios) ---
+# --- ✨ CAMBIOS EN COMPONENTES DE COMENTARIOS ---
+
+def _star_rating_input() -> rx.Component:
+    """Componente para seleccionar una calificación de estrellas en el formulario."""
+    return rx.hstack(
+        rx.foreach(
+            rx.Var.range(5),
+            lambda i: rx.icon(
+                tag="star",
+                # La estrella se rellena si el índice es menor que la calificación seleccionada
+                color=rx.cond(i < CommentState.new_comment_rating, "gold", rx.color("gray", 8)),
+                on_click=lambda: CommentState.set_new_comment_rating(i + 1),
+                cursor="pointer",
+                size=28,
+            )
+        ),
+        spacing="2",
+        padding_y="0.5em",
+    )
+
+def _star_rating_display(rating: rx.Var[int]) -> rx.Component:
+    """Componente para mostrar una calificación de estrellas estática."""
+    return rx.hstack(
+        rx.foreach(
+            rx.Var.range(5),
+            lambda i: rx.icon(
+                tag="star",
+                color=rx.cond(i < rating, "gold", rx.color("gray", 8)),
+                size=18,
+            )
+        ),
+        spacing="1"
+    )
+
 def _comment_form() -> rx.Component:
-    """
-    Formulario de comentarios que ahora maneja tres casos:
-    1. No logueado -> Mensaje para iniciar sesión.
-    2. Logueado, pero sin compra confirmada -> Mensaje para comprar.
-    3. Logueado y con compra confirmada -> Formulario para comentar.
-    """
+    """Formulario de comentarios que ahora incluye calificación y más validaciones."""
     return rx.cond(
         SessionState.is_authenticated,
-        # Si el usuario está logueado, verificamos si puede comentar
+        # Si está logueado, verificar si puede comentar
         rx.cond(
             CommentState.user_can_comment,
-            # Caso 3: Sí puede comentar, mostramos el formulario
+            # Caso A: Puede comentar, mostrar el formulario
             rx.form(
                 rx.vstack(
+                    rx.text("Tu calificación:", weight="bold"),
+                    _star_rating_input(), # Selector de estrellas
                     rx.text_area(name="comment_text", value=CommentState.new_comment_text, on_change=CommentState.set_new_comment_text, placeholder="Escribe tu opinión sobre el producto...", width="100%"),
                     rx.button("Publicar Opinión", type="submit", align_self="flex-end"),
                     spacing="3", width="100%",
                 ),
                 on_submit=CommentState.add_comment, width="100%",
             ),
-            # Caso 2: No puede comentar, mostramos mensaje de compra
+            # Caso B: No puede comentar, mostrar el mensaje correspondiente
             rx.box(
-                rx.text("Debes haber comprado este producto para poder dejar tu opinión."),
+                rx.cond(
+                    CommentState.user_has_commented,
+                    rx.text("Ya has publicado una opinión para este producto."),
+                    rx.text("Debes haber comprado este producto para poder dejar tu opinión.")
+                ),
                 padding="1.5em", border="1px solid #444", border_radius="md", text_align="center", width="100%",
             )
         ),
-        # Caso 1: No está logueado, mostramos mensaje para iniciar sesión
+        # No está logueado, mostrar mensaje para iniciar sesión
         rx.box(
             rx.text("Debes ", rx.link("iniciar sesión", href="/login"), " y comprar este producto para poder comentarlo."),
             padding="1.5em", border="1px solid #444", border_radius="md", text_align="center", width="100%",
@@ -79,9 +110,11 @@ def _comment_form() -> rx.Component:
     )
 
 def _comment_card(comment: CommentModel) -> rx.Component:
+    """Tarjeta de comentario que ahora muestra la calificación con estrellas."""
     return rx.box(
         rx.vstack(
             rx.hstack(
+                # Información del usuario y fecha
                 rx.hstack(
                     rx.avatar(fallback=comment.userinfo.user.username[0], size="2"),
                     rx.text(comment.userinfo.user.username, weight="bold"),
@@ -89,28 +122,33 @@ def _comment_card(comment: CommentModel) -> rx.Component:
                     align="center",
                 ),
                 rx.spacer(),
-                rx.cond(
-                    SessionState.is_authenticated,
-                    rx.hstack(
-                        rx.icon_button(rx.icon("thumbs-up", size=18), on_click=lambda: CommentState.handle_vote(comment.id, "like"), variant="soft"),
-                        rx.text(comment.likes, size="2"),
-                        rx.icon_button(rx.icon("thumbs-down", size=18), on_click=lambda: CommentState.handle_vote(comment.id, "dislike"), variant="soft"),
-                        rx.text(comment.dislikes, size="2"),
-                        spacing="2", align="center",
-                    )
-                ),
+                # Muestra la calificación con estrellas
+                _star_rating_display(comment.rating),
                 align="center",
             ),
+            # Contenido del comentario
             rx.text(comment.content, padding_left="2.5em", padding_top="0.5em"),
+            # Likes y dislikes (sin cambios)
+            rx.cond(
+                SessionState.is_authenticated,
+                rx.hstack(
+                    rx.icon_button(rx.icon("thumbs-up", size=18), on_click=lambda: CommentState.handle_vote(comment.id, "like"), variant="soft"),
+                    rx.text(comment.likes, size="2"),
+                    rx.icon_button(rx.icon("thumbs-down", size=18), on_click=lambda: CommentState.handle_vote(comment.id, "dislike"), variant="soft"),
+                    rx.text(comment.dislikes, size="2"),
+                    spacing="2", align="center", padding_left="2.5em",
+                )
+            ),
             spacing="2", align="start",
         ),
         padding="1em", border_radius="md", bg=rx.color("gray", 2), width="100%",
     )
 
+# (La sección de comentarios y la página principal no cambian su estructura)
 def comment_section() -> rx.Component:
     return rx.vstack(
         rx.divider(margin_y="2em"),
-        rx.heading("Comentarios", size="7"),
+        rx.heading("Opiniones del Producto", size="7"),
         _comment_form(),
         rx.vstack(
             rx.foreach(CommentState.comments, _comment_card),
@@ -118,19 +156,14 @@ def comment_section() -> rx.Component:
         ),
         rx.cond(
             ~CommentState.comments,
-            rx.center(rx.text("Sé el primero en comentar.", color_scheme="gray"), padding="2em", width="100%")
+            rx.center(rx.text("Sé el primero en dejar tu opinión.", color_scheme="gray"), padding="2em", width="100%")
         ),
         spacing="5", width="100%", max_width="900px", align="center", padding_top="1em",
     )
 
-# --- Página Principal ---
 def blog_public_detail_page() -> rx.Component:
-    """Página que muestra el detalle de una publicación pública."""
-    
-    # --- 👇 CAMBIO ÚNICO Y CLAVE AQUÍ ---
-    # En lugar de comprobar 'CommentState.has_post', comprobamos directamente 'CommentState.post'
     content_grid = rx.cond(
-        CommentState.post, # ANTES: CommentState.has_post
+        CommentState.post,
         rx.grid(
             _image_section(),
             _info_section(),
@@ -147,7 +180,7 @@ def blog_public_detail_page() -> rx.Component:
         rx.vstack(
             rx.heading("Detalle del Producto", size="8", margin_bottom="1em"),
             content_grid,
-            comment_section(), # Se añade la sección de comentarios
+            comment_section(), # Sección de comentarios
             spacing="6",
             width="100%",
             padding="2em",
@@ -156,5 +189,4 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
     )
     
-    # 👈 CORRECCIÓN: Usamos el layout público importado de ui.base
     return public_layout(page_content)
