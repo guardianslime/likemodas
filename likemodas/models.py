@@ -133,6 +133,69 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
 
+class VoteType(str, enum.Enum):
+    LIKE = "like"
+    DISLIKE = "dislike"
+
+# ... (dentro de la clase UserInfo)
+class UserInfo(rx.Model, table=True):
+    # ... (campos existentes)
+    purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
+    notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
+    # --- 👇 AÑADIR ESTAS DOS LÍNEAS ---
+    comments: List["CommentModel"] = Relationship(back_populates="userinfo")
+    comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
+
+# ... (dentro de la clase BlogPostModel)
+class BlogPostModel(rx.Model, table=True):
+    # ... (campos existentes)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    # --- 👇 AÑADIR ESTA LÍNEA ---
+    comments: List["CommentModel"] = Relationship(back_populates="blog_post")
+
+
+# --- 👇 AÑADIR ESTOS DOS NUEVOS MODELOS COMPLETOS AL FINAL DEL ARCHIVO ---
+
+class CommentModel(rx.Model, table=True):
+    """Almacena un comentario hecho por un usuario en una publicación."""
+    content: str
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    # Relación con el usuario que comentó
+    userinfo_id: int = Field(foreign_key="userinfo.id")
+    userinfo: "UserInfo" = Relationship(back_populates="comments")
+
+    # Relación con la publicación comentada
+    blog_post_id: int = Field(foreign_key="blogpostmodel.id")
+    blog_post: "BlogPostModel" = Relationship(back_populates="comments")
+
+    # Relación con los votos (likes/dislikes)
+    votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
+
+    @property
+    def created_at_formatted(self) -> str:
+        return self.created_at.strftime("%d-%m-%Y %H:%M")
+
+    @property
+    def likes(self) -> int:
+        return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
+    
+    @property
+    def dislikes(self) -> int:
+        return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
+
+class CommentVoteModel(rx.Model, table=True):
+    """Almacena el voto (like/dislike) de un usuario en un comentario específico."""
+    vote_type: VoteType
+
+    # Relación con el usuario que votó
+    userinfo_id: int = Field(foreign_key="userinfo.id")
+    userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
+    
+    # Relación con el comentario que fue votado
+    comment_id: int = Field(foreign_key="commentmodel.id")
+    comment: "CommentModel" = Relationship(back_populates="votes")
+
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="notifications", sa_relationship_kwargs={"overlaps": "notifications"})

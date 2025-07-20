@@ -7,7 +7,7 @@ from likemodas.auth.reset_password_state import ResetPasswordState
 from likemodas.auth.verify_state import VerifyState
 from likemodas.blog.public_detail import blog_public_detail_page
 from likemodas.blog.page import blog_public_page
-from likemodas.blog.state import BlogViewState, BlogPostState
+from likemodas.blog.state import BlogViewState, BlogPostState, CommentState
 from rxconfig import config
 
 # --- Módulos y Componentes ---
@@ -147,11 +147,11 @@ app.add_page(
 
 # --- Página de la galería pública ---
 app.add_page(
-    blog_public_page,
-    route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE,
-    title="Galería pública",
-    # --- ✨ CORRECCIÓN: Se usa CartState para cargar los posts ---
-    on_load=CartState.on_load
+    blog_public_detail_page,
+    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
+    title="Detalle de la Publicación",
+    # 👇 CAMBIAR BlogViewState por CommentState
+    on_load=CommentState.on_load 
 )
 
 # --- Página de detalle público ---

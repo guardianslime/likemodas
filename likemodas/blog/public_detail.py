@@ -3,7 +3,7 @@
 import reflex as rx
 import reflex_local_auth
 from..navigation.state import NavState
-from .state import BlogViewState
+from .state import BlogViewState, CommentState
 from .. import navigation
 from ..navigation.device import NavDeviceState
 from ..navigation.state import force_reload_go_to
@@ -11,6 +11,7 @@ from ..ui.base import fixed_color_mode_button
 from ..ui.search_state import SearchState
 from ..ui.nav import public_navbar # Importamos la public_navbar unificada
 from ..ui.carousel import carousel 
+from ..cart.state import CartState 
 
 # Esta es la barra de navegación local, con el estilo correcto y la recarga forzada.
 # ELIMINAMOS _detail_page_navbar() ya que usaremos public_navbar()
@@ -178,7 +179,116 @@ def _info_section() -> rx.Component:
         rx.text(BlogViewState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
         rx.text(BlogViewState.formatted_price, size="6", color="gray", text_align="left"),
         rx.text(BlogViewState.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
+        rx.spacer(), # Empuja el botón hacia abajo
+        rx.button(
+            "Añadir al Carrito",
+            on_click=lambda: CartState.add_to_cart(BlogViewState.post.id),
+            width="100%",
+            size="3",
+            margin_top="1.5em", # Añade un poco de espacio arriba
+        ),
         padding="1em",
         align="start",
         width="100%",
+    )
+
+def _comment_form() -> rx.Component:
+    """Formulario para que usuarios registrados dejen un comentario."""
+    return rx.cond(
+        SessionState.is_authenticated,
+        rx.form(
+            rx.vstack(
+                rx.text_area(
+                    name="comment_text",
+                    value=CommentState.new_comment_text,
+                    on_change=CommentState.set_new_comment_text,
+                    placeholder="Escribe tu comentario...",
+                    width="100%",
+                ),
+                rx.button("Publicar Comentario", type="submit", align_self="flex-end"),
+                spacing="3",
+                width="100%",
+            ),
+            on_submit=CommentState.add_comment,
+            width="100%",
+        ),
+        rx.box(
+            rx.text("Debes ", rx.link("iniciar sesión", href="/login"), " para poder comentar."),
+            padding="1.5em",
+            border="1px solid #444",
+            border_radius="md",
+            text_align="center",
+            width="100%",
+        )
+    )
+
+def _comment_card(comment: CommentModel) -> rx.Component:
+    """Componente visual para mostrar un único comentario."""
+    return rx.box(
+        rx.vstack(
+            rx.hstack(
+                rx.hstack(
+                    rx.avatar(fallback=comment.userinfo.user.username[0], size="2"),
+                    rx.text(comment.userinfo.user.username, weight="bold"),
+                    rx.text(f"• {comment.created_at_formatted}", size="2", color_scheme="gray"),
+                    align="center",
+                ),
+                rx.spacer(),
+                # --- Votos (Like/Dislike) ---
+                rx.cond(
+                    SessionState.is_authenticated,
+                    rx.hstack(
+                        rx.icon_button(
+                            rx.icon("thumbs-up", size=18),
+                            on_click=lambda: CommentState.handle_vote(comment.id, "like"),
+                            variant="soft",
+                        ),
+                        rx.text(comment.likes, size="2"),
+                        rx.icon_button(
+                            rx.icon("thumbs-down", size=18),
+                            on_click=lambda: CommentState.handle_vote(comment.id, "dislike"),
+                            variant="soft",
+                        ),
+                        rx.text(comment.dislikes, size="2"),
+                        spacing="2",
+                        align="center",
+                    )
+                ),
+                align="center",
+            ),
+            rx.text(comment.content, padding_left="2.5em", padding_top="0.5em"),
+            spacing="2",
+            align="start",
+        ),
+        padding="1em",
+        border_radius="md",
+        bg=rx.color("gray", 2),
+        width="100%",
+    )
+
+def comment_section() -> rx.Component:
+    """Sección completa de comentarios que incluye el formulario y la lista."""
+    return rx.vstack(
+        rx.divider(margin_y="2em"),
+        rx.heading("Comentarios", size="7"),
+        _comment_form(),
+        rx.vstack(
+            rx.foreach(CommentState.comments, _comment_card),
+            spacing="4",
+            width="100%",
+            margin_top="1.5em",
+        ),
+        rx.cond(
+            ~CommentState.comments,
+            rx.center(
+                rx.text("Sé el primero en comentar.", color_scheme="gray"),
+                padding="2em",
+                width="100%",
+            )
+        ),
+        spacing="5",
+        width="100%",
+        max_width="900px", # Ancho máximo para legibilidad
+        align="center",
+        padding_top="1em",
     )

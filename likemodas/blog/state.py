@@ -8,7 +8,7 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo
+from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType # 👈 Modificar esta importación
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
@@ -301,3 +301,92 @@ class BlogViewState(SessionState):
     def anterior_imagen(self):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
+
+class CommentState(BlogViewState):
+    """Estado para manejar la sección de comentarios."""
+    
+    comments: list[CommentModel] = []
+    new_comment_text: str = ""
+
+    def load_comments(self):
+        """Carga los comentarios para la publicación actual."""
+        if not self.post:
+            self.comments = []
+            return
+        with rx.session() as session:
+            # Usamos 'unique()' para evitar duplicados por los 'joinedload'
+            statement = (
+                select(CommentModel)
+                .options(
+                    sqlalchemy.orm.joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(CommentModel.votes)
+                )
+                .where(CommentModel.blog_post_id == self.post.id)
+                .order_by(CommentModel.created_at.desc())
+            )
+            self.comments = session.exec(statement).unique().all()
+            
+    # Sobrescribimos on_load para que cargue el post Y los comentarios
+    def on_load(self):
+        super().on_load() # Llama al on_load del padre (BlogViewState)
+        self.load_comments()
+
+    @rx.event
+    def add_comment(self, form_data: dict):
+        """Añade un nuevo comentario a la base de datos."""
+        content = form_data.get("comment_text", "").strip()
+        if not self.is_authenticated or not self.post or not content:
+            if not self.is_authenticated:
+                return rx.toast.error("Debes iniciar sesión para comentar.")
+            return
+
+        with rx.session() as session:
+            comment = CommentModel(
+                content=content,
+                userinfo_id=self.authenticated_user_info.id,
+                blog_post_id=self.post.id
+            )
+            session.add(comment)
+            session.commit()
+
+        self.new_comment_text = "" # Limpiar el campo de texto
+        # Recargar los comentarios para que el nuevo aparezca
+        self.load_comments()
+
+    @rx.event
+    def handle_vote(self, comment_id: int, vote_type_str: str):
+        """Gestiona un voto (like/dislike) en un comentario."""
+        vote_type = VoteType(vote_type_str)
+        if not self.is_authenticated:
+            return rx.toast.error("Debes iniciar sesión para votar.")
+
+        with rx.session() as session:
+            # Buscar si el usuario ya votó en este comentario
+            existing_vote = session.exec(
+                select(CommentVoteModel).where(
+                    CommentVoteModel.comment_id == comment_id,
+                    CommentVoteModel.userinfo_id == self.authenticated_user_info.id
+                )
+            ).one_or_none()
+
+            if existing_vote:
+                if existing_vote.vote_type == vote_type:
+                    # Si vota lo mismo, se elimina el voto (toggle off)
+                    session.delete(existing_vote)
+                else:
+                    # Si cambia el voto, se actualiza
+                    existing_vote.vote_type = vote_type
+                    session.add(existing_vote)
+            else:
+                # Si no hay voto previo, se crea uno nuevo
+                new_vote = CommentVoteModel(
+                    vote_type=vote_type,
+                    userinfo_id=self.authenticated_user_info.id,
+                    comment_id=comment_id
+                )
+                session.add(new_vote)
+            
+            session.commit()
+        
+        # Recargar comentarios para actualizar los contadores
+        self.load_comments()
