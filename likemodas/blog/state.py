@@ -20,6 +20,22 @@ class BlogPostState(SessionState):
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
 
+    # --- 👇 INICIO DE LA CORRECCIÓN: Se restauran estas variables ---
+    @rx.var
+    def formatted_price(self) -> str:
+        """Devuelve el precio del post formateado como moneda."""
+        if self.post and self.post.price is not None:
+            return f"${self.post.price:,.2f}"
+        return "$0.00"
+
+    @rx.var
+    def blog_post_edit_url(self) -> str:
+        """Devuelve la URL para editar el post actual."""
+        if self.post and self.post.id is not None:
+            return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
+        return BLOG_POSTS_ROUTE
+    # --- FIN DE LA CORRECCIÓN ---
+
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
@@ -48,6 +64,7 @@ class BlogPostState(SessionState):
             return
 
         with rx.session() as session:
+            # La lógica del admin no necesita verificar si está publicado
             self.post = session.get(BlogPostModel, post_id_int)
         self.img_idx = 0
 
@@ -60,7 +77,7 @@ class BlogPostState(SessionState):
                 session.delete(post_to_delete)
                 session.commit()
         return self.load_posts
-
+    
 class BlogAddFormState(SessionState):
     """Estado para el formulario de AÑADIR posts."""
     title: str = ""
