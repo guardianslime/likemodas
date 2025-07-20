@@ -1,9 +1,7 @@
-# likemodas/navigation/routes.py (VERSIÓN ACTUALIZADA)
+# likemodas/navigation/routes.py (VERSIÓN LIMPIA)
 
 HOME_ROUTE="/"
 ABOUT_US_ROUTE="/about"
-# --- LÍNEA ELIMINADA ---
-# ARTICLE_LIST_ROUTE="/articles" 
 BLOG_POSTS_ROUTE="/blog"
 BLOG_POST_ADD_ROUTE ="/blog/add"
 BLOG_PUBLIC_PAGE_ROUTE = "/blog/page"
