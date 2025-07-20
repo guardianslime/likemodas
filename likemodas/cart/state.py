@@ -1,4 +1,4 @@
-# likemodas/cart/state.py (VERSIÓN VERIFICADA Y FINAL)
+# likemodas/cart/state.py (VERSIÓN FINAL Y VERIFICADA)
 
 import reflex as rx
 from typing import Dict, List, Tuple
@@ -22,9 +22,8 @@ class CartState(SessionState):
     def on_load(self):
         """Carga todos los posts públicos y activos para la galería."""
         with rx.session() as session:
-            # --- CONSULTA DEFINITIVA Y ROBUSTA ---
-            # Esta consulta carga de forma anidada las publicaciones
-            # y los comentarios necesarios para calcular la calificación.
+            # --- ESTA ES LA CONSULTA CRÍTICA Y CORRECTA ---
+            # Carga las publicaciones y, para cada una, carga su lista de comentarios asociados.
             statement = (
                 select(BlogPostModel)
                 .options(
