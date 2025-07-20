@@ -63,9 +63,11 @@ class BlogPostModel(rx.Model, table=True):
     price: float = 0.0
     images: list[str] = Field(default=[], sa_column=Column(JSON))
     publish_active: bool = False
-    publish_date: datetime = Field(default_factory=datetime.utcnow)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    # --- LÍNEAS CORREGIDAS ---
+    publish_date: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
+    # --- FIN DE CORRECCIÓN ---
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
     @property
     def created_at_formatted(self) -> str:
@@ -79,7 +81,7 @@ class BlogPostModel(rx.Model, table=True):
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
-    purchase_date: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    purchase_date: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
@@ -150,9 +152,10 @@ class CommentModel(rx.Model, table=True):
     content: str
     # ✨ 1. CAMBIO: Se añade el campo de calificación (rating)
     rating: int # Calificación de 1 a 5
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    # ✨ 2. CAMBIO: Se añade 'updated_at' para futuras ediciones
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": datetime.utcnow}, nullable=False)
+    # --- LÍNEAS CORREGIDAS ---
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
+    # --- FIN DE CORRECCIÓN ---
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
