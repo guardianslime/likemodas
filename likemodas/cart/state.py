@@ -28,13 +28,13 @@ class CartState(SessionState):
     def on_load(self):
         """Carga todos los posts públicos y activos para la galería."""
         with rx.session() as session:
+            # <<< LÍNEA MODIFICADA >>>
             self.posts = session.exec(
                 select(BlogPostModel)
-                # <<< 2. AÑADE ESTA LÍNEA PARA CARGAR LOS COMENTARIOS >>>
                 .options(joinedload(BlogPostModel.comments))
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
                 .order_by(BlogPostModel.created_at.desc())
-            ).all()
+            ).unique().all() # <<< SE AÑADIÓ .unique() AQUÍ
     @rx.var
     def cart_items_count(self) -> int:
         """Devuelve el número total de items en el carrito."""

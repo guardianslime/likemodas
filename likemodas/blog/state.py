@@ -266,14 +266,13 @@ class CommentState(SessionState):
             # Cargar el post
             self.post = session.exec(
                 select(BlogPostModel)
-                # <<< AÑADE ESTA LÍNEA >>>
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .where(
                     BlogPostModel.id == pid,
                     BlogPostModel.publish_active == True,
                     BlogPostModel.publish_date < datetime.utcnow()
                 )
-            ).one_or_none()
+            ).unique().one_or_none() # <<< SE AÑADIÓ .unique() AQUÍ
             
             # Si el post se encontró, cargar sus comentarios (esta parte ya estaba bien)
             if self.post:
