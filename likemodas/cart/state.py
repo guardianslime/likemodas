@@ -1,15 +1,15 @@
-# likemodas/cart/state.py (VERSIÓN CORREGIDA Y FINAL)
+# likemodas/cart/state.py (VERSIÓN CORREGIDA FINAL)
 
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
+# ✨ CAMBIO: Se importan todos los modelos necesarios para la consulta
 from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus, CommentModel, UserInfo
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy # Importa sqlalchemy completo
 
-# Asegúrate de que esta importación (del paso anterior) esté presente
 from ..admin.state import AdminConfirmState
 
 class CartState(SessionState):
@@ -23,12 +23,15 @@ class CartState(SessionState):
     def on_load(self):
         """Carga todos los posts públicos y activos para la galería."""
         with rx.session() as session:
-            # --- ✨ CONSULTA CORREGIDA PARA ASEGURAR LA CARGA DE COMENTARIOS ---
+            # --- ✨ CONSULTA CORREGIDA Y MÁS ROBUSTA ---
+            # Esta consulta ahora carga de forma anidada las publicaciones,
+            # sus comentarios y la información de usuario de cada comentario.
             statement = (
                 select(BlogPostModel)
                 .options(
-                    # Carga explícitamente la relación de comentarios
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.userinfo)
+                    .joinedload(UserInfo.user)
                 )
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
                 .order_by(BlogPostModel.created_at.desc())
@@ -50,7 +53,6 @@ class CartState(SessionState):
             return []
         with rx.session() as session:
             post_ids = list(self.cart.keys())
-            # Se añade la carga de comentarios aquí también para consistencia
             posts = session.exec(
                 select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
