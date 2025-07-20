@@ -8,7 +8,7 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType # 👈 Modificar esta importación
+from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType, PurchaseModel, PurchaseItemModel, PurchaseStatus# 👈 Modificar esta importación
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
@@ -303,10 +303,37 @@ class BlogViewState(SessionState):
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
 
 class CommentState(BlogViewState):
-    """Estado para manejar la sección de comentarios."""
+    """Estado para manejar la sección de comentarios con permisos de compra."""
     
     comments: list[CommentModel] = []
     new_comment_text: str = ""
+
+    # --- 👇 LÓGICA DE PERMISO AÑADIDA ---
+    @rx.var
+    def user_can_comment(self) -> bool:
+        """
+        Verifica si el usuario actual ha comprado y recibido (confirmado)
+        el producto que está viendo.
+        """
+        if not self.is_authenticated or not self.post:
+            return False
+
+        with rx.session() as session:
+            # Buscamos una compra que cumpla todas las condiciones:
+            # 1. Pertenece al usuario actual.
+            # 2. Su estado es CONFIRMADO.
+            # 3. Contiene un item que corresponde al post actual.
+            purchase_record = session.exec(
+                select(PurchaseModel).where(
+                    PurchaseModel.userinfo_id == self.authenticated_user_info.id,
+                    PurchaseModel.status == PurchaseStatus.CONFIRMED,
+                    PurchaseModel.items.any(PurchaseItemModel.blog_post_id == self.post.id)
+                )
+            ).first()
+            
+            # Si se encontró un registro, el usuario puede comentar.
+            return purchase_record is not None
+    # --- FIN DE LA LÓGICA AÑADIDA ---
 
     def load_comments(self):
         """Carga los comentarios para la publicación actual."""
@@ -314,7 +341,6 @@ class CommentState(BlogViewState):
             self.comments = []
             return
         with rx.session() as session:
-            # Usamos 'unique()' para evitar duplicados por los 'joinedload'
             statement = (
                 select(CommentModel)
                 .options(
@@ -326,19 +352,16 @@ class CommentState(BlogViewState):
             )
             self.comments = session.exec(statement).unique().all()
             
-    # Sobrescribimos on_load para que cargue el post Y los comentarios
     def on_load(self):
-        super().on_load() # Llama al on_load del padre (BlogViewState)
+        super().on_load()
         self.load_comments()
 
     @rx.event
     def add_comment(self, form_data: dict):
-        """Añade un nuevo comentario a la base de datos."""
+        # (La lógica para añadir y votar comentarios no necesita cambios)
         content = form_data.get("comment_text", "").strip()
-        if not self.is_authenticated or not self.post or not content:
-            if not self.is_authenticated:
-                return rx.toast.error("Debes iniciar sesión para comentar.")
-            return
+        if not self.user_can_comment or not self.post or not content:
+            return rx.toast.error("No tienes permiso para comentar en este producto.")
 
         with rx.session() as session:
             comment = CommentModel(
@@ -349,19 +372,17 @@ class CommentState(BlogViewState):
             session.add(comment)
             session.commit()
 
-        self.new_comment_text = "" # Limpiar el campo de texto
-        # Recargar los comentarios para que el nuevo aparezca
+        self.new_comment_text = ""
         self.load_comments()
 
     @rx.event
     def handle_vote(self, comment_id: int, vote_type_str: str):
-        """Gestiona un voto (like/dislike) en un comentario."""
+        # (Esta función no necesita cambios)
         vote_type = VoteType(vote_type_str)
         if not self.is_authenticated:
             return rx.toast.error("Debes iniciar sesión para votar.")
 
         with rx.session() as session:
-            # Buscar si el usuario ya votó en este comentario
             existing_vote = session.exec(
                 select(CommentVoteModel).where(
                     CommentVoteModel.comment_id == comment_id,
@@ -371,14 +392,11 @@ class CommentState(BlogViewState):
 
             if existing_vote:
                 if existing_vote.vote_type == vote_type:
-                    # Si vota lo mismo, se elimina el voto (toggle off)
                     session.delete(existing_vote)
                 else:
-                    # Si cambia el voto, se actualiza
                     existing_vote.vote_type = vote_type
                     session.add(existing_vote)
             else:
-                # Si no hay voto previo, se crea uno nuevo
                 new_vote = CommentVoteModel(
                     vote_type=vote_type,
                     userinfo_id=self.authenticated_user_info.id,
@@ -388,5 +406,4 @@ class CommentState(BlogViewState):
             
             session.commit()
         
-        # Recargar comentarios para actualizar los contadores
         self.load_comments()

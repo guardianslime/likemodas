@@ -45,18 +45,35 @@ def _info_section() -> rx.Component:
 
 # --- Componentes de Comentarios (sin cambios) ---
 def _comment_form() -> rx.Component:
+    """
+    Formulario de comentarios que ahora maneja tres casos:
+    1. No logueado -> Mensaje para iniciar sesión.
+    2. Logueado, pero sin compra confirmada -> Mensaje para comprar.
+    3. Logueado y con compra confirmada -> Formulario para comentar.
+    """
     return rx.cond(
         SessionState.is_authenticated,
-        rx.form(
-            rx.vstack(
-                rx.text_area(name="comment_text", value=CommentState.new_comment_text, on_change=CommentState.set_new_comment_text, placeholder="Escribe tu comentario...", width="100%"),
-                rx.button("Publicar Comentario", type="submit", align_self="flex-end"),
-                spacing="3", width="100%",
+        # Si el usuario está logueado, verificamos si puede comentar
+        rx.cond(
+            CommentState.user_can_comment,
+            # Caso 3: Sí puede comentar, mostramos el formulario
+            rx.form(
+                rx.vstack(
+                    rx.text_area(name="comment_text", value=CommentState.new_comment_text, on_change=CommentState.set_new_comment_text, placeholder="Escribe tu opinión sobre el producto...", width="100%"),
+                    rx.button("Publicar Opinión", type="submit", align_self="flex-end"),
+                    spacing="3", width="100%",
+                ),
+                on_submit=CommentState.add_comment, width="100%",
             ),
-            on_submit=CommentState.add_comment, width="100%",
+            # Caso 2: No puede comentar, mostramos mensaje de compra
+            rx.box(
+                rx.text("Debes haber comprado este producto para poder dejar tu opinión."),
+                padding="1.5em", border="1px solid #444", border_radius="md", text_align="center", width="100%",
+            )
         ),
+        # Caso 1: No está logueado, mostramos mensaje para iniciar sesión
         rx.box(
-            rx.text("Debes ", rx.link("iniciar sesión", href="/login"), " para poder comentar."),
+            rx.text("Debes ", rx.link("iniciar sesión", href="/login"), " y comprar este producto para poder comentarlo."),
             padding="1.5em", border="1px solid #444", border_radius="md", text_align="center", width="100%",
         )
     )
