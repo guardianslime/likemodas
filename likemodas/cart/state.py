@@ -1,31 +1,41 @@
-# likemodas/cart/state.py (VERSIÓN CORREGIDA)
+# likemodas/cart/state.py (VERSIÓN RESTAURADA Y CORREGIDA)
 
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus, CommentModel, UserInfo
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
-import sqlalchemy
+import sqlalchemy 
 
 from ..admin.state import AdminConfirmState
-from ..articles.state import ArticlePublicState
 
 class CartState(SessionState):
     """
-    Estado para manejar UNICAMENTE el carrito de compras.
+    Estado para manejar el carrito de compras y la galería de /blog/page.
     """
     cart: Dict[int, int] = {}
-    
-    # --- ✨ LÍNEA RESTAURADA --- ✨
-    # Esta variable es necesaria para el proceso de checkout.
     purchase_successful: bool = False
+    
+    # --- ✨ SE RESTAURA LA VARIABLE 'posts' Y EL MÉTODO 'on_load' ---
+    posts: list[BlogPostModel] = []
 
-    @rx.var
-    def posts(self) -> list[BlogPostModel]:
-        return self.get_state(ArticlePublicState).posts
+    @rx.event
+    def on_load(self):
+        """Carga todos los posts públicos y activos para la galería."""
+        with rx.session() as session:
+            statement = (
+                select(BlogPostModel)
+                .options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                )
+                .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
+                .order_by(BlogPostModel.created_at.desc())
+            )
+            self.posts = session.exec(statement).unique().all()
 
+    # --- El resto de la clase no cambia ---
     @rx.var
     def cart_items_count(self) -> int:
         return sum(self.cart.values())
@@ -93,12 +103,8 @@ class CartState(SessionState):
                 )
                 session.add(purchase_item)
             session.commit()
-            
         self.cart = {}
-        # La función necesita esta variable para funcionar
         self.purchase_successful = True
-        
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra!\nTu orden está pendiente de confirmación.")
-        
         return rx.redirect("/my-purchases")

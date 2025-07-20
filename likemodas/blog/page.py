@@ -6,11 +6,11 @@ from ..cart.state import CartState
 from ..navigation import routes
 import math
 from ..models import BlogPostModel
-# ✨ CAMBIO: Se importa el estado que ahora contiene los posts
-from ..articles.state import ArticlePublicState
+# ✨ CAMBIO: Ya no se necesita ArticlePublicState aquí
+# from ..articles.state import ArticlePublicState 
 
 def _product_card_rating(post: BlogPostModel) -> rx.Component:
-    # ... (esta función no cambia, ya está correcta)
+    # ... (esta función no cambia)
     average_rating = post.average_rating
     rating_count = post.rating_count
     
@@ -42,10 +42,9 @@ def blog_public_page():
         rx.vstack(
             rx.heading("Publicaciones", size="6"),
             rx.flex(
-                # --- ✨ CAMBIO CRÍTICO AQUÍ --- ✨
-                # Ahora iteramos sobre ArticlePublicState.posts
+                # --- ✨ CAMBIO CRÍTICO AQUÍ (VUELVE A USAR CartState) --- ✨
                 rx.foreach(
-                    ArticlePublicState.posts,
+                    CartState.posts, # <-- Se revierte a CartState.posts
                     lambda post: rx.box(
                         # ... (el resto del código de la tarjeta no cambia)
                         rx.vstack(

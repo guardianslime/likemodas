@@ -71,15 +71,14 @@ app.add_page(article_detail_page, route=f"{navigation.routes.ARTICLE_LIST_ROUTE}
 # --- Páginas Públicas del Blog / Tienda ---
 app.add_page(
     blog_public_page,
-    route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE, # Ruta: "/blog/page"
+    route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE,
     title="Galería de Productos",
-    # --- ✨ CAMBIO CRÍTICO AQUÍ --- ✨
-    on_load=ArticlePublicState.load_posts # Se cambia CartState.on_load por el nuevo método unificado
+    # --- ✨ CAMBIO CRÍTICO AQUÍ (VUELVE A USAR CartState.on_load) --- ✨
+    on_load=CartState.on_load
 )
-
 app.add_page(
     blog_public_detail_page,
-    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]", # Ruta: "/blog-public/[id]"
+    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
     title="Detalle del Producto",
     on_load=CommentState.on_load
 )
