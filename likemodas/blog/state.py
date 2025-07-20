@@ -132,14 +132,70 @@ class BlogEditFormState(BlogPostState):
     post_content: str = ""
     post_publish_active: bool = False
     price_str: str = "0.0"
-    
+
     @rx.event
     def on_load_edit(self):
+        """Carga los datos del post en el formulario cuando la página de edición carga."""
         self.get_post_detail()
         if self.post:
             self.post_content = self.post.content or ""
             self.post_publish_active = self.post.publish_active
             self.price_str = str(self.post.price or 0.0)
+
+    # --- 👇 FUNCIÓN RESTAURADA Y NECESARIA ---
+    @rx.event
+    def set_price(self, value: str):
+        """Actualiza el precio en el estado desde el input del formulario."""
+        self.price_str = value
+    # --- FIN DE LA RESTAURACIÓN ---
+
+    @rx.var
+    def publish_display_date(self) -> str:
+        if not self.post or not self.post.publish_date:
+            return datetime.now().strftime("%Y-%m-%d")
+        return self.post.publish_date.strftime("%Y-%m-%d")
+
+    @rx.var
+    def publish_display_time(self) -> str:
+        if not self.post or not self.post.publish_date:
+            return datetime.now().strftime("%H:%M:%S")
+        return self.post.publish_date.strftime("%H:%M:%S")
+
+    @rx.event
+    def handle_submit(self, form_data: dict):
+        """Maneja el envío del formulario de edición."""
+        post_id = int(form_data.pop("post_id", 0))
+        if not post_id or not self.is_admin:
+            return rx.toast.error("No se puede guardar el post.")
+
+        # Actualiza los datos del formulario
+        form_data["publish_active"] = form_data.get("publish_active") == "on"
+        try:
+            form_data["price"] = float(self.price_str)
+        except ValueError:
+            return rx.toast.error("Precio inválido.")
+        
+        # Manejo de fecha
+        if form_data.get("publish_date") and form_data.get("publish_time"):
+            try:
+                dt_str = f"{form_data['publish_date']} {form_data['publish_time']}"
+                form_data["publish_date"] = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                form_data["publish_date"] = self.post.publish_date
+        form_data.pop("publish_time", None)
+
+        # Guardar en la base de datos
+        with rx.session() as session:
+            post_to_update = session.get(BlogPostModel, post_id)
+            if post_to_update:
+                # Actualiza solo los campos del formulario
+                for key, value in form_data.items():
+                    setattr(post_to_update, key, value)
+                session.add(post_to_update)
+                session.commit()
+        
+        # Redirige a la página de detalle del admin, no a la de edición
+        return rx.redirect(f"/blog/{post_id}")
 
     # (El resto de los métodos de BlogEditFormState pueden permanecer como estaban)
 
