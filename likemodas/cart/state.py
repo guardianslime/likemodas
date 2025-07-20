@@ -26,7 +26,9 @@ class CartState(SessionState):
     # Se elimina el método on_load() de esta clase.
     @rx.var
     def posts(self) -> list[BlogPostModel]:
-        return ArticlePublicState.posts
+        # --- ✨ LÍNEA CORREGIDA --- ✨
+        # Se usa self.get_state() para obtener el valor real de la lista
+        return self.get_state(ArticlePublicState).posts
 
     @rx.var
     def cart_items_count(self) -> int:
