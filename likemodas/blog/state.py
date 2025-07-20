@@ -127,6 +127,7 @@ class BlogAddFormState(SessionState):
 
     @rx.event
     def submit(self):
+        """Guarda el post como un borrador (no publicado)."""
         if not self.is_admin: return rx.window_alert("No tienes permiso.")
         if self.price <= 0: return rx.window_alert("El precio debe ser mayor a cero.")
         if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
@@ -135,14 +136,43 @@ class BlogAddFormState(SessionState):
             post = BlogPostModel(
                 title=self.title.strip(), content=self.content.strip(),
                 price=self.price, images=self.temp_images.copy(),
-                userinfo_id=self.my_userinfo_id, publish_active=False,
+                userinfo_id=self.my_userinfo_id, 
+                publish_active=False,  # Se guarda como borrador
                 publish_date=datetime.utcnow()
             )
             session.add(post)
             session.commit()
+            session.refresh(post) # Obtenemos el ID del nuevo post
+            new_post_id = post.id
         
         self.title, self.content, self.price, self.temp_images = "", "", 0.0, []
-        return rx.redirect(BLOG_POSTS_ROUTE)
+        # Redirige a la página de detalle del nuevo post
+        return rx.redirect(f"/blog/{new_post_id}")
+
+    # ✨ --- NUEVO MÉTODO AÑADIDO (para Publicar ahora) --- ✨
+    @rx.event
+    def submit_and_publish(self):
+        """Guarda y publica el post inmediatamente."""
+        if not self.is_admin: return rx.window_alert("No tienes permiso.")
+        if self.price <= 0: return rx.window_alert("El precio debe ser mayor a cero.")
+        if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
+
+        with rx.session() as session:
+            post = BlogPostModel(
+                title=self.title.strip(), content=self.content.strip(),
+                price=self.price, images=self.temp_images.copy(),
+                userinfo_id=self.my_userinfo_id, 
+                publish_active=True,  # Se publica inmediatamente
+                publish_date=datetime.utcnow() # Con la fecha y hora actual
+            )
+            session.add(post)
+            session.commit()
+            session.refresh(post) # Obtenemos el ID del nuevo post
+            new_post_id = post.id
+        
+        self.title, self.content, self.price, self.temp_images = "", "", 0.0, []
+        # Redirige a la página de detalle del nuevo post
+        return rx.redirect(f"/blog/{new_post_id}")
 
 class BlogEditFormState(BlogPostState):
     """Estado para el formulario de EDITAR posts."""

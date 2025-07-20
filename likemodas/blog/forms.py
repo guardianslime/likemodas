@@ -48,10 +48,25 @@ def blog_post_add_form() -> rx.Component:
                     )
                 )
             ),
-            rx.button("Publicar", type="submit", color_scheme="green"),
+            rx.hstack(
+                rx.button(
+                    "Subir", 
+                    on_click=BlogAddFormState.submit,
+                    variant="soft", # Estilo más suave para la acción secundaria
+                ),
+                rx.button(
+                    "Publicar Ahora", 
+                    on_click=BlogAddFormState.submit_and_publish, 
+                    color_scheme="green"
+                ),
+                spacing="4",
+                width="100%",
+                justify="end" # Alinea los botones a la derecha
+            ),
+            # --- FIN DE LA MODIFICACIÓN ---
+            
             spacing="4",
         ),
-        on_submit=BlogAddFormState.submit,
         width="100%",
         max_width="600px",
         padding="2em",
