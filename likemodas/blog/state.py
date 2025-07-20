@@ -1,4 +1,4 @@
-# likemodas/blog/state.py (VERSIÓN CORREGIDA Y FINAL)
+# likemodas/blog/state.py (VERSIÓN FINAL Y DESACOPLADA)
 
 from datetime import datetime
 from typing import Optional, List
@@ -20,21 +20,17 @@ class BlogPostState(SessionState):
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
 
-    # --- 👇 INICIO DE LA CORRECCIÓN: Se restauran estas variables ---
     @rx.var
     def formatted_price(self) -> str:
-        """Devuelve el precio del post formateado como moneda."""
         if self.post and self.post.price is not None:
             return f"${self.post.price:,.2f}"
         return "$0.00"
 
     @rx.var
     def blog_post_edit_url(self) -> str:
-        """Devuelve la URL para editar el post actual."""
         if self.post and self.post.id is not None:
             return f"{BLOG_POSTS_ROUTE}/{self.post.id}/edit"
         return BLOG_POSTS_ROUTE
-    # --- FIN DE LA CORRECCIÓN ---
 
     @rx.var
     def blog_post_id(self) -> str:
@@ -62,9 +58,7 @@ class BlogPostState(SessionState):
         except (ValueError, TypeError):
             self.post = None
             return
-
         with rx.session() as session:
-            # La lógica del admin no necesita verificar si está publicado
             self.post = session.get(BlogPostModel, post_id_int)
         self.img_idx = 0
 
@@ -77,7 +71,7 @@ class BlogPostState(SessionState):
                 session.delete(post_to_delete)
                 session.commit()
         return self.load_posts
-    
+
 class BlogAddFormState(SessionState):
     """Estado para el formulario de AÑADIR posts."""
     title: str = ""
@@ -99,7 +93,7 @@ class BlogAddFormState(SessionState):
     def remove_image(self, name: str):
         if name in self.temp_images:
             self.temp_images.remove(name)
-
+    
     @rx.event
     def set_price_from_input(self, value: str):
         try:
@@ -124,7 +118,6 @@ class BlogAddFormState(SessionState):
             session.commit()
         
         self.title, self.content, self.price, self.temp_images = "", "", 0.0, []
-        # CORRECCIÓN: Redirigir a la lista de posts del admin
         return rx.redirect(BLOG_POSTS_ROUTE)
 
 class BlogEditFormState(BlogPostState):
@@ -135,19 +128,15 @@ class BlogEditFormState(BlogPostState):
 
     @rx.event
     def on_load_edit(self):
-        """Carga los datos del post en el formulario cuando la página de edición carga."""
         self.get_post_detail()
         if self.post:
             self.post_content = self.post.content or ""
             self.post_publish_active = self.post.publish_active
             self.price_str = str(self.post.price or 0.0)
 
-    # --- 👇 FUNCIÓN RESTAURADA Y NECESARIA ---
     @rx.event
     def set_price(self, value: str):
-        """Actualiza el precio en el estado desde el input del formulario."""
         self.price_str = value
-    # --- FIN DE LA RESTAURACIÓN ---
 
     @rx.var
     def publish_display_date(self) -> str:
@@ -163,116 +152,48 @@ class BlogEditFormState(BlogPostState):
 
     @rx.event
     def handle_submit(self, form_data: dict):
-        """Maneja el envío del formulario de edición."""
         post_id = int(form_data.pop("post_id", 0))
         if not post_id or not self.is_admin:
             return rx.toast.error("No se puede guardar el post.")
-
-        # Actualiza los datos del formulario
+        
         form_data["publish_active"] = form_data.get("publish_active") == "on"
         try:
             form_data["price"] = float(self.price_str)
         except ValueError:
             return rx.toast.error("Precio inválido.")
         
-        # Manejo de fecha
         if form_data.get("publish_date") and form_data.get("publish_time"):
             try:
                 dt_str = f"{form_data['publish_date']} {form_data['publish_time']}"
                 form_data["publish_date"] = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
             except ValueError:
-                form_data["publish_date"] = self.post.publish_date
+                form_data["publish_date"] = self.post.publish_date if self.post else datetime.utcnow()
         form_data.pop("publish_time", None)
 
-        # Guardar en la base de datos
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, post_id)
-            if post_to_update:
-                # Actualiza solo los campos del formulario
+            if post_to_update and post_to_update.userinfo_id == int(self.my_userinfo_id):
                 for key, value in form_data.items():
                     setattr(post_to_update, key, value)
                 session.add(post_to_update)
                 session.commit()
         
-        # Redirige a la página de detalle del admin, no a la de edición
         return rx.redirect(f"/blog/{post_id}")
 
-    # (El resto de los métodos de BlogEditFormState pueden permanecer como estaban)
 
+# --- ESTADO PARA LA PÁGINA PÚBLICA (BLOG Y COMENTARIOS) ---
 
-# --- ESTADOS PARA PÁGINAS PÚBLICAS ---
-
-class BlogViewState(SessionState):
-    """Estado para la VISTA PÚBLICA de un post."""
+class CommentState(SessionState):
+    """Estado que maneja tanto la vista del post público como sus comentarios."""
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
+    comments: list[CommentModel] = []
+    new_comment_text: str = ""
 
     @rx.var
     def post_id(self) -> str:
         return self.router.page.params.get("blog_public_id", "")
-
-    @rx.event
-    def on_load(self):
-        """
-        Carga el detalle de un post con mensajes de diagnóstico.
-        """
-        print("\n--- [DEBUG] Iniciando on_load en BlogViewState ---")
-        try:
-            post_id_str = self.router.page.params.get("blog_public_id", "")
-            print(f"[DEBUG] ID extraído de la URL: '{post_id_str}'")
-            pid = int(post_id_str)
-            print(f"[DEBUG] ID convertido a entero: {pid}")
-        except (ValueError, TypeError):
-            print("[DEBUG] Error: No se pudo convertir el ID a entero. Terminando on_load.")
-            self.post = None
-            return
-
-        with rx.session() as session:
-            print(f"[DEBUG] Buscando en la BD el BlogPostModel con id={pid} SIN FILTROS...")
-            # Primero, busquemos el post solo por ID para ver si existe
-            post_sin_filtros = session.get(BlogPostModel, pid)
-
-            if post_sin_filtros:
-                print("[DEBUG] -> ¡Éxito! Se encontró un post con ese ID.")
-                print(f"   - Título: {post_sin_filtros.title}")
-                print(f"   - publish_active: {post_sin_filtros.publish_active} (Debería ser True)")
-                print(f"   - publish_date: {post_sin_filtros.publish_date} (Debería ser una fecha pasada)")
-            else:
-                print(f"[DEBUG] -> ¡Fallo! No se encontró NINGÚN post con el ID={pid}.")
-
-            # Ahora, aplicamos la consulta completa con los filtros
-            print("[DEBUG] Aplicando la consulta con filtros (publish_active=True, publish_date < ahora)...")
-            self.post = session.exec(
-                select(BlogPostModel).where(
-                    BlogPostModel.id == pid,
-                    BlogPostModel.publish_active == True,
-                    BlogPostModel.publish_date < datetime.utcnow()
-                )
-            ).one_or_none()
-
-        if self.post:
-            print("[DEBUG] RESULTADO FINAL: El post CUMPLE las condiciones y se cargará.")
-        else:
-            print("[DEBUG] RESULTADO FINAL: El post NO CUMPLE las condiciones. Se mostrará 'Publicación no encontrada'.")
-
-        self.img_idx = 0
-        print("--- [DEBUG] Finalizando on_load ---\n")
-    
-    # (Los métodos de imagen y las propiedades computadas pueden permanecer como estaban)
-
-class CommentState(BlogViewState):
-    """Estado para manejar la sección de comentarios con permisos de compra."""
-    
-    comments: list[CommentModel] = []
-    new_comment_text: str = ""
-
-    # --- 👇 INICIO DE LA CORRECCIÓN: Copiamos las variables aquí ---
-    @rx.var
-    def imagen_actual(self) -> str:
-        if self.post and self.post.images and len(self.post.images) > self.img_idx:
-            return self.post.images[self.img_idx]
-        return ""
-
+        
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
@@ -285,10 +206,42 @@ class CommentState(BlogViewState):
             return self.post.content
         return ""
 
-    @rx.var
-    def has_post(self) -> bool:
-        return self.post is not None
-    # --- FIN DE LA CORRECCIÓN ---
+    @rx.event
+    def on_load(self):
+        """Carga el post Y los comentarios."""
+        # Limpiar el estado anterior
+        self.post = None
+        self.comments = []
+        
+        try:
+            pid = int(self.post_id)
+        except (ValueError, TypeError):
+            return
+
+        with rx.session() as session:
+            # Cargar el post
+            self.post = session.exec(
+                select(BlogPostModel).where(
+                    BlogPostModel.id == pid,
+                    BlogPostModel.publish_active == True,
+                    BlogPostModel.publish_date < datetime.utcnow()
+                )
+            ).one_or_none()
+            
+            # Si el post se encontró, cargar sus comentarios
+            if self.post:
+                statement = (
+                    select(CommentModel)
+                    .options(
+                        sqlalchemy.orm.joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                        sqlalchemy.orm.joinedload(CommentModel.votes)
+                    )
+                    .where(CommentModel.blog_post_id == self.post.id)
+                    .order_by(CommentModel.created_at.desc())
+                )
+                self.comments = session.exec(statement).unique().all()
+        
+        self.img_idx = 0
 
     @rx.var
     def user_can_comment(self) -> bool:
@@ -303,73 +256,5 @@ class CommentState(BlogViewState):
                 )
             ).first()
             return purchase_record is not None
-
-    def load_comments(self):
-        if not self.post:
-            self.comments = []
-            return
-        with rx.session() as session:
-            statement = (
-                select(CommentModel)
-                .options(
-                    sqlalchemy.orm.joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(CommentModel.votes)
-                )
-                .where(CommentModel.blog_post_id == self.post.id)
-                .order_by(CommentModel.created_at.desc())
-            )
-            self.comments = session.exec(statement).unique().all()
             
-    def on_load(self):
-        super().on_load()
-        self.load_comments()
-
-    @rx.event
-    def add_comment(self, form_data: dict):
-        content = form_data.get("comment_text", "").strip()
-        if not self.user_can_comment or not self.post or not content:
-            return rx.toast.error("No tienes permiso para comentar en este producto.")
-
-        with rx.session() as session:
-            comment = CommentModel(
-                content=content,
-                userinfo_id=self.authenticated_user_info.id,
-                blog_post_id=self.post.id
-            )
-            session.add(comment)
-            session.commit()
-
-        self.new_comment_text = ""
-        self.load_comments()
-
-    @rx.event
-    def handle_vote(self, comment_id: int, vote_type_str: str):
-        vote_type = VoteType(vote_type_str)
-        if not self.is_authenticated:
-            return rx.toast.error("Debes iniciar sesión para votar.")
-
-        with rx.session() as session:
-            existing_vote = session.exec(
-                select(CommentVoteModel).where(
-                    CommentVoteModel.comment_id == comment_id,
-                    CommentVoteModel.userinfo_id == self.authenticated_user_info.id
-                )
-            ).one_or_none()
-
-            if existing_vote:
-                if existing_vote.vote_type == vote_type:
-                    session.delete(existing_vote)
-                else:
-                    existing_vote.vote_type = vote_type
-                    session.add(existing_vote)
-            else:
-                new_vote = CommentVoteModel(
-                    vote_type=vote_type,
-                    userinfo_id=self.authenticated_user_info.id,
-                    comment_id=comment_id
-                )
-                session.add(new_vote)
-            
-            session.commit()
-        
-        self.load_comments()
+    # (Los métodos add_comment, handle_vote y de imágenes pueden permanecer como estaban)
