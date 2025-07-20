@@ -190,6 +190,7 @@ class CommentState(SessionState):
     comments: list[CommentModel] = []
     new_comment_text: str = ""
 
+    # --- Variables Computadas (Propiedades) ---
     @rx.var
     def post_id(self) -> str:
         return self.router.page.params.get("blog_public_id", "")
@@ -206,13 +207,32 @@ class CommentState(SessionState):
             return self.post.content
         return ""
 
+    @rx.var
+    def imagen_actual(self) -> str:
+        if self.post and self.post.images and len(self.post.images) > self.img_idx:
+            return self.post.images[self.img_idx]
+        return ""
+
+    @rx.var
+    def user_can_comment(self) -> bool:
+        if not self.is_authenticated or not self.post:
+            return False
+        with rx.session() as session:
+            purchase_record = session.exec(
+                select(PurchaseModel).where(
+                    PurchaseModel.userinfo_id == self.authenticated_user_info.id,
+                    PurchaseModel.status == PurchaseStatus.CONFIRMED,
+                    PurchaseModel.items.any(PurchaseItemModel.blog_post_id == self.post.id)
+                )
+            ).first()
+            return purchase_record is not None
+
+    # --- Event Handlers (Métodos de Lógica) ---
     @rx.event
     def on_load(self):
-        """Carga el post Y los comentarios."""
-        # Limpiar el estado anterior
+        """Carga el post Y los comentarios al entrar a la página."""
         self.post = None
         self.comments = []
-        
         try:
             pid = int(self.post_id)
         except (ValueError, TypeError):
@@ -242,19 +262,67 @@ class CommentState(SessionState):
                 self.comments = session.exec(statement).unique().all()
         
         self.img_idx = 0
+    
+    # --- 👇 MÉTODOS RESTAURADOS ---
+    @rx.event
+    def add_comment(self, form_data: dict):
+        """Añade un nuevo comentario a la base de datos."""
+        content = form_data.get("comment_text", "").strip()
+        if not self.user_can_comment or not self.post or not content:
+            return rx.toast.error("No tienes permiso para comentar en este producto.")
 
-    @rx.var
-    def user_can_comment(self) -> bool:
-        if not self.is_authenticated or not self.post:
-            return False
         with rx.session() as session:
-            purchase_record = session.exec(
-                select(PurchaseModel).where(
-                    PurchaseModel.userinfo_id == self.authenticated_user_info.id,
-                    PurchaseModel.status == PurchaseStatus.CONFIRMED,
-                    PurchaseModel.items.any(PurchaseItemModel.blog_post_id == self.post.id)
+            comment = CommentModel(
+                content=content,
+                userinfo_id=self.authenticated_user_info.id,
+                blog_post_id=self.post.id
+            )
+            session.add(comment)
+            session.commit()
+        
+        self.new_comment_text = ""
+        # Volver a cargar los comentarios para mostrar el nuevo
+        return self.on_load()
+
+    @rx.event
+    def handle_vote(self, comment_id: int, vote_type_str: str):
+        """Gestiona un voto (like/dislike) en un comentario."""
+        vote_type = VoteType(vote_type_str)
+        if not self.is_authenticated:
+            return rx.toast.error("Debes iniciar sesión para votar.")
+
+        with rx.session() as session:
+            existing_vote = session.exec(
+                select(CommentVoteModel).where(
+                    CommentVoteModel.comment_id == comment_id,
+                    CommentVoteModel.userinfo_id == self.authenticated_user_info.id
                 )
-            ).first()
-            return purchase_record is not None
+            ).one_or_none()
+
+            if existing_vote:
+                if existing_vote.vote_type == vote_type:
+                    session.delete(existing_vote)
+                else:
+                    existing_vote.vote_type = vote_type
+                    session.add(existing_vote)
+            else:
+                new_vote = CommentVoteModel(
+                    vote_type=vote_type,
+                    userinfo_id=self.authenticated_user_info.id,
+                    comment_id=comment_id
+                )
+                session.add(new_vote)
             
-    # (Los métodos add_comment, handle_vote y de imágenes pueden permanecer como estaban)
+            session.commit()
+        # Volver a cargar los comentarios para actualizar los contadores
+        return self.on_load()
+
+    @rx.event
+    def siguiente_imagen(self):
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx + 1) % len(self.post.images)
+
+    @rx.event
+    def anterior_imagen(self):
+        if self.post and self.post.images:
+            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
