@@ -159,9 +159,34 @@ class BlogViewState(SessionState):
     # (Los métodos de imagen y las propiedades computadas pueden permanecer como estaban)
 
 class CommentState(BlogViewState):
-    """Estado para manejar la sección de comentarios."""
+    """Estado para manejar la sección de comentarios con permisos de compra."""
+    
     comments: list[CommentModel] = []
     new_comment_text: str = ""
+
+    # --- 👇 INICIO DE LA CORRECCIÓN: Copiamos las variables aquí ---
+    @rx.var
+    def imagen_actual(self) -> str:
+        if self.post and self.post.images and len(self.post.images) > self.img_idx:
+            return self.post.images[self.img_idx]
+        return ""
+
+    @rx.var
+    def formatted_price(self) -> str:
+        if self.post and self.post.price is not None:
+            return f"${self.post.price:,.2f}"
+        return "$0.00"
+
+    @rx.var
+    def content(self) -> str:
+        if self.post and self.post.content:
+            return self.post.content
+        return ""
+
+    @rx.var
+    def has_post(self) -> bool:
+        return self.post is not None
+    # --- FIN DE LA CORRECCIÓN ---
 
     @rx.var
     def user_can_comment(self) -> bool:
@@ -177,7 +202,6 @@ class CommentState(BlogViewState):
             ).first()
             return purchase_record is not None
 
-    @rx.event
     def load_comments(self):
         if not self.post:
             self.comments = []
@@ -197,5 +221,53 @@ class CommentState(BlogViewState):
     def on_load(self):
         super().on_load()
         self.load_comments()
-    
-    # (Los métodos add_comment y handle_vote pueden permanecer como estaban)
+
+    @rx.event
+    def add_comment(self, form_data: dict):
+        content = form_data.get("comment_text", "").strip()
+        if not self.user_can_comment or not self.post or not content:
+            return rx.toast.error("No tienes permiso para comentar en este producto.")
+
+        with rx.session() as session:
+            comment = CommentModel(
+                content=content,
+                userinfo_id=self.authenticated_user_info.id,
+                blog_post_id=self.post.id
+            )
+            session.add(comment)
+            session.commit()
+
+        self.new_comment_text = ""
+        self.load_comments()
+
+    @rx.event
+    def handle_vote(self, comment_id: int, vote_type_str: str):
+        vote_type = VoteType(vote_type_str)
+        if not self.is_authenticated:
+            return rx.toast.error("Debes iniciar sesión para votar.")
+
+        with rx.session() as session:
+            existing_vote = session.exec(
+                select(CommentVoteModel).where(
+                    CommentVoteModel.comment_id == comment_id,
+                    CommentVoteModel.userinfo_id == self.authenticated_user_info.id
+                )
+            ).one_or_none()
+
+            if existing_vote:
+                if existing_vote.vote_type == vote_type:
+                    session.delete(existing_vote)
+                else:
+                    existing_vote.vote_type = vote_type
+                    session.add(existing_vote)
+            else:
+                new_vote = CommentVoteModel(
+                    vote_type=vote_type,
+                    userinfo_id=self.authenticated_user_info.id,
+                    comment_id=comment_id
+                )
+                session.add(new_vote)
+            
+            session.commit()
+        
+        self.load_comments()
