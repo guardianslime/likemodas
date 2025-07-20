@@ -1,18 +1,16 @@
-# likemodas/blog/page.py (VERSIÓN ACTUALIZADA)
+# likemodas/blog/page.py (VERSIÓN CORREGIDA)
 
 import reflex as rx
 from ..ui.base import base_page 
 from ..cart.state import CartState 
 from ..navigation import routes
-import math  # Importa math para los cálculos
-from ..models import BlogPostModel # Importa el modelo para type hinting
+import math
+from ..models import BlogPostModel
+# ✨ CAMBIO: Se importa el estado que ahora contiene los posts
+from ..articles.state import ArticlePublicState
 
-# --- ✨ NUEVO COMPONENTE AÑADIDO --- ✨
 def _product_card_rating(post: BlogPostModel) -> rx.Component:
-    """
-    Un componente para mostrar la calificación global en las tarjetas de producto.
-    Es una versión más pequeña del que se usa en la página de detalle.
-    """
+    # ... (esta función no cambia, ya está correcta)
     average_rating = post.average_rating
     rating_count = post.rating_count
     
@@ -35,21 +33,21 @@ def _product_card_rating(post: BlogPostModel) -> rx.Component:
             align="center",
             spacing="1",
         ),
-        # Si no hay calificaciones, no muestra nada para mantener la tarjeta limpia.
-        rx.box(height="21px") # Espaciador para mantener la alineación vertical
+        rx.box(height="21px")
     )
 
 def blog_public_page():
-    """
-    Página pública que muestra la galería de productos con espaciado flexible y adaptable.
-    """
+    """Página pública que muestra la galería de productos."""
     my_child = rx.center(
         rx.vstack(
             rx.heading("Publicaciones", size="6"),
             rx.flex(
+                # --- ✨ CAMBIO CRÍTICO AQUÍ --- ✨
+                # Ahora iteramos sobre ArticlePublicState.posts
                 rx.foreach(
-                    CartState.posts,
+                    ArticlePublicState.posts,
                     lambda post: rx.box(
+                        # ... (el resto del código de la tarjeta no cambia)
                         rx.vstack(
                             rx.link(
                                 rx.vstack(
@@ -69,7 +67,6 @@ def blog_public_page():
                                     ),
                                     rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
                                     rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
-                                    # --- ✨ LÍNEA AÑADIDA --- ✨
                                     _product_card_rating(post),
                                     spacing="2", align="start"
                                 ),
@@ -84,7 +81,7 @@ def blog_public_page():
                             align="center", spacing="2", height="100%"
                         ),
                         width="290px", 
-                        height="450px", # Se aumenta un poco la altura de la tarjeta para dar espacio
+                        height="450px",
                         bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                         border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                         border_radius="8px",

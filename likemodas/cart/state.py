@@ -10,25 +10,14 @@ import reflex_local_auth
 import sqlalchemy
 
 from ..admin.state import AdminConfirmState
-# ✨ CAMBIO: Se importa el estado que ahora contiene los posts
-from ..articles.state import ArticlePublicState
 
 class CartState(SessionState):
     """
-    Estado para manejar el carrito de compras y el proceso de checkout.
+    Estado para manejar UNICAMENTE el carrito de compras.
     """
     cart: Dict[int, int] = {}
-    purchase_successful: bool = False
-
-    # --- ✨ CAMBIO RADICAL AQUÍ --- ✨
-    # 'posts' ya no es una variable simple, sino una propiedad computada
-    # que toma su valor directamente de ArticlePublicState.
-    # Se elimina el método on_load() de esta clase.
-    @rx.var
-    def posts(self) -> list[BlogPostModel]:
-        # --- ✨ LÍNEA CORREGIDA --- ✨
-        # Se usa self.get_state() para obtener el valor real de la lista
-        return self.get_state(ArticlePublicState).posts
+    
+    # --- ✨ SE ELIMINA LA VARIABLE 'posts' Y EL MÉTODO 'on_load' DE AQUÍ --- ✨
 
     @rx.var
     def cart_items_count(self) -> int:
