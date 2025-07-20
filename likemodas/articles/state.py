@@ -1,3 +1,5 @@
+# likemodas/articles/state.py (VERSIÓN CORREGIDA)
+
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -6,7 +8,8 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo
+# ✨ CAMBIO: Se importa CommentModel para la consulta anidada
+from ..models import BlogPostModel, UserInfo, CommentModel
 
 ARTICLE_LIST_ROUTE = navigation.routes.ARTICLE_LIST_ROUTE
 if ARTICLE_LIST_ROUTE.endswith("/"):
@@ -14,14 +17,12 @@ if ARTICLE_LIST_ROUTE.endswith("/"):
 
 
 class ArticleDetailState(SessionState):
-    """Estado para la página de detalle de un artículo."""
+    # ... (esta clase no cambia)
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
 
-    # --- ✨ CORRECCIÓN 1: Renombrar la variable computada ---
     @rx.var
     def post_id_from_route(self) -> str:
-        """Obtiene el ID del artículo desde el parámetro 'article_id' de la URL."""
         return self.router.page.params.get("article_id", "")
 
     @rx.var
@@ -39,7 +40,6 @@ class ArticleDetailState(SessionState):
     @rx.event
     def on_load(self):
         try:
-            # --- ✨ CORRECCIÓN 2: Usar el nuevo nombre de la variable ---
             pid = int(self.post_id_from_route)
         except (ValueError, TypeError):
             return
@@ -75,6 +75,7 @@ class ArticlePublicState(SessionState):
         return ARTICLE_LIST_ROUTE
 
     def get_post_detail(self):
+        # ... (esta función no cambia)
         try:
             post_id_int = int(self.post_id)
         except (ValueError, TypeError):
@@ -96,15 +97,22 @@ class ArticlePublicState(SessionState):
         self.limit = new_limit
         yield type(self).load_posts()
 
+    # ✨ --- MÉTODO CORREGIDO --- ✨
     def load_posts(self, *args, **kwargs):
+        """Carga las publicaciones Y sus comentarios para todas las páginas públicas."""
         lookup_args = (
             (BlogPostModel.publish_active == True) &
             (BlogPostModel.publish_date < datetime.now())
         )
         with rx.session() as session:
-            self.posts = session.exec(
+            statement = (
                 select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo))
+                .options(
+                    # Se añade la carga de comentarios para que las estrellas funcionen
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                )
                 .where(lookup_args)
+                .order_by(BlogPostModel.created_at.desc())
                 .limit(self.limit)
-            ).all()
+            )
+            self.posts = session.exec(statement).unique().all()

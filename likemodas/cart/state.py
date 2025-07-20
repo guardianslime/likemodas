@@ -1,15 +1,17 @@
-# likemodas/cart/state.py (VERSIÓN FINAL Y VERIFICADA)
+# likemodas/cart/state.py (VERSIÓN SIMPLIFICADA)
 
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus, CommentModel, UserInfo
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
-import sqlalchemy 
+import sqlalchemy
 
 from ..admin.state import AdminConfirmState
+# ✨ CAMBIO: Se importa el estado que ahora contiene los posts
+from ..articles.state import ArticlePublicState
 
 class CartState(SessionState):
     """
@@ -17,23 +19,14 @@ class CartState(SessionState):
     """
     cart: Dict[int, int] = {}
     purchase_successful: bool = False
-    posts: list[BlogPostModel] = []
 
-    def on_load(self):
-        """Carga todos los posts públicos y activos para la galería."""
-        with rx.session() as session:
-            # --- ESTA ES LA CONSULTA CRÍTICA Y CORRECTA ---
-            # Carga las publicaciones y, para cada una, carga su lista de comentarios asociados.
-            statement = (
-                select(BlogPostModel)
-                .options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                )
-                .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
-                .order_by(BlogPostModel.created_at.desc())
-            )
-            self.posts = session.exec(statement).unique().all()
-
+    # --- ✨ CAMBIO RADICAL AQUÍ --- ✨
+    # 'posts' ya no es una variable simple, sino una propiedad computada
+    # que toma su valor directamente de ArticlePublicState.
+    # Se elimina el método on_load() de esta clase.
+    @rx.var
+    def posts(self) -> list[BlogPostModel]:
+        return ArticlePublicState.posts
 
     @rx.var
     def cart_items_count(self) -> int:
@@ -53,6 +46,7 @@ class CartState(SessionState):
             post_map = {post.id: post for post in posts}
             return [(post_map[pid], self.cart[pid]) for pid in post_ids if pid in post_map]
 
+    # ... (el resto de la clase no cambia)
     @rx.var
     def cart_total(self) -> float:
         total = 0.0
