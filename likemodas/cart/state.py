@@ -1,4 +1,4 @@
-# likemodas/cart/state.py (VERSIÓN SIMPLIFICADA)
+# likemodas/cart/state.py (VERSIÓN CORREGIDA)
 
 import reflex as rx
 from typing import Dict, List, Tuple
@@ -10,6 +10,7 @@ import reflex_local_auth
 import sqlalchemy
 
 from ..admin.state import AdminConfirmState
+from ..articles.state import ArticlePublicState
 
 class CartState(SessionState):
     """
@@ -17,7 +18,13 @@ class CartState(SessionState):
     """
     cart: Dict[int, int] = {}
     
-    # --- ✨ SE ELIMINA LA VARIABLE 'posts' Y EL MÉTODO 'on_load' DE AQUÍ --- ✨
+    # --- ✨ LÍNEA RESTAURADA --- ✨
+    # Esta variable es necesaria para el proceso de checkout.
+    purchase_successful: bool = False
+
+    @rx.var
+    def posts(self) -> list[BlogPostModel]:
+        return self.get_state(ArticlePublicState).posts
 
     @rx.var
     def cart_items_count(self) -> int:
@@ -37,7 +44,6 @@ class CartState(SessionState):
             post_map = {post.id: post for post in posts}
             return [(post_map[pid], self.cart[pid]) for pid in post_ids if pid in post_map]
 
-    # ... (el resto de la clase no cambia)
     @rx.var
     def cart_total(self) -> float:
         total = 0.0
@@ -87,8 +93,12 @@ class CartState(SessionState):
                 )
                 session.add(purchase_item)
             session.commit()
+            
         self.cart = {}
+        # La función necesita esta variable para funcionar
         self.purchase_successful = True
+        
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra!\nTu orden está pendiente de confirmación.")
+        
         return rx.redirect("/my-purchases")
