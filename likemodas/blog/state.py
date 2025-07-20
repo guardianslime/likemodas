@@ -1,4 +1,4 @@
-# likemodas/blog/state.py
+# likemodas/blog/state.py (VERSIÓN CON INDENTACIÓN CORREGIDA)
 
 from datetime import datetime
 from typing import Optional
@@ -8,7 +8,7 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType, PurchaseModel, PurchaseItemModel, PurchaseStatus# 👈 Modificar esta importación
+from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType, PurchaseModel, PurchaseItemModel, PurchaseStatus
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
@@ -21,37 +21,30 @@ class BlogPostState(SessionState):
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
 
-    # --- ✨ NUEVOS MÉTODOS Y VARS AÑADIDOS ✨ ---
     @rx.var
     def imagen_actual(self) -> str:
-        """Devuelve la URL de la imagen actual para el carrusel."""
         if self.post and self.post.images and len(self.post.images) > self.img_idx:
             return self.post.images[self.img_idx]
         return ""
 
     @rx.var
     def formatted_price(self) -> str:
-        """Devuelve el precio del post formateado como moneda."""
         if self.post and self.post.price is not None:
             return f"${self.post.price:,.2f}"
         return "$0.00"
 
     @rx.event
     def siguiente_imagen(self):
-        """Avanza a la siguiente imagen en el carrusel."""
         if self.post and self.post.images:
             self.img_idx = (self.img_idx + 1) % len(self.post.images)
 
     @rx.event
     def anterior_imagen(self):
-        """Retrocede a la imagen anterior en el carrusel."""
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
-    # --- FIN DE CAMBIOS ---
 
     @rx.event
     def delete_post(self, post_id: int):
-        """Elimina una publicación de la base de datos y recarga la lista."""
         if self.my_userinfo_id is None:
             return rx.window_alert("No estás autenticado.")
         
@@ -111,7 +104,6 @@ class BlogPostState(SessionState):
                     (BlogPostModel.id == post_id_int)
                 )
             ).one_or_none()
-        # Reiniciamos el índice de la imagen al cargar un nuevo post
         self.img_idx = 0
 
 # ───────────────────────────────
@@ -128,8 +120,6 @@ class BlogPublicState(SessionState):
                 .where(BlogPostModel.publish_active == True)
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
-
-
 
 # ───────────────────────────────
 # Estado para añadir publicaciones
@@ -227,8 +217,6 @@ class BlogEditFormState(BlogPostState):
 
     def handle_submit(self, form_data: dict):
         post_id = int(form_data.pop("post_id", 0))
-
-        # Parsear fecha/hora
         final_publish_date = None
         if form_data.get("publish_date") and form_data.get("publish_time"):
             try:
@@ -236,8 +224,6 @@ class BlogEditFormState(BlogPostState):
                 final_publish_date = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
             except ValueError:
                 pass
-
-        # Validar precio
         try:
             form_data["price"] = float(self.price_str)
         except ValueError:
@@ -250,14 +236,13 @@ class BlogEditFormState(BlogPostState):
         self._save_post_edits_to_db(post_id, form_data)
         return rx.redirect(self.blog_post_url)
 
-
+# --- ESTA ES LA CLASE IMPORTANTE ---
 class BlogViewState(SessionState):
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
 
     @rx.var
     def post_id(self) -> str:
-        # ✅ Código mejorado para obtener el ID de forma segura
         return self.router.page.params.get("blog_public_id", "")
 
     @rx.var
@@ -284,18 +269,13 @@ class BlogViewState(SessionState):
 
     @rx.event
     def on_load(self):
-        """
-        Carga el detalle de un post verificando que sea público y activo.
-        """
         try:
             pid = int(self.post_id)
         except (ValueError, TypeError):
-            self.post = None # Limpiamos el post si el ID no es válido
+            self.post = None
             return
 
         with rx.session() as session:
-            # Reemplazamos session.get() por una consulta completa que
-            # verifica el ID, si está activo y si la fecha de publicación ya pasó.
             self.post = session.exec(
                 select(BlogPostModel).where(
                     BlogPostModel.id == pid,
@@ -316,27 +296,20 @@ class BlogViewState(SessionState):
         if self.post and self.post.images:
             self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
 
+
+# --- Y ESTA ES LA OTRA CLASE IMPORTANTE ---
 class CommentState(BlogViewState):
     """Estado para manejar la sección de comentarios con permisos de compra."""
     
     comments: list[CommentModel] = []
     new_comment_text: str = ""
 
-    # --- 👇 LÓGICA DE PERMISO AÑADIDA ---
     @rx.var
     def user_can_comment(self) -> bool:
-        """
-        Verifica si el usuario actual ha comprado y recibido (confirmado)
-        el producto que está viendo.
-        """
         if not self.is_authenticated or not self.post:
             return False
 
         with rx.session() as session:
-            # Buscamos una compra que cumpla todas las condiciones:
-            # 1. Pertenece al usuario actual.
-            # 2. Su estado es CONFIRMADO.
-            # 3. Contiene un item que corresponde al post actual.
             purchase_record = session.exec(
                 select(PurchaseModel).where(
                     PurchaseModel.userinfo_id == self.authenticated_user_info.id,
@@ -344,13 +317,9 @@ class CommentState(BlogViewState):
                     PurchaseModel.items.any(PurchaseItemModel.blog_post_id == self.post.id)
                 )
             ).first()
-            
-            # Si se encontró un registro, el usuario puede comentar.
             return purchase_record is not None
-    # --- FIN DE LA LÓGICA AÑADIDA ---
 
     def load_comments(self):
-        """Carga los comentarios para la publicación actual."""
         if not self.post:
             self.comments = []
             return
@@ -372,7 +341,6 @@ class CommentState(BlogViewState):
 
     @rx.event
     def add_comment(self, form_data: dict):
-        # (La lógica para añadir y votar comentarios no necesita cambios)
         content = form_data.get("comment_text", "").strip()
         if not self.user_can_comment or not self.post or not content:
             return rx.toast.error("No tienes permiso para comentar en este producto.")
@@ -391,7 +359,6 @@ class CommentState(BlogViewState):
 
     @rx.event
     def handle_vote(self, comment_id: int, vote_type_str: str):
-        # (Esta función no necesita cambios)
         vote_type = VoteType(vote_type_str)
         if not self.is_authenticated:
             return rx.toast.error("Debes iniciar sesión para votar.")
