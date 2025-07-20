@@ -1,6 +1,10 @@
+# likemodas/articles/list.py (VERSIÓN CORREGIDA)
+
 import reflex as rx
-from ..ui.base import base_page 
-from ..blog.state import BlogPublicState # Usamos el estado público que ya funciona
+from ..ui.base import base_page
+# --- 👇 CAMBIO CLAVE AQUÍ ---
+# Se reemplaza BlogPublicState por ArticlePublicState, que es el estado correcto para este módulo.
+from .state import ArticlePublicState
 from ..navigation import routes
 
 def _gallery_card(post):
@@ -57,20 +61,19 @@ def _gallery_card(post):
         min_height="380px"
     )
 
-# --- ✨ COMPONENTE REUTILIZABLE CREADO ✨ ---
 def article_public_list_component(columns: int = 4, limit: int = 100) -> rx.Component:
     """Un componente que muestra una rejilla de artículos públicos."""
-    # Aunque el 'limit' se controla en el estado, se mantiene en la firma por consistencia.
-    # La prop 'columns' aquí no se usa directamente, se define en el grid que lo llama.
     return rx.grid(
+        # --- 👇 CAMBIO CLAVE AQUÍ ---
+        # Ahora itera sobre los posts del estado correcto: ArticlePublicState.posts
         rx.foreach(
-            BlogPublicState.posts,
+            ArticlePublicState.posts,
             _gallery_card
         ),
         columns={
             "base": "2",
             "md": "3",
-            "lg": str(columns), # Usa el parámetro para definir las columnas
+            "lg": str(columns),
         },
         spacing="6",
         width="100%",
@@ -78,14 +81,12 @@ def article_public_list_component(columns: int = 4, limit: int = 100) -> rx.Comp
         justify_content="center"
     )
 
-# --- PÁGINA PÚBLICA ACTUALIZADA PARA USAR EL COMPONENTE ---
 def articles_public_gallery_page() -> rx.Component:
     """Página que muestra la galería de productos en la ruta /articles."""
     return base_page(
         rx.center(
             rx.vstack(
                 rx.heading("Galería de Publicaciones", size="7"),
-                # Ahora la página simplemente llama al componente reutilizable
                 article_public_list_component(columns=6),
                 spacing="6",
                 width="100%",
