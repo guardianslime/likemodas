@@ -25,14 +25,15 @@ def _image_section() -> rx.Component:
 # --- FUNCIÓN CORREGIDA ---
 def _global_rating_display() -> rx.Component:
     """Muestra la calificación promedio global, incluyendo medias estrellas."""
-    average_rating = CommentState.post.average_rating
+    average_rating = CommentState.average_rating
+    rating_count = CommentState.rating_count
     
     full_stars = rx.Var.range(math.floor(average_rating))
     has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
     empty_stars = rx.Var.range(5 - math.ceil(average_rating))
 
     return rx.cond(
-        CommentState.post.rating_count > 0,
+        rating_count > 0,
         rx.hstack(
             # <<< 1. LÍNEA CORREGIDA: Se cambió 'lambda:' por 'lambda _:' >>>
             rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=24)),
@@ -49,7 +50,7 @@ def _global_rating_display() -> rx.Component:
                 margin_left="0.5em"
             ),
             rx.text(
-                f"({CommentState.post.rating_count} opiniones)",
+                f"({rating_count} opiniones)", # <<< LÍNEA MODIFICADA
                 size="3",
                 color_scheme="gray"
             ),

@@ -70,20 +70,6 @@ class BlogPostModel(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
     
-    # ✨ 1. Propiedad para contar las calificaciones
-    @property
-    def rating_count(self) -> int:
-        """Devuelve el número total de comentarios (calificaciones)."""
-        return len(self.comments)
-
-    # ✨ 2. Propiedad para calcular el promedio de la calificación
-    @property
-    def average_rating(self) -> float:
-        """Calcula la calificación promedio de todos los comentarios."""
-        if not self.comments:
-            return 0.0
-        total_rating = sum(comment.rating for comment in self.comments)
-        return total_rating / len(self.comments)
 
     @property
     def created_at_formatted(self) -> str:

@@ -247,6 +247,20 @@ class CommentState(SessionState):
     new_comment_rating: int = 0
 
     # --- Variables Computadas (Propiedades) ---
+
+    @rx.var
+    def rating_count(self) -> int:
+        """Devuelve el número total de comentarios (calificaciones)."""
+        return len(self.comments)
+
+    @rx.var
+    def average_rating(self) -> float:
+        """Calcula la calificación promedio de todos los comentarios."""
+        if not self.comments:
+            return 0.0
+        total_rating = sum(comment.rating for comment in self.comments)
+        return total_rating / len(self.comments)
+
     @rx.var
     def post_id(self) -> str:
         return self.router.page.params.get("blog_public_id", "")
