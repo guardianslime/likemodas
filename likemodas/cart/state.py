@@ -1,13 +1,13 @@
-# likemodas/cart/state.py (CORREGIDO Y COMPLETO)
+# likemodas/cart/state.py (VERSIÓN CORREGIDA Y FINAL)
 
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus, CommentModel, UserInfo
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
-from sqlalchemy.orm import joinedload
+import sqlalchemy # Importa sqlalchemy completo
 
 # Asegúrate de que esta importación (del paso anterior) esté presente
 from ..admin.state import AdminConfirmState
@@ -16,25 +16,26 @@ class CartState(SessionState):
     """
     Estado para manejar el carrito de compras y el proceso de checkout.
     """
-    # El carrito será un diccionario: {post_id: quantity}
     cart: Dict[int, int] = {}
-    
-    # Para mostrar un mensaje de éxito después de la compra
     purchase_successful: bool = False
-
-    # Variable y método para cargar los posts públicos
     posts: list[BlogPostModel] = []
 
     def on_load(self):
         """Carga todos los posts públicos y activos para la galería."""
         with rx.session() as session:
-            # <<< LÍNEA MODIFICADA >>>
-            self.posts = session.exec(
+            # --- ✨ CONSULTA CORREGIDA PARA ASEGURAR LA CARGA DE COMENTARIOS ---
+            statement = (
                 select(BlogPostModel)
-                .options(joinedload(BlogPostModel.comments))
+                .options(
+                    # Carga explícitamente la relación de comentarios
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                )
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
                 .order_by(BlogPostModel.created_at.desc())
-            ).unique().all() # <<< SE AÑADIÓ .unique() AQUÍ
+            )
+            self.posts = session.exec(statement).unique().all()
+
+
     @rx.var
     def cart_items_count(self) -> int:
         """Devuelve el número total de items en el carrito."""
@@ -49,7 +50,12 @@ class CartState(SessionState):
             return []
         with rx.session() as session:
             post_ids = list(self.cart.keys())
-            posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()
+            # Se añade la carga de comentarios aquí también para consistencia
+            posts = session.exec(
+                select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .where(BlogPostModel.id.in_(post_ids))
+            ).unique().all()
             post_map = {post.id: post for post in posts}
             return [(post_map[pid], self.cart[pid]) for pid in post_ids if pid in post_map]
 
@@ -78,9 +84,7 @@ class CartState(SessionState):
             if self.cart[post_id] > 1:
                 self.cart[post_id] -= 1
             else:
-                # Usamos pop para asegurar que se elimine la clave
                 self.cart.pop(post_id, None)
-                # Forzamos la actualización para que la UI reaccione
                 self.cart = self.cart
 
     @rx.event
@@ -96,7 +100,6 @@ class CartState(SessionState):
             if not user_info:
                  return rx.window_alert("Usuario no encontrado.")
 
-            # 1. Crear la orden de compra principal
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
@@ -106,7 +109,6 @@ class CartState(SessionState):
             session.commit()
             session.refresh(new_purchase)
 
-            # 2. Crear los items de la compra
             for post, quantity in self.cart_details:
                 purchase_item = PurchaseItemModel(
                     purchase_id=new_purchase.id,
@@ -118,12 +120,10 @@ class CartState(SessionState):
             
             session.commit()
 
-        # 3. Limpiar el carrito y redirigir
         self.cart = {}
         self.purchase_successful = True
         
-        # 4. Enviar notificaciones y redirigir
         yield AdminConfirmState.notify_admin_of_new_purchase()
-        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+        yield rx.toast.success("¡Gracias por tu compra!\nTu orden está pendiente de confirmación.")
         
         return rx.redirect("/my-purchases")
