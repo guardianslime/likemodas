@@ -1,29 +1,29 @@
-# likemodas/cart/state.py (VERSIÓN RESTAURADA Y CORREGIDA)
+# likemodas/cart/state.py (VERSIÓN UNIFICADA Y FINAL)
 
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus, CommentModel, UserInfo
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
-import sqlalchemy 
+import sqlalchemy
 
 from ..admin.state import AdminConfirmState
 
 class CartState(SessionState):
     """
-    Estado para manejar el carrito de compras y la galería de /blog/page.
+    Estado que maneja el carrito de compras Y la carga de productos públicos.
     """
     cart: Dict[int, int] = {}
     purchase_successful: bool = False
     
-    # --- ✨ SE RESTAURA LA VARIABLE 'posts' Y EL MÉTODO 'on_load' ---
+    # Esta variable contendrá los posts para la galería y la página de inicio.
     posts: list[BlogPostModel] = []
 
     @rx.event
     def on_load(self):
-        """Carga todos los posts públicos y activos para la galería."""
+        """Carga todos los posts públicos y activos con sus comentarios."""
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -35,7 +35,6 @@ class CartState(SessionState):
             )
             self.posts = session.exec(statement).unique().all()
 
-    # --- El resto de la clase no cambia ---
     @rx.var
     def cart_items_count(self) -> int:
         return sum(self.cart.values())
@@ -62,6 +61,7 @@ class CartState(SessionState):
                 total += post.price * quantity
         return total
 
+    # ... (El resto de los métodos como add_to_cart, handle_checkout, etc. no cambian)
     @rx.event
     def add_to_cart(self, post_id: int):
         if not self.is_authenticated:

@@ -72,7 +72,6 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
 def sidebar_items() -> rx.Component:
     return rx.vstack(
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
-        sidebar_item("Articles", "globe", navigation.routes.ARTICLE_LIST_ROUTE),
         
         rx.cond(
             SessionState.is_admin,

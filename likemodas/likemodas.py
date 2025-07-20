@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (VERSIÓN CORREGIDA Y ORDENADA)
+# likemodas/likemodas.py (VERSIÓN FINAL Y LIMPIA)
 
 import reflex as rx
 import reflex_local_auth
@@ -11,7 +11,8 @@ from . import blog, contact, navigation, pages
 from .auth.state import SessionState
 from .auth.reset_password_state import ResetPasswordState
 from .auth.verify_state import VerifyState
-from .articles.state import ArticleDetailState, ArticlePublicState
+# ✨ CAMBIO: Se eliminan los estados de articles
+# from .articles.state import ArticleDetailState, ArticlePublicState 
 from .blog.state import BlogPostState, CommentState
 from .cart.state import CartState
 from .purchases.state import PurchaseHistoryState
@@ -23,8 +24,9 @@ from .auth.pages import my_login_page, my_register_page, my_logout_page, verific
 from .cart.page import cart_page
 from .purchases.page import purchase_history_page
 from .admin.page import admin_confirm_page, payment_history_page
-from .articles.detail import article_detail_page
-from .articles.list import articles_public_gallery_page
+# ✨ CAMBIO: Se eliminan las páginas de articles
+# from .articles.detail import article_detail_page
+# from .articles.list import articles_public_gallery_page
 from .blog.page import blog_public_page
 from .blog.public_detail import blog_public_detail_page
 from .pages.search_results import search_results_page
@@ -53,7 +55,8 @@ app = rx.App(
 # --- Registro de Páginas ---
 
 # Páginas Generales y de Autenticación
-app.add_page(index, on_load=ArticlePublicState.load_posts)
+# ✨ CAMBIO: La página de inicio ahora carga los datos con CartState.on_load
+app.add_page(index, on_load=CartState.on_load)
 app.add_page(search_results_page, route="/search-results", title="Resultados de Búsqueda")
 app.add_page(my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -64,21 +67,20 @@ app.add_page(my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
-# Páginas de Artículos (Ejemplo)
-app.add_page(articles_public_gallery_page, route=navigation.routes.ARTICLE_LIST_ROUTE, on_load=ArticlePublicState.load_posts)
-app.add_page(article_detail_page, route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]", on_load=ArticleDetailState.on_load)
+# ✨ CAMBIO: Se eliminan las páginas de articles
+# app.add_page(articles_public_gallery_page, route=navigation.routes.ARTICLE_LIST_ROUTE, on_load=ArticlePublicState.load_posts)
+# app.add_page(article_detail_page, route=f"{navigation.routes.ARTICLE_LIST_ROUTE}/[article_id]", on_load=ArticleDetailState.on_load)
 
 # --- Páginas Públicas del Blog / Tienda ---
 app.add_page(
     blog_public_page,
-    route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE,
+    route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE, # Ruta: "/blog/page"
     title="Galería de Productos",
-    # --- ✨ CAMBIO CRÍTICO AQUÍ (VUELVE A USAR CartState.on_load) --- ✨
-    on_load=CartState.on_load
+    on_load=CartState.on_load # Ya estaba correcto, pero se confirma
 )
 app.add_page(
     blog_public_detail_page,
-    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
+    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]", # Ruta: "/blog-public/[id]"
     title="Detalle del Producto",
     on_load=CommentState.on_load
 )
