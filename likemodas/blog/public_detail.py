@@ -27,7 +27,6 @@ def _global_rating_display() -> rx.Component:
     """Muestra la calificación promedio global, incluyendo medias estrellas."""
     average_rating = CommentState.post.average_rating
     
-    # <<< 2. LÍNEAS CORREGIDAS: Se usa math.floor() y math.ceil() de Python >>>
     full_stars = rx.Var.range(math.floor(average_rating))
     has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
     empty_stars = rx.Var.range(5 - math.ceil(average_rating))
@@ -35,9 +34,13 @@ def _global_rating_display() -> rx.Component:
     return rx.cond(
         CommentState.post.rating_count > 0,
         rx.hstack(
-            rx.foreach(full_stars, lambda: rx.icon("star", color="gold", size=24)),
+            # <<< 1. LÍNEA CORREGIDA: Se cambió 'lambda:' por 'lambda _:' >>>
+            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=24)),
+            
             rx.cond(has_half_star, rx.icon("star_half", color="gold", size=24), rx.fragment()),
-            rx.foreach(empty_stars, lambda: rx.icon("star", color=rx.color("gray", 8), size=24)),
+            
+            # <<< 2. LÍNEA CORREGIDA: Se cambió 'lambda:' por 'lambda _:' >>>
+            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=24)),
             
             rx.text(
                 f"{average_rating:.1f} de 5",
