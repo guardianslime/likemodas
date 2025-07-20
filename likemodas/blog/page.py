@@ -1,9 +1,43 @@
-# likemodas/blog/page.py (CORREGIDO)
+# likemodas/blog/page.py (VERSIÓN ACTUALIZADA)
 
 import reflex as rx
 from ..ui.base import base_page 
 from ..cart.state import CartState 
 from ..navigation import routes
+import math  # Importa math para los cálculos
+from ..models import BlogPostModel # Importa el modelo para type hinting
+
+# --- ✨ NUEVO COMPONENTE AÑADIDO --- ✨
+def _product_card_rating(post: BlogPostModel) -> rx.Component:
+    """
+    Un componente para mostrar la calificación global en las tarjetas de producto.
+    Es una versión más pequeña del que se usa en la página de detalle.
+    """
+    average_rating = post.average_rating
+    rating_count = post.rating_count
+    
+    full_stars = rx.Var.range(math.floor(average_rating))
+    has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
+    empty_stars = rx.Var.range(5 - math.ceil(average_rating))
+
+    return rx.cond(
+        rating_count > 0,
+        rx.hstack(
+            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=18)),
+            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=18), rx.fragment()),
+            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
+            rx.text(
+                f"({rating_count})",
+                size="2",
+                color_scheme="gray",
+                margin_left="0.25em"
+            ),
+            align="center",
+            spacing="1",
+        ),
+        # Si no hay calificaciones, no muestra nada para mantener la tarjeta limpia.
+        rx.box(height="21px") # Espaciador para mantener la alineación vertical
+    )
 
 def blog_public_page():
     """
@@ -12,13 +46,10 @@ def blog_public_page():
     my_child = rx.center(
         rx.vstack(
             rx.heading("Publicaciones", size="6"),
-            
-            # --- ✨ CAMBIO CLAVE: Se usa rx.flex en lugar de rx.grid ✨ ---
             rx.flex(
                 rx.foreach(
                     CartState.posts,
                     lambda post: rx.box(
-                        # La definición de la tarjeta con tamaño fijo no cambia
                         rx.vstack(
                             rx.link(
                                 rx.vstack(
@@ -38,6 +69,8 @@ def blog_public_page():
                                     ),
                                     rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
                                     rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
+                                    # --- ✨ LÍNEA AÑADIDA --- ✨
+                                    _product_card_rating(post),
                                     spacing="2", align="start"
                                 ),
                                 href=f"{routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}"
@@ -50,7 +83,8 @@ def blog_public_page():
                             ),
                             align="center", spacing="2", height="100%"
                         ),
-                        width="290px", height="420px",
+                        width="290px", 
+                        height="450px", # Se aumenta un poco la altura de la tarjeta para dar espacio
                         bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                         border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                         border_radius="8px",
@@ -58,12 +92,11 @@ def blog_public_page():
                         padding="1em",
                     )
                 ),
-                # Propiedades de rx.flex para el diseño adaptable
-                wrap="wrap",        # Permite que las tarjetas pasen a la siguiente línea.
-                spacing="6",        # Define el espacio entre las tarjetas.
-                justify="center",   # Centra las tarjetas en el contenedor.
+                wrap="wrap",
+                spacing="6",
+                justify="center",
                 width="100%",
-                max_width="1800px", # Un ancho máximo generoso para pantallas grandes.
+                max_width="1800px",
             ),
             spacing="6",
             width="100%",
