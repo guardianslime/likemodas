@@ -35,5 +35,5 @@ class SearchState(rx.State):
             )
             self.search_results = session.exec(statement).unique().all()
 
-        self.search_performed = True [cite: 953]
-        return rx.redirect("/search-results") [cite: 953]
+        self.search_performed = True 
+        return rx.redirect("/search-results") 

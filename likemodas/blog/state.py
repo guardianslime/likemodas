@@ -284,12 +284,12 @@ class CommentState(SessionState):
                     )
                     .where(CommentModel.blog_post_id == self.post.id)
                     .order_by(CommentModel.created_at.desc())
-                ) [cite: 756, 757]
+                ) 
                 self.comments = session.exec(statement).unique().all() [cite: 757]
         
-        self.img_idx = 0 [cite: 757]
-        self.new_comment_text = "" [cite: 757]
-        self.new_comment_rating = 0 [cite: 757]
+        self.img_idx = 0 
+        self.new_comment_text = "" 
+        self.new_comment_rating = 0 
     
     # ✨ 3. CAMBIO: Nuevo método para establecer la calificación desde la UI
     @rx.event
