@@ -128,7 +128,7 @@ class BlogPublicState(SessionState):
 class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
-    price: str = ""
+    price: float = 0.0
     temp_images: list[str] = []
 
     @rx.event
@@ -147,24 +147,28 @@ class BlogAddFormState(SessionState):
             self.temp_images.remove(name)
 
     @rx.event
-    def set_price(self, value: str):
-        self.price = value
+    def set_price_from_input(self, value: str):
+        try:
+            # Asigna el valor convertido a la variable de tipo float
+            self.price = float(value)
+        except (ValueError, TypeError):
+            # Si el valor no es un número válido, lo dejamos en 0.0
+            self.price = 0.0
 
     @rx.event
     def submit(self):
         if self.my_userinfo_id is None:
             return rx.window_alert("Inicia sesión.")
 
-        try:
-            parsed_price = float(self.price)
-        except ValueError:
-            return rx.window_alert("Precio inválido.")
+        if self.price <= 0:
+            return rx.window_alert("El precio debe ser un número válido mayor que cero.")
+
 
         with rx.session() as session:
             post = BlogPostModel(
                 title=self.title.strip(),
                 content=self.content.strip(),
-                price=parsed_price,
+                price=self.price,
                 images=self.temp_images.copy(),
                 userinfo_id=self.my_userinfo_id,
                 publish_active=True,
@@ -177,7 +181,7 @@ class BlogAddFormState(SessionState):
         self.temp_images = []
         self.title = ""
         self.content = ""
-        self.price = ""
+        self.price = 0.0
         return rx.redirect("/blog/page")
 
     @rx.event
