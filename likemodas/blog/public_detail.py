@@ -1,4 +1,4 @@
-# likemodas/blog/public_detail.py (VERSIÓN ACTUALIZADA)
+# likemodas/blog/public_detail.py (VERSIÓN FINAL Y CORREGIDA)
 
 import reflex as rx
 from .state import CommentState, SessionState
@@ -6,7 +6,7 @@ from ..ui.carousel import carousel
 from ..cart.state import CartState
 from ..models import CommentModel
 from ..ui.base import public_layout
-import math
+import math  # <<< 1. ASEGÚRATE DE QUE ESTE IMPORT ESTÉ PRESENTE
 
 # --- Sección de Imagen (no cambia) ---
 def _image_section() -> rx.Component:
@@ -22,26 +22,21 @@ def _image_section() -> rx.Component:
         width="100%", max_width="600px", position="relative",
     )
 
-# --- ✨ CAMBIOS AQUÍ ---
-
-# ✨ 1. NUEVO COMPONENTE: Para mostrar la calificación global con medias estrellas
+# --- FUNCIÓN CORREGIDA ---
 def _global_rating_display() -> rx.Component:
     """Muestra la calificación promedio global, incluyendo medias estrellas."""
     average_rating = CommentState.post.average_rating
     
-    # <<< LÍNEAS CORREGIDAS: Se usa rx.math.floor() y rx.math.ceil() >>>
-    full_stars = rx.Var.range(rx.math.floor(average_rating))
-    has_half_star = (average_rating - rx.math.floor(average_rating)) >= 0.5
-    empty_stars = rx.Var.range(5 - rx.math.ceil(average_rating))
+    # <<< 2. LÍNEAS CORREGIDAS: Se usa math.floor() y math.ceil() de Python >>>
+    full_stars = rx.Var.range(math.floor(average_rating))
+    has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
+    empty_stars = rx.Var.range(5 - math.ceil(average_rating))
 
     return rx.cond(
         CommentState.post.rating_count > 0,
         rx.hstack(
-            # Estrellas llenas
             rx.foreach(full_stars, lambda: rx.icon("star", color="gold", size=24)),
-            # Media estrella (si aplica)
             rx.cond(has_half_star, rx.icon("star_half", color="gold", size=24), rx.fragment()),
-            # Estrellas vacías
             rx.foreach(empty_stars, lambda: rx.icon("star", color=rx.color("gray", 8), size=24)),
             
             rx.text(
@@ -65,16 +60,12 @@ def _global_rating_display() -> rx.Component:
         )
     )
 
-# ✨ 2. MODIFICACIÓN: Se añade el componente de calificación global a la info del producto
 def _info_section() -> rx.Component:
     return rx.vstack(
         rx.text(CommentState.post.title, size="7", font_weight="bold", margin_bottom="0.5em", text_align="left"),
         rx.text(CommentState.formatted_price, size="6", color="gray", text_align="left"),
         rx.text(CommentState.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-        
-        # --- LÍNEA AÑADIDA ---
-        _global_rating_display(), # Se muestra la calificación global aquí
-        
+        _global_rating_display(),
         rx.spacer(),
         rx.button(
             "Añadir al Carrito",
@@ -88,9 +79,9 @@ def _info_section() -> rx.Component:
         width="100%",
         min_height="350px",
     )
-# --- FIN DE CAMBIOS ---
 
-# (El resto de los componentes de comentarios no cambian)
+# (El resto del archivo no necesita cambios)
+
 def _star_rating_input() -> rx.Component:
     return rx.hstack(
         rx.foreach(
@@ -197,7 +188,6 @@ def comment_section() -> rx.Component:
     )
 
 def blog_public_detail_page() -> rx.Component:
-    """Página que muestra el detalle de una publicación pública."""
     content_grid = rx.cond(
         CommentState.post,
         rx.grid(
