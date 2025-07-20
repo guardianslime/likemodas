@@ -1,9 +1,8 @@
-# likemodas/cart/state.py (VERSIÓN VERIFICADA)
+# likemodas/cart/state.py (VERSIÓN VERIFICADA Y FINAL)
 
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-# Se importan todos los modelos necesarios para la consulta explícita
 from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus, CommentModel, UserInfo
 from sqlmodel import select
 from datetime import datetime
@@ -24,8 +23,8 @@ class CartState(SessionState):
         """Carga todos los posts públicos y activos para la galería."""
         with rx.session() as session:
             # --- CONSULTA DEFINITIVA Y ROBUSTA ---
-            # Esta consulta carga de forma anidada las publicaciones,
-            # sus comentarios y la información de usuario de cada comentario.
+            # Esta consulta carga de forma anidada las publicaciones
+            # y los comentarios necesarios para calcular la calificación.
             statement = (
                 select(BlogPostModel)
                 .options(
