@@ -28,7 +28,6 @@ class CartState(SessionState):
             statement = (
                 select(BlogPostModel)
                 .options(
-                    # ESTA LÍNEA ES LA QUE RESUELVE EL PROBLEMA
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
                 )
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
@@ -36,13 +35,12 @@ class CartState(SessionState):
             )
             self.posts = session.exec(statement).unique().all()
 
-            # --- 👇 LÍNEAS DE DEPURACIÓN AÑADIDAS 👇 ---
-            print("--- INICIANDO DEPURACIÓN DE CARTSTATE ---")
-            print(f"Número total de posts cargados: {len(self.posts)}")
+            # --- 👇 VERIFICA QUE ESTA DEPURACIÓN ESTÉ AQUÍ 👇 ---
+            print("--- DEPURACIÓN REALIZADA DESDE CARTSTATE ---")
+            print(f"Posts cargados en CartState: {len(self.posts)}")
             for post in self.posts:
-                # Esta línea nos dirá si la relación de comentarios se está poblando.
-                print(f"  -> Post '{post.title}' tiene {len(post.comments)} comentarios.")
-            print("--- FIN DE DEPURACIÓN ---")
+                print(f"  -> Post '{post.title}' en CartState tiene {len(post.comments)} comentarios.")
+            print("--- FIN DE DEPURACIÓN DE CARTSTATE ---")
 
     @rx.var
     def cart_items_count(self) -> int:

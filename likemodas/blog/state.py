@@ -1,5 +1,3 @@
-# likemodas/blog/state.py (VERSIÓN ACTUALIZADA)
-
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -19,7 +17,7 @@ class BlogPostState(SessionState):
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
-    # ... (el resto del código de BlogPostState no cambia)
+    
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
@@ -70,10 +68,8 @@ class BlogPostState(SessionState):
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
             if post and post.userinfo_id == int(self.my_userinfo_id):
-                # Cambia el estado de publicación
                 post.publish_active = not post.publish_active
                 
-                # Si se está publicando, actualiza la fecha de publicación a la actual
                 if post.publish_active:
                     post.publish_date = datetime.utcnow()
                     yield rx.toast.success("¡Publicación activada!")
@@ -82,8 +78,7 @@ class BlogPostState(SessionState):
                 
                 session.add(post)
                 session.commit()
-        
-        # Recarga los detalles del post para actualizar la UI
+      
         yield type(self).get_post_detail
 
     @rx.event
@@ -94,7 +89,7 @@ class BlogPostState(SessionState):
             if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
                 session.delete(post_to_delete)
                 session.commit()
-        return type(self).load_posts # <<< LÍNEA CORREGIDA
+        return type(self).load_posts
 
 class BlogAddFormState(SessionState):
     """Estado para el formulario de AÑADIR posts."""
@@ -102,7 +97,7 @@ class BlogAddFormState(SessionState):
     content: str = ""
     price: float = 0.0
     temp_images: list[str] = []
-    # ... (el resto del código de BlogAddFormState no cambia)
+    
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
@@ -137,19 +132,17 @@ class BlogAddFormState(SessionState):
                 title=self.title.strip(), content=self.content.strip(),
                 price=self.price, images=self.temp_images.copy(),
                 userinfo_id=self.my_userinfo_id, 
-                publish_active=False,  # Se guarda como borrador
+                publish_active=False,
                 publish_date=datetime.utcnow()
             )
             session.add(post)
             session.commit()
-            session.refresh(post) # Obtenemos el ID del nuevo post
+            session.refresh(post)
             new_post_id = post.id
         
         self.title, self.content, self.price, self.temp_images = "", "", 0.0, []
-        # Redirige a la página de detalle del nuevo post
         return rx.redirect(f"/blog/{new_post_id}")
 
-    # ✨ --- NUEVO MÉTODO AÑADIDO (para Publicar ahora) --- ✨
     @rx.event
     def submit_and_publish(self):
         """Guarda y publica el post inmediatamente."""
@@ -162,16 +155,15 @@ class BlogAddFormState(SessionState):
                 title=self.title.strip(), content=self.content.strip(),
                 price=self.price, images=self.temp_images.copy(),
                 userinfo_id=self.my_userinfo_id, 
-                publish_active=True,  # Se publica inmediatamente
-                publish_date=datetime.utcnow() # Con la fecha y hora actual
+                publish_active=True,
+                publish_date=datetime.utcnow()
             )
             session.add(post)
             session.commit()
-            session.refresh(post) # Obtenemos el ID del nuevo post
+            session.refresh(post)
             new_post_id = post.id
         
         self.title, self.content, self.price, self.temp_images = "", "", 0.0, []
-        # Redirige a la página de detalle del nuevo post
         return rx.redirect(f"/blog/{new_post_id}")
 
 class BlogEditFormState(BlogPostState):
@@ -179,7 +171,7 @@ class BlogEditFormState(BlogPostState):
     post_content: str = ""
     post_publish_active: bool = False
     price_str: str = "0.0"
-    # ... (el resto del código de BlogEditFormState no cambia)
+
     @rx.event
     def on_load_edit(self):
         self.get_post_detail()
@@ -235,27 +227,20 @@ class BlogEditFormState(BlogPostState):
         return rx.redirect(f"/blog/{post_id}")
 
 # --- ESTADO PARA LA PÁGINA PÚBLICA (BLOG Y COMENTARIOS) ---
-# --- ✨ CAMBIOS PRINCIPALES AQUÍ ✨ ---
 class CommentState(SessionState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
     comments: list[CommentModel] = []
     new_comment_text: str = ""
-    
-    # ✨ 1. CAMBIO: Se añade estado para la calificación
     new_comment_rating: int = 0
-
-    # --- Variables Computadas (Propiedades) ---
 
     @rx.var
     def rating_count(self) -> int:
-        """Devuelve el número total de comentarios (calificaciones)."""
         return len(self.comments)
 
     @rx.var
     def average_rating(self) -> float:
-        """Calcula la calificación promedio de todos los comentarios."""
         if not self.comments:
             return 0.0
         total_rating = sum(comment.rating for comment in self.comments)
@@ -283,11 +268,8 @@ class CommentState(SessionState):
             return self.post.images[self.img_idx]
         return ""
     
-    # ✨ 2. CAMBIO: Se divide la lógica de 'user_can_comment' en dos partes para más claridad
-
     @rx.var
     def user_has_purchased(self) -> bool:
-        """Verifica si el usuario ha comprado este producto."""
         if not self.is_authenticated or not self.post or not self.authenticated_user_info:
             return False
         with rx.session() as session:
@@ -302,7 +284,6 @@ class CommentState(SessionState):
 
     @rx.var
     def user_has_commented(self) -> bool:
-        """Verifica si el usuario ya ha comentado en este producto."""
         if not self.is_authenticated or not self.post or not self.authenticated_user_info:
             return False
         with rx.session() as session:
@@ -316,10 +297,8 @@ class CommentState(SessionState):
 
     @rx.var
     def user_can_comment(self) -> bool:
-        """Determina si el formulario de comentario debe mostrarse."""
         return self.user_has_purchased and not self.user_has_commented
 
-    # --- Event Handlers (Métodos de Lógica) ---
     @rx.event
     def on_load(self):
         """Carga el post Y los comentarios al entrar a la página."""
@@ -331,7 +310,6 @@ class CommentState(SessionState):
             return
 
         with rx.session() as session:
-            # Cargar el post
             self.post = session.exec(
                 select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
@@ -340,9 +318,8 @@ class CommentState(SessionState):
                     BlogPostModel.publish_active == True,
                     BlogPostModel.publish_date < datetime.utcnow()
                 )
-            ).unique().one_or_none() # <<< SE AÑADIÓ .unique() AQUÍ
+            ).unique().one_or_none()
             
-            # Si el post se encontró, cargar sus comentarios (esta parte ya estaba bien)
             if self.post:
                 statement = (
                     select(CommentModel)
@@ -354,48 +331,41 @@ class CommentState(SessionState):
                     .order_by(CommentModel.created_at.desc())
                 ) 
                 self.comments = session.exec(statement).unique().all()
-        
+    
         self.img_idx = 0 
         self.new_comment_text = "" 
         self.new_comment_rating = 0 
     
-    # ✨ 3. CAMBIO: Nuevo método para establecer la calificación desde la UI
     @rx.event
     def set_new_comment_rating(self, rating: int):
-        """Actualiza la calificación seleccionada por el usuario."""
         self.new_comment_rating = rating
     
-    # ✨ 4. CAMBIO: Se actualiza 'add_comment' para guardar la calificación
     @rx.event
     def add_comment(self, form_data: dict):
-        """Añade un nuevo comentario con calificación a la base de datos."""
         content = form_data.get("comment_text", "").strip()
         
         if not self.user_can_comment or not self.post or not content:
             return rx.toast.error("No tienes permiso para comentar o el texto está vacío.")
-        
+    
         if self.new_comment_rating == 0:
             return rx.toast.error("Por favor, selecciona una calificación de 1 a 5 estrellas.")
 
         with rx.session() as session:
             comment = CommentModel(
                 content=content,
-                rating=self.new_comment_rating, # Se guarda la calificación
+                rating=self.new_comment_rating,
                 userinfo_id=self.authenticated_user_info.id,
                 blog_post_id=self.post.id
             )
             session.add(comment)
             session.commit()
         
-        # Resetea los campos y recarga todo para mostrar el nuevo comentario
         self.new_comment_text = ""
         self.new_comment_rating = 0
         return self.on_load()
 
-    # (El resto de los métodos como handle_vote, siguiente_imagen, etc., no cambian)
     @rx.event
     def handle_vote(self, comment_id: int, vote_type_str: str):
-        """Gestiona un voto (like/dislike) en un comentario."""
         vote_type = VoteType(vote_type_str)
         if not self.is_authenticated:
             return rx.toast.error("Debes iniciar sesión para votar.")
