@@ -65,12 +65,18 @@ class CartState(SessionState):
             return []
         with rx.session() as session:
             post_ids = list(self.cart.keys())
-            posts = session.exec(
+            
+            # --- 👇 LA CORRECCIÓN ESTÁ EN ESTA CONSULTA 👇 ---
+            # Aseguramos que la consulta aquí también cargue los comentarios
+            # para evitar el error 'DetachedInstanceError' en la página del carrito.
+            statement = (
                 select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .where(BlogPostModel.id.in_(post_ids))
-            ).unique().all()
-            post_map = {post.id: post for post in posts}
+            )
+            results = session.exec(statement).unique().all()
+            
+            post_map = {post.id: post for post in results}
             return [(post_map[pid], self.cart[pid]) for pid in post_ids if pid in post_map]
 
     @rx.var
