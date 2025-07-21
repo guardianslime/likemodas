@@ -1,4 +1,4 @@
-# likemodas/cart/state.py (VERSIÓN FINAL CON IMPORTACIÓN CORREGIDA)
+# likemodas/cart/state.py (VERSIÓN FINAL)
 
 import reflex as rx
 from typing import Dict, List, Tuple
@@ -20,8 +20,8 @@ class ProductCardData(rx.Base):
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
+    posts: list[ProductCardData] = []
     
-    # --- ESTADO PARA EL FORMULARIO DE ENVÍO ---
     colombia_data: Dict[str, List[str]] = load_colombia_data()
     shipping_name: str = ""
     shipping_city: str = ""
@@ -31,17 +31,14 @@ class CartState(SessionState):
     
     @rx.var
     def cities(self) -> List[str]:
-        """Devuelve una lista de todas las ciudades para el menú desplegable."""
         return list(self.colombia_data.keys())
 
     @rx.var
     def neighborhoods(self) -> List[str]:
-        """Devuelve los barrios de la ciudad seleccionada."""
         return self.colombia_data.get(self.shipping_city, [])
 
     @rx.event
     def set_shipping_city_and_reset_neighborhood(self, city: str):
-        """Actualiza la ciudad y reinicia el barrio seleccionado."""
         self.shipping_city = city
         self.shipping_neighborhood = ""
 
@@ -97,46 +94,40 @@ class CartState(SessionState):
             else:
                 self.cart.pop(post_id, None)
                 self.cart = self.cart
-                
+    
+    # ✅ Propiedad para el Dashboard
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
-        """Devuelve los primeros 20 posts para el dashboard."""
-        # Se asegura de que no haya un error si hay menos de 20 posts.
         limit = min(20, len(self.posts))
         return self.posts[:limit]
 
+    # ✅ Propiedad para la Landing Page
+    @rx.var
+    def landing_page_posts(self) -> list[ProductCardData]:
+        if not self.posts:
+            return []
+        return self.posts[:1]
+                
     @rx.event
     def handle_checkout(self, form_data: dict):
-        """Maneja el envío del formulario de pago."""
-        # Se importa AdminConfirmState aquí para evitar dependencias circulares.
         from ..admin.state import AdminConfirmState
-
-        # Se obtienen los datos de los campos de texto del formulario.
         name = form_data.get("shipping_name", "").strip()
         address = form_data.get("shipping_address", "").strip()
         phone = form_data.get("shipping_phone", "").strip()
-        
-        # Se usan los valores del estado para los menús desplegables.
         city = self.shipping_city
         neighborhood = self.shipping_neighborhood
-
-        # La validación ahora comprueba todas las variables requeridas.
         if not all([name, city, address, phone]):
             return rx.toast.error("Por favor, completa todos los campos requeridos (*).")
-        
         if not self.is_authenticated or self.cart_total <= 0:
             return rx.window_alert("No se puede procesar la compra.")
-        
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info:
                  return rx.window_alert("Usuario no encontrado.")
-            
             post_ids_in_cart = list(self.cart.keys())
             db_posts_query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))
             db_posts = session.exec(db_posts_query).all()
             db_post_map = {post.id: post for post in db_posts}
-
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
@@ -150,7 +141,6 @@ class CartState(SessionState):
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
-
             for post_id, quantity in self.cart.items():
                 if post_id in db_post_map:
                     post = db_post_map[post_id]
@@ -160,7 +150,6 @@ class CartState(SessionState):
                     )
                     session.add(purchase_item)
             session.commit()
-
         self.cart = {}
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")

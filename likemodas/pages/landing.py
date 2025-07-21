@@ -1,4 +1,4 @@
-# likemodas/pages/landing.py
+# likemodas/pages/landing.py (VERSIÓN CORREGIDA)
 
 import reflex as rx 
 from .. import navigation
@@ -14,8 +14,8 @@ def landing_component() -> rx.Component:
         ),
         rx.divider(),
         rx.heading("Publicaciones Recientes", size="5"),
-        # --- CORRECCIÓN AQUÍ ---
-        product_gallery_component(posts=CartState.posts[:1]),
+        # ✅ SE USA LA NUEVA PROPIEDAD COMPUTADA
+        product_gallery_component(posts=CartState.landing_page_posts),
         spacing="5",
         justify="center",
         align="center",
