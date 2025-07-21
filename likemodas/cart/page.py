@@ -1,4 +1,4 @@
-# likemodas/cart/page.py (VERSIÓN FINAL Y DEFINITIVA)
+# likemodas/cart/page.py (VERSIÓN CON SINTAXIS CORREGIDA)
 
 import reflex as rx
 import reflex_local_auth
@@ -12,16 +12,11 @@ def checkout_form_dialog() -> rx.Component:
             rx.button("Proceder al Pago", size="3"),
         ),
         rx.dialog.content(
-            style={"max_width": "450px"},
-            
-            # --- 👇 ESTRUCTURA CORRECTA DEL DIÁLOGO 👇 ---
             rx.dialog.title("Completa tus Datos de Envío"),
             rx.dialog.description(
                 "Necesitamos esta información para poder enviar tu pedido.",
                 padding_bottom="1em",
             ),
-            # --- FIN DE LA CORRECCIÓN ---
-
             rx.flex(
                 rx.input(
                     placeholder="Ciudad*", on_change=CartState.set_shipping_city, 
@@ -53,6 +48,7 @@ def checkout_form_dialog() -> rx.Component:
                 spacing="3",
                 justify="end",
             ),
+            style={"max_width": "450px"},
         ),
     )
 
