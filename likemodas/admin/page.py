@@ -21,7 +21,8 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
                 ),
                 rx.spacer(),
                 rx.vstack(
-                    rx.badge(purchase.status.to_str(), color_scheme="blue", variant="soft"),
+                    # ✅ CORRECCIÓN DEL TYPO AQUÍ
+                    rx.badge(purchase.status.to(str), color_scheme="blue", variant="soft"),
                     rx.heading(f"${purchase.total_price:,.2f}", size="5"),
                     align_items="end",
                 ),
