@@ -98,6 +98,13 @@ class CartState(SessionState):
                 self.cart.pop(post_id, None)
                 self.cart = self.cart
                 
+    @rx.var
+    def dashboard_posts(self) -> list[ProductCardData]:
+        """Devuelve los primeros 20 posts para el dashboard."""
+        # Se asegura de que no haya un error si hay menos de 20 posts.
+        limit = min(20, len(self.posts))
+        return self.posts[:limit]
+
     @rx.event
     def handle_checkout(self, form_data: dict):
         """Maneja el envío del formulario de pago."""
