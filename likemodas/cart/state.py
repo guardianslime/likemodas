@@ -28,6 +28,7 @@ class CartState(SessionState):
             statement = (
                 select(BlogPostModel)
                 .options(
+                    # ESTA LÍNEA ES LA QUE RESUELVE EL PROBLEMA
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
                 )
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
