@@ -1,19 +1,30 @@
-# likemodas/models.py (VERSIÓN ACTUALIZADA)
+# likemodas/models.py (VERSIÓN CON ZONAS HORARIAS CORREGIDAS)
 
 from typing import Optional, List
-# ... el resto de tu código ...
 from . import utils
 from sqlmodel import Field, Relationship, Column, JSON
-from sqlalchemy import String
-from sqlalchemy import inspect
+from sqlalchemy import String, inspect
 from datetime import datetime
 import reflex as rx
 from reflex_local_auth.user import LocalUser
 import sqlalchemy
 import enum
-import math # Importa math para los cálculos
+import math
+import pytz # Importamos la nueva librería
 
-# (Los ENUMs y otros modelos no cambian)
+# --- Función Auxiliar para Conversión de Hora ---
+def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
+    """Convierte un objeto datetime de UTC a la zona horaria de Colombia y lo formatea."""
+    if not utc_dt:
+        return "N/A"
+    colombia_tz = pytz.timezone("America/Bogota")
+    # Aseguramos que la fecha guardada sea consciente de que es UTC
+    aware_utc_dt = utc_dt.replace(tzinfo=pytz.utc)
+    # La convertimos a la zona horaria local
+    local_dt = aware_utc_dt.astimezone(colombia_tz)
+    return local_dt.strftime('%d-%m-%Y %H:%M')
+
+# (Los ENUMs no cambian)
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
@@ -27,7 +38,6 @@ class VoteType(str, enum.Enum):
     LIKE = "like"
     DISLIKE = "dislike"
 
-# (UserInfo y otros modelos no cambian)
 class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
     email: str
@@ -58,7 +68,6 @@ class PasswordResetToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
-# --- ✨ CAMBIOS AQUÍ ✨ ---
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
@@ -74,12 +83,10 @@ class BlogPostModel(rx.Model, table=True):
     
     @property
     def rating_count(self) -> int:
-        """Devuelve el número total de comentarios (calificaciones)."""
         return len(self.comments)
 
     @property
     def average_rating(self) -> float:
-        """Calcula la calificación promedio de todos los comentarios."""
         if not self.comments:
             return 0.0
         total_rating = sum(comment.rating for comment in self.comments)
@@ -87,18 +94,21 @@ class BlogPostModel(rx.Model, table=True):
 
     @property
     def created_at_formatted(self) -> str:
-        return self.created_at.strftime("%Y-%m-%d")
+        return format_utc_to_local(self.created_at)
     
     @property
     def publish_date_formatted(self) -> str:
-        if not self.publish_date:
-            return ""
-        return self.publish_date.strftime("%d-%m-%Y")
+        return format_utc_to_local(self.publish_date)
     
- 
-
-
-# --- FIN DE CAMBIOS ---
+    def dict(self, **kwargs):
+        d = super().dict(**kwargs)
+        if 'comments' in inspect(self).attrs:
+            d["rating_count"] = self.rating_count
+            d["average_rating"] = self.average_rating
+        else:
+            d["rating_count"] = 0
+            d["average_rating"] = 0.0
+        return d
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -108,19 +118,21 @@ class PurchaseModel(rx.Model, table=True):
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
+
     @property
     def purchase_date_formatted(self) -> str:
-        return self.purchase_date.strftime('%d-%m-%Y %H:%M')
+        return format_utc_to_local(self.purchase_date)
+        
     @property
     def confirmed_at_formatted(self) -> str:
-        if not self.confirmed_at:
-            return "N/A"
-        return self.confirmed_at.strftime('%d-%m-%Y %H:%M')
+        return format_utc_to_local(self.confirmed_at)
+        
     @property
     def items_formatted(self) -> list[str]:
         if not self.items:
             return []
         return [f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)" for item in self.items]
+
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
         d["purchase_date_formatted"] = self.purchase_date_formatted
@@ -146,7 +158,8 @@ class NotificationModel(rx.Model, table=True):
     
     @property
     def created_at_formatted(self) -> str:
-        return self.created_at.strftime("%d-%m-%Y %H:%M")
+        return format_utc_to_local(self.created_at)
+        
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
         d["created_at_formatted"] = self.created_at_formatted
@@ -163,7 +176,8 @@ class ContactEntryModel(rx.Model, table=True):
 
     @property
     def created_at_formatted(self) -> str:
-        return self.created_at.strftime("%Y-%m-%d %H:%M")
+        return format_utc_to_local(self.created_at)
+
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
         d["created_at_formatted"] = self.created_at_formatted
@@ -182,10 +196,12 @@ class CommentModel(rx.Model, table=True):
 
     @property
     def created_at_formatted(self) -> str:
-        return self.created_at.strftime("%d-%m-%Y %H:%M")
+        return format_utc_to_local(self.created_at)
+
     @property
     def likes(self) -> int:
         return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
+        
     @property
     def dislikes(self) -> int:
         return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
