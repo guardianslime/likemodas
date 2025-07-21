@@ -84,7 +84,7 @@ def blog_public_page():
         rx.center(
             rx.vstack(
                 rx.heading("Publicaciones", size="6"),
-                # Se llama al componente reutilizable
+                # --- CORRECCIÓN AQUÍ ---
                 product_gallery_component(posts=CartState.posts),
                 spacing="6", 
                 width="100%", 

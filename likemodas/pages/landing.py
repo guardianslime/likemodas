@@ -14,7 +14,7 @@ def landing_component() -> rx.Component:
         ),
         rx.divider(),
         rx.heading("Publicaciones Recientes", size="5"),
-        # --- CORRECCIÓN AQUÍ: de CartState.posts a cart_state.posts ---
+        # --- CORRECCIÓN AQUÍ ---
         product_gallery_component(posts=CartState.posts[:1]),
         spacing="5",
         justify="center",
