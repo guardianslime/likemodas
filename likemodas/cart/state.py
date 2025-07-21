@@ -87,56 +87,62 @@ class CartState(SessionState):
 
     # --- MÉTODO handle_checkout SIMPLIFICADO (igual que en ContactState) ---
     @rx.event
-    def handle_checkout(self, form_data: dict):
-        """Maneja el envío del formulario de pago."""
-        # Se extraen los datos del formulario que envía el componente rx.form
-        self.shipping_city = form_data.get("shipping_city", "")
-        self.shipping_neighborhood = form_data.get("shipping_neighborhood", "")
-        self.shipping_address = form_data.get("shipping_address", "")
-        self.shipping_phone = form_data.get("shipping_phone", "")
+def handle_checkout(self, form_data: dict):
+    """Maneja el envío del formulario de pago."""
+    # Se importa AdminConfirmState aquí para evitar dependencias circulares.
+    from ..admin.state import AdminConfirmState
 
-        if not all([self.shipping_city, self.shipping_address, self.shipping_phone]):
-            return rx.toast.error("Por favor, completa Ciudad, Dirección y Teléfono.")
+    # Se obtienen los datos de los campos de texto del formulario.
+    name = form_data.get("shipping_name", "").strip()
+    address = form_data.get("shipping_address", "").strip()
+    phone = form_data.get("shipping_phone", "").strip()
+    
+    # Se usan los valores del estado para los menús desplegables.
+    city = self.shipping_city
+    neighborhood = self.shipping_neighborhood
+
+    # La validación ahora comprueba todas las variables requeridas.
+    if not all([name, city, address, phone]):
+        return rx.toast.error("Por favor, completa todos los campos requeridos (*).")
+    
+    if not self.is_authenticated or self.cart_total <= 0:
+        return rx.window_alert("No se puede procesar la compra.")
+    
+    with rx.session() as session:
+        user_info = self.authenticated_user_info
+        if not user_info:
+                return rx.window_alert("Usuario no encontrado.")
         
-        if not self.is_authenticated or self.cart_total <= 0:
-            return rx.window_alert("No se puede procesar la compra.")
-        
-        with rx.session() as session:
-            user_info = self.authenticated_user_info
-            if not user_info:
-                 return rx.window_alert("Usuario no encontrado.")
-            
-            post_ids_in_cart = list(self.cart.keys())
-            db_posts_query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))
-            db_posts = session.exec(db_posts_query).all()
-            db_post_map = {post.id: post for post in db_posts}
+        post_ids_in_cart = list(self.cart.keys())
+        db_posts_query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))
+        db_posts = session.exec(db_posts_query).all()
+        db_post_map = {post.id: post for post in db_posts}
 
-            new_purchase = PurchaseModel(
-                userinfo_id=user_info.id,
-                total_price=self.cart_total,
-                status=PurchaseStatus.PENDING,
-                shipping_city=self.shipping_city,
-                shipping_neighborhood=self.shipping_neighborhood,
-                shipping_address=self.shipping_address,
-                shipping_phone=self.shipping_phone
-            )
-            session.add(new_purchase)
-            session.commit()
-            session.refresh(new_purchase)
+        new_purchase = PurchaseModel(
+            userinfo_id=user_info.id,
+            total_price=self.cart_total,
+            status=PurchaseStatus.PENDING,
+            shipping_name=name,
+            shipping_city=city,
+            shipping_neighborhood=neighborhood,
+            shipping_address=address,
+            shipping_phone=phone
+        )
+        session.add(new_purchase)
+        session.commit()
+        session.refresh(new_purchase)
 
-            for post_id, quantity in self.cart.items():
-                if post_id in db_post_map:
-                    post = db_post_map[post_id]
-                    purchase_item = PurchaseItemModel(
-                        purchase_id=new_purchase.id,
-                        blog_post_id=post.id,
-                        quantity=quantity,
-                        price_at_purchase=post.price
-                    )
-                    session.add(purchase_item)
-            session.commit()
+        for post_id, quantity in self.cart.items():
+            if post_id in db_post_map:
+                post = db_post_map[post_id]
+                purchase_item = PurchaseItemModel(
+                    purchase_id=new_purchase.id, blog_post_id=post.id,
+                    quantity=quantity, price_at_purchase=post.price
+                )
+                session.add(purchase_item)
+        session.commit()
 
-        self.cart = {}
-        yield AdminConfirmState.notify_admin_of_new_purchase()
-        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-        yield rx.redirect("/my-purchases")
+    self.cart = {}
+    yield AdminConfirmState.notify_admin_of_new_purchase()
+    yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+    return rx.redirect("/my-purchases")
