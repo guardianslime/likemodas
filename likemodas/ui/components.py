@@ -1,15 +1,11 @@
-# likemodas/ui/components.py (NUEVO ARCHIVO)
-
 import reflex as rx
 import math
-from ..models import BlogPostModel
-from ..cart.state import CartState, ProductCardData
 from ..navigation import routes
+# Se importa desde su nuevo hogar en cart/state.py
+from ..cart.state import CartState, ProductCardData
 
-
-
-
-def _product_card_rating(post: ProductCardData)
+# --- 👇 LA CORRECCIÓN ESTÁ AQUÍ, SE AÑADIERON LOS DOS PUNTOS (:) 👇 ---
+def _product_card_rating(post: ProductCardData) -> rx.Component:
     """Un componente para mostrar la calificación global en las tarjetas de producto."""
     average_rating = post.average_rating
     rating_count = post.rating_count
@@ -30,7 +26,7 @@ def _product_card_rating(post: ProductCardData)
         rx.box(height="21px") # Espaciador para mantener la alineación vertical
     )
 
-def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Component:
+def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """Un componente reutilizable que muestra una galería de productos."""
     return rx.flex(
         rx.foreach(
@@ -41,7 +37,7 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
                         rx.vstack(
                             rx.box(
                                 rx.cond(
-                                    post.images & (post.images.length() > 0),
+                                    post.images & (rx.Var.list(post.images).length() > 0),
                                     rx.image(
                                         src=rx.get_upload_url(post.images[0]),
                                         width="100%", height="100%", object_fit="cover", border_radius="md",
@@ -54,7 +50,7 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
                                 position="relative", width="260px", height="260px"
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
-                            rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
+                            rx.text(rx.cond(post.price, "$" + rx.Var.wrap(post.price).to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
                             _product_card_rating(post),
                             spacing="2", align="start"
                         ),
