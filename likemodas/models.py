@@ -86,11 +86,20 @@ class BlogPostModel(rx.Model, table=True):
     @property
     def created_at_formatted(self) -> str:
         return self.created_at.strftime("%Y-%m-%d")
+    
     @property
     def publish_date_formatted(self) -> str:
         if not self.publish_date:
             return ""
         return self.publish_date.strftime("%d-%m-%Y")
+    
+    def dict(self, **kwargs):
+        d = super().dict(**kwargs)
+        d["rating_count"] = self.rating_count
+        d["average_rating"] = self.average_rating
+        return d
+
+
 # --- FIN DE CAMBIOS ---
 
 class PurchaseModel(rx.Model, table=True):
