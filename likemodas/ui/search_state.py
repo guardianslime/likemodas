@@ -1,4 +1,4 @@
-# likemodas/ui/search_state.py (VERSIÓN CORREGIDA)
+# likemodas/ui/search_state.py (VERSIÓN FINAL Y CORREGIDA)
 
 import reflex as rx
 from typing import List
@@ -6,25 +6,32 @@ from ..models import BlogPostModel
 from sqlmodel import select
 from datetime import datetime
 from .. import navigation
-from sqlalchemy.orm import joinedload # <<< 1. AÑADE ESTA IMPORTACIÓN
+from sqlalchemy.orm import joinedload
+
+# --- CAMBIO 1: Importamos el modelo de datos seguro ---
+from ..cart.state import ProductCardData
 
 class SearchState(rx.State):
     """El único y definitivo estado para la búsqueda."""
     search_term: str = ""
-    search_results: List[BlogPostModel] = []
+    
+    # --- CAMBIO 2: Los resultados ahora serán del tipo seguro ---
+    search_results: List[ProductCardData] = []
+    
     search_performed: bool = False
 
     @rx.event
     def perform_search(self):
-        """Ejecuta la búsqueda y redirige."""
+        """Ejecuta la búsqueda, transforma los datos y redirige."""
         term = self.search_term.strip()
         if not term:
+            # Si la búsqueda está vacía, simplemente limpia los resultados.
+            self.search_results = []
             return rx.redirect(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE) 
 
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
-                # <<< 2. AÑADE ESTA LÍNEA >>>
                 .options(joinedload(BlogPostModel.comments))
                 .where(
                     BlogPostModel.publish_active == True,
@@ -33,7 +40,20 @@ class SearchState(rx.State):
                 )
                 .order_by(BlogPostModel.created_at.desc())
             )
-            self.search_results = session.exec(statement).unique().all()
+            results = session.exec(statement).unique().all()
+
+            # --- CAMBIO 3: Transformamos los resultados de la BD al modelo seguro ---
+            self.search_results = [
+                ProductCardData(
+                    id=post.id,
+                    title=post.title,
+                    price=post.price,
+                    images=post.images,
+                    average_rating=post.average_rating,
+                    rating_count=post.rating_count
+                )
+                for post in results
+            ]
 
         self.search_performed = True 
-        return rx.redirect("/search-results") 
+        return rx.redirect("/search-results")
