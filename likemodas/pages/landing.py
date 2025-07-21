@@ -1,8 +1,8 @@
-# likemodas/pages/landing.py (VERSIÓN CORREGIDA)
+# likemodas/pages/landing.py
 
 import reflex as rx 
 from .. import navigation
-from ..blog.page import product_gallery_component
+from ..ui.components import product_gallery_component
 from ..cart.state import CartState
 
 def landing_component() -> rx.Component:
@@ -14,7 +14,7 @@ def landing_component() -> rx.Component:
         ),
         rx.divider(),
         rx.heading("Publicaciones Recientes", size="5"),
-        # ✨ CAMBIO: Se usa el nuevo componente y se le pasa solo el primer post
+        # --- CORRECCIÓN AQUÍ: de CartState.posts a CartState.posts ---
         product_gallery_component(posts=CartState.posts[:1]),
         spacing="5",
         justify="center",
