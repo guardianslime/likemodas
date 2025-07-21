@@ -1,4 +1,4 @@
-# likemodas/cart/page.py (VERSIÓN CON SINTAXIS CORREGIDA)
+# likemodas/cart/page.py (VERSIÓN CON SINTAXIS DEFINITIVA)
 
 import reflex as rx
 import reflex_local_auth
@@ -38,8 +38,8 @@ def checkout_form() -> rx.Component:
                         placeholder="Selecciona un barrio...",
                         on_change=CartState.set_shipping_neighborhood,
                         value=CartState.shipping_neighborhood,
-                        # ✅ SINTAXIS CORREGIDA AQUÍ
-                        is_disabled=(rx.length(CartState.neighborhoods) == 0),
+                        # ✅ SINTAXIS CORREGIDA Y DEFINITIVA AQUÍ
+                        is_disabled=(CartState.neighborhoods.length() == 0),
                     ),
                     spacing="1", align_items="start",
                 ),
