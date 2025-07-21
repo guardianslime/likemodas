@@ -1,4 +1,4 @@
-# likemodas/cart/state.py (NUEVA VERSIÓN SIMPLIFICADA)
+# likemodas/cart/state.py (VERSIÓN RESTAURADA Y ESTABLE)
 
 import reflex as rx
 from typing import Dict, List, Tuple
@@ -10,7 +10,6 @@ import reflex_local_auth
 import sqlalchemy
 from ..admin.state import AdminConfirmState
 
-# La clase ProductCardData se mantiene igual
 class ProductCardData(rx.Base):
     id: int
     title: str
@@ -24,15 +23,8 @@ class CartState(SessionState):
     purchase_successful: bool = False
     posts: list[ProductCardData] = []
 
-    # --- VARIABLES PARA EL FORMULARIO DE ENVÍO (igual que en ContactState) ---
-    shipping_city: str = ""
-    shipping_neighborhood: str = ""
-    shipping_address: str = ""
-    shipping_phone: str = ""
-
     @rx.event
     def on_load(self):
-        # Lógica para cargar productos (esta parte es correcta y no cambia)
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -68,7 +60,6 @@ class CartState(SessionState):
                 total += post.price * quantity
         return total
 
-    # Los métodos add_to_cart y remove_from_cart no cambian
     @rx.event
     def add_to_cart(self, post_id: int):
         if not self.is_authenticated:
@@ -85,22 +76,10 @@ class CartState(SessionState):
                 self.cart.pop(post_id, None)
                 self.cart = self.cart
 
-    # --- MÉTODO handle_checkout SIMPLIFICADO (igual que en ContactState) ---
     @rx.event
-    def handle_checkout(self, form_data: dict):
-        """Maneja el envío del formulario de pago."""
-        # Se extraen los datos del formulario que envía el componente rx.form
-        self.shipping_city = form_data.get("shipping_city", "")
-        self.shipping_neighborhood = form_data.get("shipping_neighborhood", "")
-        self.shipping_address = form_data.get("shipping_address", "")
-        self.shipping_phone = form_data.get("shipping_phone", "")
-
-        if not all([self.shipping_city, self.shipping_address, self.shipping_phone]):
-            return rx.toast.error("Por favor, completa Ciudad, Dirección y Teléfono.")
-        
+    def handle_checkout(self):
         if not self.is_authenticated or self.cart_total <= 0:
             return rx.window_alert("No se puede procesar la compra.")
-        
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info:
@@ -114,11 +93,7 @@ class CartState(SessionState):
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
-                status=PurchaseStatus.PENDING,
-                shipping_city=self.shipping_city,
-                shipping_neighborhood=self.shipping_neighborhood,
-                shipping_address=self.shipping_address,
-                shipping_phone=self.shipping_phone
+                status=PurchaseStatus.PENDING 
             )
             session.add(new_purchase)
             session.commit()
@@ -135,8 +110,7 @@ class CartState(SessionState):
                     )
                     session.add(purchase_item)
             session.commit()
-
         self.cart = {}
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-        yield rx.redirect("/my-purchases")
+        return rx.redirect("/my-purchases")

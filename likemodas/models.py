@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN CON HORA EN FORMATO 12 HORAS)
+# likemodas/models.py (VERSIÓN RESTAURADA Y ESTABLE)
 
 from typing import Optional, List
 from . import utils
@@ -12,18 +12,13 @@ import enum
 import math
 import pytz
 
-# --- Función Auxiliar para Conversión de Hora ---
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
-    """Convierte un objeto datetime de UTC a la zona horaria de Colombia y lo formatea."""
     if not utc_dt:
         return "N/A"
     colombia_tz = pytz.timezone("America/Bogota")
     aware_utc_dt = utc_dt.replace(tzinfo=pytz.utc)
     local_dt = aware_utc_dt.astimezone(colombia_tz)
-    # --- CAMBIO AQUÍ: de %H:%M a %I:%M %p ---
     return local_dt.strftime('%d-%m-%Y %I:%M %p')
-
-# (El resto del archivo no necesita cambios, pero se incluye para que lo reemplaces completo)
 
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
@@ -99,7 +94,6 @@ class BlogPostModel(rx.Model, table=True):
     @property
     def publish_date_formatted(self) -> str:
         return format_utc_to_local(self.publish_date)
-    
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -108,13 +102,6 @@ class PurchaseModel(rx.Model, table=True):
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
-    
-    # --- 👇 CAMPOS DE ENVÍO AÑADIDOS 👇 ---
-    shipping_city: Optional[str] = None
-    shipping_neighborhood: Optional[str] = None
-    shipping_address: Optional[str] = None
-    shipping_phone: Optional[str] = None
-    
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
     @property

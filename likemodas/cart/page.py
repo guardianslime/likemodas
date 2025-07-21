@@ -1,33 +1,11 @@
-# likemodas/cart/page.py (VERSIÓN FINAL Y ESTRUCTURALMENTE CORRECTA)
+# likemodas/cart/page.py (VERSIÓN RESTAURADA Y ESTABLE)
 
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
 from ..cart.state import CartState, ProductCardData
 
-def checkout_form() -> rx.Component:
-    """Un formulario de envío simple, similar al de contacto."""
-    return rx.form(
-        rx.vstack(
-            rx.heading("Completa tus Datos de Envío", size="5"),
-            rx.text("Necesitamos esta información para poder enviar tu pedido."),
-            rx.input(name="shipping_city", placeholder="Ciudad*", type="text", required=True),
-            rx.input(name="shipping_neighborhood", placeholder="Barrio (Opcional)", type="text"),
-            rx.input(name="shipping_address", placeholder="Dirección de Entrega*", type="text", required=True),
-            rx.input(name="shipping_phone", placeholder="Teléfono de Contacto*", type="tel", required=True),
-            rx.button("Confirmar Compra", type="submit"),
-            spacing="3",
-            width="100%",
-            padding_top="1em",
-            border_top="1px solid #444",
-            margin_top="1em",
-        ),
-        on_submit=CartState.handle_checkout,
-    )
-
-
 def cart_item_row(item: rx.Var) -> rx.Component:
-    """Fila para un item en el carrito."""
     post = item[0]
     quantity = item[1]
     return rx.table.row(
@@ -47,7 +25,6 @@ def cart_item_row(item: rx.Var) -> rx.Component:
 
 @reflex_local_auth.require_login
 def cart_page() -> rx.Component:
-    """Página del carrito de compras."""
     return base_page(
         rx.vstack(
             rx.heading("Mi Carrito", size="8"),
@@ -73,7 +50,7 @@ def cart_page() -> rx.Component:
                         width="100%",
                         padding_x="1em"
                     ),
-                    checkout_form(),
+                    rx.button("Proceder al Pago", on_click=CartState.handle_checkout, size="3"),
                     spacing="5",
                     width="100%",
                     max_width="900px"

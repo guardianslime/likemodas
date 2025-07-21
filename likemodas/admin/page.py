@@ -19,33 +19,6 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
                 lambda item_str: rx.text(item_str)
             ),
             rx.divider(),
-            
-            rx.vstack(
-                rx.text("Datos de Envío:", weight="medium"),
-                rx.box(
-                    rx.text(f"Ciudad: {purchase.shipping_city}"),
-                    rx.text(f"Dirección: {purchase.shipping_address}"),
-                    # --- 👇 CORRECCIÓN AQUÍ 👇 ---
-                    # Se reemplaza el 'or' de Python con 'rx.cond'
-                    rx.text(
-                        "Barrio: ",
-                        rx.cond(
-                            purchase.shipping_neighborhood,
-                            purchase.shipping_neighborhood,
-                            "No especificado"
-                        )
-                    ),
-                    rx.text(f"Teléfono: {purchase.shipping_phone}"),
-                    padding_left="1em",
-                    font_size="0.9em",
-                    color=rx.color("gray", 11),
-                ),
-                spacing="1",
-                align_items="start",
-                width="100%"
-            ),
-            rx.divider(),
-
             rx.hstack(
                 rx.text(f"Total: ${purchase.total_price:.2f}", weight="bold"),
                 rx.spacer(),
@@ -59,6 +32,7 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
             width="100%"
         )
     )
+
 
 @require_admin
 def admin_confirm_page() -> rx.Component:
