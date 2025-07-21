@@ -1,10 +1,9 @@
 import reflex as rx
 import math
 from ..navigation import routes
-# Se importa desde su nuevo hogar en cart/state.py
 from ..cart.state import CartState, ProductCardData
 
-# --- 👇 LA CORRECCIÓN ESTÁ AQUÍ, SE AÑADIERON LOS DOS PUNTOS (:) 👇 ---
+
 def _product_card_rating(post: ProductCardData) -> rx.Component:
     """Un componente para mostrar la calificación global en las tarjetas de producto."""
     average_rating = post.average_rating
@@ -23,7 +22,7 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
             rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
-        rx.box(height="21px") # Espaciador para mantener la alineación vertical
+        rx.box(height="21px")
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
@@ -37,7 +36,9 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.vstack(
                             rx.box(
                                 rx.cond(
-                                    post.images & (rx.Var.list(post.images).length() > 0),
+                                    # --- 👇 LÍNEA CORREGIDA AQUÍ 👇 ---
+                                    # La forma correcta es simplemente llamar a .length()
+                                    post.images & (post.images.length() > 0),
                                     rx.image(
                                         src=rx.get_upload_url(post.images[0]),
                                         width="100%", height="100%", object_fit="cover", border_radius="md",
