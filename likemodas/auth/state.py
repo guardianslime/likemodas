@@ -28,6 +28,8 @@ def validate_password(password: str) -> list[str]:
 
 class SessionState(reflex_local_auth.LocalAuthState):
 
+    new_purchase_notification: bool = False
+
     @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None: 
         if self.authenticated_user_info is None:
@@ -130,4 +132,3 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
                 
         return registration_event
     
-

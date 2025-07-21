@@ -1,18 +1,19 @@
-# likemodas/ui/sidebar.py (CORREGIDO)
+# likemodas/ui/sidebar.py (VERSIÓN FINAL Y CORRECTA)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
 
-from ..auth.state import SessionState
+from ..auth.state import SessionState # ✅ Se importa SessionState, que es seguro.
 from .. import navigation
 from ..models import UserRole
-# Se elimina la importación de "AdminConfirmState" de aquí
+# ❗️ Se elimina cualquier importación de AdminConfirmState.
 
+# ... (las funciones sidebar_user_item, sidebar_logout_item, etc. no cambian) ...
 def sidebar_user_item() -> rx.Component:
     user_info_obj = SessionState.authenticated_user_info
     username_via_user_abj = rx.cond(SessionState.authenticated_username, SessionState.authenticated_username, "Account")
     return rx.cond(
-        user_info_obj,
+       user_info_obj,
         rx.hstack(
             rx.icon_button(rx.icon("user"), size="3", radius="full",),
             rx.vstack(
@@ -50,7 +51,6 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
     )
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Componente de item del sidebar, ahora con indicador de notificación."""
     return rx.link(
         rx.hstack(
             rx.icon(icon), 
@@ -70,25 +70,22 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
         ),
         href=href, underline="none", weight="medium", width="100%",
     )
+# ...
 
 def sidebar_items() -> rx.Component:
-    # ✅ ¡AQUÍ ESTÁ LA SOLUCIÓN!
-    # Se importa "AdminConfirmState" justo antes de usarlo.
-    from ..admin.state import AdminConfirmState
-
     return rx.vstack(
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
-        
         rx.cond(
             SessionState.is_admin,
             rx.fragment(
                 sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
                 sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
-                 sidebar_item(
+                sidebar_item(
                     "Confirmar Pagos", 
                     "dollar-sign", 
                     "/admin/confirm-payments",
-                    has_notification=AdminConfirmState.new_purchase_notification
+                    # ✅ CAMBIO: Ahora lee desde SessionState, que es seguro.
+                    has_notification=SessionState.new_purchase_notification
                 ),
                 sidebar_item(
                     "Historial de Pagos",
@@ -97,13 +94,11 @@ def sidebar_items() -> rx.Component:
                 )
             )
         ),
-
         sidebar_item("Contact", "mail", navigation.routes.CONTACT_US_ROUTE),
         sidebar_item("Contact History", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
         spacing="1",
         width="100%",
     )
-
 
 def sidebar() -> rx.Component:
     return rx.box(

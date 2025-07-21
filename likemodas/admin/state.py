@@ -158,3 +158,22 @@ class CartState(SessionState):
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
+    
+
+class AdminConfirmState(SessionState):
+    pending_purchases: list[PurchaseModel] = []
+
+    # ❗️ ELIMINA la línea "new_purchase_notification: bool = False" de aquí si existía.
+
+    @rx.event
+    def load_pending_purchases(self):
+        # ... (tu lógica para cargar compras pendientes) ...
+        
+        # ✅ CAMBIO: Al final de la carga, actualiza la variable en SessionState
+        self.new_purchase_notification = len(self.pending_purchases) > 0
+
+    @classmethod
+    def notify_admin_of_new_purchase(cls):
+        """Este es un evento de clase para ser llamado desde otros estados."""
+        # ✅ CAMBIO: Este método ahora actualiza directamente SessionState
+        return SessionState.set_new_purchase_notification(True)
