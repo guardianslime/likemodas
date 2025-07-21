@@ -31,8 +31,7 @@ class AdminConfirmState(SessionState):
 
         with rx.session() as session:
             # --- CORRECCIÓN CLAVE AQUÍ ---
-            # Se añade un `joinedload` explícito para los comentarios del post,
-            # lo que previene el error `DetachedInstanceError`.
+            # Se añade un `joinedload` explícito para los comentarios del post.
             statement = (
                 select(PurchaseModel)
                 .options(
@@ -67,7 +66,6 @@ class AdminConfirmState(SessionState):
                 session.commit()
                 
                 yield rx.toast.success(f"Pago de {purchase.userinfo.email} confirmado.")
-                # Recargamos la lista para que la compra confirmada desaparezca
                 yield self.load_pending_purchases
             else:
                 yield rx.toast.error("La compra no se pudo confirmar o ya fue procesada.")
