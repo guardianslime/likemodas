@@ -102,6 +102,7 @@ class PurchaseModel(rx.Model, table=True):
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
+    shipping_name: Optional[str] = None
     
     # --- 👇 CAMPOS DE ENVÍO AÑADIDOS 👇 ---
     shipping_city: Optional[str] = None
