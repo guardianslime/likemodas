@@ -23,6 +23,7 @@ class ProductCardData(rx.Base):
 class CartState(SessionState):
     cart: Dict[int, int] = {}
     
+    # --- ESTADO PARA EL FORMULARIO DE ENVÍO ---
     colombia_data: Dict[str, List[str]] = load_colombia_data()
     shipping_name: str = ""
     shipping_city: str = ""
@@ -32,14 +33,17 @@ class CartState(SessionState):
     
     @rx.var
     def cities(self) -> List[str]:
+        """Devuelve una lista de todas las ciudades para el menú desplegable."""
         return list(self.colombia_data.keys())
 
     @rx.var
     def neighborhoods(self) -> List[str]:
+        """Devuelve los barrios de la ciudad seleccionada."""
         return self.colombia_data.get(self.shipping_city, [])
 
     @rx.event
     def set_shipping_city_and_reset_neighborhood(self, city: str):
+        """Actualiza la ciudad y reinicia el barrio seleccionado."""
         self.shipping_city = city
         self.shipping_neighborhood = ""
 
