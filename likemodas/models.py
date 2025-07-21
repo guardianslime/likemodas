@@ -4,6 +4,7 @@ from typing import Optional, List
 from . import utils
 from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy import String
+from sqlalchemy import inspect
 from datetime import datetime
 import reflex as rx
 from reflex_local_auth.user import LocalUser
@@ -95,8 +96,15 @@ class BlogPostModel(rx.Model, table=True):
     
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
-        d["rating_count"] = self.rating_count
-        d["average_rating"] = self.average_rating
+        # Comprueba si los comentarios ya fueron cargados en memoria.
+        # Esto evita la "carga perezosa" (lazy load) que causa el error.
+        if 'comments' in inspect(self).attrs:
+            d["rating_count"] = self.rating_count
+            d["average_rating"] = self.average_rating
+        else:
+            # Si los comentarios no están cargados, devuelve un valor por defecto.
+            d["rating_count"] = 0
+            d["average_rating"] = 0.0
         return d
 
 
