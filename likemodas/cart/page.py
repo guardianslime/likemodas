@@ -1,4 +1,4 @@
-# likemodas/cart/page.py (VERSIÓN FINAL Y CORRECTA)
+# likemodas/cart/page.py (VERSIÓN CON SINTAXIS CORREGIDA)
 
 import reflex as rx
 import reflex_local_auth
@@ -6,10 +6,10 @@ from ..ui.base import base_page
 from ..cart.state import CartState, ProductCardData
 
 def checkout_form() -> rx.Component:
-    """Un formulario de envío simple, similar al de contacto."""
+    """Un formulario de envío con la nueva disposición y menús desplegables."""
     return rx.form(
         rx.vstack(
-            rx.heading("Datos de Envío", size="5", margin_top="1.5em", width="100%", padding_bottom="0.5em"),
+            rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
             rx.grid(
                 rx.vstack(
                     rx.text("Nombre Completo*"),
@@ -38,7 +38,8 @@ def checkout_form() -> rx.Component:
                         placeholder="Selecciona un barrio...",
                         on_change=CartState.set_shipping_neighborhood,
                         value=CartState.shipping_neighborhood,
-                        is_disabled=~rx.Var.list(CartState.neighborhoods).length() > 0,
+                        # ✅ SINTAXIS CORREGIDA AQUÍ
+                        is_disabled=(rx.length(CartState.neighborhoods) == 0),
                     ),
                     spacing="1", align_items="start",
                 ),
@@ -53,7 +54,7 @@ def checkout_form() -> rx.Component:
                 width="100%",
             ),
             rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em"),
-            spacing="3",
+            spacing="4",
             width="100%",
         ),
         on_submit=CartState.handle_checkout,
@@ -102,9 +103,8 @@ def cart_page() -> rx.Component:
                         rx.heading(f"${CartState.cart_total:.2f}", size="6"),
                         justify="end", width="100%", padding_x="1em"
                     ),
-                    # --- AQUÍ ESTÁ LA CORRECCIÓN FINAL: Se llama al formulario ---
                     checkout_form(),
-                    spacing="5", width="100%", max_width="700px" # Aumentamos el ancho
+                    spacing="5", width="100%", max_width="700px"
                 ),
                 rx.center(
                     rx.vstack(
