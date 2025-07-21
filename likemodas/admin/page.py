@@ -1,125 +1,122 @@
+# likemodas/cart/page.py (VERSIÓN FINAL Y CORRECTA)
+
 import reflex as rx
+import reflex_local_auth
 from ..ui.base import base_page
-from .state import AdminConfirmState, PaymentHistoryState
-from ..auth.admin_auth import require_admin
-from ..models import PurchaseModel
+from ..cart.state import CartState, ProductCardData
 
-def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
-    return rx.card(
+def checkout_form() -> rx.Component:
+    """Un formulario de envío con la nueva disposición y menús desplegables."""
+    return rx.form(
         rx.vstack(
-            rx.hstack(
-                rx.text(f"Comprador: {purchase.userinfo.user.username} ({purchase.userinfo.email})", weight="bold"),
-                rx.spacer(),
-                rx.text(f"Fecha: {purchase.purchase_date_formatted}")
-            ),
-            rx.divider(),
-            rx.text("Items:"),
-            rx.foreach(
-                purchase.items_formatted,
-                lambda item_str: rx.text(item_str)
-            ),
-            rx.divider(),
-            rx.vstack(
-                rx.text("Datos de Envío:", weight="medium"),
-                rx.box(
-                    # --- LÍNEA AÑADIDA PARA MOSTRAR EL NOMBRE ---
-                    rx.text(f"Nombre: {purchase.shipping_name}"),
-                    rx.text(f"Ciudad: {purchase.shipping_city}"),
-                    rx.text(f"Dirección: {purchase.shipping_address}"),
-                    rx.text("Barrio: ", rx.cond(purchase.shipping_neighborhood, purchase.shipping_neighborhood, "No especificado")),
-                    rx.text(f"Teléfono: {purchase.shipping_phone}"),
-                    padding_left="1em", font_size="0.9em", color=rx.color("gray", 11),
+            rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
+            rx.grid(
+                rx.vstack(
+                    rx.text("Nombre Completo*"),
+                    rx.input(name="shipping_name", type="text", required=True),
+                    spacing="1", align_items="start",
                 ),
-                spacing="1", align_items="start", width="100%"
-            ),
-            rx.divider(),
-            rx.hstack(
-                rx.text(f"Total: ${purchase.total_price:.2f}", weight="bold"),
-                rx.spacer(),
-                rx.button(
-                    "Confirmar Pago",
-                    on_click=lambda: AdminConfirmState.confirm_payment(purchase.id),
-                    color_scheme="green"
-                )
-            ),
-            spacing="3",
-            width="100%"
-        )
-    )
-
-
-@require_admin
-def admin_confirm_page() -> rx.Component:
-    return base_page(
-        rx.vstack(
-            rx.heading("Confirmar Pagos Pendientes", size="8"),
-            rx.cond(
-                AdminConfirmState.has_pending_purchases,
-                rx.foreach(
-                    AdminConfirmState.pending_purchases,
-                    pending_purchase_card
+                rx.vstack(
+                    rx.text("Teléfono de Contacto*"),
+                    rx.input(name="shipping_phone", type="tel", required=True),
+                    spacing="1", align_items="start",
                 ),
-                rx.center(
-                    rx.text("🎉 ¡Excelente! No hay pagos pendientes de confirmación."),
-                    padding="2em",
-                    bg=rx.color("green", 2),
-                    border_radius="md",
-                    width="100%"
-                )
+                rx.vstack(
+                    rx.text("Ciudad*"),
+                    # --- CORRECCIÓN AQUÍ ---
+                    rx.select(
+                        CartState.cities, # Se usa CartState (minúscula)
+                        placeholder="Selecciona una ciudad...",
+                        on_change=CartState.set_shipping_city_and_reset_neighborhood,
+                        value=CartState.shipping_city, # Se usa CartState (minúscula)
+                    ),
+                    spacing="1", align_items="start",
+                ),
+                rx.vstack(
+                    rx.text("Barrio"),
+                    # --- CORRECCIÓN AQUÍ ---
+                    rx.select(
+                        CartState.neighborhoods, # Se usa CartState (minúscula)
+                        placeholder="Selecciona un barrio...",
+                        on_change=CartState.set_shipping_neighborhood, # Se usa CartState (minúscula)
+                        value=CartState.shipping_neighborhood, # Se usa CartState (minúscula)
+                        is_disabled=~rx.Var.list(CartState.neighborhoods).length() > 0, # Se usa CartState (minúscula)
+                    ),
+                    spacing="1", align_items="start",
+                ),
+                rx.vstack(
+                    rx.text("Dirección de Entrega*"),
+                    rx.input(name="shipping_address", type="text", required=True),
+                    spacing="1", align_items="start",
+                    grid_column="span 2",
+                ),
+                columns="2",
+                spacing="4",
+                width="100%",
             ),
-            spacing="5",
+            rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em"),
+            spacing="4",
             width="100%",
-            max_width="1000px",
-            align="center",
-            padding="2em"
         ),
-        on_mount=AdminConfirmState.clear_notification
+        on_submit=CartState.handle_checkout,
     )
 
-def confirmed_purchase_card(purchase: PurchaseModel) -> rx.Component:
-    return rx.card(
-        rx.vstack(
+# La función cart_item_row no cambia y ya era correcta
+def cart_item_row(item: rx.Var) -> rx.Component:
+    post = item[0]
+    quantity = item[1]
+    return rx.table.row(
+        rx.table.cell(rx.text(post.title)),
+        rx.table.cell(
             rx.hstack(
-                rx.text(f"Comprador: {purchase.userinfo.user.username} ({purchase.userinfo.email})", weight="bold"),
-                rx.spacer(),
-                rx.text(f"Confirmado: {purchase.confirmed_at_formatted}")
-            ),
-            rx.divider(),
-            rx.text("Items:"),
-            rx.foreach(
-                purchase.items_formatted,
-                lambda item_str: rx.text(item_str)
-            ),
-            rx.divider(),
-            rx.text(f"Total: ${purchase.total_price:.2f}", weight="bold", align_self="flex-end"),
-            spacing="3",
-            width="100%"
-        )
+                rx.button("-", on_click=CartState.remove_from_cart(post.id), size="1"),
+                rx.text(quantity),
+                rx.button("+", on_click=CartState.add_to_cart(post.id), size="1"),
+                align="center", spacing="3"
+            )
+        ),
+        rx.table.cell(rx.text(rx.cond(post.price, f"${post.price:.2f}", "$0.00"))),
+        rx.table.cell(rx.text(f"${(post.price * quantity):.2f}")),
     )
 
-@require_admin
-def payment_history_page() -> rx.Component:
+@reflex_local_auth.require_login
+def cart_page() -> rx.Component:
+    """Página del carrito de compras."""
     return base_page(
         rx.vstack(
-            rx.heading("Historial de Pagos Confirmados", size="8"),
+            rx.heading("Mi Carrito", size="8"),
             rx.cond(
-                PaymentHistoryState.has_confirmed_purchases,
-                rx.foreach(
-                    PaymentHistoryState.confirmed_purchases,
-                    confirmed_purchase_card
+                CartState.cart_items_count > 0,
+                rx.vstack(
+                    rx.table.root(
+                        rx.table.header(
+                            rx.table.row(
+                                rx.table.column_header_cell("Producto"),
+                                rx.table.column_header_cell("Cantidad"),
+                                rx.table.column_header_cell("Precio Unitario"),
+                                rx.table.column_header_cell("Subtotal"),
+                            )
+                        ),
+                        rx.table.body(rx.foreach(CartState.cart_details, cart_item_row))
+                    ),
+                    rx.divider(),
+                    rx.hstack(
+                        rx.heading("Total:", size="6"),
+                        rx.heading(f"${CartState.cart_total:.2f}", size="6"),
+                        justify="end", width="100%", padding_x="1em"
+                    ),
+                    checkout_form(),
+                    spacing="5", width="100%", max_width="700px"
                 ),
                 rx.center(
-                    rx.text("📜 Aún no hay pagos confirmados en el historial."),
-                    padding="2em",
-                    bg=rx.color("gray", 2),
-                    border_radius="md",
-                    width="100%"
+                    rx.vstack(
+                        rx.text("Tu carrito está vacío."),
+                        rx.link("Explorar productos", href="/blog/page"),
+                        spacing="3"
+                    ),
+                    min_height="50vh"
                 )
             ),
-            spacing="5",
-            width="100%",
-            max_width="1000px",
-            align="center",
-            padding="2em"
+            align="center", width="100%", padding="2em"
         )
     )
