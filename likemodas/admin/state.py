@@ -3,7 +3,7 @@
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
+from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
@@ -161,19 +161,56 @@ class CartState(SessionState):
     
 
 class AdminConfirmState(SessionState):
-    pending_purchases: list[PurchaseModel] = []
-
-    # ❗️ ELIMINA la línea "new_purchase_notification: bool = False" de aquí si existía.
+    """Estado para manejar las confirmaciones de compras pendientes."""
+    pending_purchases: List[PurchaseModel] = []
 
     @rx.event
     def load_pending_purchases(self):
-        # ... (tu lógica para cargar compras pendientes) ...
-        
-        # ✅ CAMBIO: Al final de la carga, actualiza la variable en SessionState
-        self.new_purchase_notification = len(self.pending_purchases) > 0
+        """Carga las compras pendientes para que el admin las revise."""
+        if not self.is_admin:
+            self.pending_purchases = []
+            return
+        with rx.session() as session:
+            statement = (
+                select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
+                .where(PurchaseModel.status == PurchaseStatus.PENDING)
+                .order_by(PurchaseModel.purchase_date.asc())
+            )
+            self.pending_purchases = session.exec(statement).unique().all()
+            # Actualiza el estado de notificación compartido
+            self.new_purchase_notification = len(self.pending_purchases) > 0
 
     @classmethod
     def notify_admin_of_new_purchase(cls):
-        """Este es un evento de clase para ser llamado desde otros estados."""
-        # ✅ CAMBIO: Este método ahora actualiza directamente SessionState
+        """
+        Método de clase para ser llamado desde otros estados (como CartState)
+        para activar la bandera de notificación.
+        """
         return SessionState.set_new_purchase_notification(True)
+
+
+class PaymentHistoryState(SessionState):
+    """Estado para ver el historial de compras confirmadas y enviadas."""
+    purchases: List[PurchaseModel] = []
+
+    @rx.event
+    def load_confirmed_purchases(self):
+        """Carga todas las compras que no están pendientes para que el admin las vea."""
+        if not self.is_admin:
+            self.purchases = []
+            return
+        with rx.session() as session:
+            statement = (
+                select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
+                .where(PurchaseModel.status != PurchaseStatus.PENDING)
+                .order_by(PurchaseModel.purchase_date.desc())
+            )
+            self.purchases = session.exec(statement).unique().all()
