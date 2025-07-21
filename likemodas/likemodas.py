@@ -76,10 +76,10 @@ app.add_page(blog_detail.blog_post_detail_page, route=f"{navigation.routes.BLOG_
 app.add_page(blog_add.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(blog_edit.blog_post_edit_page, route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
 
-# --- LAS SIGUIENTES LÍNEAS SE COMENTAN PORQUE EL ARCHIVO 'likemodas/admin/page.py' PARECE FALTAR ---
-# --- Para que estas páginas funcionen, debes restaurar o crear ese archivo con las funciones 'admin_confirm_page' y 'payment_history_page'. ---
-# app.add_page(admin_page.admin_confirm_page, route="/admin/confirm-payments", title="Confirmar Pagos", on_load=admin_state.AdminConfirmState.load_pending_purchases)
-# app.add_page(admin_page.payment_history_page, route="/admin/payment-history", title="Historial de Pagos", on_load=admin_state.PaymentHistoryState.load_confirmed_purchases)
+# Páginas de Admin
+
+app.add_page(admin_page.admin_confirm_page, route="/admin/confirm-payments", title="Confirmar Pagos", on_load=admin_state.AdminConfirmState.load_pending_purchases)
+app.add_page(admin_page.payment_history_page, route="/admin/payment-history", title="Historial de Pagos", on_load=admin_state.PaymentHistoryState.load_confirmed_purchases)
 
 # Páginas de Contacto
 app.add_page(contact_page.contact_page, route=navigation.routes.CONTACT_US_ROUTE)

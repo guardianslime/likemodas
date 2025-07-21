@@ -1,9 +1,38 @@
 # likemodas/cart/page.py (VERSIÓN FINAL Y CORRECTA)
 
 import reflex as rx
+from ..auth.admin_auth import require_admin
 import reflex_local_auth
 from ..ui.base import base_page
 from ..cart.state import CartState, ProductCardData
+
+@require_admin
+def admin_confirm_page() -> rx.Component:
+    """Página para que el admin confirme los pagos pendientes."""
+    return base_page(
+        rx.vstack(
+            rx.heading("Confirmar Pagos Pendientes", size="8"),
+            rx.text("Aquí se mostrará la lista de compras por confirmar."),
+            # Aquí irá la lógica para mostrar la tabla de compras pendientes.
+            align="center",
+            spacing="5",
+            padding="2em",
+        )
+    )
+
+@require_admin
+def payment_history_page() -> rx.Component:
+    """Página para que el admin vea el historial de pagos."""
+    return base_page(
+        rx.vstack(
+            rx.heading("Historial de Pagos", size="8"),
+            rx.text("Aquí se mostrará el historial de todas las compras."),
+            # Aquí irá la lógica para mostrar la tabla del historial.
+            align="center",
+            spacing="5",
+            padding="2em",
+        )
+    )
 
 def checkout_form() -> rx.Component:
     """Un formulario de envío con la nueva disposición y menús desplegables."""
