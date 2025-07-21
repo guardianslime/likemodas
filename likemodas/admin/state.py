@@ -1,13 +1,12 @@
-# likemodas/admin/state.py (CORREGIDO)
+# likemodas/admin/state.py (VERSIÓN FINAL Y CORREGIDA)
 
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
-from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, NotificationModel
+from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, NotificationModel, BlogPostModel
 import sqlalchemy
 from sqlmodel import select
 from datetime import datetime
-
 
 class AdminConfirmState(SessionState):
     """
@@ -31,17 +30,20 @@ class AdminConfirmState(SessionState):
             return
 
         with rx.session() as session:
+            # --- CORRECCIÓN CLAVE AQUÍ ---
+            # Se añade un `joinedload` explícito para los comentarios del post,
+            # lo que previene el error `DetachedInstanceError`.
             statement = (
                 select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                    sqlalchemy.orm.joinedload(PurchaseModel.items)
+                    .joinedload(PurchaseItemModel.blog_post)
+                    .joinedload(BlogPostModel.comments)  # <--- ESTA LÍNEA ES LA SOLUCIÓN
                 )
                 .where(PurchaseModel.status == PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.asc())
             )
-            # --- ✨ CORRECCIÓN CLAVE: Se añade .unique() ---
-            # Esto consolida las filas duplicadas que resultan de cargar la colección de 'items'.
             self.pending_purchases = session.exec(statement).unique().all()
 
     @rx.event
@@ -52,27 +54,24 @@ class AdminConfirmState(SessionState):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.PENDING:
-                # Actualizar la compra
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.utcnow()
                 session.add(purchase)
 
-                # --- ✨ LÓGICA AÑADIDA PARA CREAR NOTIFICACIÓN ---
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
                     message=f"🎉 ¡Tu pago de ${purchase.total_price:.2f} ha sido confirmado!",
-                    url="/my-purchases" # Redirige al historial de compras
+                    url="/my-purchases"
                 )
                 session.add(notification)
-                # --- FIN DE LA LÓGICA AÑADIDA ---
-
                 session.commit()
                 
                 yield rx.toast.success(f"Pago de {purchase.userinfo.email} confirmado.")
-                yield type(self).load_pending_purchases # <<< LÍNEA CORREGIDA
+                # Recargamos la lista para que la compra confirmada desaparezca
+                yield self.load_pending_purchases
             else:
                 yield rx.toast.error("La compra no se pudo confirmar o ya fue procesada.")
-        
+    
     @rx.event
     def notify_admin_of_new_purchase(self):
         """
@@ -99,17 +98,21 @@ class PaymentHistoryState(SessionState):
 
     @rx.event
     def load_confirmed_purchases(self):
-        # ...
+        if not self.is_admin:
+            self.confirmed_purchases = []
+            return
+        
         with rx.session() as session:
+            # --- CORRECCIÓN CLAVE AQUÍ TAMBIÉN ---
             statement = (
                 select(PurchaseModel)
                 .options(
-                    # 👇 CORRECCIÓN: Se eliminó el "" de esta línea
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                    sqlalchemy.orm.joinedload(PurchaseModel.items)
+                    .joinedload(PurchaseItemModel.blog_post)
+                    .joinedload(BlogPostModel.comments)  # <--- ESTA LÍNEA ES LA SOLUCIÓN
                 )
                 .where(PurchaseModel.status == PurchaseStatus.CONFIRMED)
                 .order_by(PurchaseModel.confirmed_at.desc())
             )
             self.confirmed_purchases = session.exec(statement).unique().all()
-
