@@ -1,6 +1,7 @@
 # likemodas/models.py (VERSIÓN ACTUALIZADA)
 
 from typing import Optional, List
+# ... el resto de tu código ...
 from . import utils
 from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy import String
