@@ -20,13 +20,21 @@ def pending_purchase_card(purchase: PurchaseModel) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- 👇 SECCIÓN DE DATOS DE ENVÍO AÑADIDA 👇 ---
             rx.vstack(
                 rx.text("Datos de Envío:", weight="medium"),
                 rx.box(
                     rx.text(f"Ciudad: {purchase.shipping_city}"),
                     rx.text(f"Dirección: {purchase.shipping_address}"),
-                    rx.text(f"Barrio: {purchase.shipping_neighborhood or 'No especificado'}"),
+                    # --- 👇 CORRECCIÓN AQUÍ 👇 ---
+                    # Se reemplaza el 'or' de Python con 'rx.cond'
+                    rx.text(
+                        "Barrio: ",
+                        rx.cond(
+                            purchase.shipping_neighborhood,
+                            purchase.shipping_neighborhood,
+                            "No especificado"
+                        )
+                    ),
                     rx.text(f"Teléfono: {purchase.shipping_phone}"),
                     padding_left="1em",
                     font_size="0.9em",
