@@ -95,16 +95,7 @@ class BlogPostModel(rx.Model, table=True):
             return ""
         return self.publish_date.strftime("%d-%m-%Y")
     
-    def dict(self, **kwargs):
-        d = super().dict(**kwargs)
-        # Comprueba si los comentarios ya fueron cargados para evitar el error.
-        if 'comments' in inspect(self).attrs:
-            d["rating_count"] = self.rating_count
-            d["average_rating"] = self.average_rating
-        else:
-            d["rating_count"] = 0
-            d["average_rating"] = 0.0
-        return d
+ 
 
 
 # --- FIN DE CAMBIOS ---

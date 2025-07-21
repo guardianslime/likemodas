@@ -6,6 +6,7 @@ from ..auth.state import SessionState
 from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
+from ..ui.components import ProductCardData
 import reflex_local_auth
 import sqlalchemy
 
@@ -19,28 +20,33 @@ class CartState(SessionState):
     purchase_successful: bool = False
     
     # Esta variable contendrá los posts para la galería y la página de inicio.
-    posts: list[BlogPostModel] = []
+    posts: list[ProductCardData] = []
 
     @rx.event
     def on_load(self):
-        """Carga todos los posts públicos y activos con sus comentarios."""
+        """Carga los posts, calcula las calificaciones y los transforma para la vista."""
         with rx.session() as session:
+            # 1. La consulta a la base de datos sigue siendo la misma
             statement = (
                 select(BlogPostModel)
-                .options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                )
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
                 .order_by(BlogPostModel.created_at.desc())
             )
-            self.posts = session.exec(statement).unique().all()
+            results = session.exec(statement).unique().all()
 
-            # --- 👇 VERIFICA QUE ESTA DEPURACIÓN ESTÉ AQUÍ 👇 ---
-            print("--- DEPURACIÓN REALIZADA DESDE CARTSTATE ---")
-            print(f"Posts cargados en CartState: {len(self.posts)}")
-            for post in self.posts:
-                print(f"  -> Post '{post.title}' en CartState tiene {len(post.comments)} comentarios.")
-            print("--- FIN DE DEPURACIÓN DE CARTSTATE ---")
+            # 2. Transformamos los resultados de la base de datos a nuestro nuevo modelo limpio
+            self.posts = [
+                ProductCardData(
+                    id=post.id,
+                    title=post.title,
+                    price=post.price,
+                    images=post.images,
+                    average_rating=post.average_rating, # El cálculo se hace aquí, en el servidor
+                    rating_count=post.rating_count      # El cálculo se hace aquí, en el servidor
+                )
+                for post in results
+            ]
 
     @rx.var
     def cart_items_count(self) -> int:

@@ -6,7 +6,16 @@ from ..models import BlogPostModel
 from ..cart.state import CartState
 from ..navigation import routes
 
-def _product_card_rating(post: BlogPostModel) -> rx.Component:
+
+class ProductCardData(rx.Base):
+    id: int
+    title: str
+    price: float = 0.0
+    images: list[str] = []
+    average_rating: float = 0.0
+    rating_count: int = 0
+
+def _product_card_rating(post: ProductCardData) -> rx.Component:
     """Un componente para mostrar la calificación global en las tarjetas de producto."""
     average_rating = post.average_rating
     rating_count = post.rating_count
