@@ -1,8 +1,8 @@
-# likemodas/cart/state.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/cart/state.py (VERSIÓN FINAL Y CONSISTENTE)
 
 import reflex as rx
 from typing import Dict, List, Tuple
-from ..auth.state import SessionState  # <--- ¡ESTA ES LA LÍNEA CORREGIDA!
+from ..auth.state import SessionState
 from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
@@ -19,16 +19,12 @@ class ProductCardData(rx.Base):
     rating_count: int = 0
 
 class CartState(SessionState):
-    """
-    Estado que maneja el carrito de compras Y la carga de productos públicos.
-    """
     cart: Dict[int, int] = {}
     purchase_successful: bool = False
     posts: list[ProductCardData] = []
 
     @rx.event
     def on_load(self):
-        """Carga los posts, calcula las calificaciones y los transforma para la vista."""
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -54,26 +50,20 @@ class CartState(SessionState):
     def cart_items_count(self) -> int:
         return sum(self.cart.values())
 
-    # --- 👇 ESTE MÉTODO ES EL ÚNICO CAMBIO IMPORTANTE 👇 ---
+    # --- 👇 ESTE MÉTODO CORREGIDO ES LA CLAVE PARA EL ERROR DEL CARRITO 👇 ---
     @rx.var
-    def cart_details(self) -> List[Tuple[BlogPostModel, int]]:
+    def cart_details(self) -> List[Tuple[ProductCardData, int]]:
+        """
+        Devuelve los detalles del carrito usando el modelo de vista seguro ProductCardData.
+        YA NO consulta la base de datos, lo que evita el error.
+        """
         if not self.cart:
             return []
-        with rx.session() as session:
-            post_ids = list(self.cart.keys())
-            
-            # --- 👇 LA CORRECCIÓN ESTÁ EN ESTA CONSULTA 👇 ---
-            # Aseguramos que la consulta aquí también cargue los comentarios
-            # para evitar el error 'DetachedInstanceError' en la página del carrito.
-            statement = (
-                select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                .where(BlogPostModel.id.in_(post_ids))
-            )
-            results = session.exec(statement).unique().all()
-            
-            post_map = {post.id: post for post in results}
-            return [(post_map[pid], self.cart[pid]) for pid in post_ids if pid in post_map]
+        
+        posts_in_cart = [post for post in self.posts if post.id in self.cart]
+        post_map = {post.id: post for post in posts_in_cart}
+
+        return [(post_map[pid], self.cart[pid]) for pid in self.cart.keys() if pid in post_map]
 
     @rx.var
     def cart_total(self) -> float:
@@ -108,7 +98,6 @@ class CartState(SessionState):
             if not user_info:
                  return rx.window_alert("Usuario no encontrado.")
             
-            # Para crear la compra, sí necesitamos los objetos reales de la BD
             post_ids_in_cart = list(self.cart.keys())
             db_posts_query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))
             db_posts = session.exec(db_posts_query).all()
