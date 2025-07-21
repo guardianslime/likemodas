@@ -36,8 +36,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.vstack(
                             rx.box(
                                 rx.cond(
-                                    # --- 👇 LÍNEA CORREGIDA AQUÍ 👇 ---
-                                    # La forma correcta es simplemente llamar a .length()
                                     post.images & (post.images.length() > 0),
                                     rx.image(
                                         src=rx.get_upload_url(post.images[0]),
@@ -51,7 +49,9 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px"
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
-                            rx.text(rx.cond(post.price, "$" + rx.Var.wrap(post.price).to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
+                            # --- 👇 LÍNEA CORREGIDA AQUÍ 👇 ---
+                            # Se eliminó el `rx.Var.wrap()` incorrecto.
+                            rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
                             _product_card_rating(post),
                             spacing="2", align="start"
                         ),
