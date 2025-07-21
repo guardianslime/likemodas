@@ -56,21 +56,24 @@ class CartState(SessionState):
 
     # --- 👇 ESTE MÉTODO ES EL ÚNICO CAMBIO IMPORTANTE 👇 ---
     @rx.var
-    def cart_details(self) -> List[Tuple[ProductCardData, int]]:
-        """Devuelve los detalles del carrito usando el modelo de vista ProductCardData."""
+    def cart_details(self) -> List[Tuple[BlogPostModel, int]]:
         if not self.cart:
             return []
-        
-        # Filtra los posts ya cargados en memoria para encontrar los que están en el carrito
-        posts_in_cart = [
-            post for post in self.posts if post.id in self.cart
-        ]
-        
-        # Crea un mapa para un acceso rápido
-        post_map = {post.id: post for post in posts_in_cart}
-
-        # Devuelve una lista de tuplas (ProductCardData, cantidad)
-        return [(post_map[pid], self.cart[pid]) for pid in self.cart.keys() if pid in post_map]
+        with rx.session() as session:
+            post_ids = list(self.cart.keys())
+            
+            # --- 👇 LA CORRECCIÓN ESTÁ EN ESTA CONSULTA 👇 ---
+            # Aseguramos que la consulta aquí también cargue los comentarios
+            # para evitar el error 'DetachedInstanceError' en la página del carrito.
+            statement = (
+                select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .where(BlogPostModel.id.in_(post_ids))
+            )
+            results = session.exec(statement).unique().all()
+            
+            post_map = {post.id: post for post in results}
+            return [(post_map[pid], self.cart[pid]) for pid in post_ids if pid in post_map]
 
     @rx.var
     def cart_total(self) -> float:
