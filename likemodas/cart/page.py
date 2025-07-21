@@ -1,9 +1,25 @@
-# likemodas/cart/page.py (VERSIÓN RESTAURADA Y ESTABLE)
+# likemodas/cart/page.py
 
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
 from ..cart.state import CartState, ProductCardData
+
+def checkout_form() -> rx.Component:
+    """Un formulario de envío simple, similar al de contacto."""
+    return rx.form(
+        rx.vstack(
+            rx.heading("Datos de Envío", size="5", margin_top="1em"),
+            rx.input(name="shipping_city", placeholder="Ciudad*", type="text", required=True),
+            rx.input(name="shipping_neighborhood", placeholder="Barrio (Opcional)", type="text"),
+            rx.input(name="shipping_address", placeholder="Dirección de Entrega*", type="text", required=True),
+            rx.input(name="shipping_phone", placeholder="Teléfono de Contacto*", type="tel", required=True),
+            rx.button("Finalizar Compra", type="submit", width="100%", size="3"),
+            spacing="3",
+            width="100%",
+        ),
+        on_submit=CartState.handle_checkout,
+    )
 
 def cart_item_row(item: rx.Var) -> rx.Component:
     post = item[0]
@@ -15,8 +31,7 @@ def cart_item_row(item: rx.Var) -> rx.Component:
                 rx.button("-", on_click=CartState.remove_from_cart(post.id), size="1"),
                 rx.text(quantity),
                 rx.button("+", on_click=CartState.add_to_cart(post.id), size="1"),
-                align="center",
-                spacing="3"
+                align="center", spacing="3"
             )
         ),
         rx.table.cell(rx.text(rx.cond(post.price, f"${post.price:.2f}", "$0.00"))),
@@ -25,6 +40,7 @@ def cart_item_row(item: rx.Var) -> rx.Component:
 
 @reflex_local_auth.require_login
 def cart_page() -> rx.Component:
+    """Página del carrito de compras."""
     return base_page(
         rx.vstack(
             rx.heading("Mi Carrito", size="8"),
@@ -46,14 +62,11 @@ def cart_page() -> rx.Component:
                     rx.hstack(
                         rx.heading("Total:", size="6"),
                         rx.heading(f"${CartState.cart_total:.2f}", size="6"),
-                        justify="end",
-                        width="100%",
-                        padding_x="1em"
+                        justify="end", width="100%", padding_x="1em"
                     ),
-                    rx.button("Proceder al Pago", on_click=CartState.handle_checkout, size="3"),
-                    spacing="5",
-                    width="100%",
-                    max_width="900px"
+                    # --- AQUÍ SE MUESTRA EL NUEVO FORMULARIO ---
+                    checkout_form(),
+                    spacing="5", width="100%", max_width="900px"
                 ),
                 rx.center(
                     rx.vstack(
@@ -64,8 +77,6 @@ def cart_page() -> rx.Component:
                     min_height="50vh"
                 )
             ),
-            align="center",
-            width="100%",
-            padding="2em"
+            align="center", width="100%", padding="2em"
         )
     )

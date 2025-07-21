@@ -77,9 +77,19 @@ class CartState(SessionState):
                 self.cart = self.cart
 
     @rx.event
-    def handle_checkout(self):
+    def handle_checkout(self, form_data: dict):
+        """Maneja el envío del formulario de pago, similar a ContactState."""
+        city = form_data.get("shipping_city", "").strip()
+        neighborhood = form_data.get("shipping_neighborhood", "").strip()
+        address = form_data.get("shipping_address", "").strip()
+        phone = form_data.get("shipping_phone", "").strip()
+
+        if not all([city, address, phone]):
+            return rx.toast.error("Por favor, completa Ciudad, Dirección y Teléfono.")
+        
         if not self.is_authenticated or self.cart_total <= 0:
             return rx.window_alert("No se puede procesar la compra.")
+        
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info:
@@ -93,7 +103,11 @@ class CartState(SessionState):
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
-                status=PurchaseStatus.PENDING 
+                status=PurchaseStatus.PENDING,
+                shipping_city=city,
+                shipping_neighborhood=neighborhood,
+                shipping_address=address,
+                shipping_phone=phone
             )
             session.add(new_purchase)
             session.commit()
@@ -103,13 +117,12 @@ class CartState(SessionState):
                 if post_id in db_post_map:
                     post = db_post_map[post_id]
                     purchase_item = PurchaseItemModel(
-                        purchase_id=new_purchase.id,
-                        blog_post_id=post.id,
-                        quantity=quantity,
-                        price_at_purchase=post.price
+                        purchase_id=new_purchase.id, blog_post_id=post.id,
+                        quantity=quantity, price_at_purchase=post.price
                     )
                     session.add(purchase_item)
             session.commit()
+
         self.cart = {}
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
