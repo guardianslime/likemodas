@@ -66,7 +66,7 @@ class AdminConfirmState(SessionState):
                 session.commit()
                 
                 yield rx.toast.success(f"Pago de {purchase.userinfo.email} confirmado.")
-                yield self.load_pending_purchases
+                yield type(self).load_pending_purchases
             else:
                 yield rx.toast.error("La compra no se pudo confirmar o ya fue procesada.")
     
