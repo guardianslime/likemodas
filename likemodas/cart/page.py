@@ -12,9 +12,11 @@ def checkout_form_dialog() -> rx.Component:
             rx.button("Proceder al Pago", size="3"),
         ),
         rx.dialog.content(
+            # --- CORRECCIÓN AQUÍ: Se asignan nombres a los argumentos ---
+            title="Completa tus Datos de Envío",
+            description="Necesitamos esta información para poder enviar tu pedido.",
             style={"max_width": "450px"},
-            rx_dialog_title="Completa tus Datos de Envío",
-            rx_dialog_description="Necesitamos esta información para poder enviar tu pedido.",
+            # --- FIN DE LA CORRECCIÓN ---
             rx.flex(
                 rx.input(
                     placeholder="Ciudad*", on_change=CartState.set_shipping_city, 
@@ -40,7 +42,6 @@ def checkout_form_dialog() -> rx.Component:
                 rx.dialog.close(
                     rx.button("Cancelar", variant="soft", color_scheme="gray"),
                 ),
-                # El botón de confirmar ahora cierra el diálogo y ejecuta el checkout
                 rx.dialog.close(
                     rx.button("Confirmar Compra", on_click=CartState.handle_checkout),
                 ),
