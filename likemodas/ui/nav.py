@@ -202,10 +202,14 @@ def navbar() -> rx.Component:
                     rx.cond(
                             SessionState.is_authenticated,
                             rx.fragment(
-                                # ✅ CAMBIO AQUÍ
                                 rx.menu.item("Mi Cuenta", on_click=navigation.NavState.to_my_account),
                                 rx.menu.item("Logout", on_click=navigation.NavState.to_logout),
                             ),
+                            rx.fragment(
+                                rx.menu.item("Login", on_click=navigation.NavState.to_login),
+                                rx.menu.item("Register", on_click=navigation.NavState.to_register),
+                            )
+                        ),
                     rx.menu.item("Login", on_click=navigation.NavState.to_login),
                     rx.menu.item("Register", on_click=navigation.NavState.to_register),
                 ),
