@@ -1,19 +1,20 @@
-# likemodas/blog/page.py (VERSIÓN REFACTORIZADA)
+# likemodas/ui/components.py (NUEVO ARCHIVO)
 
 import reflex as rx
-from ..ui.base import base_page 
-from ..cart.state import CartState 
-from ..navigation import routes
 import math
 from ..models import BlogPostModel
-from ..ui.components import product_gallery_component
+from ..cart.state import CartState
+from ..navigation import routes
 
 def _product_card_rating(post: BlogPostModel) -> rx.Component:
+    """Un componente para mostrar la calificación global en las tarjetas de producto."""
     average_rating = post.average_rating
     rating_count = post.rating_count
+    
     full_stars = rx.Var.range(math.floor(average_rating))
     has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
     empty_stars = rx.Var.range(5 - math.ceil(average_rating))
+
     return rx.cond(
         rating_count > 0,
         rx.hstack(
@@ -23,12 +24,11 @@ def _product_card_rating(post: BlogPostModel) -> rx.Component:
             rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
-        rx.box(height="21px")
+        rx.box(height="21px") # Espaciador para mantener la alineación vertical
     )
 
-# --- ✨ NUEVO COMPONENTE REUTILIZABLE --- ✨
 def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Component:
-    """Un componente que muestra una galería de productos."""
+    """Un componente reutilizable que muestra una galería de productos."""
     return rx.flex(
         rx.foreach(
             posts,
@@ -75,22 +75,4 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
             )
         ),
         wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
-    )
-
-# --- ✨ PÁGINA SIMPLIFICADA USANDO EL NUEVO COMPONENTE --- ✨
-def blog_public_page():
-    """Página pública que muestra la galería de productos completa."""
-    return base_page(
-        rx.center(
-            rx.vstack(
-                rx.heading("Publicaciones", size="6"),
-                # Se llama al componente reutilizable
-                product_gallery_component(posts=CartState.posts),
-                spacing="6", 
-                width="100%", 
-                padding="2em", 
-                align="center"
-            ),
-            width="100%"
-        )
     )
