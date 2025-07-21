@@ -1,4 +1,4 @@
-# likemodas/cart/page.py
+# likemodas/cart/page.py (VERSIÓN FINAL Y DEFINITIVA)
 
 import reflex as rx
 import reflex_local_auth
@@ -12,11 +12,16 @@ def checkout_form_dialog() -> rx.Component:
             rx.button("Proceder al Pago", size="3"),
         ),
         rx.dialog.content(
-            # --- CORRECCIÓN AQUÍ: Se asignan nombres a los argumentos ---
-            title="Completa tus Datos de Envío",
-            description="Necesitamos esta información para poder enviar tu pedido.",
             style={"max_width": "450px"},
+            
+            # --- 👇 ESTRUCTURA CORRECTA DEL DIÁLOGO 👇 ---
+            rx.dialog.title("Completa tus Datos de Envío"),
+            rx.dialog.description(
+                "Necesitamos esta información para poder enviar tu pedido.",
+                padding_bottom="1em",
+            ),
             # --- FIN DE LA CORRECCIÓN ---
+
             rx.flex(
                 rx.input(
                     placeholder="Ciudad*", on_change=CartState.set_shipping_city, 
@@ -36,7 +41,6 @@ def checkout_form_dialog() -> rx.Component:
                 ),
                 direction="column",
                 spacing="3",
-                padding_top="1em",
             ),
             rx.flex(
                 rx.dialog.close(
@@ -53,7 +57,7 @@ def checkout_form_dialog() -> rx.Component:
     )
 
 def cart_item_row(item: rx.Var) -> rx.Component:
-    # ... (esta función no cambia)
+    """Fila para un item en el carrito."""
     post = item[0]
     quantity = item[1]
     return rx.table.row(
@@ -99,7 +103,6 @@ def cart_page() -> rx.Component:
                         width="100%",
                         padding_x="1em"
                     ),
-                    # --- 👇 REEMPLAZAMOS EL BOTÓN ANTIGUO POR EL DIÁLOGO CON FORMULARIO 👇 ---
                     checkout_form_dialog(),
                     spacing="5",
                     width="100%",
