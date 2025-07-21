@@ -1,19 +1,27 @@
-# likemodas/likemodas.py (VERSIÓN FINAL)
+# likemodas/likemodas.py (VERSIÓN FINAL CON IMPORTACIONES CORREGIDAS)
 
 import reflex as rx
 import reflex_local_auth
 
 from rxconfig import config
-# Se importan los MÓDULOS principales
-from . import blog, contact, navigation, pages, admin, auth, cart, purchases
 
+# --- Módulos principales ---
+from . import blog, contact, navigation, pages, admin, cart, purchases
+
+# --- Módulos específicos para evitar AttributeError ---
+from .auth import pages as auth_pages
+from .auth import state as auth_state
+from .auth import verify_state
+from .auth import reset_password_state
+from .pages import search_results
+
+# --- Clases y funciones base ---
 from .ui.base import base_page
-from .auth.state import SessionState
 
 def index() -> rx.Component:
     return base_page(
         rx.cond(
-            SessionState.is_authenticated,
+            auth_state.SessionState.is_authenticated,
             pages.dashboard_component(),
             pages.landing_component(),
         )
@@ -34,13 +42,13 @@ app = rx.App(
 
 # --- Páginas Generales y de Autenticación ---
 app.add_page(index, on_load=cart.state.CartState.on_load)
-app.add_page(pages.search_results.search_results_page, route="/search-results", title="Resultados de Búsqueda")
-app.add_page(auth.pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
-app.add_page(auth.pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
-app.add_page(auth.pages.verification_page, route="/verify-email", on_load=auth.verify_state.VerifyState.verify_token)
-app.add_page(auth.pages.forgot_password_page, route="/forgot-password")
-app.add_page(auth.pages.reset_password_page, route="/reset-password", on_load=auth.reset_password_state.ResetPasswordState.on_load_check_token)
-app.add_page(auth.pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
+app.add_page(search_results.search_results_page, route="/search-results", title="Resultados de Búsqueda")
+app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
+app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
+app.add_page(auth_pages.verification_page, route="/verify-email", on_load=verify_state.VerifyState.verify_token)
+app.add_page(auth_pages.forgot_password_page, route="/forgot-password")
+app.add_page(auth_pages.reset_password_page, route="/reset-password", on_load=reset_password_state.ResetPasswordState.on_load_check_token)
+app.add_page(auth_pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pages.about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pages.pricing_page, route=navigation.routes.PRICING_ROUTE)
 
