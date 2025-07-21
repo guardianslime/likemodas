@@ -138,13 +138,11 @@ def blog_post_edit_form() -> rx.Component:
                     rx.hstack(
                         rx.input(
                             name="publish_date",
-                            type="date",
-                            default_value=BlogEditFormState.publish_display_date,
+                            type="date",           
                         ),
                         rx.input(
                             name="publish_time",
                             type="time",
-                            default_value=BlogEditFormState.publish_display_time,
                         ),
                         width="100%"
                     ),

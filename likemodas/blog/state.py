@@ -186,15 +186,21 @@ class BlogEditFormState(BlogPostState):
 
     @rx.var
     def publish_display_date(self) -> str:
-        if not self.post or not self.post.publish_date:
-            return datetime.now().strftime("%Y-%m-%d")
-        return self.post.publish_date.strftime("%Y-%m-%d")
+        # Si el post ya tiene una fecha, la usamos.
+        if self.post and self.post.publish_date:
+            return self.post.publish_date.strftime("%Y-%m-%d")
+        # Si es un post nuevo sin fecha, devolvemos una cadena vacía.
+        # El input del navegador usará automáticamente la fecha actual del usuario.
+        return ""
 
     @rx.var
     def publish_display_time(self) -> str:
-        if not self.post or not self.post.publish_date:
-            return datetime.now().strftime("%H:%M:%S")
-        return self.post.publish_date.strftime("%H:%M:%S")
+        # Si el post ya tiene una fecha, la usamos.
+        if self.post and self.post.publish_date:
+            return self.post.publish_date.strftime("%H:%M:%S")
+        # Si es un post nuevo sin fecha, devolvemos una cadena vacía.
+        # El input del navegador usará automáticamente la hora actual del usuario.
+        return ""
 
     @rx.event
     def handle_submit(self, form_data: dict):
