@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (VERSIÓN CON PÁGINAS FALTANTES COMENTADAS)
+# likemodas/likemodas.py (VERSIÓN FINAL Y COMPLETA)
 
 import reflex as rx
 import reflex_local_auth
@@ -15,6 +15,7 @@ from .blog import page as blog_page, public_detail as blog_public_detail, list a
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
 from .admin import state as admin_state
+from .admin import page as admin_page # <-- Corrección
 from .contact import page as contact_page, state as contact_state
 from . import navigation
 
@@ -31,8 +32,8 @@ def index() -> rx.Component:
 
 app = rx.App(
     theme=rx.theme(
-        appearance="dark", 
-        has_background=True, 
+        appearance="dark",
+        has_background=True,
         panel_background="solid",
         scaling="90%",
         radius="medium",
@@ -75,9 +76,6 @@ app.add_page(blog_list.blog_post_list_page, route=navigation.routes.BLOG_POSTS_R
 app.add_page(blog_detail.blog_post_detail_page, route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
 app.add_page(blog_add.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(blog_edit.blog_post_edit_page, route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
-
-# Páginas de Admin
-
 app.add_page(admin_page.admin_confirm_page, route="/admin/confirm-payments", title="Confirmar Pagos", on_load=admin_state.AdminConfirmState.load_pending_purchases)
 app.add_page(admin_page.payment_history_page, route="/admin/payment-history", title="Historial de Pagos", on_load=admin_state.PaymentHistoryState.load_confirmed_purchases)
 
