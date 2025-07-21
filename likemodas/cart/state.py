@@ -1,4 +1,4 @@
-# likemodas/cart/state.py (VERSIÓN FINAL Y CONSISTENTE)
+# likemodas/cart/state.py (NUEVA VERSIÓN SIMPLIFICADA)
 
 import reflex as rx
 from typing import Dict, List, Tuple
@@ -10,6 +10,7 @@ import reflex_local_auth
 import sqlalchemy
 from ..admin.state import AdminConfirmState
 
+# La clase ProductCardData se mantiene igual
 class ProductCardData(rx.Base):
     id: int
     title: str
@@ -23,7 +24,7 @@ class CartState(SessionState):
     purchase_successful: bool = False
     posts: list[ProductCardData] = []
 
-    # --- 👇 VARIABLES PARA EL FORMULARIO DE ENVÍO 👇 ---
+    # --- VARIABLES PARA EL FORMULARIO DE ENVÍO (igual que en ContactState) ---
     shipping_city: str = ""
     shipping_neighborhood: str = ""
     shipping_address: str = ""
@@ -31,7 +32,7 @@ class CartState(SessionState):
 
     @rx.event
     def on_load(self):
-        # ... (este método no cambia)
+        # Lógica para cargar productos (esta parte es correcta y no cambia)
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -53,7 +54,6 @@ class CartState(SessionState):
 
     @rx.var
     def cart_details(self) -> List[Tuple[ProductCardData, int]]:
-        # ... (este método no cambia)
         if not self.cart:
             return []
         posts_in_cart = [post for post in self.posts if post.id in self.cart]
@@ -62,16 +62,15 @@ class CartState(SessionState):
 
     @rx.var
     def cart_total(self) -> float:
-        # ... (este método no cambia)
         total = 0.0
         for post, quantity in self.cart_details:
             if post and post.price:
                 total += post.price * quantity
         return total
 
+    # Los métodos add_to_cart y remove_from_cart no cambian
     @rx.event
     def add_to_cart(self, post_id: int):
-        # ... (este método no cambia)
         if not self.is_authenticated:
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         current_quantity = self.cart.get(post_id, 0)
@@ -79,7 +78,6 @@ class CartState(SessionState):
 
     @rx.event
     def remove_from_cart(self, post_id: int):
-        # ... (este método no cambia)
         if post_id in self.cart:
             if self.cart[post_id] > 1:
                 self.cart[post_id] -= 1
@@ -87,11 +85,17 @@ class CartState(SessionState):
                 self.cart.pop(post_id, None)
                 self.cart = self.cart
 
+    # --- MÉTODO handle_checkout SIMPLIFICADO (igual que en ContactState) ---
     @rx.event
-    def handle_checkout(self):
-        """Maneja la finalización de la compra, AHORA guardando los datos de envío."""
-        # Validación simple de campos
-        if not all([self.shipping_city.strip(), self.shipping_address.strip(), self.shipping_phone.strip()]):
+    def handle_checkout(self, form_data: dict):
+        """Maneja el envío del formulario de pago."""
+        # Se extraen los datos del formulario que envía el componente rx.form
+        self.shipping_city = form_data.get("shipping_city", "")
+        self.shipping_neighborhood = form_data.get("shipping_neighborhood", "")
+        self.shipping_address = form_data.get("shipping_address", "")
+        self.shipping_phone = form_data.get("shipping_phone", "")
+
+        if not all([self.shipping_city, self.shipping_address, self.shipping_phone]):
             return rx.toast.error("Por favor, completa Ciudad, Dirección y Teléfono.")
         
         if not self.is_authenticated or self.cart_total <= 0:
@@ -107,15 +111,14 @@ class CartState(SessionState):
             db_posts = session.exec(db_posts_query).all()
             db_post_map = {post.id: post for post in db_posts}
 
-            # --- 👇 SE AÑADEN LOS DATOS DE ENVÍO AL CREAR LA COMPRA 👇 ---
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
                 status=PurchaseStatus.PENDING,
-                shipping_city=self.shipping_city.strip(),
-                shipping_neighborhood=self.shipping_neighborhood.strip(),
-                shipping_address=self.shipping_address.strip(),
-                shipping_phone=self.shipping_phone.strip()
+                shipping_city=self.shipping_city,
+                shipping_neighborhood=self.shipping_neighborhood,
+                shipping_address=self.shipping_address,
+                shipping_phone=self.shipping_phone
             )
             session.add(new_purchase)
             session.commit()
@@ -131,16 +134,9 @@ class CartState(SessionState):
                         price_at_purchase=post.price
                     )
                     session.add(purchase_item)
-            
             session.commit()
 
         self.cart = {}
-        # Limpiamos los campos del formulario después de una compra exitosa
-        self.shipping_city = ""
-        self.shipping_neighborhood = ""
-        self.shipping_address = ""
-        self.shipping_phone = ""
-
         yield AdminConfirmState.notify_admin_of_new_purchase()
-        yield rx.toast.success("¡Gracias por tu compra!\nTu orden está pendiente de confirmación.")
-        return rx.redirect("/my-purchases")
+        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+        yield rx.redirect("/my-purchases")

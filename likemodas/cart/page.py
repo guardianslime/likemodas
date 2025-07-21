@@ -5,54 +5,24 @@ import reflex_local_auth
 from ..ui.base import base_page
 from ..cart.state import CartState, ProductCardData
 
-def checkout_form_dialog() -> rx.Component:
-    """Un diálogo modal con el formulario de datos de envío."""
-    return rx.dialog.root(
-        rx.dialog.trigger(
-            rx.button("Proceder al Pago", size="3"),
+def checkout_form() -> rx.Component:
+    """Un formulario de envío simple, similar al de contacto."""
+    return rx.form(
+        rx.vstack(
+            rx.heading("Completa tus Datos de Envío", size="5"),
+            rx.text("Necesitamos esta información para poder enviar tu pedido."),
+            rx.input(name="shipping_city", placeholder="Ciudad*", type="text", required=True),
+            rx.input(name="shipping_neighborhood", placeholder="Barrio (Opcional)", type="text"),
+            rx.input(name="shipping_address", placeholder="Dirección de Entrega*", type="text", required=True),
+            rx.input(name="shipping_phone", placeholder="Teléfono de Contacto*", type="tel", required=True),
+            rx.button("Confirmar Compra", type="submit"),
+            spacing="3",
+            width="100%",
+            padding_top="1em",
+            border_top="1px solid #444",
+            margin_top="1em",
         ),
-        rx.dialog.content(
-            rx.dialog.title("Completa tus Datos de Envío"),
-            rx.dialog.description(
-                "Necesitamos esta información para poder enviar tu pedido.",
-                padding_bottom="1em",
-            ),
-            # --- ESTRUCTURA CORREGIDA PARA EL FORMULARIO Y BOTONES ---
-            rx.flex(
-                rx.input(
-                    placeholder="Ciudad*", on_change=CartState.set_shipping_city, 
-                    value=CartState.shipping_city, type="text"
-                ),
-                rx.input(
-                    placeholder="Barrio (Opcional)", on_change=CartState.set_shipping_neighborhood,
-                    value=CartState.shipping_neighborhood, type="text"
-                ),
-                rx.input(
-                    placeholder="Dirección de Entrega*", on_change=CartState.set_shipping_address,
-                    value=CartState.shipping_address, type="text"
-                ),
-                rx.input(
-                    placeholder="Teléfono de Contacto*", on_change=CartState.set_shipping_phone,
-                    value=CartState.shipping_phone, type="tel"
-                ),
-                direction="column",
-                spacing="3",
-                padding_top="1em"
-            ),
-            rx.flex(
-                rx.dialog.close(
-                    rx.button("Cancelar", variant="soft", color_scheme="gray"),
-                ),
-                # El botón de confirmar ahora también está envuelto en rx.dialog.close
-                rx.dialog.close(
-                    rx.button("Confirmar Compra", on_click=CartState.handle_checkout),
-                ),
-                padding_top="1em",
-                spacing="3",
-                justify="end",
-            ),
-            style={"max_width": "450px"},
-        ),
+        on_submit=CartState.handle_checkout,
     )
 
 
@@ -103,7 +73,7 @@ def cart_page() -> rx.Component:
                         width="100%",
                         padding_x="1em"
                     ),
-                    checkout_form_dialog(),
+                    checkout_form(),
                     spacing="5",
                     width="100%",
                     max_width="900px"
