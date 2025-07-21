@@ -1,10 +1,10 @@
-# likemodas/pages/search_results.py (VERSIÓN CORREGIDA)
+# likemodas/pages/search_results.py (VERSIÓN FINAL Y CORREGIDA)
 
 import reflex as rx
 from ..ui.base import base_page
 from ..ui.search_state import SearchState
-# ✨ CAMBIO: Se importa el nuevo componente reutilizable
-from ..blog.page import product_gallery_component
+# --- CAMBIO 1: Importamos el componente correcto ---
+from ..ui.components import product_gallery_component
 
 def search_results_page() -> rx.Component:
     """Página que muestra los resultados de la búsqueda."""
@@ -14,10 +14,10 @@ def search_results_page() -> rx.Component:
                 rx.heading(f"Resultados para: '{SearchState.search_term}'", size="7"),
                 rx.cond(
                     SearchState.search_results,
-                    # ✨ CAMBIO: Se usa el nuevo componente de galería para mostrar los resultados
+                    # --- CAMBIO 2: Usamos el componente de galería que ahora espera ProductCardData ---
                     product_gallery_component(posts=SearchState.search_results),
                     
-                    # Si no hay resultados, mostramos el mensaje personalizado
+                    # Mensaje si no hay resultados
                     rx.center(
                         rx.text(f"😔 No se encontraron publicaciones con el nombre: '{SearchState.search_term}'"),
                         padding="4em",

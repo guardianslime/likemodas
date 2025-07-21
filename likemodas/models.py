@@ -100,15 +100,6 @@ class BlogPostModel(rx.Model, table=True):
     def publish_date_formatted(self) -> str:
         return format_utc_to_local(self.publish_date)
     
-    def dict(self, **kwargs):
-        d = super().dict(**kwargs)
-        if 'comments' in inspect(self).attrs:
-            d["rating_count"] = self.rating_count
-            d["average_rating"] = self.average_rating
-        else:
-            d["rating_count"] = 0
-            d["average_rating"] = 0.0
-        return d
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
