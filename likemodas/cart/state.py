@@ -53,10 +53,7 @@ class CartState(SessionState):
     # --- 👇 ESTE MÉTODO CORREGIDO ES LA CLAVE PARA EL ERROR DEL CARRITO 👇 ---
     @rx.var
     def cart_details(self) -> List[Tuple[ProductCardData, int]]:
-        """
-        Devuelve los detalles del carrito usando el modelo de vista seguro ProductCardData.
-        YA NO consulta la base de datos, lo que evita el error.
-        """
+        """Devuelve los detalles del carrito usando el modelo de vista seguro ProductCardData."""
         if not self.cart:
             return []
         
