@@ -96,13 +96,11 @@ class BlogPostModel(rx.Model, table=True):
     
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
-        # Comprueba si los comentarios ya fueron cargados en memoria.
-        # Esto evita la "carga perezosa" (lazy load) que causa el error.
+        # Comprueba si los comentarios ya fueron cargados para evitar el error.
         if 'comments' in inspect(self).attrs:
             d["rating_count"] = self.rating_count
             d["average_rating"] = self.average_rating
         else:
-            # Si los comentarios no están cargados, devuelve un valor por defecto.
             d["rating_count"] = 0
             d["average_rating"] = 0.0
         return d
