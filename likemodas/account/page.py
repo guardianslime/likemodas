@@ -1,10 +1,18 @@
 import reflex as rx
-from .. import navigation
+from ..ui.base import base_page
 
 def my_account_redirect_page() -> rx.Component:
     """
-    Página de redirección para la ruta principal de "Mi Cuenta".
-    Redirige a la primera sub-página por defecto, como la información de envío.
+    Página de carga para la sección 'Mi Cuenta'.
+    Muestra un spinner mientras se redirige al usuario.
     """
-    # Redirige a la página de información de envío que ya tienes creada.
-    return rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE)
+    return base_page(
+        rx.center(
+            rx.vstack(
+                rx.spinner(size="3"),
+                rx.text("Redirigiendo a tu cuenta..."),
+                spacing="4"
+            ),
+            min_height="85vh"
+        )
+    )

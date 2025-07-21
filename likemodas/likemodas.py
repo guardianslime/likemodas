@@ -77,7 +77,9 @@ app.add_page(purchases_page.purchase_history_page, route="/my-purchases", title=
 # --- Nuevas Páginas de Cuenta de Usuario ---
 app.add_page(
     account_page_module.my_account_redirect_page, 
-    route=navigation.routes.MY_ACCOUNT_ROUTE
+    route=navigation.routes.MY_ACCOUNT_ROUTE,
+    # 👇 AÑADE ESTA LÍNEA PARA MANEJAR LA REDIRECCIÓN
+    on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE)
 )
 app.add_page(
     shipping_info_module.shipping_info_page,
