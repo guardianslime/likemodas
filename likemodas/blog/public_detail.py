@@ -152,17 +152,28 @@ def _comment_form() -> rx.Component:
 def _comment_card(comment: CommentModel) -> rx.Component:
     return rx.box(
         rx.vstack(
+            # --- SECCIÓN SUPERIOR DEL COMENTARIO (MODIFICADA) ---
             rx.hstack(
+                # Grupo izquierdo: Avatar, Nombre y ESTRELLAS
                 rx.hstack(
-                    rx.avatar(fallback=comment.userinfo.user.username[0], size="3"), # ✨ CAMBIO: size de 2 a 3
-                    rx.text(comment.userinfo.user.username, weight="bold", size="4"), # ✨ CAMBIO: size añadido
-                    rx.text(f"• {comment.created_at_formatted}", size="3", color_scheme="gray"), # ✨ CAMBIO: size de 2 a 3
+                    rx.avatar(fallback=comment.userinfo.user.username[0], size="3"),
+                    rx.text(comment.userinfo.user.username, weight="bold", size="4"),
+                    # --- ESTRELLAS MOVIDAS AQUÍ ---
+                    _star_rating_display(comment.rating),
                     align="center",
+                    spacing="3", # Aumentamos el espaciado para que se vea mejor
                 ),
-                rx.spacer(),
-                _star_rating_display(comment.rating),
+                rx.spacer(), # El espaciador empuja la fecha hacia la derecha
+                # --- FECHA MOVIDA A LA DERECHA ---
+                rx.text(
+                    comment.created_at_formatted, # Quitamos el "•"
+                    size="3",
+                    color_scheme="gray"
+                ),
                 align="center",
+                width="100%",
             ),
+            
             rx.text(comment.content, padding_left="3em", padding_top="0.5em", font_size="1.1em"), # ✨ CAMBIOS: padding y font_size
             rx.cond(
                 SessionState.is_authenticated,
