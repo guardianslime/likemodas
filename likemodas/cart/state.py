@@ -35,6 +35,14 @@ class CartState(SessionState):
             )
             self.posts = session.exec(statement).unique().all()
 
+            # --- 👇 LÍNEAS DE DEPURACIÓN AÑADIDAS 👇 ---
+            print("--- INICIANDO DEPURACIÓN DE CARTSTATE ---")
+            print(f"Número total de posts cargados: {len(self.posts)}")
+            for post in self.posts:
+                # Esta línea nos dirá si la relación de comentarios se está poblando.
+                print(f"  -> Post '{post.title}' tiene {len(post.comments)} comentarios.")
+            print("--- FIN DE DEPURACIÓN ---")
+
     @rx.var
     def cart_items_count(self) -> int:
         return sum(self.cart.values())
