@@ -3,7 +3,7 @@
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
-from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, NotificationModel, BlogPostModel
+from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, NotificationModel
 import sqlalchemy
 from sqlmodel import select
 from datetime import datetime
@@ -22,23 +22,21 @@ class AdminConfirmState(SessionState):
 
     @rx.event
     def load_pending_purchases(self):
-        """
-        Carga las compras con estado 'PENDING' desde la base de datos.
-        """
+        # --- CORRECCIÓN: Se importa BlogPostModel aquí adentro ---
+        from ..models import BlogPostModel
+        
         if not self.is_admin:
             self.pending_purchases = []
             return
 
         with rx.session() as session:
-            # --- CORRECCIÓN CLAVE AQUÍ ---
-            # Se añade un `joinedload` explícito para los comentarios del post.
             statement = (
                 select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items)
                     .joinedload(PurchaseItemModel.blog_post)
-                    .joinedload(BlogPostModel.comments)  # <--- ESTA LÍNEA ES LA SOLUCIÓN
+                    .joinedload(BlogPostModel.comments)
                 )
                 .where(PurchaseModel.status == PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.asc())
