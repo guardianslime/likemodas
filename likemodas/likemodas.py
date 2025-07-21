@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (VERSIÓN CON RUTAS CORREGIDAS)
+# likemodas/likemodas.py (VERSIÓN FINAL)
 
 import reflex as rx
 import reflex_local_auth
@@ -7,10 +7,8 @@ from rxconfig import config
 # Se importan los MÓDULOS principales
 from . import blog, contact, navigation, pages, admin, auth, cart, purchases
 
-# La importación de la página base y el estado base son seguras.
 from .ui.base import base_page
 from .auth.state import SessionState
-
 
 def index() -> rx.Component:
     return base_page(
@@ -32,11 +30,10 @@ app = rx.App(
     ),
 )
 
-# --- Se referencian todas las páginas y eventos on_load a través de sus módulos ---
+# --- Se referencian todas las páginas y eventos on_load a través de sus rutas de módulo completas ---
 
 # --- Páginas Generales y de Autenticación ---
 app.add_page(index, on_load=cart.state.CartState.on_load)
-# ✅ CORRECCIÓN APLICADA AQUÍ
 app.add_page(pages.search_results.search_results_page, route="/search-results", title="Resultados de Búsqueda")
 app.add_page(auth.pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth.pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
