@@ -11,6 +11,8 @@ from .auth import state as auth_state
 from .auth import verify_state
 from .auth import reset_password_state
 from .pages import search_results, about_page, pricing_page, dashboard_component, landing_component
+from .account import page as account_page
+from .account import shipping_info
 from .blog import page as blog_page, public_detail as blog_public_detail, list as blog_list, detail as blog_detail, add as blog_add, edit as blog_edit, state as blog_state
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
@@ -70,6 +72,18 @@ app.add_page(
 # --- Páginas de E-commerce del Usuario ---
 app.add_page(cart_page.cart_page, route="/cart", title="Mi Carrito")
 app.add_page(purchases_page.purchase_history_page, route="/my-purchases", title="Mis Compras", on_load=purchases_state.PurchaseHistoryState.load_purchases)
+
+app.add_page(
+    account_page.my_account_redirect_page, 
+    route=navigation.routes.MY_ACCOUNT_ROUTE, 
+    on_load=purchases_state.PurchaseHistoryState.load_purchases # Opcional: precarga las compras
+)
+app.add_page(
+    shipping_info.shipping_info_page,
+    route=navigation.routes.SHIPPING_INFO_ROUTE,
+    title="Información de Envío",
+    on_load=cart_state.CartState.on_load # Para cargar las ciudades en el formulario
+)
 
 # --- Páginas Privadas de Administración ---
 app.add_page(blog_list.blog_post_list_page, route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)

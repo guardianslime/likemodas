@@ -23,6 +23,10 @@ class NavState(rx.State):
 
     def to_about_us(self):
         return rx.redirect(routes.ABOUT_US_ROUTE)
+    
+    def to_my_account(self):
+        """Redirige a la página principal de Mi Cuenta."""
+        return rx.redirect(routes.MY_ACCOUNT_ROUTE)
 
     def to_articles(self):
         return rx.redirect(routes.ARTICLE_LIST_ROUTE)

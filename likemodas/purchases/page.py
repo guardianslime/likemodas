@@ -1,13 +1,14 @@
-# likemodas/purchases/page.py (CORREGIDO Y COMPLETO)
+# likemodas/purchases/page.py (VERSIÓN MODIFICADA)
 
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
 from .state import PurchaseHistoryState
-from ..cart.state import CartState
 from ..models import PurchaseModel
+from ..account.layout import account_layout # ✅ Importamos el nuevo layout
 
 def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
+    # (Esta función no cambia)
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -18,7 +19,6 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
                 width="100%"
             ),
             rx.divider(),
-            # --- ✨ CORRECCIÓN: Se itera sobre la nueva propiedad computada ---
             rx.foreach(
                 purchase.items_formatted,
                 lambda item_str: rx.text(item_str)
@@ -32,22 +32,18 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
 
 @reflex_local_auth.require_login
 def purchase_history_page() -> rx.Component:
-    return base_page(
-        rx.vstack(
-            rx.heading("Mi Historial de Compras", size="8"),
-            
-            # --- ✨ ELIMINADO: Se quita el rx.callout estático ---
-            # Ya no es necesario, la notificación se muestra con rx.toast al redirigir aquí.
-            
-            rx.cond(
-                 PurchaseHistoryState.purchases,
-                rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
-                rx.text("No tienes compras anteriores.")
-            ),
-            spacing="5",
-            width="100%",
-            max_width="800px",
-            align="center",
-            padding="2em"
-        )
+    # ✅ Se envuelve el contenido en el nuevo account_layout
+    page_content = rx.vstack(
+        rx.heading("Mi Historial de Compras", size="7"),
+        rx.cond(
+            PurchaseHistoryState.purchases,
+            rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
+            rx.text("No tienes compras anteriores.")
+        ),
+        spacing="5",
+        width="100%",
+        max_width="800px",
+        align="center"
     )
+    
+    return base_page(account_layout(page_content))

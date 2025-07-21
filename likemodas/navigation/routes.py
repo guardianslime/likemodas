@@ -2,6 +2,9 @@
 
 HOME_ROUTE="/"
 ABOUT_US_ROUTE="/about"
+MY_ACCOUNT_ROUTE = "/my-account"
+SHIPPING_INFO_ROUTE = "/my-account/shipping-info"
+PURCHASE_HISTORY_ROUTE = "/my-purchases"
 BLOG_POSTS_ROUTE="/blog"
 BLOG_POST_ADD_ROUTE ="/blog/add"
 BLOG_PUBLIC_PAGE_ROUTE = "/blog/page"

@@ -199,6 +199,13 @@ def navbar() -> rx.Component:
                     rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
                     rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
                     rx.menu.separator(),
+                    rx.cond(
+                            SessionState.is_authenticated,
+                            rx.fragment(
+                                # ✅ CAMBIO AQUÍ
+                                rx.menu.item("Mi Cuenta", on_click=navigation.NavState.to_my_account),
+                                rx.menu.item("Logout", on_click=navigation.NavState.to_logout),
+                            ),
                     rx.menu.item("Login", on_click=navigation.NavState.to_login),
                     rx.menu.item("Register", on_click=navigation.NavState.to_register),
                 ),
