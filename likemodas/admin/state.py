@@ -3,7 +3,7 @@
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel
+from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
@@ -181,15 +181,39 @@ class AdminConfirmState(SessionState):
                 .order_by(PurchaseModel.purchase_date.asc())
             )
             self.pending_purchases = session.exec(statement).unique().all()
-            # Actualiza el estado de notificación compartido
             self.new_purchase_notification = len(self.pending_purchases) > 0
+
+    # ✅ NUEVO EVENTO PARA CONFIRMAR UN PAGO
+    @rx.event
+    def confirm_payment(self, purchase_id: int):
+        """Confirma un pago, actualiza el estado y notifica al usuario."""
+        if not self.is_admin:
+            return rx.toast.error("No tienes permisos de administrador.")
+        
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if not purchase:
+                return rx.toast.error("Compra no encontrada.")
+
+            purchase.status = PurchaseStatus.CONFIRMED
+            purchase.confirmed_at = datetime.utcnow()
+            
+            # Crea una notificación para el usuario
+            notification = NotificationModel(
+                userinfo_id=purchase.userinfo_id,
+                message=f"¡Tu compra #{purchase.id} ha sido confirmada!",
+                url="/my-purchases"
+            )
+            session.add(purchase)
+            session.add(notification)
+            session.commit()
+        
+        yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
+        # Vuelve a cargar la lista de pendientes para que se actualice la UI
+        yield self.load_pending_purchases()
 
     @classmethod
     def notify_admin_of_new_purchase(cls):
-        """
-        Método de clase para ser llamado desde otros estados (como CartState)
-        para activar la bandera de notificación.
-        """
         return SessionState.set_new_purchase_notification(True)
 
 
@@ -199,7 +223,6 @@ class PaymentHistoryState(SessionState):
 
     @rx.event
     def load_confirmed_purchases(self):
-        """Carga todas las compras que no están pendientes para que el admin las vea."""
         if not self.is_admin:
             self.purchases = []
             return

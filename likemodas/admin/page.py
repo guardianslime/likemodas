@@ -4,7 +4,61 @@ import reflex as rx
 from ..auth.admin_auth import require_admin
 import reflex_local_auth
 from ..ui.base import base_page
+from .state import AdminConfirmState, PaymentHistoryState
+from ..models import PurchaseModel
 from ..cart.state import CartState, ProductCardData
+
+def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx.Component:
+    """Un componente reutilizable para mostrar una tarjeta de compra en el panel de admin."""
+    return rx.card(
+        rx.vstack(
+            rx.hstack(
+                rx.vstack(
+                    rx.text(f"Compra #{purchase.id}", weight="bold"),
+                    rx.text(f"Cliente: {purchase.userinfo.user.username} ({purchase.userinfo.email})"),
+                    rx.text(f"Fecha: {purchase.purchase_date_formatted}"),
+                    align_items="start",
+                ),
+                rx.spacer(),
+                rx.vstack(
+                    rx.badge(purchase.status.to_str(), color_scheme="blue", variant="soft"),
+                    rx.heading(f"${purchase.total_price:,.2f}", size="5"),
+                    align_items="end",
+                ),
+                width="100%",
+            ),
+            rx.divider(),
+            rx.vstack(
+                rx.text("Detalles de Envío:", weight="medium"),
+                rx.text(f"Nombre: {purchase.shipping_name}"),
+                rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}"),
+                rx.text(f"Teléfono: {purchase.shipping_phone}"),
+                spacing="1",
+                align_items="start",
+                width="100%",
+            ),
+            rx.divider(),
+            rx.vstack(
+                rx.text("Artículos:", weight="medium"),
+                rx.foreach(purchase.items_formatted, lambda item: rx.text(item)),
+                spacing="1",
+                align_items="start",
+                width="100%",
+            ),
+            rx.cond(
+                ~is_history,
+                rx.button(
+                    "Confirmar Pago",
+                    on_click=AdminConfirmState.confirm_payment(purchase.id),
+                    width="100%",
+                    margin_top="1em",
+                )
+            ),
+            spacing="3",
+            width="100%",
+        ),
+        width="100%",
+    )
 
 @require_admin
 def admin_confirm_page() -> rx.Component:
@@ -12,11 +66,22 @@ def admin_confirm_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Confirmar Pagos Pendientes", size="8"),
-            rx.text("Aquí se mostrará la lista de compras por confirmar."),
-            # Aquí irá la lógica para mostrar la tabla de compras pendientes.
+            rx.cond(
+                AdminConfirmState.pending_purchases,
+                rx.foreach(
+                    AdminConfirmState.pending_purchases,
+                    lambda p: purchase_card_admin(p, is_history=False)
+                ),
+                rx.center(
+                    rx.text("No hay compras pendientes por confirmar."),
+                    padding_y="2em",
+                )
+            ),
             align="center",
             spacing="5",
             padding="2em",
+            width="100%",
+            max_width="800px",
         )
     )
 
@@ -26,11 +91,22 @@ def payment_history_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Historial de Pagos", size="8"),
-            rx.text("Aquí se mostrará el historial de todas las compras."),
-            # Aquí irá la lógica para mostrar la tabla del historial.
+            rx.cond(
+                PaymentHistoryState.purchases,
+                rx.foreach(
+                    PaymentHistoryState.purchases,
+                    lambda p: purchase_card_admin(p, is_history=True)
+                ),
+                rx.center(
+                    rx.text("No hay historial de compras."),
+                    padding_y="2em",
+                )
+            ),
             align="center",
             spacing="5",
             padding="2em",
+            width="100%",
+            max_width="800px",
         )
     )
 
@@ -149,3 +225,5 @@ def cart_page() -> rx.Component:
             align="center", width="100%", padding="2em"
         )
     )
+
+
