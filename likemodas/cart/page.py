@@ -1,4 +1,4 @@
-# likemodas/cart/page.py (VERSIÓN CON SINTAXIS CORREGIDA)
+# likemodas/cart/page.py (VERSIÓN FINAL Y ESTRUCTURALMENTE CORRECTA)
 
 import reflex as rx
 import reflex_local_auth
@@ -17,6 +17,7 @@ def checkout_form_dialog() -> rx.Component:
                 "Necesitamos esta información para poder enviar tu pedido.",
                 padding_bottom="1em",
             ),
+            # --- ESTRUCTURA CORREGIDA PARA EL FORMULARIO Y BOTONES ---
             rx.flex(
                 rx.input(
                     placeholder="Ciudad*", on_change=CartState.set_shipping_city, 
@@ -36,11 +37,13 @@ def checkout_form_dialog() -> rx.Component:
                 ),
                 direction="column",
                 spacing="3",
+                padding_top="1em"
             ),
             rx.flex(
                 rx.dialog.close(
                     rx.button("Cancelar", variant="soft", color_scheme="gray"),
                 ),
+                # El botón de confirmar ahora también está envuelto en rx.dialog.close
                 rx.dialog.close(
                     rx.button("Confirmar Compra", on_click=CartState.handle_checkout),
                 ),
@@ -51,6 +54,7 @@ def checkout_form_dialog() -> rx.Component:
             style={"max_width": "450px"},
         ),
     )
+
 
 def cart_item_row(item: rx.Var) -> rx.Component:
     """Fila para un item en el carrito."""
