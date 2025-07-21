@@ -197,6 +197,13 @@ class CommentModel(rx.Model, table=True):
     def dislikes(self) -> int:
         return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
 
+    def dict(self, **kwargs):
+        d = super().dict(**kwargs)
+        d["created_at_formatted"] = self.created_at_formatted
+        d["likes"] = self.likes
+        d["dislikes"] = self.dislikes
+        return d
+
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")

@@ -61,16 +61,27 @@ def _global_rating_display() -> rx.Component:
 
 def _info_section() -> rx.Component:
     return rx.vstack(
-        rx.text(CommentState.post.title, size="9", font_weight="bold", margin_bottom="0.5em", text_align="left"), # ✨ CAMBIO: size de 7 a 9
-        rx.text(CommentState.formatted_price, size="7", color="gray", text_align="left"), # ✨ CAMBIO: size de 6 a 7
-        rx.text(CommentState.content, size="5", margin_top="1em", white_space="pre-wrap", text_align="left"), # ✨ CAMBIO: size de 4 a 5
+        rx.text(CommentState.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
+        
+        # --- 👇 LÍNEA AÑADIDA PARA MOSTRAR LA FECHA DE PUBLICACIÓN 👇 ---
+        rx.text(
+            "Publicado el " + CommentState.post.created_at_formatted,
+            size="3",
+            color_scheme="gray",
+            margin_bottom="0.5em",
+            text_align="left",
+            width="100%"
+        ),
+        
+        rx.text(CommentState.formatted_price, size="7", color="gray", text_align="left"),
+        rx.text(CommentState.content, size="5", margin_top="1em", white_space="pre-wrap", text_align="left"),
         _global_rating_display(),
         rx.spacer(),
         rx.button(
             "Añadir al Carrito",
             on_click=lambda: CartState.add_to_cart(CommentState.post.id),
             width="100%",
-            size="4", # ✨ CAMBIO: size de 3 a 4
+            size="4",
             margin_top="1.5em",
         ),
         padding="1em",
