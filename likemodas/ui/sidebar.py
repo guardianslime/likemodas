@@ -1,10 +1,12 @@
+# likemodas/ui/sidebar.py (CORREGIDO)
+
 import reflex as rx
 from reflex.style import toggle_color_mode
 
 from ..auth.state import SessionState
 from .. import navigation
 from ..models import UserRole
-from ..admin.state import AdminConfirmState
+# Se elimina la importación de "AdminConfirmState" de aquí
 
 def sidebar_user_item() -> rx.Component:
     user_info_obj = SessionState.authenticated_user_info
@@ -70,6 +72,10 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
     )
 
 def sidebar_items() -> rx.Component:
+    # ✅ ¡AQUÍ ESTÁ LA SOLUCIÓN!
+    # Se importa "AdminConfirmState" justo antes de usarlo.
+    from ..admin.state import AdminConfirmState
+
     return rx.vstack(
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
         
@@ -78,7 +84,7 @@ def sidebar_items() -> rx.Component:
             rx.fragment(
                 sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
                 sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
-                sidebar_item(
+                 sidebar_item(
                     "Confirmar Pagos", 
                     "dollar-sign", 
                     "/admin/confirm-payments",
