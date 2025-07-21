@@ -24,56 +24,21 @@ def cart_item_row(item: rx.Var) -> rx.Component:
     )
 
 def checkout_form() -> rx.Component:
-    """Un formulario de envío con la nueva disposición y menús desplegables."""
+    """Un formulario de envío simple, similar al de contacto."""
     return rx.form(
         rx.vstack(
-            rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
-            rx.grid(
-                rx.vstack(
-                    rx.text("Nombre Completo*"),
-                    rx.input(name="shipping_name", type="text", required=True),
-                    spacing="1",
-                ),
-                rx.vstack(
-                    rx.text("Teléfono de Contacto*"),
-                    rx.input(name="shipping_phone", type="tel", required=True),
-                    spacing="1",
-                ),
-                rx.vstack(
-                    rx.text("Ciudad*"),
-                    rx.select(
-                        CartState.cities,
-                        placeholder="Selecciona una ciudad...",
-                        on_change=CartState.set_shipping_city_and_reset_neighborhood,
-                        value=CartState.shipping_city,
-                    ),
-                    spacing="1",
-                ),
-                rx.vstack(
-                    rx.text("Barrio"),
-                    rx.select(
-                        CartState.neighborhoods,
-                        placeholder="Selecciona un barrio...",
-                        on_change=CartState.set_shipping_neighborhood,
-                        value=CartState.shipping_neighborhood,
-                        # Se desactiva si no hay ciudad seleccionada
-                        is_disabled=~rx.Var.list(CartState.neighborhoods).length() > 0,
-                    ),
-                    spacing="1",
-                ),
-                rx.vstack(
-                    rx.text("Dirección de Entrega*"),
-                    rx.input(name="shipping_address", type="text", required=True),
-                    spacing="1",
-                    grid_column="span 2", # Ocupa todo el ancho
-                ),
-                columns="2",
-                spacing="4",
-                width="100%",
-            ),
-            rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em"),
-            spacing="4",
+            rx.heading("Datos de Envío", size="5", margin_top="1em"),
+            rx.text("Necesitamos esta información para poder enviar tu pedido."),
+            rx.input(name="shipping_city", placeholder="Ciudad*", type="text", required=True),
+            rx.input(name="shipping_neighborhood", placeholder="Barrio (Opcional)", type="text"),
+            rx.input(name="shipping_address", placeholder="Dirección de Entrega*", type="text", required=True),
+            rx.input(name="shipping_phone", placeholder="Teléfono de Contacto*", type="tel", required=True),
+            rx.button("Confirmar Compra", type="submit"),
+            spacing="3",
             width="100%",
+            padding_top="1em",
+            border_top="1px solid #444",
+            margin_top="1em",
         ),
         on_submit=CartState.handle_checkout,
     )
