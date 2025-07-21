@@ -3,7 +3,7 @@
 import reflex as rx
 from typing import List
 from ..auth.state import SessionState
-from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, NotificationModel
+from ..models import BlogPostModel, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, NotificationModel
 import sqlalchemy
 from sqlmodel import select
 from datetime import datetime
