@@ -1,15 +1,17 @@
-# likemodas/cart/page.py (CORREGIDO Y COMPLETO)
+# likemodas/cart/page.py (VERSIÓN FINAL Y CORREGIDA)
 
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
-from .state import CartState
+from ..cart.state import CartState, ProductCardData
 
+# --- CAMBIO IMPORTANTE: La función ahora espera un ProductCardData ---
 def cart_item_row(item: rx.Var) -> rx.Component:
     """Fila para un item en el carrito."""
+    # post ahora es un objeto ProductCardData, no un BlogPostModel
     post = item[0]
     quantity = item[1]
-    # --- ✨ CORRECCIÓN: Se usa la sintaxis de tabla modular ---
+    
     return rx.table.row(
         rx.table.cell(rx.text(post.title)),
         rx.table.cell(
@@ -24,7 +26,7 @@ def cart_item_row(item: rx.Var) -> rx.Component:
         rx.table.cell(rx.text(rx.cond(post.price, f"${post.price:.2f}", "$0.00"))),
         rx.table.cell(rx.text(f"${(post.price * quantity):.2f}")),
     )
-# --- FIN DE CAMBIOS ---
+
 
 @reflex_local_auth.require_login
 def cart_page() -> rx.Component:
@@ -45,6 +47,8 @@ def cart_page() -> rx.Component:
                             )
                         ),
                         rx.table.body(
+                            # Esta línea ahora funciona correctamente porque cart_details
+                            # devuelve objetos ProductCardData que son seguros.
                             rx.foreach(CartState.cart_details, cart_item_row)
                         )
                     ),
