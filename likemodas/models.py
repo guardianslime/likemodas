@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN CON ZONAS HORARIAS CORREGIDAS)
+# likemodas/models.py (VERSIÓN CON HORA EN FORMATO 12 HORAS)
 
 from typing import Optional, List
 from . import utils
@@ -10,7 +10,7 @@ from reflex_local_auth.user import LocalUser
 import sqlalchemy
 import enum
 import math
-import pytz # Importamos la nueva librería
+import pytz
 
 # --- Función Auxiliar para Conversión de Hora ---
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
@@ -18,13 +18,13 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     if not utc_dt:
         return "N/A"
     colombia_tz = pytz.timezone("America/Bogota")
-    # Aseguramos que la fecha guardada sea consciente de que es UTC
     aware_utc_dt = utc_dt.replace(tzinfo=pytz.utc)
-    # La convertimos a la zona horaria local
     local_dt = aware_utc_dt.astimezone(colombia_tz)
-    return local_dt.strftime('%d-%m-%Y %H:%M')
+    # --- CAMBIO AQUÍ: de %H:%M a %I:%M %p ---
+    return local_dt.strftime('%d-%m-%Y %I:%M %p')
 
-# (Los ENUMs no cambian)
+# (El resto del archivo no necesita cambios, pero se incluye para que lo reemplaces completo)
+
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"

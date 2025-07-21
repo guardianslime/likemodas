@@ -1,3 +1,5 @@
+# likemodas/blog/state.py (VERSIÓN CON HORA EN FORMATO 12 HORAS)
+
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -10,8 +12,7 @@ from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, Vo
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# --- ESTADOS PARA PÁGINAS DE ADMINISTRACIÓN (No cambian) ---
-
+# (Las clases BlogPostState y BlogAddFormState no necesitan cambios)
 class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
     posts: list[BlogPostModel] = []
@@ -62,7 +63,6 @@ class BlogPostState(SessionState):
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
-        """Cambia el estado de publicación de un post y actualiza la fecha."""
         if not self.is_admin:
             return rx.toast.error("No tienes permiso para esta acción.")
         with rx.session() as session:
@@ -122,7 +122,6 @@ class BlogAddFormState(SessionState):
 
     @rx.event
     def submit(self):
-        """Guarda el post como un borrador (no publicado)."""
         if not self.is_admin: return rx.window_alert("No tienes permiso.")
         if self.price <= 0: return rx.window_alert("El precio debe ser mayor a cero.")
         if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
@@ -145,7 +144,6 @@ class BlogAddFormState(SessionState):
 
     @rx.event
     def submit_and_publish(self):
-        """Guarda y publica el post inmediatamente."""
         if not self.is_admin: return rx.window_alert("No tienes permiso.")
         if self.price <= 0: return rx.window_alert("El precio debe ser mayor a cero.")
         if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
@@ -186,20 +184,15 @@ class BlogEditFormState(BlogPostState):
 
     @rx.var
     def publish_display_date(self) -> str:
-        # Si el post ya tiene una fecha, la usamos.
         if self.post and self.post.publish_date:
             return self.post.publish_date.strftime("%Y-%m-%d")
-        # Si es un post nuevo sin fecha, devolvemos una cadena vacía.
-        # El input del navegador usará automáticamente la fecha actual del usuario.
         return ""
 
     @rx.var
     def publish_display_time(self) -> str:
-        # Si el post ya tiene una fecha, la usamos.
         if self.post and self.post.publish_date:
-            return self.post.publish_date.strftime("%H:%M:%S")
-        # Si es un post nuevo sin fecha, devolvemos una cadena vacía.
-        # El input del navegador usará automáticamente la hora actual del usuario.
+            # --- CAMBIO AQUÍ: de %H:%M:%S a %I:%M:%S %p ---
+            return self.post.publish_date.strftime("%I:%M:%S %p")
         return ""
 
     @rx.event
@@ -217,7 +210,8 @@ class BlogEditFormState(BlogPostState):
         if form_data.get("publish_date") and form_data.get("publish_time"):
             try:
                 dt_str = f"{form_data['publish_date']} {form_data['publish_time']}"
-                form_data["publish_date"] = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+                # --- CAMBIO AQUÍ: Se ajusta el formato para aceptar AM/PM ---
+                form_data["publish_date"] = datetime.strptime(dt_str, "%Y-%m-%d %I:%M:%S %p")
             except ValueError:
                 form_data["publish_date"] = self.post.publish_date if self.post else datetime.utcnow()
         form_data.pop("publish_time", None)
@@ -232,7 +226,7 @@ class BlogEditFormState(BlogPostState):
         
         return rx.redirect(f"/blog/{post_id}")
 
-# --- ESTADO PARA LA PÁGINA PÚBLICA (BLOG Y COMENTARIOS) ---
+# (La clase CommentState no necesita cambios)
 class CommentState(SessionState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
     post: Optional[BlogPostModel] = None
