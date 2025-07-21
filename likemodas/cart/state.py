@@ -6,11 +6,18 @@ from ..auth.state import SessionState
 from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
-from ..ui.components import ProductCardData
 import reflex_local_auth
 import sqlalchemy
 
 from ..admin.state import AdminConfirmState
+
+class ProductCardData(rx.Base):
+    id: int
+    title: str
+    price: float = 0.0
+    images: list[str] = []
+    average_rating: float = 0.0
+    rating_count: int = 0
 
 class CartState(SessionState):
     """

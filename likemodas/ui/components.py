@@ -3,19 +3,13 @@
 import reflex as rx
 import math
 from ..models import BlogPostModel
-from ..cart.state import CartState
+from ..cart.state import CartState, ProductCardData
 from ..navigation import routes
 
 
-class ProductCardData(rx.Base):
-    id: int
-    title: str
-    price: float = 0.0
-    images: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
 
-def _product_card_rating(post: ProductCardData) -> rx.Component:
+
+def _product_card_rating(post: ProductCardData)
     """Un componente para mostrar la calificación global en las tarjetas de producto."""
     average_rating = post.average_rating
     rating_count = post.rating_count
