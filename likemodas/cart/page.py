@@ -1,17 +1,60 @@
-# likemodas/cart/page.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/cart/page.py
 
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
 from ..cart.state import CartState, ProductCardData
 
-# --- CAMBIO IMPORTANTE: La función ahora espera un ProductCardData ---
+def checkout_form_dialog() -> rx.Component:
+    """Un diálogo modal con el formulario de datos de envío."""
+    return rx.dialog.root(
+        rx.dialog.trigger(
+            rx.button("Proceder al Pago", size="3"),
+        ),
+        rx.dialog.content(
+            style={"max_width": "450px"},
+            rx_dialog_title="Completa tus Datos de Envío",
+            rx_dialog_description="Necesitamos esta información para poder enviar tu pedido.",
+            rx.flex(
+                rx.input(
+                    placeholder="Ciudad*", on_change=CartState.set_shipping_city, 
+                    value=CartState.shipping_city, type="text"
+                ),
+                rx.input(
+                    placeholder="Barrio (Opcional)", on_change=CartState.set_shipping_neighborhood,
+                    value=CartState.shipping_neighborhood, type="text"
+                ),
+                rx.input(
+                    placeholder="Dirección de Entrega*", on_change=CartState.set_shipping_address,
+                    value=CartState.shipping_address, type="text"
+                ),
+                rx.input(
+                    placeholder="Teléfono de Contacto*", on_change=CartState.set_shipping_phone,
+                    value=CartState.shipping_phone, type="tel"
+                ),
+                direction="column",
+                spacing="3",
+                padding_top="1em",
+            ),
+            rx.flex(
+                rx.dialog.close(
+                    rx.button("Cancelar", variant="soft", color_scheme="gray"),
+                ),
+                # El botón de confirmar ahora cierra el diálogo y ejecuta el checkout
+                rx.dialog.close(
+                    rx.button("Confirmar Compra", on_click=CartState.handle_checkout),
+                ),
+                padding_top="1em",
+                spacing="3",
+                justify="end",
+            ),
+        ),
+    )
+
 def cart_item_row(item: rx.Var) -> rx.Component:
-    """Fila para un item en el carrito."""
-    # post ahora es un objeto ProductCardData, no un BlogPostModel
+    # ... (esta función no cambia)
     post = item[0]
     quantity = item[1]
-    
     return rx.table.row(
         rx.table.cell(rx.text(post.title)),
         rx.table.cell(
@@ -26,7 +69,6 @@ def cart_item_row(item: rx.Var) -> rx.Component:
         rx.table.cell(rx.text(rx.cond(post.price, f"${post.price:.2f}", "$0.00"))),
         rx.table.cell(rx.text(f"${(post.price * quantity):.2f}")),
     )
-
 
 @reflex_local_auth.require_login
 def cart_page() -> rx.Component:
@@ -46,11 +88,7 @@ def cart_page() -> rx.Component:
                                 rx.table.column_header_cell("Subtotal"),
                             )
                         ),
-                        rx.table.body(
-                            # Esta línea ahora funciona correctamente porque cart_details
-                            # devuelve objetos ProductCardData que son seguros.
-                            rx.foreach(CartState.cart_details, cart_item_row)
-                        )
+                        rx.table.body(rx.foreach(CartState.cart_details, cart_item_row))
                     ),
                     rx.divider(),
                     rx.hstack(
@@ -60,7 +98,8 @@ def cart_page() -> rx.Component:
                         width="100%",
                         padding_x="1em"
                     ),
-                    rx.button("Proceder al Pago", on_click=CartState.handle_checkout, size="3"),
+                    # --- 👇 REEMPLAZAMOS EL BOTÓN ANTIGUO POR EL DIÁLOGO CON FORMULARIO 👇 ---
+                    checkout_form_dialog(),
                     spacing="5",
                     width="100%",
                     max_width="900px"
