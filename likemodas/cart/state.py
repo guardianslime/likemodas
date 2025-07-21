@@ -2,7 +2,7 @@
 
 import reflex as rx
 from typing import Dict, List, Tuple
-from .state import SessionState # Asegúrate que esta importación sea correcta
+from ..auth.state import SessionState  # <--- ¡ESTA ES LA LÍNEA CORREGIDA!
 from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
