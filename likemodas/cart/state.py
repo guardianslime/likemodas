@@ -1,14 +1,14 @@
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
-# --- Se importa el estado de admin para notificaciones ---
-from ..admin.state import AdminConfirmState 
 from ..data.colombia_locations import load_colombia_data
+# Se importa AdminConfirmState desde su ubicación correcta para las notificaciones
+from ..admin.state import AdminConfirmState
 
 class ProductCardData(rx.Base):
     id: int
@@ -22,7 +22,6 @@ class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     
-    # --- ESTADO PARA EL FORMULARIO DE ENVÍO ---
     colombia_data: Dict[str, List[str]] = load_colombia_data()
     shipping_name: str = ""
     shipping_city: str = ""
@@ -32,17 +31,14 @@ class CartState(SessionState):
     
     @rx.var
     def cities(self) -> List[str]:
-        """Devuelve una lista de todas las ciudades para el menú desplegable."""
         return list(self.colombia_data.keys())
 
     @rx.var
     def neighborhoods(self) -> List[str]:
-        """Devuelve los barrios de la ciudad seleccionada."""
         return self.colombia_data.get(self.shipping_city, [])
 
     @rx.event
     def set_shipping_city_and_reset_neighborhood(self, city: str):
-        """Actualiza la ciudad y reinicia el barrio seleccionado."""
         self.shipping_city = city
         self.shipping_neighborhood = ""
 
@@ -98,13 +94,52 @@ class CartState(SessionState):
             else:
                 self.cart.pop(post_id, None)
                 self.cart = self.cart
-                
+    
+    @rx.var
+    def dashboard_posts(self) -> list[ProductCardData]:
+        limit = min(20, len(self.posts))
+        return self.posts[:limit]
+
+    @rx.var
+    def landing_page_posts(self) -> list[ProductCardData]:
+        if not self.posts:
+            return []
+        return self.posts[:1]
+
+    @rx.event
+    def load_default_shipping_info(self):
+        """Carga la dirección predeterminada del usuario si existe."""
+        if not self.authenticated_user_info:
+            return
+
+        with rx.session() as session:
+            default_address = session.exec(
+                select(ShippingAddressModel).where(
+                    ShippingAddressModel.userinfo_id == self.authenticated_user_info.id,
+                    ShippingAddressModel.is_default == True
+                )
+            ).one_or_none()
+
+            if default_address:
+                # Pre-popula los campos del estado del carrito
+                self.shipping_name = default_address.name
+                self.shipping_phone = default_address.phone
+                self.shipping_city = default_address.city
+                self.shipping_neighborhood = default_address.neighborhood
+                self.shipping_address = default_address.address
+                # ¡Dispara el evento para cargar los barrios correspondientes!
+                yield self.set_shipping_city_and_reset_neighborhood(default_address.city)
+
+
     @rx.event
     def handle_checkout(self, form_data: dict):
-        """Maneja el envío del formulario de pago."""
+        """
+        Maneja la compra final usando la información de envío del formulario.
+        """
+        # Validación usando la información del formulario
         name = form_data.get("shipping_name", "").strip()
-        address = form_data.get("shipping_address", "").strip()
         phone = form_data.get("shipping_phone", "").strip()
+        address = form_data.get("shipping_address", "").strip()
         city = self.shipping_city
         neighborhood = self.shipping_neighborhood
 
@@ -128,6 +163,7 @@ class CartState(SessionState):
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
                 status=PurchaseStatus.PENDING,
+                # Usa las variables del formulario y del estado
                 shipping_name=name,
                 shipping_city=city,
                 shipping_neighborhood=neighborhood,
