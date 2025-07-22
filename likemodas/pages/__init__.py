@@ -7,7 +7,8 @@ from .pricing import pricing_page
 from .protected import protected_page
 from . import search_results
 # --- 👇 AÑADE ESTA LÍNEA DE IMPORTACIÓN 👇 ---
-from . import category_page
+#from . import category_page
+from . import test_page
 
 
 __all__ = [ 
@@ -18,5 +19,6 @@ __all__ = [
     'protected_page',
     'search_results',
     # --- 👇 Y AÑADE ESTA LÍNEA AQUÍ TAMBIÉN 👇 ---
-    'category_page'
+    #'category_page'
+    'test_page' 
 ]
