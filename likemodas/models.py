@@ -42,6 +42,7 @@ class UserInfo(rx.Model, table=True):
     user: Optional[LocalUser] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
+    shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
@@ -94,6 +95,24 @@ class BlogPostModel(rx.Model, table=True):
     @property
     def publish_date_formatted(self) -> str:
         return format_utc_to_local(self.publish_date)
+
+class ShippingAddressModel(rx.Model, table=True):
+    __tablename__ = "shippingaddress"
+    
+    userinfo_id: int = Field(foreign_key="userinfo.id")
+    userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
+    
+    # Campos de la dirección
+    name: str
+    phone: str
+    city: str
+    neighborhood: str
+    address: str
+    
+    # Campo clave para la dirección predeterminada
+    is_default: bool = Field(default=False, nullable=False)
+
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")

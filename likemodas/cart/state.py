@@ -3,7 +3,7 @@
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, PurchaseStatus
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
@@ -107,7 +107,32 @@ class CartState(SessionState):
         if not self.posts:
             return []
         return self.posts[:1]
-                
+
+    @rx.event
+    def load_default_shipping_info(self):
+        """Carga la dirección predeterminada del usuario si existe."""
+        if not self.authenticated_user_info:
+            return
+
+        with rx.session() as session:
+            default_address = session.exec(
+                select(ShippingAddressModel).where(
+                    ShippingAddressModel.userinfo_id == self.authenticated_user_info.id,
+                    ShippingAddressModel.is_default == True
+                )
+            ).one_or_none()
+
+            if default_address:
+                # Pre-popula los campos del estado del carrito
+                self.shipping_name = default_address.name
+                self.shipping_phone = default_address.phone
+                self.shipping_city = default_address.city
+                self.shipping_neighborhood = default_address.neighborhood
+                self.shipping_address = default_address.address
+                # ¡Dispara el evento para cargar los barrios correspondientes!
+                yield self.set_shipping_city_and_reset_neighborhood(default_address.city)
+
+
     @rx.event
     def handle_checkout(self, form_data: dict):
         from ..admin.state import AdminConfirmState

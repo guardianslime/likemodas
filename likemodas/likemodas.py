@@ -21,6 +21,7 @@ from . import navigation
 # ✅ Se importan los módulos de 'account' explícitamente
 from .account import page as account_page_module
 from .account import shipping_info as shipping_info_module
+from .account import shipping_info_state
 
 from .ui.base import base_page
 
@@ -71,7 +72,17 @@ app.add_page(
 )
 
 # --- Páginas de E-commerce del Usuario ---
-app.add_page(cart_page.cart_page, route="/cart", title="Mi Carrito")
+app.add_page(
+    cart_page.cart_page,
+    route="/cart",
+    title="Mi Carrito",
+    # 👇 Se carga la información de envío predeterminada al visitar el carrito
+    on_load=[
+        cart_state.CartState.on_load, 
+        cart_state.CartState.load_default_shipping_info
+    ]
+)
+
 app.add_page(purchases_page.purchase_history_page, route="/my-purchases", title="Mis Compras", on_load=purchases_state.PurchaseHistoryState.load_purchases)
 
 # --- Nuevas Páginas de Cuenta de Usuario ---
@@ -81,11 +92,13 @@ app.add_page(
     # 👇 AÑADE ESTA LÍNEA PARA MANEJAR LA REDIRECCIÓN
     on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE)
 )
+
 app.add_page(
     shipping_info_module.shipping_info_page,
     route=navigation.routes.SHIPPING_INFO_ROUTE,
     title="Información de Envío",
-    on_load=cart_state.CartState.on_load
+    # 👇 Se carga la lista de direcciones al visitar la página
+    on_load=shipping_info_state.ShippingInfoState.load_addresses 
 )
 
 # --- Páginas Privadas de Administración ---
