@@ -99,20 +99,6 @@ app.add_page(
     on_load=shipping_info_state.ShippingInfoState.load_addresses 
 )
 
-app.add_page(
-    admin_page.admin_confirm_page, 
-    route="/admin/confirm-payments", 
-    title="Confirmar Pagos", 
-    # --- VERIFICACIÓN: debe usar admin_state ---
-    on_load=admin_state.AdminConfirmState.load_pending_purchases
-)
-app.add_page(
-    admin_page.payment_history_page, 
-    route="/admin/payment-history", 
-    title="Historial de Pagos", 
-    # --- VERIFICACIÓN: debe usar admin_state ---
-    on_load=admin_state.PaymentHistoryState.load_confirmed_purchases
-)
 
 # --- Páginas Privadas de Administración ---
 app.add_page(blog_list.blog_post_list_page, route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)

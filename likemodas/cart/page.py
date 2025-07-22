@@ -151,7 +151,7 @@ def checkout_form() -> rx.Component:
                         placeholder="Selecciona un barrio...",
                         on_change=CartState.set_shipping_neighborhood,
                         value=CartState.shipping_neighborhood,
-                        is_disabled=~rx.Var.list(CartState.neighborhoods).length() > 0,
+                        is_disabled=~(CartState.neighborhoods.length() > 0),
                     ),
                     spacing="1", align_items="start",
                 ),
