@@ -48,12 +48,13 @@ app.add_page(
     on_load=cart_state.CartState.on_load
 )
 
-# app.add_page(
-#     category_page.category_page,
-#     route="/category/[cat_name]",
-#     title="Categoría",
-#     on_load=category_page.CategoryPageState.load_category_posts
-# )
+app.add_page(
+    category_page.category_page,
+    route="/category/[cat_name]",
+    title="Categoría",
+    # OJO: Por ahora, quita el on_load ya que el evento no existe en el estado mínimo
+    # on_load=category_page.CategoryPageState.load_category_posts 
+)
 
 app.add_page(search_results.search_results_page, route="/search-results", title="Resultados de Búsqueda")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)

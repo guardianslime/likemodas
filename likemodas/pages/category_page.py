@@ -12,10 +12,8 @@ from ..auth.state import SessionState
 
 class CategoryPageState(SessionState):
     """Estado para manejar la página de una categoría específica."""
-    
-    posts_in_category: list[ProductCardData] = []
-
     # --- 👇 CAMBIO 1: Renombramos la variable 👇 ---
+
     cat_name: str = ""
 
     @rx.event
@@ -49,27 +47,12 @@ class CategoryPageState(SessionState):
             else:
                 self.posts_in_category = self.posts
 
-def category_page() -> rx.Component:
-    """Página que muestra productos de una categoría específica."""
-    return base_page(
-        rx.center(
-            rx.vstack(
-                # --- 👇 CAMBIO 3: Usamos el nuevo nombre aquí 👇 ---
-                rx.heading(CategoryPageState.cat_name.to_title(), size="8"),
-                rx.cond(
-                    CategoryPageState.posts_in_category,
-                    product_gallery_component(posts=CategoryPageState.posts_in_category),
-                    rx.center(
-                        # --- 👇 Y también aquí 👇 ---
-                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.cat_name}'."),
-                        min_height="40vh"
-                    )
-                ),
-                spacing="6", 
-                width="100%", 
-                padding="2em", 
-                align="center"
-            ),
-            width="100%"
+    def category_page() -> rx.Component:
+        """Página simplificada para depuración."""
+        return base_page(
+            rx.center(
+                rx.heading(f"Categoría: {CategoryPageState.cat_name}"),
+                min_height="85vh"
+            )
         )
-    )
+        
