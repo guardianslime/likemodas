@@ -84,8 +84,11 @@ class BlogPostModel(rx.Model, table=True):
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
     category: Category = Field(
         default=Category.OTROS, 
-        nullable=False,
-        sa_column=Column(String, server_default=Category.OTROS.value)
+        sa_column=Column(
+            String, 
+            server_default=Category.OTROS.value,
+            nullable=False  # <-- La propiedad ahora está en el lugar correcto.
+        )
     )
     
     @property
