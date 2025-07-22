@@ -1,6 +1,0 @@
-import{ba as e}from"./createLucideIcon-D1OPFgVk.js";import"./chunk-QMGIS6GS-CgUBpFMi.js";import"./index-B9RKNTce.js";/**
- * @license lucide-react v0.511.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */const o=[["path",{d:"M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z",key:"17jzev"}]],m=e("thermometer",o);export{o as __iconNode,m as default};
