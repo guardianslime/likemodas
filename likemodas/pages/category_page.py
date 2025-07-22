@@ -14,19 +14,19 @@ class CategoryPageState(CartState):
     
     posts_in_category: list[ProductCardData] = []
 
+    # --- 👇 ESTA ES LA LÍNEA CLAVE Y CORRECTA 👇 ---
+    # Una variable simple. Reflex la llenará automáticamente desde la URL.
     category_name: str = ""
 
     @rx.event
     def load_category_posts(self):
         """Carga los productos que pertenecen a la categoría actual."""
         with rx.session() as session:
-            # Primero, carga todos los posts como hace el on_load de CartState
             yield super().on_load() 
             
-            # Ahora, filtra los posts para esta categoría
+            # Ahora, 'self.category_name' ya tiene el valor correcto de la URL.
             if self.category_name != "todos":
                 try:
-                    # Valida que la categoría exista
                     category_enum = Category(self.category_name)
                     statement = (
                         select(BlogPostModel)
@@ -46,11 +46,10 @@ class CategoryPageState(CartState):
                         ) for post in results
                     ]
                 except ValueError:
-                    # Si la categoría no es válida, la lista estará vacía
                     self.posts_in_category = []
             else:
-                # Si la categoría es "todos", muestra todos los posts
                 self.posts_in_category = self.posts
+
     
 
 def category_page() -> rx.Component:
