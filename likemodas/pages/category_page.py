@@ -14,10 +14,7 @@ class CategoryPageState(CartState):
     
     posts_in_category: list[ProductCardData] = []
 
-    @rx.var
-    def category_name(self) -> str:
-        """Obtiene el nombre de la categoría desde la URL."""
-        return self.router.page.params.get("category_name", "todos")
+    category_name: str = ""
 
     @rx.event
     def load_category_posts(self):
