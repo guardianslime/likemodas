@@ -4,6 +4,7 @@ import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
 from ..cart.state import CartState, ProductCardData
+from .. import navigation
 
 def checkout_form() -> rx.Component:
     """Un formulario de envío con la nueva disposición y menús desplegables."""
@@ -87,14 +88,7 @@ def cart_page() -> rx.Component:
                 CartState.cart_items_count > 0,
                 rx.vstack(
                     rx.table.root(
-                        rx.table.header(
-                            rx.table.row(
-                                rx.table.column_header_cell("Producto"),
-                                rx.table.column_header_cell("Cantidad"),
-                                rx.table.column_header_cell("Precio Unitario"),
-                                rx.table.column_header_cell("Subtotal"),
-                            )
-                        ),
+                        # ... el resto de la tabla no cambia
                         rx.table.body(rx.foreach(CartState.cart_details, cart_item_row))
                     ),
                     rx.divider(),
@@ -103,7 +97,13 @@ def cart_page() -> rx.Component:
                         rx.heading(f"${CartState.cart_total:.2f}", size="6"),
                         justify="end", width="100%", padding_x="1em"
                     ),
-                    checkout_form(),
+                    # --- 👇 CAMBIO AQUÍ 👇 ---
+                    # Se reemplaza el formulario por un botón
+                    rx.link(
+                        rx.button("Continuar con la Compra", width="100%", size="3", margin_top="1em"),
+                        href=navigation.routes.SHIPPING_INFO_ROUTE,
+                    ),
+                    # --- 👆 FIN DEL CAMBIO 👆 ---
                     spacing="5", width="100%", max_width="700px"
                 ),
                 rx.center(

@@ -74,25 +74,27 @@ def public_navbar() -> rx.Component:
                         )
                     ),
                     rx.menu.content(
-                        rx.menu.item("Home", on_click=navigation.NavState.to_home),
-                        rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri),
-                        rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
-                        rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
-                        rx.menu.separator(),
-                        rx.cond(
-                            SessionState.is_authenticated,
-                            rx.fragment(
-                                rx.menu.item("Mis Compras", on_click=navigation.NavState.to_my_purchases),
-                                rx.menu.item("Logout", on_click=navigation.NavState.to_logout),
-                            ),
-                            rx.fragment(
-                                rx.menu.item("Login", on_click=navigation.NavState.to_login),
-                                rx.menu.item("Register", on_click=navigation.NavState.to_register),
-                            )
+                    rx.menu.item("Home", on_click=navigation.NavState.to_home),
+                    rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri),
+                    rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
+                    rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
+                    rx.menu.separator(),
+                    rx.cond(
+                        SessionState.is_authenticated,
+                        rx.fragment(
+                            # --- 👇 CAMBIO AQUÍ 👇 ---
+                            rx.menu.item("Mi Cuenta", on_click=navigation.NavState.to_my_account),
+                            # --- 👆 FIN DEL CAMBIO 👆 ---
+                            rx.menu.item("Logout", on_click=navigation.NavState.to_logout),
                         ),
-                        bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
-                        style={"backdrop_filter": "blur(10px)"},
+                        rx.fragment(
+                            rx.menu.item("Login", on_click=navigation.NavState.to_login),
+                            rx.menu.item("Register", on_click=navigation.NavState.to_register),
+                        )
                     ),
+                    bg=rx.color_mode_cond("#ffffffF0", "#1D2330F0"),
+                    style={"backdrop_filter": "blur(10px)"},
+                ),
                 ),
                 rx.image(
                     src="/logo.jpg",
