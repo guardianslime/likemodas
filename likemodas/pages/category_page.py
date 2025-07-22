@@ -8,8 +8,9 @@ from ..models import BlogPostModel, Category
 from sqlmodel import select
 from datetime import datetime
 import sqlalchemy
+from ..auth.state import SessionState
 
-class CategoryPageState(CartState):
+class CategoryPageState(SessionState):
     """Estado para manejar la página de una categoría específica."""
     
     posts_in_category: list[ProductCardData] = []
@@ -21,7 +22,6 @@ class CategoryPageState(CartState):
     def load_category_posts(self):
         """Carga los productos que pertenecen a la categoría actual."""
         with rx.session() as session:
-            yield super().on_load() 
             
             # --- 👇 CAMBIO 2: Usamos el nuevo nombre de la variable 👇 ---
             if self.cat_name != "todos":
