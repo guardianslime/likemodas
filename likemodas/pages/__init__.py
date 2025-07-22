@@ -5,8 +5,8 @@ from .dashboard import dashboard_component
 from .landing import landing_component
 from .pricing import pricing_page
 from .protected import protected_page
-# ✅ AÑADE ESTA LÍNEA para que el paquete reconozca el módulo de búsqueda
 from . import search_results
+# --- 👇 AÑADE ESTA LÍNEA DE IMPORTACIÓN 👇 ---
 from . import category_page
 
 

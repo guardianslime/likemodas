@@ -52,8 +52,8 @@ app.add_page(
     category_page.category_page,
     route="/category/[cat_name]",
     title="Categoría",
-    # OJO: Por ahora, quita el on_load ya que el evento no existe en el estado mínimo
-    # on_load=category_page.CategoryPageState.load_category_posts 
+    # --- 👇 RESTAURA ESTA LÍNEA 👇 ---
+    on_load=category_page.CategoryPageState.load_category_posts
 )
 
 app.add_page(search_results.search_results_page, route="/search-results", title="Resultados de Búsqueda")
