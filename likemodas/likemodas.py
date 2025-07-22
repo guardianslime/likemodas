@@ -9,7 +9,7 @@ from .auth import state as auth_state
 from .auth import verify_state
 from .auth import reset_password_state
 from .pages import search_results, about_page, pricing_page, dashboard_component, landing_component, test_page 
-from .pages import category_page 
+from .pages import category_page
 from .blog import page as blog_page, public_detail as blog_public_detail, list as blog_list, detail as blog_detail, add as blog_add, edit as blog_edit, state as blog_state
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
@@ -48,13 +48,12 @@ app.add_page(
     on_load=cart_state.CartState.on_load
 )
 
-# --- 👇 CAMBIO: Comenta la ruta de categoría y añade la de prueba 👇 ---
-# app.add_page(
-#     category_page.category_page,
-#     route="/category/[cat_name]",
-#     title="Categoría",
-#     on_load=category_page.CategoryPageState.load_category_posts
-# )
+app.add_page(
+    category_page.category_page,
+    route="/category/[cat_name]", # El nombre del parámetro en la URL no cambia
+    title="Categoría",
+    on_load=category_page.CategoryPageState.load_category_posts
+)
 
 app.add_page(test_page.test_page, route="/test/[test_param]")
 

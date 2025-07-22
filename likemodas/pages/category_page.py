@@ -12,18 +12,24 @@ import sqlalchemy
 
 class CategoryPageState(SessionState):
     posts_in_category: list[ProductCardData] = []
-    cat_name: str = ""
+    
+    # --- CAMBIO 1: Usamos un nombre DIFERENTE para la variable de estado ---
+    current_category: str = ""
 
     @rx.event
     def load_category_posts(self):
+        # --- CAMBIO 2: Leemos el parámetro de la URL manualmente ---
+        cat_name_from_url = self.router.page.params.get("cat_name", "todos")
+        self.current_category = cat_name_from_url
+
         with rx.session() as session:
             query_filter = [
                 BlogPostModel.publish_active == True, 
                 BlogPostModel.publish_date < datetime.now()
             ]
-            if self.cat_name != "todos":
+            if cat_name_from_url != "todos":
                 try:
-                    category_enum = Category(self.cat_name)
+                    category_enum = Category(cat_name_from_url)
                     query_filter.append(BlogPostModel.category == category_enum)
                 except ValueError:
                     self.posts_in_category = []
@@ -44,15 +50,17 @@ class CategoryPageState(SessionState):
             ]
 
 def category_page() -> rx.Component:
+    """Página que muestra productos de una categoría específica."""
     return base_page(
         rx.center(
             rx.vstack(
-                rx.heading(CategoryPageState.cat_name.to_title(), size="8"),
+                # --- CAMBIO 3: Usamos nuestra nueva variable de estado ---
+                rx.heading(CategoryPageState.current_category.to_title(), size="8"),
                 rx.cond(
                     CategoryPageState.posts_in_category,
                     product_gallery_component(posts=CategoryPageState.posts_in_category),
                     rx.center(
-                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.cat_name}'."),
+                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
                         min_height="40vh"
                     )
                 ),
