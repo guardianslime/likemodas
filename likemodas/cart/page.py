@@ -53,8 +53,9 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
                 width="100%",
             ),
             rx.cond(
-                ~is_history,
-                rx.button(
+                is_history,
+                rx.fragment(),  # Muestra un componente vacío si es la página de historial
+                rx.button(      # Muestra el botón en cualquier otro caso (como en confirmar pagos)
                     "Confirmar Pago",
                     on_click=AdminConfirmState.confirm_payment(purchase.id),
                     width="100%",
