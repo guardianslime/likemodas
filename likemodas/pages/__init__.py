@@ -7,6 +7,7 @@ from .pricing import pricing_page
 from .protected import protected_page
 # ✅ AÑADE ESTA LÍNEA para que el paquete reconozca el módulo de búsqueda
 from . import search_results
+from . import category_page
 
 
 __all__ = [ 
@@ -15,5 +16,7 @@ __all__ = [
     'landing_component',
     'pricing_page',
     'protected_page',
-    'search_results'
+    'search_results',
+    # --- 👇 Y AÑADE ESTA LÍNEA AQUÍ TAMBIÉN 👇 ---
+    'category_page'
 ]
