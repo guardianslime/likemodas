@@ -45,16 +45,28 @@ def blog_post_list_page() -> rx.Component:
         rx.center(
             rx.vstack(
                 rx.heading("Mis Publicaciones", size="8", margin_bottom="1em"),
+                
+                # --- 👇 AÑADIR LA BARRA DE BÚSQUEDA 👇 ---
+                rx.input(
+                    placeholder="Buscar por nombre...",
+                    value=BlogPostState.search_query,
+                    on_change=BlogPostState.set_search_query,
+                    width="100%",
+                    max_width="400px",
+                    margin_bottom="1.5em",
+                ),
+
                 rx.cond(
-                    BlogPostState.posts,
+                    BlogPostState.filtered_posts, # <-- Usa la lista filtrada
                     rx.grid(
-                        rx.foreach(BlogPostState.posts, _gallery_card),
+                        # --- 👇 USA LA LISTA FILTRADA AQUÍ 👇 ---
+                        rx.foreach(BlogPostState.filtered_posts, _gallery_card),
                         columns={"base": "1", "sm": "2", "md": "3", "lg": "4"},
                         spacing="6",
                         width="100%",
                         max_width="1200px",
                     ),
-                    rx.center(rx.text("Aún no has escrito ningún post."), padding_y="4em")
+                    rx.center(rx.text("No se encontraron publicaciones."), padding_y="4em")
                 ),
                 spacing="6",
                 width="100%",

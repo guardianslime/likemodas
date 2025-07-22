@@ -10,6 +10,24 @@ import sqlalchemy
 class PurchaseHistoryState(SessionState):
     purchases: List[PurchaseModel] = []
 
+    search_query: str = ""
+
+    # --- 👇 AÑADIR ESTA PROPIEDAD COMPUTADA 👇 ---
+    @rx.var
+    def filtered_purchases(self) -> list[PurchaseModel]:
+        """Filtra las compras del usuario por ID o contenido."""
+        if not self.search_query.strip():
+            return self.purchases
+            
+        query = self.search_query.lower()
+        results = []
+        for p in self.purchases:
+            # Buscamos en el ID y en los nombres de los artículos
+            items_text = " ".join(p.items_formatted).lower()
+            if query in f"#{p.id}" or query in items_text:
+                results.append(p)
+        return results
+
     @rx.event
     def load_purchases(self):
         """Carga el historial de compras del usuario actual."""

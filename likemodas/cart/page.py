@@ -100,19 +100,30 @@ def admin_confirm_page() -> rx.Component:
 @require_admin
 def payment_history_page() -> rx.Component:
     """Página para que el admin vea el historial de pagos."""
-    # ✅ CAMBIO: Se envuelve el vstack en un rx.center.
     return base_page(
         rx.center(
             rx.vstack(
                 rx.heading("Historial de Pagos", size="8"),
+                
+                # --- 👇 AÑADIR LA BARRA DE BÚSQUEDA 👇 ---
+                rx.input(
+                    placeholder="Buscar por ID, cliente o email...",
+                    value=PaymentHistoryState.search_query,
+                    on_change=PaymentHistoryState.set_search_query,
+                    width="100%",
+                    max_width="400px",
+                    margin_y="1.5em",
+                ),
+
                 rx.cond(
-                    PaymentHistoryState.purchases,
+                    PaymentHistoryState.filtered_purchases, # <-- Usa la lista filtrada
                     rx.foreach(
-                        PaymentHistoryState.purchases,
+                        # --- 👇 USA LA LISTA FILTRADA AQUÍ 👇 ---
+                        PaymentHistoryState.filtered_purchases,
                         lambda p: purchase_card_admin(p, is_history=True)
                     ),
                     rx.center(
-                        rx.text("No hay historial de compras."),
+                        rx.text("No se encontró historial para la búsqueda."),
                         padding_y="2em",
                     )
                 ),

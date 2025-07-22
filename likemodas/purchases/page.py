@@ -64,15 +64,26 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
 @reflex_local_auth.require_login
 def purchase_history_page() -> rx.Component:
     """Página del historial de compras del usuario."""
-    # ✅ CAMBIO: Se envuelve el vstack en un rx.center para centrarlo horizontalmente.
     page_content = rx.center(
         rx.vstack(
             rx.heading("Mi Historial de Compras", size="7"),
+            
+            # --- 👇 AÑADIR LA BARRA DE BÚSQUEDA 👇 ---
+            rx.input(
+                placeholder="Buscar por ID o producto...",
+                value=PurchaseHistoryState.search_query,
+                on_change=PurchaseHistoryState.set_search_query,
+                width="100%",
+                max_width="400px",
+                margin_y="1.5em",
+            ),
+            
             rx.cond(
-                PurchaseHistoryState.purchases,
-                rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
+                PurchaseHistoryState.filtered_purchases, # <-- Usa la lista filtrada
+                # --- 👇 USA LA LISTA FILTRADA AQUÍ 👇 ---
+                rx.foreach(PurchaseHistoryState.filtered_purchases, purchase_detail_card),
                 rx.center(
-                    rx.text("No tienes compras anteriores."),
+                    rx.text("No se encontraron compras para tu búsqueda."),
                     padding_y="2em",
                 )
             ),
@@ -81,7 +92,7 @@ def purchase_history_page() -> rx.Component:
             max_width="960px",
             align="center"
         ),
-        width="100%" # Hacemos que el center ocupe todo el ancho disponible.
+        width="100%"
     )
     
     return base_page(account_layout(page_content))

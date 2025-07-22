@@ -34,6 +34,18 @@ class BlogPostState(SessionState):
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
+    
+    @rx.var
+    def filtered_posts(self) -> list[BlogPostModel]:
+        """Filtra los posts del admin según el search_query."""
+        if not self.search_query.strip():
+            return self.posts
+        
+        return [
+            post for post in self.posts
+            if self.search_query.lower() in post.title.lower()
+        ]
+
 
     @rx.event
     def load_posts(self):
@@ -90,6 +102,8 @@ class BlogPostState(SessionState):
                 session.delete(post_to_delete)
                 session.commit()
         return type(self).load_posts
+    
+
 
 class BlogAddFormState(SessionState):
     """Estado para el formulario de AÑADIR posts."""

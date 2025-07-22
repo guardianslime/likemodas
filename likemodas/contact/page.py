@@ -35,7 +35,20 @@ def contact_entries_list_page() -> rx.Component:
     return base_page(
         rx.vstack(
             rx.heading("Historial de Contacto", size="7"),
-            rx.foreach(ContactState.entries, contact_entry_list_item),
+            
+            # --- 👇 AÑADIR LA BARRA DE BÚSQUEDA 👇 ---
+            rx.input(
+                placeholder="Buscar en mensajes...",
+                value=ContactState.search_query,
+                on_change=ContactState.set_search_query,
+                width="100%",
+                max_width="400px",
+                margin_y="1.5em",
+            ),
+
+            # --- 👇 USA LA LISTA FILTRADA AQUÍ 👇 ---
+            rx.foreach(ContactState.filtered_entries, contact_entry_list_item),
+            
             spacing="5",
             align="center",
             width="100%",

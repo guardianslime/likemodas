@@ -225,6 +225,24 @@ class PaymentHistoryState(SessionState):
     """Estado para ver el historial de compras confirmadas y enviadas."""
     purchases: List[PurchaseModel] = []
 
+    search_query: str = ""
+
+    # --- 👇 AÑADIR ESTA PROPIEDAD COMPUTADA 👇 ---
+    @rx.var
+    def filtered_purchases(self) -> list[PurchaseModel]:
+        """Filtra el historial de pagos por ID, nombre o email del cliente."""
+        if not self.search_query.strip():
+            return self.purchases
+        
+        query = self.search_query.lower()
+        
+        return [
+            p for p in self.purchases
+            if query in f"#{p.id}" or \
+               query in p.userinfo.user.username.lower() or \
+               query in p.userinfo.email.lower()
+        ]
+
     @rx.event
     def load_confirmed_purchases(self):
         """Carga el historial de compras para el administrador."""
