@@ -70,50 +70,58 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
 @require_admin
 def admin_confirm_page() -> rx.Component:
     """Página para que el admin confirme los pagos pendientes."""
+    # ✅ CAMBIO: Se envuelve el vstack en un rx.center.
     return base_page(
-        rx.vstack(
-            rx.heading("Confirmar Pagos Pendientes", size="8"),
-            rx.cond(
-                AdminConfirmState.pending_purchases,
-                rx.foreach(
+        rx.center(
+            rx.vstack(
+                rx.heading("Confirmar Pagos Pendientes", size="8"),
+                rx.cond(
                     AdminConfirmState.pending_purchases,
-                    lambda p: purchase_card_admin(p, is_history=False)
+                    rx.foreach(
+                        AdminConfirmState.pending_purchases,
+                        lambda p: purchase_card_admin(p, is_history=False)
+                    ),
+                    rx.center(
+                        rx.text("No hay compras pendientes por confirmar."),
+                        padding_y="2em",
+                    )
                 ),
-                rx.center(
-                    rx.text("No hay compras pendientes por confirmar."),
-                    padding_y="2em",
-                )
+                align="center",
+                spacing="5",
+                padding="2em",
+                width="100%",
+                max_width="960px", 
             ),
-            align="center",
-            spacing="5",
-            padding="2em",
-            width="100%",
-            max_width="960px",
+            width="100%"
         )
     )
 
 @require_admin
 def payment_history_page() -> rx.Component:
     """Página para que el admin vea el historial de pagos."""
+    # ✅ CAMBIO: Se envuelve el vstack en un rx.center.
     return base_page(
-        rx.vstack(
-            rx.heading("Historial de Pagos", size="8"),
-            rx.cond(
-                PaymentHistoryState.purchases,
-                rx.foreach(
+        rx.center(
+            rx.vstack(
+                rx.heading("Historial de Pagos", size="8"),
+                rx.cond(
                     PaymentHistoryState.purchases,
-                    lambda p: purchase_card_admin(p, is_history=True)
+                    rx.foreach(
+                        PaymentHistoryState.purchases,
+                        lambda p: purchase_card_admin(p, is_history=True)
+                    ),
+                    rx.center(
+                        rx.text("No hay historial de compras."),
+                        padding_y="2em",
+                    )
                 ),
-                rx.center(
-                    rx.text("No hay historial de compras."),
-                    padding_y="2em",
-                )
+                align="center",
+                spacing="6",
+                padding="2em",
+                width="100%",
+                max_width="960px",
             ),
-            align="center",
-            spacing="6", # Espaciado aumentado
-            padding="2em",
-            width="100%",
-            max_width="960px",
+            width="100%"
         )
     )
 

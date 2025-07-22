@@ -64,21 +64,24 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
 @reflex_local_auth.require_login
 def purchase_history_page() -> rx.Component:
     """Página del historial de compras del usuario."""
-    page_content = rx.vstack(
-        rx.heading("Mi Historial de Compras", size="7"),
-        rx.cond(
-            PurchaseHistoryState.purchases,
-            rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
-            rx.center(
-                rx.text("No tienes compras anteriores."),
-                padding_y="2em",
-            )
+    # ✅ CAMBIO: Se envuelve el vstack en un rx.center para centrarlo horizontalmente.
+    page_content = rx.center(
+        rx.vstack(
+            rx.heading("Mi Historial de Compras", size="7"),
+            rx.cond(
+                PurchaseHistoryState.purchases,
+                rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
+                rx.center(
+                    rx.text("No tienes compras anteriores."),
+                    padding_y="2em",
+                )
+            ),
+            spacing="6",
+            width="100%",
+            max_width="960px",
+            align="center"
         ),
-        spacing="6", # Espaciado aumentado
-        width="100%",
-        # --- CAMBIO: Ancho máximo aumentado para centrado y mejor visualización ---
-        max_width="960px",
-        align="center"
+        width="100%" # Hacemos que el center ocupe todo el ancho disponible.
     )
     
     return base_page(account_layout(page_content))
