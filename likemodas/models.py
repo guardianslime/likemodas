@@ -76,6 +76,11 @@ class BlogPostModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
+    category: Category = Field(
+        default=Category.OTROS, 
+        nullable=False,
+        sa_column=Column(String, server_default=category.OTROS.value)
+    )
     
     @property
     def rating_count(self) -> int:
@@ -160,6 +165,12 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
 
+class Category(str, enum.Enum):
+    ROPA = "ropa"
+    CALZADO = "calzado"
+    MOCHILAS = "mochilas"
+    OTROS = "otros"
+
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
@@ -231,3 +242,5 @@ class CommentVoteModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
     comment_id: int = Field(foreign_key="commentmodel.id")
     comment: "CommentModel" = Relationship(back_populates="votes")
+
+

@@ -1,5 +1,5 @@
 import reflex as rx
-from .state import BlogAddFormState, BlogEditFormState
+from .state import BlogAddFormState, BlogEditFormState, BlogPostState
 
 def blog_post_add_form() -> rx.Component:
     return rx.form(
@@ -8,6 +8,14 @@ def blog_post_add_form() -> rx.Component:
                 placeholder="Nombre del producto",
                 value=BlogAddFormState.title,
                 on_change=BlogAddFormState.set_title,
+                required=True,
+            ),
+            # --- 👇 AÑADIR ESTE SELECTOR DE CATEGORÍA 👇 ---
+            rx.select(
+                BlogPostState.categories,
+                placeholder="Selecciona una categoría...",
+                value=BlogAddFormState.category,
+                on_change=BlogAddFormState.set_category,
                 required=True,
             ),
             rx.input(

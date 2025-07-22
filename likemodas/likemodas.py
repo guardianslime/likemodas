@@ -9,6 +9,7 @@ from .auth import state as auth_state
 from .auth import verify_state
 from .auth import reset_password_state
 from .pages import search_results, about_page, pricing_page, dashboard_component, landing_component
+from .pages import category_page 
 from .blog import page as blog_page, public_detail as blog_public_detail, list as blog_list, detail as blog_detail, add as blog_add, edit as blog_edit, state as blog_state
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
@@ -23,7 +24,7 @@ from .account import shipping_info_state
 
 from .ui.base import base_page
 def index() -> rx.Component:
-    return base_page(
+    return blog_page.blog_public_page(
         rx.cond(
             auth_state.SessionState.is_authenticated,
             dashboard_component(),
@@ -44,6 +45,19 @@ app = rx.App(
 
 # --- Páginas Generales y de Autenticación ---
 app.add_page(index, on_load=cart_state.CartState.on_load)
+app.add_page(
+    dashboard_component, 
+    route="/dashboard", 
+    title="Dashboard",
+    on_load=cart_state.CartState.on_load
+)
+app.add_page(
+    category_page.category_page,
+    route="/category/[category_name]",
+    title="Categoría",
+    on_load=category_page.CategoryPageState.load_category_posts
+)
+
 app.add_page(search_results.search_results_page, route="/search-results", title="Resultados de Búsqueda")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)

@@ -79,12 +79,31 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
 
 # --- ✨ PÁGINA SIMPLIFICADA USANDO EL NUEVO COMPONENTE --- ✨
 def blog_public_page():
-    """Página pública que muestra la galería de productos completa."""
+    """Página pública que ahora es la principal y muestra la galería."""
     return base_page(
         rx.center(
             rx.vstack(
-                rx.heading("Publicaciones", size="6"),
-                # --- CORRECCIÓN AQUÍ ---
+                # --- 👇 SECCIÓN MODIFICADA CON EL MENÚ 👇 ---
+                rx.hstack(
+                    rx.heading("Publicaciones", size="7"),
+                    rx.spacer(),
+                    rx.menu.root(
+                        rx.menu.trigger(
+                            rx.button("Categorías", variant="soft")
+                        ),
+                        rx.menu.content(
+                            rx.menu.item("Ropa", on_click=rx.redirect("/category/ropa")),
+                            rx.menu.item("Calzado", on_click=rx.redirect("/category/calzado")),
+                            rx.menu.item("Mochilas", on_click=rx.redirect("/category/mochilas")),
+                            rx.menu.separator(),
+                            rx.menu.item("Ver Todo", on_click=rx.redirect("/")),
+                        )
+                    ),
+                    justify="between",
+                    width="100%",
+                    max_width="1800px",
+                    padding_bottom="1em"
+                ),
                 product_gallery_component(posts=CartState.posts),
                 spacing="6", 
                 width="100%", 

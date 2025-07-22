@@ -8,7 +8,7 @@ from sqlmodel import select
 
 from .. import navigation
 from ..auth.state import SessionState
-from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType, PurchaseModel, PurchaseItemModel, PurchaseStatus
+from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType, PurchaseModel, PurchaseItemModel, PurchaseStatus, Category # <-- AÑADIR Category
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
@@ -59,6 +59,11 @@ class BlogPostState(SessionState):
             post for post in self.posts
             if self.search_query.lower() in post.title.lower()
         ]
+    
+    @rx.var
+    def categories(self) -> list[str]:
+        """Devuelve una lista con los valores de las categorías."""
+        return [c.value for c in Category]
 
 
     @rx.event
@@ -124,6 +129,7 @@ class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
     price: float = 0.0
+    category: str = Category.OTROS.value
     temp_images: list[str] = []
     
     @rx.event
@@ -147,6 +153,19 @@ class BlogAddFormState(SessionState):
             self.price = float(value)
         except (ValueError, TypeError):
             self.price = 0.0
+
+    @rx.event
+    def submit(self):
+        # ... (lógica existente del submit) ...
+        with rx.session() as session:
+            post = BlogPostModel(
+                title=self.title.strip(), content=self.content.strip(),
+                price=self.price, images=self.temp_images.copy(),
+                userinfo_id=self.my_userinfo_id, 
+                publish_active=False,
+                publish_date=datetime.utcnow(),
+                category=self.category # <-- AÑADIR CATEGORÍA AL CREAR
+            )
 
     @rx.event
     def submit(self):
