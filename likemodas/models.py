@@ -64,6 +64,12 @@ class PasswordResetToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
+class Category(str, enum.Enum):
+    ROPA = "ropa"
+    CALZADO = "calzado"
+    MOCHILAS = "mochilas"
+    OTROS = "otros"
+
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
@@ -79,7 +85,7 @@ class BlogPostModel(rx.Model, table=True):
     category: Category = Field(
         default=Category.OTROS, 
         nullable=False,
-        sa_column=Column(String, server_default=category.OTROS.value)
+        sa_column=Column(String, server_default=Category.OTROS.value)
     )
     
     @property
@@ -164,12 +170,6 @@ class PurchaseItemModel(rx.Model, table=True):
     blog_post: "BlogPostModel" = Relationship()
     quantity: int
     price_at_purchase: float
-
-class Category(str, enum.Enum):
-    ROPA = "ropa"
-    CALZADO = "calzado"
-    MOCHILAS = "mochilas"
-    OTROS = "otros"
 
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
