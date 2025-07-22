@@ -6,60 +6,6 @@ from ..ui.base import base_page
 from ..cart.state import CartState, ProductCardData
 from .. import navigation
 
-def checkout_form() -> rx.Component:
-    """Un formulario de envío con la nueva disposición y menús desplegables."""
-    return rx.form(
-        rx.vstack(
-            rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
-            rx.grid(
-                rx.vstack(
-                    rx.text("Nombre Completo*"),
-                    rx.input(name="shipping_name", type="text", required=True),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Teléfono de Contacto*"),
-                    rx.input(name="shipping_phone", type="tel", required=True),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Ciudad*"),
-                    rx.select(
-                        CartState.cities,
-                        placeholder="Selecciona una ciudad...",
-                        on_change=CartState.set_shipping_city_and_reset_neighborhood,
-                        value=CartState.shipping_city,
-                    ),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Barrio"),
-                    rx.select(
-                        CartState.neighborhoods,
-                        placeholder="Selecciona un barrio...",
-                        on_change=CartState.set_shipping_neighborhood,
-                        value=CartState.shipping_neighborhood,
-                        # ✅ SINTAXIS CORREGIDA Y DEFINITIVA AQUÍ
-                        is_disabled=(CartState.neighborhoods.length() == 0),
-                    ),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Dirección de Entrega*"),
-                    rx.input(name="shipping_address", type="text", required=True),
-                    spacing="1", align_items="start",
-                    grid_column="span 2",
-                ),
-                columns="2",
-                spacing="4",
-                width="100%",
-            ),
-            rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em"),
-            spacing="4",
-            width="100%",
-        ),
-        on_submit=CartState.handle_checkout,
-    )
 
 def cart_item_row(item: rx.Var) -> rx.Component:
     post = item[0]
@@ -78,17 +24,73 @@ def cart_item_row(item: rx.Var) -> rx.Component:
         rx.table.cell(rx.text(f"${(post.price * quantity):.2f}")),
     )
 
+def _shipping_summary() -> rx.Component:
+    """Componente para mostrar la dirección de envío predeterminada."""
+    return rx.box(
+        rx.vstack(
+            rx.heading("Enviar a:", size="5"),
+            rx.divider(),
+            # Condición: Muestra la dirección si existe
+            rx.cond(
+                CartState.shipping_name != "",
+                rx.vstack(
+                    rx.text(CartState.shipping_name, weight="bold"),
+                    rx.text(f"{CartState.shipping_address}, {CartState.shipping_neighborhood}"),
+                    rx.text(f"{CartState.shipping_city}"),
+                    rx.text(f"Tel: {CartState.shipping_phone}"),
+                    rx.link(
+                        "Cambiar dirección",
+                        href=navigation.routes.SHIPPING_INFO_ROUTE,
+                        size="2",
+                        color_scheme="gray",
+                        margin_top="0.5em"
+                    ),
+                    align_items="start",
+                    spacing="1"
+                ),
+                # Mensaje si no hay dirección predeterminada
+                rx.vstack(
+                    rx.text("No has configurado una dirección de envío predeterminada."),
+                    rx.link(
+                        rx.button("Configurar Dirección", variant="soft"),
+                        href=navigation.routes.SHIPPING_INFO_ROUTE
+                    ),
+                    align="center",
+                    spacing="3",
+                    padding="1em"
+                )
+            ),
+            spacing="3",
+            align_items="start",
+            width="100%",
+        ),
+        border="1px solid #ededed",
+        border_radius="md",
+        padding="1.5em",
+        margin_top="1.5em",
+        width="100%"
+    )
+
+
 @reflex_local_auth.require_login
 def cart_page() -> rx.Component:
-    """Página del carrito de compras."""
+    """Página del carrito de compras rediseñada."""
     return base_page(
         rx.vstack(
             rx.heading("Mi Carrito", size="8"),
             rx.cond(
                 CartState.cart_items_count > 0,
                 rx.vstack(
+                    # La tabla del carrito no cambia
                     rx.table.root(
-                        # ... el resto de la tabla no cambia
+                        rx.table.header(
+                            rx.table.row(
+                                rx.table.column_header_cell("Producto"),
+                                rx.table.column_header_cell("Cantidad"),
+                                rx.table.column_header_cell("Precio Unitario"),
+                                rx.table.column_header_cell("Subtotal"),
+                            )
+                        ),
                         rx.table.body(rx.foreach(CartState.cart_details, cart_item_row))
                     ),
                     rx.divider(),
@@ -97,13 +99,22 @@ def cart_page() -> rx.Component:
                         rx.heading(f"${CartState.cart_total:.2f}", size="6"),
                         justify="end", width="100%", padding_x="1em"
                     ),
-                    # --- 👇 CAMBIO AQUÍ 👇 ---
-                    # Se reemplaza el formulario por un botón
-                    rx.link(
-                        rx.button("Continuar con la Compra", width="100%", size="3", margin_top="1em"),
-                        href=navigation.routes.SHIPPING_INFO_ROUTE,
+                    
+                    # --- 👇 AQUÍ ESTÁ EL CAMBIO PRINCIPAL 👇 ---
+                    # 1. Mostramos el resumen de la dirección
+                    _shipping_summary(),
+                    
+                    # 2. El botón ahora finaliza la compra directamente
+                    rx.button(
+                        "Finalizar Compra",
+                        on_click=CartState.handle_final_checkout,
+                        is_disabled=(CartState.shipping_name == ""), # Deshabilitado si no hay dirección
+                        width="100%",
+                        size="3",
+                        margin_top="1em"
                     ),
                     # --- 👆 FIN DEL CAMBIO 👆 ---
+                    
                     spacing="5", width="100%", max_width="700px"
                 ),
                 rx.center(

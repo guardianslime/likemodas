@@ -76,7 +76,8 @@ app.add_page(
     cart_page.cart_page,
     route="/cart",
     title="Mi Carrito",
-    # 👇 Se carga la información de envío predeterminada al visitar el carrito
+    # ✅ Esta configuración es correcta y crucial. Carga tanto los
+    # productos como la dirección de envío predeterminada.
     on_load=[
         cart_state.CartState.on_load, 
         cart_state.CartState.load_default_shipping_info

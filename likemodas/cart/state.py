@@ -134,38 +134,46 @@ class CartState(SessionState):
 
 
     @rx.event
-    def handle_checkout(self, form_data: dict):
+    def handle_final_checkout(self):
+        """
+        Maneja la compra final usando la información de envío
+        ya cargada en el estado.
+        """
         from ..admin.state import AdminConfirmState
-        name = form_data.get("shipping_name", "").strip()
-        address = form_data.get("shipping_address", "").strip()
-        phone = form_data.get("shipping_phone", "").strip()
-        city = self.shipping_city
-        neighborhood = self.shipping_neighborhood
-        if not all([name, city, address, phone]):
-            return rx.toast.error("Por favor, completa todos los campos requeridos (*).")
+
+        # Validación usando las variables de estado
+        if not all([self.shipping_name, self.shipping_city, self.shipping_address, self.shipping_phone]):
+            return rx.toast.error("Falta información de envío. Por favor, establece una dirección predeterminada.")
+        
         if not self.is_authenticated or self.cart_total <= 0:
             return rx.window_alert("No se puede procesar la compra.")
+        
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info:
                  return rx.window_alert("Usuario no encontrado.")
+            
+            # El resto de la lógica es la misma que tenías
             post_ids_in_cart = list(self.cart.keys())
             db_posts_query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))
             db_posts = session.exec(db_posts_query).all()
             db_post_map = {post.id: post for post in db_posts}
+
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
                 status=PurchaseStatus.PENDING,
-                shipping_name=name,
-                shipping_city=city,
-                shipping_neighborhood=neighborhood,
-                shipping_address=address,
-                shipping_phone=phone
+                # Usa las variables de estado directamente
+                shipping_name=self.shipping_name,
+                shipping_city=self.shipping_city,
+                shipping_neighborhood=self.shipping_neighborhood,
+                shipping_address=self.shipping_address,
+                shipping_phone=self.shipping_phone
             )
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
+
             for post_id, quantity in self.cart.items():
                 if post_id in db_post_map:
                     post = db_post_map[post_id]
@@ -175,6 +183,7 @@ class CartState(SessionState):
                     )
                     session.add(purchase_item)
             session.commit()
+
         self.cart = {}
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
