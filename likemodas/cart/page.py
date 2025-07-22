@@ -1,21 +1,23 @@
-# likemodas/cart/page.py (VERSIÓN COMPLETA Y CORREGIDA)
-
 import reflex as rx
 from ..auth.admin_auth import require_admin
 import reflex_local_auth
 from ..ui.base import base_page
-from .state import AdminConfirmState, PaymentHistoryState
-# --- 👇 CORRECCIÓN PRINCIPAL: Se añade la importación del modelo que faltaba ---
+# --- 👇 CORRECCIÓN CLAVE AQUÍ 👇 ---
+# Se importa tanto AdminConfirmState como PaymentHistoryState desde el nuevo módulo de admin.
+from ..admin.state import AdminConfirmState, PaymentHistoryState
 from ..models import PurchaseModel
 from ..cart.state import CartState, ProductCardData
 
 def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx.Component:
-    """Un componente reutilizable para mostrar una tarjeta de compra en el panel de admin."""
+    """
+    Un componente reutilizable para mostrar una tarjeta de compra en el panel de admin.
+    --- DISEÑO ACTUALIZADO CON TEXTO MÁS GRANDE ---
+    """
     return rx.card(
         rx.vstack(
             rx.hstack(
                 rx.vstack(
-                     # --- CAMBIO: Texto más grande ---
+                    # --- CAMBIO: Texto más grande ---
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
                     rx.text(f"Cliente: {purchase.userinfo.user.username} ({purchase.userinfo.email})", size="3"),
                     rx.text(f"Fecha: {purchase.purchase_date_formatted}", size="3"),
@@ -86,7 +88,7 @@ def admin_confirm_page() -> rx.Component:
             spacing="5",
             padding="2em",
             width="100%",
-            max_width="800px",
+            max_width="960px",
         )
     )
 
@@ -111,11 +113,11 @@ def payment_history_page() -> rx.Component:
             spacing="6", # Espaciado aumentado
             padding="2em",
             width="100%",
-            # --- CAMBIO: Ancho máximo aumentado para centrado y mejor visualización ---
             max_width="960px",
         )
     )
 
+# ... El resto del archivo no necesita cambios ...
 def checkout_form() -> rx.Component:
     """Un formulario de envío con la nueva disposición y menús desplegables."""
     return rx.form(
