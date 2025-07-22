@@ -1,5 +1,3 @@
-# likemodas/likemodas.py (VERSIÓN FINAL CON IMPORTACIONES CORREGIDAS)
-
 import reflex as rx
 import reflex_local_auth
 
@@ -14,17 +12,16 @@ from .pages import search_results, about_page, pricing_page, dashboard_component
 from .blog import page as blog_page, public_detail as blog_public_detail, list as blog_list, detail as blog_detail, add as blog_add, edit as blog_edit, state as blog_state
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
+# --- CAMBIO: Se importa el nuevo módulo de admin ---
 from .admin import state as admin_state
-from .admin import page as admin_page
+from .cart import page as admin_page # La página de admin sigue en cart/page.py por ahora
 from .contact import page as contact_page, state as contact_state
 from . import navigation
-# ✅ Se importan los módulos de 'account' explícitamente
 from .account import page as account_page_module
 from .account import shipping_info as shipping_info_module
 from .account import shipping_info_state
 
 from .ui.base import base_page
-
 def index() -> rx.Component:
     return base_page(
         rx.cond(
@@ -100,6 +97,21 @@ app.add_page(
     title="Información de Envío",
     # 👇 Se carga la lista de direcciones al visitar la página
     on_load=shipping_info_state.ShippingInfoState.load_addresses 
+)
+
+app.add_page(
+    admin_page.admin_confirm_page, 
+    route="/admin/confirm-payments", 
+    title="Confirmar Pagos", 
+    # --- VERIFICACIÓN: debe usar admin_state ---
+    on_load=admin_state.AdminConfirmState.load_pending_purchases
+)
+app.add_page(
+    admin_page.payment_history_page, 
+    route="/admin/payment-history", 
+    title="Historial de Pagos", 
+    # --- VERIFICACIÓN: debe usar admin_state ---
+    on_load=admin_state.PaymentHistoryState.load_confirmed_purchases
 )
 
 # --- Páginas Privadas de Administración ---

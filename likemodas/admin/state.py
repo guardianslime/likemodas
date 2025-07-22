@@ -181,9 +181,12 @@ class AdminConfirmState(SessionState):
                 .order_by(PurchaseModel.purchase_date.asc())
             )
             self.pending_purchases = session.exec(statement).unique().all()
-            self.new_purchase_notification = len(self.pending_purchases) > 0
+            
+            # Actualiza la notificación en el estado de sesión
+            has_pending = len(self.pending_purchases) > 0
+            yield SessionState.set_new_purchase_notification(has_pending)
 
-    # ✅ NUEVO EVENTO PARA CONFIRMAR UN PAGO
+
     @rx.event
     def confirm_payment(self, purchase_id: int):
         """Confirma un pago, actualiza el estado y notifica al usuario."""
@@ -214,6 +217,7 @@ class AdminConfirmState(SessionState):
 
     @classmethod
     def notify_admin_of_new_purchase(cls):
+        """Notifica al admin sobre una nueva compra."""
         return SessionState.set_new_purchase_notification(True)
 
 
@@ -223,6 +227,7 @@ class PaymentHistoryState(SessionState):
 
     @rx.event
     def load_confirmed_purchases(self):
+        """Carga el historial de compras para el administrador."""
         if not self.is_admin:
             self.purchases = []
             return

@@ -1,5 +1,3 @@
-# likemodas/purchases/page.py (ARCHIVO MODIFICADO)
-
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
@@ -10,7 +8,7 @@ from ..account.layout import account_layout
 def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
     """
     Componente para mostrar el detalle de una compra en el historial del usuario.
-    --- DISEÑO ACTUALIZADO PARA COINCIDIR CON LA VISTA DE ADMIN ---
+    --- DISEÑO ACTUALIZADO CON TEXTO MÁS GRANDE Y CENTRADO ---
     """
     return rx.card(
         rx.vstack(
@@ -65,6 +63,7 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
 
 @reflex_local_auth.require_login
 def purchase_history_page() -> rx.Component:
+    """Página del historial de compras del usuario."""
     page_content = rx.vstack(
         rx.heading("Mi Historial de Compras", size="7"),
         rx.cond(

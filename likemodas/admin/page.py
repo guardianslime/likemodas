@@ -1,51 +1,58 @@
-# likemodas/cart/page.py (VERSIÓN FINAL Y CORRECTA)
-
 import reflex as rx
 from ..auth.admin_auth import require_admin
 import reflex_local_auth
 from ..ui.base import base_page
-from .state import AdminConfirmState, PaymentHistoryState
+# --- CAMBIO: Importación corregida para apuntar al nuevo módulo de admin ---
+from ..admin.state import AdminConfirmState, PaymentHistoryState
 from ..models import PurchaseModel
 from ..cart.state import CartState, ProductCardData
 
 def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx.Component:
-    """Un componente reutilizable para mostrar una tarjeta de compra en el panel de admin."""
+    """
+    Un componente reutilizable para mostrar una tarjeta de compra en el panel de admin.
+    --- DISEÑO ACTUALIZADO CON TEXTO MÁS GRANDE ---
+    """
     return rx.card(
         rx.vstack(
             rx.hstack(
                 rx.vstack(
-                    rx.text(f"Compra #{purchase.id}", weight="bold"),
-                    rx.text(f"Cliente: {purchase.userinfo.user.username} ({purchase.userinfo.email})"),
-                    rx.text(f"Fecha: {purchase.purchase_date_formatted}"),
+                    # --- CAMBIO: Texto más grande ---
+                    rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
+                    rx.text(f"Cliente: {purchase.userinfo.user.username} ({purchase.userinfo.email})", size="3"),
+                    rx.text(f"Fecha: {purchase.purchase_date_formatted}", size="3"),
                     align_items="start",
                 ),
                 rx.spacer(),
                 rx.vstack(
-                    # ✅ CORRECCIÓN DEL TYPO AQUÍ
-                    rx.badge(purchase.status.to(str), color_scheme="blue", variant="soft"),
-                    rx.heading(f"${purchase.total_price:,.2f}", size="5"),
+                    rx.badge(purchase.status.to(str), color_scheme="blue", variant="soft", size="2"),
+                    # --- CAMBIO: Total más grande ---
+                    rx.heading(f"${purchase.total_price:,.2f}", size="6"),
                     align_items="end",
                 ),
                 width="100%",
             ),
             rx.divider(),
             rx.vstack(
-                rx.text("Detalles de Envío:", weight="medium"),
-                rx.text(f"Nombre: {purchase.shipping_name}"),
-                rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}"),
-                rx.text(f"Teléfono: {purchase.shipping_phone}"),
+                # --- CAMBIO: Textos más grandes ---
+                rx.text("Detalles de Envío:", weight="medium", size="4"),
+                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
+                rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
+                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
                 spacing="1",
                 align_items="start",
                 width="100%",
             ),
             rx.divider(),
             rx.vstack(
-                rx.text("Artículos:", weight="medium"),
-                rx.foreach(purchase.items_formatted, lambda item: rx.text(item)),
+                # --- CAMBIO: Textos más grandes ---
+                rx.text("Artículos:", weight="medium", size="4"),
+                rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
                 spacing="1",
                 align_items="start",
                 width="100%",
             ),
+            # --- CAMBIO: El botón de confirmar pago ya no aparece si is_history=True ---
+            # --- No se necesita cambiar la lógica, ya era correcta. ---
             rx.cond(
                 ~is_history,
                 rx.button(
@@ -55,7 +62,7 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
                     margin_top="1em",
                 )
             ),
-            spacing="3",
+            spacing="4", # Espaciado aumentado
             width="100%",
         ),
         width="100%",
@@ -82,7 +89,7 @@ def admin_confirm_page() -> rx.Component:
             spacing="5",
             padding="2em",
             width="100%",
-            max_width="800px",
+            max_width="960px", # Ancho aumentado
         )
     )
 
@@ -96,6 +103,7 @@ def payment_history_page() -> rx.Component:
                 PaymentHistoryState.purchases,
                 rx.foreach(
                     PaymentHistoryState.purchases,
+                    # --- CAMBIO: Se pasa is_history=True para ocultar el botón ---
                     lambda p: purchase_card_admin(p, is_history=True)
                 ),
                 rx.center(
@@ -104,12 +112,15 @@ def payment_history_page() -> rx.Component:
                 )
             ),
             align="center",
-            spacing="5",
+            spacing="6", # Espaciado aumentado
             padding="2em",
             width="100%",
-            max_width="800px",
+            # --- CAMBIO: Ancho máximo aumentado para centrado y mejor visualización ---
+            max_width="960px",
         )
     )
+
+# ... (El resto del archivo: checkout_form, cart_item_row, cart_page no cambia) ...
 
 def checkout_form() -> rx.Component:
     """Un formulario de envío con la nueva disposición y menús desplegables."""
@@ -129,24 +140,22 @@ def checkout_form() -> rx.Component:
                 ),
                 rx.vstack(
                     rx.text("Ciudad*"),
-                    # --- CORRECCIÓN AQUÍ ---
                     rx.select(
-                        CartState.cities, # Se usa CartState (minúscula)
+                        CartState.cities,
                         placeholder="Selecciona una ciudad...",
                         on_change=CartState.set_shipping_city_and_reset_neighborhood,
-                        value=CartState.shipping_city, # Se usa CartState (minúscula)
+                        value=CartState.shipping_city,
                     ),
                     spacing="1", align_items="start",
                 ),
                 rx.vstack(
                     rx.text("Barrio"),
-                    # --- CORRECCIÓN AQUÍ ---
                     rx.select(
-                        CartState.neighborhoods, # Se usa CartState (minúscula)
+                        CartState.neighborhoods,
                         placeholder="Selecciona un barrio...",
-                        on_change=CartState.set_shipping_neighborhood, # Se usa CartState (minúscula)
-                        value=CartState.shipping_neighborhood, # Se usa CartState (minúscula)
-                        is_disabled=~rx.Var.list(CartState.neighborhoods).length() > 0, # Se usa CartState (minúscula)
+                        on_change=CartState.set_shipping_neighborhood,
+                        value=CartState.shipping_neighborhood,
+                        is_disabled=~rx.Var.list(CartState.neighborhoods).length() > 0,
                     ),
                     spacing="1", align_items="start",
                 ),
@@ -167,7 +176,6 @@ def checkout_form() -> rx.Component:
         on_submit=CartState.handle_checkout,
     )
 
-# La función cart_item_row no cambia y ya era correcta
 def cart_item_row(item: rx.Var) -> rx.Component:
     post = item[0]
     quantity = item[1]
@@ -226,5 +234,3 @@ def cart_page() -> rx.Component:
             align="center", width="100%", padding="2em"
         )
     )
-
-
