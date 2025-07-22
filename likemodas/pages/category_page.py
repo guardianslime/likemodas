@@ -14,9 +14,8 @@ class CategoryPageState(CartState):
     
     posts_in_category: list[ProductCardData] = []
 
-    # --- 👇 ESTA ES LA LÍNEA CLAVE Y CORRECTA 👇 ---
-    # Una variable simple. Reflex la llenará automáticamente desde la URL.
-    category_name: str = ""
+    # --- 👇 CAMBIO 1: Renombramos la variable 👇 ---
+    cat_name: str = ""
 
     @rx.event
     def load_category_posts(self):
@@ -24,10 +23,10 @@ class CategoryPageState(CartState):
         with rx.session() as session:
             yield super().on_load() 
             
-            # Ahora, 'self.category_name' ya tiene el valor correcto de la URL.
-            if self.category_name != "todos":
+            # --- 👇 CAMBIO 2: Usamos el nuevo nombre de la variable 👇 ---
+            if self.cat_name != "todos":
                 try:
-                    category_enum = Category(self.category_name)
+                    category_enum = Category(self.cat_name)
                     statement = (
                         select(BlogPostModel)
                         .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
@@ -50,19 +49,19 @@ class CategoryPageState(CartState):
             else:
                 self.posts_in_category = self.posts
 
-    
-
 def category_page() -> rx.Component:
     """Página que muestra productos de una categoría específica."""
     return base_page(
         rx.center(
             rx.vstack(
-                rx.heading(CategoryPageState.category_name.to_title(), size="8"),
+                # --- 👇 CAMBIO 3: Usamos el nuevo nombre aquí 👇 ---
+                rx.heading(CategoryPageState.cat_name.to_title(), size="8"),
                 rx.cond(
                     CategoryPageState.posts_in_category,
                     product_gallery_component(posts=CategoryPageState.posts_in_category),
                     rx.center(
-                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.category_name}'."),
+                        # --- 👇 Y también aquí 👇 ---
+                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.cat_name}'."),
                         min_height="40vh"
                     )
                 ),
