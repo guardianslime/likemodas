@@ -22,16 +22,6 @@ class BlogPostState(SessionState):
     search_query: str = ""
     
     # Esta es la propiedad computada que ya habías añadido, está correcta.
-    @rx.var
-    def filtered_posts(self) -> list[BlogPostModel]:
-        """Filtra los posts del admin según el search_query."""
-        if not self.search_query.strip():
-            return self.posts
-        
-        return [
-            post for post in self.posts
-            if self.search_query.lower() in post.title.lower()
-        ]
 
     @rx.var
     def formatted_price(self) -> str:
@@ -51,10 +41,8 @@ class BlogPostState(SessionState):
     
     @rx.var
     def filtered_posts(self) -> list[BlogPostModel]:
-        """Filtra los posts del admin según el search_query."""
         if not self.search_query.strip():
             return self.posts
-        
         return [
             post for post in self.posts
             if self.search_query.lower() in post.title.lower()

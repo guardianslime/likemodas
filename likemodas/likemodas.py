@@ -23,14 +23,10 @@ from .account import shipping_info as shipping_info_module
 from .account import shipping_info_state
 
 from .ui.base import base_page
+
 def index() -> rx.Component:
-    return blog_page.blog_public_page(
-        rx.cond(
-            auth_state.SessionState.is_authenticated,
-            dashboard_component(),
-            landing_component(),
-        )
-    )
+    """La página principal ahora es la galería de productos."""
+    return blog_page.blog_public_page()
 
 app = rx.App(
     theme=rx.theme(
