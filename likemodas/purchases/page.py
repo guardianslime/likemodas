@@ -1,48 +1,84 @@
-# likemodas/purchases/page.py (VERSIÓN MODIFICADA)
+# likemodas/purchases/page.py (ARCHIVO MODIFICADO)
 
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
 from .state import PurchaseHistoryState
 from ..models import PurchaseModel
-from ..account.layout import account_layout # ✅ Importamos el nuevo layout
+from ..account.layout import account_layout
 
 def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
-    # (Esta función no cambia)
+    """
+    Componente para mostrar el detalle de una compra en el historial del usuario.
+    --- DISEÑO ACTUALIZADO PARA COINCIDIR CON LA VISTA DE ADMIN ---
+    """
     return rx.card(
         rx.vstack(
+            # Sección Superior: Fecha y Estado
             rx.hstack(
-                rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold"),
+                rx.vstack(
+                    rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
+                    rx.text(f"ID de Compra: #{purchase.id}", size="2", color_scheme="gray"),
+                    align_items="start",
+                ),
                 rx.spacer(),
-                rx.badge(purchase.status.to(str), color_scheme="blue"),
+                rx.vstack(
+                    rx.badge(purchase.status.to(str), color_scheme="blue", variant="soft", size="2"),
+                    rx.heading(f"${purchase.total_price:.2f}", size="6"),
+                    align_items="end",
+                ),
                 justify="between",
-                width="100%"
+                width="100%",
             ),
             rx.divider(),
-            rx.foreach(
-                purchase.items_formatted,
-                lambda item_str: rx.text(item_str)
+            
+            # Sección de Envío
+            rx.vstack(
+                rx.text("Detalles de Envío:", weight="medium", size="4"),
+                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
+                rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
+                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
+                spacing="1",
+                align_items="start",
+                width="100%",
             ),
             rx.divider(),
-            rx.text(f"Total: ${purchase.total_price:.2f}", weight="bold", align_self="flex-end"),
-            spacing="3",
+
+            # Sección de Artículos
+            rx.vstack(
+                rx.text("Artículos Comprados:", weight="medium", size="4"),
+                rx.foreach(
+                    purchase.items_formatted,
+                    lambda item_str: rx.text(item_str, size="3")
+                ),
+                spacing="1",
+                align_items="start",
+                width="100%",
+            ),
+            
+            spacing="4",
             width="100%"
-        )
+        ),
+        width="100%",
+        padding="1.5em",
     )
 
 @reflex_local_auth.require_login
 def purchase_history_page() -> rx.Component:
-    # ✅ Se envuelve el contenido en el nuevo account_layout
     page_content = rx.vstack(
         rx.heading("Mi Historial de Compras", size="7"),
         rx.cond(
             PurchaseHistoryState.purchases,
             rx.foreach(PurchaseHistoryState.purchases, purchase_detail_card),
-            rx.text("No tienes compras anteriores.")
+            rx.center(
+                rx.text("No tienes compras anteriores."),
+                padding_y="2em",
+            )
         ),
-        spacing="5",
+        spacing="6", # Espaciado aumentado
         width="100%",
-        max_width="800px",
+        # --- CAMBIO: Ancho máximo aumentado para centrado y mejor visualización ---
+        max_width="960px",
         align="center"
     )
     

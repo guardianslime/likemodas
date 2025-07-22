@@ -129,3 +129,88 @@ def cart_page() -> rx.Component:
             align="center", width="100%", padding="2em"
         )
     )
+
+def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx.Component:
+    """Un componente reutilizable para mostrar una tarjeta de compra en el panel de admin."""
+    return rx.card(
+        rx.vstack(
+            rx.hstack(
+                rx.vstack(
+                     # --- CAMBIO: Texto más grande ---
+                    rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
+                    rx.text(f"Cliente: {purchase.userinfo.user.username} ({purchase.userinfo.email})", size="3"),
+                    rx.text(f"Fecha: {purchase.purchase_date_formatted}", size="3"),
+                    align_items="start",
+                ),
+                rx.spacer(),
+                rx.vstack(
+                    rx.badge(purchase.status.to(str), color_scheme="blue", variant="soft", size="2"),
+                    # --- CAMBIO: Total más grande ---
+                    rx.heading(f"${purchase.total_price:,.2f}", size="6"),
+                    align_items="end",
+                ),
+                width="100%",
+            ),
+            rx.divider(),
+            rx.vstack(
+                # --- CAMBIO: Textos más grandes ---
+                rx.text("Detalles de Envío:", weight="medium", size="4"),
+                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
+                rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
+                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
+                spacing="1",
+                align_items="start",
+                width="100%",
+            ),
+            rx.divider(),
+            rx.vstack(
+                # --- CAMBIO: Textos más grandes ---
+                rx.text("Artículos:", weight="medium", size="4"),
+                rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
+                spacing="1",
+                align_items="start",
+                width="100%",
+            ),
+            rx.cond(
+                ~is_history,
+                rx.button(
+                    "Confirmar Pago",
+                    on_click=AdminConfirmState.confirm_payment(purchase.id),
+                    width="100%",
+                    margin_top="1em",
+                )
+            ),
+            spacing="4", # Espaciado aumentado
+            width="100%",
+        ),
+        width="100%",
+        padding="1.5em", # Padding añadido
+    )
+
+# ... (el resto del archivo no cambia) ...
+
+@require_admin
+def payment_history_page() -> rx.Component:
+    """Página para que el admin vea el historial de pagos."""
+    return base_page(
+        rx.vstack(
+            rx.heading("Historial de Pagos", size="8"),
+            rx.cond(
+                PaymentHistoryState.purchases,
+                rx.foreach(
+                    PaymentHistoryState.purchases,
+                    lambda p: purchase_card_admin(p, is_history=True)
+                ),
+                rx.center(
+                    rx.text("No hay historial de compras."),
+                    padding_y="2em",
+                )
+            ),
+            align="center",
+            spacing="6", # Espaciado aumentado
+            padding="2em",
+            width="100%",
+            # --- CAMBIO: Ancho máximo aumentado para centrado y mejor visualización ---
+            max_width="960px",
+        )
+    )
