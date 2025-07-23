@@ -7,16 +7,16 @@ from sqlmodel import select
 from datetime import datetime
 from .. import navigation
 from sqlalchemy.orm import joinedload
+from ..states.gallery_state import ProductGalleryState
 
 # --- CAMBIO 1: Importamos el modelo de datos seguro ---
 from ..cart.state import ProductCardData
 
-class SearchState(rx.State):
+class SearchState(ProductGalleryState):
     """El único y definitivo estado para la búsqueda."""
     search_term: str = ""
     
     # --- CAMBIO 2: Los resultados ahora serán del tipo seguro ---
-    search_results: List[ProductCardData] = []
     
     search_performed: bool = False
 
@@ -43,17 +43,12 @@ class SearchState(rx.State):
             results = session.exec(statement).unique().all()
 
             # --- CAMBIO 3: Transformamos los resultados de la BD al modelo seguro ---
-            self.search_results = [
+            self.all_posts = [
                 ProductCardData(
-                    id=post.id,
-                    title=post.title,
-                    price=post.price,
-                    images=post.images,
-                    average_rating=post.average_rating,
+                    id=post.id, title=post.title, price=post.price,
+                    images=post.images, average_rating=post.average_rating,
                     rating_count=post.rating_count
-                )
-                for post in results
+                ) for post in results
             ]
 
-        self.search_performed = True 
         return rx.redirect("/search-results")

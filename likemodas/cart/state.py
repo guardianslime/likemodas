@@ -1,16 +1,15 @@
+# likemodas/cart/state.py
+
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..states.gallery_state import ProductGalleryState 
 from ..data.schemas import ProductCardData
-from ..auth.state import SessionState
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus, UserInfo, NotificationModel
 from sqlmodel import select
 from datetime import datetime
-from ..states.gallery_state import ProductGalleryState
 import reflex_local_auth
 import sqlalchemy
 from ..data.colombia_locations import load_colombia_data
-# Se importa AdminConfirmState desde su ubicación correcta para las notificaciones
 from ..admin.state import AdminConfirmState
 
 # --- 👇 ELIMINA ESTE BLOQUE COMPLETO DE AQUÍ 👇 ---
@@ -49,7 +48,6 @@ class CartState(ProductGalleryState):
     def on_load(self):
         """Carga la lista completa de productos al iniciar."""
         with rx.session() as session:
-            # ... (la consulta a la base de datos no cambia) ...
             statement = (
                 select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
@@ -57,8 +55,6 @@ class CartState(ProductGalleryState):
                 .order_by(BlogPostModel.created_at.desc())
             )
             results = session.exec(statement).unique().all()
-            
-            # --- CAMBIO: Guarda los productos en 'all_posts' para que los filtros funcionen ---
             self.all_posts = [
                 ProductCardData(
                     id=post.id, title=post.title, price=post.price, images=post.images,
@@ -78,6 +74,7 @@ class CartState(ProductGalleryState):
         posts_in_cart = [post for post in self.all_posts if post.id in self.cart]
         post_map = {post.id: post for post in posts_in_cart}
         return [(post_map[pid], self.cart[pid]) for pid in self.cart.keys() if pid in post_map]
+
 
     @rx.var
     def cart_total(self) -> float:
