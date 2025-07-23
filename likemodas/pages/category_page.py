@@ -76,23 +76,23 @@ class CategoryPageState(SessionState):
         return posts_to_filter
 
 
-    def category_page() -> rx.Component:
-        return base_page(
-            rx.center(
-                rx.vstack(
-                    # --- 👇 PASO 3: La UI usa la propiedad computada con normalidad 👇 ---
-                    rx.heading(CategoryPageState.current_category.title(), size="8"),
-                    
-                    rx.cond(
-                        CategoryPageState.filtered_posts_in_category,
-                        product_gallery_component(posts=CategoryPageState.filtered_posts_in_category),
-                        rx.center(
-                            rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
-                            min_height="40vh"
-                        )
-                    ),
-                    spacing="6", width="100%", padding="2em", align="center"
+def category_page() -> rx.Component:
+    return base_page(
+        rx.center(
+            rx.vstack(
+                # --- 👇 PASO 3: La UI usa la propiedad computada con normalidad 👇 ---
+                rx.heading(CategoryPageState.current_category.title(), size="8"),
+                
+                rx.cond(
+                    CategoryPageState.filtered_posts_in_category,
+                    product_gallery_component(posts=CategoryPageState.filtered_posts_in_category),
+                    rx.center(
+                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
+                        min_height="40vh"
+                    )
                 ),
-                width="100%"
-            )
+                spacing="6", width="100%", padding="2em", align="center"
+            ),
+            width="100%"
         )
+    )
