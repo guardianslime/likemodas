@@ -24,7 +24,6 @@ from ..admin.state import AdminConfirmState
 
 class CartState(ProductGalleryState):
     cart: Dict[int, int] = {}
-    posts: list[ProductCardData] = []
     
     colombia_data: Dict[str, List[str]] = load_colombia_data()
     shipping_name: str = ""
