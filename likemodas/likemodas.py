@@ -50,12 +50,12 @@ app.add_page(
 
 app.add_page(
     category_page.category_page,
-    route="/category/[cat_name]", # El nombre del parámetro en la URL no cambia
+    route="/category/[cat_name]",
     title="Categoría",
     on_load=category_page.CategoryPageState.load_category_posts
 )
 
-app.add_page(test_page.test_page, route="/test/[test_param]")
+
 
 app.add_page(search_results.search_results_page, route="/search-results", title="Resultados de Búsqueda")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
