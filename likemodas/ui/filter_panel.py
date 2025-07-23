@@ -2,6 +2,7 @@
 
 import reflex as rx
 from .filter_state import FilterState
+from ..auth.state import SessionState # <-- CAMBIA LA IMPORTACIÓN
 
 def floating_filter_panel() -> rx.Component:
     """
@@ -9,41 +10,33 @@ def floating_filter_panel() -> rx.Component:
     """
     return rx.box(
         rx.hstack(
-            # El contenido principal del panel de filtros
             rx.vstack(
                 rx.heading("Filtros", size="6", width="100%"),
                 rx.divider(),
-                
-                # Sección de filtros de Precio
                 rx.vstack(
                     rx.text("Precio", weight="bold"),
                     rx.input(
                         placeholder="Mínimo",
-                        value=FilterState.min_price,
-                        on_change=FilterState.set_min_price,
+                        value=SessionState.min_price, # <-- CAMBIO
+                        on_change=SessionState.set_min_price, # <-- CAMBIO
                         type="number"
                     ),
                     rx.input(
                         placeholder="Máximo",
-                        value=FilterState.max_price,
-                        on_change=FilterState.set_max_price,
+                        value=SessionState.max_price, # <-- CAMBIO
+                        on_change=SessionState.set_max_price, # <-- CAMBIO
                         type="number"
                     ),
                     spacing="2",
                     align_items="start",
                     width="100%"
                 ),
-                
-                # Aquí puedes añadir más filtros en el futuro (talla, color, etc.)
-                
                 spacing="4",
                 padding="1.5em",
                 bg=rx.color("gray", 2),
                 height="100%",
-                width="280px", # Ancho fijo del panel
+                width="280px",
             ),
-            
-            # La pestaña vertical para mostrar/ocultar el panel
             rx.box(
                 rx.text(
                     "Filtros",
@@ -56,7 +49,7 @@ def floating_filter_panel() -> rx.Component:
                         "color": "white"
                     }
                 ),
-                on_click=FilterState.toggle_filters,
+                on_click=SessionState.toggle_filters, # <-- CAMBIO
                 cursor="pointer",
                 bg=rx.color("blue", 9),
                 border_radius="0 8px 8px 0",
@@ -68,15 +61,14 @@ def floating_filter_panel() -> rx.Component:
             spacing="0"
         ),
         position="fixed",
-        top="50%", # Centrado verticalmente en la pantalla
+        top="50%",
         left="0",
-        # Lógica de deslizamiento con transform
         transform=rx.cond(
-            FilterState.show_filters,
-            "translateY(-50%)", # Posición expandida
-            "translate(-280px, -50%)" # Posición colapsada (ancho del panel)
+            SessionState.show_filters, # <-- CAMBIO
+            "translateY(-50%)",
+            "translate(-280px, -50%)"
         ),
         transition="transform 0.3s ease-in-out",
-        z_index="1000", # Asegura que flote sobre otros elementos
+        z_index="1000",
         height="auto",
     )
