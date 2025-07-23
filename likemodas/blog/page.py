@@ -104,4 +104,4 @@ def blog_public_page():
             ),
             width="100%"
         )
-    )
+    
