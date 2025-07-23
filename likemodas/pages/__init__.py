@@ -6,10 +6,9 @@ from .landing import landing_component
 from .pricing import pricing_page
 from .protected import protected_page
 from . import search_results
-# --- 👇 DESCOMENTA ESTA LÍNEA 👇 ---
+# --- 👇 ASEGÚRATE DE QUE ESTA LÍNEA NO ESTÉ COMENTADA 👇 ---
 from . import category_page
 from . import test_page
-
 
 __all__ = [
     'about_page',
@@ -18,7 +17,7 @@ __all__ = [
     'pricing_page',
     'protected_page',
     'search_results',
-    # --- 👇 Y DESCOMENTA ESTA LÍNEA TAMBIÉN 👇 ---
+    # --- 👇 Y ASEGÚRATE DE QUE ESTA LÍNEA TAMPOCO ESTÉ COMENTADA 👇 ---
     'category_page',
     'test_page'
 ]
