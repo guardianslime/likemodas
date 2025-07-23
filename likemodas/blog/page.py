@@ -98,15 +98,16 @@ def blog_public_page():
                             )
                         ),
                         rx.popover.content(
-                            # Este es el contenido que aparece al hacer clic
                             rx.hstack(
                                 rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
                                 rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
                                 rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
                                 rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-                                spacing="3", # Un poco menos de espacio para que se vea compacto
+                                spacing="3",
                             ),
                             padding="0.5em",
+                            side="right",   # <-- Hace que se abra a la derecha
+                            align="center", # <-- Lo centra verticalmente
                         ),
                     ),
                     justify="start",
