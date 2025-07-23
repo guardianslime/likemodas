@@ -82,7 +82,9 @@ def blog_public_page():
     """Página pública que ahora es la principal y muestra la galería."""
     return base_page(
         rx.center(
-            rx.hstack(
+            rx.vstack(
+                # Fila de categorías
+                rx.hstack(
                     rx.text("Categorías:", weight="bold", margin_right="1em"),
                     rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
                     rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
@@ -95,7 +97,7 @@ def blog_public_page():
                     max_width="1800px",
                     padding_bottom="1em"
                 ),
-                # --- FIN DE LA MODIFICACIÓN ---
+                # Galería de productos
                 product_gallery_component(posts=CartState.posts),
                 spacing="6", 
                 width="100%", 
@@ -104,4 +106,4 @@ def blog_public_page():
             ),
             width="100%"
         )
-    
+    )
