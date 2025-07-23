@@ -82,32 +82,15 @@ def blog_public_page():
     """Página pública que ahora es la principal y muestra la galería."""
     return base_page(
         rx.center(
-            rx.vstack(
-                # --- 👇 SECCIÓN MODIFICADA 👇 ---
-                # Se eliminó el heading "Publicaciones" y el spacer.
-                # El hstack ahora solo contiene el menú y lo alinea a la derecha.
-                rx.hstack(
-                    rx.menu.root(
-                        rx.menu.trigger(
-                            # Estilos aplicados al botón para un look minimalista
-                            rx.button(
-                                "Categorías", 
-                                variant="outline", # Relleno transparente
-                                size="3",          # Botón más grande
-                                color="white",     # Texto blanco
-                                border_radius="full", # Bordes redondeados
-                                style={"border_color": "white"}, # Borde blanco
-                            )
-                        ),
-                        rx.menu.content(
-                            rx.menu.item("Ropa", on_click=rx.redirect("/category/ropa")),
-                            rx.menu.item("Calzado", on_click=rx.redirect("/category/calzado")),
-                            rx.menu.item("Mochilas", on_click=rx.redirect("/category/mochilas")),
-                            rx.menu.separator(),
-                            rx.menu.item("Ver Todo", on_click=rx.redirect("/")),
-                        )
-                    ),
-                    justify="start", # Cambiado de "end" a "start"
+            rx.hstack(
+                    rx.text("Categorías:", weight="bold", margin_right="1em"),
+                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
+                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
+                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
+                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
+                    spacing="4",
+                    align="center",
+                    justify="start",
                     width="100%",
                     max_width="1800px",
                     padding_bottom="1em"
