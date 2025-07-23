@@ -10,14 +10,16 @@ import sqlalchemy
 from ..data.colombia_locations import load_colombia_data
 # Se importa AdminConfirmState desde su ubicación correcta para las notificaciones
 from ..admin.state import AdminConfirmState
+from ..data.schemas import ProductCardData
 
-class ProductCardData(rx.Base):
-    id: int
-    title: str
-    price: float = 0.0
-    images: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
+# --- 👇 ELIMINA ESTE BLOQUE COMPLETO DE AQUÍ 👇 ---
+# class ProductCardData(rx.Base):
+#     id: int
+#     title: str
+#     price: float = 0.0
+#     images: list[str] = []
+#     average_rating: float = 0.0
+#     rating_count: int = 0
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}

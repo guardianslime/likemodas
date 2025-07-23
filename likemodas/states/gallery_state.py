@@ -2,7 +2,7 @@
 
 import reflex as rx
 from ..auth.state import SessionState
-from ..cart.state import ProductCardData
+from ..data.schemas import ProductCardData
 
 class ProductGalleryState(SessionState):
     """Un estado base para galerías de productos que incluye filtros."""
