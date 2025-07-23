@@ -83,21 +83,38 @@ def blog_public_page():
     return base_page(
         rx.center(
             rx.vstack(
-                # Fila de categorías
+                # --- 👇 SECCIÓN MODIFICADA PARA USAR POPOVER 👇 ---
                 rx.hstack(
-                    rx.text("Categorías:", weight="bold", margin_right="1em"),
-                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
-                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
-                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
-                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-                    spacing="4",
-                    align="center",
+                    rx.popover.root(
+                        rx.popover.trigger(
+                            # Este es el botón principal que el usuario ve
+                            rx.button(
+                                "Categorías", 
+                                variant="outline",
+                                size="3",
+                                color="white",
+                                border_radius="full",
+                                style={"border_color": "white"},
+                            )
+                        ),
+                        rx.popover.content(
+                            # Este es el contenido que aparece al hacer clic
+                            rx.hstack(
+                                rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
+                                rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
+                                rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
+                                rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
+                                spacing="3", # Un poco menos de espacio para que se vea compacto
+                            ),
+                            padding="0.5em",
+                        ),
+                    ),
                     justify="start",
                     width="100%",
                     max_width="1800px",
                     padding_bottom="1em"
                 ),
-                # Galería de productos
+                # --- FIN DE LA MODIFICACIÓN ---
                 product_gallery_component(posts=CartState.posts),
                 spacing="6", 
                 width="100%", 
