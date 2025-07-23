@@ -74,11 +74,12 @@ def public_navbar() -> rx.Component:
                         )
                     ),
                     rx.menu.content(
-                    rx.menu.item("Home", on_click=navigation.NavState.to_home),
-                    rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri),
-                    rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
-                    rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
-                    rx.menu.separator(),
+                        rx.menu.item("Home", on_click=navigation.NavState.to_home),
+                        # --- 👇 LÍNEA ELIMINADA 👇 ---
+                        # rx.menu.item("Productos", on_click=navigation.NavState.to_pulic_galeri),
+                        rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
+                        rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
+                        rx.menu.separator(),
                     rx.cond(
                         SessionState.is_authenticated,
                         rx.fragment(

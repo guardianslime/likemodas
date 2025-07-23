@@ -83,13 +83,21 @@ def blog_public_page():
     return base_page(
         rx.center(
             rx.vstack(
-                # --- 👇 SECCIÓN MODIFICADA CON EL MENÚ 👇 ---
+                # --- 👇 SECCIÓN MODIFICADA 👇 ---
+                # Se eliminó el heading "Publicaciones" y el spacer.
+                # El hstack ahora solo contiene el menú y lo alinea a la derecha.
                 rx.hstack(
-                    rx.heading("Publicaciones", size="7"),
-                    rx.spacer(),
                     rx.menu.root(
                         rx.menu.trigger(
-                            rx.button("Categorías", variant="soft")
+                            # Estilos aplicados al botón para un look minimalista
+                            rx.button(
+                                "Categorías", 
+                                variant="outline", # Relleno transparente
+                                size="3",          # Botón más grande
+                                color="white",     # Texto blanco
+                                border_radius="full", # Bordes redondeados
+                                style={"border_color": "white"}, # Borde blanco
+                            )
                         ),
                         rx.menu.content(
                             rx.menu.item("Ropa", on_click=rx.redirect("/category/ropa")),
@@ -99,11 +107,12 @@ def blog_public_page():
                             rx.menu.item("Ver Todo", on_click=rx.redirect("/")),
                         )
                     ),
-                    justify="between",
+                    justify="end", # Alinea el botón a la derecha
                     width="100%",
                     max_width="1800px",
                     padding_bottom="1em"
                 ),
+                # --- FIN DE LA MODIFICACIÓN ---
                 product_gallery_component(posts=CartState.posts),
                 spacing="6", 
                 width="100%", 
