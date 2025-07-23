@@ -3,7 +3,6 @@
 import reflex as rx
 from ..ui.base import base_page
 from ..ui.components import product_gallery_component
-from ..ui.filter_sidebar import filter_sidebar
 from ..ui.gallery_header import gallery_header
 from ..states.gallery_state import ProductGalleryState
 from ..models import BlogPostModel, Category

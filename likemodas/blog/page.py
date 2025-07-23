@@ -7,7 +7,6 @@ from ..navigation import routes
 import math
 from ..models import BlogPostModel
 from ..ui.components import product_gallery_component
-from ..ui.filter_sidebar import filter_sidebar # <-- Importa el nuevo sidebar
 from ..ui.gallery_header import gallery_header
 
 def _product_card_rating(post: BlogPostModel) -> rx.Component:
@@ -84,7 +83,6 @@ def blog_public_page():
     """Página principal con galería, categorías y filtros."""
     return base_page(
         # Añadimos el sidebar de filtros aquí
-        filter_sidebar(),
         rx.center(
             rx.vstack(
                 # Usamos el nuevo encabezado reutilizable
