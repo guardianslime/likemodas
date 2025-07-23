@@ -3,6 +3,8 @@
 import reflex as rx
 from reflex.style import toggle_color_mode
 
+from reflex.event import EventSpec
+
 from ..auth.state import SessionState # ✅ Se importa SessionState, que es seguro.
 from .. import navigation
 from ..models import UserRole
@@ -10,7 +12,7 @@ from likemodas.states.gallery_state import ProductGalleryState # <-- Importa el 
 # ❗️ Se elimina cualquier importación de AdminConfirmState.
 
 
-def sidebar_action_item(text: str, icon: str, on_click: rx.EventSpec) -> rx.Component:
+def sidebar_action_item(text: str, icon: str, on_click: EventSpec) -> rx.Component:
     """Un item del sidebar que ejecuta una acción en lugar de ser un link."""
     return rx.box(
         rx.hstack(
