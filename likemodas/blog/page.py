@@ -7,6 +7,7 @@ from ..navigation import routes
 import math
 from ..models import BlogPostModel
 from ..ui.components import product_gallery_component
+from ..ui.filter_sidebar import filter_sidebar # <-- Importa el nuevo sidebar
 
 def _product_card_rating(post: BlogPostModel) -> rx.Component:
     average_rating = post.average_rating
@@ -79,44 +80,22 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
 
 # --- ✨ PÁGINA SIMPLIFICADA USANDO EL NUEVO COMPONENTE --- ✨
 def blog_public_page():
-    """Página pública que ahora es la principal y muestra la galería."""
+    """Página principal con galería, categorías y filtros."""
     return base_page(
         rx.center(
             rx.vstack(
-                # --- 👇 SECCIÓN MODIFICADA PARA USAR POPOVER 👇 ---
                 rx.hstack(
-                    rx.popover.root(
-                        rx.popover.trigger(
-                            # Este es el botón principal que el usuario ve
-                            rx.button(
-                                "Categorías", 
-                                variant="outline",
-                                size="3",
-                                color="white",
-                                border_radius="full",
-                                style={"border_color": "white"},
-                            )
-                        ),
-                        rx.popover.content(
-                            rx.hstack(
-                                rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
-                                rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
-                                rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
-                                rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-                                spacing="3",
-                            ),
-                            padding="0.5em",
-                            side="right",   # <-- Hace que se abra a la derecha
-                            align="center", # <-- Lo centra verticalmente
-                        ),
-                    ),
-                    justify="start",
-                    width="100%",
-                    max_width="1800px",
-                    padding_bottom="1em"
+                    filter_sidebar(), # <-- Añade el botón de filtros
+                    rx.text("Categorías:", weight="bold", margin_right="1em"),
+                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
+                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
+                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
+                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
+                    spacing="4", align="center", justify="start", width="100%",
+                    max_width="1800px", padding_bottom="1em", padding_left="4em"
                 ),
-                # --- FIN DE LA MODIFICACIÓN ---
-                product_gallery_component(posts=CartState.posts),
+                # --- CAMBIO: Muestra los productos filtrados ---
+                product_gallery_component(posts=CartState.filtered_posts),
                 spacing="6", 
                 width="100%", 
                 padding="2em", 

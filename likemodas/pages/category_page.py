@@ -5,13 +5,14 @@ from ..ui.base import base_page
 from ..auth.state import SessionState
 from ..cart.state import CartState, ProductCardData
 from ..ui.components import product_gallery_component
+from ..ui.filter_sidebar import filter_sidebar # <-- Importa el nuevo sidebar
 from ..models import BlogPostModel, Category
 from sqlmodel import select
 from datetime import datetime
 import sqlalchemy
 
 class CategoryPageState(SessionState):
-    posts_in_category: list[ProductCardData] = []
+    cat_name: str = ""
 
     # --- 👇 PASO 1: Creamos la propiedad computada, como en tus otros estados 👇 ---
     @rx.var
@@ -44,23 +45,34 @@ class CategoryPageState(SessionState):
                 .order_by(BlogPostModel.created_at.desc())
             )
             results = session.exec(statement).unique().all()
-            self.posts_in_category = [
+            self.all_posts = [
                 ProductCardData(
-                    id=p.id, title=p.title, price=p.price, images=p.images,
-                    average_rating=p.average_rating, rating_count=p.rating_count
-                ) for p in results
+                    id=post.id, title=post.title, price=post.price, images=post.images,
+                    average_rating=post.average_rating, rating_count=post.rating_count
+                ) for post in results
             ]
 
 def category_page() -> rx.Component:
+    """Página de categoría con su propia barra de categorías y filtros."""
     return base_page(
         rx.center(
             rx.vstack(
-                # --- 👇 PASO 3: La UI usa la propiedad computada con normalidad 👇 ---
-                rx.heading(CategoryPageState.current_category.title(), size="8"),
-                
+                # --- AÑADIMOS EL MISMO ENCABEZADO QUE EN LA PÁGINA PRINCIPAL ---
+                rx.hstack(
+                    filter_sidebar(),
+                    rx.text("Categorías:", weight="bold", margin_right="1em"),
+                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
+                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
+                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
+                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
+                    spacing="4", align="center", justify="start", width="100%",
+                    max_width="1800px", padding_bottom="1em", padding_left="4em"
+                ),
+                rx.heading(CategoryPageState.current_category.title(), size="8", padding_top="1em"),
+                # --- CAMBIO: Muestra los productos filtrados ---
                 rx.cond(
-                    CategoryPageState.posts_in_category,
-                    product_gallery_component(posts=CategoryPageState.posts_in_category),
+                    CategoryPageState.filtered_posts,
+                    product_gallery_component(posts=CategoryPageState.filtered_posts),
                     rx.center(
                         rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
                         min_height="40vh"

@@ -4,6 +4,7 @@ from ..auth.state import SessionState
 from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
+from ..states.gallery_state import ProductGalleryState
 import reflex_local_auth
 import sqlalchemy
 from ..data.colombia_locations import load_colombia_data
@@ -45,14 +46,11 @@ class CartState(SessionState):
     @rx.event
     def on_load(self):
         with rx.session() as session:
-            statement = (
-                select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
-                .order_by(BlogPostModel.created_at.desc())
-            )
+            # ... (la consulta a la base de datos no cambia) ...
             results = session.exec(statement).unique().all()
-            self.posts = [
+            
+            # --- CAMBIO: Guarda los resultados en 'all_posts' en lugar de 'posts' ---
+            self.all_posts = [
                 ProductCardData(
                     id=post.id, title=post.title, price=post.price, images=post.images,
                     average_rating=post.average_rating, rating_count=post.rating_count
