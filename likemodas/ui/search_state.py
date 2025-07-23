@@ -17,16 +17,15 @@ class SearchState(ProductGalleryState):
     search_term: str = ""
     
     # --- CAMBIO 2: Los resultados ahora serán del tipo seguro ---
-    
+    search_results: List[ProductCardData] = []
     search_performed: bool = False
 
     @rx.event
     def perform_search(self):
-        """Ejecuta la búsqueda, transforma los datos y redirige."""
+        """Ejecuta la búsqueda y puebla la lista de posts para ser filtrada."""
         term = self.search_term.strip()
         if not term:
-            # Si la búsqueda está vacía, simplemente limpia los resultados.
-            self.search_results = []
+            self.all_posts = []
             return rx.redirect(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE) 
 
         with rx.session() as session:
@@ -41,8 +40,8 @@ class SearchState(ProductGalleryState):
                 .order_by(BlogPostModel.created_at.desc())
             )
             results = session.exec(statement).unique().all()
-
-            # --- CAMBIO 3: Transformamos los resultados de la BD al modelo seguro ---
+            
+            # --- PASO 2: Guarda los resultados en 'all_posts' para los filtros ---
             self.all_posts = [
                 ProductCardData(
                     id=post.id, title=post.title, price=post.price,
