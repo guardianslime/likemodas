@@ -4,6 +4,7 @@ import reflex as rx
 from ..ui.base import base_page
 from ..ui.components import product_gallery_component
 from ..ui.gallery_header import gallery_header
+from ..ui.filter_sidebar import floating_filter_sidebar
 from ..states.gallery_state import ProductGalleryState
 from ..models import BlogPostModel, Category
 from ..data.schemas import ProductCardData
@@ -57,8 +58,9 @@ class CategoryPageState(ProductGalleryState):
             ]
 
 def category_page() -> rx.Component:
-    """Página de categoría con su propia barra de categorías y filtros."""
     return base_page(
+        # --- 👇 AÑADE EL COMPONENTE FLOTANTE AQUÍ 👇 ---
+        floating_filter_sidebar(),
         rx.center(
             rx.vstack(
                 gallery_header(),
@@ -69,9 +71,10 @@ def category_page() -> rx.Component:
                     # ...
                 ),
                 spacing="6", width="100%", padding="2em", align="center",
+                # --- Propiedades para el desplazamiento suave ---
                 transition="padding-left 0.3s ease",
                 padding_left=rx.cond(
-                    CategoryPageState.show_filters, "250px", "0px"
+                    CategoryPageState.show_filters, "220px", "0px"
                 ),
             ),
             width="100%"

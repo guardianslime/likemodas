@@ -23,7 +23,6 @@ def protected_layout(child: rx.Component) -> rx.Component:
     """El layout para usuarios autenticados, ahora comprueba la verificación."""
     return rx.hstack(
         sidebar(),
-        filter_panel(),
         rx.box(
             # Comprueba si el usuario está verificado
             rx.cond(
@@ -43,7 +42,6 @@ def protected_layout(child: rx.Component) -> rx.Component:
             padding="1em",
             width="100%",
             id="my-content-area-el",
-            transition="margin-left 0.3s ease", # Animación suave al desplazar
             margin_left=rx.cond(
                 ProductGalleryState.show_filters, "220px", "0px" # Desplaza el contenido
             ),

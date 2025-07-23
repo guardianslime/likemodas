@@ -8,6 +8,7 @@ import math
 from ..models import BlogPostModel
 from ..ui.components import product_gallery_component
 from ..ui.gallery_header import gallery_header
+from ..ui.filter_sidebar import floating_filter_sidebar 
 
 def _product_card_rating(post: BlogPostModel) -> rx.Component:
     average_rating = post.average_rating
@@ -80,25 +81,21 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
 
 # --- ✨ PÁGINA SIMPLIFICADA USANDO EL NUEVO COMPONENTE --- ✨
 def blog_public_page():
-    """Página principal con galería, categorías y filtros."""
     return base_page(
-        # Añadimos el sidebar de filtros aquí
+        # --- 👇 AÑADE EL COMPONENTE FLOTANTE AQUÍ 👇 ---
+        floating_filter_sidebar(),
         rx.center(
             rx.vstack(
-                # Usamos el nuevo encabezado reutilizable
                 gallery_header(),
-                
-                # La galería ahora tiene un padding izquierdo condicional
-                # para hacer espacio cuando el filtro está abierto.
                 product_gallery_component(posts=CartState.filtered_posts),
-                
                 spacing="6", 
                 width="100%", 
                 padding="2em", 
                 align="center",
-                transition="padding-left 0.3s ease", # Animación suave
+                # --- Propiedades para el desplazamiento suave ---
+                transition="padding-left 0.3s ease",
                 padding_left=rx.cond(
-                    CartState.show_filters, "250px", "0px"
+                    CartState.show_filters, "220px", "0px"
                 ),
             ),
         )
