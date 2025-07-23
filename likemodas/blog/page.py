@@ -116,7 +116,7 @@ def blog_public_page():
                     padding_bottom="1em"
                 ),
                 # --- FIN DE LA MODIFICACIÓN ---
-                product_gallery_component(posts=CartState.posts),
+                product_gallery_component(posts=CartState.filtered_posts), # Usa la lista filtrada
                 spacing="6", 
                 width="100%", 
                 padding="2em", 

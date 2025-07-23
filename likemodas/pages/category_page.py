@@ -5,6 +5,7 @@ from ..ui.base import base_page
 from ..auth.state import SessionState
 from ..cart.state import CartState, ProductCardData
 from ..ui.components import product_gallery_component
+from ..ui.filter_state import FilterState 
 from ..models import BlogPostModel, Category
 from sqlmodel import select
 from datetime import datetime
@@ -50,24 +51,48 @@ class CategoryPageState(SessionState):
                     average_rating=p.average_rating, rating_count=p.rating_count
                 ) for p in results
             ]
+    
+    @rx.var
+    def filtered_posts_in_category(self) -> list[ProductCardData]:
+        """Filtra la lista de posts de la categoría actual."""
+        posts_to_filter = self.posts_in_category
+        
+        try:
+            min_p = float(FilterState.min_price) if FilterState.min_price else 0
+        except ValueError:
+            min_p = 0
+            
+        try:
+            max_p = float(FilterState.max_price) if FilterState.max_price else float('inf')
+        except ValueError:
+            max_p = float('inf')
 
-def category_page() -> rx.Component:
-    return base_page(
-        rx.center(
-            rx.vstack(
-                # --- 👇 PASO 3: La UI usa la propiedad computada con normalidad 👇 ---
-                rx.heading(CategoryPageState.current_category.title(), size="8"),
-                
-                rx.cond(
-                    CategoryPageState.posts_in_category,
-                    product_gallery_component(posts=CategoryPageState.posts_in_category),
-                    rx.center(
-                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
-                        min_height="40vh"
-                    )
+        if min_p > 0 or max_p != float('inf'):
+            return [
+                p for p in posts_to_filter
+                if (p.price >= min_p and p.price <= max_p)
+            ]
+        
+        return posts_to_filter
+
+
+    def category_page() -> rx.Component:
+        return base_page(
+            rx.center(
+                rx.vstack(
+                    # --- 👇 PASO 3: La UI usa la propiedad computada con normalidad 👇 ---
+                    rx.heading(CategoryPageState.current_category.title(), size="8"),
+                    
+                    rx.cond(
+                        CategoryPageState.filtered_posts_in_category,
+                        product_gallery_component(posts=CategoryPageState.filtered_posts_in_category),
+                        rx.center(
+                            rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
+                            min_height="40vh"
+                        )
+                    ),
+                    spacing="6", width="100%", padding="2em", align="center"
                 ),
-                spacing="6", width="100%", padding="2em", align="center"
-            ),
-            width="100%"
+                width="100%"
+            )
         )
-    )

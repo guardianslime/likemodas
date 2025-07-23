@@ -4,6 +4,7 @@ import reflex as rx
 from ..auth.state import SessionState
 from .nav import public_navbar 
 from .sidebar import sidebar
+from .filter_panel import floating_filter_panel 
 
 # --- ✨ FUNCIÓN RESTAURADA ✨ ---
 def fixed_color_mode_button() -> rx.Component:
@@ -98,6 +99,21 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             )
         ),
         rx.center(rx.spinner(), height="100vh")
+    )
+
+def public_layout(child: rx.Component) -> rx.Component:
+    """El layout para usuarios no autenticados y clientes, con la barra de navegación superior."""
+    return rx.fragment(
+        public_navbar(),
+        floating_filter_panel(), # <-- AÑADE EL PANEL DE FILTROS AQUÍ
+        rx.box(
+            child,
+            padding="1em",
+            padding_top="6rem", 
+            width="100%",
+            id="my-content-area-el"
+        ),
+        fixed_color_mode_button()
     )
 
 # ... (código existente no modificado como base_dashboard_page, etc.) ...

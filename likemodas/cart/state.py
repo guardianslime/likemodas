@@ -9,6 +9,7 @@ import sqlalchemy
 from ..data.colombia_locations import load_colombia_data
 # Se importa AdminConfirmState desde su ubicación correcta para las notificaciones
 from ..admin.state import AdminConfirmState
+from ..ui.filter_state import FilterState # <-- AÑADE ESTA IMPORTACIÓN
 
 class ProductCardData(rx.Base):
     id: int
@@ -36,6 +37,32 @@ class CartState(SessionState):
     @rx.var
     def neighborhoods(self) -> List[str]:
         return self.colombia_data.get(self.shipping_city, [])
+    
+    @rx.var
+    def filtered_posts(self) -> list[ProductCardData]:
+        """Filtra la lista de posts principal según los filtros de precio."""
+        posts_to_filter = self.posts
+        
+        try:
+            min_p = float(FilterState.min_price) if FilterState.min_price else 0
+        except ValueError:
+            min_p = 0
+            
+        try:
+            # Si no hay máximo, usamos un número infinito
+            max_p = float(FilterState.max_price) if FilterState.max_price else float('inf')
+        except ValueError:
+            max_p = float('inf')
+
+        # Solo aplicamos el filtro si hay un valor válido
+        if min_p > 0 or max_p != float('inf'):
+            return [
+                p for p in posts_to_filter
+                if (p.price >= min_p and p.price <= max_p)
+            ]
+        
+        # Si no hay filtros, devuelve la lista original
+        return posts_to_filter
 
     @rx.event
     def set_shipping_city_and_reset_neighborhood(self, city: str):
@@ -105,6 +132,7 @@ class CartState(SessionState):
         if not self.posts:
             return []
         return self.posts[:1]
+        
 
     @rx.event
     def load_default_shipping_info(self):
@@ -188,3 +216,4 @@ class CartState(SessionState):
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
+
