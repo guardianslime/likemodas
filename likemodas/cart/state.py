@@ -74,11 +74,10 @@ class CartState(ProductGalleryState):
     def cart_details(self) -> List[Tuple[ProductCardData, int]]:
         if not self.cart:
             return []
-        # --- 👇 CAMBIO AQUÍ 👇 ---
+        # --- 👇 CORRECCIÓN AQUÍ 👇 ---
         posts_in_cart = [post for post in self.all_posts if post.id in self.cart]
         post_map = {post.id: post for post in posts_in_cart}
         return [(post_map[pid], self.cart[pid]) for pid in self.cart.keys() if pid in post_map]
-
 
     @rx.var
     def cart_total(self) -> float:
@@ -106,13 +105,13 @@ class CartState(ProductGalleryState):
     
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
-        # --- 👇 CAMBIO AQUÍ 👇 ---
+        # --- 👇 CORRECCIÓN AQUÍ 👇 ---
         limit = min(20, len(self.all_posts))
         return self.all_posts[:limit]
 
     @rx.var
     def landing_page_posts(self) -> list[ProductCardData]:
-        # --- 👇 CAMBIO AQUÍ 👇 ---
+        # --- 👇 CORRECCIÓN AQUÍ 👇 ---
         if not self.all_posts:
             return []
         return self.all_posts[:1]
