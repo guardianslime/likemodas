@@ -1,9 +1,12 @@
 # likemodas/ui/base.py
 
 import reflex as rx
+
+from likemodas.states.gallery_state import ProductGalleryState
 from ..auth.state import SessionState
 from .nav import public_navbar 
 from .sidebar import sidebar
+from .filter_sidebar import filter_panel # <-- Importa el nuevo panel de filtros
 
 # --- ✨ FUNCIÓN RESTAURADA ✨ ---
 def fixed_color_mode_button() -> rx.Component:
@@ -20,6 +23,7 @@ def protected_layout(child: rx.Component) -> rx.Component:
     """El layout para usuarios autenticados, ahora comprueba la verificación."""
     return rx.hstack(
         sidebar(),
+        filter_panel(),
         rx.box(
             # Comprueba si el usuario está verificado
             rx.cond(
@@ -38,7 +42,11 @@ def protected_layout(child: rx.Component) -> rx.Component:
             ),
             padding="1em",
             width="100%",
-            id="my-content-area-el"
+            id="my-content-area-el",
+            transition="margin-left 0.3s ease", # Animación suave al desplazar
+            margin_left=rx.cond(
+                ProductGalleryState.show_filters, "220px", "0px" # Desplaza el contenido
+            ),
         ),
         align="start"
     )
