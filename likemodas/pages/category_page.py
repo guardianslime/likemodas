@@ -2,45 +2,39 @@
 
 import reflex as rx
 from ..ui.base import base_page
+from ..auth.state import SessionState
+from ..cart.state import CartState, ProductCardData
 from ..ui.components import product_gallery_component
-from ..ui.gallery_header import gallery_header
-from ..ui.filter_sidebar import floating_filter_sidebar
-from ..states.gallery_state import ProductGalleryState
 from ..models import BlogPostModel, Category
-from ..data.schemas import ProductCardData
 from sqlmodel import select
 from datetime import datetime
 import sqlalchemy
 
-class CategoryPageState(ProductGalleryState):
-    """
-    Estado para la página de categorías, AHORA SIGUIENDO TU PATRÓN.
-    """
-    
-    # NO declaramos 'cat_name' como una variable simple.
-    # En su lugar, creamos una propiedad computada para leer el parámetro de la URL.
+class CategoryPageState(SessionState):
+    posts_in_category: list[ProductCardData] = []
+
+    # --- 👇 PASO 1: Creamos la propiedad computada, como en tus otros estados 👇 ---
     @rx.var
-    def category_name(self) -> str:
-        """Obtiene el nombre de la categoría desde la URL."""
+    def current_category(self) -> str:
+        """Obtiene el nombre de la categoría desde la URL, siguiendo el patrón existente."""
         return self.router.page.params.get("cat_name", "todos")
 
     @rx.event
-    def load_posts(self):
-        """Carga los productos de la categoría actual."""
-        # Usamos la propiedad computada para obtener el nombre de la categoría.
-        category = self.category_name
+    def load_category_posts(self):
+        # --- 👇 PASO 2: Usamos la propiedad computada para obtener el valor 👇 ---
+        category_from_url = self.current_category
         
         with rx.session() as session:
             query_filter = [
                 BlogPostModel.publish_active == True, 
                 BlogPostModel.publish_date < datetime.now()
             ]
-            if category != "todos":
+            if category_from_url != "todos":
                 try:
-                    category_enum = Category(category)
+                    category_enum = Category(category_from_url)
                     query_filter.append(BlogPostModel.category == category_enum)
                 except ValueError:
-                    self.all_posts = []
+                    self.posts_in_category = []
                     return
 
             statement = (
@@ -50,7 +44,7 @@ class CategoryPageState(ProductGalleryState):
                 .order_by(BlogPostModel.created_at.desc())
             )
             results = session.exec(statement).unique().all()
-            self.all_posts = [
+            self.posts_in_category = [
                 ProductCardData(
                     id=p.id, title=p.title, price=p.price, images=p.images,
                     average_rating=p.average_rating, rating_count=p.rating_count
@@ -59,23 +53,20 @@ class CategoryPageState(ProductGalleryState):
 
 def category_page() -> rx.Component:
     return base_page(
-        # --- 👇 AÑADE EL COMPONENTE FLOTANTE AQUÍ 👇 ---
-        floating_filter_sidebar(),
         rx.center(
             rx.vstack(
-                gallery_header(),
-                rx.heading(CategoryPageState.category_name.title(), size="8", padding_top="1em"),
+                # --- 👇 PASO 3: La UI usa la propiedad computada con normalidad 👇 ---
+                rx.heading(CategoryPageState.current_category.title(), size="8"),
+                
                 rx.cond(
-                    CategoryPageState.filtered_posts,
-                    product_gallery_component(posts=CategoryPageState.filtered_posts),
-                    # ...
+                    CategoryPageState.posts_in_category,
+                    product_gallery_component(posts=CategoryPageState.posts_in_category),
+                    rx.center(
+                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
+                        min_height="40vh"
+                    )
                 ),
-                spacing="6", width="100%", padding="2em", align="center",
-                # --- Propiedades para el desplazamiento suave ---
-                transition="padding-left 0.3s ease",
-                padding_left=rx.cond(
-                    CategoryPageState.show_filters, "220px", "0px"
-                ),
+                spacing="6", width="100%", padding="2em", align="center"
             ),
             width="100%"
         )

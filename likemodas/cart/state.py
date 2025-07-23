@@ -1,28 +1,26 @@
-# likemodas/cart/state.py
-
 import reflex as rx
 from typing import Dict, List, Tuple
-from ..states.gallery_state import ProductGalleryState 
-from ..data.schemas import ProductCardData
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus, UserInfo, NotificationModel
+from ..auth.state import SessionState
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
 from ..data.colombia_locations import load_colombia_data
+# Se importa AdminConfirmState desde su ubicación correcta para las notificaciones
 from ..admin.state import AdminConfirmState
 
-# --- 👇 ELIMINA ESTE BLOQUE COMPLETO DE AQUÍ 👇 ---
-# class ProductCardData(rx.Base):
-#     id: int
-#     title: str
-#     price: float = 0.0
-#     images: list[str] = []
-#     average_rating: float = 0.0
-#     rating_count: int = 0
+class ProductCardData(rx.Base):
+    id: int
+    title: str
+    price: float = 0.0
+    images: list[str] = []
+    average_rating: float = 0.0
+    rating_count: int = 0
 
-class CartState(ProductGalleryState):
+class CartState(SessionState):
     cart: Dict[int, int] = {}
+    posts: list[ProductCardData] = []
     
     colombia_data: Dict[str, List[str]] = load_colombia_data()
     shipping_name: str = ""
@@ -46,7 +44,6 @@ class CartState(ProductGalleryState):
 
     @rx.event
     def on_load(self):
-        """Carga la lista completa de productos al iniciar."""
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -55,7 +52,7 @@ class CartState(ProductGalleryState):
                 .order_by(BlogPostModel.created_at.desc())
             )
             results = session.exec(statement).unique().all()
-            self.all_posts = [
+            self.posts = [
                 ProductCardData(
                     id=post.id, title=post.title, price=post.price, images=post.images,
                     average_rating=post.average_rating, rating_count=post.rating_count
@@ -70,11 +67,9 @@ class CartState(ProductGalleryState):
     def cart_details(self) -> List[Tuple[ProductCardData, int]]:
         if not self.cart:
             return []
-        # --- 👇 CORRECCIÓN AQUÍ 👇 ---
-        posts_in_cart = [post for post in self.all_posts if post.id in self.cart]
+        posts_in_cart = [post for post in self.posts if post.id in self.cart]
         post_map = {post.id: post for post in posts_in_cart}
         return [(post_map[pid], self.cart[pid]) for pid in self.cart.keys() if pid in post_map]
-
 
     @rx.var
     def cart_total(self) -> float:
@@ -102,16 +97,14 @@ class CartState(ProductGalleryState):
     
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
-        # --- 👇 CORRECCIÓN AQUÍ 👇 ---
-        limit = min(20, len(self.all_posts))
-        return self.all_posts[:limit]
+        limit = min(20, len(self.posts))
+        return self.posts[:limit]
 
     @rx.var
     def landing_page_posts(self) -> list[ProductCardData]:
-        # --- 👇 CORRECCIÓN AQUÍ 👇 ---
-        if not self.all_posts:
+        if not self.posts:
             return []
-        return self.all_posts[:1]
+        return self.posts[:1]
 
     @rx.event
     def load_default_shipping_info(self):

@@ -1,18 +1,18 @@
-# likemodas/ui/components.py
-
 import reflex as rx
 import math
 from ..navigation import routes
-from ..cart.state import CartState
-from ..data.schemas import ProductCardData # <-- Usa el tipo de dato correcto
+from ..cart.state import CartState, ProductCardData
+
 
 def _product_card_rating(post: ProductCardData) -> rx.Component:
-    # ... (Esta función auxiliar también debe usar ProductCardData)
+    """Un componente para mostrar la calificación global en las tarjetas de producto."""
     average_rating = post.average_rating
     rating_count = post.rating_count
+    
     full_stars = rx.Var.range(math.floor(average_rating))
     has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
     empty_stars = rx.Var.range(5 - math.ceil(average_rating))
+
     return rx.cond(
         rating_count > 0,
         rx.hstack(
@@ -49,6 +49,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px"
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
+                            # --- 👇 LÍNEA CORREGIDA AQUÍ 👇 ---
+                            # Se eliminó el `rx.Var.wrap()` incorrecto.
                             rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
                             _product_card_rating(post),
                             spacing="2", align="start"

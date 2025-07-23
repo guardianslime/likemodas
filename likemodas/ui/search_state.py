@@ -7,25 +7,26 @@ from sqlmodel import select
 from datetime import datetime
 from .. import navigation
 from sqlalchemy.orm import joinedload
-from ..states.gallery_state import ProductGalleryState
 
 # --- CAMBIO 1: Importamos el modelo de datos seguro ---
 from ..cart.state import ProductCardData
 
-class SearchState(ProductGalleryState):
+class SearchState(rx.State):
     """El único y definitivo estado para la búsqueda."""
     search_term: str = ""
     
     # --- CAMBIO 2: Los resultados ahora serán del tipo seguro ---
     search_results: List[ProductCardData] = []
+    
     search_performed: bool = False
 
     @rx.event
     def perform_search(self):
-        """Ejecuta la búsqueda y puebla la lista de posts para ser filtrada."""
+        """Ejecuta la búsqueda, transforma los datos y redirige."""
         term = self.search_term.strip()
         if not term:
-            self.all_posts = []
+            # Si la búsqueda está vacía, simplemente limpia los resultados.
+            self.search_results = []
             return rx.redirect(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE) 
 
         with rx.session() as session:
@@ -40,14 +41,19 @@ class SearchState(ProductGalleryState):
                 .order_by(BlogPostModel.created_at.desc())
             )
             results = session.exec(statement).unique().all()
-            
-            # --- PASO 2: Guarda los resultados en 'all_posts' para los filtros ---
-            self.all_posts = [
+
+            # --- CAMBIO 3: Transformamos los resultados de la BD al modelo seguro ---
+            self.search_results = [
                 ProductCardData(
-                    id=post.id, title=post.title, price=post.price,
-                    images=post.images, average_rating=post.average_rating,
+                    id=post.id,
+                    title=post.title,
+                    price=post.price,
+                    images=post.images,
+                    average_rating=post.average_rating,
                     rating_count=post.rating_count
-                ) for post in results
+                )
+                for post in results
             ]
 
+        self.search_performed = True 
         return rx.redirect("/search-results")

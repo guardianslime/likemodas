@@ -52,7 +52,7 @@ app.add_page(
     category_page.category_page,
     route="/category/[cat_name]",
     title="Categoría",
-    on_load=category_page.CategoryPageState.load_posts  # <-- Apunta al nuevo evento
+    on_load=category_page.CategoryPageState.load_category_posts
 )
 
 

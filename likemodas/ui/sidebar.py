@@ -3,12 +3,10 @@
 import reflex as rx
 from reflex.style import toggle_color_mode
 
-
 from ..auth.state import SessionState # ✅ Se importa SessionState, que es seguro.
 from .. import navigation
 from ..models import UserRole
 # ❗️ Se elimina cualquier importación de AdminConfirmState.
-
 
 # ... (las funciones sidebar_user_item, sidebar_logout_item, etc. no cambian) ...
 def sidebar_user_item() -> rx.Component:
@@ -76,7 +74,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
 
 def sidebar_items() -> rx.Component:
     return rx.vstack(
-        sidebar_item("Dashboard", "layout-dashboard", "/dashboard"),
+        sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
         rx.cond(
             SessionState.is_admin,
             rx.fragment(

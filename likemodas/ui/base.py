@@ -1,7 +1,6 @@
 # likemodas/ui/base.py
 
 import reflex as rx
-
 from ..auth.state import SessionState
 from .nav import public_navbar 
 from .sidebar import sidebar
@@ -39,7 +38,7 @@ def protected_layout(child: rx.Component) -> rx.Component:
             ),
             padding="1em",
             width="100%",
-            id="my-content-area-el",
+            id="my-content-area-el"
         ),
         align="start"
     )
