@@ -56,7 +56,8 @@ def category_page() -> rx.Component:
         rx.center(
             rx.vstack(
                 # --- 👇 PASO 3: La UI usa la propiedad computada con normalidad 👇 ---
-                rx.heading(CategoryPageState.current_category.to_title(), size="8"),
+                rx.heading(CategoryPageState.current_category.title(), size="8"),
+                
                 rx.cond(
                     CategoryPageState.posts_in_category,
                     product_gallery_component(posts=CategoryPageState.posts_in_category),
