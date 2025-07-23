@@ -6,7 +6,6 @@ from likemodas.states.gallery_state import ProductGalleryState
 from ..auth.state import SessionState
 from .nav import public_navbar 
 from .sidebar import sidebar
-from .filter_sidebar import filter_panel # <-- Importa el nuevo panel de filtros
 
 # --- ✨ FUNCIÓN RESTAURADA ✨ ---
 def fixed_color_mode_button() -> rx.Component:
