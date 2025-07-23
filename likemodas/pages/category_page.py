@@ -4,6 +4,7 @@ import reflex as rx
 from ..ui.base import base_page
 from ..ui.components import product_gallery_component
 from ..ui.filter_sidebar import filter_sidebar
+from ..ui.gallery_header import gallery_header
 from ..states.gallery_state import ProductGalleryState
 from ..models import BlogPostModel, Category
 from ..data.schemas import ProductCardData
@@ -57,33 +58,23 @@ class CategoryPageState(ProductGalleryState):
             ]
 
 def category_page() -> rx.Component:
-    """Página que muestra productos de una categoría específica."""
-    # El encabezado y la galería ahora usan las propiedades del estado base
-    gallery_header = rx.hstack(
-        filter_sidebar(),
-        rx.text("Categorías:", weight="bold", margin_right="1em"),
-        rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
-        rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
-        rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
-        rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-        spacing="4", align="center", justify="start", width="100%",
-        max_width="1800px", padding_bottom="1em", padding_left="4em"
-    )
-
+    """Página de categoría con su propia barra de categorías y filtros."""
     return base_page(
+        filter_sidebar(),
         rx.center(
             rx.vstack(
-                gallery_header,
+                gallery_header(),
                 rx.heading(CategoryPageState.category_name.title(), size="8", padding_top="1em"),
                 rx.cond(
                     CategoryPageState.filtered_posts,
                     product_gallery_component(posts=CategoryPageState.filtered_posts),
-                    rx.center(
-                        rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.category_name}'."),
-                        min_height="40vh"
-                    )
+                    # ...
                 ),
-                spacing="6", width="100%", padding="2em", align="center"
+                spacing="6", width="100%", padding="2em", align="center",
+                transition="padding-left 0.3s ease",
+                padding_left=rx.cond(
+                    CategoryPageState.show_filters, "250px", "0px"
+                ),
             ),
             width="100%"
         )

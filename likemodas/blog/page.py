@@ -8,6 +8,7 @@ import math
 from ..models import BlogPostModel
 from ..ui.components import product_gallery_component
 from ..ui.filter_sidebar import filter_sidebar # <-- Importa el nuevo sidebar
+from ..ui.gallery_header import gallery_header
 
 def _product_card_rating(post: BlogPostModel) -> rx.Component:
     average_rating = post.average_rating
@@ -82,25 +83,25 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
 def blog_public_page():
     """Página principal con galería, categorías y filtros."""
     return base_page(
+        # Añadimos el sidebar de filtros aquí
+        filter_sidebar(),
         rx.center(
             rx.vstack(
-                rx.hstack(
-                    filter_sidebar(), # <-- Añade el botón de filtros
-                    rx.text("Categorías:", weight="bold", margin_right="1em"),
-                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
-                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
-                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
-                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-                    spacing="4", align="center", justify="start", width="100%",
-                    max_width="1800px", padding_bottom="1em", padding_left="4em"
-                ),
-                # --- CAMBIO: Muestra los productos filtrados ---
+                # Usamos el nuevo encabezado reutilizable
+                gallery_header(),
+                
+                # La galería ahora tiene un padding izquierdo condicional
+                # para hacer espacio cuando el filtro está abierto.
                 product_gallery_component(posts=CartState.filtered_posts),
+                
                 spacing="6", 
                 width="100%", 
                 padding="2em", 
-                align="center"
+                align="center",
+                transition="padding-left 0.3s ease", # Animación suave
+                padding_left=rx.cond(
+                    CartState.show_filters, "250px", "0px"
+                ),
             ),
-            width="100%"
         )
     )
