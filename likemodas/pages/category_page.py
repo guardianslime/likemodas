@@ -59,7 +59,6 @@ class CategoryPageState(ProductGalleryState):
 def category_page() -> rx.Component:
     """Página de categoría con su propia barra de categorías y filtros."""
     return base_page(
-        filter_sidebar(),
         rx.center(
             rx.vstack(
                 gallery_header(),
