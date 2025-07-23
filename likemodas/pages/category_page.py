@@ -55,15 +55,20 @@ class CategoryPageState(SessionState):
     @rx.var
     def filtered_posts_in_category(self) -> list[ProductCardData]:
         """Filtra la lista de posts de la categoría actual."""
+        # Obtiene una instancia del estado de los filtros
+        filter_state = self.get_state(FilterState)
+
         posts_to_filter = self.posts_in_category
         
         try:
-            min_p = float(FilterState.min_price) if FilterState.min_price else 0
+            # Accede a los valores como atributos normales de Python
+            min_p = float(filter_state.min_price) if filter_state.min_price else 0
         except ValueError:
             min_p = 0
             
         try:
-            max_p = float(FilterState.max_price) if FilterState.max_price else float('inf')
+            # Accede a los valores como atributos normales de Python
+            max_p = float(filter_state.max_price) if filter_state.max_price else float('inf')
         except ValueError:
             max_p = float('inf')
 

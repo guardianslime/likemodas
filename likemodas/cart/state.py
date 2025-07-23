@@ -41,29 +41,31 @@ class CartState(SessionState):
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         """Filtra la lista de posts principal según los filtros de precio."""
+        # Obtiene una instancia del estado de los filtros
+        filter_state = self.get_state(FilterState)
+        
         posts_to_filter = self.posts
         
         try:
-            min_p = float(FilterState.min_price) if FilterState.min_price else 0
+            # Accede a los valores como atributos normales de Python
+            min_p = float(filter_state.min_price) if filter_state.min_price else 0
         except ValueError:
             min_p = 0
             
         try:
-            # Si no hay máximo, usamos un número infinito
-            max_p = float(FilterState.max_price) if FilterState.max_price else float('inf')
+            # Accede a los valores como atributos normales de Python
+            max_p = float(filter_state.max_price) if filter_state.max_price else float('inf')
         except ValueError:
             max_p = float('inf')
 
-        # Solo aplicamos el filtro si hay un valor válido
         if min_p > 0 or max_p != float('inf'):
             return [
                 p for p in posts_to_filter
                 if (p.price >= min_p and p.price <= max_p)
             ]
         
-        # Si no hay filtros, devuelve la lista original
         return posts_to_filter
-
+    
     @rx.event
     def set_shipping_city_and_reset_neighborhood(self, city: str):
         self.shipping_city = city
