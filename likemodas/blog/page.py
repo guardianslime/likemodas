@@ -107,7 +107,7 @@ def blog_public_page():
                             rx.menu.item("Ver Todo", on_click=rx.redirect("/")),
                         )
                     ),
-                    justify="end", # Alinea el botón a la derecha
+                    justify="start", # Cambiado de "end" a "start"
                     width="100%",
                     max_width="1800px",
                     padding_bottom="1em"
