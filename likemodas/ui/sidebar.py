@@ -6,7 +6,22 @@ from reflex.style import toggle_color_mode
 from ..auth.state import SessionState # ✅ Se importa SessionState, que es seguro.
 from .. import navigation
 from ..models import UserRole
+from likemodas.states.gallery_state import ProductGalleryState # <-- Importa el estado
 # ❗️ Se elimina cualquier importación de AdminConfirmState.
+
+
+def sidebar_action_item(text: str, icon: str, on_click: rx.EventSpec) -> rx.Component:
+    """Un item del sidebar que ejecuta una acción en lugar de ser un link."""
+    return rx.box(
+        rx.hstack(
+            rx.icon(icon), 
+            rx.text(text, size="4"),
+            width="100%", padding_x="0.5rem", padding_y="0.75rem", align="center",
+            style={"_hover": {"cursor": "pointer", "bg": rx.color("accent", 4), "color": rx.color("accent", 11),}, "border-radius": "0.5em",},
+        ),
+        on_click=on_click,
+        width="100%",
+    )
 
 # ... (las funciones sidebar_user_item, sidebar_logout_item, etc. no cambian) ...
 def sidebar_user_item() -> rx.Component:
@@ -74,7 +89,8 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
 
 def sidebar_items() -> rx.Component:
     return rx.vstack(
-        sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
+        sidebar_item("Dashboard", "layout-dashboard", "/dashboard"),
+        sidebar_action_item("Filtros", "filter", ProductGalleryState.toggle_filters),
         rx.cond(
             SessionState.is_admin,
             rx.fragment(
