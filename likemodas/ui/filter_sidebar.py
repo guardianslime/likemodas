@@ -20,7 +20,7 @@ def floating_filter_sidebar() -> rx.Component:
             on_click=ProductGalleryState.toggle_filters,
             size="2"
         ),
-        # El panel de filtros, que aparece y desaparece
+        # El panel de filtros
         rx.cond(
             ProductGalleryState.show_filters,
             rx.vstack(
@@ -36,8 +36,6 @@ def floating_filter_sidebar() -> rx.Component:
                     width="100%"
                 ),
                 rx.divider(),
-                
-                # Contenido de los filtros
                 rx.vstack(
                     rx.text("Precio", weight="bold"),
                     rx.hstack(
@@ -55,7 +53,6 @@ def floating_filter_sidebar() -> rx.Component:
                     align_items="start",
                     width="100%"
                 ),
-                
                 spacing="5",
                 position="fixed",
                 top="0",

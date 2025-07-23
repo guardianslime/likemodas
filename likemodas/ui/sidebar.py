@@ -10,8 +10,6 @@ from ..models import UserRole
 # ❗️ Se elimina cualquier importación de AdminConfirmState.
 
 
-
-
 # ... (las funciones sidebar_user_item, sidebar_logout_item, etc. no cambian) ...
 def sidebar_user_item() -> rx.Component:
     user_info_obj = SessionState.authenticated_user_info

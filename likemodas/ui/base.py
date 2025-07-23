@@ -2,7 +2,6 @@
 
 import reflex as rx
 
-from likemodas.states.gallery_state import ProductGalleryState
 from ..auth.state import SessionState
 from .nav import public_navbar 
 from .sidebar import sidebar
@@ -41,9 +40,6 @@ def protected_layout(child: rx.Component) -> rx.Component:
             padding="1em",
             width="100%",
             id="my-content-area-el",
-            margin_left=rx.cond(
-                ProductGalleryState.show_filters, "220px", "0px" # Desplaza el contenido
-            ),
         ),
         align="start"
     )
