@@ -22,7 +22,7 @@ from ..admin.state import AdminConfirmState
 #     average_rating: float = 0.0
 #     rating_count: int = 0
 
-class CartState(SessionState):
+class CartState(ProductGalleryState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     
@@ -50,6 +50,7 @@ class CartState(SessionState):
     def on_load(self):
         """Carga la lista completa de productos al iniciar."""
         with rx.session() as session:
+            # ... (la consulta a la base de datos no cambia) ...
             statement = (
                 select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
@@ -58,7 +59,7 @@ class CartState(SessionState):
             )
             results = session.exec(statement).unique().all()
             
-            # --- CAMBIO 3: Guarda los productos en 'all_posts' para que los filtros funcionen ---
+            # --- CAMBIO: Guarda los productos en 'all_posts' para que los filtros funcionen ---
             self.all_posts = [
                 ProductCardData(
                     id=post.id, title=post.title, price=post.price, images=post.images,
