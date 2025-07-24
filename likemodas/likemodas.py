@@ -68,7 +68,7 @@ app = rx.App(
 # 1. Rutas públicas que usan la lógica del 'index'
 app.add_page(index, route="/", on_load=cart_state.CartState.on_load)
 app.add_page(index, route="/blog/page", on_load=cart_state.CartState.on_load)
-app.add_page(index, route="/blog-public/[blog_public_id]", on_load=blog_public_detail.CommentState.on_load)
+app.add_page(index, route="/blog-public/[blog_public_id]", on_load=public_detail.CommentState.on_load)
 # --- 👇 CORRECCIÓN AQUÍ ---
 app.add_page(index, route="/category/[cat_name]", on_load=category_page.CategoryPageState.load_category_posts)
 app.add_page(index, route="/about")
