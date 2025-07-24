@@ -1,5 +1,3 @@
-# likemodas/likemodas.py
-
 import reflex as rx
 import reflex_local_auth
 
@@ -35,7 +33,7 @@ class RootState(SessionState):
     def current_page(self) -> rx.Component:
         route = self.router.page.path
         
-        # --- Páginas Públicas Principales ---
+        # --- Páginas Públicas ---
         if route == "/" or route == "/blog/page":
             return blog_page.blog_public_page()
         if route.startswith("/blog-public/"):
@@ -48,34 +46,11 @@ class RootState(SessionState):
             return pricing_page.pricing_page()
         if route == "/contact":
             return contact_page.contact_page()
-
-        # --- Páginas de Usuario Autenticado (no admin) ---
-        if route == "/dashboard":
-            return dashboard_component.dashboard_component()
-        if route == "/cart":
-            return cart_page.cart_page()
-        if route == "/my-purchases":
-            return purchases_page.purchase_history_page()
-        if route == "/my-account/shipping-info":
-            return shipping_info_module.shipping_info_page()
-
-        # --- Páginas de Admin ---
-        if route == "/blog":
-            return blog_list.blog_post_list_page()
-        if route.startswith("/blog/") and route.endswith("/edit"):
-            return blog_edit.blog_post_edit_page()
-        if route.startswith("/blog/"):
-            return blog_detail.blog_post_detail_page()
-        if route == "/blog/add":
-            return blog_add.blog_post_add_page()
-        if route == "/admin/confirm-payments":
-            return cart_page.admin_confirm_page() # Asumiendo que esta es la página correcta
-        if route == "/admin/payment-history":
-            return cart_page.payment_history_page() # Asumiendo que esta es la página correcta
-        if route == "/contact/entries":
-            return contact_page.contact_entries_list_page()
-
-        # Si no coincide, devuelve un fragmento vacío para que se muestre la página 404
+            
+        # --- Páginas de Usuario / Admin (se renderizan dentro de base_page) ---
+        # No es necesario listarlas aquí, base_page las manejará.
+        # Simplemente devolvemos un componente vacío y base_page mostrará el
+        # contenido correcto basado en su propia lógica interna para rutas protegidas.
         return rx.fragment()
 
 # --- FUNCIÓN DE PÁGINA PRINCIPAL (ÚNICA) ---
@@ -95,22 +70,19 @@ app = rx.App(
 )
 
 # --- REGISTRO DE PÁGINAS ---
-# 1. Rutas que serán manejadas por el componente raíz 'index'.
-# Se listan explícitamente para que Reflex las reconozca.
-PUBLIC_ROUTES = [
-    "/",
-    "/blog/page",
-    "/blog-public/[blog_public_id]",
-    "/category/[cat_name]",
-    "/about",
-    "/pricing",
-    "/contact",
-]
-for route in PUBLIC_ROUTES:
-    app.add_page(index, route=route)
 
-# 2. Rutas que NO son públicas o tienen una lógica muy específica que no pasa por el 'index' público.
-# (Principalmente autenticación y redirecciones especiales).
+# 1. Rutas públicas que usan la lógica del 'index' y necesitan on_load
+app.add_page(index, route="/", on_load=cart_state.CartState.on_load)
+app.add_page(index, route="/blog/page", on_load=cart_state.CartState.on_load)
+app.add_page(index, route="/blog-public/[blog_public_id]", on_load=blog_public_detail.CommentState.on_load)
+app.add_page(index, route="/category/[cat_name]", on_load=category_page.CategoryPageState.load_category_posts)
+
+# 2. Rutas públicas que usan 'index' pero no necesitan on_load
+app.add_page(index, route="/about")
+app.add_page(index, route="/pricing")
+app.add_page(index, route="/contact")
+
+# 3. Páginas que NO usan la lógica del 'index' (autenticación, cuenta, admin, etc.)
 app.add_page(search_results.search_results_page, route="/search-results")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -119,12 +91,25 @@ app.add_page(auth_pages.forgot_password_page, route="/forgot-password")
 app.add_page(auth_pages.reset_password_page, route="/reset-password", on_load=reset_password_state.ResetPasswordState.on_load_check_token)
 app.add_page(auth_pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(
+    cart_page.cart_page, 
+    route="/cart", 
+    on_load=[cart_state.CartState.on_load, cart_state.CartState.load_default_shipping_info]
+)
+app.add_page(purchases_page.purchase_history_page, route="/my-purchases", on_load=purchases_state.PurchaseHistoryState.load_purchases)
+app.add_page(
     account_page_module.my_account_redirect_page, 
     route=navigation.routes.MY_ACCOUNT_ROUTE,
     on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE)
 )
-
-# 3. Se asignan los eventos on_load a las rutas dinámicas manejadas por 'index'.
-app.add_page_loader(cart_state.CartState.on_load, ["/", "/blog/page"])
-app.add_page_loader(blog_public_detail.CommentState.on_load, "/blog-public/[blog_public_id]")
-app.add_page_loader(category_page.CategoryPageState.load_category_posts, "/category/[cat_name]")
+app.add_page(
+    shipping_info_module.shipping_info_page,
+    route=navigation.routes.SHIPPING_INFO_ROUTE,
+    on_load=shipping_info_state.ShippingInfoState.load_addresses 
+)
+app.add_page(blog_list.blog_post_list_page, route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)
+app.add_page(blog_detail.blog_post_detail_page, route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
+app.add_page(blog_add.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
+app.add_page(blog_edit.blog_post_edit_page, route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
+app.add_page(admin_page.admin_confirm_page, route="/admin/confirm-payments", on_load=admin_state.AdminConfirmState.load_pending_purchases)
+app.add_page(admin_page.payment_history_page, route="/admin/payment-history", on_load=admin_state.PaymentHistoryState.load_confirmed_purchases)
+app.add_page(contact_page.contact_entries_list_page, route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=contact_state.ContactState.load_entries)
