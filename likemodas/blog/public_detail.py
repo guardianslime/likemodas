@@ -228,7 +228,7 @@ def blog_public_detail_page() -> rx.Component:
     
     page_content = rx.center(
         rx.vstack(
-            rx.heading("Detalle del Producto", size="9", margin_bottom="1em"),
+            rx.heading("Detalle del Producto", size="9", margin_bottom="1em"), # ✨ CAMBIO: size de 8 a 9
             content_grid,
             comment_section(),
             spacing="6",
@@ -239,4 +239,4 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
     )
     
-    return page_content # Devuelve el contenido directamente
+    return base_page(page_content)
