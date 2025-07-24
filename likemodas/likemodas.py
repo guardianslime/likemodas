@@ -5,11 +5,12 @@ import reflex_local_auth
 
 from rxconfig import config
 
-# --- Módulos específicos (con importaciones explícitas y claras) ---
+# --- Módulos Específicos (con importaciones corregidas) ---
 from .auth import pages as auth_pages
-from .auth import state as auth_state
+from .auth.state import SessionState
 from .auth import verify_state, reset_password_state
-from .pages import search_results, about, pricing, dashboard, category
+# --- 👇 CORRECCIÓN AQUÍ: Se importa 'category_page' en lugar de 'category' ---
+from .pages import search_results, about, pricing, dashboard, category_page
 from .blog import (
     page as blog_page, 
     public_detail, 
@@ -28,19 +29,19 @@ from .account import page as account_page_module, shipping_info, shipping_info_s
 
 from .ui.base import base_page
 
-# --- ESTADO RAÍZ PARA MANEJAR LAS PÁGINAS PÚBLICAS ---
+# --- ESTADO RAÍZ ---
 class RootState(SessionState):
     @rx.var
     def current_page(self) -> rx.Component:
         route = self.router.page.path
         
-        # --- Llamadas corregidas usando el módulo explícito ---
         if route == "/" or route == "/blog/page":
             return blog_page.blog_public_page()
         if route.startswith("/blog-public/"):
             return public_detail.blog_public_detail_page()
+        # --- 👇 CORRECCIÓN AQUÍ ---
         if route.startswith("/category/"):
-            return category.category_page()
+            return category_page.category_page()
         if route == "/about":
             return about.about_page()
         if route == "/pricing":
@@ -62,18 +63,19 @@ app = rx.App(
     ),
 )
 
-# --- REGISTRO DE PÁGINAS (CORREGIDO) ---
+# --- REGISTRO DE PÁGINAS ---
 
-# 1. Rutas públicas que usan 'index'
+# 1. Rutas públicas que usan la lógica del 'index'
 app.add_page(index, route="/", on_load=cart_state.CartState.on_load)
 app.add_page(index, route="/blog/page", on_load=cart_state.CartState.on_load)
-app.add_page(index, route="/blog-public/[blog_public_id]", on_load=blog_state.CommentState.on_load)
-app.add_page(index, route="/category/[cat_name]", on_load=category.CategoryPageState.load_category_posts)
+app.add_page(index, route="/blog-public/[blog_public_id]", on_load=blog_public_detail.CommentState.on_load)
+# --- 👇 CORRECCIÓN AQUÍ ---
+app.add_page(index, route="/category/[cat_name]", on_load=category_page.CategoryPageState.load_category_posts)
 app.add_page(index, route="/about")
 app.add_page(index, route="/pricing")
 app.add_page(index, route="/contact")
 
-# 2. Rutas que NO usan 'index'
+# 2. Rutas que NO usan la lógica del 'index'
 app.add_page(search_results.search_results_page, route="/search-results")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -83,7 +85,7 @@ app.add_page(auth_pages.reset_password_page, route="/reset-password", on_load=re
 app.add_page(auth_pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(dashboard.dashboard_component, route="/dashboard", on_load=cart_state.CartState.on_load)
 
-# 3. Páginas de E-commerce y Cuenta
+# 3. Páginas de E-commerce y Cuenta de Usuario
 app.add_page(cart_page.cart_page, route="/cart", on_load=[cart_state.CartState.on_load, cart_state.CartState.load_default_shipping_info])
 app.add_page(purchases_page.purchase_history_page, route="/my-purchases", on_load=purchases_state.PurchaseHistoryState.load_purchases)
 app.add_page(account_page_module.my_account_redirect_page, route=navigation.routes.MY_ACCOUNT_ROUTE, on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE))
