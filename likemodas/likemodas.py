@@ -101,7 +101,6 @@ app.add_page(auth_pages.verification_page, route="/verify-email", on_load=verify
 app.add_page(auth_pages.forgot_password_page, route="/forgot-password")
 app.add_page(auth_pages.reset_password_page, route="/reset-password", on_load=reset_password_state.ResetPasswordState.on_load_check_token)
 app.add_page(auth_pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
-app.add_page(about_page, route=navigation.routes.ABOUT_US_ROUTE)
 app.add_page(pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 # --- Páginas Públicas del Blog / Tienda ---
