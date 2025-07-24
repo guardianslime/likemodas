@@ -28,16 +28,17 @@ from .account import page as account_page_module, shipping_info as shipping_info
 
 from .ui.base import base_page
 
-# --- ESTADO RAÍZ SIMPLIFICADO ---
+# --- ESTADO RAÍZ PARA MANEJAR LAS PÁGINAS PÚBLICAS ---
 class RootState(SessionState):
     @rx.var
     def current_page(self) -> rx.Component:
         """
         Renderiza el componente de la página pública correcta basándose en la ruta.
-        Las páginas de admin y cuenta son manejadas por base_page directamente.
+        Las páginas de admin y cuenta son manejadas por base_page por su cuenta.
         """
         route = self.router.page.path
         
+        # --- Páginas Públicas que tenían el problema de estilos ---
         if route == "/" or route == "/blog/page":
             return blog_page.blog_public_page()
         if route.startswith("/blog-public/"):
@@ -52,10 +53,12 @@ class RootState(SessionState):
             return contact_page.contact_page()
         
         # Para cualquier otra ruta (admin, cuenta, etc.), base_page se encargará.
+        # El contenido ya estará dentro del 'child' de base_page.
         return rx.fragment()
 
 # --- FUNCIÓN DE PÁGINA RAÍZ ---
 def index() -> rx.Component:
+    """La página de entrada que envuelve a las páginas públicas en el layout base."""
     return base_page(RootState.current_page)
 
 # --- CONFIGURACIÓN DE LA APP ---
@@ -81,7 +84,7 @@ app.add_page(index, route="/about")
 app.add_page(index, route="/pricing")
 app.add_page(index, route="/contact")
 
-# 2. Rutas que NO usan la lógica del 'index' (autenticación, cuenta, admin, etc.)
+# 2. Páginas que NO usan la lógica del 'index' y se registran de forma independiente
 app.add_page(search_results.search_results_page, route="/search-results")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -89,8 +92,6 @@ app.add_page(auth_pages.verification_page, route="/verify-email", on_load=verify
 app.add_page(auth_pages.forgot_password_page, route="/forgot-password")
 app.add_page(auth_pages.reset_password_page, route="/reset-password", on_load=reset_password_state.ResetPasswordState.on_load_check_token)
 app.add_page(auth_pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
-
-# 3. Páginas de E-commerce y Cuenta
 app.add_page(
     cart_page.cart_page, 
     route="/cart", 
@@ -108,14 +109,12 @@ app.add_page(
     on_load=shipping_info_state.ShippingInfoState.load_addresses 
 )
 
-# 4. Páginas Privadas de Administración
+# 3. Páginas Privadas de Administración
 app.add_page(blog_list.blog_post_list_page, route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)
 app.add_page(blog_detail.blog_post_detail_page, route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
 app.add_page(blog_add.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(blog_edit.blog_post_edit_page, route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
 app.add_page(contact_page.contact_entries_list_page, route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=contact_state.ContactState.load_entries)
-
-# --- 👇 CORRECCIÓN DEL NameError AQUÍ 👇 ---
 # Se usa 'cart_page' que es el módulo correcto donde están definidas estas funciones.
 app.add_page(cart_page.admin_confirm_page, route="/admin/confirm-payments", on_load=admin_state.AdminConfirmState.load_pending_purchases)
 app.add_page(cart_page.payment_history_page, route="/admin/payment-history", on_load=admin_state.PaymentHistoryState.load_confirmed_purchases)
