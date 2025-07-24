@@ -32,7 +32,7 @@ class CategoryPageState(SessionState):
 # --- VERSIÓN MÍNIMA PARA DEPURACIÓN ---
 def category_page() -> rx.Component:
     """Este componente ahora SOLO devuelve el contenido de la página de categoría."""
-    return rx.center(
+    page_content = rx.center(
         rx.vstack(
             rx.cond(
                 SessionState.is_hydrated,

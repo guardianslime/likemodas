@@ -1,5 +1,3 @@
-# likemodas/ui/base.py
-
 import reflex as rx
 from ..auth.state import SessionState
 from .nav import public_navbar 
@@ -27,7 +25,8 @@ def public_layout(child: rx.Component) -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    Función principal que envuelve todo el contenido. VERSIÓN CORREGIDA Y ROBUSTA.
+    Función principal que envuelve TODO el contenido, aplica el TEMA
+    y maneja la lógica de autenticación de forma segura.
     """
     verification_required_page = rx.center(
         rx.vstack(
@@ -38,31 +37,25 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         height="80vh"
     )
 
-    # --- 👇 Lógica corregida y segura 👇 ---
     page_content = rx.cond(
         SessionState.is_hydrated,
         rx.cond(
             ~SessionState.is_authenticated,
             public_layout(child),
-            # Si SÍ está autenticado, ahora verificamos de forma segura.
             rx.cond(
-                # Esta es la línea clave: comprueba que 'authenticated_user_info' no sea nulo Y que 'is_verified' sea True.
                 SessionState.authenticated_user_info & SessionState.authenticated_user_info.is_verified,
-                # Usuario verificado: muestra el layout según su rol.
                 rx.cond(
                     SessionState.is_admin,
                     protected_layout(child),
                     public_layout(child)
                 ),
-                # Usuario NO verificado: muestra el mensaje de verificación.
                 public_layout(verification_required_page)
             )
         ),
-        # Muestra un spinner mientras carga el estado de la sesión.
         rx.center(rx.spinner(), height="100vh")
     )
 
-    # Envolvemos todo en el tema para garantizar que los estilos SIEMPRE se apliquen.
+    # Se envuelve todo en el tema para garantizar que los estilos SIEMPRE se apliquen.
     return rx.theme(
         page_content,
         appearance="dark",
@@ -71,29 +64,4 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         scaling="90%",
         radius="medium",
         accent_color="sky"
-    )
-
-# ... (código existente no modificado como base_dashboard_page, etc.) ...
-import reflex as rx
-
-from .sidebar import sidebar
-
-def base_dashboard_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    # print(type(x) for x in args)
-    if not isinstance(child, rx.Component):
-        child = rx.heading("This is not valid child element")
-    return rx.fragment(
-        rx.hstack(
-            sidebar(),
-            rx.box(
-                child,
-                #bg=rx.color("accent", 3),
-                padding="1em",
-                width="100%",    
-                id="my-content-area-el"
-            ),
-        ),
-        # rx.color_mode.button(position= "bottom-left"),
-        # padding="10em",
-        # id="my-base-container",
     )
