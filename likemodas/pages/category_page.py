@@ -1,6 +1,5 @@
 import reflex as rx
 from ..ui.base import base_page
-from ..ui.base import public_layout
 from ..auth.state import SessionState
 from ..cart.state import CartState, ProductCardData
 # --- 👇 CAMBIO 1: Importa los dos componentes ---
@@ -69,11 +68,6 @@ class CategoryPageState(SessionState):
         return posts_to_filter
     
     
-@rx.page(
-    route="/category/[cat_name]",
-    title="Categoría",
-    on_load=CategoryPageState.load_category_posts
-)
 
 # --- ✨ CÓDIGO CORREGIDO PARA LA PÁGINA DE CATEGORÍA --- ✨
 def category_page() -> rx.Component:
@@ -106,4 +100,4 @@ def category_page() -> rx.Component:
     )
     
     # --- 👇 CAMBIO 3: Usamos 'public_layout' directamente, igual que las otras páginas públicas ---
-    return public_layout(page_content)
+    return base_page(page_content)

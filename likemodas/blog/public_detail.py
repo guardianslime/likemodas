@@ -5,7 +5,7 @@ from .state import CommentState, SessionState
 from ..ui.carousel import carousel
 from ..cart.state import CartState
 from ..models import CommentModel
-from ..ui.base import public_layout
+from ..ui.base import base_page
 import math
 
 # --- Sección de Imagen (sin cambios) ---
@@ -239,4 +239,4 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
     )
     
-    return public_layout(page_content)
+    return base_page(page_content)
