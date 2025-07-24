@@ -1,5 +1,6 @@
 import reflex as rx
 from ..ui.base import base_page
+from ..ui.base import public_layout
 from ..auth.state import SessionState
 from ..cart.state import CartState, ProductCardData
 # --- 👇 CAMBIO 1: Importa los dos componentes ---
@@ -76,33 +77,33 @@ class CategoryPageState(SessionState):
 
 # --- ✨ CÓDIGO CORREGIDO PARA LA PÁGINA DE CATEGORÍA --- ✨
 def category_page() -> rx.Component:
-    return rx.fragment(
-        rx.cond(
-            SessionState.is_hydrated,
+    # --- 👇 CAMBIO 2: Creamos una variable para el contenido de la página ---
+    page_content = rx.center(
+        rx.vstack(
+            # Se añade el botón de categorías y el panel de filtros condicionalmente
             rx.cond(
-                ~SessionState.is_admin,
-                floating_filter_panel()
-            )
+                SessionState.is_hydrated,
+                rx.cond(
+                    ~SessionState.is_admin,
+                    rx.fragment(
+                        floating_filter_panel(),
+                        categories_button()
+                    )
+                )
+            ),
+            rx.heading(CategoryPageState.current_category.title(), size="8"),
+            rx.cond(
+                CategoryPageState.filtered_posts_in_category,
+                product_gallery_component(posts=CategoryPageState.filtered_posts_in_category),
+                rx.center(
+                    rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
+                    min_height="40vh"
+                )
+            ),
+            spacing="6", width="100%", padding="2em", align="center"
         ),
-        base_page(
-            rx.center(
-                rx.vstack(
-                    # --- 👇 CORRECCIÓN 2: Se elimina el hstack duplicado y se deja solo el componente ---
-                    categories_button(),
-                    
-                    rx.heading(CategoryPageState.current_category.title(), size="8"),
-                    
-                    rx.cond(
-                        CategoryPageState.filtered_posts_in_category,
-                        product_gallery_component(posts=CategoryPageState.filtered_posts_in_category),
-                        rx.center(
-                            rx.text(f"😔 No hay productos en la categoría '{CategoryPageState.current_category}'."),
-                            min_height="40vh"
-                        )
-                    ),
-                    spacing="6", width="100%", padding="2em", align="center"
-                ),
-                width="100%"
-            )
-        )
+        width="100%"
     )
+    
+    # --- 👇 CAMBIO 3: Usamos 'public_layout' directamente, igual que las otras páginas públicas ---
+    return public_layout(page_content)
