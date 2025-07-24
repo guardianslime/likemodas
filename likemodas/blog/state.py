@@ -117,8 +117,73 @@ class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
     price: float = 0.0
-    category: str = Category.OTROS.value
+    category: str = "" # Initialize as empty to ensure user makes a selection
     temp_images: list[str] = []
+
+    # --- ✨ NEW STATE VARIABLES FOR DYNAMIC FIELDS ---
+    # For Ropa (Clothing)
+    talla: str = ""
+    tipo_tela: str = ""
+    color_ropa: str = ""
+    tipo_prenda: str = ""
+
+    # For Calzado (Footwear)
+    numero_calzado: str = ""
+    material_calzado: str = ""
+    color_calzado: str = ""
+    tipo_zapato: str = ""
+
+    # For Mochilas (Backpacks)
+    material_mochila: str = ""
+    medidas: str = ""
+    tipo_mochila: str = ""
+    
+    # ... (handle_upload, remove_image, set_price_from_input remain the same)
+
+    @rx.event
+    def _create_post(self, publish: bool) -> rx.event.EventSpec:
+        """Helper method to create and save a post."""
+        if not self.is_admin: return rx.window_alert("No tienes permiso.")
+        if self.price <= 0: return rx.window_alert("El precio debe ser mayor a cero.")
+        if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
+        if not self.category: return rx.window_alert("Debes seleccionar una categoría.")
+
+        # --- ✨ LOGIC TO GATHER DYNAMIC ATTRIBUTES ---
+        attributes = {}
+        if self.category == Category.ROPA.value:
+            attributes = {
+                "talla": self.talla, "tipo_tela": self.tipo_tela,
+                "color": self.color_ropa, "tipo_prenda": self.tipo_prenda,
+            }
+        elif self.category == Category.CALZADO.value:
+            attributes = {
+                "numero_calzado": self.numero_calzado, "material": self.material_calzado,
+                "color": self.color_calzado, "tipo_zapato": self.tipo_zapato,
+            }
+        elif self.category == Category.MOCHILAS.value:
+            attributes = {
+                "material": self.material_mochila, "medidas": self.medidas,
+                "tipo_mochila": self.tipo_mochila,
+            }
+
+        with rx.session() as session:
+            post = BlogPostModel(
+                title=self.title.strip(), content=self.content.strip(),
+                price=self.price, images=self.temp_images.copy(),
+                userinfo_id=self.my_userinfo_id, 
+                publish_active=publish,
+                publish_date=datetime.utcnow(),
+                category=self.category,
+                attributes=attributes # <-- Save the new attributes
+            )
+            session.add(post)
+            session.commit()
+            session.refresh(post)
+            new_post_id = post.id
+        
+        # Reset all fields after submission
+        self.reset()
+        return rx.redirect(f"/blog/{new_post_id}")
     
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -145,50 +210,13 @@ class BlogAddFormState(SessionState):
     @rx.event
     def submit(self):
         """Este método crea un post pero NO lo publica."""
-        if not self.is_admin: return rx.window_alert("No tienes permiso.")
-        if self.price <= 0: return rx.window_alert("El precio debe ser mayor a cero.")
-        if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
+        return self._create_post(publish=False)
 
-        with rx.session() as session:
-            post = BlogPostModel(
-                title=self.title.strip(), content=self.content.strip(),
-                price=self.price, images=self.temp_images.copy(),
-                userinfo_id=self.my_userinfo_id, 
-                publish_active=False,
-                publish_date=datetime.utcnow(),
-                category=self.category # <-- LÍNEA IMPORTANTE que se estaba perdiendo
-            )
-            session.add(post)
-            session.commit()
-            session.refresh(post)
-            new_post_id = post.id
-        
-        self.title, self.content, self.price, self.temp_images = "", "", 0.0, []
-        return rx.redirect(f"/blog/{new_post_id}")
 
     @rx.event
     def submit_and_publish(self):
         """Este método crea un post y SÍ lo publica."""
-        if not self.is_admin: return rx.window_alert("No tienes permiso.")
-        if self.price <= 0: return rx.window_alert("El precio debe ser mayor a cero.")
-        if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
-
-        with rx.session() as session:
-            post = BlogPostModel(
-                title=self.title.strip(), content=self.content.strip(),
-                price=self.price, images=self.temp_images.copy(),
-                userinfo_id=self.my_userinfo_id, 
-                publish_active=True,
-                publish_date=datetime.utcnow(),
-                category=self.category # <-- LÍNEA IMPORTANTE que se estaba perdiendo
-            )
-            session.add(post)
-            session.commit()
-            session.refresh(post)
-            new_post_id = post.id
-        
-        self.title, self.content, self.price, self.temp_images = "", "", 0.0, []
-        return rx.redirect(f"/blog/{new_post_id}")
+        return self._create_post(publish=True)
 
 class BlogEditFormState(BlogPostState):
     """Estado para el formulario de EDITAR posts."""

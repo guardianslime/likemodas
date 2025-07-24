@@ -6,6 +6,9 @@ from ..cart.state import CartState, ProductCardData
 from ..ui.components import product_gallery_component, categories_button
 from ..models import BlogPostModel, Category
 from sqlmodel import select
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.sql.expression import cast
+from sqlalchemy import String
 from datetime import datetime
 import sqlalchemy
 from ..ui.filter_panel import floating_filter_panel
@@ -51,21 +54,55 @@ class CategoryPageState(SessionState):
     
     @rx.var
     def filtered_posts_in_category(self) -> list[ProductCardData]:
-        """Filtra la lista de posts de la categoría actual."""
+        """Filters posts in the current category by price and dynamic attributes."""
         posts_to_filter = self.posts_in_category
+        
+        # --- Price Filter (existing logic) ---
         try:
             min_p = float(self.min_price) if self.min_price else 0
-        except ValueError:
-            min_p = 0
+        except ValueError: min_p = 0
         try:
             max_p = float(self.max_price) if self.max_price else float('inf')
-        except ValueError:
-            max_p = float('inf')
+        except ValueError: max_p = float('inf')
 
         if min_p > 0 or max_p != float('inf'):
-            return [p for p in posts_to_filter if (p.price >= min_p and p.price <= max_p)]
-        
-        return posts_to_filter
+            posts_to_filter = [p for p in posts_to_filter if (p.price >= min_p and p.price <= max_p)]
+
+        # --- ✨ NEW DYNAMIC ATTRIBUTE FILTERING ---
+        with rx.session() as session:
+            post_ids = [p.id for p in posts_to_filter]
+            if not post_ids:
+                return []
+
+            query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
+
+            # Apply filters based on the current category
+            category_from_url = self.current_category
+            if category_from_url == Category.ROPA.value:
+                if self.filter_color:
+                    query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+                if self.filter_talla:
+                    query = query.where(cast(BlogPostModel.attributes['talla'], String).ilike(f"%{self.filter_talla}%"))
+                if self.filter_tipo_prenda:
+                    query = query.where(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_prenda)
+            
+            elif category_from_url == Category.CALZADO.value:
+                if self.filter_color:
+                    query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+                if self.filter_numero_calzado:
+                    query = query.where(cast(BlogPostModel.attributes['numero_calzado'], String) == self.filter_numero_calzado)
+                if self.filter_tipo_zapato:
+                    query = query.where(cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_zapato)
+            
+            elif category_from_url == Category.MOCHILAS.value:
+                if self.filter_tipo_mochila:
+                    query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
+
+            # Execute the final query and return the data
+            filtered_db_posts = session.exec(query).all()
+            filtered_ids = {p.id for p in filtered_db_posts}
+            
+            return [p for p in posts_to_filter if p.id in filtered_ids]
     
     
 

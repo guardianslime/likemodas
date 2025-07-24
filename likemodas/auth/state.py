@@ -27,13 +27,27 @@ def validate_password(password: str) -> list[str]:
     return errors
 
 class SessionState(reflex_local_auth.LocalAuthState):
-
     new_purchase_notification: bool = False
-
-    # --- 👇 AÑADE LAS VARIABLES DEL FILTRO AQUÍ 👇 ---
     min_price: str = ""
     max_price: str = ""
     show_filters: bool = False
+
+    # --- ✨ NEW STATE VARIABLES FOR FILTERS ---
+    filter_color: str = ""
+    filter_talla: str = ""
+    filter_tipo_prenda: str = ""
+    filter_numero_calzado: str = ""
+    filter_tipo_zapato: str = ""
+    filter_tipo_mochila: str = ""
+    
+    # --- ✨ NEW EVENT HANDLERS FOR FILTERS ---
+    def set_filter_color(self, value: str): self.filter_color = value
+    def set_filter_talla(self, value: str): self.filter_talla = value
+    def set_filter_tipo_prenda(self, value: str): self.filter_tipo_prenda = value
+    def set_filter_numero_calzado(self, value: str): self.filter_numero_calzado = value
+    def set_filter_tipo_zapato(self, value: str): self.filter_tipo_zapato = value
+    def set_filter_tipo_mochila(self, value: str): self.filter_tipo_mochila = value
+
 
     def toggle_filters(self):
         """Muestra u oculta el panel de filtros."""

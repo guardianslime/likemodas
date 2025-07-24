@@ -76,6 +76,7 @@ class BlogPostModel(rx.Model, table=True):
     title: str
     content: str
     price: float = 0.0
+    attributes: dict = Field(default={}, sa_column=Column(JSON))
     images: list[str] = Field(default=[], sa_column=Column(JSON))
     publish_active: bool = False
     publish_date: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
