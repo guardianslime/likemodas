@@ -43,13 +43,14 @@ def floating_filter_panel() -> rx.Component:
                     style={
                         "writing_mode": "vertical-rl",
                         "transform": "rotate(180deg)",
-                        "padding": "1em 0.5em",
+                        # --- 👇 REDUCE EL SEGUNDO VALOR DEL PADDING 👇 ---
+                        "padding": "1em 0.25em", # Antes era "1em 0.5em"
                         "font_weight": "bold",
                         "letter_spacing": "2px",
                         "color": "white"
                     }
                 ),
-                on_click=SessionState.toggle_filters, # <-- CAMBIO
+                on_click=SessionState.toggle_filters,
                 cursor="pointer",
                 bg=rx.color("blue", 9),
                 border_radius="0 8px 8px 0",
