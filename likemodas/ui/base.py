@@ -62,6 +62,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
     Función principal que envuelve todo el contenido y elige el layout
     adecuado según el rol y estado de verificación del usuario.
+    VERSIÓN CORREGIDA Y ROBUSTA.
     """
     if not isinstance(child, rx.Component):
         child = rx.heading("This is not a valid child element")
@@ -69,7 +70,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     verification_required_page = rx.center(
         rx.vstack(
             rx.heading("Verificación Requerida"),
-            rx.text("Por favor, revisa tu correo electrónico para verificar tu cuenta antes de continuar."),
+            rx.text("Por favor, revisa tu correo para verificar tu cuenta."),
             spacing="4"
         ),
         height="80vh"
@@ -77,27 +78,31 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
 
     return rx.cond(
         SessionState.is_hydrated,
+        # Si el usuario NO está autenticado, siempre muestra el layout público.
         rx.cond(
             ~SessionState.is_authenticated,
-            # 1. Si el usuario NO está autenticado, muestra el layout público normal.
             public_layout(child),
-            # 2. Si el usuario SÍ está autenticado...
+            # Si SÍ está autenticado, ahora verificamos de forma segura.
             rx.cond(
-                ~SessionState.authenticated_user_info.is_verified,
-                # 2a. ...pero NO está verificado, muestra la página de requerir verificación.
+                # Primero, nos aseguramos de que authenticated_user_info no sea nulo.
+                SessionState.authenticated_user_info,
+                # Si existe, comprobamos si está verificado.
                 rx.cond(
-                    SessionState.is_admin,
-                    protected_layout(verification_required_page),
+                    SessionState.authenticated_user_info.is_verified,
+                    # Usuario verificado: muestra el layout según su rol.
+                    rx.cond(
+                        SessionState.is_admin,
+                        protected_layout(child),
+                        public_layout(child)
+                    ),
+                    # Usuario NO verificado: muestra el mensaje de verificación.
                     public_layout(verification_required_page)
                 ),
-                # 2b. ...y SÍ está verificado, muestra el layout según su rol.
-                rx.cond(
-                    SessionState.is_admin,
-                    protected_layout(child),
-                    public_layout(child)
-                )
+                # Caso raro: autenticado pero sin user_info, muestra layout público.
+                public_layout(child)
             )
         ),
+        # Muestra un spinner mientras carga el estado de la sesión.
         rx.center(rx.spinner(), height="100vh")
     )
 
