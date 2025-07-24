@@ -5,11 +5,10 @@ import reflex_local_auth
 
 from rxconfig import config
 
-# --- Módulos específicos (con importaciones explícitas y claras) ---
+# --- Módulos específicos ---
 from .auth import pages as auth_pages
 from .auth import state as auth_state
 from .auth import verify_state, reset_password_state
-# --- 👇 CORRECCIÓN DE IMPORTACIONES AQUÍ 👇 ---
 from .pages import search_results, about, pricing, dashboard, category_page
 from .blog import (
     page as blog_page, 
@@ -30,7 +29,8 @@ from .account import page as account_page_module, shipping_info, shipping_info_s
 from .ui.base import base_page
 
 # --- ESTADO RAÍZ PARA MANEJAR LAS PÁGINAS PÚBLICAS ---
-class RootState(SessionState):
+# --- 👇 CORRECCIÓN AQUÍ 👇 ---
+class RootState(auth_state.SessionState):
     @rx.var
     def current_page(self) -> rx.Component:
         route = self.router.page.path
@@ -62,9 +62,8 @@ app = rx.App(
     ),
 )
 
-# --- REGISTRO DE PÁGINAS (CORREGIDO) ---
-
-# 1. Rutas públicas que usan 'index'
+# --- REGISTRO DE PÁGINAS ---
+# (El resto del archivo no cambia)
 app.add_page(index, route="/", on_load=cart_state.CartState.on_load)
 app.add_page(index, route="/blog/page", on_load=cart_state.CartState.on_load)
 app.add_page(index, route="/blog-public/[blog_public_id]", on_load=public_detail.CommentState.on_load)
@@ -72,8 +71,6 @@ app.add_page(index, route="/category/[cat_name]", on_load=category_page.Category
 app.add_page(index, route="/about")
 app.add_page(index, route="/pricing")
 app.add_page(index, route="/contact")
-
-# 2. Rutas que NO usan 'index'
 app.add_page(search_results.search_results_page, route="/search-results")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
@@ -81,16 +78,11 @@ app.add_page(auth_pages.verification_page, route="/verify-email", on_load=verify
 app.add_page(auth_pages.forgot_password_page, route="/forgot-password")
 app.add_page(auth_pages.reset_password_page, route="/reset-password", on_load=reset_password_state.ResetPasswordState.on_load_check_token)
 app.add_page(auth_pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
-# --- 👇 CORRECCIÓN DE LA LLAMADA AQUÍ 👇 ---
 app.add_page(dashboard.dashboard_component, route="/dashboard", on_load=cart_state.CartState.on_load)
-
-# 3. Páginas de E-commerce y Cuenta de Usuario
 app.add_page(cart_page.cart_page, route="/cart", on_load=[cart_state.CartState.on_load, cart_state.CartState.load_default_shipping_info])
 app.add_page(purchases_page.purchase_history_page, route="/my-purchases", on_load=purchases_state.PurchaseHistoryState.load_purchases)
 app.add_page(account_page_module.my_account_redirect_page, route=navigation.routes.MY_ACCOUNT_ROUTE, on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE))
 app.add_page(shipping_info.shipping_info_page, route=navigation.routes.SHIPPING_INFO_ROUTE, on_load=shipping_info_state.ShippingInfoState.load_addresses)
-
-# 4. Páginas Privadas de Administración
 app.add_page(blog_list.blog_post_list_page, route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)
 app.add_page(blog_detail.blog_post_detail_page, route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
 app.add_page(blog_add.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
