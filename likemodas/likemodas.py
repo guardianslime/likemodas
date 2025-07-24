@@ -104,12 +104,7 @@ app.add_page(auth_pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 app.add_page(pricing_page, route=navigation.routes.PRICING_ROUTE)
 
 # --- Páginas Públicas del Blog / Tienda ---
-app.add_page(
-    blog_page.blog_public_page,
-    route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE,
-    title="Galería de Productos",
-    on_load=cart_state.CartState.on_load
-)
+
 app.add_page(
     blog_public_detail.blog_public_detail_page,
     route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]",
