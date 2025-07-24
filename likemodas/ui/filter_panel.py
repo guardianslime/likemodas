@@ -44,7 +44,7 @@ def floating_filter_panel() -> rx.Component:
                         "writing_mode": "vertical-rl",
                         "transform": "rotate(180deg)",
                         # --- 👇 REDUCE EL SEGUNDO VALOR DEL PADDING 👇 ---
-                        "padding": "1em 0.25em", # Antes era "1em 0.5em"
+                        "padding": "0.5em 0.09em", # Antes era "1em 0.5em"
                         "font_weight": "bold",
                         "letter_spacing": "2px",
                         "color": "white"
