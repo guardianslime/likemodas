@@ -85,7 +85,6 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
 def blog_public_page():
     """Página pública que ahora es la principal y muestra la galería."""
     return rx.fragment(
-        # --- 👇 SE AÑADE EL PANEL DE FILTROS AQUÍ ---
         floating_filter_panel(),
         base_page(
             rx.center(
@@ -93,14 +92,18 @@ def blog_public_page():
                     rx.hstack(
                         rx.popover.root(
                             rx.popover.trigger(
+                                # --- 👇 MODIFICACIÓN DEL BOTÓN AQUÍ 👇 ---
                                 rx.button(
                                     "Categorías", 
                                     variant="outline",
                                     size="3",
-                                    color="white",
+                                    # Se vuelve dinámico para modo claro/oscuro
+                                    color=rx.color_mode_cond("black", "white"),
                                     border_radius="full",
-                                    style={"border_color": "white"},
+                                    # El borde también se vuelve dinámico
+                                    style={"border_color": rx.color_mode_cond("black", "white")},
                                 )
+                                # --- 👆 FIN DE LA MODIFICACIÓN 👆 ---
                             ),
                             rx.popover.content(
                                 rx.hstack(
@@ -120,8 +123,7 @@ def blog_public_page():
                         max_width="1800px",
                         padding_bottom="1em"
                     ),
-                    # Usa la lista filtrada que ya lee desde SessionState [cite: 384, 385]
-                    product_gallery_component(posts=CartState.filtered_posts), 
+                    product_gallery_component(posts=CartState.filtered_posts),
                     spacing="6", 
                     width="100%", 
                     padding="2em", 
