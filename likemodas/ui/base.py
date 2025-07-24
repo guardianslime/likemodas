@@ -27,7 +27,7 @@ def public_layout(child: rx.Component) -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    Función principal que ahora también aplica el TEMA a toda la aplicación.
+    Función principal que envuelve todo el contenido. VERSIÓN CORREGIDA Y ROBUSTA.
     """
     verification_required_page = rx.center(
         rx.vstack(
@@ -38,26 +38,33 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         height="80vh"
     )
 
-    # --- 👇 CAMBIO CLAVE: Envolvemos todo en rx.theme(...) 👇 ---
-    return rx.theme(
+    # --- 👇 Lógica corregida y segura 👇 ---
+    page_content = rx.cond(
+        SessionState.is_hydrated,
         rx.cond(
-            SessionState.is_hydrated,
+            ~SessionState.is_authenticated,
+            public_layout(child),
+            # Si SÍ está autenticado, ahora verificamos de forma segura.
             rx.cond(
-                ~SessionState.is_authenticated,
-                public_layout(child),
+                # Esta es la línea clave: comprueba que 'authenticated_user_info' no sea nulo Y que 'is_verified' sea True.
+                SessionState.authenticated_user_info & SessionState.authenticated_user_info.is_verified,
+                # Usuario verificado: muestra el layout según su rol.
                 rx.cond(
-                    SessionState.authenticated_user_info & SessionState.authenticated_user_info.is_verified,
-                    rx.cond(
-                        SessionState.is_admin,
-                        protected_layout(child),
-                        public_layout(child)
-                    ),
-                    public_layout(verification_required_page)
-                )
-            ),
-            rx.center(rx.spinner(), height="100vh")
+                    SessionState.is_admin,
+                    protected_layout(child),
+                    public_layout(child)
+                ),
+                # Usuario NO verificado: muestra el mensaje de verificación.
+                public_layout(verification_required_page)
+            )
         ),
-        # --- Movemos la configuración del tema de likemodas.py aquí ---
+        # Muestra un spinner mientras carga el estado de la sesión.
+        rx.center(rx.spinner(), height="100vh")
+    )
+
+    # Envolvemos todo en el tema para garantizar que los estilos SIEMPRE se apliquen.
+    return rx.theme(
+        page_content,
         appearance="dark",
         has_background=True,
         panel_background="solid",
