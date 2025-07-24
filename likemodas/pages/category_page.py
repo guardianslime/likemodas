@@ -66,7 +66,13 @@ class CategoryPageState(SessionState):
             return [p for p in posts_to_filter if (p.price >= min_p and p.price <= max_p)]
         
         return posts_to_filter
-
+    
+    
+@rx.page(
+    route="/category/[cat_name]",
+    title="Categoría",
+    on_load=CategoryPageState.load_category_posts
+)
 
 # --- ✨ CÓDIGO CORREGIDO PARA LA PÁGINA DE CATEGORÍA --- ✨
 def category_page() -> rx.Component:
