@@ -71,10 +71,12 @@ class CategoryPageState(SessionState):
 
 # --- ✨ CÓDIGO CORREGIDO PARA LA PÁGINA DE CATEGORÍA --- ✨
 def category_page() -> rx.Component:
-    # --- 👇 CAMBIO 2: Creamos una variable para el contenido de la página ---
-    page_content = rx.center(
+    """
+    Este componente ahora SOLO renderiza el contenido específico de la página.
+    El layout general lo pone la función index() en likemodas.py.
+    """
+    return rx.center(
         rx.vstack(
-            # Se añade el botón de categorías y el panel de filtros condicionalmente
             rx.cond(
                 SessionState.is_hydrated,
                 rx.cond(
