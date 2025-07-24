@@ -16,7 +16,7 @@ class CategoryPageState(SessionState):
     @rx.var
     def current_category(self) -> str:
         """Obtiene el nombre de la categoría desde la URL, siguiendo el patrón existente."""
-        return self.router.page.params.get("cat_name", "todos") [cite: 439]
+        return self.router.page.params.get("cat_name", "todos") 
 
     @rx.event
     def load_category_posts(self):
