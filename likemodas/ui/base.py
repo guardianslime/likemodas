@@ -48,6 +48,13 @@ def public_layout(child: rx.Component) -> rx.Component:
     """El layout para usuarios no autenticados y clientes, con la barra de navegación superior."""
     return rx.fragment(
         public_navbar(),
+        
+        # --- 👇 AÑADE EL CONDICIONAL AQUÍ 👇 ---
+        rx.cond(
+            SessionState.show_filters_and_categories,
+            floating_filter_panel()
+        ),
+        
         rx.box(
             child,
             padding="1em",

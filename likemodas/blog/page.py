@@ -7,6 +7,7 @@ from ..navigation import routes
 import math
 from ..models import BlogPostModel
 from ..ui.components import product_gallery_component
+from ..auth.state import SessionState # <-- AÑADE ESTA IMPORTACIÓN
 
 def _product_card_rating(post: BlogPostModel) -> rx.Component:
     average_rating = post.average_rating
@@ -83,40 +84,41 @@ def blog_public_page():
     return base_page(
         rx.center(
             rx.vstack(
-                # --- 👇 SECCIÓN MODIFICADA PARA USAR POPOVER 👇 ---
-                rx.hstack(
-                    rx.popover.root(
-                        rx.popover.trigger(
-                            # Este es el botón principal que el usuario ve
-                            rx.button(
-                                "Categorías", 
-                                variant="outline",
-                                size="3",
-                                color="white",
-                                border_radius="full",
-                                style={"border_color": "white"},
-                            )
-                        ),
-                        rx.popover.content(
-                            rx.hstack(
-                                rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
-                                rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
-                                rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
-                                rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-                                spacing="3",
+                # --- 👇 ENVUELVE EL BOTÓN DE CATEGORÍAS EN UN CONDICIONAL 👇 ---
+                rx.cond(
+                    SessionState.show_filters_and_categories,
+                    rx.hstack(
+                        rx.popover.root(
+                            rx.popover.trigger(
+                                rx.button(
+                                    "Categorías", 
+                                    variant="outline",
+                                    size="3",
+                                    color="white",
+                                    border_radius="full",
+                                    style={"border_color": "white"},
+                                )
                             ),
-                            padding="0.5em",
-                            side="right",   # <-- Hace que se abra a la derecha
-                            align="center", # <-- Lo centra verticalmente
+                            rx.popover.content(
+                                rx.hstack(
+                                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
+                                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
+                                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
+                                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
+                                    spacing="3",
+                                ),
+                                padding="0.5em",
+                                side="right",
+                                align="center",
+                            ),
                         ),
-                    ),
-                    justify="start",
-                    width="100%",
-                    max_width="1800px",
-                    padding_bottom="1em"
+                        justify="start",
+                        width="100%",
+                        max_width="1800px",
+                        padding_bottom="1em"
+                    )
                 ),
-                # --- FIN DE LA MODIFICACIÓN ---
-                product_gallery_component(posts=CartState.filtered_posts), # Usa la lista filtrada
+                product_gallery_component(posts=CartState.filtered_posts),
                 spacing="6", 
                 width="100%", 
                 padding="2em", 
