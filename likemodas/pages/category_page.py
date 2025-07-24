@@ -71,43 +71,14 @@ class CategoryPageState(SessionState):
 # --- ✨ CÓDIGO CORREGIDO PARA LA PÁGINA DE CATEGORÍA --- ✨
 def category_page() -> rx.Component:
     return rx.fragment(
-        floating_filter_panel(),
+        rx.cond(
+            ~SessionState.is_admin,
+            floating_filter_panel()
+        ),
         base_page(
             rx.center(
                 rx.vstack(
-                    # --- 👇 SE AÑADE EL HSTACK COMPLETO DEL BOTÓN AQUÍ 👇 ---
-                    rx.hstack(
-                        rx.popover.root(
-                            rx.popover.trigger(
-                                rx.button(
-                                    "Categorías", 
-                                    variant="outline",
-                                    size="3",
-                                    color=rx.color_mode_cond("black", "white"),
-                                    border_radius="full",
-                                    style={"border_color": rx.color_mode_cond("black", "white")},
-                                )
-                            ),
-                            rx.popover.content(
-                                rx.hstack(
-                                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
-                                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
-                                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
-                                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-                                    spacing="3",
-                                ),
-                                padding="0.5em",
-                                side="right",
-                                align="center",
-                            ),
-                        ),
-                        justify="start",
-                        width="100%",
-                        max_width="1800px",
-                        padding_bottom="1em"
-                    ),
-                    # --- 👆 FIN DEL CÓDIGO AÑADIDO 👆 ---
-                    
+                    # --- 👇 CORRECCIÓN 2: Se elimina el hstack duplicado y se deja solo el componente ---
                     categories_button(),
                     
                     rx.heading(CategoryPageState.current_category.title(), size="8"),
