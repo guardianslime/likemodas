@@ -47,13 +47,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
         """Actualiza el valor del precio máximo."""
         self.max_price = price.strip()
     # --- FIN DE LA ADICIÓN ---
-
-    @rx.var
-    def show_filters_and_categories(self) -> bool:
-        """Decide si mostrar el panel de filtros y el botón de categorías."""
-        current_path = self.router.page.path
-        # Se mostrarán solo en la página de inicio ("/") o en las de categoría ("/category/...").
-        return (current_path == "/") or current_path.startswith("/category")
+    
 
     @rx.var(cache=True)
     def my_userinfo_id(self) -> str | None: 
