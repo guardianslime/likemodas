@@ -88,8 +88,11 @@ def blog_public_page():
     """Página pública que ahora es la principal y muestra la galería."""
     return rx.fragment(
         rx.cond(
-            ~SessionState.is_admin,
-            floating_filter_panel()
+            SessionState.is_hydrated,
+            rx.cond(
+                ~SessionState.is_admin,
+                floating_filter_panel()
+            )
         ),
         base_page(
             rx.center(

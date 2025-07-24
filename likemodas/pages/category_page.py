@@ -72,8 +72,11 @@ class CategoryPageState(SessionState):
 def category_page() -> rx.Component:
     return rx.fragment(
         rx.cond(
-            ~SessionState.is_admin,
-            floating_filter_panel()
+            SessionState.is_hydrated,
+            rx.cond(
+                ~SessionState.is_admin,
+                floating_filter_panel()
+            )
         ),
         base_page(
             rx.center(
