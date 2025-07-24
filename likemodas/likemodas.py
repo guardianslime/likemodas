@@ -7,7 +7,7 @@ from rxconfig import config
 
 # --- Módulos específicos ---
 from .auth import pages as auth_pages
-from .auth import state as auth_state
+from .auth.state import SessionState
 from .auth import verify_state, reset_password_state
 from .pages import search_results, about_page, pricing_page, dashboard_component, category_page
 from .blog import (
@@ -26,10 +26,31 @@ from .contact import page as contact_page, state as contact_state
 from . import navigation
 from .account import page as account_page_module, shipping_info as shipping_info_module, shipping_info_state
 
-# --- PÁGINA DE INICIO ---
+from .ui.base import base_page
+
+# --- ESTADO RAÍZ PARA MANEJAR LAS PÁGINAS PÚBLICAS ---
+# Esta parte se mantiene igual, es correcta.
+class RootState(SessionState):
+    @rx.var
+    def current_page(self) -> rx.Component:
+        route = self.router.page.path
+        if route == "/" or route == "/blog/page":
+            return blog_page.blog_public_page()
+        if route.startswith("/blog-public/"):
+            return blog_public_detail.blog_public_detail_page()
+        if route.startswith("/category/"):
+            return category_page.category_page()
+        if route == "/about":
+            return about_page.about_page()
+        if route == "/pricing":
+            return pricing_page.pricing_page()
+        if route == "/contact":
+            return contact_page.contact_page()
+        return rx.fragment()
+
+# --- FUNCIÓN DE PÁGINA RAÍZ ---
 def index() -> rx.Component:
-    """La página principal ahora es la galería de productos."""
-    return blog_page.blog_public_page()
+    return base_page(RootState.current_page)
 
 # --- CONFIGURACIÓN DE LA APP ---
 app = rx.App(
@@ -43,18 +64,20 @@ app = rx.App(
     ),
 )
 
-# --- REGISTRO DE PÁGINAS (Forma estándar y robusta) ---
+# --- REGISTRO DE PÁGINAS (CORREGIDO) ---
+# Se usa el formato 'modulo.funcion' para cada página.
 
-# Páginas Públicas y de Navegación General
-app.add_page(index, on_load=cart_state.CartState.on_load)
-app.add_page(about_page, route=navigation.routes.ABOUT_US_ROUTE)
-app.add_page(pricing_page, route=navigation.routes.PRICING_ROUTE)
-app.add_page(contact_page.contact_page, route=navigation.routes.CONTACT_US_ROUTE)
+# 1. Rutas públicas que usan la lógica del 'index'
+app.add_page(index, route="/", on_load=cart_state.CartState.on_load)
+app.add_page(index, route="/blog/page", on_load=cart_state.CartState.on_load)
+app.add_page(index, route="/blog-public/[blog_public_id]", on_load=blog_public_detail.CommentState.on_load)
+app.add_page(index, route="/category/[cat_name]", on_load=category_page.CategoryPageState.load_category_posts)
+app.add_page(index, route="/about")
+app.add_page(index, route="/pricing")
+app.add_page(index, route="/contact")
+
+# 2. Rutas que NO usan la lógica del 'index'
 app.add_page(search_results.search_results_page, route="/search-results")
-app.add_page(category_page, route="/category/[cat_name]", on_load=category_page.CategoryPageState.load_category_posts)
-app.add_page(blog_public_detail, route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]", on_load=blog_state.CommentState.on_load)
-
-# Páginas de Autenticación
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
 app.add_page(auth_pages.verification_page, route="/verify-email", on_load=verify_state.VerifyState.verify_token)
@@ -62,17 +85,29 @@ app.add_page(auth_pages.forgot_password_page, route="/forgot-password")
 app.add_page(auth_pages.reset_password_page, route="/reset-password", on_load=reset_password_state.ResetPasswordState.on_load_check_token)
 app.add_page(auth_pages.my_logout_page, route=navigation.routes.LOGOUT_ROUTE)
 
-# Páginas de E-commerce y Cuenta de Usuario
-app.add_page(cart_page, route="/cart", on_load=[cart_state.CartState.on_load, cart_state.CartState.load_default_shipping_info])
-app.add_page(purchases_page, route="/my-purchases", on_load=purchases_state.PurchaseHistoryState.load_purchases)
-app.add_page(account_page_module.my_account_redirect_page, route=navigation.routes.MY_ACCOUNT_ROUTE, on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE))
-app.add_page(shipping_info_module, route=navigation.routes.SHIPPING_INFO_ROUTE, on_load=shipping_info_state.ShippingInfoState.load_addresses)
+# 3. Páginas de E-commerce y Cuenta de Usuario
+app.add_page(
+    cart_page.cart_page, 
+    route="/cart", 
+    on_load=[cart_state.CartState.on_load, cart_state.CartState.load_default_shipping_info]
+)
+app.add_page(purchases_page.purchase_history_page, route="/my-purchases", on_load=purchases_state.PurchaseHistoryState.load_purchases)
+app.add_page(
+    account_page_module.my_account_redirect_page, 
+    route=navigation.routes.MY_ACCOUNT_ROUTE,
+    on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE)
+)
+app.add_page(
+    shipping_info_module.shipping_info_page,
+    route=navigation.routes.SHIPPING_INFO_ROUTE,
+    on_load=shipping_info_state.ShippingInfoState.load_addresses 
+)
 
-# Páginas Privadas de Administración
-app.add_page(blog_list, route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)
-app.add_page(blog_detail, route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
-app.add_page(blog_add, route=navigation.routes.BLOG_POST_ADD_ROUTE)
-app.add_page(blog_edit, route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
+# 4. Páginas Privadas de Administración
+app.add_page(blog_list.blog_post_list_page, route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)
+app.add_page(blog_detail.blog_post_detail_page, route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
+app.add_page(blog_add.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
+app.add_page(blog_edit.blog_post_edit_page, route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
 app.add_page(contact_page.contact_entries_list_page, route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=contact_state.ContactState.load_entries)
 app.add_page(cart_page.admin_confirm_page, route="/admin/confirm-payments", on_load=admin_state.AdminConfirmState.load_pending_purchases)
 app.add_page(cart_page.payment_history_page, route="/admin/payment-history", on_load=admin_state.PaymentHistoryState.load_confirmed_purchases)
