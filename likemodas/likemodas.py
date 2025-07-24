@@ -33,27 +33,53 @@ class RootState(SessionState):
     @rx.var
     def current_page(self) -> rx.Component:
         """
-        Renderiza el componente de la página pública correcta basándose en la ruta.
-        Las páginas de admin y cuenta son manejadas por base_page por su cuenta.
+        Renderiza el componente de la página correcta basándose en la ruta actual.
         """
         route = self.router.page.path
         
-        # --- Páginas Públicas que tenían el problema de estilos ---
+        # --- Páginas Públicas ---
         if route == "/" or route == "/blog/page":
             return blog_page.blog_public_page()
         if route.startswith("/blog-public/"):
             return blog_public_detail.blog_public_detail_page()
         if route.startswith("/category/"):
             return category_page.category_page()
+        
+        # --- 👇 CORRECCIÓN DE LAS LLAMADAS A FUNCIONES 👇 ---
         if route == "/about":
             return about_page.about_page()
         if route == "/pricing":
-            return pricing_page.pricing_page()
+            return pricing_page.pricing_page() # Se corrige aquí
         if route == "/contact":
-            return contact_page.contact_page()
-        
-        # Para cualquier otra ruta (admin, cuenta, etc.), base_page se encargará.
-        # El contenido ya estará dentro del 'child' de base_page.
+            return contact_page.contact_page() # Se corrige aquí
+
+        # --- 👇 CORRECCIÓN PARA LAS PÁGINAS DE USUARIO Y ADMIN 👇 ---
+        # Estas también necesitan la referencia completa al módulo
+        if route == "/dashboard":
+            return dashboard_component.dashboard_component()
+        if route == "/cart":
+            return cart_page.cart_page()
+        if route == "/my-purchases":
+            return purchases_page.purchase_history_page()
+        if route == "/my-account/shipping-info":
+            return shipping_info_module.shipping_info_page()
+        if route == "/blog":
+            return blog_list.blog_post_list_page()
+        if route.startswith("/blog/") and route.endswith("/edit"):
+            return blog_edit.blog_post_edit_page()
+        # Esta condición debe ser más específica para no capturar /blog/add o /blog/edit
+        if route.startswith("/blog/") and not (route.endswith("/edit") or route.endswith("/add")):
+            return blog_detail.blog_post_detail_page()
+        if route == "/blog/add":
+            return blog_add.blog_post_add_page()
+        if route == "/admin/confirm-payments":
+            return cart_page.admin_confirm_page()
+        if route == "/admin/payment-history":
+            return cart_page.payment_history_page()
+        if route == "/contact/entries":
+            return contact_page.contact_entries_list_page()
+
+        # Si no coincide, devuelve un fragmento vacío
         return rx.fragment()
 
 # --- FUNCIÓN DE PÁGINA RAÍZ ---
