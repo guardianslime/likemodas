@@ -11,7 +11,9 @@ from .auth import state as auth_state
 from .auth import verify_state, reset_password_state
 from .pages import search_results, about, pricing, dashboard, category_page
 # --- 👇 Se importan los módulos del blog directamente 👇 ---
-from .blog import page as blog_page, public_detail, list as blog_list, detail, add as blog_add, edit as blog_edit, state as blog_state
+from .blog import page as blog_page, public_detail, list as blog_list, add as blog_add, edit as blog_edit, state as blog_state
+# Importamos la función específica del módulo 'detail' directamente para romper el ciclo
+from .blog.detail import blog_post_detail_page
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
 from .admin import state as admin_state
@@ -57,7 +59,7 @@ app.add_page(shipping_info.shipping_info_page, route=navigation.routes.SHIPPING_
 
 # Páginas Privadas de Administración
 app.add_page(blog_list.blog_post_list_page, route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)
-app.add_page(detail.blog_post_detail_page, route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
+app.add_page(blog_post_detail_page, route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
 app.add_page(blog_add.blog_post_add_page, route=navigation.routes.BLOG_POST_ADD_ROUTE)
 app.add_page(blog_edit.blog_post_edit_page, route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
 app.add_page(contact_page.contact_entries_list_page, route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=contact_state.ContactState.load_entries)
