@@ -10,15 +10,7 @@ from .auth import pages as auth_pages
 from .auth import state as auth_state
 from .auth import verify_state, reset_password_state
 from .pages import search_results, about, pricing, dashboard, category_page
-from .blog import (
-    page as blog_page, 
-    public_detail, 
-    list as blog_list, 
-    detail as blog_detail, 
-    add as blog_add, 
-    edit as blog_edit, 
-    state as blog_state
-)
+from .blog import page as blog_page, public_detail, list as blog_list, detail as blog_detail, add as blog_add, edit as blog_edit, state as blog_state
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
 from .admin import state as admin_state
@@ -26,33 +18,10 @@ from .contact import page as contact_page, state as contact_state
 from . import navigation
 from .account import page as account_page_module, shipping_info, shipping_info_state
 
-from .ui.base import base_page
-
-# --- ESTADO RAÍZ PARA MANEJAR LAS PÁGINAS PÚBLICAS ---
-# --- 👇 CORRECCIÓN AQUÍ 👇 ---
-class RootState(auth_state.SessionState):
-    @rx.var
-    def current_page(self) -> rx.Component:
-        route = self.router.page.path
-        
-        if route == "/" or route == "/blog/page":
-            return blog_page.blog_public_page()
-        if route.startswith("/blog-public/"):
-            return public_detail.blog_public_detail_page()
-        if route.startswith("/category/"):
-            return category_page.category_page()
-        if route == "/about":
-            return about.about_page()
-        if route == "/pricing":
-            return pricing.pricing_page()
-        if route == "/contact":
-            return contact_page.contact_page()
-        
-        return rx.fragment()
-
-# --- FUNCIÓN DE PÁGINA RAÍZ ---
+# --- PÁGINA DE INICIO ---
 def index() -> rx.Component:
-    return base_page(RootState.current_page)
+    """La página principal que muestra la galería de productos."""
+    return blog_page.blog_public_page()
 
 # --- CONFIGURACIÓN DE LA APP ---
 app = rx.App(
@@ -62,16 +31,15 @@ app = rx.App(
     ),
 )
 
-# --- REGISTRO DE PÁGINAS ---
-# (El resto del archivo no cambia)
-app.add_page(index, route="/", on_load=cart_state.CartState.on_load)
-app.add_page(index, route="/blog/page", on_load=cart_state.CartState.on_load)
-app.add_page(index, route="/blog-public/[blog_public_id]", on_load=public_detail.CommentState.on_load)
-app.add_page(index, route="/category/[cat_name]", on_load=category_page.CategoryPageState.load_category_posts)
-app.add_page(index, route="/about")
-app.add_page(index, route="/pricing")
-app.add_page(index, route="/contact")
+# --- REGISTRO DE PÁGINAS (Forma estándar y robusta) ---
+
+app.add_page(index, on_load=cart_state.CartState.on_load)
+app.add_page(about.about_page, route="/about")
+app.add_page(pricing.pricing_page, route="/pricing")
+app.add_page(contact_page.contact_page, route="/contact")
 app.add_page(search_results.search_results_page, route="/search-results")
+app.add_page(category_page.category_page, route="/category/[cat_name]", on_load=category_page.CategoryPageState.load_category_posts)
+app.add_page(public_detail.blog_public_detail_page, route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[blog_public_id]", on_load=blog_state.CommentState.on_load)
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
 app.add_page(auth_pages.verification_page, route="/verify-email", on_load=verify_state.VerifyState.verify_token)

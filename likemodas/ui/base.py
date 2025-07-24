@@ -45,6 +45,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             public_layout(child),
             # Si el usuario está autenticado, comprobamos de forma segura si está verificado.
             rx.cond(
+                # Esta es la línea clave: comprueba que 'authenticated_user_info' no sea nulo Y que 'is_verified' sea True.
                 SessionState.authenticated_user_info & SessionState.authenticated_user_info.is_verified,
                 # Usuario verificado: muestra el layout según su rol.
                 rx.cond(
@@ -56,6 +57,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 public_layout(verification_required_page)
             )
         ),
+        # Muestra un spinner mientras carga el estado de la sesión.
         rx.center(rx.spinner(), height="100vh")
     )
 
