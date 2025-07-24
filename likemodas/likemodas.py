@@ -52,7 +52,7 @@ app = rx.App()
 
 # --- REGISTRO DE PÁGINAS ---
 # Añadimos la página raíz para que maneje todas las rutas.
-app.add_page(frontend, route="/[...slug]")
+app.add_page(frontend, route="/[[...splat]]")
 
 # Añadimos las páginas de autenticación que tienen su propia lógica y no usan base_page de la misma manera
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
