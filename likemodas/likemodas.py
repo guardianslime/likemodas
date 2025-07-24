@@ -24,12 +24,7 @@ def index() -> rx.Component:
     return blog_page.blog_public_page()
 
 # --- CONFIGURACIÓN DE LA APP ---
-app = rx.App(
-    theme=rx.theme(
-        appearance="dark", has_background=True, panel_background="solid",
-        scaling="90%", radius="medium", accent_color="sky"
-    ),
-)
+app = rx.App()
 
 # --- REGISTRO DE PÁGINAS (Forma estándar y robusta) ---
 
