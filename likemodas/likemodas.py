@@ -5,7 +5,7 @@ import reflex_local_auth
 
 from rxconfig import config
 
-# --- Módulos específicos ---
+# --- Módulos Específicos ---
 from .auth import pages as auth_pages
 from .auth.state import SessionState
 from .auth import verify_state, reset_password_state
@@ -29,11 +29,11 @@ from .account import page as account_page_module, shipping_info as shipping_info
 from .ui.base import base_page
 
 # --- ESTADO RAÍZ PARA MANEJAR LAS PÁGINAS PÚBLICAS ---
-# Esta parte se mantiene igual, es correcta.
 class RootState(SessionState):
     @rx.var
     def current_page(self) -> rx.Component:
         route = self.router.page.path
+        
         if route == "/" or route == "/blog/page":
             return blog_page.blog_public_page()
         if route.startswith("/blog-public/"):
@@ -46,6 +46,7 @@ class RootState(SessionState):
             return pricing_page.pricing_page()
         if route == "/contact":
             return contact_page.contact_page()
+        
         return rx.fragment()
 
 # --- FUNCIÓN DE PÁGINA RAÍZ ---
@@ -64,10 +65,9 @@ app = rx.App(
     ),
 )
 
-# --- REGISTRO DE PÁGINAS (CORREGIDO) ---
-# Se usa el formato 'modulo.funcion' para cada página.
+# --- REGISTRO DE PÁGINAS (Forma estándar y robusta) ---
 
-# 1. Rutas públicas que usan la lógica del 'index'
+# 1. Rutas públicas que usan la lógica del 'index' para solucionar el problema de estilos
 app.add_page(index, route="/", on_load=cart_state.CartState.on_load)
 app.add_page(index, route="/blog/page", on_load=cart_state.CartState.on_load)
 app.add_page(index, route="/blog-public/[blog_public_id]", on_load=blog_public_detail.CommentState.on_load)
@@ -76,7 +76,7 @@ app.add_page(index, route="/about")
 app.add_page(index, route="/pricing")
 app.add_page(index, route="/contact")
 
-# 2. Rutas que NO usan la lógica del 'index'
+# 2. Páginas que NO usan la lógica del 'index' y se registran de forma independiente
 app.add_page(search_results.search_results_page, route="/search-results")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
