@@ -23,7 +23,7 @@ def index() -> rx.Component:
     """La página principal que muestra la galería de productos."""
     return blog_page.blog_public_page()
 
-# --- CONFIGURACIÓN DE LA APP ---
+# --- CONFIGURACIÓN DE LA APP (SIN TEMA) ---
 app = rx.App()
 
 # --- REGISTRO DE PÁGINAS (Forma estándar y robusta) ---
