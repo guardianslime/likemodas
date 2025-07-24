@@ -3,6 +3,38 @@ import math
 from ..navigation import routes
 from ..cart.state import CartState, ProductCardData
 
+def categories_button() -> rx.Component:
+    """Un componente reutilizable para el botón desplegable de categorías."""
+    return rx.hstack(
+        rx.popover.root(
+            rx.popover.trigger(
+                rx.button(
+                    "Categorías", 
+                    variant="outline",
+                    size="3",
+                    color=rx.color_mode_cond("black", "white"),
+                    border_radius="full",
+                    style={"border_color": rx.color_mode_cond("black", "white")},
+                )
+            ),
+            rx.popover.content(
+                rx.hstack(
+                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
+                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
+                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
+                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
+                    spacing="3",
+                ),
+                padding="0.5em",
+                side="right",
+                align="center",
+            ),
+        ),
+        justify="start",
+        width="100%",
+        max_width="1800px",
+        padding_bottom="1em"
+    )
 
 def _product_card_rating(post: ProductCardData) -> rx.Component:
     """Un componente para mostrar la calificación global en las tarjetas de producto."""

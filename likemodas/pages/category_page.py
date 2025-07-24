@@ -2,12 +2,12 @@ import reflex as rx
 from ..ui.base import base_page
 from ..auth.state import SessionState
 from ..cart.state import CartState, ProductCardData
-from ..ui.components import product_gallery_component
+# --- 👇 CAMBIO 1: Importa los dos componentes ---
+from ..ui.components import product_gallery_component, categories_button
 from ..models import BlogPostModel, Category
 from sqlmodel import select
 from datetime import datetime
 import sqlalchemy
-# --- 👇 AÑADE ESTA IMPORTACIÓN ---
 from ..ui.filter_panel import floating_filter_panel
 
 class CategoryPageState(SessionState):
@@ -107,6 +107,8 @@ def category_page() -> rx.Component:
                         padding_bottom="1em"
                     ),
                     # --- 👆 FIN DEL CÓDIGO AÑADIDO 👆 ---
+                    
+                    categories_button(),
                     
                     rx.heading(CategoryPageState.current_category.title(), size="8"),
                     

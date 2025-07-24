@@ -6,9 +6,11 @@ from ..cart.state import CartState
 from ..navigation import routes
 import math
 from ..models import BlogPostModel
-from ..ui.components import product_gallery_component
-# --- 👇 AÑADE ESTA IMPORTACIÓN ---
+# --- 👇 CAMBIO 1: Importa los dos componentes ---
+from ..ui.components import product_gallery_component, categories_button
 from ..ui.filter_panel import floating_filter_panel
+# --- 👇 CAMBIO 2: Importa SessionState para la condición del admin ---
+from ..auth.state import SessionState
 
 
 
@@ -85,7 +87,10 @@ def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Componen
 def blog_public_page():
     """Página pública que ahora es la principal y muestra la galería."""
     return rx.fragment(
-        floating_filter_panel(),
+        rx.cond(
+            ~SessionState.is_admin,
+            floating_filter_panel()
+        ),
         base_page(
             rx.center(
                 rx.vstack(
@@ -123,6 +128,7 @@ def blog_public_page():
                         max_width="1800px",
                         padding_bottom="1em"
                     ),
+                    categories_button(),
                     product_gallery_component(posts=CartState.filtered_posts),
                     spacing="6", 
                     width="100%", 
