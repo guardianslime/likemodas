@@ -58,7 +58,7 @@ app.add_page(frontend, route="/cart", on_load=[cart_state.CartState.on_load, car
 app.add_page(frontend, route="/my-purchases", on_load=purchases_page.PurchaseHistoryState.load_purchases)
 app.add_page(frontend, route="/my-account/shipping-info", on_load=shipping_info_state.ShippingInfoState.load_addresses)
 app.add_page(frontend, route="/blog", on_load=blog_state.BlogPostState.load_posts)
-app.add_page(frontend, route="/blog/add", on_load=blog_add.BlogAddFormState)
+app.add_page(frontend, route="/blog/add", on_load=blog_state.BlogAddFormState)
 app.add_page(frontend, route="/admin/confirm-payments", on_load=admin_state.AdminConfirmState.load_pending_purchases)
 app.add_page(frontend, route="/admin/payment-history", on_load=admin_state.PaymentHistoryState.load_confirmed_purchases)
 app.add_page(frontend, route="/contact/entries", on_load=contact_page.ContactState.load_entries)
