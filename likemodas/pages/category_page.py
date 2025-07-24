@@ -31,21 +31,20 @@ class CategoryPageState(SessionState):
 
 # --- VERSIÓN MÍNIMA PARA DEPURACIÓN ---
 def category_page() -> rx.Component:
-    page_content = rx.center(
+    """Este componente ahora SOLO devuelve el contenido de la página de categoría."""
+    return rx.center(
         rx.vstack(
-            # --- COMPONENTES TEMPORALMENTE DESACTIVADOS ---
-             rx.cond(
-                 SessionState.is_hydrated,
-                 rx.cond(
-                     ~SessionState.is_admin,
-                     rx.fragment(
-                         floating_filter_panel(),
-                         categories_button()
-                     )
-                 )
-             ),
-            
-            rx.heading(CategoryPageState.current_category.title(), size="8", margin_top="2em"),
+            rx.cond(
+                SessionState.is_hydrated,
+                rx.cond(
+                    ~SessionState.is_admin,
+                    rx.fragment(
+                        floating_filter_panel(),
+                        categories_button()
+                    )
+                )
+            ),
+            rx.heading(CategoryPageState.current_category.title(), size="8"),
             
             # --- GALERÍA TEMPORALMENTE DESACTIVADA ---
             # rx.cond(

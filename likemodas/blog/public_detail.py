@@ -226,7 +226,7 @@ def blog_public_detail_page() -> rx.Component:
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
-    return rx.center(
+    page_content = rx.center(
         rx.vstack(
             rx.heading("Detalle del Producto", size="9", margin_bottom="1em"),
             content_grid,
@@ -239,4 +239,4 @@ def blog_public_detail_page() -> rx.Component:
         width="100%",
     )
     
-    return base_page(page_content)
+    return page_content # Devuelve el contenido directamente
