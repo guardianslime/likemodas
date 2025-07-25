@@ -27,7 +27,7 @@ def blog_post_add_form() -> rx.Component:
                                 border="2px dashed #ccc",
                                 padding="2em",
                                 width="100%",
-                                height="100%",
+                                height="100%", # Ocupa el alto del contenedor
                             ),
                             rx.cond(
                                 BlogAddFormState.temp_images,
@@ -41,7 +41,8 @@ def blog_post_add_form() -> rx.Component:
                                         ),
                                     ),
                                     wrap="wrap",
-                                    spacing="3"
+                                    spacing="3",
+                                    justify="center",
                                 )
                             ),
                             spacing="4",
@@ -68,7 +69,7 @@ def blog_post_add_form() -> rx.Component:
                     height="100%",
                 ),
                 
-                # --- Sección de campos condicionales ---
+                # --- Sección de características adicionales ---
                 rx.vstack(
                     rx.cond(
                         BlogAddFormState.category != "",
@@ -153,10 +154,11 @@ def blog_post_add_form() -> rx.Component:
                     grid_column="span 2",
                     margin_top="1em"
                 ),
-                grid_template_columns={"base": "1fr", "md": "1fr 2fr"},
-                align_items="stretch", 
+                # --- ✨ CAMBIO CLAVE: Se ajusta la proporción y la respuesta en pantallas pequeñas ---
+                columns={"base": "1", "md": "2"},
                 spacing="6",
-                width="100%"
+                width="100%",
+                align_items="stretch", # Asegura que ambas columnas tengan la misma altura
             ),
 
             rx.hstack(
@@ -178,67 +180,20 @@ def blog_post_edit_form() -> rx.Component:
         BlogEditFormState.post,
         rx.form(
             rx.vstack(
-                rx.input(
-                    type="hidden",
-                    name="post_id",
-                    value=rx.cond(
-                        BlogEditFormState.post.id,
-                        BlogEditFormState.post.id,
-                        ""
-                    ),
-                ),
-                rx.input(
-                    name="title",
-                    value=rx.cond(
-                        BlogEditFormState.post.title,
-                        BlogEditFormState.post.title,
-                        ""
-                    ),
-                    placeholder="Título del Post",
-                    required=True,
-                    width="100%",
-                ),
-                rx.input(
-                    name="price",
-                    value=BlogEditFormState.price_str,
-                    on_change=BlogEditFormState.set_price,
-                    placeholder="Precio",
-                    required=True,
-                    width="100%",
-                ),
-                rx.text_area(
-                    name="content",
-                    value=rx.cond(
-                        BlogEditFormState.post_content != "",
-                        BlogEditFormState.post_content,
-                        ""
-                    ),
-                    on_change=BlogEditFormState.set_post_content,
-                    placeholder="Escribe tu contenido aquí...",
-                    required=True,
-                    height="40vh",
-                    width="100%",
-                ),
+                rx.input(type="hidden", name="post_id", value=rx.cond(BlogEditFormState.post.id, BlogEditFormState.post.id, "")),
+                rx.input(name="title", value=rx.cond(BlogEditFormState.post.title, BlogEditFormState.post.title, ""), placeholder="Título del Post", required=True, width="100%"),
+                rx.input(name="price", value=BlogEditFormState.price_str, on_change=BlogEditFormState.set_price, placeholder="Precio", required=True, width="100%"),
+                rx.text_area(name="content", value=rx.cond(BlogEditFormState.post_content != "", BlogEditFormState.post_content, ""), on_change=BlogEditFormState.set_post_content, placeholder="Escribe tu contenido aquí...", required=True, height="40vh", width="100%"),
                 rx.flex(
-                    rx.switch(
-                        name="publish_active",
-                        is_checked=BlogEditFormState.post_publish_active,
-                        on_change=BlogEditFormState.set_post_publish_active,
-                    ),
+                    rx.switch(name="publish_active", is_checked=BlogEditFormState.post_publish_active, on_change=BlogEditFormState.set_post_publish_active),
                     rx.text("Publicar"),
                     spacing="2",
                 ),
                 rx.cond(
                     BlogEditFormState.post_publish_active,
                     rx.hstack(
-                        rx.input(
-                            name="publish_date",
-                            type="date",           
-                        ),
-                        rx.input(
-                            name="publish_time",
-                            type="time",
-                        ),
+                        rx.input(name="publish_date", type="date"),
+                        rx.input(name="publish_time", type="time"),
                         width="100%"
                     ),
                 ),
