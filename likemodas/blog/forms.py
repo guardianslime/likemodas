@@ -10,6 +10,7 @@ def blog_post_add_form() -> rx.Component:
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
+                # --- Columna izquierda: Carga de imágenes ---
                 rx.vstack(
                     rx.card(
                         rx.vstack(
@@ -25,7 +26,8 @@ def blog_post_add_form() -> rx.Component:
                                 on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
                                 border="2px dashed #ccc",
                                 padding="2em",
-                                width="100%"
+                                width="100%",
+                                height="100%",
                             ),
                             rx.cond(
                                 BlogAddFormState.temp_images,
@@ -43,11 +45,16 @@ def blog_post_add_form() -> rx.Component:
                                 )
                             ),
                             spacing="4",
-                        )
+                            height="100%",
+                            justify_content="center",
+                        ),
+                        height="100%",
                     ),
                     spacing="5",
+                    height="100%",
                 ),
 
+                # --- Columna derecha: Detalles del producto ---
                 rx.vstack(
                     rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
                     rx.hstack(
@@ -60,6 +67,7 @@ def blog_post_add_form() -> rx.Component:
                     align_items="stretch"
                 ),
                 
+                # --- Sección de campos condicionales ---
                 rx.vstack(
                     rx.cond(
                         BlogAddFormState.category != "",
@@ -144,7 +152,8 @@ def blog_post_add_form() -> rx.Component:
                     grid_column="span 2",
                     margin_top="1em"
                 ),
-                columns={"base": "1", "md": "2"},
+                columns="2",
+                align_items="stretch", 
                 spacing="6",
                 width="100%"
             ),
