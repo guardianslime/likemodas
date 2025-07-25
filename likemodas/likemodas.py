@@ -49,6 +49,7 @@ app = rx.App(
     ),
 )
 
+app.add_page(index, on_load=HomePageState.on_load_main)
 # --- Páginas Generales y de Autenticación ---
 app.add_page(
     dashboard_component, 
