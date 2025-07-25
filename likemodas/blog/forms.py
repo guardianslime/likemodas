@@ -5,12 +5,11 @@ from ..data.product_options import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """El formulario rediseñado para añadir un nuevo producto con diseño y proporciones mejoradas."""
+    """El formulario rediseñado para añadir un nuevo producto con todas las funcionalidades."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
-                # --- Columna izquierda: Carga de imágenes ---
                 rx.vstack(
                     rx.card(
                         rx.vstack(
@@ -26,8 +25,7 @@ def blog_post_add_form() -> rx.Component:
                                 on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
                                 border="2px dashed #ccc",
                                 padding="2em",
-                                width="100%",
-                                height="100%", # Ocupa el alto del contenedor
+                                width="100%"
                             ),
                             rx.cond(
                                 BlogAddFormState.temp_images,
@@ -41,21 +39,15 @@ def blog_post_add_form() -> rx.Component:
                                         ),
                                     ),
                                     wrap="wrap",
-                                    spacing="3",
-                                    justify="center",
+                                    spacing="3"
                                 )
                             ),
                             spacing="4",
-                            height="100%",
-                            justify_content="center",
-                        ),
-                        height="100%",
+                        )
                     ),
                     spacing="5",
-                    height="100%",
                 ),
 
-                # --- Columna derecha: Detalles del producto ---
                 rx.vstack(
                     rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
                     rx.hstack(
@@ -63,13 +55,11 @@ def blog_post_add_form() -> rx.Component:
                         rx.select(BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3"),
                         spacing="4"
                     ),
-                    rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "100%"}),
+                    rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "150px"}),
                     spacing="4",
-                    align_items="stretch",
-                    height="100%",
+                    align_items="stretch"
                 ),
                 
-                # --- Sección de características adicionales ---
                 rx.vstack(
                     rx.cond(
                         BlogAddFormState.category != "",
@@ -154,11 +144,9 @@ def blog_post_add_form() -> rx.Component:
                     grid_column="span 2",
                     margin_top="1em"
                 ),
-                # --- ✨ CAMBIO CLAVE: Se ajusta la proporción y la respuesta en pantallas pequeñas ---
                 columns={"base": "1", "md": "2"},
                 spacing="6",
-                width="100%",
-                align_items="stretch", # Asegura que ambas columnas tengan la misma altura
+                width="100%"
             ),
 
             rx.hstack(
@@ -180,20 +168,67 @@ def blog_post_edit_form() -> rx.Component:
         BlogEditFormState.post,
         rx.form(
             rx.vstack(
-                rx.input(type="hidden", name="post_id", value=rx.cond(BlogEditFormState.post.id, BlogEditFormState.post.id, "")),
-                rx.input(name="title", value=rx.cond(BlogEditFormState.post.title, BlogEditFormState.post.title, ""), placeholder="Título del Post", required=True, width="100%"),
-                rx.input(name="price", value=BlogEditFormState.price_str, on_change=BlogEditFormState.set_price, placeholder="Precio", required=True, width="100%"),
-                rx.text_area(name="content", value=rx.cond(BlogEditFormState.post_content != "", BlogEditFormState.post_content, ""), on_change=BlogEditFormState.set_post_content, placeholder="Escribe tu contenido aquí...", required=True, height="40vh", width="100%"),
+                rx.input(
+                    type="hidden",
+                    name="post_id",
+                    value=rx.cond(
+                        BlogEditFormState.post.id,
+                        BlogEditFormState.post.id,
+                        ""
+                    ),
+                ),
+                rx.input(
+                    name="title",
+                    value=rx.cond(
+                        BlogEditFormState.post.title,
+                        BlogEditFormState.post.title,
+                        ""
+                    ),
+                    placeholder="Título del Post",
+                    required=True,
+                    width="100%",
+                ),
+                rx.input(
+                    name="price",
+                    value=BlogEditFormState.price_str,
+                    on_change=BlogEditFormState.set_price,
+                    placeholder="Precio",
+                    required=True,
+                    width="100%",
+                ),
+                rx.text_area(
+                    name="content",
+                    value=rx.cond(
+                        BlogEditFormState.post_content != "",
+                        BlogEditFormState.post_content,
+                        ""
+                    ),
+                    on_change=BlogEditFormState.set_post_content,
+                    placeholder="Escribe tu contenido aquí...",
+                    required=True,
+                    height="40vh",
+                    width="100%",
+                ),
                 rx.flex(
-                    rx.switch(name="publish_active", is_checked=BlogEditFormState.post_publish_active, on_change=BlogEditFormState.set_post_publish_active),
+                    rx.switch(
+                        name="publish_active",
+                        is_checked=BlogEditFormState.post_publish_active,
+                        on_change=BlogEditFormState.set_post_publish_active,
+                    ),
                     rx.text("Publicar"),
                     spacing="2",
                 ),
                 rx.cond(
                     BlogEditFormState.post_publish_active,
                     rx.hstack(
-                        rx.input(name="publish_date", type="date"),
-                        rx.input(name="publish_time", type="time"),
+                        rx.input(
+                            name="publish_date",
+                            type="date",           
+                        ),
+                        rx.input(
+                            name="publish_time",
+                            type="time",
+                        ),
                         width="100%"
                     ),
                 ),
