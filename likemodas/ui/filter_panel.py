@@ -4,7 +4,7 @@ import reflex as rx
 from ..auth.state import SessionState
 from ..models import Category
 # Import the data lists to populate the filter selectors
-from ..blog.forms import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS 
+from ..data.product_options import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS 
 
 def floating_filter_panel() -> rx.Component:
     """
