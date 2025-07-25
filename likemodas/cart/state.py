@@ -1,16 +1,17 @@
+# likemodas/cart/state.py
+
 import reflex as rx
 from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus
+# --- 👇 CAMBIO AQUÍ: Se añade 'Category' a la importación ---
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus, Category
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
 from sqlalchemy import or_, cast, String
 from ..data.colombia_locations import load_colombia_data
-# Se importa AdminConfirmState desde su ubicación correcta para las notificaciones
 from ..admin.state import AdminConfirmState
-from ..ui.filter_state import FilterState # <-- AÑADE ESTA IMPORTACIÓN
 
 class ProductCardData(rx.Base):
     id: int
