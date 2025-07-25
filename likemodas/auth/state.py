@@ -10,8 +10,10 @@ from datetime import datetime, timedelta
 from ..utils.validators import validate_password
 import secrets
 import sqlalchemy
-# Importar ProductCardData aquí para usarlo en la lista de posts
-from ..cart.state import ProductCardData, get_unique_options_from_attributes
+from ..data.schemas import ProductCardData
+from ..utils.helpers import get_unique_options_from_attributes
+# --- ❌ SE ELIMINA LA LÍNEA: from ..cart.state import ... ---
+
 # Importar las listas de tipos para los filtros
 from ..data.product_options import LISTA_TIPOS_GENERAL
 
