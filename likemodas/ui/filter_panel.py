@@ -7,6 +7,8 @@ from ..data.product_options import (
     LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
 )
 
+from ..pages.category_page import CategoryPageState
+
 # --- ✨ FUNCIÓN CORREGIDA ---
 # Se cambió la sintaxis de opt["label"] a opt.label
 def build_searchable_select(
@@ -86,9 +88,11 @@ def floating_filter_panel() -> rx.Component:
                             SessionState.current_category == Category.ROPA.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Ropa", weight="bold"),
+                                # --- ✨ 2. CORRECCIÓN EN LAS LLAMADAS ---
+                                # Se cambia SessionState por CategoryPageState para las opciones específicas
                                 build_searchable_select("Filtrar por tipo...", SessionState.filter_tipo_prenda, LISTA_TIPOS_ROPA, SessionState.tipo_prenda_search, SessionState.set_tipo_prenda_search, SessionState.set_filter_tipo_prenda),
-                                build_searchable_select("Filtrar por color...", SessionState.filter_color, SessionState.filtered_available_colors, SessionState.color_search, SessionState.set_color_search, SessionState.set_filter_color),
-                                build_searchable_select("Filtrar por talla...", SessionState.filter_talla, SessionState.filtered_available_tallas, SessionState.talla_search, SessionState.set_talla_search, SessionState.set_filter_talla),
+                                build_searchable_select("Filtrar por color...", SessionState.filter_color, CategoryPageState.filtered_available_colors, SessionState.color_search, SessionState.set_color_search, SessionState.set_filter_color),
+                                build_searchable_select("Filtrar por talla...", SessionState.filter_talla, CategoryPageState.filtered_available_tallas, SessionState.talla_search, SessionState.set_talla_search, SessionState.set_filter_talla),
                                 spacing="2", align_items="start", width="100%"
                             )
                         ),
