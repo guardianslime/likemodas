@@ -2,7 +2,6 @@
 
 import reflex as rx
 from ..auth.state import SessionState
-from ..pages.category_page import CategoryPageState # Import to get current category
 from ..models import Category
 # Import the data lists to populate the filter selectors
 from ..blog.forms import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS 
@@ -28,7 +27,7 @@ def floating_filter_panel() -> rx.Component:
                 # --- ✨ DYNAMIC FILTERS BASED ON CATEGORY ---
                 # Ropa Filters
                 rx.cond(
-                    CategoryPageState.current_category == Category.ROPA.value,
+                    SessionState.current_category == Category.ROPA.value,
                     rx.vstack(
                         rx.divider(),
                         rx.text("Filtros de Ropa", weight="bold"),
@@ -41,7 +40,7 @@ def floating_filter_panel() -> rx.Component:
 
                 # Calzado Filters
                 rx.cond(
-                    CategoryPageState.current_category == Category.CALZADO.value,
+                    SessionState.current_category == Category.CALZADO.value,
                     rx.vstack(
                         rx.divider(),
                         rx.text("Filtros de Calzado", weight="bold"),
@@ -54,7 +53,7 @@ def floating_filter_panel() -> rx.Component:
 
                 # Mochilas Filters
                 rx.cond(
-                    CategoryPageState.current_category == Category.MOCHILAS.value,
+                    SessionState.current_category == Category.MOCHILAS.value,
                     rx.vstack(
                         rx.divider(),
                         rx.text("Filtros de Mochilas", weight="bold"),

@@ -8,7 +8,7 @@ from ..models import BlogPostModel, Category
 from sqlmodel import select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql.expression import cast
-from sqlalchemy import String
+from sqlalchemy import String, cast
 from datetime import datetime
 import sqlalchemy
 from ..ui.filter_panel import floating_filter_panel
@@ -16,10 +16,6 @@ from ..ui.filter_panel import floating_filter_panel
 class CategoryPageState(SessionState):
     posts_in_category: list[ProductCardData] = []
 
-    @rx.var
-    def current_category(self) -> str:
-        """Obtiene el nombre de la categoría desde la URL, siguiendo el patrón existente."""
-        return self.router.page.params.get("cat_name", "todos") 
 
     @rx.event
     def load_category_posts(self):
@@ -30,9 +26,9 @@ class CategoryPageState(SessionState):
                 BlogPostModel.publish_active == True, 
                 BlogPostModel.publish_date < datetime.now()
             ]
-            if category_from_url != "todos":
+            if self.current_category != "todos":
                 try:
-                    category_enum = Category(category_from_url)
+                    category_enum = Category(self.current_category)
                     query_filter.append(BlogPostModel.category == category_enum)
                 except ValueError:
                     self.posts_in_category = []

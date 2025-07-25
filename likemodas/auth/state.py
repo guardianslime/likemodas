@@ -31,6 +31,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
     min_price: str = ""
     max_price: str = ""
     show_filters: bool = False
+    current_category: str = ""
 
     # --- ✨ NEW STATE VARIABLES FOR FILTERS ---
     filter_color: str = ""
