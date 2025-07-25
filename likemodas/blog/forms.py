@@ -5,12 +5,11 @@ from ..data.product_options import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """El formulario rediseñado para añadir un nuevo producto con diseño y proporciones mejoradas."""
+    """El formulario rediseñado para añadir un nuevo producto con todas las funcionalidades."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
-                # --- Columna izquierda: Carga de imágenes ---
                 rx.vstack(
                     rx.card(
                         rx.vstack(
@@ -26,8 +25,7 @@ def blog_post_add_form() -> rx.Component:
                                 on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
                                 border="2px dashed #ccc",
                                 padding="2em",
-                                width="100%",
-                                height="100%",
+                                width="100%"
                             ),
                             rx.cond(
                                 BlogAddFormState.temp_images,
@@ -41,21 +39,15 @@ def blog_post_add_form() -> rx.Component:
                                         ),
                                     ),
                                     wrap="wrap",
-                                    spacing="3",
-                                    justify="center",
+                                    spacing="3"
                                 )
                             ),
                             spacing="4",
-                            height="100%",
-                            justify_content="center",
-                        ),
-                        height="100%",
+                        )
                     ),
                     spacing="5",
-                    height="100%",
                 ),
 
-                # --- Columna derecha: Detalles del producto ---
                 rx.vstack(
                     rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
                     rx.hstack(
@@ -63,13 +55,11 @@ def blog_post_add_form() -> rx.Component:
                         rx.select(BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3"),
                         spacing="4"
                     ),
-                    rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "100%"}),
+                    rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "150px"}),
                     spacing="4",
-                    align_items="stretch",
-                    height="100%",
+                    align_items="stretch"
                 ),
                 
-                # --- Sección de características adicionales ---
                 rx.vstack(
                     rx.cond(
                         BlogAddFormState.category != "",
@@ -89,7 +79,6 @@ def blog_post_add_form() -> rx.Component:
                             margin_bottom="0.5em"
                         ),
                     ),
-                    
                     rx.cond(
                         BlogAddFormState.category == Category.ROPA.value,
                         rx.grid(
@@ -155,10 +144,11 @@ def blog_post_add_form() -> rx.Component:
                     grid_column="span 2",
                     margin_top="1em"
                 ),
-                grid_template_columns={"base": "1fr", "md": "1fr 2fr"},
-                align_items="stretch", 
+                # --- ✨ CAMBIO CLAVE AQUÍ ---
+                columns={"base": "1", "md": "2"}, # Se mantiene responsivo
                 spacing="6",
-                width="100%"
+                width="100%",
+                align_items="stretch", # Esto asegura que ambas columnas tengan la misma altura
             ),
 
             rx.hstack(
