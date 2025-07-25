@@ -21,55 +21,58 @@ def _searchable_select(
     """
     Un componente de selección personalizado con un campo de búsqueda interno.
     """
-    # --- ✨ CAMBIO 1: Se añade 'match_width=True' al componente raíz del popover ---
-    return rx.popover.root(
-        rx.popover.trigger(
-            rx.button(
-                rx.cond(value_select, value_select, placeholder),
-                rx.icon(tag="chevron-down"),
-                variant="outline",
-                width="100%",
-                justify_content="space-between",
-                color_scheme="gray",
-            )
-        ),
-        rx.popover.content(
-            rx.vstack(
-                rx.input(
-                    placeholder="Buscar...",
-                    value=search_value,
-                    on_change=on_change_search,
-                    margin_bottom="0.5em"
-                ),
-                rx.scroll_area(
-                    rx.vstack(
-                        rx.foreach(
-                            options,
-                            lambda option: rx.popover.close(
-                                rx.button(
-                                    option,
-                                    on_click=lambda: on_change_select(option),
-                                    width="100%",
-                                    variant="soft", 
-                                    color_scheme="gray",
-                                    justify_content="start"
-                                )
-                            )
-                        ),
-                        spacing="1",
-                    ),
-                    max_height="200px",
+    # --- ✨ CAMBIO 1: Se envuelve todo en un rx.box para forzar el ancho ---
+    return rx.box(
+        rx.popover.root(
+            rx.popover.trigger(
+                rx.button(
+                    rx.cond(value_select, value_select, placeholder),
+                    rx.icon(tag="chevron-down"),
+                    variant="outline",
                     width="100%",
-                    type="auto",
-                    scrollbars="vertical",
-                ),
-                width="100%",
-                spacing="2"
+                    justify_content="space-between",
+                    color_scheme="gray",
+                )
             ),
-            # --- ✨ CAMBIO 2: Se elimina el ancho fijo 'width="240px"' ---
-            padding="0.75em"
+            rx.popover.content(
+                rx.vstack(
+                    rx.input(
+                        placeholder="Buscar...",
+                        value=search_value,
+                        on_change=on_change_search,
+                        margin_bottom="0.5em"
+                    ),
+                    rx.scroll_area(
+                        rx.vstack(
+                            rx.foreach(
+                                options,
+                                lambda option: rx.popover.close(
+                                    rx.button(
+                                        option,
+                                        on_click=lambda: on_change_select(option),
+                                        width="100%",
+                                        variant="soft", 
+                                        color_scheme="gray",
+                                        justify_content="start"
+                                    )
+                                )
+                            ),
+                            spacing="1",
+                        ),
+                        max_height="200px",
+                        width="100%",
+                        type="auto",
+                        scrollbars="vertical",
+                    ),
+                    width="100%",
+                    spacing="2"
+                ),
+                padding="0.75em"
+            ),
+            match_width=True,
         ),
-        match_width=True,
+        # --- ✨ CAMBIO 2: Se aplica el ancho al contenedor principal ---
+        width="100%",
     )
 
 def floating_filter_panel() -> rx.Component:
