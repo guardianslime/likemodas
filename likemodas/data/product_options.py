@@ -18,3 +18,7 @@ LISTA_TIPOS_MOCHILAS = [
     "Antirrobo", "Bandolera", "Bolsa de Lona", "Deportiva", "Escolar", "Maletín",
     "Mochila de Acampada", "Mochila de Viaje", "Mochila Urbana", "Morral", "Otro"
 ]
+
+LISTA_TIPOS_GENERAL = sorted(list(set(
+    LISTA_TIPOS_ROPA + LISTA_TIPOS_ZAPATOS + LISTA_TIPOS_MOCHILAS
+)))

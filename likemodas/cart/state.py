@@ -6,6 +6,7 @@ from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
+from sqlalchemy import or_, cast, String
 from ..data.colombia_locations import load_colombia_data
 # Se importa AdminConfirmState desde su ubicación correcta para las notificaciones
 from ..admin.state import AdminConfirmState
@@ -40,23 +41,69 @@ class CartState(SessionState):
     
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
-        """Filtra la lista de posts principal según los filtros de precio."""
-        posts_to_filter = self.posts
+        """Filtra la lista de posts principal usando filtros de precio y generales."""
+        # --- Obtener IDs de posts después del filtro de precio ---
+        posts_after_price_filter = self.posts
         try:
-            # Usa self.min_price directamente
             min_p = float(self.min_price) if self.min_price else 0
-        except ValueError:
-            min_p = 0
+        except ValueError: min_p = 0
         try:
-            # Usa self.max_price directamente
             max_p = float(self.max_price) if self.max_price else float('inf')
-        except ValueError:
-            max_p = float('inf')
+        except ValueError: max_p = float('inf')
 
         if min_p > 0 or max_p != float('inf'):
-            return [p for p in posts_to_filter if (p.price >= min_p and p.price <= max_p)]
-        
-        return posts_to_filter
+            posts_after_price_filter = [p for p in self.posts if (p.price >= min_p and p.price <= max_p)]
+
+        # Si no hay más filtros, devolvemos el resultado
+        active_general_filters = any([
+            self.filter_tipo_general, self.filter_material_tela,
+            self.filter_medida_talla, self.filter_color
+        ])
+        if not active_general_filters:
+            return posts_after_price_filter
+
+        # --- ✨ LÓGICA DE FILTRADO GENERAL CON ATRIBUTOS ---
+        with rx.session() as session:
+            post_ids = [p.id for p in posts_after_price_filter]
+            if not post_ids:
+                return []
+
+            query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
+
+            # Filtro por Tipo General
+            if self.filter_tipo_general:
+                query = query.where(or_(
+                    cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general,
+                    cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general,
+                    cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_general
+                ))
+            
+            # Filtro por Material/Tela General
+            if self.filter_material_tela:
+                mat = f"%{self.filter_material_tela}%"
+                query = query.where(or_(
+                    cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat),
+                    cast(BlogPostModel.attributes['material'], String).ilike(mat)
+                ))
+
+            # Filtro por Medida/Talla General
+            if self.filter_medida_talla:
+                med = f"%{self.filter_medida_talla}%"
+                query = query.where(or_(
+                    cast(BlogPostModel.attributes['talla'], String).ilike(med),
+                    cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med),
+                    cast(BlogPostModel.attributes['medidas'], String).ilike(med)
+                ))
+            
+            # Filtro por Color General
+            if self.filter_color:
+                query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+
+            # Ejecutar la consulta final
+            filtered_db_posts = session.exec(query).all()
+            filtered_ids = {p.id for p in filtered_db_posts}
+            
+            return [p for p in posts_after_price_filter if p.id in filtered_ids]
     
     @rx.event
     def set_shipping_city_and_reset_neighborhood(self, city: str):

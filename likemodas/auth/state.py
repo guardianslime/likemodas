@@ -40,6 +40,11 @@ class SessionState(reflex_local_auth.LocalAuthState):
     filter_numero_calzado: str = ""
     filter_tipo_zapato: str = ""
     filter_tipo_mochila: str = ""
+
+    # --- ✨ NUEVOS ESTADOS PARA FILTROS GENERALES ---
+    filter_tipo_general: str = ""
+    filter_material_tela: str = ""
+    filter_medida_talla: str = ""
     
     # --- ✨ NEW EVENT HANDLERS FOR FILTERS ---
     def set_filter_color(self, value: str): self.filter_color = value
@@ -48,6 +53,11 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def set_filter_numero_calzado(self, value: str): self.filter_numero_calzado = value
     def set_filter_tipo_zapato(self, value: str): self.filter_tipo_zapato = value
     def set_filter_tipo_mochila(self, value: str): self.filter_tipo_mochila = value
+
+    # --- ✨ NUEVOS EVENT HANDLERS PARA FILTROS GENERALES ---
+    def set_filter_tipo_general(self, value: str): self.filter_tipo_general = value
+    def set_filter_material_tela(self, value: str): self.filter_material_tela = value
+    def set_filter_medida_talla(self, value: str): self.filter_medida_talla = value
 
 
     def toggle_filters(self):
