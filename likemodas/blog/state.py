@@ -5,10 +5,13 @@ from typing import Optional, List
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
-
 from .. import navigation
 from ..auth.state import SessionState
 from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType, PurchaseModel, PurchaseItemModel, PurchaseStatus, Category # <-- AÑADIR Category
+from ..data.product_options import (
+    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES
+)
+
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
@@ -117,28 +120,70 @@ class BlogAddFormState(SessionState):
     title: str = ""
     content: str = ""
     price: float = 0.0
-    category: str = "" # Initialize as empty to ensure user makes a selection
+    category: str = ""
     temp_images: list[str] = []
 
-    # --- ✨ NEW STATE VARIABLES FOR DYNAMIC FIELDS ---
-    # For Ropa (Clothing)
+    # Campos para Ropa
     talla: str = ""
     tipo_tela: str = ""
     color_ropa: str = ""
     tipo_prenda: str = ""
 
-    # For Calzado (Footwear)
+    # Campos para Calzado
     numero_calzado: str = ""
     material_calzado: str = ""
     color_calzado: str = ""
     tipo_zapato: str = ""
 
-    # For Mochilas (Backpacks)
+    # Campos para Mochilas
     material_mochila: str = ""
     medidas: str = ""
     tipo_mochila: str = ""
     
-    # ... (handle_upload, remove_image, set_price_from_input remain the same)
+    # --- ✨ NUEVOS ESTADOS PARA BÚSQUEDA EN FORMULARIO ---
+    search_add_tipo_prenda: str = ""
+    search_add_color_ropa: str = ""
+    search_add_talla: str = ""
+    search_add_tipo_tela: str = ""
+    search_add_tipo_zapato: str = ""
+    search_add_color_calzado: str = ""
+    search_add_numero_calzado: str = ""
+    search_add_material_calzado: str = ""
+    search_add_tipo_mochila: str = ""
+    search_add_material_mochila: str = ""
+
+    # --- ✨ NUEVOS EVENT HANDLERS PARA BÚSQUEDA ---
+    def set_search_add_tipo_prenda(self, query: str): self.search_add_tipo_prenda = query
+    def set_search_add_color_ropa(self, query: str): self.search_add_color_ropa = query
+    def set_search_add_talla(self, query: str): self.search_add_talla = query
+    def set_search_add_tipo_tela(self, query: str): self.search_add_tipo_tela = query
+    def set_search_add_tipo_zapato(self, query: str): self.search_add_tipo_zapato = query
+    def set_search_add_color_calzado(self, query: str): self.search_add_color_calzado = query
+    def set_search_add_numero_calzado(self, query: str): self.search_add_numero_calzado = query
+    def set_search_add_material_calzado(self, query: str): self.search_add_material_calzado = query
+    def set_search_add_tipo_mochila(self, query: str): self.search_add_tipo_mochila = query
+    def set_search_add_material_mochila(self, query: str): self.search_add_material_mochila = query
+
+    # --- ✨ NUEVAS PROPIEDADES COMPUTADAS PARA LISTAS FILTRADAS DEL FORMULARIO ---
+    @rx.var
+    def filtered_add_colores(self) -> list[str]:
+        if not self.search_add_color_ropa.strip(): return LISTA_COLORES
+        return [op for op in LISTA_COLORES if self.search_add_color_ropa.lower() in op.lower()]
+    
+    @rx.var
+    def filtered_add_tallas(self) -> list[str]:
+        if not self.search_add_talla.strip(): return LISTA_TALLAS_ROPA
+        return [op for op in LISTA_TALLAS_ROPA if self.search_add_talla.lower() in op.lower()]
+
+    @rx.var
+    def filtered_add_materiales(self) -> list[str]:
+        if not self.search_add_tipo_tela.strip(): return LISTA_MATERIALES
+        return [op for op in LISTA_MATERIALES if self.search_add_tipo_tela.lower() in op.lower()]
+
+    @rx.var
+    def filtered_add_numeros_calzado(self) -> list[str]:
+        if not self.search_add_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
+        return [op for op in LISTA_NUMEROS_CALZADO if self.search_add_numero_calzado.lower() in op.lower()]
 
     def _create_post(self, publish: bool) -> rx.event.EventSpec:
         """Helper method to create and save a post."""

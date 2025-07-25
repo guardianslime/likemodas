@@ -4,91 +4,10 @@ import reflex as rx
 from reflex.event import EventSpec
 from ..auth.state import SessionState
 from ..models import Category
+from .components import searchable_select
 from ..data.product_options import (
     LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
 )
-
-def _searchable_select(
-    placeholder: str, 
-    options: rx.Var[list[str]], 
-    on_change_select: EventSpec,
-    value_select: rx.Var[str],
-    search_value: rx.Var[str],
-    on_change_search: EventSpec,
-    filter_name: str, # Nombre único para este filtro
-) -> rx.Component:
-    """
-    Un componente de selección personalizado, construido desde cero para
-    garantizar el control total sobre el diseño y la expansión.
-    """
-    is_open = SessionState.open_filter_name == filter_name
-
-    return rx.box(
-        # El botón que abre/cierra el menú
-        rx.button(
-            rx.cond(value_select, value_select, placeholder),
-            rx.icon(tag="chevron-down"),
-            on_click=SessionState.toggle_filter_dropdown(filter_name),
-            variant="outline",
-            width="100%",
-            justify_content="space-between",
-            color_scheme="gray",
-        ),
-        # El contenido del menú, que se muestra condicionalmente
-        rx.cond(
-            is_open,
-            rx.vstack(
-                rx.input(
-                    placeholder="Buscar...",
-                    value=search_value,
-                    on_change=on_change_search,
-                ),
-                rx.scroll_area(
-                    rx.vstack(
-                        rx.foreach(
-                            options,
-                            lambda option: rx.button(
-                                option,
-                                # Al hacer clic, se selecciona y se cierra el menú
-                                on_click=[
-                                    lambda: on_change_select(option),
-                                    SessionState.toggle_filter_dropdown(filter_name)
-                                ],
-                                width="100%",
-                                variant="soft", 
-                                color_scheme="gray",
-                                justify_content="start"
-                            )
-                        ),
-                        spacing="1",
-                        width="100%",
-                    ),
-                    max_height="200px",
-                    width="100%",
-                    type="auto",
-                    scrollbars="vertical",
-                ),
-                # Estilo de la caja del menú
-                spacing="2",
-                padding="0.75em",
-                bg=rx.color("gray", 3),
-                border="1px solid",
-                border_color=rx.color("gray", 7),
-                border_radius="md",
-                # Posicionamiento absoluto para que flote sobre el contenido
-                position="absolute",
-                top="105%", # Justo debajo del botón
-                # --- ✨ CAMBIO CLAVE APLICADO AQUÍ ---
-                # Se establece un ancho fijo para garantizar la expansión.
-                width="250px",
-                z_index=10,
-            )
-        ),
-        # El contenedor principal necesita ser relativo para el posicionamiento absoluto del hijo
-        position="relative",
-        width="100%",
-    )
-
 
 def floating_filter_panel() -> rx.Component:
     """

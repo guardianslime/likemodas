@@ -1,7 +1,86 @@
+# likemodas/ui/components.py
+
 import reflex as rx
 import math
 from ..navigation import routes
 from ..cart.state import CartState, ProductCardData
+from reflex.event import EventSpec # ✨ Se añade esta importación
+from ..auth.state import SessionState # ✨ Se añade esta importación
+
+# --- ✨ NUEVA FUNCIÓN MOVILIZADA AQUÍ ---
+def searchable_select(
+    placeholder: str, 
+    options: rx.Var[list[str]], 
+    on_change_select: EventSpec,
+    value_select: rx.Var[str],
+    search_value: rx.Var[str],
+    on_change_search: EventSpec,
+    filter_name: str, # Nombre único para este filtro
+) -> rx.Component:
+    """
+    Un componente de selección personalizado, construido desde cero para
+    garantizar el control total sobre el diseño y la expansión.
+    """
+    is_open = SessionState.open_filter_name == filter_name
+
+    return rx.box(
+        rx.button(
+            rx.cond(value_select, value_select, placeholder),
+            rx.icon(tag="chevron-down"),
+            on_click=SessionState.toggle_filter_dropdown(filter_name),
+            variant="outline",
+            width="100%",
+            justify_content="space-between",
+            color_scheme="gray",
+            size="2", # Se ajusta el tamaño para el formulario
+        ),
+        rx.cond(
+            is_open,
+            rx.vstack(
+                rx.input(
+                    placeholder="Buscar...",
+                    value=search_value,
+                    on_change=on_change_search,
+                ),
+                rx.scroll_area(
+                    rx.vstack(
+                        rx.foreach(
+                            options,
+                            lambda option: rx.button(
+                                option,
+                                on_click=[
+                                    lambda: on_change_select(option),
+                                    SessionState.toggle_filter_dropdown(filter_name)
+                                ],
+                                width="100%",
+                                variant="soft", 
+                                color_scheme="gray",
+                                justify_content="start"
+                            )
+                        ),
+                        spacing="1",
+                        width="100%",
+                    ),
+                    max_height="200px",
+                    width="100%",
+                    type="auto",
+                    scrollbars="vertical",
+                ),
+                spacing="2",
+                padding="0.75em",
+                bg=rx.color("gray", 3),
+                border="1px solid",
+                border_color=rx.color("gray", 7),
+                border_radius="md",
+                position="absolute",
+                top="105%",
+                width="100%", # Se ajusta al 100% del contenedor relativo
+                z_index=10,
+            )
+        ),
+        position="relative",
+        width="100%",
+    )
 
 def categories_button() -> rx.Component:
     """Un componente reutilizable para el botón desplegable de categorías."""
