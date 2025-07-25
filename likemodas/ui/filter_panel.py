@@ -78,7 +78,9 @@ def _searchable_select(
                 # Posicionamiento absoluto para que flote sobre el contenido
                 position="absolute",
                 top="105%", # Justo debajo del botón
-                width="100%",
+                # --- ✨ CAMBIO CLAVE APLICADO AQUÍ ---
+                # Se establece un ancho fijo para garantizar la expansión.
+                width="250px",
                 z_index=10,
             )
         ),
