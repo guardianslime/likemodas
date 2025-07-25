@@ -78,8 +78,13 @@ class SessionState(reflex_local_auth.LocalAuthState):
             results = session.exec(statement).unique().all()
             self.posts = [
                 ProductCardData(
-                    id=post.id, title=post.title, price=post.price, images=post.images,
-                    average_rating=post.average_rating, rating_count=post.rating_count,
+                    id=post.id,
+                    title=post.title,
+                    price=post.price,
+                    images=post.images,
+                    average_rating=post.average_rating,
+                    rating_count=post.rating_count,
+                    # --- ✨ ASEGÚRATE DE QUE ESTA LÍNEA EXISTA ---
                     attributes=post.attributes 
                 ) for post in results
             ]

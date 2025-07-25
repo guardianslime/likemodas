@@ -43,8 +43,14 @@ class CategoryPageState(SessionState):
             results = session.exec(statement).unique().all()
             self.posts_in_category = [
                 ProductCardData(
-                    id=p.id, title=p.title, price=p.price, images=p.images,
-                    average_rating=p.average_rating, rating_count=p.rating_count
+                    id=p.id,
+                    title=p.title,
+                    price=p.price,
+                    images=p.images,
+                    average_rating=p.average_rating,
+                    rating_count=p.rating_count,
+                    # --- ✨ ASEGÚRATE DE QUE ESTA LÍNEA EXISTA ---
+                    attributes=p.attributes
                 ) for p in results
             ]
     
