@@ -4,13 +4,10 @@ import reflex as rx
 from reflex.event import EventSpec
 from ..auth.state import SessionState
 from ..models import Category
-# --- ✨ Se importa el componente desde su nueva ubicación con el nombre correcto ---
 from ..ui.components import searchable_select
 from ..data.product_options import (
     LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
 )
-
-# LA FUNCIÓN _searchable_select YA NO ESTÁ AQUÍ, SE IMPORTA
 
 def floating_filter_panel() -> rx.Component:
     """
@@ -38,14 +35,14 @@ def floating_filter_panel() -> rx.Component:
                             SessionState.current_category == Category.ROPA.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Ropa", weight="bold"),
-                                # --- ✨ CAMBIO: Se usa el nombre correcto de la función importada ---
+                                # --- ✨ CORRECCIÓN: Usar variables de estado del filtro, no del formulario 'add' ---
                                 searchable_select(
                                     placeholder="Por tipo...",
                                     options=SessionState.filtered_tipos_ropa,
                                     on_change_select=SessionState.set_filter_tipo_prenda,
                                     value_select=SessionState.filter_tipo_prenda,
-                                    search_value=SessionState.search_add_tipo_prenda,
-                                    on_change_search=SessionState.set_search_add_tipo_prenda,
+                                    search_value=SessionState.search_tipo_prenda, # Sin '_add_'
+                                    on_change_search=SessionState.set_search_tipo_prenda, # Sin '_add_'
                                     filter_name="ropa_tipo"
                                 ),
                                 searchable_select(
