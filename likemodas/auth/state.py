@@ -53,6 +53,8 @@ class SessionState(reflex_local_auth.LocalAuthState):
     search_tipo_mochila: str = ""
     search_tipo_general: str = ""
 
+    open_filter_name: str = ""
+
     # --- ✨ NEW EVENT HANDLERS FOR FILTERS ---
     def set_filter_color(self, value: str): self.filter_color = value
     def set_filter_talla(self, value: str): self.filter_talla = value
@@ -101,6 +103,14 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def toggle_filters(self):
         """Muestra u oculta el panel de filtros."""
         self.show_filters = not self.show_filters
+
+    @rx.event
+    def toggle_filter_dropdown(self, filter_name: str):
+        """Abre un filtro o lo cierra si ya estaba abierto."""
+        if self.open_filter_name == filter_name:
+            self.open_filter_name = ""
+        else:
+            self.open_filter_name = filter_name
 
     def set_min_price(self, price: str):
         """Actualiza el valor del precio mínimo."""

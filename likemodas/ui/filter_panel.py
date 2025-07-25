@@ -1,11 +1,9 @@
 # likemodas/ui/filter_panel.py
 
 import reflex as rx
-# ✨ NUEVA LÍNEA: Importación corregida
 from reflex.event import EventSpec
 from ..auth.state import SessionState
 from ..models import Category
-# Importar todas las listas de datos necesarias
 from ..data.product_options import (
     LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
 )
@@ -17,65 +15,82 @@ def _searchable_select(
     value_select: rx.Var[str],
     search_value: rx.Var[str],
     on_change_search: EventSpec,
+    filter_name: str, # Nombre único para este filtro
 ) -> rx.Component:
     """
-    Un componente de selección personalizado con un campo de búsqueda interno.
+    Un componente de selección personalizado, construido desde cero para
+    garantizar el control total sobre el diseño y la expansión.
     """
-    # Se elimina el 'rx.box' envolvente y volvemos a la estructura original
-    return rx.popover.root(
-        rx.popover.trigger(
-            rx.button(
-                rx.cond(value_select, value_select, placeholder),
-                rx.icon(tag="chevron-down"),
-                variant="outline",
-                width="100%",
-                justify_content="space-between",
-                color_scheme="gray",
-            )
+    is_open = SessionState.open_filter_name == filter_name
+
+    return rx.box(
+        # El botón que abre/cierra el menú
+        rx.button(
+            rx.cond(value_select, value_select, placeholder),
+            rx.icon(tag="chevron-down"),
+            on_click=SessionState.toggle_filter_dropdown(filter_name),
+            variant="outline",
+            width="100%",
+            justify_content="space-between",
+            color_scheme="gray",
         ),
-        rx.popover.content(
+        # El contenido del menú, que se muestra condicionalmente
+        rx.cond(
+            is_open,
             rx.vstack(
                 rx.input(
                     placeholder="Buscar...",
                     value=search_value,
                     on_change=on_change_search,
-                    margin_bottom="0.5em"
                 ),
                 rx.scroll_area(
                     rx.vstack(
                         rx.foreach(
                             options,
-                            lambda option: rx.popover.close(
-                                rx.button(
-                                    option,
-                                    on_click=lambda: on_change_select(option),
-                                    width="100%",
-                                    variant="soft", 
-                                    color_scheme="gray",
-                                    justify_content="start"
-                                )
+                            lambda option: rx.button(
+                                option,
+                                # Al hacer clic, se selecciona y se cierra el menú
+                                on_click=[
+                                    lambda: on_change_select(option),
+                                    SessionState.toggle_filter_dropdown(filter_name)
+                                ],
+                                width="100%",
+                                variant="soft", 
+                                color_scheme="gray",
+                                justify_content="start"
                             )
                         ),
                         spacing="1",
+                        width="100%",
                     ),
                     max_height="200px",
                     width="100%",
                     type="auto",
                     scrollbars="vertical",
                 ),
+                # Estilo de la caja del menú
+                spacing="2",
+                padding="0.75em",
+                bg=rx.color("gray", 3),
+                border="1px solid",
+                border_color=rx.color("gray", 7),
+                border_radius="md",
+                # Posicionamiento absoluto para que flote sobre el contenido
+                position="absolute",
+                top="105%", # Justo debajo del botón
                 width="100%",
-                spacing="2"
-            ),
-            # --- ✨ CAMBIO CLAVE AQUÍ ---
-            # Se establece un ancho fijo y se elimina 'match_width' del 'root'
-            width="250px", 
-            padding="0.75em"
+                z_index=10,
+            )
         ),
+        # El contenedor principal necesita ser relativo para el posicionamiento absoluto del hijo
+        position="relative",
+        width="100%",
     )
+
 
 def floating_filter_panel() -> rx.Component:
     """
-    Un panel de filtros dinámico que se adapta al contexto (página general o de categoría).
+    El panel de filtros flotante, ahora usando el nuevo componente de selección.
     """
     return rx.box(
         rx.hstack(
@@ -83,7 +98,6 @@ def floating_filter_panel() -> rx.Component:
                 rx.heading("Filtros", size="6", width="100%"),
                 rx.divider(),
                 
-                # --- Filtro de Precio (siempre visible) ---
                 rx.vstack(
                     rx.text("Precio", weight="bold"),
                     rx.input(placeholder="Mínimo", value=SessionState.min_price, on_change=SessionState.set_min_price, type="number"),
@@ -91,13 +105,10 @@ def floating_filter_panel() -> rx.Component:
                     spacing="2", align_items="start", width="100%"
                 ),
 
-                # --- LÓGICA CONDICIONAL PARA MOSTRAR FILTROS ---
                 rx.cond(
                     (SessionState.current_category != "") & (SessionState.current_category != "todos"),
                     
-                    # --- Bloque 1: Muestra filtros ESPECÍFICOS si la condición es verdadera ---
                     rx.fragment(
-                        # Ropa Filters
                         rx.cond(
                             SessionState.current_category == Category.ROPA.value,
                             rx.vstack(
@@ -108,14 +119,14 @@ def floating_filter_panel() -> rx.Component:
                                     on_change_select=SessionState.set_filter_tipo_prenda,
                                     value_select=SessionState.filter_tipo_prenda,
                                     search_value=SessionState.search_tipo_prenda,
-                                    on_change_search=SessionState.set_search_tipo_prenda
+                                    on_change_search=SessionState.set_search_tipo_prenda,
+                                    filter_name="ropa_tipo" # Se asigna un nombre único
                                 ),
                                 rx.input(placeholder="Filtrar por color...", value=SessionState.filter_color, on_change=SessionState.set_filter_color),
                                 rx.input(placeholder="Filtrar por talla...", value=SessionState.filter_talla, on_change=SessionState.set_filter_talla),
                                 spacing="2", align_items="start", width="100%"
                             )
                         ),
-                        # Calzado Filters
                         rx.cond(
                             SessionState.current_category == Category.CALZADO.value,
                             rx.vstack(
@@ -126,14 +137,14 @@ def floating_filter_panel() -> rx.Component:
                                     on_change_select=SessionState.set_filter_tipo_zapato,
                                     value_select=SessionState.filter_tipo_zapato,
                                     search_value=SessionState.search_tipo_zapato,
-                                    on_change_search=SessionState.set_search_tipo_zapato
+                                    on_change_search=SessionState.set_search_tipo_zapato,
+                                    filter_name="calzado_tipo" # Nombre único
                                 ),
                                 rx.input(placeholder="Filtrar por color...", value=SessionState.filter_color, on_change=SessionState.set_filter_color),
                                 rx.input(placeholder="Filtrar por número...", value=SessionState.filter_numero_calzado, on_change=SessionState.set_filter_numero_calzado),
                                 spacing="2", align_items="start", width="100%"
                             )
                         ),
-                        # Mochilas Filters
                         rx.cond(
                             SessionState.current_category == Category.MOCHILAS.value,
                             rx.vstack(
@@ -144,14 +155,14 @@ def floating_filter_panel() -> rx.Component:
                                     on_change_select=SessionState.set_filter_tipo_mochila,
                                     value_select=SessionState.filter_tipo_mochila,
                                     search_value=SessionState.search_tipo_mochila,
-                                    on_change_search=SessionState.set_search_tipo_mochila
+                                    on_change_search=SessionState.set_search_tipo_mochila,
+                                    filter_name="mochila_tipo" # Nombre único
                                 ),
                                 spacing="2", align_items="start", width="100%"
                             )
                         ),
                     ),
                     
-                    # --- Bloque 2: Muestra filtros GENERALES si la condición es falsa ---
                     rx.fragment(
                         rx.vstack(
                             rx.divider(),
@@ -162,7 +173,8 @@ def floating_filter_panel() -> rx.Component:
                                 on_change_select=SessionState.set_filter_tipo_general,
                                 value_select=SessionState.filter_tipo_general,
                                 search_value=SessionState.search_tipo_general,
-                                on_change_search=SessionState.set_search_tipo_general
+                                on_change_search=SessionState.set_search_tipo_general,
+                                filter_name="general_tipo" # Nombre único
                             ),
                             rx.input(placeholder="Material o tela...", value=SessionState.filter_material_tela, on_change=SessionState.set_filter_material_tela),
                             rx.input(placeholder="Talla o medidas...", value=SessionState.filter_medida_talla, on_change=SessionState.set_filter_medida_talla),
@@ -178,14 +190,7 @@ def floating_filter_panel() -> rx.Component:
             rx.box(
                 rx.text(
                     "Filtros",
-                    style={
-                        "writing_mode": "vertical-rl",
-                        "transform": "rotate(180deg)",
-                        "padding": "0.5em 0.09em",
-                        "font_weight": "bold",
-                        "letter_spacing": "2px",
-                        "color": "white"
-                    }
+                    style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.09em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}
                 ),
                 on_click=SessionState.toggle_filters,
                 cursor="pointer",
@@ -207,6 +212,6 @@ def floating_filter_panel() -> rx.Component:
             "translate(-280px, -50%)"
         ),
         transition="transform 0.3s ease-in-out",
-        z_index="1000",
+        z_index=1000,
         height="auto",
     )
