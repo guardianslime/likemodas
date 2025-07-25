@@ -21,6 +21,7 @@ def _searchable_select(
     """
     Un componente de selección personalizado con un campo de búsqueda interno.
     """
+    # --- ✨ CAMBIO 1: Se añade 'match_width=True' al componente raíz del popover ---
     return rx.popover.root(
         rx.popover.trigger(
             rx.button(
@@ -45,13 +46,11 @@ def _searchable_select(
                         rx.foreach(
                             options,
                             lambda option: rx.popover.close(
-                                # --- ✨ CAMBIO AQUÍ ---
-                                # Se cambia el estilo del botón para que parezca una caja seleccionable.
                                 rx.button(
                                     option,
                                     on_click=lambda: on_change_select(option),
                                     width="100%",
-                                    variant="soft", # De 'ghost' a 'soft'
+                                    variant="soft", 
                                     color_scheme="gray",
                                     justify_content="start"
                                 )
@@ -67,9 +66,10 @@ def _searchable_select(
                 width="100%",
                 spacing="2"
             ),
-            width="240px",
+            # --- ✨ CAMBIO 2: Se elimina el ancho fijo 'width="240px"' ---
             padding="0.75em"
-        )
+        ),
+        match_width=True,
     )
 
 def floating_filter_panel() -> rx.Component:
