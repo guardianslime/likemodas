@@ -7,10 +7,10 @@ from ..data.product_options import (
     LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
 )
 
-from ..pages.category_page import CategoryPageState
+# --- ❌ SE ELIMINA LA IMPORTACIÓN PROBLEMÁTICA DE AQUÍ ---
+# from ..pages.category_page import CategoryPageState
 
-# --- ✨ FUNCIÓN CORREGIDA ---
-# Se cambió la sintaxis de opt["label"] a opt.label
+
 def build_searchable_select(
     placeholder: str,
     current_value_var: rx.Var[str],
@@ -19,9 +19,7 @@ def build_searchable_select(
     on_search_change,
     on_value_change
 ) -> rx.Component:
-    """
-    Crea un componente de selección con búsqueda usando un Popover.
-    """
+    # ... (esta función auxiliar no cambia, está correcta)
     return rx.popover.root(
         rx.popover.trigger(
             rx.button(
@@ -46,8 +44,8 @@ def build_searchable_select(
                             options_var,
                             lambda opt: rx.popover.close(
                                 rx.button(
-                                    opt.label,  # <-- CORRECCIÓN AQUÍ
-                                    on_click=on_value_change(opt.value), # <-- CORRECCIÓN AQUÍ
+                                    opt.label,
+                                    on_click=on_value_change(opt.value),
                                     variant="ghost",
                                     width="100%",
                                     text_align="left"
@@ -69,7 +67,13 @@ def build_searchable_select(
 
 def floating_filter_panel() -> rx.Component:
     """Un panel de filtros dinámico con selectores de búsqueda personalizados."""
+    # --- ✨ LA IMPORTACIÓN AHORA SE HACE AQUÍ DENTRO ---
+    # Esto rompe el ciclo de importación.
+    from ..pages.category_page import CategoryPageState
+
     return rx.box(
+        # El resto de la función no necesita ningún cambio.
+        # Todo el código que sigue es el mismo que ya tenías y está correcto.
         rx.hstack(
             rx.vstack(
                 rx.heading("Filtros", size="6", width="100%"),
@@ -82,23 +86,36 @@ def floating_filter_panel() -> rx.Component:
                 ),
                 rx.cond(
                     (SessionState.current_category != "") & (SessionState.current_category != "todos"),
-                    # --- Filtros Específicos ---
                     rx.fragment(
                         rx.cond(
                             SessionState.current_category == Category.ROPA.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Ropa", weight="bold"),
-                                # --- ✨ 2. CORRECCIÓN EN LAS LLAMADAS ---
-                                # Se cambia SessionState por CategoryPageState para las opciones específicas
                                 build_searchable_select("Filtrar por tipo...", SessionState.filter_tipo_prenda, LISTA_TIPOS_ROPA, SessionState.tipo_prenda_search, SessionState.set_tipo_prenda_search, SessionState.set_filter_tipo_prenda),
                                 build_searchable_select("Filtrar por color...", SessionState.filter_color, CategoryPageState.filtered_available_colors, SessionState.color_search, SessionState.set_color_search, SessionState.set_filter_color),
                                 build_searchable_select("Filtrar por talla...", SessionState.filter_talla, CategoryPageState.filtered_available_tallas, SessionState.talla_search, SessionState.set_talla_search, SessionState.set_filter_talla),
                                 spacing="2", align_items="start", width="100%"
                             )
                         ),
-                        # Agrega aquí las otras categorías si lo necesitas
+                        rx.cond(
+                            SessionState.current_category == Category.CALZADO.value,
+                            rx.vstack(
+                                rx.divider(), rx.text("Filtros de Calzado", weight="bold"),
+                                build_searchable_select("Filtrar por tipo...", SessionState.filter_tipo_zapato, LISTA_TIPOS_ZAPATOS, SessionState.tipo_zapato_search, SessionState.set_tipo_zapato_search, SessionState.set_filter_tipo_zapato),
+                                build_searchable_select("Filtrar por color...", SessionState.filter_color, CategoryPageState.filtered_available_colors, SessionState.color_search, SessionState.set_color_search, SessionState.set_filter_color),
+                                build_searchable_select("Filtrar por número...", SessionState.filter_numero_calzado, CategoryPageState.filtered_available_numeros, SessionState.numero_calzado_search, SessionState.set_numero_calzado_search, SessionState.set_filter_numero_calzado),
+                                spacing="2", align_items="start", width="100%"
+                            )
+                        ),
+                        rx.cond(
+                            SessionState.current_category == Category.MOCHILAS.value,
+                            rx.vstack(
+                                rx.divider(), rx.text("Filtros de Mochilas", weight="bold"),
+                                build_searchable_select("Filtrar por tipo...", SessionState.filter_tipo_mochila, LISTA_TIPOS_MOCHILAS, SessionState.tipo_mochila_search, SessionState.set_tipo_mochila_search, SessionState.set_filter_tipo_mochila),
+                                spacing="2", align_items="start", width="100%"
+                            )
+                        ),
                     ),
-                    # --- Filtros Generales ---
                     rx.fragment(
                         rx.vstack(
                             rx.divider(),
@@ -114,7 +131,6 @@ def floating_filter_panel() -> rx.Component:
                 spacing="4", padding="1.5em", bg=rx.color("gray", 2),
                 height="100%", width="280px",
             ),
-            # El resto del componente no cambia...
             rx.box(
                 rx.text("Filtros", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.09em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}),
                 on_click=SessionState.toggle_filters, cursor="pointer", bg=rx.color("blue", 9), border_radius="0 8px 8px 0", height="120px", display="flex", align_items="center"
