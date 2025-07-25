@@ -140,7 +140,6 @@ class BlogAddFormState(SessionState):
     
     # ... (handle_upload, remove_image, set_price_from_input remain the same)
 
-    @rx.event
     def _create_post(self, publish: bool) -> rx.event.EventSpec:
         """Helper method to create and save a post."""
         if not self.is_admin: return rx.window_alert("No tienes permiso.")
@@ -148,7 +147,7 @@ class BlogAddFormState(SessionState):
         if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
         if not self.category: return rx.window_alert("Debes seleccionar una categoría.")
 
-        # --- ✨ LOGIC TO GATHER DYNAMIC ATTRIBUTES ---
+        # ... (la lógica para recolectar los atributos es la misma)
         attributes = {}
         if self.category == Category.ROPA.value:
             attributes = {
@@ -174,14 +173,13 @@ class BlogAddFormState(SessionState):
                 publish_active=publish,
                 publish_date=datetime.utcnow(),
                 category=self.category,
-                attributes=attributes # <-- Save the new attributes
+                attributes=attributes
             )
             session.add(post)
             session.commit()
             session.refresh(post)
             new_post_id = post.id
         
-        # Reset all fields after submission
         self.reset()
         return rx.redirect(f"/blog/{new_post_id}")
     
@@ -211,7 +209,6 @@ class BlogAddFormState(SessionState):
     def submit(self):
         """Este método crea un post pero NO lo publica."""
         return self._create_post(publish=False)
-
 
     @rx.event
     def submit_and_publish(self):
