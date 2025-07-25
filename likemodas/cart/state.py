@@ -39,11 +39,32 @@ class CartState(SessionState):
     def neighborhoods(self) -> List[str]:
         return self.colombia_data.get(self.shipping_city, [])
     
+    # --- ✨ PROPIEDAD DE FILTRADO UNIFICADA Y CORREGIDA ---
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
-        """Filtra la lista de posts principal usando filtros de precio y generales."""
-        # --- Obtener IDs de posts después del filtro de precio ---
-        posts_after_price_filter = self.posts
+        """
+        Filtra la lista de posts usando filtros de precio y atributos dinámicos
+        (tanto generales como específicos de la categoría actual).
+        """
+        posts_to_filter = self.posts
+        
+        # 1. Filtrado por categoría si estamos en una página de categoría
+        if self.current_category and self.current_category != "todos":
+            with rx.session() as session:
+                try:
+                    category_enum = Category(self.current_category)
+                    # Obtenemos los IDs de los posts que pertenecen a la categoría
+                    post_ids_in_category = {
+                        p.id for p in session.exec(
+                            select(BlogPostModel.id).where(BlogPostModel.category == category_enum)
+                        ).all()
+                    }
+                    # Filtramos la lista en memoria
+                    posts_to_filter = [p for p in self.posts if p.id in post_ids_in_category]
+                except ValueError:
+                    return [] # Si la categoría no es válida, no mostramos nada
+
+        # 2. Filtrado por precio (se aplica a la lista ya filtrada por categoría o a la lista completa)
         try:
             min_p = float(self.min_price) if self.min_price else 0
         except ValueError: min_p = 0
@@ -52,63 +73,98 @@ class CartState(SessionState):
         except ValueError: max_p = float('inf')
 
         if min_p > 0 or max_p != float('inf'):
-            posts_after_price_filter = [p for p in self.posts if (p.price >= min_p and p.price <= max_p)]
-
-        # Si no hay más filtros, devolvemos el resultado
-        active_general_filters = any([
-            self.filter_tipo_general, self.filter_material_tela,
-            self.filter_medida_talla, self.filter_color
+            posts_to_filter = [p for p in posts_to_filter if (p.price >= min_p and p.price <= max_p)]
+        
+        # 3. Filtrado por atributos dinámicos
+        active_filters = any([
+            self.filter_color, self.filter_talla, self.filter_tipo_prenda,
+            self.filter_numero_calzado, self.filter_tipo_zapato, self.filter_tipo_mochila,
+            self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla,
         ])
-        if not active_general_filters:
-            return posts_after_price_filter
+        
+        if not active_filters:
+            return posts_to_filter
 
-        # --- ✨ LÓGICA DE FILTRADO GENERAL CON ATRIBUTOS ---
         with rx.session() as session:
-            post_ids = [p.id for p in posts_after_price_filter]
+            post_ids = [p.id for p in posts_to_filter]
             if not post_ids:
                 return []
 
             query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
 
-            # Filtro por Tipo General
-            if self.filter_tipo_general:
-                query = query.where(or_(
-                    cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general,
-                    cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general,
-                    cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_general
-                ))
+            # Aplicamos filtros específicos si estamos en una categoría
+            if self.current_category == Category.ROPA.value:
+                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+                if self.filter_talla: query = query.where(cast(BlogPostModel.attributes['talla'], String).ilike(f"%{self.filter_talla}%"))
+                if self.filter_tipo_prenda: query = query.where(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_prenda)
             
-            # Filtro por Material/Tela General
-            if self.filter_material_tela:
-                mat = f"%{self.filter_material_tela}%"
-                query = query.where(or_(
-                    cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat),
-                    cast(BlogPostModel.attributes['material'], String).ilike(mat)
-                ))
-
-            # Filtro por Medida/Talla General
-            if self.filter_medida_talla:
-                med = f"%{self.filter_medida_talla}%"
-                query = query.where(or_(
-                    cast(BlogPostModel.attributes['talla'], String).ilike(med),
-                    cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med),
-                    cast(BlogPostModel.attributes['medidas'], String).ilike(med)
-                ))
+            elif self.current_category == Category.CALZADO.value:
+                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+                if self.filter_numero_calzado: query = query.where(cast(BlogPostModel.attributes['numero_calzado'], String) == self.filter_numero_calzado)
+                if self.filter_tipo_zapato: query = query.where(cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_zapato)
             
-            # Filtro por Color General
-            if self.filter_color:
-                query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+            elif self.current_category == Category.MOCHILAS.value:
+                if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
+            
+            # Aplicamos filtros generales si NO estamos en una categoría específica
+            else:
+                if self.filter_tipo_general:
+                    query = query.where(or_(
+                        cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general,
+                        cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general,
+                        cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_general
+                    ))
+                if self.filter_material_tela:
+                    mat = f"%{self.filter_material_tela}%"
+                    query = query.where(or_(
+                        cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat),
+                        cast(BlogPostModel.attributes['material'], String).ilike(mat)
+                    ))
+                if self.filter_medida_talla:
+                    med = f"%{self.filter_medida_talla}%"
+                    query = query.where(or_(
+                        cast(BlogPostModel.attributes['talla'], String).ilike(med),
+                        cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med),
+                        cast(BlogPostModel.attributes['medidas'], String).ilike(med)
+                    ))
+                if self.filter_color:
+                    query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
 
             # Ejecutar la consulta final
             filtered_db_posts = session.exec(query).all()
             filtered_ids = {p.id for p in filtered_db_posts}
             
-            return [p for p in posts_after_price_filter if p.id in filtered_ids]
-    
+            return [p for p in posts_to_filter if p.id in filtered_ids]
+
     @rx.event
     def set_shipping_city_and_reset_neighborhood(self, city: str):
         self.shipping_city = city
         self.shipping_neighborhood = ""
+
+    # --- ✨ NUEVO EVENT HANDLER PARA CARGAR DATOS EN PÁGINAS ---
+    @rx.event
+    def load_posts_and_set_category(self):
+        """Carga todos los posts y establece la categoría actual desde la URL."""
+        # Establece la categoría actual, crucial para que los filtros sepan qué mostrar
+        self.current_category = self.router.page.params.get("cat_name", "")
+        
+        # Carga todos los posts (necesario para el filtrado)
+        with rx.session() as session:
+            statement = (
+                select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
+                .order_by(BlogPostModel.created_at.desc())
+            )
+            results = session.exec(statement).unique().all()
+            self.posts = [
+                ProductCardData(
+                    id=post.id, title=post.title, price=post.price, images=post.images,
+                    average_rating=post.average_rating, rating_count=post.rating_count
+                ) for post in results
+            ]
+
+
 
     @rx.event
     def on_load(self):

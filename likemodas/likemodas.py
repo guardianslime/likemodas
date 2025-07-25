@@ -31,8 +31,8 @@ class HomePageState(cart_state.CartState):
     def on_load_main(self):
         """Carga los posts y resetea el filtro de categoría."""
         self.current_category = ""  # Resetea la categoría para mostrar filtros generales
-        yield cart_state.CartState.on_load  # Llama al evento original para cargar productos
-
+        # ✨ Llama al nuevo evento unificado
+        yield cart_state.CartState.load_posts_and_set_category
 
 def index() -> rx.Component:
     """La página principal ahora es la galería de productos."""
@@ -62,7 +62,8 @@ app.add_page(
     category_page.category_page,
     route="/category/[cat_name]",
     title="Categoría",
-    on_load=category_page.CategoryPageState.load_category_posts
+    # --- Usa el nuevo manejador de eventos unificado de CartState ---
+    on_load=cart_state.CartState.load_posts_and_set_category 
 )
 
 
