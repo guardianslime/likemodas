@@ -12,16 +12,23 @@ def blog_post_add_form() -> rx.Component:
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
-                # ... (La columna izquierda de la subida de imágenes no cambia) ...
+                # --- Left Column: Image Upload and Core Info ---
                 rx.vstack(
                     rx.card(
                         rx.vstack(
                             rx.upload(
-                                rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes del producto")),
-                                id="blog_upload", multiple=True, max_files=5,
+                                rx.vstack(
+                                    rx.icon("upload", size=32),
+                                    rx.text("Subir imágenes del producto"),
+                                ),
+                                id="blog_upload",
+                                multiple=True,
+                                max_files=5,
                                 accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
                                 on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
-                                border="2px dashed #ccc", padding="2em", width="100%"
+                                border="2px dashed #ccc",
+                                padding="2em",
+                                width="100%"
                             ),
                             rx.cond(
                                 BlogAddFormState.temp_images,
@@ -34,7 +41,8 @@ def blog_post_add_form() -> rx.Component:
                                             style={"position": "relative", "margin": "0.5em"},
                                         ),
                                     ),
-                                    wrap="wrap", spacing="3"
+                                    wrap="wrap",
+                                    spacing="3"
                                 )
                             ),
                             spacing="4",
@@ -43,35 +51,38 @@ def blog_post_add_form() -> rx.Component:
                     spacing="5",
                 ),
 
-                # --- La columna derecha de detalles del producto no cambia ---
+                # --- Right Column: Product Details ---
                 rx.vstack(
-                    rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
-                    rx.hstack(
-                        rx.input(placeholder="Precio", type="number", value=BlogAddFormState.price.to_string(), on_change=BlogAddFormState.set_price_from_input, required=True, size="3"),
-                        # El selector de categoría principal no cambia porque ya usa una lista de strings
-                        rx.select(BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3")
+                    rx.input(
+                        placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title,
+                        required=True, size="3",
                     ),
-                    rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "150px"}),
+                    rx.hstack(
+                        rx.input(
+                            placeholder="Precio", type="number", value=BlogAddFormState.price.to_string(),
+                            on_change=BlogAddFormState.set_price_from_input, required=True, size="3"
+                        ),
+                        rx.select(
+                            BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category,
+                            on_change=BlogAddFormState.set_category, required=True, size="3"
+                        ),
+                        spacing="4"
+                    ),
+                    rx.text_area(
+                        placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content,
+                        required=True, size="2", style={"height": "150px"}
+                    ),
                     spacing="4",
                     align_items="stretch"
                 ),
                 
-                # --- ✨ SECCIÓN CORREGIDA DE CAMPOS CONDICIONALES ---
+                # --- Conditional Fields Section (spans both columns) ---
                 rx.vstack(
-                    # --- ROPA FIELDS ---
+                     # --- ROPA FIELDS ---
                     rx.cond(
                         BlogAddFormState.category == Category.ROPA.value,
                         rx.grid(
-                            # Corrección: Usar la sintaxis explícita de rx.select.root
-                            rx.select.root(
-                                rx.select.trigger(placeholder="Tipo de Prenda"),
-                                rx.select.content(
-                                    rx.foreach(LISTA_TIPOS_ROPA, lambda item: rx.select.item(item.label, value=item.value))
-                                ),
-                                value=BlogAddFormState.tipo_prenda,
-                                on_change=BlogAddFormState.set_tipo_prenda,
-                                size="2"
-                            ),
+                            rx.select(LISTA_TIPOS_ROPA, placeholder="Tipo de Prenda", value=BlogAddFormState.tipo_prenda, on_change=BlogAddFormState.set_tipo_prenda, size="2"),
                             rx.input(placeholder="Color", value=BlogAddFormState.color_ropa, on_change=BlogAddFormState.set_color_ropa, size="2"),
                             rx.input(placeholder="Talla (S, M, L...)", value=BlogAddFormState.talla, on_change=BlogAddFormState.set_talla, size="2"),
                             rx.input(placeholder="Tipo de Tela", value=BlogAddFormState.tipo_tela, on_change=BlogAddFormState.set_tipo_tela, size="2"),
@@ -82,16 +93,7 @@ def blog_post_add_form() -> rx.Component:
                     rx.cond(
                         BlogAddFormState.category == Category.CALZADO.value,
                         rx.grid(
-                            # Corrección: Usar la sintaxis explícita de rx.select.root
-                            rx.select.root(
-                                rx.select.trigger(placeholder="Tipo de Zapato"),
-                                rx.select.content(
-                                    rx.foreach(LISTA_TIPOS_ZAPATOS, lambda item: rx.select.item(item.label, value=item.value))
-                                ),
-                                value=BlogAddFormState.tipo_zapato,
-                                on_change=BlogAddFormState.set_tipo_zapato,
-                                size="2"
-                            ),
+                            rx.select(LISTA_TIPOS_ZAPATOS, placeholder="Tipo de Zapato", value=BlogAddFormState.tipo_zapato, on_change=BlogAddFormState.set_tipo_zapato, size="2"),
                             rx.input(placeholder="Color", value=BlogAddFormState.color_calzado, on_change=BlogAddFormState.set_color_calzado, size="2"),
                             rx.input(placeholder="Número (38, 39...)", value=BlogAddFormState.numero_calzado, on_change=BlogAddFormState.set_numero_calzado, size="2"),
                             rx.input(placeholder="Material", value=BlogAddFormState.material_calzado, on_change=BlogAddFormState.set_material_calzado, size="2"),
@@ -102,16 +104,7 @@ def blog_post_add_form() -> rx.Component:
                     rx.cond(
                         BlogAddFormState.category == Category.MOCHILAS.value,
                         rx.grid(
-                            # Corrección: Usar la sintaxis explícita de rx.select.root
-                            rx.select.root(
-                                rx.select.trigger(placeholder="Tipo de Mochila"),
-                                rx.select.content(
-                                    rx.foreach(LISTA_TIPOS_MOCHILAS, lambda item: rx.select.item(item.label, value=item.value))
-                                ),
-                                value=BlogAddFormState.tipo_mochila,
-                                on_change=BlogAddFormState.set_tipo_mochila,
-                                size="2"
-                            ),
+                            rx.select(LISTA_TIPOS_MOCHILAS, placeholder="Tipo de Mochila", value=BlogAddFormState.tipo_mochila, on_change=BlogAddFormState.set_tipo_mochila, size="2"),
                             rx.input(placeholder="Material", value=BlogAddFormState.material_mochila, on_change=BlogAddFormState.set_material_mochila, size="2"),
                             rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
                             columns="2", spacing="4", width="100%"
@@ -125,17 +118,19 @@ def blog_post_add_form() -> rx.Component:
                 width="100%"
             ),
 
-            # --- Botones de envío (sin cambios) ---
+            # --- Submission Buttons ---
             rx.hstack(
                 rx.button("Guardar Borrador", on_click=BlogAddFormState.submit, variant="soft", size="3"),
                 rx.button("Publicar Ahora", on_click=BlogAddFormState.submit_and_publish, color_scheme="green", size="3"),
                 spacing="4", width="100%", justify="end", margin_top="2em"
             ),
             
-            spacing="5", width="100%", max_width="1200px", padding="2em",
+            spacing="5",
+            width="100%",
+            max_width="1200px",
+            padding="2em",
         ),
     )
-
 
 def blog_post_edit_form() -> rx.Component:
     return rx.cond(

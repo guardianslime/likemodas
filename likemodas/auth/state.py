@@ -1,21 +1,14 @@
-# likemodas/auth/state.py
+# likemodas/auth/state.py (CORREGIDO Y COMPLETO)
 
 import re
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
-from ..models import UserInfo, UserRole, VerificationToken, BlogPostModel
+from ..models import UserInfo, UserRole, VerificationToken
 from ..services.email_service import send_verification_email
 from datetime import datetime, timedelta
 from ..utils.validators import validate_password
 import secrets
-import sqlalchemy
-from ..data.schemas import ProductCardData
-from ..utils.helpers import get_unique_options_from_attributes
-# --- ❌ SE ELIMINA LA LÍNEA: from ..cart.state import ... ---
-
-# Importar las listas de tipos para los filtros
-from ..data.product_options import LISTA_TIPOS_GENERAL
 
 
 def validate_password(password: str) -> list[str]:
@@ -34,102 +27,38 @@ def validate_password(password: str) -> list[str]:
     return errors
 
 class SessionState(reflex_local_auth.LocalAuthState):
-    # --- PROPIEDADES MOVIDAS DESDE CartState A AQUÍ ---
-    posts: list[ProductCardData] = []
-    
-    # --- Estado de Filtros (ya estaba aquí) ---
     new_purchase_notification: bool = False
     min_price: str = ""
     max_price: str = ""
     show_filters: bool = False
     current_category: str = ""
+
+    # --- ✨ NEW STATE VARIABLES FOR FILTERS ---
     filter_color: str = ""
     filter_talla: str = ""
     filter_tipo_prenda: str = ""
     filter_numero_calzado: str = ""
     filter_tipo_zapato: str = ""
     filter_tipo_mochila: str = ""
+
+    # --- ✨ NUEVOS ESTADOS PARA FILTROS GENERALES ---
     filter_tipo_general: str = ""
     filter_material_tela: str = ""
     filter_medida_talla: str = ""
-    tipo_general_search: str = ""
-    material_tela_search: str = ""
-    medida_talla_search: str = ""
-    color_search: str = ""
-    tipo_prenda_search: str = ""
-    talla_search: str = ""
-    tipo_zapato_search: str = ""
-    numero_calzado_search: str = ""
-    tipo_mochila_search: str = ""
     
-    # --- EVENT HANDLERS DE FILTROS (ya estaban aquí) ---
-    # ... (set_filter_color, set_filter_talla, etc. no cambian) ...
+    # --- ✨ NEW EVENT HANDLERS FOR FILTERS ---
+    def set_filter_color(self, value: str): self.filter_color = value
+    def set_filter_talla(self, value: str): self.filter_talla = value
+    def set_filter_tipo_prenda(self, value: str): self.filter_tipo_prenda = value
+    def set_filter_numero_calzado(self, value: str): self.filter_numero_calzado = value
+    def set_filter_tipo_zapato(self, value: str): self.filter_tipo_zapato = value
+    def set_filter_tipo_mochila(self, value: str): self.filter_tipo_mochila = value
 
-    # --- MÉTODO ON_LOAD MOVIDO DESDE CartState ---
-    @rx.event
-    def on_load(self):
-        with rx.session() as session:
-            statement = (
-                sqlmodel.select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
-                .order_by(BlogPostModel.created_at.desc())
-            )
-            results = session.exec(statement).unique().all()
-            self.posts = [
-                ProductCardData(
-                    id=post.id,
-                    title=post.title,
-                    price=post.price,
-                    images=post.images,
-                    average_rating=post.average_rating,
-                    rating_count=post.rating_count,
-                    # --- ✨ ASEGÚRATE DE QUE ESTA LÍNEA EXISTA ---
-                    attributes=post.attributes 
-                ) for post in results
-            ]
+    # --- ✨ NUEVOS EVENT HANDLERS PARA FILTROS GENERALES ---
+    def set_filter_tipo_general(self, value: str): self.filter_tipo_general = value
+    def set_filter_material_tela(self, value: str): self.filter_material_tela = value
+    def set_filter_medida_talla(self, value: str): self.filter_medida_talla = value
 
-    # --- PROPIEDADES CALCULADAS PARA OPCIONES DE FILTRO (MOVIDAS Y CORREGIDAS) ---
-    @rx.var
-    def general_available_materials(self) -> list[dict]:
-        return get_unique_options_from_attributes(self.posts, ["tipo_tela", "material"])
-
-    @rx.var
-    def general_available_sizes(self) -> list[dict]:
-        return get_unique_options_from_attributes(self.posts, ["talla", "numero_calzado", "medidas"])
-
-    @rx.var
-    def general_available_colors(self) -> list[dict]:
-        return get_unique_options_from_attributes(self.posts, ["color"])
-
-    # --- HELPER Y PROPIEDADES FILTRADAS (CORREGIDAS) ---
-    def _filter_options(self, options: list[dict], search_term: str) -> list[dict]:
-        if not search_term.strip():
-            return options
-        valid_options = [opt for opt in options if isinstance(opt, dict) and "label" in opt]
-        return [
-            opt for opt in valid_options
-            if search_term.lower() in str(opt["label"]).lower()
-        ]
-
-    # --- Corrección: La llamada ahora es a self. en lugar de CartState. ---
-    @rx.var
-    def filtered_general_types(self) -> list[dict]:
-        return self._filter_options(LISTA_TIPOS_GENERAL, self.tipo_general_search)
-
-    @rx.var
-    def filtered_general_materials(self) -> list[dict]:
-        return self._filter_options(self.general_available_materials, self.material_tela_search)
-
-    @rx.var
-    def filtered_general_sizes(self) -> list[dict]:
-        return self._filter_options(self.general_available_sizes, self.medida_talla_search)
-    
-    @rx.var
-    def filtered_general_colors(self) -> list[dict]:
-        return self._filter_options(self.general_available_colors, self.color_search)
-    
-    # --- Filtros Específicos ---
 
     def toggle_filters(self):
         """Muestra u oculta el panel de filtros."""

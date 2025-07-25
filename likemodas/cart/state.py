@@ -11,9 +11,6 @@ from ..data.colombia_locations import load_colombia_data
 # Se importa AdminConfirmState desde su ubicación correcta para las notificaciones
 from ..admin.state import AdminConfirmState
 from ..ui.filter_state import FilterState # <-- AÑADE ESTA IMPORTACIÓN
-from ..data.schemas import ProductCardData
-from ..utils.helpers import get_unique_options_from_attributes
-
 
 class ProductCardData(rx.Base):
     id: int
@@ -25,6 +22,7 @@ class ProductCardData(rx.Base):
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
+    posts: list[ProductCardData] = []
     
     colombia_data: Dict[str, List[str]] = load_colombia_data()
     shipping_name: str = ""
