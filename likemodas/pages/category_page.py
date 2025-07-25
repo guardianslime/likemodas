@@ -99,6 +99,25 @@ class CategoryPageState(SessionState):
             filtered_ids = {p.id for p in filtered_db_posts}
             
             return [p for p in posts_to_filter if p.id in filtered_ids]
+        
+    
+
+    # --- ✨ MÉTODOS MOVIDOS Y CORREGIDOS AQUÍ 👇 ---
+    @rx.var
+    def filtered_available_colors(self) -> list[dict]:
+        # Corrección: Ahora usa 'self' para acceder a sus propias propiedades
+        return self._filter_options(self.available_colors, self.color_search)
+
+    @rx.var
+    def filtered_available_tallas(self) -> list[dict]:
+        # Corrección: Ahora usa 'self' para acceder a sus propias propiedades
+        return self._filter_options(self.available_tallas, self.talla_search)
+
+    @rx.var
+    def filtered_available_numeros(self) -> list[dict]:
+        # Corrección: Ahora usa 'self' para acceder a sus propias propiedades
+        return self._filter_options(self.available_numeros, self.numero_calzado_search)
+
     
     
 

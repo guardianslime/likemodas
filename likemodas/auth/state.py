@@ -125,21 +125,6 @@ class SessionState(reflex_local_auth.LocalAuthState):
         return self._filter_options(self.general_available_colors, self.color_search)
     
     # --- Filtros Específicos ---
-    @rx.var
-    def filtered_available_colors(self) -> list[dict]:
-        from ..pages.category_page import CategoryPageState
-        return self._filter_options(CategoryPageState.available_colors, self.color_search)
-
-    @rx.var
-    def filtered_available_tallas(self) -> list[dict]:
-        from ..pages.category_page import CategoryPageState
-        return self._filter_options(CategoryPageState.available_tallas, self.talla_search)
-
-    @rx.var
-    def filtered_available_numeros(self) -> list[dict]:
-        from ..pages.category_page import CategoryPageState
-        return self._filter_options(CategoryPageState.available_numeros, self.numero_calzado_search)
-        
 
     def toggle_filters(self):
         """Muestra u oculta el panel de filtros."""
