@@ -55,11 +55,11 @@ class CartState(SessionState):
                 try:
                     category_enum = Category(self.current_category)
                     # Obtenemos los IDs de los posts que pertenecen a la categoría
-                    post_ids_in_category = {
-                        p.id for p in session.exec(
+                    post_ids_in_category = set(
+                        session.exec(
                             select(BlogPostModel.id).where(BlogPostModel.category == category_enum)
                         ).all()
-                    }
+                    )
                     # Filtramos la lista en memoria
                     posts_to_filter = [p for p in self.posts if p.id in post_ids_in_category]
                 except ValueError:
