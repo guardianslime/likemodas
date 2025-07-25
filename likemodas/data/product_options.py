@@ -1,7 +1,6 @@
 # likemodas/data/product_options.py
 
-# This file stores shared data constants to avoid circular imports.
-
+# Listas de Tipos (existentes)
 LISTA_TIPOS_ROPA = [
     "Abrigo", "Blusa", "Body", "Buzo", "Camisa", "Camiseta", "Cárdigan", "Chaleco", 
     "Chaqueta", "Conjunto", "Corsé", "Falda", "Gabardina", "Jeans", "Jogger", 
@@ -22,3 +21,21 @@ LISTA_TIPOS_MOCHILAS = [
 LISTA_TIPOS_GENERAL = sorted(list(set(
     LISTA_TIPOS_ROPA + LISTA_TIPOS_ZAPATOS + LISTA_TIPOS_MOCHILAS
 )))
+
+# --- ✨ NUEVAS LISTAS DE OPCIONES AÑADIDAS ---
+
+LISTA_COLORES = sorted([
+    "Amarillo", "Azul", "Beige", "Blanco", "Café", "Dorado", "Gris", "Morado",
+    "Naranja", "Negro", "Plateado", "Rojo", "Rosa", "Verde", "Vino"
+])
+
+LISTA_TALLAS_ROPA = ["XS", "S", "M", "L", "XL", "XXL", "Talla Única"]
+
+LISTA_NUMEROS_CALZADO = [str(i) for i in range(34, 45)] # Genera tallas del 34 al 44
+
+LISTA_MATERIALES = sorted([
+    "Algodón", "Cuero", "Denim", "Lana", "Lino", "Poliéster", "Seda", "Sintético", "Lona"
+])
+
+# Lista combinada para el filtro general de "Talla o medidas"
+LISTA_MEDIDAS_GENERAL = sorted(list(set(LISTA_TALLAS_ROPA + LISTA_NUMEROS_CALZADO)))

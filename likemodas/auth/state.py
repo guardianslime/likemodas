@@ -9,7 +9,10 @@ from ..services.email_service import send_verification_email
 from datetime import datetime, timedelta
 from ..utils.validators import validate_password
 import secrets
-from ..data.product_options import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
+from ..data.product_options import (
+    LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL,
+    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
+)
 
 
 def validate_password(password: str) -> list[str]:
@@ -52,6 +55,12 @@ class SessionState(reflex_local_auth.LocalAuthState):
     search_tipo_zapato: str = ""
     search_tipo_mochila: str = ""
     search_tipo_general: str = ""
+    # --- ✨ Se añaden los nuevos estados de búsqueda ---
+    search_color: str = ""
+    search_talla: str = ""
+    search_numero_calzado: str = ""
+    search_material_tela: str = ""
+    search_medida_talla: str = ""
 
     open_filter_name: str = ""
 
@@ -62,8 +71,6 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def set_filter_numero_calzado(self, value: str): self.filter_numero_calzado = value
     def set_filter_tipo_zapato(self, value: str): self.filter_tipo_zapato = value
     def set_filter_tipo_mochila(self, value: str): self.filter_tipo_mochila = value
-
-    # --- ✨ NUEVOS EVENT HANDLERS PARA FILTROS GENERALES ---
     def set_filter_tipo_general(self, value: str): self.filter_tipo_general = value
     def set_filter_material_tela(self, value: str): self.filter_material_tela = value
     def set_filter_medida_talla(self, value: str): self.filter_medida_talla = value
@@ -73,31 +80,59 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def set_search_tipo_zapato(self, query: str): self.search_tipo_zapato = query
     def set_search_tipo_mochila(self, query: str): self.search_tipo_mochila = query
     def set_search_tipo_general(self, query: str): self.search_tipo_general = query
-
+    # --- ✨ Se añaden los nuevos manejadores de búsqueda ---
+    def set_search_color(self, query: str): self.search_color = query
+    def set_search_talla(self, query: str): self.search_talla = query
+    def set_search_numero_calzado(self, query: str): self.search_numero_calzado = query
+    def set_search_material_tela(self, query: str): self.search_material_tela = query
+    def set_search_medida_talla(self, query: str): self.search_medida_talla = query
+    
     # --- ✨ NUEVAS PROPIEDADES COMPUTADAS PARA LISTAS FILTRADAS ---
     @rx.var
     def filtered_tipos_ropa(self) -> list[str]:
-        if not self.search_tipo_prenda.strip():
-            return LISTA_TIPOS_ROPA
-        return [tipo for tipo in LISTA_TIPOS_ROPA if self.search_tipo_prenda.lower() in tipo.lower()]
+        if not self.search_tipo_prenda.strip(): return LISTA_TIPOS_ROPA
+        return [op for op in LISTA_TIPOS_ROPA if self.search_tipo_prenda.lower() in op.lower()]
 
     @rx.var
     def filtered_tipos_zapatos(self) -> list[str]:
-        if not self.search_tipo_zapato.strip():
-            return LISTA_TIPOS_ZAPATOS
-        return [tipo for tipo in LISTA_TIPOS_ZAPATOS if self.search_tipo_zapato.lower() in tipo.lower()]
+        if not self.search_tipo_zapato.strip(): return LISTA_TIPOS_ZAPATOS
+        return [op for op in LISTA_TIPOS_ZAPATOS if self.search_tipo_zapato.lower() in op.lower()]
 
     @rx.var
     def filtered_tipos_mochilas(self) -> list[str]:
-        if not self.search_tipo_mochila.strip():
-            return LISTA_TIPOS_MOCHILAS
-        return [tipo for tipo in LISTA_TIPOS_MOCHILAS if self.search_tipo_mochila.lower() in tipo.lower()]
+        if not self.search_tipo_mochila.strip(): return LISTA_TIPOS_MOCHILAS
+        return [op for op in LISTA_TIPOS_MOCHILAS if self.search_tipo_mochila.lower() in op.lower()]
 
     @rx.var
     def filtered_tipos_general(self) -> list[str]:
-        if not self.search_tipo_general.strip():
-            return LISTA_TIPOS_GENERAL
-        return [tipo for tipo in LISTA_TIPOS_GENERAL if self.search_tipo_general.lower() in tipo.lower()]
+        if not self.search_tipo_general.strip(): return LISTA_TIPOS_GENERAL
+        return [op for op in LISTA_TIPOS_GENERAL if self.search_tipo_general.lower() in op.lower()]
+
+    # --- ✨ Se añaden las nuevas propiedades computadas ---
+    @rx.var
+    def filtered_colores(self) -> list[str]:
+        if not self.search_color.strip(): return LISTA_COLORES
+        return [op for op in LISTA_COLORES if self.search_color.lower() in op.lower()]
+
+    @rx.var
+    def filtered_tallas_ropa(self) -> list[str]:
+        if not self.search_talla.strip(): return LISTA_TALLAS_ROPA
+        return [op for op in LISTA_TALLAS_ROPA if self.search_talla.lower() in op.lower()]
+
+    @rx.var
+    def filtered_numeros_calzado(self) -> list[str]:
+        if not self.search_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
+        return [op for op in LISTA_NUMEROS_CALZADO if self.search_numero_calzado.lower() in op.lower()]
+
+    @rx.var
+    def filtered_materiales(self) -> list[str]:
+        if not self.search_material_tela.strip(): return LISTA_MATERIALES
+        return [op for op in LISTA_MATERIALES if self.search_material_tela.lower() in op.lower()]
+
+    @rx.var
+    def filtered_medidas_general(self) -> list[str]:
+        if not self.search_medida_talla.strip(): return LISTA_MEDIDAS_GENERAL
+        return [op for op in LISTA_MEDIDAS_GENERAL if self.search_medida_talla.lower() in op.lower()]
 
 
     def toggle_filters(self):
