@@ -70,7 +70,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def on_load(self):
         with rx.session() as session:
             statement = (
-                select(BlogPostModel)
+                sqlmodel.select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
                 .order_by(BlogPostModel.created_at.desc())
