@@ -7,6 +7,8 @@ from ..data.product_options import (
     LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
 )
 
+# --- ✨ FUNCIÓN CORREGIDA ---
+# Se cambió la sintaxis de opt["label"] a opt.label
 def build_searchable_select(
     placeholder: str,
     current_value_var: rx.Var[str],
@@ -42,8 +44,8 @@ def build_searchable_select(
                             options_var,
                             lambda opt: rx.popover.close(
                                 rx.button(
-                                    opt["label"],
-                                    on_click=on_value_change(opt["value"]),
+                                    opt.label,  # <-- CORRECCIÓN AQUÍ
+                                    on_click=on_value_change(opt.value), # <-- CORRECCIÓN AQUÍ
                                     variant="ghost",
                                     width="100%",
                                     text_align="left"
