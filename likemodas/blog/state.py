@@ -287,6 +287,21 @@ class CommentState(SessionState):
     new_comment_rating: int = 0
 
     @rx.var
+    def product_attributes(self) -> list[tuple[str, str]]:
+        """Formatea los atributos específicos del producto para mostrarlos en la UI."""
+        if not self.post or not self.post.attributes:
+            return []
+        
+        formatted_attrs = []
+        for key, value in self.post.attributes.items():
+            if value and str(value).strip():  # Solo muestra atributos con valor
+                # Formatea la clave para que sea legible (ej: 'tipo_tela' -> 'Tipo De Tela')
+                formatted_key = key.replace('_', ' ').title()
+                formatted_attrs.append((f"{formatted_key}:", str(value)))
+                
+        return formatted_attrs
+
+    @rx.var
     def rating_count(self) -> int:
         return len(self.comments)
 

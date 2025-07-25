@@ -59,30 +59,51 @@ def _global_rating_display() -> rx.Component:
         )
     )
 
+def _attributes_display() -> rx.Component:
+    """Componente para mostrar los detalles específicos del producto."""
+    return rx.cond(
+        CommentState.product_attributes,  # Solo se muestra si hay atributos
+        rx.vstack(
+            rx.divider(margin_y="1em"),
+            rx.heading("Características", size="5", width="100%", text_align="left", margin_bottom="0.5em"),
+            rx.vstack(
+                rx.foreach(
+                    CommentState.product_attributes,
+                    lambda attr: rx.hstack(
+                        rx.text(attr[0], weight="bold", min_width="160px"),
+                        rx.text(attr[1]),
+                        spacing="4",
+                        width="100%",
+                    )
+                ),
+                spacing="2",
+                align_items="start",
+                padding_y="0.5em"
+            ),
+            align_items="start",
+            width="100%",
+        )
+    )
+
 def _info_section() -> rx.Component:
     return rx.vstack(
         rx.text(CommentState.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
-        
-        # --- 👇 LÍNEA AÑADIDA PARA MOSTRAR LA FECHA DE PUBLICACIÓN 👇 ---
         rx.text(
             "Publicado el " + CommentState.post.created_at_formatted,
-            size="3",
-            color_scheme="gray",
-            margin_bottom="0.5em",
-            text_align="left",
-            width="100%"
+            size="3", color_scheme="gray", margin_bottom="0.5em", text_align="left", width="100%"
         ),
-        
         rx.text(CommentState.formatted_price, size="7", color="gray", text_align="left"),
         rx.text(CommentState.content, size="5", margin_top="1em", white_space="pre-wrap", text_align="left"),
+
+        # --- ✨ SE INSERTA EL NUEVO COMPONENTE AQUÍ ---
+        _attributes_display(),
+
         _global_rating_display(),
         rx.spacer(),
         rx.button(
             "Añadir al Carrito",
             on_click=lambda: CartState.add_to_cart(CommentState.post.id),
-            width="100%",
-            size="4",
-            margin_top="1.5em",
+            width="100%", size="4", margin_top="1.5em",
         ),
         padding="1em",
         align="start",
@@ -209,6 +230,7 @@ def comment_section() -> rx.Component:
         align="center", 
         padding_top="1em",
     )
+    
 
 def blog_public_detail_page() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
