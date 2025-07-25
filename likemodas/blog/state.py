@@ -229,6 +229,16 @@ class BlogAddFormState(SessionState):
         return rx.redirect(f"/blog/{new_post_id}")
     
     @rx.event
+    def clear_attribute(self, attribute_name: str):
+        """Limpia el valor de un atributo del formulario."""
+        if hasattr(self, attribute_name):
+            setattr(self, attribute_name, "")
+            
+            search_attribute_name = f"search_add_{attribute_name}"
+            if hasattr(self, search_attribute_name):
+                setattr(self, search_attribute_name, "")
+    
+    @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
             data = await file.read()

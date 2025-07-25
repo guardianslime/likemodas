@@ -154,6 +154,19 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def set_max_price(self, price: str):
         """Actualiza el valor del precio máximo."""
         self.max_price = price.strip()
+
+    @rx.event
+    def clear_filter(self, field_name: str):
+        """Limpia el valor de un campo de filtro específico."""
+        if hasattr(self, field_name):
+            # Limpia el valor del filtro
+            setattr(self, field_name, "")
+            
+            # Si es un dropdown, también limpia su campo de búsqueda asociado
+            search_field_name = f"search_{field_name.replace('filter_', '')}"
+            if hasattr(self, search_field_name):
+                setattr(self, search_field_name, "")
+
     # --- FIN DE LA ADICIÓN ---
     
 
