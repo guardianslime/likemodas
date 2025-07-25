@@ -13,11 +13,9 @@ from ..data.product_options import (
 def _searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
-    # Se corrige el tipo a EventSpec, que ahora está importado
     on_change_select: EventSpec,
     value_select: rx.Var[str],
     search_value: rx.Var[str],
-    # Se corrige el tipo a EventSpec, que ahora está importado
     on_change_search: EventSpec,
 ) -> rx.Component:
     """
@@ -47,11 +45,14 @@ def _searchable_select(
                         rx.foreach(
                             options,
                             lambda option: rx.popover.close(
+                                # --- ✨ CAMBIO AQUÍ ---
+                                # Se cambia el estilo del botón para que parezca una caja seleccionable.
                                 rx.button(
                                     option,
                                     on_click=lambda: on_change_select(option),
                                     width="100%",
-                                    variant="ghost",
+                                    variant="soft", # De 'ghost' a 'soft'
+                                    color_scheme="gray",
                                     justify_content="start"
                                 )
                             )
