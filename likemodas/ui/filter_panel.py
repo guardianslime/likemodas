@@ -1,6 +1,8 @@
 # likemodas/ui/filter_panel.py
 
 import reflex as rx
+# ✨ NUEVA LÍNEA: Importación corregida
+from reflex.event import EventSpec
 from ..auth.state import SessionState
 from ..models import Category
 # Importar todas las listas de datos necesarias
@@ -11,10 +13,12 @@ from ..data.product_options import (
 def _searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
-    on_change_select: rx.EventSpec,
+    # Se corrige el tipo a EventSpec, que ahora está importado
+    on_change_select: EventSpec,
     value_select: rx.Var[str],
     search_value: rx.Var[str],
-    on_change_search: rx.EventSpec,
+    # Se corrige el tipo a EventSpec, que ahora está importado
+    on_change_search: EventSpec,
 ) -> rx.Component:
     """
     Un componente de selección personalizado con un campo de búsqueda interno.
