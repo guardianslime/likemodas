@@ -16,7 +16,21 @@ def floating_filter_panel() -> rx.Component:
     return rx.box(
         rx.hstack(
             rx.vstack(
-                rx.heading("Filtros", size="6", width="100%"),
+                # --- ✨ CABECERA MODIFICADA CON BOTÓN LIMPIAR ---
+                rx.hstack(
+                    rx.heading("Filtros", size="6"),
+                    rx.spacer(),
+                    rx.button(
+                        "Limpiar",
+                        on_click=SessionState.clear_all_filters,
+                        size="1",
+                        variant="soft",
+                        color_scheme="gray"
+                    ),
+                    justify="between",
+                    align_items="center",
+                    width="100%"
+                ),
                 rx.divider(),
                 
                 # --- Filtros de Precio con botón de limpiar ---

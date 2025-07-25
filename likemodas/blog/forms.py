@@ -1,10 +1,8 @@
 import reflex as rx
 from .state import BlogAddFormState, BlogEditFormState, BlogPostState, SessionState
-from ..models import Category # Import Category
-# --- ✨ Se importan las listas de opciones y el componente ---
+from ..models import Category
 from ..data.product_options import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS
 from ..ui.components import searchable_select
-
 
 def blog_post_add_form() -> rx.Component:
     """El formulario rediseñado para añadir un nuevo producto con todas las funcionalidades."""
@@ -64,6 +62,24 @@ def blog_post_add_form() -> rx.Component:
                 
                 rx.vstack(
                     rx.cond(
+                        BlogAddFormState.category != "",
+                        rx.hstack(
+                            rx.text("Características Adicionales", weight="bold"),
+                            rx.spacer(),
+                            rx.button(
+                                "Limpiar",
+                                on_click=BlogAddFormState.clear_all_attributes,
+                                size="1",
+                                variant="soft",
+                                color_scheme="gray"
+                            ),
+                            justify="between",
+                            align_items="center",
+                            width="100%",
+                            margin_bottom="0.5em"
+                        ),
+                    ),
+                    rx.cond(
                         BlogAddFormState.category == Category.ROPA.value,
                         rx.grid(
                             rx.hstack(
@@ -118,7 +134,10 @@ def blog_post_add_form() -> rx.Component:
                                 searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_mochila, value_select=BlogAddFormState.material_mochila, search_value=BlogAddFormState.search_add_material_mochila, on_change_search=BlogAddFormState.set_search_add_material_mochila, filter_name="add_form_material_mochila"),
                                 rx.cond(BlogAddFormState.material_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_mochila"), size="1", variant="ghost"))
                             ),
-                            rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
+                            rx.hstack(
+                                rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
+                                rx.cond(BlogAddFormState.medidas != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("medidas"), size="1", variant="ghost"))
+                            ),
                             columns="2", spacing="4", width="100%"
                         )
                     ),
@@ -144,11 +163,11 @@ def blog_post_add_form() -> rx.Component:
     )
 
 def blog_post_edit_form() -> rx.Component:
+    """El formulario para editar un post existente."""
     return rx.cond(
         BlogEditFormState.post,
         rx.form(
             rx.vstack(
-                # ID oculto
                 rx.input(
                     type="hidden",
                     name="post_id",
@@ -158,7 +177,6 @@ def blog_post_edit_form() -> rx.Component:
                         ""
                     ),
                 ),
-                # Título
                 rx.input(
                     name="title",
                     value=rx.cond(
@@ -170,7 +188,6 @@ def blog_post_edit_form() -> rx.Component:
                     required=True,
                     width="100%",
                 ),
-                # Precio (CORREGIDO)
                 rx.input(
                     name="price",
                     value=BlogEditFormState.price_str,
@@ -179,7 +196,6 @@ def blog_post_edit_form() -> rx.Component:
                     required=True,
                     width="100%",
                 ),
-                # Contenido
                 rx.text_area(
                     name="content",
                     value=rx.cond(
@@ -193,7 +209,6 @@ def blog_post_edit_form() -> rx.Component:
                     height="40vh",
                     width="100%",
                 ),
-                # Switch para publicar
                 rx.flex(
                     rx.switch(
                         name="publish_active",
@@ -203,7 +218,6 @@ def blog_post_edit_form() -> rx.Component:
                     rx.text("Publicar"),
                     spacing="2",
                 ),
-                # Campos de fecha y hora si se publica
                 rx.cond(
                     BlogEditFormState.post_publish_active,
                     rx.hstack(

@@ -237,6 +237,35 @@ class BlogAddFormState(SessionState):
             search_attribute_name = f"search_add_{attribute_name}"
             if hasattr(self, search_attribute_name):
                 setattr(self, search_attribute_name, "")
+
+    @rx.event
+    def clear_all_attributes(self):
+        """Limpia todos los atributos y campos de búsqueda del formulario."""
+        # Ropa
+        self.talla = ""
+        self.tipo_tela = ""
+        self.color_ropa = ""
+        self.tipo_prenda = ""
+        # Calzado
+        self.numero_calzado = ""
+        self.material_calzado = ""
+        self.color_calzado = ""
+        self.tipo_zapato = ""
+        # Mochilas
+        self.material_mochila = ""
+        self.medidas = ""
+        self.tipo_mochila = ""
+        # Campos de búsqueda
+        self.search_add_tipo_prenda = ""
+        self.search_add_color_ropa = ""
+        self.search_add_talla = ""
+        self.search_add_tipo_tela = ""
+        self.search_add_tipo_zapato = ""
+        self.search_add_color_calzado = ""
+        self.search_add_numero_calzado = ""
+        self.search_add_material_calzado = ""
+        self.search_add_tipo_mochila = ""
+        self.search_add_material_mochila = ""
     
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):

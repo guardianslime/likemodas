@@ -167,6 +167,30 @@ class SessionState(reflex_local_auth.LocalAuthState):
             if hasattr(self, search_field_name):
                 setattr(self, search_field_name, "")
 
+    @rx.event
+    def clear_all_filters(self):
+        """Limpia todos los filtros y campos de búsqueda del panel."""
+        self.min_price = ""
+        self.max_price = ""
+        self.filter_color = ""
+        self.filter_talla = ""
+        self.filter_tipo_prenda = ""
+        self.filter_numero_calzado = ""
+        self.filter_tipo_zapato = ""
+        self.filter_tipo_mochila = ""
+        self.filter_tipo_general = ""
+        self.filter_material_tela = ""
+        self.filter_medida_talla = ""
+        self.search_tipo_prenda = ""
+        self.search_tipo_zapato = ""
+        self.search_tipo_mochila = ""
+        self.search_tipo_general = ""
+        self.search_color = ""
+        self.search_talla = ""
+        self.search_numero_calzado = ""
+        self.search_material_tela = ""
+        self.search_medida_talla = ""
+
     # --- FIN DE LA ADICIÓN ---
     
 
