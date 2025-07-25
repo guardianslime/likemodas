@@ -21,58 +21,56 @@ def _searchable_select(
     """
     Un componente de selección personalizado con un campo de búsqueda interno.
     """
-    # --- ✨ CAMBIO 1: Se envuelve todo en un rx.box para forzar el ancho ---
-    return rx.box(
-        rx.popover.root(
-            rx.popover.trigger(
-                rx.button(
-                    rx.cond(value_select, value_select, placeholder),
-                    rx.icon(tag="chevron-down"),
-                    variant="outline",
-                    width="100%",
-                    justify_content="space-between",
-                    color_scheme="gray",
-                )
-            ),
-            rx.popover.content(
-                rx.vstack(
-                    rx.input(
-                        placeholder="Buscar...",
-                        value=search_value,
-                        on_change=on_change_search,
-                        margin_bottom="0.5em"
-                    ),
-                    rx.scroll_area(
-                        rx.vstack(
-                            rx.foreach(
-                                options,
-                                lambda option: rx.popover.close(
-                                    rx.button(
-                                        option,
-                                        on_click=lambda: on_change_select(option),
-                                        width="100%",
-                                        variant="soft", 
-                                        color_scheme="gray",
-                                        justify_content="start"
-                                    )
-                                )
-                            ),
-                            spacing="1",
-                        ),
-                        max_height="200px",
-                        width="100%",
-                        type="auto",
-                        scrollbars="vertical",
-                    ),
-                    width="100%",
-                    spacing="2"
-                ),
-                padding="0.75em"
-            ),
-            match_width=True,
+    # Se elimina el 'rx.box' envolvente y volvemos a la estructura original
+    return rx.popover.root(
+        rx.popover.trigger(
+            rx.button(
+                rx.cond(value_select, value_select, placeholder),
+                rx.icon(tag="chevron-down"),
+                variant="outline",
+                width="100%",
+                justify_content="space-between",
+                color_scheme="gray",
+            )
         ),
-        # --- ✨ CAMBIO 2: Se aplica el ancho al contenedor principal ---
-        width="100%",
+        rx.popover.content(
+            rx.vstack(
+                rx.input(
+                    placeholder="Buscar...",
+                    value=search_value,
+                    on_change=on_change_search,
+                    margin_bottom="0.5em"
+                ),
+                rx.scroll_area(
+                    rx.vstack(
+                        rx.foreach(
+                            options,
+                            lambda option: rx.popover.close(
+                                rx.button(
+                                    option,
+                                    on_click=lambda: on_change_select(option),
+                                    width="100%",
+                                    variant="soft", 
+                                    color_scheme="gray",
+                                    justify_content="start"
+                                )
+                            )
+                        ),
+                        spacing="1",
+                    ),
+                    max_height="200px",
+                    width="100%",
+                    type="auto",
+                    scrollbars="vertical",
+                ),
+                width="100%",
+                spacing="2"
+            ),
+            # --- ✨ CAMBIO CLAVE AQUÍ ---
+            # Se establece un ancho fijo y se elimina 'match_width' del 'root'
+            width="250px", 
+            padding="0.75em"
+        ),
     )
 
 def floating_filter_panel() -> rx.Component:
