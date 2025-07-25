@@ -77,6 +77,17 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def set_filter_material_tela(self, value: str): self.filter_material_tela = value
     def set_filter_medida_talla(self, value: str): self.filter_medida_talla = value
 
+    def _filter_options(self, options: list[dict], search_term: str) -> list[dict]:
+        """Función auxiliar para filtrar opciones de un selector."""
+        if not search_term.strip():
+            return options
+        # Verificamos que las opciones sean diccionarios antes de filtrar
+        valid_options = [opt for opt in options if isinstance(opt, dict) and "label" in opt]
+        return [
+            opt for opt in valid_options
+            if search_term.lower() in str(opt["label"]).lower()
+        ]
+
     @rx.var
     def filtered_general_types(self) -> list[dict]:
         from ..cart.state import CartState
