@@ -12,8 +12,8 @@ def build_searchable_select(
     current_value_var: rx.Var[str],
     options_var: rx.Var[list],
     search_term_var: rx.Var[str],
-    on_search_change: rx.EventSpec,
-    on_value_change: rx.EventSpec
+    on_search_change,
+    on_value_change
 ) -> rx.Component:
     """
     Crea un componente de selección con búsqueda usando un Popover.
