@@ -45,6 +45,24 @@ class SessionState(reflex_local_auth.LocalAuthState):
     filter_tipo_general: str = ""
     filter_material_tela: str = ""
     filter_medida_talla: str = ""
+
+    # --- ✨ NUEVAS VARIABLES PARA BÚSQUEDA EN FILTROS ---
+    # Para filtros generales
+    tipo_general_search: str = ""
+    material_tela_search: str = ""
+    medida_talla_search: str = ""
+    color_search: str = ""
+    
+    # Para filtros específicos de Ropa
+    tipo_prenda_search: str = ""
+    talla_search: str = ""
+    
+    # Para filtros específicos de Calzado
+    tipo_zapato_search: str = ""
+    numero_calzado_search: str = ""
+    
+    # Para filtros específicos de Mochilas
+    tipo_mochila_search: str = ""
     
     # --- ✨ NEW EVENT HANDLERS FOR FILTERS ---
     def set_filter_color(self, value: str): self.filter_color = value
@@ -59,6 +77,42 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def set_filter_material_tela(self, value: str): self.filter_material_tela = value
     def set_filter_medida_talla(self, value: str): self.filter_medida_talla = value
 
+    @rx.var
+    def filtered_general_types(self) -> list[dict]:
+        from ..cart.state import CartState
+        return self._filter_options(CartState.general_available_materials, self.tipo_general_search)
+
+    @rx.var
+    def filtered_general_materials(self) -> list[dict]:
+        from ..cart.state import CartState
+        return self._filter_options(CartState.general_available_materials, self.material_tela_search)
+
+    @rx.var
+    def filtered_general_sizes(self) -> list[dict]:
+        from ..cart.state import CartState
+        return self._filter_options(CartState.general_available_sizes, self.medida_talla_search)
+    
+    @rx.var
+    def filtered_general_colors(self) -> list[dict]:
+        from ..cart.state import CartState
+        return self._filter_options(CartState.general_available_colors, self.color_search)
+
+    # --- Filtros Específicos ---
+    @rx.var
+    def filtered_available_colors(self) -> list[dict]:
+        from ..pages.category_page import CategoryPageState
+        return self._filter_options(CategoryPageState.available_colors, self.color_search)
+
+    @rx.var
+    def filtered_available_tallas(self) -> list[dict]:
+        from ..pages.category_page import CategoryPageState
+        return self._filter_options(CategoryPageState.available_tallas, self.talla_search)
+
+    @rx.var
+    def filtered_available_numeros(self) -> list[dict]:
+        from ..pages.category_page import CategoryPageState
+        return self._filter_options(CategoryPageState.available_numeros, self.numero_calzado_search)
+        
 
     def toggle_filters(self):
         """Muestra u oculta el panel de filtros."""
