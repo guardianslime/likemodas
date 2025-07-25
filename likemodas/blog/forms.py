@@ -89,7 +89,6 @@ def blog_post_add_form() -> rx.Component:
                             margin_bottom="0.5em"
                         ),
                     ),
-
                     
                     rx.cond(
                         BlogAddFormState.category == Category.ROPA.value,
