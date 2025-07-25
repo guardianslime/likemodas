@@ -4,14 +4,17 @@ import reflex as rx
 from reflex.event import EventSpec
 from ..auth.state import SessionState
 from ..models import Category
-from .components import searchable_select
+# --- ✨ Se importa el componente desde su nueva ubicación con el nombre correcto ---
+from ..ui.components import searchable_select
 from ..data.product_options import (
     LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
 )
 
+# LA FUNCIÓN _searchable_select YA NO ESTÁ AQUÍ, SE IMPORTA
+
 def floating_filter_panel() -> rx.Component:
     """
-    El panel de filtros flotante, ahora usando el nuevo componente de selección en todos los campos.
+    El panel de filtros flotante, ahora usando el componente importado.
     """
     return rx.box(
         rx.hstack(
@@ -35,16 +38,17 @@ def floating_filter_panel() -> rx.Component:
                             SessionState.current_category == Category.ROPA.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Ropa", weight="bold"),
-                                _searchable_select(
+                                # --- ✨ CAMBIO: Se usa el nombre correcto de la función importada ---
+                                searchable_select(
                                     placeholder="Por tipo...",
                                     options=SessionState.filtered_tipos_ropa,
                                     on_change_select=SessionState.set_filter_tipo_prenda,
                                     value_select=SessionState.filter_tipo_prenda,
-                                    search_value=SessionState.search_tipo_prenda,
-                                    on_change_search=SessionState.set_search_tipo_prenda,
+                                    search_value=SessionState.search_add_tipo_prenda,
+                                    on_change_search=SessionState.set_search_add_tipo_prenda,
                                     filter_name="ropa_tipo"
                                 ),
-                                _searchable_select(
+                                searchable_select(
                                     placeholder="Por color...",
                                     options=SessionState.filtered_colores,
                                     on_change_select=SessionState.set_filter_color,
@@ -53,7 +57,7 @@ def floating_filter_panel() -> rx.Component:
                                     on_change_search=SessionState.set_search_color,
                                     filter_name="ropa_color"
                                 ),
-                                _searchable_select(
+                                searchable_select(
                                     placeholder="Por talla...",
                                     options=SessionState.filtered_tallas_ropa,
                                     on_change_select=SessionState.set_filter_talla,
@@ -69,7 +73,7 @@ def floating_filter_panel() -> rx.Component:
                             SessionState.current_category == Category.CALZADO.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Calzado", weight="bold"),
-                                _searchable_select(
+                                searchable_select(
                                     placeholder="Por tipo...",
                                     options=SessionState.filtered_tipos_zapatos,
                                     on_change_select=SessionState.set_filter_tipo_zapato,
@@ -78,7 +82,7 @@ def floating_filter_panel() -> rx.Component:
                                     on_change_search=SessionState.set_search_tipo_zapato,
                                     filter_name="calzado_tipo"
                                 ),
-                                _searchable_select(
+                                searchable_select(
                                     placeholder="Por color...",
                                     options=SessionState.filtered_colores,
                                     on_change_select=SessionState.set_filter_color,
@@ -87,7 +91,7 @@ def floating_filter_panel() -> rx.Component:
                                     on_change_search=SessionState.set_search_color,
                                     filter_name="calzado_color"
                                 ),
-                                _searchable_select(
+                                searchable_select(
                                     placeholder="Por número...",
                                     options=SessionState.filtered_numeros_calzado,
                                     on_change_select=SessionState.set_filter_numero_calzado,
@@ -103,7 +107,7 @@ def floating_filter_panel() -> rx.Component:
                             SessionState.current_category == Category.MOCHILAS.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Mochilas", weight="bold"),
-                                _searchable_select(
+                                searchable_select(
                                     placeholder="Por tipo...",
                                     options=SessionState.filtered_tipos_mochilas,
                                     on_change_select=SessionState.set_filter_tipo_mochila,
@@ -122,7 +126,7 @@ def floating_filter_panel() -> rx.Component:
                         rx.vstack(
                             rx.divider(),
                             rx.text("Filtros Generales", weight="bold"),
-                            _searchable_select(
+                            searchable_select(
                                 placeholder="Por tipo...",
                                 options=SessionState.filtered_tipos_general,
                                 on_change_select=SessionState.set_filter_tipo_general,
@@ -131,7 +135,7 @@ def floating_filter_panel() -> rx.Component:
                                 on_change_search=SessionState.set_search_tipo_general,
                                 filter_name="general_tipo"
                             ),
-                            _searchable_select(
+                            searchable_select(
                                 placeholder="Por material o tela...",
                                 options=SessionState.filtered_materiales,
                                 on_change_select=SessionState.set_filter_material_tela,
@@ -140,7 +144,7 @@ def floating_filter_panel() -> rx.Component:
                                 on_change_search=SessionState.set_search_material_tela,
                                 filter_name="general_material"
                             ),
-                            _searchable_select(
+                            searchable_select(
                                 placeholder="Por talla o medidas...",
                                 options=SessionState.filtered_medidas_general,
                                 on_change_select=SessionState.set_filter_medida_talla,
@@ -149,7 +153,7 @@ def floating_filter_panel() -> rx.Component:
                                 on_change_search=SessionState.set_search_medida_talla,
                                 filter_name="general_medida"
                             ),
-                            _searchable_select(
+                            searchable_select(
                                 placeholder="Por color...",
                                 options=SessionState.filtered_colores,
                                 on_change_select=SessionState.set_filter_color,
