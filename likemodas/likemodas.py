@@ -24,6 +24,16 @@ from .account import shipping_info_state
 
 from .ui.base import base_page
 
+
+class HomePageState(cart_state.CartState):
+    """Estado específico para la página de inicio."""
+    @rx.event
+    def on_load_main(self):
+        """Carga los posts y resetea el filtro de categoría."""
+        self.current_category = ""  # Resetea la categoría para mostrar filtros generales
+        yield cart_state.CartState.on_load  # Llama al evento original para cargar productos
+
+
 def index() -> rx.Component:
     """La página principal ahora es la galería de productos."""
     return blog_page.blog_public_page()
@@ -40,7 +50,6 @@ app = rx.App(
 )
 
 # --- Páginas Generales y de Autenticación ---
-app.add_page(index, on_load=cart_state.CartState.on_load)
 app.add_page(
     dashboard_component, 
     route="/dashboard", 

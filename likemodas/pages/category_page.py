@@ -19,7 +19,7 @@ class CategoryPageState(SessionState):
 
     @rx.event
     def load_category_posts(self):
-        category_from_url = self.current_category
+        self.current_category = self.router.page.params.get("cat_name", "todos")
         
         with rx.session() as session:
             query_filter = [
