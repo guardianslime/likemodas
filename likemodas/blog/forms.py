@@ -65,7 +65,6 @@ def blog_post_add_form() -> rx.Component:
             rx.cond(
                 BlogAddFormState.category == Category.ROPA.value,
                 rx.grid(
-                    # ... (resto de campos de características)
                     rx.hstack(
                         searchable_select(placeholder="Tipo de Prenda", options=SessionState.filtered_tipos_ropa, on_change_select=BlogAddFormState.set_tipo_prenda, value_select=BlogAddFormState.tipo_prenda, search_value=BlogAddFormState.search_add_tipo_prenda, on_change_search=BlogAddFormState.set_search_add_tipo_prenda, filter_name="add_form_tipo_prenda_desktop"),
                         rx.cond(BlogAddFormState.tipo_prenda != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_prenda"), size="1", variant="ghost"))
@@ -85,7 +84,6 @@ def blog_post_add_form() -> rx.Component:
                     columns="2", spacing="4", width="100%"
                 )
             ),
-            # ... (condicionales para CALZADO y MOCHILAS)
             rx.cond(
                 BlogAddFormState.category == Category.CALZADO.value,
                 rx.grid(
@@ -125,7 +123,9 @@ def blog_post_add_form() -> rx.Component:
             ),
             grid_column="span 2", margin_top="1em", align_items="start", width="100%"
         ),
-        columns="2", spacing="6", width="100%"
+        grid_template_columns="1.2fr 1fr",  # ✨ CORRECCIÓN AQUÍ
+        spacing="6",
+        width="100%"
     )
 
     # --- Diseño para pantallas pequeñas/móviles ---
@@ -172,7 +172,6 @@ def blog_post_add_form() -> rx.Component:
             rx.cond(
                 BlogAddFormState.category == Category.ROPA.value,
                 rx.grid(
-                    # ... (resto de campos de características para móvil)
                     rx.hstack(
                         searchable_select(placeholder="Tipo de Prenda", options=SessionState.filtered_tipos_ropa, on_change_select=BlogAddFormState.set_tipo_prenda, value_select=BlogAddFormState.tipo_prenda, search_value=BlogAddFormState.search_add_tipo_prenda, on_change_search=BlogAddFormState.set_search_add_tipo_prenda, filter_name="add_form_tipo_prenda_mobile"),
                         rx.cond(BlogAddFormState.tipo_prenda != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_prenda"), size="1", variant="ghost"))
@@ -192,7 +191,6 @@ def blog_post_add_form() -> rx.Component:
                     columns="1", spacing="4", width="100%"
                 )
             ),
-             # ... (condicionales para CALZADO y MOCHILAS en móvil)
             rx.cond(
                 BlogAddFormState.category == Category.CALZADO.value,
                 rx.grid(
@@ -240,11 +238,9 @@ def blog_post_add_form() -> rx.Component:
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             
-            # --- Envoltura con componentes responsivos ---
             rx.tablet_and_desktop(desktop_layout),
             rx.mobile_only(mobile_layout),
 
-            # Botones de acción al final
             rx.hstack(
                 rx.button("Guardar Borrador", on_click=BlogAddFormState.submit, variant="soft", size="3"),
                 rx.button("Publicar Ahora", on_click=BlogAddFormState.submit_and_publish, color_scheme="green", size="3"),
