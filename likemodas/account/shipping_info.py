@@ -46,7 +46,7 @@ def address_form() -> rx.Component:
                         on_change_search=ShippingInfoState.set_search_neighborhood,
                         filter_name="shipping_neighborhood_filter",
                         # ✨ LÍNEA CORREGIDA: Esta es la sintaxis correcta.
-                        is_disabled=(rx.fn.length(ShippingInfoState.neighborhoods) == 0),
+                        is_disabled=~ShippingInfoState.neighborhoods,
                     ),
                     spacing="1", align_items="start",
                 ),
