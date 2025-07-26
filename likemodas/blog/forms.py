@@ -6,126 +6,140 @@ from ..data.product_options import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_
 from ..ui.components import searchable_select
 
 
+def _action_buttons() -> rx.Component:
+    """Crea la fila de botones de acción del formulario."""
+    return rx.hstack(
+        rx.button("Guardar Borrador", on_click=BlogAddFormState.submit, variant="soft", size="3"),
+        rx.button("Publicar Ahora", on_click=BlogAddFormState.submit_and_publish, color_scheme="green", size="3"),
+        spacing="4", width="100%", justify="end", margin_top="2em"
+    )
+
+# --- Función principal del formulario (CORREGIDA) ---
 def blog_post_add_form() -> rx.Component:
     """
     Formulario para añadir productos con diseños diferentes y optimizados para móvil y escritorio
     utilizando rx.mobile_only y rx.tablet_and_desktop.
     """
     # --- Diseño para pantallas de escritorio y tablets ---
-    desktop_layout = rx.grid(
-        # Columna Izquierda (Upload)
-        rx.vstack(
-            rx.card(
-                rx.vstack(
-                    rx.upload(
-                        rx.vstack(
-                            rx.icon("upload", size=32),
-                            rx.text("Subir imágenes del producto"),
-                        ),
-                        id="blog_upload_desktop",
-                        multiple=True, max_files=5, accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
-                        on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload_desktop")),
-                        border="2px dashed #ccc", padding="2em", width="100%"
-                    ),
-                    rx.cond(
-                        BlogAddFormState.temp_images,
-                        rx.hstack(
-                            rx.foreach(
-                                BlogAddFormState.temp_images,
-                                lambda img: rx.box(
-                                    rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
-                                    rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
-                                    style={"position": "relative", "margin": "0.5em"},
-                                ),
+    desktop_layout = rx.vstack(
+        rx.grid(
+            # Columna Izquierda (Upload)
+            rx.vstack(
+                rx.card(
+                    rx.vstack(
+                        rx.upload(
+                            rx.vstack(
+                                rx.icon("upload", size=32),
+                                rx.text("Subir imágenes del producto"),
                             ),
-                            wrap="wrap", spacing="3"
-                        )
-                    ),
-                    spacing="4",
-                )
+                            id="blog_upload_desktop",
+                            multiple=True, max_files=5, accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
+                            on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload_desktop")),
+                            border="2px dashed #ccc", padding="2em", width="100%"
+                        ),
+                        rx.cond(
+                            BlogAddFormState.temp_images,
+                            rx.hstack(
+                                rx.foreach(
+                                    BlogAddFormState.temp_images,
+                                    lambda img: rx.box(
+                                        rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                                        rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
+                                        style={"position": "relative", "margin": "0.5em"},
+                                    ),
+                                ),
+                                wrap="wrap", spacing="3"
+                            )
+                        ),
+                        spacing="4",
+                    )
+                ),
+                align_items="stretch"
             ),
-            align_items="stretch"
+            # Columna Derecha (Info básica)
+            rx.vstack(
+                rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
+                rx.hstack(
+                    rx.input(placeholder="Precio", type="number", value=BlogAddFormState.price.to_string(), on_change=BlogAddFormState.set_price_from_input, required=True, size="3"),
+                    rx.select(BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3"),
+                    spacing="4"
+                ),
+                rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "255px"}),
+                spacing="4",
+                align_items="stretch"
+            ),
+            # Fila Inferior (Características)
+            rx.vstack(
+                rx.heading("Características", size="5", width="100%"),
+                rx.divider(),
+                rx.cond(
+                    BlogAddFormState.category == Category.ROPA.value,
+                    rx.grid(
+                        rx.hstack(
+                            searchable_select(placeholder="Tipo de Prenda", options=SessionState.filtered_tipos_ropa, on_change_select=BlogAddFormState.set_tipo_prenda, value_select=BlogAddFormState.tipo_prenda, search_value=BlogAddFormState.search_add_tipo_prenda, on_change_search=BlogAddFormState.set_search_add_tipo_prenda, filter_name="add_form_tipo_prenda_desktop"),
+                            rx.cond(BlogAddFormState.tipo_prenda != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_prenda"), size="1", variant="ghost"))
+                        ),
+                        rx.hstack(
+                            searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_ropa, value_select=BlogAddFormState.color_ropa, search_value=BlogAddFormState.search_add_color_ropa, on_change_search=BlogAddFormState.set_search_add_color_ropa, filter_name="add_form_color_ropa_desktop"),
+                            rx.cond(BlogAddFormState.color_ropa != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("color_ropa"), size="1", variant="ghost"))
+                        ),
+                        rx.hstack(
+                            searchable_select(placeholder="Talla (S, M, L...)", options=BlogAddFormState.filtered_add_tallas, on_change_select=BlogAddFormState.set_talla, value_select=BlogAddFormState.talla, search_value=BlogAddFormState.search_add_talla, on_change_search=BlogAddFormState.set_search_add_talla, filter_name="add_form_talla_desktop"),
+                            rx.cond(BlogAddFormState.talla != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("talla"), size="1", variant="ghost"))
+                        ),
+                        rx.hstack(
+                            searchable_select(placeholder="Tipo de Tela", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_tipo_tela, value_select=BlogAddFormState.tipo_tela, search_value=BlogAddFormState.search_add_tipo_tela, on_change_search=BlogAddFormState.set_search_add_tipo_tela, filter_name="add_form_tipo_tela_desktop"),
+                            rx.cond(BlogAddFormState.tipo_tela != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_tela"), size="1", variant="ghost"))
+                        ),
+                        columns="2", spacing="4", width="100%"
+                    )
+                ),
+                rx.cond(
+                    BlogAddFormState.category == Category.CALZADO.value,
+                    rx.grid(
+                        rx.hstack(
+                            searchable_select(placeholder="Tipo de Zapato", options=SessionState.filtered_tipos_zapatos, on_change_select=BlogAddFormState.set_tipo_zapato, value_select=BlogAddFormState.tipo_zapato, search_value=BlogAddFormState.search_add_tipo_zapato, on_change_search=BlogAddFormState.set_search_add_tipo_zapato, filter_name="add_form_tipo_zapato_desktop"),
+                            rx.cond(BlogAddFormState.tipo_zapato != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_zapato"), size="1", variant="ghost"))
+                        ),
+                        rx.hstack(
+                            searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_calzado, value_select=BlogAddFormState.color_calzado, search_value=BlogAddFormState.search_add_color_calzado, on_change_search=BlogAddFormState.set_search_add_color_calzado, filter_name="add_form_color_calzado_desktop"),
+                            rx.cond(BlogAddFormState.color_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("color_calzado"), size="1", variant="ghost"))
+                        ),
+                        rx.hstack(
+                            searchable_select(placeholder="Número (38, 39...)", options=BlogAddFormState.filtered_add_numeros_calzado, on_change_select=BlogAddFormState.set_numero_calzado, value_select=BlogAddFormState.numero_calzado, search_value=BlogAddFormState.search_add_numero_calzado, on_change_search=BlogAddFormState.set_search_add_numero_calzado, filter_name="add_form_numero_calzado_desktop"),
+                            rx.cond(BlogAddFormState.numero_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("numero_calzado"), size="1", variant="ghost"))
+                        ),
+                        rx.hstack(
+                            searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_calzado, value_select=BlogAddFormState.material_calzado, search_value=BlogAddFormState.search_add_material_calzado, on_change_search=BlogAddFormState.set_search_add_material_calzado, filter_name="add_form_material_calzado_desktop"),
+                            rx.cond(BlogAddFormState.material_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_calzado"), size="1", variant="ghost"))
+                        ),
+                        columns="2", spacing="4", width="100%"
+                    )
+                ),
+                rx.cond(
+                    BlogAddFormState.category == Category.MOCHILAS.value,
+                    rx.grid(
+                        rx.hstack(
+                            searchable_select(placeholder="Tipo de Mochila", options=SessionState.filtered_tipos_mochilas, on_change_select=BlogAddFormState.set_tipo_mochila, value_select=BlogAddFormState.tipo_mochila, search_value=BlogAddFormState.search_add_tipo_mochila, on_change_search=BlogAddFormState.set_search_add_tipo_mochila, filter_name="add_form_tipo_mochila_desktop"),
+                            rx.cond(BlogAddFormState.tipo_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_mochila"), size="1", variant="ghost"))
+                        ),
+                        rx.hstack(
+                            searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_mochila, value_select=BlogAddFormState.material_mochila, search_value=BlogAddFormState.search_add_material_mochila, on_change_search=BlogAddFormState.set_search_add_material_mochila, filter_name="add_form_material_mochila_desktop"),
+                            rx.cond(BlogAddFormState.material_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_mochila"), size="1", variant="ghost"))
+                        ),
+                        rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
+                        columns="2", spacing="4", width="100%"
+                    )
+                ),
+                grid_column="span 2", margin_top="1em", align_items="start", width="100%"
+            ),
+            grid_template_columns="1.2fr 1fr",
+            spacing="6",
+            width="100%"
         ),
-        # Columna Derecha (Info básica)
-        rx.vstack(
-            rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
-            rx.hstack(
-                rx.input(placeholder="Precio", type="number", value=BlogAddFormState.price.to_string(), on_change=BlogAddFormState.set_price_from_input, required=True, size="3"),
-                rx.select(BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3"),
-                spacing="4"
-            ),
-            rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "255px"}),
-            spacing="4",
-            align_items="stretch"
-        ),
-        # Fila Inferior (Características)
-        rx.vstack(
-            rx.heading("Características", size="5", width="100%"),
-            rx.divider(),
-            rx.cond(
-                BlogAddFormState.category == Category.ROPA.value,
-                rx.grid(
-                    rx.hstack(
-                        searchable_select(placeholder="Tipo de Prenda", options=SessionState.filtered_tipos_ropa, on_change_select=BlogAddFormState.set_tipo_prenda, value_select=BlogAddFormState.tipo_prenda, search_value=BlogAddFormState.search_add_tipo_prenda, on_change_search=BlogAddFormState.set_search_add_tipo_prenda, filter_name="add_form_tipo_prenda_desktop"),
-                        rx.cond(BlogAddFormState.tipo_prenda != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_prenda"), size="1", variant="ghost"))
-                    ),
-                    rx.hstack(
-                        searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_ropa, value_select=BlogAddFormState.color_ropa, search_value=BlogAddFormState.search_add_color_ropa, on_change_search=BlogAddFormState.set_search_add_color_ropa, filter_name="add_form_color_ropa_desktop"),
-                        rx.cond(BlogAddFormState.color_ropa != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("color_ropa"), size="1", variant="ghost"))
-                    ),
-                    rx.hstack(
-                        searchable_select(placeholder="Talla (S, M, L...)", options=BlogAddFormState.filtered_add_tallas, on_change_select=BlogAddFormState.set_talla, value_select=BlogAddFormState.talla, search_value=BlogAddFormState.search_add_talla, on_change_search=BlogAddFormState.set_search_add_talla, filter_name="add_form_talla_desktop"),
-                        rx.cond(BlogAddFormState.talla != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("talla"), size="1", variant="ghost"))
-                    ),
-                    rx.hstack(
-                        searchable_select(placeholder="Tipo de Tela", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_tipo_tela, value_select=BlogAddFormState.tipo_tela, search_value=BlogAddFormState.search_add_tipo_tela, on_change_search=BlogAddFormState.set_search_add_tipo_tela, filter_name="add_form_tipo_tela_desktop"),
-                        rx.cond(BlogAddFormState.tipo_tela != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_tela"), size="1", variant="ghost"))
-                    ),
-                    columns="2", spacing="4", width="100%"
-                )
-            ),
-            rx.cond(
-                BlogAddFormState.category == Category.CALZADO.value,
-                rx.grid(
-                    rx.hstack(
-                        searchable_select(placeholder="Tipo de Zapato", options=SessionState.filtered_tipos_zapatos, on_change_select=BlogAddFormState.set_tipo_zapato, value_select=BlogAddFormState.tipo_zapato, search_value=BlogAddFormState.search_add_tipo_zapato, on_change_search=BlogAddFormState.set_search_add_tipo_zapato, filter_name="add_form_tipo_zapato_desktop"),
-                        rx.cond(BlogAddFormState.tipo_zapato != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_zapato"), size="1", variant="ghost"))
-                    ),
-                    rx.hstack(
-                        searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_calzado, value_select=BlogAddFormState.color_calzado, search_value=BlogAddFormState.search_add_color_calzado, on_change_search=BlogAddFormState.set_search_add_color_calzado, filter_name="add_form_color_calzado_desktop"),
-                        rx.cond(BlogAddFormState.color_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("color_calzado"), size="1", variant="ghost"))
-                    ),
-                    rx.hstack(
-                        searchable_select(placeholder="Número (38, 39...)", options=BlogAddFormState.filtered_add_numeros_calzado, on_change_select=BlogAddFormState.set_numero_calzado, value_select=BlogAddFormState.numero_calzado, search_value=BlogAddFormState.search_add_numero_calzado, on_change_search=BlogAddFormState.set_search_add_numero_calzado, filter_name="add_form_numero_calzado_desktop"),
-                        rx.cond(BlogAddFormState.numero_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("numero_calzado"), size="1", variant="ghost"))
-                    ),
-                    rx.hstack(
-                        searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_calzado, value_select=BlogAddFormState.material_calzado, search_value=BlogAddFormState.search_add_material_calzado, on_change_search=BlogAddFormState.set_search_add_material_calzado, filter_name="add_form_material_calzado_desktop"),
-                        rx.cond(BlogAddFormState.material_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_calzado"), size="1", variant="ghost"))
-                    ),
-                    columns="2", spacing="4", width="100%"
-                )
-            ),
-            rx.cond(
-                BlogAddFormState.category == Category.MOCHILAS.value,
-                rx.grid(
-                    rx.hstack(
-                        searchable_select(placeholder="Tipo de Mochila", options=SessionState.filtered_tipos_mochilas, on_change_select=BlogAddFormState.set_tipo_mochila, value_select=BlogAddFormState.tipo_mochila, search_value=BlogAddFormState.search_add_tipo_mochila, on_change_search=BlogAddFormState.set_search_add_tipo_mochila, filter_name="add_form_tipo_mochila_desktop"),
-                        rx.cond(BlogAddFormState.tipo_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_mochila"), size="1", variant="ghost"))
-                    ),
-                    rx.hstack(
-                        searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_mochila, value_select=BlogAddFormState.material_mochila, search_value=BlogAddFormState.search_add_material_mochila, on_change_search=BlogAddFormState.set_search_add_material_mochila, filter_name="add_form_material_mochila_desktop"),
-                        rx.cond(BlogAddFormState.material_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_mochila"), size="1", variant="ghost"))
-                    ),
-                    rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
-                    columns="2", spacing="4", width="100%"
-                )
-            ),
-            grid_column="span 2", margin_top="1em", align_items="start", width="100%"
-        ),
-        grid_template_columns="1.2fr 1fr",  # ✨ CORRECCIÓN AQUÍ
-        spacing="6",
-        width="100%"
+        _action_buttons(), # Botones incluidos dentro del layout
+        spacing="5",
+        width="100%",
     )
 
     # --- Diseño para pantallas pequeñas/móviles ---
@@ -230,6 +244,7 @@ def blog_post_add_form() -> rx.Component:
             ),
             align_items="start", width="100%", margin_top="1em"
         ),
+        _action_buttons(), # Botones incluidos dentro del layout
         spacing="5",
         width="100%",
     )
@@ -240,12 +255,6 @@ def blog_post_add_form() -> rx.Component:
             
             rx.tablet_and_desktop(desktop_layout),
             rx.mobile_only(mobile_layout),
-
-            rx.hstack(
-                rx.button("Guardar Borrador", on_click=BlogAddFormState.submit, variant="soft", size="3"),
-                rx.button("Publicar Ahora", on_click=BlogAddFormState.submit_and_publish, color_scheme="green", size="3"),
-                spacing="4", width="100%", justify="end", margin_top="2em"
-            ),
             
             spacing="5",
             width="100%",
