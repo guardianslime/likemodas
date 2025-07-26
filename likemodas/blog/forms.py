@@ -143,7 +143,7 @@ def blog_post_add_form() -> rx.Component:
             grid_column="span 2",
             margin_top="1em",
         ),
-        columns=2,
+        columns="2",  # ✨ CORRECCIÓN AQUÍ: Cambiado de 2 a "2"
         spacing="6",
         width="100%"
     )
