@@ -12,6 +12,7 @@ def blog_post_add_form() -> rx.Component:
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
+                # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
                     rx.card(
                         rx.vstack(
@@ -50,6 +51,7 @@ def blog_post_add_form() -> rx.Component:
                     spacing="5",
                 ),
 
+                # Columna Derecha: Campos de Texto
                 rx.vstack(
                     rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
                     rx.hstack(
@@ -62,6 +64,7 @@ def blog_post_add_form() -> rx.Component:
                     align_items="stretch"
                 ),
                 
+                # Fila Inferior: Características Adicionales
                 rx.vstack(
                     rx.cond(
                         BlogAddFormState.category == Category.ROPA.value,
@@ -125,7 +128,9 @@ def blog_post_add_form() -> rx.Component:
                     grid_column="span 2",
                     margin_top="1em"
                 ),
-                columns={"base": "1", "md": "2"},
+                
+                # --- ✨ LÍNEA MODIFICADA ---
+                grid_template_columns={"base": "1fr", "md": "1.5fr 1fr"},
                 spacing="6",
                 width="100%"
             ),
