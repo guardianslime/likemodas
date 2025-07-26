@@ -15,49 +15,37 @@ def blog_post_add_form() -> rx.Component:
                         rx.vstack(
                             rx.upload(
                                 rx.vstack(
-                                    rx.icon("upload", size=48),
-                                    rx.text("Subir imágenes del producto", size="4"),
-                                    align="center",
-                                    justify="center",
-                                    height="100%",
-                                    width="100%",
-                                    spacing="4",
+                                    rx.icon("upload", size=32),
+                                    rx.text("Subir imágenes del producto"),
                                 ),
                                 id="blog_upload",
                                 multiple=True,
                                 max_files=5,
                                 accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
                                 on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
-                                border="2px dashed",
-                                border_color=rx.color("gray", 9),
+                                border="2px dashed #ccc",
                                 padding="2em",
-                                width="100%",
-                                height="100%",
-                                style={"cursor": "pointer"},
+                                width="100%"
                             ),
-                            justify="center",
-                            height="100%",
-                        ),
-                        min_height="480px",  # <--- ÚNICO CAMBIO: Aumentada la altura para que sea más largo
-                        height="100%",
-                    ),
-                    rx.cond(
-                        BlogAddFormState.temp_images,
-                        rx.hstack(
-                            rx.foreach(
+                            rx.cond(
                                 BlogAddFormState.temp_images,
-                                lambda img: rx.box(
-                                    rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
-                                    rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
-                                    style={"position": "relative", "margin": "0.5em"},
-                                ),
+                                rx.hstack(
+                                    rx.foreach(
+                                        BlogAddFormState.temp_images,
+                                        lambda img: rx.box(
+                                            rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                                            rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
+                                            style={"position": "relative", "margin": "0.5em"},
+                                        ),
+                                    ),
+                                    wrap="wrap",
+                                    spacing="3"
+                                )
                             ),
-                            wrap="wrap",
-                            spacing="3"
+                            spacing="4",
                         )
                     ),
                     spacing="5",
-                    height="100%",
                 ),
 
                 rx.vstack(
@@ -156,10 +144,11 @@ def blog_post_add_form() -> rx.Component:
                     grid_column="span 2",
                     margin_top="1em"
                 ),
-                columns={"base": "1", "md": "2"},
+                # --- ✨ CAMBIO CLAVE AQUÍ ---
+                columns={"base": "1", "md": "2"}, # Se mantiene responsivo
                 spacing="6",
                 width="100%",
-                align_items="stretch",
+                align_items="stretch", # Esto asegura que ambas columnas tengan la misma altura
             ),
 
             rx.hstack(
