@@ -5,62 +5,52 @@ from ..data.product_options import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """El formulario rediseñado para añadir un nuevo producto con todas las funcionalidades."""
+    """El formulario rediseñado para añadir un nuevo producto con un layout más ancho (horizontal)."""
     return rx.form(
         rx.vstack(
-            rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
+            rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em", text_align="start"),
             rx.grid(
+                # --- Columna Izquierda: Carga de Imágenes (Ancho de columna, altura original) ---
                 rx.vstack(
                     rx.card(
                         rx.vstack(
                             rx.upload(
                                 rx.vstack(
                                     rx.icon("upload", size=32),
-                                    rx.text("Subir imágenes del producto", size="2"),
-                                    align="center",
-                                    justify="center",
-                                    height="100%",
-                                    width="100%",
-                                    spacing="2",
+                                    rx.text("Subir imágenes del producto"),
                                 ),
                                 id="blog_upload",
                                 multiple=True,
                                 max_files=5,
                                 accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
                                 on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
-                                border="2px dashed",
-                                border_color=rx.color("gray", 9),
-                                padding="1em",
+                                border="2px dashed #ccc",
+                                padding="2em",
                                 width="100%",
-                                height="100%",
                                 style={"cursor": "pointer"},
                             ),
-                            align="center",
-                            justify="center",
-                            height="100%",
-                        ),
-                        # --- CAMBIO CLAVE AQUÍ ---
-                        # Se ajusta la altura para que coincida con un campo de texto
-                        height="60px", 
-                    ),
-                    rx.cond(
-                        BlogAddFormState.temp_images,
-                        rx.hstack(
-                            rx.foreach(
+                            rx.cond(
                                 BlogAddFormState.temp_images,
-                                lambda img: rx.box(
-                                    rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
-                                    rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
-                                    style={"position": "relative", "margin": "0.5em"},
-                                ),
+                                rx.hstack(
+                                    rx.foreach(
+                                        BlogAddFormState.temp_images,
+                                        lambda img: rx.box(
+                                            rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                                            rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
+                                            style={"position": "relative", "margin": "0.5em"},
+                                        ),
+                                    ),
+                                    wrap="wrap",
+                                    spacing="3"
+                                )
                             ),
-                            wrap="wrap",
-                            spacing="3"
+                            spacing="4",
                         )
                     ),
                     spacing="5",
                 ),
 
+                # --- Columna Derecha: Información y Características ---
                 rx.vstack(
                     rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
                     rx.hstack(
@@ -69,98 +59,53 @@ def blog_post_add_form() -> rx.Component:
                         spacing="4"
                     ),
                     rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "150px"}),
-                    spacing="4",
-                    align_items="stretch"
-                ),
-                
-                rx.vstack(
-                    rx.cond(
-                        BlogAddFormState.category != "",
-                        rx.hstack(
-                            rx.text("Características Adicionales", weight="bold"),
-                            rx.spacer(),
-                            rx.button(
-                                "Limpiar",
-                                on_click=BlogAddFormState.clear_all_attributes,
-                                size="1",
-                                variant="soft",
-                                color_scheme="gray"
-                            ),
-                            justify="between",
-                            align_items="center",
-                            width="100%",
-                            margin_bottom="0.5em"
-                        ),
+                    rx.divider(margin_y="1em"),
+                    rx.hstack(
+                        rx.text("Características Adicionales", weight="bold"),
+                        rx.spacer(),
+                        rx.button("Limpiar", on_click=BlogAddFormState.clear_all_attributes, size="1", variant="soft", color_scheme="gray"),
+                        justify="between",
+                        align_items="center",
+                        width="100%",
+                        margin_bottom="0.5em"
                     ),
                     rx.cond(
                         BlogAddFormState.category == Category.ROPA.value,
                         rx.grid(
-                            rx.hstack(
-                                searchable_select(placeholder="Tipo de Prenda", options=SessionState.filtered_tipos_ropa, on_change_select=BlogAddFormState.set_tipo_prenda, value_select=BlogAddFormState.tipo_prenda, search_value=BlogAddFormState.search_add_tipo_prenda, on_change_search=BlogAddFormState.set_search_add_tipo_prenda, filter_name="add_form_tipo_prenda"),
-                                rx.cond(BlogAddFormState.tipo_prenda != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_prenda"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_ropa, value_select=BlogAddFormState.color_ropa, search_value=BlogAddFormState.search_add_color_ropa, on_change_search=BlogAddFormState.set_search_add_color_ropa, filter_name="add_form_color_ropa"),
-                                rx.cond(BlogAddFormState.color_ropa != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("color_ropa"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Talla (S, M, L...)", options=BlogAddFormState.filtered_add_tallas, on_change_select=BlogAddFormState.set_talla, value_select=BlogAddFormState.talla, search_value=BlogAddFormState.search_add_talla, on_change_search=BlogAddFormState.set_search_add_talla, filter_name="add_form_talla"),
-                                rx.cond(BlogAddFormState.talla != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("talla"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Tipo de Tela", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_tipo_tela, value_select=BlogAddFormState.tipo_tela, search_value=BlogAddFormState.search_add_tipo_tela, on_change_search=BlogAddFormState.set_search_add_tipo_tela, filter_name="add_form_tipo_tela"),
-                                rx.cond(BlogAddFormState.tipo_tela != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_tela"), size="1", variant="ghost"))
-                            ),
+                            searchable_select(placeholder="Tipo de Prenda", options=SessionState.filtered_tipos_ropa, on_change_select=BlogAddFormState.set_tipo_prenda, value_select=BlogAddFormState.tipo_prenda, search_value=BlogAddFormState.search_add_tipo_prenda, on_change_search=BlogAddFormState.set_search_add_tipo_prenda, filter_name="add_form_tipo_prenda"),
+                            searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_ropa, value_select=BlogAddFormState.color_ropa, search_value=BlogAddFormState.search_add_color_ropa, on_change_search=BlogAddFormState.set_search_add_color_ropa, filter_name="add_form_color_ropa"),
+                            searchable_select(placeholder="Talla (S, M, L...)", options=BlogAddFormState.filtered_add_tallas, on_change_select=BlogAddFormState.set_talla, value_select=BlogAddFormState.talla, search_value=BlogAddFormState.search_add_talla, on_change_search=BlogAddFormState.set_search_add_talla, filter_name="add_form_talla"),
+                            searchable_select(placeholder="Tipo de Tela", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_tipo_tela, value_select=BlogAddFormState.tipo_tela, search_value=BlogAddFormState.search_add_tipo_tela, on_change_search=BlogAddFormState.set_search_add_tipo_tela, filter_name="add_form_tipo_tela"),
                             columns="2", spacing="4", width="100%"
                         )
                     ),
                     rx.cond(
                         BlogAddFormState.category == Category.CALZADO.value,
                         rx.grid(
-                            rx.hstack(
-                                searchable_select(placeholder="Tipo de Zapato", options=SessionState.filtered_tipos_zapatos, on_change_select=BlogAddFormState.set_tipo_zapato, value_select=BlogAddFormState.tipo_zapato, search_value=BlogAddFormState.search_add_tipo_zapato, on_change_search=BlogAddFormState.set_search_add_tipo_zapato, filter_name="add_form_tipo_zapato"),
-                                rx.cond(BlogAddFormState.tipo_zapato != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_zapato"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_calzado, value_select=BlogAddFormState.color_calzado, search_value=BlogAddFormState.search_add_color_calzado, on_change_search=BlogAddFormState.set_search_add_color_calzado, filter_name="add_form_color_calzado"),
-                                rx.cond(BlogAddFormState.color_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("color_calzado"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Número (38, 39...)", options=BlogAddFormState.filtered_add_numeros_calzado, on_change_select=BlogAddFormState.set_numero_calzado, value_select=BlogAddFormState.numero_calzado, search_value=BlogAddFormState.search_add_numero_calzado, on_change_search=BlogAddFormState.set_search_add_numero_calzado, filter_name="add_form_numero_calzado"),
-                                rx.cond(BlogAddFormState.numero_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("numero_calzado"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_calzado, value_select=BlogAddFormState.material_calzado, search_value=BlogAddFormState.search_add_material_calzado, on_change_search=BlogAddFormState.set_search_add_material_calzado, filter_name="add_form_material_calzado"),
-                                rx.cond(BlogAddFormState.material_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_calzado"), size="1", variant="ghost"))
-                            ),
+                            searchable_select(placeholder="Tipo de Zapato", options=SessionState.filtered_tipos_zapatos, on_change_select=BlogAddFormState.set_tipo_zapato, value_select=BlogAddFormState.tipo_zapato, search_value=BlogAddFormState.search_add_tipo_zapato, on_change_search=BlogAddFormState.set_search_add_tipo_zapato, filter_name="add_form_tipo_zapato"),
+                            searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_calzado, value_select=BlogAddFormState.color_calzado, search_value=BlogAddFormState.search_add_color_calzado, on_change_search=BlogAddFormState.set_search_add_color_calzado, filter_name="add_form_color_calzado"),
+                            searchable_select(placeholder="Número (38, 39...)", options=BlogAddFormState.filtered_add_numeros_calzado, on_change_select=BlogAddFormState.set_numero_calzado, value_select=BlogAddFormState.numero_calzado, search_value=BlogAddFormState.search_add_numero_calzado, on_change_search=BlogAddFormState.set_search_add_numero_calzado, filter_name="add_form_numero_calzado"),
+                            searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_calzado, value_select=BlogAddFormState.material_calzado, search_value=BlogAddFormState.search_add_material_calzado, on_change_search=BlogAddFormState.set_search_add_material_calzado, filter_name="add_form_material_calzado"),
                             columns="2", spacing="4", width="100%"
                         )
                     ),
                     rx.cond(
                         BlogAddFormState.category == Category.MOCHILAS.value,
                         rx.grid(
-                            rx.hstack(
-                                searchable_select(placeholder="Tipo de Mochila", options=SessionState.filtered_tipos_mochilas, on_change_select=BlogAddFormState.set_tipo_mochila, value_select=BlogAddFormState.tipo_mochila, search_value=BlogAddFormState.search_add_tipo_mochila, on_change_search=BlogAddFormState.set_search_add_tipo_mochila, filter_name="add_form_tipo_mochila"),
-                                rx.cond(BlogAddFormState.tipo_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_mochila"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_mochila, value_select=BlogAddFormState.material_mochila, search_value=BlogAddFormState.search_add_material_mochila, on_change_search=BlogAddFormState.set_search_add_material_mochila, filter_name="add_form_material_mochila"),
-                                rx.cond(BlogAddFormState.material_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_mochila"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
-                                rx.cond(BlogAddFormState.medidas != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("medidas"), size="1", variant="ghost"))
-                            ),
+                            searchable_select(placeholder="Tipo de Mochila", options=SessionState.filtered_tipos_mochilas, on_change_select=BlogAddFormState.set_tipo_mochila, value_select=BlogAddFormState.tipo_mochila, search_value=BlogAddFormState.search_add_tipo_mochila, on_change_search=BlogAddFormState.set_search_add_tipo_mochila, filter_name="add_form_tipo_mochila"),
+                            searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_mochila, value_select=BlogAddFormState.material_mochila, search_value=BlogAddFormState.search_add_material_mochila, on_change_search=BlogAddFormState.set_search_add_material_mochila, filter_name="add_form_material_mochila"),
+                            rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
                             columns="2", spacing="4", width="100%"
                         )
                     ),
-                    grid_column="span 2",
-                    margin_top="1em"
+                    spacing="4",
+                    align_items="stretch"
                 ),
-                columns={"base": "1", "md": "2"},
-                spacing="6",
+                
+                grid_template_columns={"base": "1fr", "lg": "1fr 1.5fr"},
+                gap="2.5em",
                 width="100%",
-                align_items="stretch",
+                align_items="start",
             ),
 
             rx.hstack(
@@ -171,7 +116,7 @@ def blog_post_add_form() -> rx.Component:
             
             spacing="5",
             width="100%",
-            max_width="1200px",
+            max_width="1600px",
             padding="2em",
         ),
     )
