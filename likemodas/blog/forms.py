@@ -87,16 +87,22 @@ def blog_post_add_form() -> rx.Component:
             ),
             rx.cond(
                 BlogAddFormState.temp_images,
-                rx.hstack(
-                    rx.foreach(
-                        BlogAddFormState.temp_images,
-                        lambda img: rx.box(
-                            rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
-                            rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
-                            style={"position": "relative", "margin": "0.5em"},
+                # ✨ CAMBIO 1: Envuelto en un área de scroll para limitar la altura
+                rx.scroll_area(
+                    rx.hstack(
+                        rx.foreach(
+                            BlogAddFormState.temp_images,
+                            lambda img: rx.box(
+                                rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                                rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
+                                style={"position": "relative", "margin": "0.5em"},
+                            ),
                         ),
+                        wrap="wrap", spacing="3"
                     ),
-                    wrap="wrap", spacing="3"
+                    max_height="120px", # Altura máxima para una fila de imágenes
+                    type="auto",
+                    scrollbars="vertical",
                 )
             ),
             spacing="4",
@@ -120,7 +126,6 @@ def blog_post_add_form() -> rx.Component:
         spacing="4", width="100%", justify="end", margin_top="2em"
     )
 
-    # --- Diseño para pantallas de escritorio y tablets ---
     desktop_layout = rx.vstack(
         rx.grid(
             rx.vstack(upload_section, align_items="stretch"),
@@ -133,7 +138,6 @@ def blog_post_add_form() -> rx.Component:
         spacing="5", width="100%",
     )
 
-    # --- Diseño para pantallas pequeñas/móviles ---
     mobile_layout = rx.vstack(
         upload_section,
         basic_info_section,
@@ -145,12 +149,11 @@ def blog_post_add_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
-            # --- Contenedores que se ocultan/muestran ---
             rx.box(desktop_layout, display=["none", "none", "flex", "flex"]),
             rx.box(mobile_layout, display=["flex", "flex", "none", "none"]),
             spacing="5",
             width="100%",
-            max_width="1200px",
+            max_width="1600px", # ✨ CAMBIO 2: Aumentado el ancho máximo
             padding="2em",
         ),
     )
