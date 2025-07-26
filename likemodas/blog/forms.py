@@ -87,7 +87,6 @@ def blog_post_add_form() -> rx.Component:
             ),
             rx.cond(
                 BlogAddFormState.temp_images,
-                # ✨ CAMBIO: Se usa un Grid para una distribución proporcional
                 rx.grid(
                     rx.foreach(
                         BlogAddFormState.temp_images,
@@ -97,7 +96,7 @@ def blog_post_add_form() -> rx.Component:
                             style={"position": "relative"},
                         ),
                     ),
-                    columns="3", # Tres imágenes por fila
+                    columns="3",
                     spacing="2",
                     width="100%",
                     padding_top="0.5em",
@@ -109,10 +108,12 @@ def blog_post_add_form() -> rx.Component:
 
     basic_info_section = rx.vstack(
         rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
+        # ✨ CAMBIO AQUÍ: Se expanden los elementos para llenar el ancho
         rx.hstack(
-            rx.input(placeholder="Precio", type="number", value=BlogAddFormState.price.to_string(), on_change=BlogAddFormState.set_price_from_input, required=True, size="3"),
-            rx.select(BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3"),
-            spacing="4"
+            rx.input(placeholder="Precio", type="number", value=BlogAddFormState.price.to_string(), on_change=BlogAddFormState.set_price_from_input, required=True, size="3", width="100%"),
+            rx.select(BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3", width="100%"),
+            spacing="4",
+            width="100%",
         ),
         rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "255px"}),
         spacing="4", align_items="stretch"
