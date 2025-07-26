@@ -87,22 +87,17 @@ def blog_post_add_form() -> rx.Component:
             ),
             rx.cond(
                 BlogAddFormState.temp_images,
-                # ✨ CAMBIO 1: Envuelto en un área de scroll para limitar la altura
-                rx.scroll_area(
-                    rx.hstack(
-                        rx.foreach(
-                            BlogAddFormState.temp_images,
-                            lambda img: rx.box(
-                                rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
-                                rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
-                                style={"position": "relative", "margin": "0.5em"},
-                            ),
+                # ✨ CÓDIGO RESTAURADO: Se elimina el rx.scroll_area
+                rx.hstack(
+                    rx.foreach(
+                        BlogAddFormState.temp_images,
+                        lambda img: rx.box(
+                            rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                            rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
+                            style={"position": "relative", "margin": "0.5em"},
                         ),
-                        wrap="wrap", spacing="3"
                     ),
-                    max_height="120px", # Altura máxima para una fila de imágenes
-                    type="auto",
-                    scrollbars="vertical",
+                    wrap="wrap", spacing="3"
                 )
             ),
             spacing="4",
@@ -153,7 +148,7 @@ def blog_post_add_form() -> rx.Component:
             rx.box(mobile_layout, display=["flex", "flex", "none", "none"]),
             spacing="5",
             width="100%",
-            max_width="1600px", # ✨ CAMBIO 2: Aumentado el ancho máximo
+            max_width="1600px", # ✨ CÓDIGO MANTENIDO: El ancho del formulario sigue siendo mayor
             padding="2em",
         ),
     )
