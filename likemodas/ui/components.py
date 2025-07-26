@@ -1,13 +1,10 @@
-# likemodas/ui/components.py
-
 import reflex as rx
 import math
 from ..navigation import routes
 from ..cart.state import CartState, ProductCardData
-from reflex.event import EventSpec # ✨ Se añade esta importación
-from ..auth.state import SessionState # ✨ Se añade esta importación
+from reflex.event import EventSpec
+from ..auth.state import SessionState
 
-# --- ✨ NUEVA FUNCIÓN MOVILIZADA AQUÍ ---
 def searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
@@ -15,11 +12,11 @@ def searchable_select(
     value_select: rx.Var[str],
     search_value: rx.Var[str],
     on_change_search: EventSpec,
-    filter_name: str, # Nombre único para este filtro
+    filter_name: str,
+    is_disabled: rx.Var[bool] = False, # <-- ✨ LÍNEA AÑADIDA
 ) -> rx.Component:
     """
-    Un componente de selección personalizado, construido desde cero para
-    garantizar el control total sobre el diseño y la expansión.
+    Un componente de selección personalizado con opción de búsqueda y deshabilitado.
     """
     is_open = SessionState.open_filter_name == filter_name
 
@@ -32,7 +29,8 @@ def searchable_select(
             width="100%",
             justify_content="space-between",
             color_scheme="gray",
-            size="2", # Se ajusta el tamaño para el formulario
+            size="2",
+            is_disabled=is_disabled, # <-- ✨ LÍNEA AÑADIDA
         ),
         rx.cond(
             is_open,
@@ -74,13 +72,15 @@ def searchable_select(
                 border_radius="md",
                 position="absolute",
                 top="105%",
-                width="100%", # Se ajusta al 100% del contenedor relativo
+                width="100%",
                 z_index=10,
             )
         ),
         position="relative",
         width="100%",
     )
+
+# ... (El resto del archivo 'components.py' no necesita cambios) ...
 
 def categories_button() -> rx.Component:
     """Un componente reutilizable para el botón desplegable de categorías."""
@@ -160,8 +160,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px"
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
-                            # --- 👇 LÍNEA CORREGIDA AQUÍ 👇 ---
-                            # Se eliminó el `rx.Var.wrap()` incorrecto.
                             rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
                             _product_card_rating(post),
                             spacing="2", align="start"

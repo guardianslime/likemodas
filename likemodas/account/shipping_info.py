@@ -1,15 +1,13 @@
-# likemodas/account/shipping_info.py
-
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
 from .layout import account_layout
-# --- 👇 IMPORTA EL NUEVO ESTADO Y EL MODELO 👇 ---
 from .shipping_info_state import ShippingInfoState
 from ..models import ShippingAddressModel
+from ..ui.components import searchable_select # <-- Se importa el componente
 
 def address_form() -> rx.Component:
-    """Formulario para crear/editar una dirección."""
+    """Formulario para crear una nueva dirección con selectores de búsqueda."""
     return rx.form(
         rx.vstack(
             rx.heading("Nueva Dirección de Envío", size="6", width="100%"),
@@ -24,16 +22,33 @@ def address_form() -> rx.Component:
                     rx.input(name="phone", type="tel", required=True),
                     spacing="1", align_items="start",
                 ),
-                # El formulario de ciudad/barrio puede simplificarse o reutilizar la lógica del CartState
-                # Por simplicidad aquí, usamos inputs de texto.
+                # --- ✨ CAMBIO: Campo de texto de Ciudad reemplazado ---
                 rx.vstack(
                     rx.text("Ciudad*"),
-                    rx.input(name="city", type="text", required=True),
+                    searchable_select(
+                        placeholder="Selecciona una ciudad...",
+                        options=ShippingInfoState.cities,
+                        on_change_select=ShippingInfoState.set_city,
+                        value_select=ShippingInfoState.city,
+                        search_value=ShippingInfoState.search_city,
+                        on_change_search=ShippingInfoState.set_search_city,
+                        filter_name="shipping_city_filter",
+                    ),
                     spacing="1", align_items="start",
                 ),
+                # --- ✨ CAMBIO: Campo de texto de Barrio reemplazado ---
                 rx.vstack(
                     rx.text("Barrio"),
-                    rx.input(name="neighborhood", type="text"),
+                    searchable_select(
+                        placeholder="Selecciona un barrio...",
+                        options=ShippingInfoState.neighborhoods,
+                        on_change_select=ShippingInfoState.set_neighborhood,
+                        value_select=ShippingInfoState.neighborhood,
+                        search_value=ShippingInfoState.search_neighborhood,
+                        on_change_search=ShippingInfoState.set_search_neighborhood,
+                        filter_name="shipping_neighborhood_filter",
+                        is_disabled=~rx.Var.list(ShippingInfoState.neighborhoods).length() > 0,
+                    ),
                     spacing="1", align_items="start",
                 ),
                 rx.vstack(
@@ -46,7 +61,7 @@ def address_form() -> rx.Component:
             ),
             rx.hstack(
                 rx.button("Cancelar", on_click=ShippingInfoState.toggle_form, color_scheme="gray"),
-                rx.button("Guardar Dirección", type="submit", width="auto"), # Texto del botón modificado
+                rx.button("Guardar Dirección", type="submit", width="auto"),
                 justify="end", width="100%", margin_top="1em"
             ),
             spacing="4", width="100%",
@@ -103,22 +118,15 @@ def shipping_info_page() -> rx.Component:
                     "Aquí puedes gestionar tus direcciones de envío. La dirección predeterminada se usará para tus futuras compras.",
                     margin_bottom="1.5em"
                 ),
-
-                # Mostrar la lista de direcciones guardadas
                 rx.foreach(ShippingInfoState.addresses, address_card),
-
-                # Botón para añadir una nueva dirección
                 rx.cond(
                     ~ShippingInfoState.show_form,
                     rx.button("Crear Nueva Dirección", on_click=ShippingInfoState.toggle_form, margin_top="2em"),
                 ),
-                
-                # Formulario para añadir nueva dirección (condicional)
                 rx.cond(
                     ShippingInfoState.show_form,
                     address_form()
                 ),
-                
                 align_items="start",
                 width="100%",
                 max_width="700px"
