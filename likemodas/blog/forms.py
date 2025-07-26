@@ -5,30 +5,42 @@ from ..data.product_options import LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """El formulario rediseñado para añadir un nuevo producto con el nuevo layout."""
+    """El formulario rediseñado para añadir un nuevo producto, con layout y tamaño ajustados para coincidir con la captura de pantalla."""
     return rx.form(
         rx.vstack(
-            rx.heading("Añadir Nuevo Producto", size="7", margin_bottom="1em", width="100%"),
+            rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em", width="100%", text_align="start"),
             
-            # --- 👇 ESTRUCTURA DEL GRID PRINCIPAL MODIFICADA 👇 ---
+            # --- Grid principal con proporciones y espaciado ajustados ---
             rx.grid(
                 # --- Columna Izquierda: Carga de Imágenes ---
                 rx.vstack(
                     rx.card(
-                        rx.upload(
-                            rx.vstack(
-                                rx.icon("upload", size=32),
-                                rx.text("Subir imágenes del producto"),
+                        rx.vstack(
+                            rx.upload(
+                                rx.vstack(
+                                    rx.icon("upload", size=48),
+                                    rx.text("Subir imágenes del producto", size="4", weight="medium"),
+                                ),
+                                id="blog_upload",
+                                multiple=True,
+                                max_files=5,
+                                accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
+                                on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
+                                border="2px dashed",
+                                border_color=rx.color("gray", 10),
+                                padding="3em",
+                                width="100%",
+                                height="100%",
+                                style={"cursor": "pointer"},
                             ),
-                            id="blog_upload",
-                            multiple=True,
-                            max_files=5,
-                            accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
-                            on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
-                            border="2px dashed #ccc",
-                            padding="2em",
+                            align="center",
+                            justify="center",
                             width="100%",
-                        )
+                            height="100%",
+                        ),
+                        width="100%",
+                        height="100%",
+                        min_height="420px",
                     ),
                     rx.cond(
                         BlogAddFormState.temp_images,
@@ -36,47 +48,43 @@ def blog_post_add_form() -> rx.Component:
                             rx.foreach(
                                 BlogAddFormState.temp_images,
                                 lambda img: rx.box(
-                                    rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                                    rx.image(src=rx.get_upload_url(img), width="80px", height="80px", object_fit="cover", border_radius="md"),
                                     rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
-                                    style={"position": "relative", "margin": "0.5em"},
+                                    style={"position": "relative"},
                                 ),
                             ),
                             wrap="wrap",
                             spacing="3",
+                            padding_top="1em",
                         )
                     ),
                     spacing="4",
                     width="100%",
-                    height="100%", # Asegura que la tarjeta ocupe el alto
+                    height="100%",
                 ),
 
                 # --- Columna Derecha: Información y Características ---
                 rx.vstack(
-                    # Sección de Información del Producto
                     rx.input(placeholder="Nombre del producto", value=BlogAddFormState.title, on_change=BlogAddFormState.set_title, required=True, size="3"),
                     rx.hstack(
-                        rx.input(placeholder="Precio", type="number", value=BlogAddFormState.price.to_string(), on_change=BlogAddFormState.set_price_from_input, required=True, size="3"),
-                        rx.select(BlogPostState.categories, placeholder="Selecciona una categoría...", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3"),
+                        rx.input(placeholder="0", type="number", value=BlogAddFormState.price.to_string(), on_change=BlogAddFormState.set_price_from_input, required=True, size="3"),
+                        rx.select(BlogPostState.categories, placeholder="ropa", value=BlogAddFormState.category, on_change=BlogAddFormState.set_category, required=True, size="3"),
                         spacing="4",
                         width="100%",
                     ),
-                    rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "120px"}),
+                    rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "160px"}),
                     
-                    rx.divider(width="100%", margin_y="1em"),
-
-                    # Sección de Características Adicionales (movida aquí dentro)
+                    # Sección de Características Adicionales
                     rx.vstack(
-                        rx.cond(
-                            BlogAddFormState.category != "",
-                            rx.hstack(
-                                rx.text("Características Adicionales", weight="bold"),
-                                rx.spacer(),
-                                rx.button("Limpiar", on_click=BlogAddFormState.clear_all_attributes, size="1", variant="soft", color_scheme="gray"),
-                                justify="between",
-                                align_items="center",
-                                width="100%",
-                                margin_bottom="0.5em",
-                            ),
+                        rx.hstack(
+                           rx.text("Características Adicionales", weight="bold", size="5"),
+                           rx.spacer(),
+                           rx.button("Limpiar", on_click=BlogAddFormState.clear_all_attributes, size="1", variant="soft", color_scheme="gray"),
+                           justify="between",
+                           align_items="center",
+                           width="100%",
+                           margin_top="1em",
+                           margin_bottom="0.5em",
                         ),
                         rx.cond(
                             BlogAddFormState.category == Category.ROPA.value,
@@ -107,38 +115,38 @@ def blog_post_add_form() -> rx.Component:
                                 columns="2", spacing="4", width="100%",
                             )
                         ),
-                        align_items="start",
-                        width="100%",
                     ),
-                    
-                    spacing="4",
+                    rx.spacer(),
                     align_items="stretch",
+                    spacing="5",
                     width="100%",
                     height="100%",
                 ),
-                columns={"base": "1", "lg": "2"}, # 1 columna en móvil, 2 en pantallas grandes
-                spacing="6",
+
+                # Propiedades del Grid
+                grid_template_columns={"base": "1fr", "lg": "1fr 1.2fr"},
+                gap="2.5em",
                 width="100%",
-                align_items="start", # Alinea las columnas en la parte superior
             ),
 
             # --- Botones de Acción ---
             rx.hstack(
-                rx.button("Guardar Borrador", on_click=BlogAddFormState.submit, variant="soft", size="3"),
+                rx.button("Guardar Borrador", on_click=BlogAddFormState.submit, variant="soft", color_scheme="gray", size="3"),
                 rx.button("Publicar Ahora", on_click=BlogAddFormState.submit_and_publish, color_scheme="green", size="3"),
                 spacing="4",
                 width="100%",
                 justify="end",
-                margin_top="2em",
+                margin_top="1em",
             ),
             
             spacing="5",
             width="100%",
-            max_width="1200px",
+            max_width="1400px",
             padding="2em",
         ),
-        on_submit=BlogAddFormState.submit, # Define un on_submit por defecto
+        on_submit=BlogAddFormState.submit_and_publish,
     )
+
 
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar un post existente."""
@@ -201,7 +209,7 @@ def blog_post_edit_form() -> rx.Component:
                     rx.hstack(
                         rx.input(
                             name="publish_date",
-                            type="date",           
+                            type="date", 
                         ),
                         rx.input(
                             name="publish_time",
