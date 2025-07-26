@@ -87,17 +87,20 @@ def blog_post_add_form() -> rx.Component:
             ),
             rx.cond(
                 BlogAddFormState.temp_images,
-                # ✨ CÓDIGO RESTAURADO: Se elimina el rx.scroll_area
-                rx.hstack(
+                # ✨ CAMBIO: Se usa un Grid para una distribución proporcional
+                rx.grid(
                     rx.foreach(
                         BlogAddFormState.temp_images,
                         lambda img: rx.box(
-                            rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                            rx.image(src=rx.get_upload_url(img), width="100%", height="100%", object_fit="cover", border_radius="md"),
                             rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
-                            style={"position": "relative", "margin": "0.5em"},
+                            style={"position": "relative"},
                         ),
                     ),
-                    wrap="wrap", spacing="3"
+                    columns="3", # Tres imágenes por fila
+                    spacing="2",
+                    width="100%",
+                    padding_top="0.5em",
                 )
             ),
             spacing="4",
@@ -148,7 +151,7 @@ def blog_post_add_form() -> rx.Component:
             rx.box(mobile_layout, display=["flex", "flex", "none", "none"]),
             spacing="5",
             width="100%",
-            max_width="1600px", # ✨ CÓDIGO MANTENIDO: El ancho del formulario sigue siendo mayor
+            max_width="1600px",
             padding="2em",
         ),
     )
