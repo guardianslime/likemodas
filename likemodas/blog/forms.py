@@ -10,7 +10,7 @@ def blog_post_add_form() -> rx.Component:
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
-                # --- Columna Izquierda: Carga de Imágenes ---
+                # --- Columna Izquierda: Carga de Imágenes con ancho ajustado ---
                 rx.vstack(
                     rx.card(
                         rx.vstack(
@@ -48,8 +48,6 @@ def blog_post_add_form() -> rx.Component:
                         ),
                     ),
                     spacing="5",
-                    # Se establece un ancho fijo para que coincida con los campos de la derecha
-                    width="450px", 
                 ),
 
                 # --- Columna Derecha: Información y Características Adicionales ---
@@ -61,7 +59,7 @@ def blog_post_add_form() -> rx.Component:
                         spacing="4"
                     ),
                     rx.text_area(placeholder="Descripción del producto...", value=BlogAddFormState.content, on_change=BlogAddFormState.set_content, required=True, size="2", style={"height": "150px"}),
-                    rx.divider(margin_y="1.5em"),
+                    rx.divider(margin_y="1.5em"), # Separador visual
                     rx.hstack(
                         rx.text("Características Adicionales", weight="bold"),
                         rx.spacer(),
@@ -87,15 +85,54 @@ def blog_post_add_form() -> rx.Component:
                             columns="2", spacing="4", width="100%"
                         )
                     ),
-                    # ... (Condicionales para CALZADO y MOCHILAS se mantienen igual) ...
-                    spacing="4",
-                    align_items="stretch"
+
+                    rx.cond(
+                        BlogAddFormState.category == Category.CALZADO.value,
+                        rx.grid(
+                            rx.hstack(
+                                searchable_select(placeholder="Tipo de Zapato", options=SessionState.filtered_tipos_zapatos, on_change_select=BlogAddFormState.set_tipo_zapato, value_select=BlogAddFormState.tipo_zapato, search_value=BlogAddFormState.search_add_tipo_zapato, on_change_search=BlogAddFormState.set_search_add_tipo_zapato, filter_name="add_form_tipo_zapato"),
+                                rx.cond(BlogAddFormState.tipo_zapato != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_zapato"), size="1", variant="ghost"))
+                            ),
+                            rx.hstack(
+                                searchable_select(placeholder="Color", options=BlogAddFormState.filtered_add_colores, on_change_select=BlogAddFormState.set_color_calzado, value_select=BlogAddFormState.color_calzado, search_value=BlogAddFormState.search_add_color_calzado, on_change_search=BlogAddFormState.set_search_add_color_calzado, filter_name="add_form_color_calzado"),
+                                rx.cond(BlogAddFormState.color_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("color_calzado"), size="1", variant="ghost"))
+                            ),
+                            rx.hstack(
+                                searchable_select(placeholder="Número (38, 39...)", options=BlogAddFormState.filtered_add_numeros_calzado, on_change_select=BlogAddFormState.set_numero_calzado, value_select=BlogAddFormState.numero_calzado, search_value=BlogAddFormState.search_add_numero_calzado, on_change_search=BlogAddFormState.set_search_add_numero_calzado, filter_name="add_form_numero_calzado"),
+                                rx.cond(BlogAddFormState.numero_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("numero_calzado"), size="1", variant="ghost"))
+                            ),
+                            rx.hstack(
+                                searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_calzado, value_select=BlogAddFormState.material_calzado, search_value=BlogAddFormState.search_add_material_calzado, on_change_search=BlogAddFormState.set_search_add_material_calzado, filter_name="add_form_material_calzado"),
+                                rx.cond(BlogAddFormState.material_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_calzado"), size="1", variant="ghost"))
+                            ),
+                            columns="2", spacing="4", width="100%"
+                        )
+                    ),
+                    rx.cond(
+                        BlogAddFormState.category == Category.MOCHILAS.value,
+                        rx.grid(
+                            rx.hstack(
+                                searchable_select(placeholder="Tipo de Mochila", options=SessionState.filtered_tipos_mochilas, on_change_select=BlogAddFormState.set_tipo_mochila, value_select=BlogAddFormState.tipo_mochila, search_value=BlogAddFormState.search_add_tipo_mochila, on_change_search=BlogAddFormState.set_search_add_tipo_mochila, filter_name="add_form_tipo_mochila"),
+                                rx.cond(BlogAddFormState.tipo_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_mochila"), size="1", variant="ghost"))
+                            ),
+                            rx.hstack(
+                                searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_mochila, value_select=BlogAddFormState.material_mochila, search_value=BlogAddFormState.search_add_material_mochila, on_change_search=BlogAddFormState.set_search_add_material_mochila, filter_name="add_form_material_mochila"),
+                                rx.cond(BlogAddFormState.material_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_mochila"), size="1", variant="ghost"))
+                            ),
+                            rx.hstack(
+                                rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
+                                rx.cond(BlogAddFormState.medidas != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("medidas"), size="1", variant="ghost"))
+                            ),
+                            columns="2", spacing="4", width="100%"
+                        )
+                    ),
+                    grid_column="span 2",
+                    margin_top="1em"
                 ),
-                
-                columns={"base": "1", "lg": "2"},
-                spacing="8",
+                columns={"base": "1", "md": "2"},
+                spacing="6",
                 width="100%",
-                align_items="start",
+                align_items="stretch",
             ),
 
             rx.hstack(
@@ -110,7 +147,6 @@ def blog_post_add_form() -> rx.Component:
             padding="2em",
         ),
     )
-
 
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar un post existente."""
