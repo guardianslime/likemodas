@@ -13,20 +13,31 @@ def blog_post_add_form() -> rx.Component:
                 rx.vstack(
                     rx.card(
                         rx.vstack(
+                            # --- MODIFICACIONES ÚNICAMENTE AQUÍ DENTRO ---
                             rx.upload(
                                 rx.vstack(
-                                    rx.icon("upload", size=32),
-                                    rx.text("Subir imágenes del producto"),
+                                    rx.icon("upload", size=48),
+                                    rx.text("Subir imágenes del producto", size="4", weight="medium"),
+                                    spacing="4",
+                                    align="center",
+                                    justify="center",
+                                    height="100%",
+                                    width="100%",
                                 ),
                                 id="blog_upload",
                                 multiple=True,
                                 max_files=5,
                                 accept={"image/*": [".jpg", ".png", ".jpeg", ".webp"]},
                                 on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
-                                border="2px dashed #ccc",
-                                padding="2em",
-                                width="100%"
+                                border="2px dashed",
+                                border_color=rx.color("gray", 9),
+                                padding="3em",
+                                width="100%",
+                                min_height="300px",
+                                height="100%",
+                                style={"cursor": "pointer"},
                             ),
+                            # --- FIN DE LAS MODIFICACIONES ---
                             rx.cond(
                                 BlogAddFormState.temp_images,
                                 rx.hstack(
@@ -43,9 +54,14 @@ def blog_post_add_form() -> rx.Component:
                                 )
                             ),
                             spacing="4",
-                        )
+                            height="100%",
+                            width="100%",
+                            justify="center",
+                        ),
+                        height="100%",
                     ),
                     spacing="5",
+                    height="100%",
                 ),
 
                 rx.vstack(
@@ -144,11 +160,10 @@ def blog_post_add_form() -> rx.Component:
                     grid_column="span 2",
                     margin_top="1em"
                 ),
-                # --- ✨ CAMBIO CLAVE AQUÍ ---
-                columns={"base": "1", "md": "2"}, # Se mantiene responsivo
+                columns={"base": "1", "md": "2"},
                 spacing="6",
                 width="100%",
-                align_items="stretch", # Esto asegura que ambas columnas tengan la misma altura
+                align_items="stretch",
             ),
 
             rx.hstack(
