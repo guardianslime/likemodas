@@ -171,7 +171,8 @@ def checkout_form() -> rx.Component:
                         placeholder="Selecciona un barrio...",
                         on_change=CartState.set_shipping_neighborhood,
                         value=CartState.shipping_neighborhood,
-                        is_disabled=~(CartState.neighborhoods.length() > 0),
+                        # ✨ LÍNEA CORREGIDA: Esta es la sintaxis correcta.
+                        is_disabled=(rx.fn.length(CartState.neighborhoods) == 0),
                     ),
                     spacing="1", align_items="start",
                 ),

@@ -4,7 +4,7 @@ from ..ui.base import base_page
 from .layout import account_layout
 from .shipping_info_state import ShippingInfoState
 from ..models import ShippingAddressModel
-from ..ui.components import searchable_select # <-- Se importa el componente
+from ..ui.components import searchable_select
 
 def address_form() -> rx.Component:
     """Formulario para crear una nueva dirección con selectores de búsqueda."""
@@ -22,7 +22,6 @@ def address_form() -> rx.Component:
                     rx.input(name="phone", type="tel", required=True),
                     spacing="1", align_items="start",
                 ),
-                # --- ✨ CAMBIO: Campo de texto de Ciudad reemplazado ---
                 rx.vstack(
                     rx.text("Ciudad*"),
                     searchable_select(
@@ -36,7 +35,6 @@ def address_form() -> rx.Component:
                     ),
                     spacing="1", align_items="start",
                 ),
-                # --- ✨ CAMBIO: Campo de texto de Barrio reemplazado ---
                 rx.vstack(
                     rx.text("Barrio"),
                     searchable_select(
@@ -47,7 +45,8 @@ def address_form() -> rx.Component:
                         search_value=ShippingInfoState.search_neighborhood,
                         on_change_search=ShippingInfoState.set_search_neighborhood,
                         filter_name="shipping_neighborhood_filter",
-                        is_disabled=~rx.Var.list(ShippingInfoState.neighborhoods).length() > 0,
+                        # ✨ LÍNEA CORREGIDA: Esta es la sintaxis correcta.
+                        is_disabled=(rx.fn.length(ShippingInfoState.neighborhoods) == 0),
                     ),
                     spacing="1", align_items="start",
                 ),
