@@ -130,7 +130,8 @@ def blog_post_add_form() -> rx.Component:
                 ),
                 
                 # --- ✨ LÍNEA MODIFICADA ---
-                grid_template_columns={"base": "1fr", "md": "1.5fr 1fr"},
+                # Proporción: la columna izquierda es un 40% más ancha que la derecha.
+                grid_template_columns={"base": "1fr", "md": "1.4fr 1fr"},
                 spacing="6",
                 width="100%"
             ),
