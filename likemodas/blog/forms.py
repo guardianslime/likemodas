@@ -128,10 +128,10 @@ def blog_post_add_form() -> rx.Component:
                     grid_column="span 2",
                     margin_top="1em"
                 ),
-                
+
                 # --- ✨ LÍNEA MODIFICADA ---
-                # Proporción: la columna izquierda es un 40% más ancha que la derecha.
-                grid_template_columns={"base": "1fr", "md": "1.4fr 1fr"},
+                # Proporción: la columna izquierda es el doble de ancha que la derecha.
+                grid_template_columns={"base": "1fr", "md": "2fr 1fr"},
                 spacing="6",
                 width="100%"
             ),
@@ -141,7 +141,7 @@ def blog_post_add_form() -> rx.Component:
                 rx.button("Publicar Ahora", on_click=BlogAddFormState.submit_and_publish, color_scheme="green", size="3"),
                 spacing="4", width="100%", justify="end", margin_top="2em"
             ),
-            
+
             spacing="5",
             width="100%",
             max_width="1200px",
