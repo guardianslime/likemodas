@@ -13,16 +13,15 @@ def blog_post_add_form() -> rx.Component:
                 rx.vstack(
                     rx.card(
                         rx.vstack(
-                            # --- MODIFICACIONES ÚNICAMENTE AQUÍ DENTRO ---
                             rx.upload(
                                 rx.vstack(
                                     rx.icon("upload", size=48),
-                                    rx.text("Subir imágenes del producto", size="4", weight="medium"),
-                                    spacing="4",
+                                    rx.text("Subir imágenes del producto", size="4"),
                                     align="center",
                                     justify="center",
                                     height="100%",
                                     width="100%",
+                                    spacing="4",
                                 ),
                                 id="blog_upload",
                                 multiple=True,
@@ -31,34 +30,31 @@ def blog_post_add_form() -> rx.Component:
                                 on_drop=BlogAddFormState.handle_upload(rx.upload_files("blog_upload")),
                                 border="2px dashed",
                                 border_color=rx.color("gray", 9),
-                                padding="3em",
+                                padding="2em",
                                 width="100%",
-                                min_height="300px",
                                 height="100%",
                                 style={"cursor": "pointer"},
                             ),
-                            # --- FIN DE LAS MODIFICACIONES ---
-                            rx.cond(
-                                BlogAddFormState.temp_images,
-                                rx.hstack(
-                                    rx.foreach(
-                                        BlogAddFormState.temp_images,
-                                        lambda img: rx.box(
-                                            rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
-                                            rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
-                                            style={"position": "relative", "margin": "0.5em"},
-                                        ),
-                                    ),
-                                    wrap="wrap",
-                                    spacing="3"
-                                )
-                            ),
-                            spacing="4",
-                            height="100%",
-                            width="100%",
                             justify="center",
+                            height="100%",
                         ),
+                        min_height="350px",  # Ajusta la altura del contenedor
                         height="100%",
+                    ),
+                    rx.cond(
+                        BlogAddFormState.temp_images,
+                        rx.hstack(
+                            rx.foreach(
+                                BlogAddFormState.temp_images,
+                                lambda img: rx.box(
+                                    rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                                    rx.icon(tag="trash", on_click=BlogAddFormState.remove_image(img), color="red", style={"position": "absolute", "top": "5px", "right": "5px", "cursor": "pointer"}),
+                                    style={"position": "relative", "margin": "0.5em"},
+                                ),
+                            ),
+                            wrap="wrap",
+                            spacing="3"
+                        )
                     ),
                     spacing="5",
                     height="100%",
@@ -165,7 +161,6 @@ def blog_post_add_form() -> rx.Component:
                 width="100%",
                 align_items="stretch",
             ),
-
             rx.hstack(
                 rx.button("Guardar Borrador", on_click=BlogAddFormState.submit, variant="soft", size="3"),
                 rx.button("Publicar Ahora", on_click=BlogAddFormState.submit_and_publish, color_scheme="green", size="3"),
