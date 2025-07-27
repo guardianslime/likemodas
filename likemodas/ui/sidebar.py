@@ -96,16 +96,21 @@ def sidebar_items() -> rx.Component:
 def sidebar() -> rx.Component:
     return rx.box(
         rx.vstack(
+            # <<< INICIO DE CAMBIOS >>>
             rx.hstack(
                 rx.image(
-                    src="/logo.png", # <<< CAMBIO DE .jpg a .png
-                    width="2.25em", 
-                    height="auto", 
+                    src="/logo.png",
+                    width="3.5em",  # Logo un poco más grande
+                    height="auto",
                     border_radius="25%",
                 ),
-                rx.heading("Likemodas", size="7", weight="bold"),
-                align="center", justify="start", padding_x="0.5rem", width="100%",
+                # El rx.heading se ha eliminado
+                align="center",
+                justify="center", # Centra el logo
+                width="100%",
+                margin_bottom="1em", # Añade espacio debajo del logo
             ),
+            # <<< FIN DE CAMBIOS >>>
             sidebar_items(),
             rx.spacer(),
             rx.vstack(
