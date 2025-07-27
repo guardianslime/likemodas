@@ -96,21 +96,18 @@ def sidebar_items() -> rx.Component:
 def sidebar() -> rx.Component:
     return rx.box(
         rx.vstack(
-            # <<< INICIO DE CAMBIOS >>>
             rx.hstack(
                 rx.image(
                     src="/logo.png",
-                    width="3.5em",  # Logo un poco más grande
+                    width="9em",  # <<< CAMBIO CLAVE: Tamaño aumentado
                     height="auto",
                     border_radius="25%",
                 ),
-                # El rx.heading se ha eliminado
                 align="center",
-                justify="center", # Centra el logo
+                justify="center",
                 width="100%",
-                margin_bottom="1em", # Añade espacio debajo del logo
+                margin_bottom="1.5em", 
             ),
-            # <<< FIN DE CAMBIOS >>>
             sidebar_items(),
             rx.spacer(),
             rx.vstack(
