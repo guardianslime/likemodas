@@ -97,7 +97,12 @@ def sidebar() -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                rx.image(src="/logo.jpg", width="2.25em", height="auto", border_radius="25%",),
+                rx.image(
+                    src="/logo.png", # <<< CAMBIO DE .jpg a .png
+                    width="2.25em", 
+                    height="auto", 
+                    border_radius="25%",
+                ),
                 rx.heading("Likemodas", size="7", weight="bold"),
                 align="center", justify="start", padding_x="0.5rem", width="100%",
             ),

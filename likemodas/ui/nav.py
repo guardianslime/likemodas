@@ -89,7 +89,7 @@ def public_navbar() -> rx.Component:
                     ),
                 ),
                 rx.image(
-                    src="/logo.jpg",
+                    src="/logo.png", # <<< CAMBIO DE .jpg a .png
                     width="8em",
                     height="auto",
                     border_radius="md",
