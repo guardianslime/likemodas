@@ -15,12 +15,12 @@ from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
 # --- CAMBIO: Se importa el nuevo módulo de admin ---
 from .admin import state as admin_state
-from .cart import page as admin_page # La página de admin sigue en cart/page.py por ahora
+from .admin import page as admin_page 
 from .contact import page as contact_page, state as contact_state
 from . import navigation
 from .account import page as account_page_module
 from .account import shipping_info as shipping_info_module
-from .account import shipping_info_state
+from .account import state as shipping_info_state
 
 from .ui.base import base_page
 
@@ -45,7 +45,7 @@ app = rx.App(
         panel_background="solid",
         scaling="90%",
         radius="medium",
-        accent_color="sky"
+        accent_color="violet"  # <<< CAMBIO CLAVE: De 'sky' a 'violet'
     ),
 )
 
@@ -96,8 +96,6 @@ app.add_page(
     cart_page.cart_page,
     route="/cart",
     title="Mi Carrito",
-    # ✅ Esta configuración es correcta y crucial. Carga tanto los
-    # productos como la dirección de envío predeterminada.
     on_load=[
         cart_state.CartState.on_load, 
         cart_state.CartState.load_default_shipping_info
@@ -110,7 +108,6 @@ app.add_page(purchases_page.purchase_history_page, route="/my-purchases", title=
 app.add_page(
     account_page_module.my_account_redirect_page, 
     route=navigation.routes.MY_ACCOUNT_ROUTE,
-    # 👇 AÑADE ESTA LÍNEA PARA MANEJAR LA REDIRECCIÓN
     on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE)
 )
 
@@ -118,7 +115,6 @@ app.add_page(
     shipping_info_module.shipping_info_page,
     route=navigation.routes.SHIPPING_INFO_ROUTE,
     title="Información de Envío",
-    # 👇 Se carga la lista de direcciones al visitar la página
     on_load=shipping_info_state.ShippingInfoState.load_addresses 
 )
 

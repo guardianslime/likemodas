@@ -3,12 +3,9 @@
 import reflex as rx
 from reflex.style import toggle_color_mode
 
-from ..auth.state import SessionState # ✅ Se importa SessionState, que es seguro.
+from ..auth.state import SessionState
 from .. import navigation
-from ..models import UserRole
-# ❗️ Se elimina cualquier importación de AdminConfirmState.
 
-# ... (las funciones sidebar_user_item, sidebar_logout_item, etc. no cambian) ...
 def sidebar_user_item() -> rx.Component:
     user_info_obj = SessionState.authenticated_user_info
     username_via_user_abj = rx.cond(SessionState.authenticated_username, SessionState.authenticated_username, "Account")
@@ -70,7 +67,6 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
         ),
         href=href, underline="none", weight="medium", width="100%",
     )
-# ...
 
 def sidebar_items() -> rx.Component:
     return rx.vstack(
@@ -84,7 +80,6 @@ def sidebar_items() -> rx.Component:
                     "Confirmar Pagos", 
                     "dollar-sign", 
                     "/admin/confirm-payments",
-                    # ✅ CAMBIO: Ahora lee desde SessionState, que es seguro.
                     has_notification=SessionState.new_purchase_notification
                 ),
                 sidebar_item(
@@ -120,7 +115,7 @@ def sidebar() -> rx.Component:
                 sidebar_user_item(),
                 width="100%", spacing="5",
             ),
-            spacing="5", padding_x="1em", padding_y="1.5em", bg=rx.color("accent", 3),
+            spacing="5", padding_x="1em", padding_y="1.5em", bg="#2C004B", # <<< CAMBIO CLAVE
             align="start", height="100vh", width="16em",
             display=["none", "none", "flex", "flex"],
         ),
@@ -145,7 +140,7 @@ def sidebar() -> rx.Component:
                         ),
                         spacing="5", width="100%",
                     ),
-                    top="auto", right="auto", height="100%", width="20em", padding="1.5em", bg=rx.color("accent", 2),
+                    top="auto", right="auto", height="100%", width="20em", padding="1.5em", bg="#2C004B", # <<< CAMBIO CLAVE
                 ),
                 width="100%",
             ),

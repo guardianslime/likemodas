@@ -16,7 +16,6 @@ def floating_filter_panel() -> rx.Component:
     return rx.box(
         rx.hstack(
             rx.vstack(
-                # --- ✨ CABECERA MODIFICADA CON BOTÓN LIMPIAR ---
                 rx.hstack(
                     rx.heading("Filtros", size="6"),
                     rx.spacer(),
@@ -33,7 +32,6 @@ def floating_filter_panel() -> rx.Component:
                 ),
                 rx.divider(),
                 
-                # --- Filtros de Precio con botón de limpiar ---
                 rx.vstack(
                     rx.text("Precio", weight="bold"),
                     rx.hstack(
@@ -56,7 +54,6 @@ def floating_filter_panel() -> rx.Component:
                 rx.cond(
                     (SessionState.current_category != "") & (SessionState.current_category != "todos"),
                     
-                    # --- FILTROS ESPECÍFICOS DE CATEGORÍA ---
                     rx.fragment(
                         rx.cond(
                             SessionState.current_category == Category.ROPA.value,
@@ -109,7 +106,6 @@ def floating_filter_panel() -> rx.Component:
                         ),
                     ),
                     
-                    # --- FILTROS GENERALES ---
                     rx.fragment(
                         rx.vstack(
                             rx.divider(),
@@ -144,7 +140,7 @@ def floating_filter_panel() -> rx.Component:
                 ),
                 on_click=SessionState.toggle_filters,
                 cursor="pointer",
-                bg=rx.color("blue", 9),
+                bg=rx.color("violet", 9), # <<< CAMBIO CLAVE
                 border_radius="0 8px 8px 0",
                 height="120px",
                 display="flex",
