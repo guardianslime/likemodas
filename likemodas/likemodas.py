@@ -13,14 +13,13 @@ from .pages import category_page
 from .blog import page as blog_page, public_detail as blog_public_detail, list as blog_list, detail as blog_detail, add as blog_add, edit as blog_edit, state as blog_state
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
-# --- CAMBIO: Se importa el nuevo módulo de admin ---
 from .admin import state as admin_state
 from .admin import page as admin_page 
 from .contact import page as contact_page, state as contact_state
 from . import navigation
 from .account import page as account_page_module
 from .account import shipping_info as shipping_info_module
-from .account import state as shipping_info_state
+from .account import shipping_info_state # <-- LÍNEA CORREGIDA
 
 from .ui.base import base_page
 
@@ -30,8 +29,7 @@ class HomePageState(cart_state.CartState):
     @rx.event
     def on_load_main(self):
         """Carga los posts y resetea el filtro de categoría."""
-        self.current_category = ""  # Resetea la categoría para mostrar filtros generales
-        # ✨ Llama al nuevo evento unificado
+        self.current_category = ""
         yield cart_state.CartState.load_posts_and_set_category
 
 def index() -> rx.Component:
@@ -45,7 +43,7 @@ app = rx.App(
         panel_background="solid",
         scaling="90%",
         radius="medium",
-        accent_color="violet"  # <<< CAMBIO CLAVE: De 'sky' a 'violet'
+        accent_color="violet"
     ),
 )
 
@@ -62,7 +60,6 @@ app.add_page(
     category_page.category_page,
     route="/category/[cat_name]",
     title="Categoría",
-    # --- Usa el nuevo manejador de eventos unificado de CartState ---
     on_load=cart_state.CartState.load_posts_and_set_category 
 )
 

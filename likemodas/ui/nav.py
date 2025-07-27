@@ -11,7 +11,7 @@ def notification_icon() -> rx.Component:
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
-                rx.icon("bell", size=28, color="white"), # Color del ícono a blanco
+                rx.icon("bell", size=28, color="white"),
                 rx.cond(
                     NotificationState.unread_count > 0,
                     rx.box(
@@ -45,7 +45,7 @@ def notification_icon() -> rx.Component:
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            bg="#2C004BF0", # Fondo del menú desplegable
+            bg="#2C004BF0",
             style={"backdrop_filter": "blur(10px)"},
             max_height="300px",
             overflow_y="auto"
@@ -60,12 +60,11 @@ def public_navbar() -> rx.Component:
     """
     return rx.box(
         rx.hstack(
-            # --- Lado izquierdo (Menú y Logo) ---
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
                         rx.button(
-                            rx.icon("menu", size=24, color="white"), # Color del ícono a blanco
+                            rx.icon("menu", size=24, color="white"),
                             variant="ghost"
                         )
                     ),
@@ -85,7 +84,7 @@ def public_navbar() -> rx.Component:
                                 rx.menu.item("Register", on_click=navigation.NavState.to_register),
                             )
                         ),
-                        bg="#2C004BF0", # Fondo del menú desplegable
+                        bg="#2C004BF0",
                         style={"backdrop_filter": "blur(10px)"},
                     ),
                 ),
@@ -99,7 +98,6 @@ def public_navbar() -> rx.Component:
                 spacing="4"
             ),
             
-            # --- Centro (Barra de Búsqueda) ---
             rx.form(
                 rx.input(
                     placeholder="Buscar productos...",
@@ -117,7 +115,6 @@ def public_navbar() -> rx.Component:
                 width="100%"
             ),
             
-            # --- Lado Derecho (Iconos) ---
             rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,
@@ -125,7 +122,7 @@ def public_navbar() -> rx.Component:
                         notification_icon(),
                         rx.link(
                             rx.box(
-                                rx.icon("shopping-cart", size=28, color="white"), # Color del ícono a blanco
+                                rx.icon("shopping-cart", size=28, color="white"),
                                 rx.cond(
                                     CartState.cart_items_count > 0,
                                     rx.box(
@@ -156,7 +153,7 @@ def public_navbar() -> rx.Component:
         width="100%",
         padding="0.75rem 1rem",
         z_index="99",
-        bg="#2C004BF0", # <<< CAMBIO CLAVE: Fondo morado oscuro con transparencia
+        bg="#2C004BF0",
         style={"backdrop_filter": "blur(10px)"},
         on_mount=[NavDeviceState.on_mount, NotificationState.load_notifications],
     )

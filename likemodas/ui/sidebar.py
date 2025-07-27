@@ -1,5 +1,3 @@
-# likemodas/ui/sidebar.py (VERSIÓN FINAL Y CORRECTA)
-
 import reflex as rx
 from reflex.style import toggle_color_mode
 
@@ -115,7 +113,7 @@ def sidebar() -> rx.Component:
                 sidebar_user_item(),
                 width="100%", spacing="5",
             ),
-            spacing="5", padding_x="1em", padding_y="1.5em", bg="#2C004B", # <<< CAMBIO CLAVE
+            spacing="5", padding_x="1em", padding_y="1.5em", bg="#2C004B",
             align="start", height="100vh", width="16em",
             display=["none", "none", "flex", "flex"],
         ),
@@ -140,7 +138,7 @@ def sidebar() -> rx.Component:
                         ),
                         spacing="5", width="100%",
                     ),
-                    top="auto", right="auto", height="100%", width="20em", padding="1.5em", bg="#2C004B", # <<< CAMBIO CLAVE
+                    top="auto", right="auto", height="100%", width="20em", padding="1.5em", bg="#2C004B",
                 ),
                 width="100%",
             ),
