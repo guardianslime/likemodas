@@ -19,7 +19,7 @@ from .contact import page as contact_page, state as contact_state
 from . import navigation
 from .account import page as account_page_module
 from .account import shipping_info as shipping_info_module
-from .account import shipping_info_state # <-- LÍNEA CORREGIDA
+from .account import shipping_info_state
 
 from .ui.base import base_page
 
@@ -38,12 +38,12 @@ def index() -> rx.Component:
 
 app = rx.App(
     theme=rx.theme(
-        appearance="dark",
+        appearance="light", # Inicia en modo claro por defecto
         has_background=True,
         panel_background="solid",
         scaling="90%",
         radius="medium",
-        accent_color="violet"
+        accent_color="plum"  # <<< CAMBIO CLAVE: De 'violet' a 'plum'
     ),
 )
 

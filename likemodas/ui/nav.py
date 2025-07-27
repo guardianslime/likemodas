@@ -11,7 +11,7 @@ def notification_icon() -> rx.Component:
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
-                rx.icon("bell", size=28, color="white"),
+                rx.icon("bell", size=28, color=rx.color_mode_cond("black", "white")),
                 rx.cond(
                     NotificationState.unread_count > 0,
                     rx.box(
@@ -45,7 +45,7 @@ def notification_icon() -> rx.Component:
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            bg="#2C004BF0",
+            bg=rx.color_mode_cond("#FFFFFFF0", "#2C004BF0"),
             style={"backdrop_filter": "blur(10px)"},
             max_height="300px",
             overflow_y="auto"
@@ -59,14 +59,12 @@ def public_navbar() -> rx.Component:
     con el menú a la izquierda y estilos de color personalizados.
     """
     return rx.box(
-        # <<< CAMBIO CLAVE: Se usa rx.grid en lugar de rx.hstack para un mejor control del layout >>>
         rx.grid(
-            # --- Columna Izquierda (Logo y Menú) ---
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
                         rx.button(
-                            rx.icon("menu", size=24, color="white"),
+                            rx.icon("menu", size=24, color=rx.color_mode_cond("black", "white")),
                             variant="ghost"
                         )
                     ),
@@ -86,7 +84,7 @@ def public_navbar() -> rx.Component:
                                 rx.menu.item("Register", on_click=navigation.NavState.to_register),
                             )
                         ),
-                        bg="#2C004BF0",
+                        bg=rx.color_mode_cond("#FFFFFFF0", "#2C004BF0"),
                         style={"backdrop_filter": "blur(10px)"},
                     ),
                 ),
@@ -101,7 +99,6 @@ def public_navbar() -> rx.Component:
                 justify="start",
             ),
             
-            # --- Columna Central (Barra de búsqueda) ---
             rx.center(
                 rx.form(
                     rx.input(
@@ -121,7 +118,6 @@ def public_navbar() -> rx.Component:
                 width="100%",
             ),
             
-            # --- Columna Derecha (Iconos) ---
             rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,
@@ -129,7 +125,7 @@ def public_navbar() -> rx.Component:
                         notification_icon(),
                         rx.link(
                             rx.box(
-                                rx.icon("shopping-cart", size=28, color="white"),
+                                rx.icon("shopping-cart", size=28, color=rx.color_mode_cond("black", "white")),
                                 rx.cond(
                                     CartState.cart_items_count > 0,
                                     rx.box(
@@ -150,20 +146,19 @@ def public_navbar() -> rx.Component:
                 justify="end",
             ),
             
-            # Definición de las columnas del grid
             columns="auto 1fr auto",
             align_items="center",
             width="100%",
-            gap="1.5rem", # Espacio entre columnas
+            gap="1.5rem",
         ),
         position="fixed",
         top="0",
         left="0",
         right="0",
         width="100%",
-        padding="0.75rem 1.5rem", # Aumentado el padding horizontal
+        padding="0.75rem 1.5rem",
         z_index="99",
-        bg="#2C004BF0",
+        bg=rx.color_mode_cond("#F8F8F8F0", "#2C004BF0"), # <<< CAMBIO CLAVE
         style={"backdrop_filter": "blur(10px)"},
         on_mount=[NavDeviceState.on_mount, NotificationState.load_notifications],
     )

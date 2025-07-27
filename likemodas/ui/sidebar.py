@@ -99,7 +99,7 @@ def sidebar() -> rx.Component:
             rx.hstack(
                 rx.image(
                     src="/logo.png",
-                    width="9em",  # <<< CAMBIO CLAVE: Tamaño aumentado
+                    width="9em",
                     height="auto",
                     border_radius="25%",
                 ),
@@ -120,7 +120,8 @@ def sidebar() -> rx.Component:
                 sidebar_user_item(),
                 width="100%", spacing="5",
             ),
-            spacing="5", padding_x="1em", padding_y="1.5em", bg="#2C004B",
+            spacing="5", padding_x="1em", padding_y="1.5em", 
+            bg=rx.color_mode_cond(rx.color("gray", 2), "#2C004B"), # <<< CAMBIO CLAVE
             align="start", height="100vh", width="16em",
             display=["none", "none", "flex", "flex"],
         ),
@@ -145,7 +146,8 @@ def sidebar() -> rx.Component:
                         ),
                         spacing="5", width="100%",
                     ),
-                    top="auto", right="auto", height="100%", width="20em", padding="1.5em", bg="#2C004B",
+                    top="auto", right="auto", height="100%", width="20em", padding="1.5em", 
+                    bg=rx.color_mode_cond(rx.color("gray", 2), "#2C004B"), # <<< CAMBIO CLAVE
                 ),
                 width="100%",
             ),
