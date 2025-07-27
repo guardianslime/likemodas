@@ -59,7 +59,9 @@ def public_navbar() -> rx.Component:
     con el menú a la izquierda y estilos de color personalizados.
     """
     return rx.box(
-        rx.hstack(
+        # <<< CAMBIO CLAVE: Se usa rx.grid en lugar de rx.hstack para un mejor control del layout >>>
+        rx.grid(
+            # --- Columna Izquierda (Logo y Menú) ---
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
@@ -89,32 +91,37 @@ def public_navbar() -> rx.Component:
                     ),
                 ),
                 rx.image(
-                    src="/logo.png", # <<< CAMBIO DE .jpg a .png
+                    src="/logo.png",
                     width="8em",
                     height="auto",
                     border_radius="md",
                 ),
                 align="center",
-                spacing="4"
+                spacing="4",
+                justify="start",
             ),
             
-            rx.form(
-                rx.input(
-                    placeholder="Buscar productos...",
-                    value=SearchState.search_term,
-                    on_change=SearchState.set_search_term,
-                    on_blur=SearchState.perform_search,
-                    width=["40%", "50%", "60%", "65%"],
-                    height=["2.5em", "2.8em", "3em", "3.3em"],
-                    padding_x="4",
-                    border_radius="full",
-                    border_width="1px",
-                    font_size=rx.breakpoints(sm="2", md="3", lg="3"),
+            # --- Columna Central (Barra de búsqueda) ---
+            rx.center(
+                rx.form(
+                    rx.input(
+                        placeholder="Buscar productos...",
+                        value=SearchState.search_term,
+                        on_change=SearchState.set_search_term,
+                        on_blur=SearchState.perform_search,
+                        height=["2.5em", "2.8em", "3em", "3.3em"],
+                        padding_x="4",
+                        border_radius="full",
+                        border_width="1px",
+                        font_size=rx.breakpoints(sm="2", md="3", lg="3"),
+                    ),
+                    on_submit=SearchState.perform_search,
+                    width="100%"
                 ),
-                on_submit=SearchState.perform_search,
-                width="100%"
+                width="100%",
             ),
             
+            # --- Columna Derecha (Iconos) ---
             rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,
@@ -140,18 +147,21 @@ def public_navbar() -> rx.Component:
                 ),
                 align="center",
                 spacing="4",
+                justify="end",
             ),
             
-            justify="between",
-            align="center",
+            # Definición de las columnas del grid
+            columns="auto 1fr auto",
+            align_items="center",
             width="100%",
+            gap="1.5rem", # Espacio entre columnas
         ),
         position="fixed",
         top="0",
         left="0",
         right="0",
         width="100%",
-        padding="0.75rem 1rem",
+        padding="0.75rem 1.5rem", # Aumentado el padding horizontal
         z_index="99",
         bg="#2C004BF0",
         style={"backdrop_filter": "blur(10px)"},
