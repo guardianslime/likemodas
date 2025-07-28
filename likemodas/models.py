@@ -103,11 +103,12 @@ class BlogPostModel(rx.Model, table=True):
     def publish_date_formatted(self) -> str:
         return format_utc_to_local(self.publish_date)
 
-    # --- ✅ CAMBIO CLAVE: Se añade el método dict para romper el ciclo ---
+    # --- ✅ SOLUCIÓN AL RecursionError ---
+    # Se añade el método dict para romper el ciclo UserInfo -> BlogPostModel -> UserInfo
     def dict(self, **kwargs):
-        # Excluimos 'userinfo' para romper el ciclo UserInfo -> BlogPostModel -> UserInfo
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
         d = super().dict(**kwargs)
+        # Puedes añadir campos extra al diccionario si lo necesitas después
         return d
 
 class ShippingAddressModel(rx.Model, table=True):
@@ -149,8 +150,9 @@ class PurchaseModel(rx.Model, table=True):
         if not self.items: return []
         return [f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)" for item in self.items]
 
+    # --- ✅ SOLUCIÓN AL RecursionError ---
+    # Se modifica el método dict para excluir 'userinfo' y romper el ciclo
     def dict(self, **kwargs):
-        # --- ✅ CAMBIO CLAVE: Se excluye 'userinfo' para romper el ciclo ---
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
         d = super().dict(**kwargs)
         d["purchase_date_formatted"] = self.purchase_date_formatted
@@ -166,9 +168,9 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
 
-    # --- ✅ CAMBIO CLAVE: Se añade el método dict para romper el ciclo ---
+    # --- ✅ SOLUCIÓN AL RecursionError ---
+    # Se añade el método dict para romper el ciclo PurchaseModel -> PurchaseItem -> PurchaseModel
     def dict(self, **kwargs):
-        # Excluimos 'purchase' para romper el ciclo PurchaseModel -> PurchaseItem -> PurchaseModel
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"purchase"}
         d = super().dict(**kwargs)
         return d
@@ -231,8 +233,9 @@ class CommentModel(rx.Model, table=True):
     def dislikes(self) -> int:
         return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
 
+    # --- ✅ SOLUCIÓN AL RecursionError ---
+    # Se excluyen las relaciones que apuntan hacia atrás para romper los ciclos
     def dict(self, **kwargs):
-        # --- ✅ CAMBIO CLAVE: Se excluyen las relaciones que apuntan hacia atrás ---
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo", "blog_post"}
         d = super().dict(**kwargs)
         d["created_at_formatted"] = self.created_at_formatted
