@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN RESTAURADA Y ESTABLE)
+# likemodas/models.py (VERSIÓN CORREGIDA PARA RECURSIONERROR)
 
 from typing import Optional, List
 from . import utils
@@ -83,14 +83,7 @@ class BlogPostModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
-    category: Category = Field(
-        default=Category.OTROS, 
-        sa_column=Column(
-            String, 
-            server_default=Category.OTROS.value,
-            nullable=False  # <-- La propiedad ahora está en el lugar correcto.
-        )
-    )
+    category: Category = Field(default=Category.OTROS, sa_column=Column(String, server_default=Category.OTROS.value, nullable=False))
     
     @property
     def rating_count(self) -> int:
@@ -98,8 +91,7 @@ class BlogPostModel(rx.Model, table=True):
 
     @property
     def average_rating(self) -> float:
-        if not self.comments:
-            return 0.0
+        if not self.comments: return 0.0
         total_rating = sum(comment.rating for comment in self.comments)
         return total_rating / len(self.comments)
 
@@ -111,22 +103,23 @@ class BlogPostModel(rx.Model, table=True):
     def publish_date_formatted(self) -> str:
         return format_utc_to_local(self.publish_date)
 
+    # --- ✅ CAMBIO CLAVE: Se añade el método dict para romper el ciclo ---
+    def dict(self, **kwargs):
+        # Excluimos 'userinfo' para romper el ciclo UserInfo -> BlogPostModel -> UserInfo
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
+        d = super().dict(**kwargs)
+        return d
+
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
-    
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
-    
-    # Campos de la dirección
     name: str
     phone: str
     city: str
     neighborhood: str
     address: str
-    
-    # Campo clave para la dirección predeterminada
     is_default: bool = Field(default=False, nullable=False)
-
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
 class PurchaseModel(rx.Model, table=True):
@@ -137,13 +130,10 @@ class PurchaseModel(rx.Model, table=True):
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
     shipping_name: Optional[str] = None
-    
-    # --- 👇 CAMPOS DE ENVÍO AÑADIDOS 👇 ---
     shipping_city: Optional[str] = None
     shipping_neighborhood: Optional[str] = None
     shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
-    
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
     @property
@@ -156,11 +146,12 @@ class PurchaseModel(rx.Model, table=True):
         
     @property
     def items_formatted(self) -> list[str]:
-        if not self.items:
-            return []
+        if not self.items: return []
         return [f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)" for item in self.items]
 
     def dict(self, **kwargs):
+        # --- ✅ CAMBIO CLAVE: Se excluye 'userinfo' para romper el ciclo ---
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
         d = super().dict(**kwargs)
         d["purchase_date_formatted"] = self.purchase_date_formatted
         d["items_formatted"] = self.items_formatted
@@ -174,6 +165,13 @@ class PurchaseItemModel(rx.Model, table=True):
     blog_post: "BlogPostModel" = Relationship()
     quantity: int
     price_at_purchase: float
+
+    # --- ✅ CAMBIO CLAVE: Se añade el método dict para romper el ciclo ---
+    def dict(self, **kwargs):
+        # Excluimos 'purchase' para romper el ciclo PurchaseModel -> PurchaseItem -> PurchaseModel
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"purchase"}
+        d = super().dict(**kwargs)
+        return d
 
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -234,6 +232,8 @@ class CommentModel(rx.Model, table=True):
         return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
 
     def dict(self, **kwargs):
+        # --- ✅ CAMBIO CLAVE: Se excluyen las relaciones que apuntan hacia atrás ---
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo", "blog_post"}
         d = super().dict(**kwargs)
         d["created_at_formatted"] = self.created_at_formatted
         d["likes"] = self.likes
@@ -246,5 +246,3 @@ class CommentVoteModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
     comment_id: int = Field(foreign_key="commentmodel.id")
     comment: "CommentModel" = Relationship(back_populates="votes")
-
-
