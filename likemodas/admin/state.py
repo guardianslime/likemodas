@@ -160,19 +160,30 @@ class CartState(SessionState):
         return rx.redirect("/my-purchases")
     
 
+class PurchaseCardData(rx.Base):
+    id: int
+    customer_name: str
+    customer_email: str
+    purchase_date_formatted: str
+    status: str
+    total_price: float
+    shipping_name: str
+    shipping_full_address: str
+    shipping_phone: str
+    items_formatted: list[str]
+
 class AdminConfirmState(SessionState):
     """Estado para manejar las confirmaciones de compras pendientes."""
-    pending_purchases: List[PurchaseModel] = []
+    # --- La variable de estado ahora usa el objeto simple ---
+    pending_purchases: List[PurchaseCardData] = []
 
     @rx.event
     def load_pending_purchases(self):
-        """Carga las compras pendientes para que el admin las revise."""
+        """Carga, transforma y guarda los datos de las compras pendientes."""
         if not self.is_admin:
             self.pending_purchases = []
             return
         with rx.session() as session:
-            # --- ✅ SOLUCIÓN: Consulta simplificada ---
-            # Cargamos solo lo necesario para evitar bucles de serialización.
             statement = (
                 select(PurchaseModel)
                 .options(
@@ -182,25 +193,39 @@ class AdminConfirmState(SessionState):
                 .where(PurchaseModel.status == PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.asc())
             )
-            self.pending_purchases = session.exec(statement).unique().all()
+            db_results = session.exec(statement).unique().all()
+            
+            # --- Transformación de PurchaseModel a PurchaseCardData ---
+            self.pending_purchases = [
+                PurchaseCardData(
+                    id=p.id,
+                    customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A",
+                    customer_email=p.userinfo.email if p.userinfo else "N/A",
+                    purchase_date_formatted=p.purchase_date_formatted,
+                    status=p.status.value,
+                    total_price=p.total_price,
+                    shipping_name=p.shipping_name or "",
+                    shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                    shipping_phone=p.shipping_phone or "",
+                    items_formatted=p.items_formatted
+                )
+                for p in db_results
+            ]
             
             has_pending = len(self.pending_purchases) > 0
             yield SessionState.set_new_purchase_notification(has_pending)
 
+    # El resto del estado no necesita cambios, ya que opera directamente en la DB
     @rx.event
     def confirm_payment(self, purchase_id: int):
-        """Confirma un pago, actualiza el estado y notifica al usuario."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos de administrador.")
-        
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if not purchase:
                 return rx.toast.error("Compra no encontrada.")
-
             purchase.status = PurchaseStatus.CONFIRMED
             purchase.confirmed_at = datetime.utcnow()
-            
             notification = NotificationModel(
                 userinfo_id=purchase.userinfo_id,
                 message=f"¡Tu compra #{purchase.id} ha sido confirmada!",
@@ -209,43 +234,38 @@ class AdminConfirmState(SessionState):
             session.add(purchase)
             session.add(notification)
             session.commit()
-        
         yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
         yield self.load_pending_purchases()
 
     @classmethod
     def notify_admin_of_new_purchase(cls):
-        """Notifica al admin sobre una nueva compra."""
         return SessionState.set_new_purchase_notification(True)
 
 class PaymentHistoryState(SessionState):
-    """Estado para ver el historial de compras confirmadas y enviadas."""
-    purchases: List[PurchaseModel] = []
+    """Estado para ver el historial de compras."""
+    # --- La variable de estado ahora usa el objeto simple ---
+    all_purchases: List[PurchaseCardData] = []
     search_query: str = ""
 
     @rx.var
-    def filtered_purchases(self) -> list[PurchaseModel]:
-        """Filtra el historial de pagos por ID, nombre o email del cliente."""
+    def filtered_purchases(self) -> list[PurchaseCardData]:
         if not self.search_query.strip():
-            return self.purchases
-        
+            return self.all_purchases
         query = self.search_query.lower()
-        
         return [
-            p for p in self.purchases
+            p for p in self.all_purchases
             if query in f"#{p.id}" or \
-               query in p.userinfo.user.username.lower() or \
-               query in p.userinfo.email.lower()
+               query in p.customer_name.lower() or \
+               query in p.customer_email.lower()
         ]
 
     @rx.event
     def load_confirmed_purchases(self):
-        """Carga el historial de compras para el administrador."""
+        """Carga, transforma y guarda el historial de compras."""
         if not self.is_admin:
-            self.purchases = []
+            self.all_purchases = []
             return
         with rx.session() as session:
-            # --- ✅ SOLUCIÓN: Consulta simplificada ---
             statement = (
                 select(PurchaseModel)
                 .options(
@@ -255,4 +275,21 @@ class PaymentHistoryState(SessionState):
                 .where(PurchaseModel.status != PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.desc())
             )
-            self.purchases = session.exec(statement).unique().all()
+            db_results = session.exec(statement).unique().all()
+            
+            # --- Transformación de PurchaseModel a PurchaseCardData ---
+            self.all_purchases = [
+                PurchaseCardData(
+                    id=p.id,
+                    customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A",
+                    customer_email=p.userinfo.email if p.userinfo else "N/A",
+                    purchase_date_formatted=p.purchase_date_formatted,
+                    status=p.status.value,
+                    total_price=p.total_price,
+                    shipping_name=p.shipping_name or "",
+                    shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                    shipping_phone=p.shipping_phone or "",
+                    items_formatted=p.items_formatted
+                )
+                for p in db_results
+            ]
