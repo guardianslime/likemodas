@@ -140,7 +140,7 @@ def floating_filter_panel() -> rx.Component:
                 ),
                 on_click=SessionState.toggle_filters,
                 cursor="pointer",
-                bg=rx.color("violet", 9), # <<< CAMBIO CLAVE
+                bg=rx.color("plum", 9), # <<< CAMBIO CLAVE
                 border_radius="0 8px 8px 0",
                 height="120px",
                 display="flex",
