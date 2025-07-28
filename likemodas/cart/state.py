@@ -13,12 +13,8 @@ from ..data.colombia_locations import load_colombia_data
 from ..admin.state import AdminConfirmState
 
 class ProductCardData(rx.Base):
-    id: int
-    title: str
-    price: float = 0.0
-    images: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
+    id: int; title: str; price: float = 0.0; images: list[str] = []
+    average_rating: float = 0.0; rating_count: int = 0
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
