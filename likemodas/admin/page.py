@@ -2,11 +2,12 @@ import reflex as rx
 from ..auth.admin_auth import require_admin
 import reflex_local_auth
 from ..ui.base import base_page
-from ..admin.state import AdminConfirmState, PaymentHistoryState
 from ..models import PurchaseModel
 from ..cart.state import CartState
+# --- ✅ SOLUCIÓN: Se importa la clase 'PurchaseCardData' desde el estado ---
+from ..admin.state import AdminConfirmState, PaymentHistoryState, PurchaseCardData
 
-# --- Componente de Tarjeta de Compra de Admin ---
+# --- La tarjeta ahora recibe el objeto de datos simple "PurchaseCardData" ---
 def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) -> rx.Component:
     """Muestra los detalles de una compra en el panel de admin."""
     return rx.card(
