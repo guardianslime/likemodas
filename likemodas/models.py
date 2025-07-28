@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN DEFINITIVA FINAL)
+# likemodas/models.py (VERSIÓN CON CORRECCIÓN HOLÍSTICA DE BUCLES)
 
 from typing import Optional, List
 from . import utils
@@ -11,28 +11,21 @@ import sqlalchemy
 import enum
 import pytz
 
-# ... (Todo el código hasta BlogPostModel se mantiene igual) ...
-
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
-    if not utc_dt:
-        return "N/A"
+    if not utc_dt: return "N/A"
     colombia_tz = pytz.timezone("America/Bogota")
     aware_utc_dt = utc_dt.replace(tzinfo=pytz.utc)
     local_dt = aware_utc_dt.astimezone(colombia_tz)
     return local_dt.strftime('%d-%m-%Y %I:%M %p')
 
 class UserRole(str, enum.Enum):
-    CUSTOMER = "customer"
-    ADMIN = "admin"
-
+    CUSTOMER = "customer"; ADMIN = "admin"
 class PurchaseStatus(str, enum.Enum):
-    PENDING = "pending_confirmation"
-    CONFIRMED = "confirmed"
-    SHIPPED = "shipped"
-
+    PENDING = "pending_confirmation"; CONFIRMED = "confirmed"; SHIPPED = "shipped"
 class VoteType(str, enum.Enum):
-    LIKE = "like"
-    DISLIKE = "dislike"
+    LIKE = "like"; DISLIKE = "dislike"
+class Category(str, enum.Enum):
+    ROPA = "ropa"; CALZADO = "calzado"; MOCHILAS = "mochilas"; OTROS = "otros"
 
 class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
@@ -52,14 +45,16 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
-# ... (El resto de modelos hasta BlogPostModel se mantienen igual) ...
-
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
     userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
+    # --- ✅ SOLUCIÓN: Excluir la referencia de vuelta para evitar bucles ---
+    def dict(self, **kwargs):
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
+        return super().dict(**kwargs)
 
 class PasswordResetToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
@@ -67,18 +62,10 @@ class PasswordResetToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
-class Category(str, enum.Enum):
-    ROPA = "ropa"
-    CALZADO = "calzado"
-    MOCHILAS = "mochilas"
-    OTROS = "otros"
-
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
-    title: str
-    content: str
-    price: float = 0.0
+    title: str; content: str; price: float = 0.0
     attributes: dict = Field(default={}, sa_column=Column(JSON))
     images: list[str] = Field(default=[], sa_column=Column(JSON))
     publish_active: bool = False
@@ -100,12 +87,8 @@ class BlogPostModel(rx.Model, table=True):
     def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
 
     def dict(self, **kwargs):
-        # --- ✅ SOLUCIÓN FINAL: Excluimos 'userinfo' Y 'comments' ---
-        # Esto evita que el serializador entre en el bucle a través de los comentarios.
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo", "comments"}
         return super().dict(**kwargs)
-
-# ... (El resto de modelos se mantienen con las correcciones anteriores) ...
 
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
@@ -114,6 +97,10 @@ class ShippingAddressModel(rx.Model, table=True):
     name: str; phone: str; city: str; neighborhood: str; address: str
     is_default: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    # --- ✅ SOLUCIÓN: Excluir la referencia de vuelta para evitar bucles ---
+    def dict(self, **kwargs):
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
+        return super().dict(**kwargs)
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -122,11 +109,7 @@ class PurchaseModel(rx.Model, table=True):
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
-    shipping_name: Optional[str] = None
-    shipping_city: Optional[str] = None
-    shipping_neighborhood: Optional[str] = None
-    shipping_address: Optional[str] = None
-    shipping_phone: Optional[str] = None
+    shipping_name: Optional[str] = None; shipping_city: Optional[str] = None; shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None; shipping_phone: Optional[str] = None
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
     @property
@@ -151,8 +134,7 @@ class PurchaseItemModel(rx.Model, table=True):
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     blog_post: "BlogPostModel" = Relationship()
-    quantity: int
-    price_at_purchase: float
+    quantity: int; price_at_purchase: float
 
     def dict(self, **kwargs):
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"purchase"}
@@ -161,15 +143,14 @@ class PurchaseItemModel(rx.Model, table=True):
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
-    message: str
-    is_read: bool = Field(default=False)
-    url: Optional[str] = None
+    message: str; is_read: bool = Field(default=False); url: Optional[str] = None
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
-        
+    # --- ✅ SOLUCIÓN: Excluir la referencia de vuelta para evitar bucles ---    
     def dict(self, **kwargs):
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
         d = super().dict(**kwargs)
         d["created_at_formatted"] = self.created_at_formatted
         return d
@@ -177,23 +158,20 @@ class NotificationModel(rx.Model, table=True):
 class ContactEntryModel(rx.Model, table=True):
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
-    first_name: str
-    last_name: Optional[str] = None
-    email: Optional[str] = None
-    message: str
+    first_name: str; last_name: Optional[str] = None; email: Optional[str] = None; message: str
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
-
+    # --- ✅ SOLUCIÓN: Excluir la referencia de vuelta para evitar bucles ---
     def dict(self, **kwargs):
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
         d = super().dict(**kwargs)
         d["created_at_formatted"] = self.created_at_formatted
         return d
 
 class CommentModel(rx.Model, table=True):
-    content: str
-    rating: int 
+    content: str; rating: int
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
     userinfo_id: int = Field(foreign_key="userinfo.id")
