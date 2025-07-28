@@ -13,12 +13,8 @@ from ..data.colombia_locations import load_colombia_data
 from ..admin.state import AdminConfirmState
 
 class ProductCardData(rx.Base):
-    id: int
-    title: str
-    price: float = 0.0
-    images: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
+    id: int; title: str; price: float = 0.0; images: list[str] = []
+    average_rating: float = 0.0; rating_count: int = 0
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
@@ -27,6 +23,7 @@ class CartState(SessionState):
     # Variable para la dirección predeterminada del carrito
     default_shipping_address: Optional[ShippingAddressModel] = None
 
+    # Propiedades computadas para Dashboard y Landing Page
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
         return self.posts[:20]
@@ -35,6 +32,7 @@ class CartState(SessionState):
     def landing_page_posts(self) -> list[ProductCardData]:
         return self.posts[:1] if self.posts else []
 
+    # Lógica de filtrado
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
@@ -99,11 +97,13 @@ class CartState(SessionState):
 
     @rx.event
     def load_posts_and_set_category(self):
+        """Función necesaria para las páginas de categorías."""
         self.current_category = self.router.page.params.get("cat_name", "")
         yield self.on_load()
 
     @rx.event
     def on_load(self):
+        """Carga todos los productos en el estado."""
         with rx.session() as session:
             results = session.exec(
                 select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
@@ -186,7 +186,7 @@ class CartState(SessionState):
 
         self.cart.clear(); self.default_shipping_address = None
         
-        # --- ✅ ESTA ES LA LÍNEA CORREGIDA PARA EL ERROR ---
+        # --- ✅ CORRECCIÓN FINAL DEL TypeError ---
         yield AdminConfirmState.notify_admin_of_new_purchase
         
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
