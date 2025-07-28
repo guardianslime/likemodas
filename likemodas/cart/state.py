@@ -1,9 +1,10 @@
 # likemodas/cart/state.py
 
 import reflex as rx
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 from ..auth.state import SessionState
-from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
+# --- 👇 CAMBIO AQUÍ: Se añade 'Category' a la importación ---
+from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus, Category
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
@@ -24,36 +25,47 @@ class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     
-    # --- ✅ SOLUCIÓN: Usar la dirección predeterminada en lugar de campos sueltos ---
-    default_shipping_address: Optional[ShippingAddressModel] = None
-
     colombia_data: Dict[str, List[str]] = load_colombia_data()
-
+    shipping_name: str = ""
+    shipping_city: str = ""
+    shipping_neighborhood: str = ""
+    shipping_address: str = ""
+    shipping_phone: str = ""
+    
     @rx.var
     def cities(self) -> List[str]:
         return list(self.colombia_data.keys())
 
     @rx.var
     def neighborhoods(self) -> List[str]:
-        if self.default_shipping_address:
-            return self.colombia_data.get(self.default_shipping_address.city, [])
-        return []
-
+        return self.colombia_data.get(self.shipping_city, [])
+    
+    # --- ✨ PROPIEDAD DE FILTRADO UNIFICADA Y CORREGIDA ---
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
+        """
+        Filtra la lista de posts usando filtros de precio y atributos dinámicos
+        (tanto generales como específicos de la categoría actual).
+        """
         posts_to_filter = self.posts
+        
+        # 1. Filtrado por categoría si estamos en una página de categoría
         if self.current_category and self.current_category != "todos":
             with rx.session() as session:
                 try:
                     category_enum = Category(self.current_category)
+                    # Obtenemos los IDs de los posts que pertenecen a la categoría
                     post_ids_in_category = set(
                         session.exec(
                             select(BlogPostModel.id).where(BlogPostModel.category == category_enum)
                         ).all()
                     )
+                    # Filtramos la lista en memoria
                     posts_to_filter = [p for p in self.posts if p.id in post_ids_in_category]
                 except ValueError:
-                    return []
+                    return [] # Si la categoría no es válida, no mostramos nada
+
+        # 2. Filtrado por precio (se aplica a la lista ya filtrada por categoría o a la lista completa)
         try:
             min_p = float(self.min_price) if self.min_price else 0
         except ValueError: min_p = 0
@@ -64,6 +76,7 @@ class CartState(SessionState):
         if min_p > 0 or max_p != float('inf'):
             posts_to_filter = [p for p in posts_to_filter if (p.price >= min_p and p.price <= max_p)]
         
+        # 3. Filtrado por atributos dinámicos
         active_filters = any([
             self.filter_color, self.filter_talla, self.filter_tipo_prenda,
             self.filter_numero_calzado, self.filter_tipo_zapato, self.filter_tipo_mochila,
@@ -75,18 +88,26 @@ class CartState(SessionState):
 
         with rx.session() as session:
             post_ids = [p.id for p in posts_to_filter]
-            if not post_ids: return []
+            if not post_ids:
+                return []
+
             query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
+
+            # Aplicamos filtros específicos si estamos en una categoría
             if self.current_category == Category.ROPA.value:
                 if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
                 if self.filter_talla: query = query.where(cast(BlogPostModel.attributes['talla'], String).ilike(f"%{self.filter_talla}%"))
                 if self.filter_tipo_prenda: query = query.where(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_prenda)
+            
             elif self.current_category == Category.CALZADO.value:
                 if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
                 if self.filter_numero_calzado: query = query.where(cast(BlogPostModel.attributes['numero_calzado'], String) == self.filter_numero_calzado)
                 if self.filter_tipo_zapato: query = query.where(cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_zapato)
+            
             elif self.current_category == Category.MOCHILAS.value:
                 if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
+            
+            # Aplicamos filtros generales si NO estamos en una categoría específica
             else:
                 if self.filter_tipo_general:
                     query = query.where(or_(
@@ -109,13 +130,26 @@ class CartState(SessionState):
                     ))
                 if self.filter_color:
                     query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+
+            # Ejecutar la consulta final
             filtered_db_posts = session.exec(query).all()
             filtered_ids = {p.id for p in filtered_db_posts}
+            
             return [p for p in posts_to_filter if p.id in filtered_ids]
 
     @rx.event
+    def set_shipping_city_and_reset_neighborhood(self, city: str):
+        self.shipping_city = city
+        self.shipping_neighborhood = ""
+
+    # --- ✨ NUEVO EVENT HANDLER PARA CARGAR DATOS EN PÁGINAS ---
+    @rx.event
     def load_posts_and_set_category(self):
+        """Carga todos los posts y establece la categoría actual desde la URL."""
+        # Establece la categoría actual, crucial para que los filtros sepan qué mostrar
         self.current_category = self.router.page.params.get("cat_name", "")
+        
+        # Carga todos los posts (necesario para el filtrado)
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -130,6 +164,9 @@ class CartState(SessionState):
                     average_rating=post.average_rating, rating_count=post.rating_count
                 ) for post in results
             ]
+
+
+
     @rx.event
     def on_load(self):
         with rx.session() as session:
@@ -193,11 +230,14 @@ class CartState(SessionState):
         if not self.posts:
             return []
         return self.posts[:1]
+        
 
     @rx.event
     def load_default_shipping_info(self):
+        """Carga la dirección predeterminada del usuario si existe."""
         if not self.authenticated_user_info:
             return
+
         with rx.session() as session:
             default_address = session.exec(
                 select(ShippingAddressModel).where(
@@ -205,36 +245,61 @@ class CartState(SessionState):
                     ShippingAddressModel.is_default == True
                 )
             ).one_or_none()
-            self.default_shipping_address = default_address
+
+            if default_address:
+                # Pre-popula los campos del estado del carrito
+                self.shipping_name = default_address.name
+                self.shipping_phone = default_address.phone
+                self.shipping_city = default_address.city
+                self.shipping_neighborhood = default_address.neighborhood
+                self.shipping_address = default_address.address
+                # ¡Dispara el evento para cargar los barrios correspondientes!
+                yield self.set_shipping_city_and_reset_neighborhood(default_address.city)
+
 
     @rx.event
-    def handle_checkout(self):
-        from ..admin.state import AdminConfirmState
+    def handle_checkout(self, form_data: dict):
+        """
+        Maneja la compra final usando la información de envío del formulario.
+        """
+        # Validación usando la información del formulario
+        name = form_data.get("shipping_name", "").strip()
+        phone = form_data.get("shipping_phone", "").strip()
+        address = form_data.get("shipping_address", "").strip()
+        city = self.shipping_city
+        neighborhood = self.shipping_neighborhood
+
+        if not all([name, city, address, phone]):
+            return rx.toast.error("Por favor, completa todos los campos requeridos (*).")
+        
         if not self.is_authenticated or self.cart_total <= 0:
             return rx.window_alert("No se puede procesar la compra.")
-        if not self.default_shipping_address:
-            return rx.toast.error("Por favor, establece una dirección de envío predeterminada en 'Mi Cuenta'.")
+        
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info:
                  return rx.window_alert("Usuario no encontrado.")
+            
             post_ids_in_cart = list(self.cart.keys())
             db_posts_query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))
             db_posts = session.exec(db_posts_query).all()
             db_post_map = {post.id: post for post in db_posts}
+
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
                 status=PurchaseStatus.PENDING,
-                shipping_name=self.default_shipping_address.name,
-                shipping_city=self.default_shipping_address.city,
-                shipping_neighborhood=self.default_shipping_address.neighborhood,
-                shipping_address=self.default_shipping_address.address,
-                shipping_phone=self.default_shipping_address.phone
+                # Usa las variables del formulario y del estado
+                shipping_name=name,
+                shipping_city=city,
+                shipping_neighborhood=neighborhood,
+                shipping_address=address,
+                shipping_phone=phone
             )
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
+
             for post_id, quantity in self.cart.items():
                 if post_id in db_post_map:
                     post = db_post_map[post_id]
@@ -244,8 +309,9 @@ class CartState(SessionState):
                     )
                     session.add(purchase_item)
             session.commit()
+
         self.cart = {}
-        self.default_shipping_address = None
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
+
