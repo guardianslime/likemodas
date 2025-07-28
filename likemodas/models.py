@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN DEFINITIVA CON TODAS LAS CORRECCIONES)
+# likemodas/models.py (VERSIÓN DEFINITIVA FINAL)
 
 from typing import Optional, List
 from . import utils
@@ -10,6 +10,8 @@ from reflex_local_auth.user import LocalUser
 import sqlalchemy
 import enum
 import pytz
+
+# ... (Todo el código hasta BlogPostModel se mantiene igual) ...
 
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     if not utc_dt:
@@ -33,7 +35,6 @@ class VoteType(str, enum.Enum):
     DISLIKE = "dislike"
 
 class UserInfo(rx.Model, table=True):
-    # ... (sin cambios)
     __tablename__ = "userinfo"
     email: str
     user_id: int = Field(foreign_key="localuser.id")
@@ -51,8 +52,9 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
+# ... (El resto de modelos hasta BlogPostModel se mantienen igual) ...
+
 class VerificationToken(rx.Model, table=True):
-    # ... (sin cambios)
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
@@ -60,21 +62,18 @@ class VerificationToken(rx.Model, table=True):
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
 class PasswordResetToken(rx.Model, table=True):
-    # ... (sin cambios)
     token: str = Field(unique=True, index=True)
     user_id: int = Field(foreign_key="localuser.id")
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
 class Category(str, enum.Enum):
-    # ... (sin cambios)
     ROPA = "ropa"
     CALZADO = "calzado"
     MOCHILAS = "mochilas"
     OTROS = "otros"
 
 class BlogPostModel(rx.Model, table=True):
-    # ... (sin cambios en la definición, solo en el método dict)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
@@ -101,11 +100,14 @@ class BlogPostModel(rx.Model, table=True):
     def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
 
     def dict(self, **kwargs):
-        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
+        # --- ✅ SOLUCIÓN FINAL: Excluimos 'userinfo' Y 'comments' ---
+        # Esto evita que el serializador entre en el bucle a través de los comentarios.
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo", "comments"}
         return super().dict(**kwargs)
 
+# ... (El resto de modelos se mantienen con las correcciones anteriores) ...
+
 class ShippingAddressModel(rx.Model, table=True):
-    # ... (sin cambios)
     __tablename__ = "shippingaddress"
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
@@ -114,7 +116,6 @@ class ShippingAddressModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
 class PurchaseModel(rx.Model, table=True):
-    # ... (sin cambios en la definición, solo en el método dict)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
     purchase_date: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
@@ -146,7 +147,6 @@ class PurchaseModel(rx.Model, table=True):
         return d
 
 class PurchaseItemModel(rx.Model, table=True):
-    # ... (sin cambios en la definición, solo en el método dict)
     purchase_id: int = Field(foreign_key="purchasemodel.id")
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
@@ -159,7 +159,6 @@ class PurchaseItemModel(rx.Model, table=True):
         return super().dict(**kwargs)
 
 class NotificationModel(rx.Model, table=True):
-    # ... (sin cambios)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
     message: str
@@ -176,7 +175,6 @@ class NotificationModel(rx.Model, table=True):
         return d
 
 class ContactEntryModel(rx.Model, table=True):
-    # ... (sin cambios)
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
     first_name: str
@@ -194,7 +192,6 @@ class ContactEntryModel(rx.Model, table=True):
         return d
 
 class CommentModel(rx.Model, table=True):
-    # ... (sin cambios en la definición, solo en el método dict)
     content: str
     rating: int 
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
@@ -221,7 +218,6 @@ class CommentModel(rx.Model, table=True):
         return d
 
 class CommentVoteModel(rx.Model, table=True):
-    # --- ✅ SOLUCIÓN FINAL: Se añade el método dict aquí ---
     vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
@@ -229,6 +225,5 @@ class CommentVoteModel(rx.Model, table=True):
     comment: "CommentModel" = Relationship(back_populates="votes")
 
     def dict(self, **kwargs):
-        # Excluimos las referencias hacia atrás para romper los bucles
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo", "comment"}
         return super().dict(**kwargs)
