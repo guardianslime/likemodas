@@ -13,8 +13,12 @@ from ..data.colombia_locations import load_colombia_data
 from ..admin.state import AdminConfirmState
 
 class ProductCardData(rx.Base):
-    id: int; title: str; price: float = 0.0; images: list[str] = []
-    average_rating: float = 0.0; rating_count: int = 0
+    id: int
+    title: str
+    price: float = 0.0
+    images: list[str] = []
+    average_rating: float = 0.0
+    rating_count: int = 0
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
@@ -23,18 +27,19 @@ class CartState(SessionState):
     # Variable para la dirección predeterminada del carrito
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # Propiedades computadas para Dashboard y Landing Page
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
+        """Devuelve los primeros 20 posts para el dashboard."""
         return self.posts[:20]
 
     @rx.var
     def landing_page_posts(self) -> list[ProductCardData]:
+        """Devuelve el post más reciente para la landing page."""
         return self.posts[:1] if self.posts else []
 
-    # Lógica de filtrado
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
+        """Filtra la lista de posts usando todos los criterios."""
         posts_to_filter = self.posts
         if self.current_category and self.current_category != "todos":
             with rx.session() as session:
@@ -90,14 +95,13 @@ class CartState(SessionState):
                     query = query.where(or_(cast(BlogPostModel.attributes['talla'], String).ilike(med), cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med), cast(BlogPostModel.attributes['medidas'], String).ilike(med)))
                 if self.filter_color:
                     query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
-
             filtered_db_posts = session.exec(query).all()
             filtered_ids = {p.id for p in filtered_db_posts}
             return [p for p in posts_to_filter if p.id in filtered_ids]
 
     @rx.event
     def load_posts_and_set_category(self):
-        """Función necesaria para las páginas de categorías."""
+        """Función para las páginas de categorías."""
         self.current_category = self.router.page.params.get("cat_name", "")
         yield self.on_load()
 
