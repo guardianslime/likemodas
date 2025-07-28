@@ -58,7 +58,7 @@ class AdminConfirmState(SessionState):
                 notification = NotificationModel(userinfo_id=purchase.userinfo_id, message=f"¡Tu compra #{purchase.id} ha sido confirmada!", url="/my-purchases")
                 session.add(purchase); session.add(notification); session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
-                yield self.load_pending_purchases()
+                yield AdminConfirmState.load_pending_purchases
 
     @classmethod
     def notify_admin_of_new_purchase(cls):
