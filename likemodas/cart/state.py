@@ -1,10 +1,9 @@
 # likemodas/cart/state.py
 
 import reflex as rx
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from ..auth.state import SessionState
-# --- 👇 CAMBIO AQUÍ: Se añade 'Category' a la importación ---
-from ..models import BlogPostModel, PurchaseModel, PurchaseItemModel, ShippingAddressModel, PurchaseStatus, Category
+from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
 from sqlmodel import select
 from datetime import datetime
 import reflex_local_auth
@@ -31,6 +30,7 @@ class CartState(SessionState):
     shipping_neighborhood: str = ""
     shipping_address: str = ""
     shipping_phone: str = ""
+    default_shipping_address: Optional[ShippingAddressModel] = None
     
     @rx.var
     def cities(self) -> List[str]:
@@ -234,46 +234,25 @@ class CartState(SessionState):
 
     @rx.event
     def load_default_shipping_info(self):
-        """Carga la dirección predeterminada del usuario si existe."""
+        """Carga el objeto de la dirección predeterminada en el estado."""
         if not self.authenticated_user_info:
             return
-
         with rx.session() as session:
-            default_address = session.exec(
+            self.default_shipping_address = session.exec(
                 select(ShippingAddressModel).where(
                     ShippingAddressModel.userinfo_id == self.authenticated_user_info.id,
                     ShippingAddressModel.is_default == True
                 )
             ).one_or_none()
 
-            if default_address:
-                # Pre-popula los campos del estado del carrito
-                self.shipping_name = default_address.name
-                self.shipping_phone = default_address.phone
-                self.shipping_city = default_address.city
-                self.shipping_neighborhood = default_address.neighborhood
-                self.shipping_address = default_address.address
-                # ¡Dispara el evento para cargar los barrios correspondientes!
-                yield self.set_shipping_city_and_reset_neighborhood(default_address.city)
-
-
     @rx.event
-    def handle_checkout(self, form_data: dict):
-        """
-        Maneja la compra final usando la información de envío del formulario.
-        """
-        # Validación usando la información del formulario
-        name = form_data.get("shipping_name", "").strip()
-        phone = form_data.get("shipping_phone", "").strip()
-        address = form_data.get("shipping_address", "").strip()
-        city = self.shipping_city
-        neighborhood = self.shipping_neighborhood
-
-        if not all([name, city, address, phone]):
-            return rx.toast.error("Por favor, completa todos los campos requeridos (*).")
-        
+    def handle_checkout(self):
+        """Maneja la compra usando la dirección cargada en el estado (sin formularios)."""
         if not self.is_authenticated or self.cart_total <= 0:
             return rx.window_alert("No se puede procesar la compra.")
+        
+        if not self.default_shipping_address:
+            return rx.toast.error("Por favor, establece una dirección de envío predeterminada en 'Mi Cuenta'.")
         
         with rx.session() as session:
             user_info = self.authenticated_user_info
@@ -281,20 +260,18 @@ class CartState(SessionState):
                  return rx.window_alert("Usuario no encontrado.")
             
             post_ids_in_cart = list(self.cart.keys())
-            db_posts_query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))
-            db_posts = session.exec(db_posts_query).all()
+            db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))).all()
             db_post_map = {post.id: post for post in db_posts}
 
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
                 status=PurchaseStatus.PENDING,
-                # Usa las variables del formulario y del estado
-                shipping_name=name,
-                shipping_city=city,
-                shipping_neighborhood=neighborhood,
-                shipping_address=address,
-                shipping_phone=phone
+                shipping_name=self.default_shipping_address.name,
+                shipping_city=self.default_shipping_address.city,
+                shipping_neighborhood=self.default_shipping_address.neighborhood,
+                shipping_address=self.default_shipping_address.address,
+                shipping_phone=self.default_shipping_address.phone
             )
             session.add(new_purchase)
             session.commit()
@@ -311,7 +288,7 @@ class CartState(SessionState):
             session.commit()
 
         self.cart = {}
-        yield AdminConfirmState.notify_admin_of_new_purchase()
+        self.default_shipping_address = None
+        yield AdminConfirmState.notify_admin_of_new_purchase
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
-
