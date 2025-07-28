@@ -13,8 +13,9 @@ from .pages import category_page
 from .blog import page as blog_page, public_detail as blog_public_detail, list as blog_list, detail as blog_detail, add as blog_add, edit as blog_edit, state as blog_state
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
+# --- CAMBIO: Se importa el nuevo módulo de admin ---
 from .admin import state as admin_state
-from .admin import page as admin_page 
+from .cart import page as admin_page # La página de admin sigue en cart/page.py por ahora
 from .contact import page as contact_page, state as contact_state
 from . import navigation
 from .account import page as account_page_module
@@ -29,7 +30,8 @@ class HomePageState(cart_state.CartState):
     @rx.event
     def on_load_main(self):
         """Carga los posts y resetea el filtro de categoría."""
-        self.current_category = ""
+        self.current_category = ""  # Resetea la categoría para mostrar filtros generales
+        # ✨ Llama al nuevo evento unificado
         yield cart_state.CartState.load_posts_and_set_category
 
 def index() -> rx.Component:
@@ -38,12 +40,12 @@ def index() -> rx.Component:
 
 app = rx.App(
     theme=rx.theme(
-        appearance="light", # Inicia en modo claro por defecto
+        appearance="dark",
         has_background=True,
         panel_background="solid",
         scaling="90%",
         radius="medium",
-        accent_color="plum"  # <<< CAMBIO CLAVE: De 'violet' a 'plum'
+        accent_color="sky"
     ),
 )
 
@@ -60,6 +62,7 @@ app.add_page(
     category_page.category_page,
     route="/category/[cat_name]",
     title="Categoría",
+    # --- Usa el nuevo manejador de eventos unificado de CartState ---
     on_load=cart_state.CartState.load_posts_and_set_category 
 )
 
@@ -93,6 +96,8 @@ app.add_page(
     cart_page.cart_page,
     route="/cart",
     title="Mi Carrito",
+    # ✅ Esta configuración es correcta y crucial. Carga tanto los
+    # productos como la dirección de envío predeterminada.
     on_load=[
         cart_state.CartState.on_load, 
         cart_state.CartState.load_default_shipping_info
@@ -105,6 +110,7 @@ app.add_page(purchases_page.purchase_history_page, route="/my-purchases", title=
 app.add_page(
     account_page_module.my_account_redirect_page, 
     route=navigation.routes.MY_ACCOUNT_ROUTE,
+    # 👇 AÑADE ESTA LÍNEA PARA MANEJAR LA REDIRECCIÓN
     on_load=rx.redirect(navigation.routes.SHIPPING_INFO_ROUTE)
 )
 
@@ -112,6 +118,7 @@ app.add_page(
     shipping_info_module.shipping_info_page,
     route=navigation.routes.SHIPPING_INFO_ROUTE,
     title="Información de Envío",
+    # 👇 Se carga la lista de direcciones al visitar la página
     on_load=shipping_info_state.ShippingInfoState.load_addresses 
 )
 

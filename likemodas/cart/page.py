@@ -138,7 +138,6 @@ def payment_history_page() -> rx.Component:
     )
 
 # ... El resto del archivo no necesita cambios ...
-
 def checkout_form() -> rx.Component:
     """Un formulario de envío con la nueva disposición y menús desplegables."""
     return rx.form(
@@ -172,7 +171,8 @@ def checkout_form() -> rx.Component:
                         placeholder="Selecciona un barrio...",
                         on_change=CartState.set_shipping_neighborhood,
                         value=CartState.shipping_neighborhood,
-                        is_disabled=~CartState.neighborhoods, # <<< LÍNEA CORREGIDA
+                        # ✨ LÍNEA CORREGIDA: Esta es la sintaxis correcta.
+                        is_disabled=~CartState.neighborhoods,
                     ),
                     spacing="1", align_items="start",
                 ),
@@ -186,7 +186,7 @@ def checkout_form() -> rx.Component:
                 spacing="4",
                 width="100%",
             ),
-            rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em", color_scheme="violet"),
+            rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em"),
             spacing="4",
             width="100%",
         ),
@@ -215,7 +215,7 @@ def cart_page() -> rx.Component:
     """Página del carrito de compras."""
     return base_page(
         rx.vstack(
-            rx.heading("Mi Carrito", size="8", color_scheme="violet"),
+            rx.heading("Mi Carrito", size="8"),
             rx.cond(
                 CartState.cart_items_count > 0,
                 rx.vstack(
