@@ -2,22 +2,20 @@ import reflex as rx
 from ..auth.admin_auth import require_admin
 import reflex_local_auth
 from ..ui.base import base_page
-# --- 👇 CORRECCIÓN CLAVE AQUÍ 👇 ---
-# Se importa tanto AdminConfirmState como PaymentHistoryState desde el nuevo módulo de admin.
 from ..admin.state import AdminConfirmState, PaymentHistoryState
 from ..models import PurchaseModel
-from ..cart.state import CartState, ProductCardData
+from ..cart.state import CartState
+
+# --- COMPONENTES DE ADMIN (Sin cambios, se mantienen como estaban) ---
 
 def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx.Component:
     """
     Un componente reutilizable para mostrar una tarjeta de compra en el panel de admin.
-    --- DISEÑO ACTUALIZADO CON TEXTO MÁS GRANDE ---
     """
     return rx.card(
         rx.vstack(
             rx.hstack(
                 rx.vstack(
-                    # --- CAMBIO: Texto más grande ---
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
                     rx.text(f"Cliente: {purchase.userinfo.user.username} ({purchase.userinfo.email})", size="3"),
                     rx.text(f"Fecha: {purchase.purchase_date_formatted}", size="3"),
@@ -26,7 +24,6 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status.to(str), color_scheme="blue", variant="soft", size="2"),
-                    # --- CAMBIO: Total más grande ---
                     rx.heading(f"${purchase.total_price:,.2f}", size="6"),
                     align_items="end",
                 ),
@@ -34,7 +31,6 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
             ),
             rx.divider(),
             rx.vstack(
-                # --- CAMBIO: Textos más grandes ---
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
                 rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
@@ -45,7 +41,6 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
             ),
             rx.divider(),
             rx.vstack(
-                # --- CAMBIO: Textos más grandes ---
                 rx.text("Artículos:", weight="medium", size="4"),
                 rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
                 spacing="1",
@@ -54,15 +49,15 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
             ),
             rx.cond(
                 is_history,
-                rx.fragment(),  # Muestra un componente vacío si es la página de historial
-                rx.button(      # Muestra el botón en cualquier otro caso (como en confirmar pagos)
+                rx.fragment(),
+                rx.button(
                     "Confirmar Pago",
                     on_click=AdminConfirmState.confirm_payment(purchase.id),
                     width="100%",
                     margin_top="1em",
                 )
             ),
-            spacing="4", # Espaciado aumentado
+            spacing="4",
             width="100%",
         ),
         width="100%",
@@ -71,7 +66,6 @@ def purchase_card_admin(purchase: PurchaseModel, is_history: bool = False) -> rx
 @require_admin
 def admin_confirm_page() -> rx.Component:
     """Página para que el admin confirme los pagos pendientes."""
-    # ✅ CAMBIO: Se envuelve el vstack en un rx.center.
     return base_page(
         rx.center(
             rx.vstack(
@@ -104,8 +98,6 @@ def payment_history_page() -> rx.Component:
         rx.center(
             rx.vstack(
                 rx.heading("Historial de Pagos", size="8"),
-                
-                # --- 👇 AÑADIR LA BARRA DE BÚSQUEDA 👇 ---
                 rx.input(
                     placeholder="Buscar por ID, cliente o email...",
                     value=PaymentHistoryState.search_query,
@@ -114,11 +106,9 @@ def payment_history_page() -> rx.Component:
                     max_width="400px",
                     margin_y="1.5em",
                 ),
-
                 rx.cond(
-                    PaymentHistoryState.filtered_purchases, # <-- Usa la lista filtrada
+                    PaymentHistoryState.filtered_purchases,
                     rx.foreach(
-                        # --- 👇 USA LA LISTA FILTRADA AQUÍ 👇 ---
                         PaymentHistoryState.filtered_purchases,
                         lambda p: purchase_card_admin(p, is_history=True)
                     ),
@@ -137,63 +127,89 @@ def payment_history_page() -> rx.Component:
         )
     )
 
-# ... El resto del archivo no necesita cambios ...
+# --- ❌ ELIMINACIÓN DEL ANTIGUO FORMULARIO DE CHECKOUT ❌ ---
+# La función `checkout_form` ha sido eliminada por completo.
 
-def checkout_form() -> rx.Component:
-    """Un formulario de envío con la nueva disposición y menús desplegables."""
-    return rx.form(
-        rx.vstack(
-            rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
-            rx.grid(
+# --- ✨ NUEVO COMPONENTE PARA MOSTRAR LA DIRECCIÓN DE ENVÍO ✨ ---
+def display_default_address() -> rx.Component:
+    """
+    Muestra la dirección de envío predeterminada del usuario o un mensaje
+    para que configure una.
+    """
+    return rx.vstack(
+        rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
+        
+        # Condición para verificar si existe una dirección predeterminada en el estado
+        rx.cond(
+            CartState.default_shipping_address,
+            # Si la dirección SÍ existe, se muestra en una tarjeta
+            rx.box(
                 rx.vstack(
-                    rx.text("Nombre Completo*"),
-                    rx.input(name="shipping_name", type="text", required=True),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Teléfono de Contacto*"),
-                    rx.input(name="shipping_phone", type="tel", required=True),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Ciudad*"),
-                    rx.select(
-                        CartState.cities,
-                        placeholder="Selecciona una ciudad...",
-                        on_change=CartState.set_shipping_city_and_reset_neighborhood,
-                        value=CartState.shipping_city,
+                    rx.hstack(
+                        rx.text(CartState.default_shipping_address.name, weight="bold"),
+                        rx.spacer(),
+                        rx.badge("Predeterminada", color_scheme="green"),
+                        width="100%"
                     ),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Barrio"),
-                    rx.select(
-                        CartState.neighborhoods,
-                        placeholder="Selecciona un barrio...",
-                        on_change=CartState.set_shipping_neighborhood,
-                        value=CartState.shipping_neighborhood,
-                        is_disabled=~CartState.neighborhoods, # <<< LÍNEA CORREGIDA
+                    rx.text(f"{CartState.default_shipping_address.address}, {CartState.default_shipping_address.neighborhood}"),
+                    rx.text(f"{CartState.default_shipping_address.city}"),
+                    rx.text(f"Tel: {CartState.default_shipping_address.phone}"),
+                    rx.link(
+                        "Cambiar dirección",
+                        href="/my-account/shipping-info",
+                        size="2",
+                        color_scheme="gray",
+                        margin_top="0.5em"
                     ),
-                    spacing="1", align_items="start",
+                    align_items="start",
+                    spacing="2",
+                    width="100%"
                 ),
-                rx.vstack(
-                    rx.text("Dirección de Entrega*"),
-                    rx.input(name="shipping_address", type="text", required=True),
-                    spacing="1", align_items="start",
-                    grid_column="span 2",
-                ),
-                columns="2",
-                spacing="4",
-                width="100%",
+                border="1px solid #ededed",
+                border_radius="md",
+                padding="1em",
+                width="100%"
             ),
-            rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em", color_scheme="violet"),
-            spacing="4",
-            width="100%",
+            # Si la dirección NO existe, se muestra un mensaje de ayuda
+            rx.box(
+                rx.vstack(
+                    rx.text("No tienes una dirección de envío predeterminada."),
+                    rx.link(
+                        rx.button("Añadir Dirección en Mi Cuenta"),
+                        href="/my-account/shipping-info",
+                        variant="soft",
+                    ),
+                    spacing="3",
+                    align_items="center"
+                ),
+                border="1px dashed #ededed",
+                border_radius="md",
+                padding="2em",
+                width="100%",
+                text_align="center"
+            )
         ),
-        on_submit=CartState.handle_checkout,
+        
+        # El botón de finalizar compra ahora llama a la función de estado correcta
+        rx.button(
+            "Finalizar Compra", 
+            on_click=CartState.handle_checkout, 
+            width="100%", 
+            size="3", 
+            margin_top="1em",
+            color_scheme="violet",
+            # El botón se deshabilita si no hay una dirección configurada
+            is_disabled=~CartState.default_shipping_address 
+        ),
+        width="100%",
+        spacing="4",
     )
 
+
+# --- PÁGINA DEL CARRITO (MODIFICADA) ---
+
 def cart_item_row(item: rx.Var) -> rx.Component:
+    """Muestra una fila de producto en la tabla del carrito."""
     post = item[0]
     quantity = item[1]
     return rx.table.row(
@@ -212,12 +228,13 @@ def cart_item_row(item: rx.Var) -> rx.Component:
 
 @reflex_local_auth.require_login
 def cart_page() -> rx.Component:
-    """Página del carrito de compras."""
+    """Página del carrito de compras con la nueva lógica de dirección."""
     return base_page(
         rx.vstack(
             rx.heading("Mi Carrito", size="8", color_scheme="violet"),
             rx.cond(
                 CartState.cart_items_count > 0,
+                # Si hay items, muestra la tabla y la sección de dirección
                 rx.vstack(
                     rx.table.root(
                         rx.table.header(
@@ -236,9 +253,13 @@ def cart_page() -> rx.Component:
                         rx.heading(f"${CartState.cart_total:.2f}", size="6"),
                         justify="end", width="100%", padding_x="1em"
                     ),
-                    checkout_form(),
+                    
+                    # <-- CAMBIO CLAVE: Se llama al nuevo componente en lugar del formulario
+                    display_default_address(),
+                    
                     spacing="5", width="100%", max_width="700px"
                 ),
+                # Si el carrito está vacío, muestra un mensaje
                 rx.center(
                     rx.vstack(
                         rx.text("Tu carrito está vacío."),
