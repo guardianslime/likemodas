@@ -24,8 +24,7 @@ class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     
-    # --- ✨ ESTADO DE ENVÍO CORREGIDO ---
-    # Se utiliza una única variable para almacenar el objeto de la dirección.
+    # --- ✅ SOLUCIÓN: Usar la dirección predeterminada en lugar de campos sueltos ---
     default_shipping_address: Optional[ShippingAddressModel] = None
 
     colombia_data: Dict[str, List[str]] = load_colombia_data()
@@ -36,12 +35,10 @@ class CartState(SessionState):
 
     @rx.var
     def neighborhoods(self) -> List[str]:
-        # <-- CAMBIO CLAVE: Ahora obtiene la ciudad desde el objeto de dirección, si existe.
         if self.default_shipping_address:
             return self.colombia_data.get(self.default_shipping_address.city, [])
         return []
 
-    # --- La propiedad de filtrado unificada y corregida se mantiene como estaba ---
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
@@ -133,11 +130,8 @@ class CartState(SessionState):
                     average_rating=post.average_rating, rating_count=post.rating_count
                 ) for post in results
             ]
-
-    # ... (on_load, cart_details, etc. se mantienen) ...
     @rx.event
     def on_load(self):
-        # Este on_load es para la galería principal, no necesita cambios.
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -202,12 +196,8 @@ class CartState(SessionState):
 
     @rx.event
     def load_default_shipping_info(self):
-        """
-        # <-- CAMBIO CLAVE: Carga el objeto de dirección completo.
-        """
         if not self.authenticated_user_info:
             return
-
         with rx.session() as session:
             default_address = session.exec(
                 select(ShippingAddressModel).where(
@@ -215,38 +205,27 @@ class CartState(SessionState):
                     ShippingAddressModel.is_default == True
                 )
             ).one_or_none()
-            
-            # Asigna el objeto completo al estado.
             self.default_shipping_address = default_address
 
     @rx.event
     def handle_checkout(self):
-        """
-        # <-- CAMBIO CLAVE: Ya no usa 'form_data'. Usa la dirección del estado.
-        """
         from ..admin.state import AdminConfirmState
-        
         if not self.is_authenticated or self.cart_total <= 0:
             return rx.window_alert("No se puede procesar la compra.")
-        
         if not self.default_shipping_address:
             return rx.toast.error("Por favor, establece una dirección de envío predeterminada en 'Mi Cuenta'.")
-        
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info:
                  return rx.window_alert("Usuario no encontrado.")
-            
             post_ids_in_cart = list(self.cart.keys())
             db_posts_query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))
             db_posts = session.exec(db_posts_query).all()
             db_post_map = {post.id: post for post in db_posts}
-
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id,
                 total_price=self.cart_total,
                 status=PurchaseStatus.PENDING,
-                # Usa los datos desde el objeto de dirección cargado.
                 shipping_name=self.default_shipping_address.name,
                 shipping_city=self.default_shipping_address.city,
                 shipping_neighborhood=self.default_shipping_address.neighborhood,
@@ -256,7 +235,6 @@ class CartState(SessionState):
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
-
             for post_id, quantity in self.cart.items():
                 if post_id in db_post_map:
                     post = db_post_map[post_id]
@@ -266,9 +244,8 @@ class CartState(SessionState):
                     )
                     session.add(purchase_item)
             session.commit()
-
         self.cart = {}
-        self.default_shipping_address = None # Resetea la dirección después de la compra.
+        self.default_shipping_address = None
         yield AdminConfirmState.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
