@@ -1,15 +1,14 @@
-# likemodas/models.py (VERSIÓN CORREGIDA PARA RECURSIONERROR)
+# likemodas/models.py (VERSIÓN DEFINITIVA CON TODAS LAS CORRECCIONES)
 
 from typing import Optional, List
 from . import utils
 from sqlmodel import Field, Relationship, Column, JSON
-from sqlalchemy import String, inspect
+from sqlalchemy import String
 from datetime import datetime
 import reflex as rx
 from reflex_local_auth.user import LocalUser
 import sqlalchemy
 import enum
-import math
 import pytz
 
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
@@ -34,6 +33,7 @@ class VoteType(str, enum.Enum):
     DISLIKE = "dislike"
 
 class UserInfo(rx.Model, table=True):
+    # ... (sin cambios)
     __tablename__ = "userinfo"
     email: str
     user_id: int = Field(foreign_key="localuser.id")
@@ -52,6 +52,7 @@ class UserInfo(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
 class VerificationToken(rx.Model, table=True):
+    # ... (sin cambios)
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
@@ -59,18 +60,21 @@ class VerificationToken(rx.Model, table=True):
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
 class PasswordResetToken(rx.Model, table=True):
+    # ... (sin cambios)
     token: str = Field(unique=True, index=True)
     user_id: int = Field(foreign_key="localuser.id")
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
 class Category(str, enum.Enum):
+    # ... (sin cambios)
     ROPA = "ropa"
     CALZADO = "calzado"
     MOCHILAS = "mochilas"
     OTROS = "otros"
 
 class BlogPostModel(rx.Model, table=True):
+    # ... (sin cambios en la definición, solo en el método dict)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     title: str
@@ -86,44 +90,31 @@ class BlogPostModel(rx.Model, table=True):
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, server_default=Category.OTROS.value, nullable=False))
     
     @property
-    def rating_count(self) -> int:
-        return len(self.comments)
-
+    def rating_count(self) -> int: return len(self.comments)
     @property
     def average_rating(self) -> float:
         if not self.comments: return 0.0
-        total_rating = sum(comment.rating for comment in self.comments)
-        return total_rating / len(self.comments)
-
+        return sum(c.rating for c in self.comments) / len(self.comments)
     @property
-    def created_at_formatted(self) -> str:
-        return format_utc_to_local(self.created_at)
-    
+    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
     @property
-    def publish_date_formatted(self) -> str:
-        return format_utc_to_local(self.publish_date)
+    def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
 
-    # --- ✅ SOLUCIÓN AL RecursionError ---
-    # Se añade el método dict para romper el ciclo UserInfo -> BlogPostModel -> UserInfo
     def dict(self, **kwargs):
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
-        d = super().dict(**kwargs)
-        # Puedes añadir campos extra al diccionario si lo necesitas después
-        return d
+        return super().dict(**kwargs)
 
 class ShippingAddressModel(rx.Model, table=True):
+    # ... (sin cambios)
     __tablename__ = "shippingaddress"
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
-    name: str
-    phone: str
-    city: str
-    neighborhood: str
-    address: str
+    name: str; phone: str; city: str; neighborhood: str; address: str
     is_default: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
 class PurchaseModel(rx.Model, table=True):
+    # ... (sin cambios en la definición, solo en el método dict)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
     purchase_date: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
@@ -138,20 +129,14 @@ class PurchaseModel(rx.Model, table=True):
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
     @property
-    def purchase_date_formatted(self) -> str:
-        return format_utc_to_local(self.purchase_date)
-        
+    def purchase_date_formatted(self) -> str: return format_utc_to_local(self.purchase_date)
     @property
-    def confirmed_at_formatted(self) -> str:
-        return format_utc_to_local(self.confirmed_at)
-        
+    def confirmed_at_formatted(self) -> str: return format_utc_to_local(self.confirmed_at)
     @property
     def items_formatted(self) -> list[str]:
         if not self.items: return []
         return [f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)" for item in self.items]
 
-    # --- ✅ SOLUCIÓN AL RecursionError ---
-    # Se modifica el método dict para excluir 'userinfo' y romper el ciclo
     def dict(self, **kwargs):
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo"}
         d = super().dict(**kwargs)
@@ -161,6 +146,7 @@ class PurchaseModel(rx.Model, table=True):
         return d
 
 class PurchaseItemModel(rx.Model, table=True):
+    # ... (sin cambios en la definición, solo en el método dict)
     purchase_id: int = Field(foreign_key="purchasemodel.id")
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
@@ -168,14 +154,12 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
 
-    # --- ✅ SOLUCIÓN AL RecursionError ---
-    # Se añade el método dict para romper el ciclo PurchaseModel -> PurchaseItem -> PurchaseModel
     def dict(self, **kwargs):
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"purchase"}
-        d = super().dict(**kwargs)
-        return d
+        return super().dict(**kwargs)
 
 class NotificationModel(rx.Model, table=True):
+    # ... (sin cambios)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
     message: str
@@ -184,8 +168,7 @@ class NotificationModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     
     @property
-    def created_at_formatted(self) -> str:
-        return format_utc_to_local(self.created_at)
+    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
         
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
@@ -193,6 +176,7 @@ class NotificationModel(rx.Model, table=True):
         return d
 
 class ContactEntryModel(rx.Model, table=True):
+    # ... (sin cambios)
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
     first_name: str
@@ -202,8 +186,7 @@ class ContactEntryModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
     @property
-    def created_at_formatted(self) -> str:
-        return format_utc_to_local(self.created_at)
+    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
@@ -211,6 +194,7 @@ class ContactEntryModel(rx.Model, table=True):
         return d
 
 class CommentModel(rx.Model, table=True):
+    # ... (sin cambios en la definición, solo en el método dict)
     content: str
     rating: int 
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
@@ -222,19 +206,12 @@ class CommentModel(rx.Model, table=True):
     votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
     @property
-    def created_at_formatted(self) -> str:
-        return format_utc_to_local(self.created_at)
-
+    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
     @property
-    def likes(self) -> int:
-        return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
-        
+    def likes(self) -> int: return sum(1 for v in self.votes if v.vote_type == VoteType.LIKE)
     @property
-    def dislikes(self) -> int:
-        return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
+    def dislikes(self) -> int: return sum(1 for v in self.votes if v.vote_type == VoteType.DISLIKE)
 
-    # --- ✅ SOLUCIÓN AL RecursionError ---
-    # Se excluyen las relaciones que apuntan hacia atrás para romper los ciclos
     def dict(self, **kwargs):
         kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo", "blog_post"}
         d = super().dict(**kwargs)
@@ -244,8 +221,14 @@ class CommentModel(rx.Model, table=True):
         return d
 
 class CommentVoteModel(rx.Model, table=True):
+    # --- ✅ SOLUCIÓN FINAL: Se añade el método dict aquí ---
     vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
     comment_id: int = Field(foreign_key="commentmodel.id")
     comment: "CommentModel" = Relationship(back_populates="votes")
+
+    def dict(self, **kwargs):
+        # Excluimos las referencias hacia atrás para romper los bucles
+        kwargs["exclude"] = kwargs.get("exclude", set()) | {"userinfo", "comment"}
+        return super().dict(**kwargs)
