@@ -173,13 +173,10 @@ class PurchaseCardData(rx.Base):
     items_formatted: list[str]
 
 class AdminConfirmState(SessionState):
-    """Estado para manejar las confirmaciones de compras pendientes."""
-    # --- La variable de estado ahora usa el objeto simple ---
     pending_purchases: List[PurchaseCardData] = []
 
     @rx.event
     def load_pending_purchases(self):
-        """Carga, transforma y guarda los datos de las compras pendientes."""
         if not self.is_admin:
             self.pending_purchases = []
             return
@@ -195,7 +192,7 @@ class AdminConfirmState(SessionState):
             )
             db_results = session.exec(statement).unique().all()
             
-            # --- Transformación de PurchaseModel a PurchaseCardData ---
+            # Transformación a DTO
             self.pending_purchases = [
                 PurchaseCardData(
                     id=p.id,
@@ -205,7 +202,7 @@ class AdminConfirmState(SessionState):
                     status=p.status.value,
                     total_price=p.total_price,
                     shipping_name=p.shipping_name or "",
-                    shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                    shipping_full_address=f"{p.shipping_address or ''}, {p.shipping_neighborhood or ''}, {p.shipping_city or ''}",
                     shipping_phone=p.shipping_phone or "",
                     items_formatted=p.items_formatted
                 )
@@ -215,35 +212,30 @@ class AdminConfirmState(SessionState):
             has_pending = len(self.pending_purchases) > 0
             yield SessionState.set_new_purchase_notification(has_pending)
 
-    # El resto del estado no necesita cambios, ya que opera directamente en la DB
     @rx.event
     def confirm_payment(self, purchase_id: int):
-        if not self.is_admin:
-            return rx.toast.error("No tienes permisos de administrador.")
+        if not self.is_admin: return
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            if not purchase:
-                return rx.toast.error("Compra no encontrada.")
-            purchase.status = PurchaseStatus.CONFIRMED
-            purchase.confirmed_at = datetime.utcnow()
-            notification = NotificationModel(
-                userinfo_id=purchase.userinfo_id,
-                message=f"¡Tu compra #{purchase.id} ha sido confirmada!",
-                url="/my-purchases"
-            )
-            session.add(purchase)
-            session.add(notification)
-            session.commit()
-        yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
-        yield self.load_pending_purchases()
+            if purchase:
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.utcnow()
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Tu compra #{purchase.id} ha sido confirmada!",
+                    url="/my-purchases"
+                )
+                session.add(purchase)
+                session.add(notification)
+                session.commit()
+                yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
+                yield self.load_pending_purchases()
 
     @classmethod
     def notify_admin_of_new_purchase(cls):
         return SessionState.set_new_purchase_notification(True)
 
 class PaymentHistoryState(SessionState):
-    """Estado para ver el historial de compras."""
-    # --- La variable de estado ahora usa el objeto simple ---
     all_purchases: List[PurchaseCardData] = []
     search_query: str = ""
 
@@ -254,14 +246,11 @@ class PaymentHistoryState(SessionState):
         query = self.search_query.lower()
         return [
             p for p in self.all_purchases
-            if query in f"#{p.id}" or \
-               query in p.customer_name.lower() or \
-               query in p.customer_email.lower()
+            if query in f"#{p.id}" or query in p.customer_name.lower() or query in p.customer_email.lower()
         ]
 
     @rx.event
     def load_confirmed_purchases(self):
-        """Carga, transforma y guarda el historial de compras."""
         if not self.is_admin:
             self.all_purchases = []
             return
@@ -277,7 +266,7 @@ class PaymentHistoryState(SessionState):
             )
             db_results = session.exec(statement).unique().all()
             
-            # --- Transformación de PurchaseModel a PurchaseCardData ---
+            # Transformación a DTO
             self.all_purchases = [
                 PurchaseCardData(
                     id=p.id,
@@ -287,7 +276,7 @@ class PaymentHistoryState(SessionState):
                     status=p.status.value,
                     total_price=p.total_price,
                     shipping_name=p.shipping_name or "",
-                    shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                    shipping_full_address=f"{p.shipping_address or ''}, {p.shipping_neighborhood or ''}, {p.shipping_city or ''}",
                     shipping_phone=p.shipping_phone or "",
                     items_formatted=p.items_formatted
                 )
