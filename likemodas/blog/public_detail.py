@@ -97,7 +97,7 @@ def _info_section() -> rx.Component:
         rx.button(
             "Añadir al Carrito",
             on_click=lambda: CartState.add_to_cart(CommentState.post.id),
-            width="100%", size="4", margin_top="1.5em", color_scheme="plum" # <<< CAMBIO CLAVE
+            width="100%", size="4", margin_top="1.5em", color_scheme="violet" # <<< CAMBIO CLAVE
         ),
         padding="1em",
         align="start",
@@ -144,7 +144,7 @@ def _comment_form() -> rx.Component:
                     rx.text("Tu calificación:", weight="bold", size="4"),
                     _star_rating_input(),
                     rx.text_area(name="comment_text", value=CommentState.new_comment_text, on_change=CommentState.set_new_comment_text, placeholder="Escribe tu opinión sobre el producto...", width="100%", size="3"),
-                    rx.button("Publicar Opinión", type="submit", align_self="flex-end", size="3", color_scheme="plum"), # <<< CAMBIO CLAVE
+                    rx.button("Publicar Opinión", type="submit", align_self="flex-end", size="3", color_scheme="violet"), # <<< CAMBIO CLAVE
                     spacing="3", width="100%",
                 ),
                 on_submit=CommentState.add_comment, width="100%",
@@ -204,7 +204,7 @@ def _comment_card(comment: CommentModel) -> rx.Component:
 def comment_section() -> rx.Component:
     return rx.vstack(
         rx.divider(margin_y="2em"),
-        rx.heading("Opiniones del Producto", size="8", color_scheme="plum"), # <<< CAMBIO CLAVE
+        rx.heading("Opiniones del Producto", size="8", color_scheme="violet"), # <<< CAMBIO CLAVE
         _comment_form(),
         rx.vstack(
             rx.foreach(CommentState.comments, _comment_card),
@@ -240,7 +240,7 @@ def blog_public_detail_page() -> rx.Component:
     
     page_content = rx.center(
         rx.vstack(
-            rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="plum"), # <<< CAMBIO CLAVE
+            rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"), # <<< CAMBIO CLAVE
             content_grid,
             comment_section(),
             spacing="6",

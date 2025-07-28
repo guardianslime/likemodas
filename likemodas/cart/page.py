@@ -172,7 +172,7 @@ def checkout_form() -> rx.Component:
                         placeholder="Selecciona un barrio...",
                         on_change=CartState.set_shipping_neighborhood,
                         value=CartState.shipping_neighborhood,
-                        is_disabled=~CartState.neighborhoods,
+                        is_disabled=~CartState.neighborhoods, # <<< LÍNEA CORREGIDA
                     ),
                     spacing="1", align_items="start",
                 ),
@@ -186,8 +186,7 @@ def checkout_form() -> rx.Component:
                 spacing="4",
                 width="100%",
             ),
-            # <<< CAMBIO CLAVE
-            rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em", color_scheme="plum"),
+            rx.button("Finalizar Compra", type="submit", width="100%", size="3", margin_top="1em", color_scheme="violet"),
             spacing="4",
             width="100%",
         ),
@@ -216,8 +215,7 @@ def cart_page() -> rx.Component:
     """Página del carrito de compras."""
     return base_page(
         rx.vstack(
-            # <<< CAMBIO CLAVE
-            rx.heading("Mi Carrito", size="8", color_scheme="plum"),
+            rx.heading("Mi Carrito", size="8", color_scheme="violet"),
             rx.cond(
                 CartState.cart_items_count > 0,
                 rx.vstack(
