@@ -27,9 +27,101 @@ class CartState(SessionState):
     # --- ✅ LÓGICA DE DIRECCIÓN PREDETERMINADA ---
     default_shipping_address: Optional[ShippingAddressModel] = None
 
+    # --- Lógica de filtrado que ya tenías ---
+    @rx.var
+    def filtered_posts(self) -> list[ProductCardData]:
+        posts_to_filter = self.posts
+        if self.current_category and self.current_category != "todos":
+            with rx.session() as session:
+                try:
+                    category_enum = Category(self.current_category)
+                    post_ids_in_category = set(
+                        session.exec(select(BlogPostModel.id).where(BlogPostModel.category == category_enum)).all()
+                    )
+                    posts_to_filter = [p for p in self.posts if p.id in post_ids_in_category]
+                except ValueError:
+                    return []
+        try:
+            min_p = float(self.min_price) if self.min_price else 0
+        except ValueError: min_p = 0
+        try:
+            max_p = float(self.max_price) if self.max_price else float('inf')
+        except ValueError: max_p = float('inf')
+
+        if min_p > 0 or max_p != float('inf'):
+            posts_to_filter = [p for p in posts_to_filter if (p.price >= min_p and p.price <= max_p)]
+        
+        active_filters = any([
+            self.filter_color, self.filter_talla, self.filter_tipo_prenda,
+            self.filter_numero_calzado, self.filter_tipo_zapato, self.filter_tipo_mochila,
+            self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla,
+        ])
+        if not active_filters:
+            return posts_to_filter
+
+        with rx.session() as session:
+            post_ids = [p.id for p in posts_to_filter]
+            if not post_ids: return []
+            query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
+            if self.current_category == Category.ROPA.value:
+                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+                if self.filter_talla: query = query.where(cast(BlogPostModel.attributes['talla'], String).ilike(f"%{self.filter_talla}%"))
+                if self.filter_tipo_prenda: query = query.where(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_prenda)
+            elif self.current_category == Category.CALZADO.value:
+                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+                if self.filter_numero_calzado: query = query.where(cast(BlogPostModel.attributes['numero_calzado'], String) == self.filter_numero_calzado)
+                if self.filter_tipo_zapato: query = query.where(cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_zapato)
+            elif self.current_category == Category.MOCHILAS.value:
+                if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
+            else:
+                if self.filter_tipo_general:
+                    query = query.where(or_(
+                        cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general,
+                        cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general,
+                        cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_general
+                    ))
+                if self.filter_material_tela:
+                    mat = f"%{self.filter_material_tela}%"
+                    query = query.where(or_(
+                        cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat),
+                        cast(BlogPostModel.attributes['material'], String).ilike(mat)
+                    ))
+                if self.filter_medida_talla:
+                    med = f"%{self.filter_medida_talla}%"
+                    query = query.where(or_(
+                        cast(BlogPostModel.attributes['talla'], String).ilike(med),
+                        cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med),
+                        cast(BlogPostModel.attributes['medidas'], String).ilike(med)
+                    ))
+                if self.filter_color:
+                    query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+            filtered_db_posts = session.exec(query).all()
+            filtered_ids = {p.id for p in filtered_db_posts}
+            return [p for p in posts_to_filter if p.id in filtered_ids]
+
+    # --- ✅ FUNCIÓN RESTAURADA que causaba el error ---
+    @rx.event
+    def load_posts_and_set_category(self):
+        """Carga todos los posts y establece la categoría actual desde la URL."""
+        self.current_category = self.router.page.params.get("cat_name", "")
+        with rx.session() as session:
+            statement = (
+                select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
+                .order_by(BlogPostModel.created_at.desc())
+            )
+            results = session.exec(statement).unique().all()
+            self.posts = [
+                ProductCardData(
+                    id=post.id, title=post.title, price=post.price, images=post.images,
+                    average_rating=post.average_rating, rating_count=post.rating_count
+                ) for post in results
+            ]
+
     @rx.event
     def on_load(self):
-        """Carga todos los productos en el estado para que el carrito funcione."""
+        """Carga todos los productos en el estado."""
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
@@ -83,7 +175,6 @@ class CartState(SessionState):
 
     @rx.event
     def load_default_shipping_info(self):
-        """Carga el objeto de la dirección predeterminada en el estado."""
         if not self.authenticated_user_info:
             return
         with rx.session() as session:
@@ -96,22 +187,17 @@ class CartState(SessionState):
 
     @rx.event
     def handle_checkout(self):
-        """Maneja la compra usando la dirección cargada en el estado."""
         if not self.is_authenticated or self.cart_total <= 0:
             return rx.window_alert("No se puede procesar la compra.")
-        
         if not self.default_shipping_address:
             return rx.toast.error("Por favor, establece una dirección de envío predeterminada en 'Mi Cuenta'.")
-        
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info:
                  return rx.window_alert("Usuario no encontrado.")
-            
             post_ids_in_cart = list(self.cart.keys())
             db_posts = session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(post_ids_in_cart))).all()
             db_post_map = {post.id: post for post in db_posts}
-
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id, total_price=self.cart_total, status=PurchaseStatus.PENDING,
                 shipping_name=self.default_shipping_address.name,
@@ -121,7 +207,6 @@ class CartState(SessionState):
                 shipping_phone=self.default_shipping_address.phone
             )
             session.add(new_purchase); session.commit(); session.refresh(new_purchase)
-
             for post_id, quantity in self.cart.items():
                 if post_id in db_post_map:
                     post = db_post_map[post_id]
@@ -131,12 +216,7 @@ class CartState(SessionState):
                     )
                     session.add(purchase_item)
             session.commit()
-
-        self.cart = {}
-        self.default_shipping_address = None
-        
-        # --- ✅ ESTA ES LA LÍNEA CORREGIDA PARA EL ERROR ---
+        self.cart = {}; self.default_shipping_address = None
         yield AdminConfirmState.notify_admin_of_new_purchase
-        
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")

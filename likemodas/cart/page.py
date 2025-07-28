@@ -11,7 +11,6 @@ def display_default_address() -> rx.Component:
         rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
         rx.cond(
             CartState.default_shipping_address,
-            # Si existe una dirección, la muestra
             rx.box(
                 rx.vstack(
                     rx.hstack(
@@ -28,7 +27,6 @@ def display_default_address() -> rx.Component:
                 ),
                 border="1px solid #ededed", border_radius="md", padding="1em", width="100%"
             ),
-            # Si no existe, muestra un mensaje de ayuda
             rx.box(
                 rx.vstack(
                     rx.text("No tienes una dirección de envío predeterminada."),
@@ -70,7 +68,6 @@ def cart_page() -> rx.Component:
                     ),
                     rx.divider(),
                     rx.hstack(rx.heading("Total:", size="6"), rx.heading(f"${CartState.cart_total:.2f}", size="6"), justify="end", width="100%", padding_x="1em"),
-                    # Se llama al nuevo componente en lugar del formulario
                     display_default_address(),
                     spacing="5", width="100%", max_width="700px"
                 ),
