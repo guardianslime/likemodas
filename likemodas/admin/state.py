@@ -171,6 +171,8 @@ class AdminConfirmState(SessionState):
             self.pending_purchases = []
             return
         with rx.session() as session:
+            # --- ✅ SOLUCIÓN: Consulta simplificada ---
+            # Cargamos solo lo necesario para evitar bucles de serialización.
             statement = (
                 select(PurchaseModel)
                 .options(
@@ -182,10 +184,8 @@ class AdminConfirmState(SessionState):
             )
             self.pending_purchases = session.exec(statement).unique().all()
             
-            # Actualiza la notificación en el estado de sesión
             has_pending = len(self.pending_purchases) > 0
             yield SessionState.set_new_purchase_notification(has_pending)
-
 
     @rx.event
     def confirm_payment(self, purchase_id: int):
@@ -201,7 +201,6 @@ class AdminConfirmState(SessionState):
             purchase.status = PurchaseStatus.CONFIRMED
             purchase.confirmed_at = datetime.utcnow()
             
-            # Crea una notificación para el usuario
             notification = NotificationModel(
                 userinfo_id=purchase.userinfo_id,
                 message=f"¡Tu compra #{purchase.id} ha sido confirmada!",
@@ -212,7 +211,6 @@ class AdminConfirmState(SessionState):
             session.commit()
         
         yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
-        # Vuelve a cargar la lista de pendientes para que se actualice la UI
         yield self.load_pending_purchases()
 
     @classmethod
@@ -220,14 +218,11 @@ class AdminConfirmState(SessionState):
         """Notifica al admin sobre una nueva compra."""
         return SessionState.set_new_purchase_notification(True)
 
-
 class PaymentHistoryState(SessionState):
     """Estado para ver el historial de compras confirmadas y enviadas."""
     purchases: List[PurchaseModel] = []
-
     search_query: str = ""
 
-    # --- 👇 AÑADIR ESTA PROPIEDAD COMPUTADA 👇 ---
     @rx.var
     def filtered_purchases(self) -> list[PurchaseModel]:
         """Filtra el historial de pagos por ID, nombre o email del cliente."""
@@ -250,6 +245,7 @@ class PaymentHistoryState(SessionState):
             self.purchases = []
             return
         with rx.session() as session:
+            # --- ✅ SOLUCIÓN: Consulta simplificada ---
             statement = (
                 select(PurchaseModel)
                 .options(

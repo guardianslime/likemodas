@@ -1,4 +1,4 @@
-# likemodas/purchases/state.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/purchases/state.py
 
 import reflex as rx
 from typing import List
@@ -9,10 +9,8 @@ import sqlalchemy
 
 class PurchaseHistoryState(SessionState):
     purchases: List[PurchaseModel] = []
-
     search_query: str = ""
 
-    # --- 👇 AÑADIR ESTA PROPIEDAD COMPUTADA 👇 ---
     @rx.var
     def filtered_purchases(self) -> list[PurchaseModel]:
         """Filtra las compras del usuario por ID o contenido."""
@@ -22,7 +20,6 @@ class PurchaseHistoryState(SessionState):
         query = self.search_query.lower()
         results = []
         for p in self.purchases:
-            # Buscamos en el ID y en los nombres de los artículos
             items_text = " ".join(p.items_formatted).lower()
             if query in f"#{p.id}" or query in items_text:
                 results.append(p)
@@ -36,16 +33,15 @@ class PurchaseHistoryState(SessionState):
             return
 
         with rx.session() as session:
-            # --- CORRECCIÓN CLAVE AQUÍ ---
-            # Se añade un `joinedload` explícito para los comentarios del post,
-            # lo que previene el error `DetachedInstanceError` en esta página.
+            # --- ✅ SOLUCIÓN: Consulta simplificada ---
+            # Se elimina el .joinedload(BlogPostModel.comments) que es innecesario aquí
+            # y causa el bucle de serialización.
             statement = (
                 select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items)
                     .joinedload(PurchaseItemModel.blog_post)
-                    .joinedload(BlogPostModel.comments)  # <--- ESTA LÍNEA ES LA SOLUCIÓN
                 )
                 .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
