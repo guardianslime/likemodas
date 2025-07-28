@@ -24,10 +24,21 @@ class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     
-    # --- ✅ LÓGICA DE DIRECCIÓN PREDETERMINADA ---
+    # --- LÓGICA DE DIRECCIÓN PREDETERMINADA ---
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # --- Lógica de filtrado que ya tenías ---
+    # --- Propiedades computadas para Dashboard y Landing Page ---
+    @rx.var
+    def dashboard_posts(self) -> list[ProductCardData]:
+        """Devuelve los primeros 20 posts para el dashboard."""
+        return self.posts[:20]
+
+    @rx.var
+    def landing_page_posts(self) -> list[ProductCardData]:
+        """Devuelve el post más reciente para la landing page."""
+        return self.posts[:1] if self.posts else []
+
+    # --- Lógica de filtrado ---
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
@@ -78,7 +89,7 @@ class CartState(SessionState):
                     query = query.where(or_(
                         cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general,
                         cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general,
-                        cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_general
+                        cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila
                     ))
                 if self.filter_material_tela:
                     mat = f"%{self.filter_material_tela}%"
@@ -99,10 +110,8 @@ class CartState(SessionState):
             filtered_ids = {p.id for p in filtered_db_posts}
             return [p for p in posts_to_filter if p.id in filtered_ids]
 
-    # --- ✅ FUNCIÓN RESTAURADA que causaba el error ---
     @rx.event
     def load_posts_and_set_category(self):
-        """Carga todos los posts y establece la categoría actual desde la URL."""
         self.current_category = self.router.page.params.get("cat_name", "")
         with rx.session() as session:
             statement = (
@@ -121,7 +130,6 @@ class CartState(SessionState):
 
     @rx.event
     def on_load(self):
-        """Carga todos los productos en el estado."""
         with rx.session() as session:
             statement = (
                 select(BlogPostModel)
