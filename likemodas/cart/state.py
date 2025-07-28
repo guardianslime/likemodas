@@ -29,17 +29,14 @@ class CartState(SessionState):
 
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
-        """Devuelve los primeros 20 posts para el dashboard."""
         return self.posts[:20]
 
     @rx.var
     def landing_page_posts(self) -> list[ProductCardData]:
-        """Devuelve el post más reciente para la landing page."""
         return self.posts[:1] if self.posts else []
 
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
-        """Filtra la lista de posts usando todos los criterios."""
         posts_to_filter = self.posts
         if self.current_category and self.current_category != "todos":
             with rx.session() as session:
@@ -101,7 +98,7 @@ class CartState(SessionState):
 
     @rx.event
     def load_posts_and_set_category(self):
-        """Función para las páginas de categorías."""
+        """Función necesaria para las páginas de categorías."""
         self.current_category = self.router.page.params.get("cat_name", "")
         yield self.on_load()
 
@@ -190,8 +187,8 @@ class CartState(SessionState):
 
         self.cart.clear(); self.default_shipping_address = None
         
-        # --- ✅ CORRECCIÓN FINAL DEL TypeError ---
-        yield AdminConfirmState.notify_admin_of_new_purchase
+        # --- ✅ CORRECCIÓN FINAL DEL TypeError: Se añaden los paréntesis ---
+        yield AdminConfirmState.notify_admin_of_new_purchase()
         
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
