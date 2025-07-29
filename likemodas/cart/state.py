@@ -14,8 +14,20 @@ from ..admin.state import AdminConfirmState
 from ..utils.formatting import format_to_cop 
 
 class ProductCardData(rx.Base):
-    id: int; title: str; price: float = 0.0; images: list[str] = []
-    average_rating: float = 0.0; rating_count: int = 0
+    id: int
+    title: str
+    price: float = 0.0
+    images: list[str] = []
+    average_rating: float = 0.0
+    rating_count: int = 0
+
+    # --- ✅ 2. AÑADE ESTA PROPIEDAD AQUÍ ---
+    @property
+    def price_cop(self) -> str:
+        """Propiedad para el precio formateado en COP."""
+        return format_to_cop(self.price)
+
+
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
