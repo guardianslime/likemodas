@@ -59,6 +59,7 @@ def public_navbar() -> rx.Component:
     con el menú a la izquierda y estilos de color personalizados.
     """
     return rx.box(
+        # <<< CAMBIO CLAVE: Se usa rx.grid en lugar de rx.hstack para un mejor control del layout >>>
         rx.grid(
             # --- Columna Izquierda (Logo y Menú) ---
             rx.hstack(
@@ -71,7 +72,6 @@ def public_navbar() -> rx.Component:
                     ),
                     rx.menu.content(
                         rx.menu.item("Home", on_click=navigation.NavState.to_home),
-                        # --- Menú de categorías que ya implementamos ---
                         rx.menu.sub(
                             rx.menu.sub_trigger("Categorías"),
                             rx.menu.sub_content(
@@ -110,8 +110,8 @@ def public_navbar() -> rx.Component:
                 justify="start",
             ),
             
-            # --- ✨ CAMBIO: Columna Central (Ahora maneja ambas búsquedas) ---
-            rx.center(
+            # --- Columna Central (Barra de búsqueda) ---
+           rx.center(
                 # Búsqueda para ESCRITORIO (oculta en móvil)
                 rx.form(
                     rx.input(
