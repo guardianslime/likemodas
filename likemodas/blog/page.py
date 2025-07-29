@@ -32,56 +32,7 @@ def _product_card_rating(post: BlogPostModel) -> rx.Component:
         rx.box(height="21px")
     )
 
-# --- ✨ NUEVO COMPONENTE REUTILIZABLE --- ✨
-def product_gallery_component(posts: rx.Var[list[BlogPostModel]]) -> rx.Component:
-    """Un componente que muestra una galería de productos."""
-    return rx.flex(
-        rx.foreach(
-            posts,
-            lambda post: rx.box(
-                rx.vstack(
-                    rx.link(
-                        rx.vstack(
-                            rx.box(
-                                rx.cond(
-                                    post.images & (post.images.length() > 0),
-                                    rx.image(
-                                        src=rx.get_upload_url(post.images[0]),
-                                        width="100%", height="100%", object_fit="cover", border_radius="md",
-                                    ),
-                                    rx.box(
-                                        "Sin imagen", width="100%", height="100%", bg="#eee",
-                                        align="center", justify="center", display="flex", border_radius="md"
-                                    )
-                                ),
-                                position="relative", width="260px", height="260px"
-                            ),
-                            rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
-                            rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
-                            _product_card_rating(post),
-                            spacing="2", align="start"
-                        ),
-                        href=f"{routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}"
-                    ),
-                    rx.spacer(),
-                    rx.button(
-                        "Añadir al Carrito",
-                        on_click=lambda: CartState.add_to_cart(post.id),
-                        width="100%",
-                    ),
-                    align="center", spacing="2", height="100%"
-                ),
-                width="290px", 
-                height="450px",
-                bg=rx.color_mode_cond("#f9f9f9", "#111111"),
-                border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
-                border_radius="8px",
-                box_shadow="md",
-                padding="1em",
-            )
-        ),
-        wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
-    )
+
 
 # --- ✨ PÁGINA SIMPLIFICADA USANDO EL NUEVO COMPONENTE --- ✨
 def blog_public_page():
