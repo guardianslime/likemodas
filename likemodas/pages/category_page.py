@@ -25,7 +25,6 @@ def category_page() -> rx.Component:
                     ~SessionState.is_admin,
                     rx.fragment(
                         floating_filter_panel(),
-                        categories_button()
                     )
                 )
             ),

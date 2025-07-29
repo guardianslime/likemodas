@@ -48,9 +48,6 @@ def blog_public_page():
         base_page(
             rx.center(
                 rx.vstack(
-                    # --- 👇 CORRECCIÓN: Se elimina el hstack duplicado y se deja solo el componente ---
-                    categories_button(),
-                    
                     product_gallery_component(posts=CartState.filtered_posts),
                     spacing="6", 
                     width="100%", 

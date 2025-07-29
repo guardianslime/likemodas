@@ -59,7 +59,6 @@ def public_navbar() -> rx.Component:
     con el menú a la izquierda y estilos de color personalizados.
     """
     return rx.box(
-        # <<< CAMBIO CLAVE: Se usa rx.grid en lugar de rx.hstack para un mejor control del layout >>>
         rx.grid(
             # --- Columna Izquierda (Logo y Menú) ---
             rx.hstack(
@@ -72,6 +71,7 @@ def public_navbar() -> rx.Component:
                     ),
                     rx.menu.content(
                         rx.menu.item("Home", on_click=navigation.NavState.to_home),
+                        # --- Menú de categorías que ya implementamos ---
                         rx.menu.sub(
                             rx.menu.sub_trigger("Categorías"),
                             rx.menu.sub_content(
@@ -110,59 +110,48 @@ def public_navbar() -> rx.Component:
                 justify="start",
             ),
             
-            # --- Columna Central (Barra de búsqueda) ---
+            # --- ✨ CAMBIO: Columna Central (Ahora maneja ambas búsquedas) ---
             rx.center(
+                # Búsqueda para ESCRITORIO (oculta en móvil)
                 rx.form(
                     rx.input(
-                        placeholder="Buscar productos...",
-                        value=SearchState.search_term,
-                        on_change=SearchState.set_search_term,
-                        on_blur=SearchState.perform_search,
-                        height=["2.5em", "2.8em", "3em", "3.3em"],
-                        padding_x="4",
-                        border_radius="full",
-                        border_width="1px",
+                        placeholder="Buscar productos...", value=SearchState.search_term,
+                        on_change=SearchState.set_search_term, on_blur=SearchState.perform_search,
+                        height=["2.5em", "2.8em", "3em", "3.3em"], padding_x="4",
+                        border_radius="full", border_width="1px",
                         font_size=rx.breakpoints(sm="2", md="3", lg="3"),
                     ),
-                    on_submit=SearchState.perform_search,
-                    width="100%"
+                    on_submit=SearchState.perform_search, width="100%",
+                    display=["none", "none", "flex", "flex"],
                 ),
-                width="100%",
-                display=["none", "none", "flex", "flex"], # <-- LÍNEA AÑADIDA
-            ),
-            
-            # --- Columna Derecha (Iconos) ---
-            rx.hstack(
+                # Búsqueda para MÓVIL (oculta en escritorio)
                 rx.popover.root(
                     rx.popover.trigger(
                         rx.icon_button(
                             rx.icon("search", color="white"),
-                            variant="ghost",
-                            size="3",
-                            # Se muestra solo en móvil
-                            display=["flex", "flex", "none", "none"],
+                            variant="ghost", size="3",
                         )
                     ),
                     rx.popover.content(
                         rx.form(
-                            rx.input(
-                                placeholder="Buscar productos...",
-                                value=SearchState.search_term,
-                                on_change=SearchState.set_search_term,
-                                on_blur=SearchState.perform_search,
-                            ),
-                            on_submit=[
-                                SearchState.perform_search,
-                                rx.set_value("open", False) # Cierra el popover al buscar
-                            ],
+                            rx.input(placeholder="Buscar productos...", value=SearchState.search_term,
+                                     on_change=SearchState.set_search_term),
+                            on_submit=[SearchState.perform_search, rx.set_value("open", False)],
                             width="100%",
                         ),
-                        # Ajustamos el tamaño para que se vea bien en móviles pequeños
-                        width="80vw",
-                        max_width="350px",
+                        width="80vw", max_width="350px",
                     ),
-                    modal=True, # El fondo se oscurece al abrir
+                    modal=True,
                 ),
+                # Este display asegura que el ícono de lupa solo se vea en móvil
+                display=["flex", "flex", "none", "none"],
+                justify_content="end", # Alinea la lupa a la derecha de la columna central
+                width="100%",
+            ),
+            # --- FIN DEL CAMBIO ---
+
+            # --- Columna Derecha (Iconos) ---
+            rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,
                     rx.fragment(
@@ -189,21 +178,14 @@ def public_navbar() -> rx.Component:
                 spacing="4",
                 justify="end",
             ),
-            
-            # Definición de las columnas del grid
+  
             columns="auto 1fr auto",
             align_items="center",
             width="100%",
-            gap="1.5rem", # Espacio entre columnas
+            gap="1.5rem",
         ),
-        position="fixed",
-        top="0",
-        left="0",
-        right="0",
-        width="100%",
-        padding="0.75rem 1.5rem", # Aumentado el padding horizontal
-        z_index="99",
-        bg="#2C004BF0",
-        style={"backdrop_filter": "blur(10px)"},
+        position="fixed", top="0", left="0", right="0",
+        width="100%", padding="0.75rem 1.5rem", z_index="99",
+        bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
         on_mount=[NavDeviceState.on_mount, NotificationState.load_notifications],
     )
