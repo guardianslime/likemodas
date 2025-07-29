@@ -13,21 +13,15 @@ from ..data.colombia_locations import load_colombia_data
 from ..admin.state import AdminConfirmState
 
 class ProductCardData(rx.Base):
-    id: int
-    title: str
-    price: float = 0.0
-    images: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
+    id: int; title: str; price: float = 0.0; images: list[str] = []
+    average_rating: float = 0.0; rating_count: int = 0
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     
-    # Variable para la dirección predeterminada del carrito
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # Propiedades computadas para Dashboard y Landing Page
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
         return self.posts[:20]
@@ -36,7 +30,6 @@ class CartState(SessionState):
     def landing_page_posts(self) -> list[ProductCardData]:
         return self.posts[:1] if self.posts else []
 
-    # Lógica de filtrado
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
@@ -53,18 +46,11 @@ class CartState(SessionState):
             max_p = float(self.max_price) if self.max_price else float('inf')
         except (ValueError, TypeError):
             min_p, max_p = 0, float('inf')
-
         if min_p > 0 or max_p != float('inf'):
             posts_to_filter = [p for p in posts_to_filter if min_p <= p.price <= max_p]
-        
-        active_filters = any([
-            self.filter_color, self.filter_talla, self.filter_tipo_prenda,
-            self.filter_numero_calzado, self.filter_tipo_zapato, self.filter_tipo_mochila,
-            self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla,
-        ])
+        active_filters = any([self.filter_color, self.filter_talla, self.filter_tipo_prenda, self.filter_numero_calzado, self.filter_tipo_zapato, self.filter_tipo_mochila, self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla])
         if not active_filters:
             return posts_to_filter
-
         with rx.session() as session:
             post_ids = [p.id for p in posts_to_filter]
             if not post_ids: return []
@@ -80,50 +66,27 @@ class CartState(SessionState):
             elif self.current_category == Category.MOCHILAS.value:
                 if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
             else:
-                if self.filter_tipo_general:
-                    query = query.where(or_(
-                        cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general,
-                        cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general,
-                        cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila
-                    ))
-                if self.filter_material_tela:
-                    mat = f"%{self.filter_material_tela}%"
-                    query = query.where(or_(cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat), cast(BlogPostModel.attributes['material'], String).ilike(mat)))
-                if self.filter_medida_talla:
-                    med = f"%{self.filter_medida_talla}%"
-                    query = query.where(or_(cast(BlogPostModel.attributes['talla'], String).ilike(med), cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med), cast(BlogPostModel.attributes['medidas'], String).ilike(med)))
-                if self.filter_color:
-                    query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
-
+                if self.filter_tipo_general: query = query.where(or_(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_general))
+                if self.filter_material_tela: mat = f"%{self.filter_material_tela}%"; query = query.where(or_(cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat), cast(BlogPostModel.attributes['material'], String).ilike(mat)))
+                if self.filter_medida_talla: med = f"%{self.filter_medida_talla}%"; query = query.where(or_(cast(BlogPostModel.attributes['talla'], String).ilike(med), cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med), cast(BlogPostModel.attributes['medidas'], String).ilike(med)))
+                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
             filtered_db_posts = session.exec(query).all()
             filtered_ids = {p.id for p in filtered_db_posts}
             return [p for p in posts_to_filter if p.id in filtered_ids]
 
     @rx.event
     def load_posts_and_set_category(self):
-        """Función para las páginas de categorías."""
         self.current_category = self.router.page.params.get("cat_name", "")
         yield self.on_load()
 
     @rx.event
     def on_load(self):
-        """Carga todos los productos en el estado."""
         with rx.session() as session:
-            results = session.exec(
-                select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
-                .order_by(BlogPostModel.created_at.desc())
-            ).unique().all()
-            self.posts = [
-                ProductCardData(
-                    id=p.id, title=p.title, price=p.price, images=p.images,
-                    average_rating=p.average_rating, rating_count=p.rating_count
-                ) for p in results
-            ]
+            results = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now()).order_by(BlogPostModel.created_at.desc())).unique().all()
+            self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price, images=p.images, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
             
     @rx.var
-    def cart_items_count(self) -> int:
-        return sum(self.cart.values())
+    def cart_items_count(self) -> int: return sum(self.cart.values())
 
     @rx.var
     def cart_details(self) -> List[Tuple[ProductCardData, int]]:
@@ -150,12 +113,7 @@ class CartState(SessionState):
     def load_default_shipping_info(self):
         if self.authenticated_user_info:
             with rx.session() as session:
-                self.default_shipping_address = session.exec(
-                    select(ShippingAddressModel).where(
-                        ShippingAddressModel.userinfo_id == self.authenticated_user_info.id,
-                        ShippingAddressModel.is_default == True
-                    )
-                ).one_or_none()
+                self.default_shipping_address = session.exec(select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id, ShippingAddressModel.is_default == True)).one_or_none()
 
     @rx.event
     def handle_checkout(self):
