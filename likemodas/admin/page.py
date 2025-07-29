@@ -6,7 +6,7 @@ from ..ui.base import base_page
 from ..admin.state import AdminConfirmState, PaymentHistoryState, PurchaseCardData
 
 def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) -> rx.Component:
-    """Muestra los detalles de una compra en el panel de admin."""
+    """Displays the details of a purchase in the admin panel."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -37,8 +37,6 @@ def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) ->
                 rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
                 spacing="1", align_items="start", width="100%",
             ),
-            # --- ✅ CORRECCIÓN CLAVE ---
-            # Esta condición asegura que el botón solo se muestre si 'is_history' es False.
             rx.cond(
                 ~is_history,
                 rx.button("Confirmar Pago", on_click=AdminConfirmState.confirm_payment(purchase.id), width="100%", margin_top="1em")
@@ -49,14 +47,13 @@ def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) ->
 
 @require_admin
 def admin_confirm_page() -> rx.Component:
-    """Página para que el admin confirme los pagos pendientes."""
+    """Admin page to confirm pending payments."""
     return base_page(
         rx.center(
             rx.vstack(
                 rx.heading("Confirmar Pagos Pendientes", size="8"),
                 rx.cond(
                     AdminConfirmState.pending_purchases,
-                    # Aquí se llama con is_history=False para que SÍ se vea el botón
                     rx.foreach(AdminConfirmState.pending_purchases, lambda p: purchase_card_admin(p, is_history=False)),
                     rx.center(rx.text("No hay compras pendientes por confirmar."), padding_y="2em")
                 ),
@@ -67,7 +64,7 @@ def admin_confirm_page() -> rx.Component:
 
 @require_admin
 def payment_history_page() -> rx.Component:
-    """Página para que el admin vea el historial de pagos."""
+    """Admin page to view payment history."""
     return base_page(
         rx.center(
             rx.vstack(
@@ -78,7 +75,6 @@ def payment_history_page() -> rx.Component:
                 ),
                 rx.cond(
                     PaymentHistoryState.filtered_purchases,
-                    # Aquí se llama con is_history=True para que NO se vea el botón
                     rx.foreach(PaymentHistoryState.filtered_purchases, lambda p: purchase_card_admin(p, is_history=True)),
                     rx.center(rx.text("No se encontró historial para la búsqueda."), padding_y="2em")
                 ),
