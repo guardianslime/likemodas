@@ -161,8 +161,12 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px"
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
-                            rx.text(post.price_cop, color=rx.color_mode_cond("black", "white"), size="6"), # ✅ CAMBIO AQUÍ
-                            _product_card_rating(post), # Usamos la función mejorada
+                            
+                            # --- ✅ CAMBIO CLAVE AQUÍ ---
+                            # Nos aseguramos de usar la propiedad 'price_cop' que tiene el formato correcto.
+                            rx.text(post.price_cop, color=rx.color_mode_cond("black", "white"), size="6"),
+                            
+                            _product_card_rating(post),
                             spacing="2", align="start"
                         ),
                         href=f"{routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}"

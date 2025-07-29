@@ -171,7 +171,10 @@ class PurchaseModel(rx.Model, table=True):
     def items_formatted(self) -> list[str]:
         if not self.items:
             return []
-        return [f"{item.quantity}x {item.blog_post.title} (@ ${item.price_at_purchase:.2f} c/u)" for item in self.items]
+        return [
+            f"{item.quantity}x {item.blog_post.title} - {format_to_cop(item.price_at_purchase)} c/u"
+            for item in self.items
+        ]
 
     def dict(self, **kwargs):
         d = super().dict(**kwargs)
