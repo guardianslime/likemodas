@@ -138,7 +138,7 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
-    """Un componente reutilizable que muestra una galería de productos."""
+    """Un componente que muestra una galería de productos."""
     return rx.flex(
         rx.foreach(
             posts,
@@ -162,8 +162,9 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
                             
-                            # Línea clave que usa el precio formateado con puntos
-                            rx.text(post.price_cop, color=rx.color_mode_cond("black", "white"), size="6"),
+                            # --- ✅ CAMBIO FINAL AQUÍ ---
+                            # Leemos el campo de texto simple que ya viene formateado.
+                            rx.text(post.price_formatted, color=rx.color_mode_cond("black", "white"), size="6"),
                             
                             _product_card_rating(post),
                             spacing="2", align="start"

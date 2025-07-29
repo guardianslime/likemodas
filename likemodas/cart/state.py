@@ -17,6 +17,7 @@ class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
+    price_formatted: str = ""  # <-- ✅ CAMBIO CLAVE: Añadimos este campo
     images: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
@@ -96,10 +97,29 @@ class CartState(SessionState):
 
     @rx.event
     def on_load(self):
+        """Carga los posts y les añade el precio ya formateado."""
         with rx.session() as session:
-            results = session.exec(select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now()).order_by(BlogPostModel.created_at.desc())).unique().all()
-            self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price, images=p.images, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
+            results = session.exec(
+                select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now())
+                .order_by(BlogPostModel.created_at.desc())
+            ).unique().all()
             
+            # --- ✅ CAMBIO CLAVE AQUÍ ---
+            # Creamos la lista de posts y llenamos 'price_formatted' al instante.
+            self.posts = [
+                ProductCardData(
+                    id=p.id,
+                    title=p.title,
+                    price=p.price,
+                    price_formatted=format_to_cop(p.price), # <-- Llenamos el campo nuevo
+                    images=p.images,
+                    average_rating=p.average_rating,
+                    rating_count=p.rating_count
+                ) for p in results
+            ]
+             
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
 
