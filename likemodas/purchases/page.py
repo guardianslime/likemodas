@@ -22,7 +22,7 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status.to(str), color_scheme="blue", variant="soft", size="2"),
-                    rx.heading(f"${purchase.total_price:.2f}", size="6"),
+                    rx.heading(purchase.total_price_cop, size="6"), # ✅ CAMBIO AQUÍ
                     align_items="end",
                 ),
                 justify="between",

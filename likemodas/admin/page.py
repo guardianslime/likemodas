@@ -59,7 +59,7 @@ def purchase_card_history(purchase: PurchaseCardData) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
-                    rx.heading(f"${purchase.total_price:,.2f}", size="6"),
+                    rx.heading(purchase.total_price_cop, size="6"), # ✅ CAMBIO AQUÍ
                     align_items="end",
                 ), width="100%",
             ),

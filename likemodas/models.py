@@ -2,6 +2,7 @@
 
 from typing import Optional, List
 from . import utils
+from .utils.formatting import format_to_cop
 from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy import String, inspect
 from datetime import datetime
@@ -110,6 +111,18 @@ class BlogPostModel(rx.Model, table=True):
     @property
     def publish_date_formatted(self) -> str:
         return format_utc_to_local(self.publish_date)
+    
+    @property
+    def price_cop(self) -> str:
+        """Propiedad nueva para el precio del producto formateado."""
+        return format_to_cop(self.price)
+
+    @property
+    def average_rating_display(self) -> str:
+        """Propiedad para mostrar la calificación como '4.5'."""
+        if self.rating_count > 0:
+            return f"{self.average_rating:.1f}"
+        return ""
 
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
@@ -166,6 +179,22 @@ class PurchaseModel(rx.Model, table=True):
         d["items_formatted"] = self.items_formatted
         d["confirmed_at_formatted"] = self.confirmed_at_formatted
         return d
+    
+    @property
+    def total_price_cop(self) -> str:
+        """Propiedad nueva para el precio total formateado."""
+        return format_to_cop(self.total_price)
+
+    @property
+    def items_formatted(self) -> list[str]:
+        """Propiedad MEJORADA para la lista de artículos."""
+        if not self.items:
+            return []
+        # El formato ahora es más limpio y usa nuestro formateador central.
+        return [
+            f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)"
+            for item in self.items
+        ]
 
 class PurchaseItemModel(rx.Model, table=True):
     purchase_id: int = Field(foreign_key="purchasemodel.id")

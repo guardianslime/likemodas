@@ -50,8 +50,8 @@ def cart_item_row(item: rx.Var) -> rx.Component:
     return rx.table.row(
         rx.table.cell(rx.text(post.title)),
         rx.table.cell(rx.hstack(rx.button("-", on_click=CartState.remove_from_cart(post.id), size="1"), rx.text(quantity), rx.button("+", on_click=CartState.add_to_cart(post.id), size="1"), align="center", spacing="3")),
-        rx.table.cell(rx.text(rx.cond(post.price, f"${post.price:.2f}", "$0.00"))),
-        rx.table.cell(rx.text(f"${(post.price * quantity):.2f}")),
+        rx.table.cell(rx.text(post.price_cop)), # ✅ CAMBIO AQUÍ
+        rx.table.cell(rx.text(subtotal)),     # ✅ CAMBIO AQUÍ
     )
 
 @reflex_local_auth.require_login
@@ -67,7 +67,11 @@ def cart_page() -> rx.Component:
                         rx.table.body(rx.foreach(CartState.cart_details, cart_item_row))
                     ),
                     rx.divider(),
-                    rx.hstack(rx.heading("Total:", size="6"), rx.heading(f"${CartState.cart_total:.2f}", size="6"), justify="end", width="100%", padding_x="1em"),
+                    rx.hstack(
+                        rx.heading("Total:", size="6"),
+                        rx.heading(CartState.cart_total_cop, size="6"), # ✅ CAMBIO AQUÍ
+                        justify="end", width="100%", padding_x="1em"
+                    ),
                     display_default_address(),
                     spacing="5", width="100%", max_width="700px"
                 ),

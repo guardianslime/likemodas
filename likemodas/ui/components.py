@@ -130,7 +130,8 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
             rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=18)),
             rx.cond(has_half_star, rx.icon("star_half", color="gold", size=18), rx.fragment()),
             rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
-            rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
+            rx.text(f"{post.average_rating:.1f}", size="2", weight="bold"), # Puntuación
+            rx.text(f"({post.rating_count})", size="2", color_scheme="gray"), # Cantidad
             align="center", spacing="1",
         ),
         rx.box(height="21px")
@@ -160,8 +161,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px"
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
-                            rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="6"),
-                            _product_card_rating(post),
+                            rx.text(post.price_cop, color=rx.color_mode_cond("black", "white"), size="6"), # ✅ CAMBIO AQUÍ
+                            _product_card_rating(post), # Usamos la función mejorada
                             spacing="2", align="start"
                         ),
                         href=f"{routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}"

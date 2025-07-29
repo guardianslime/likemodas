@@ -11,6 +11,7 @@ import sqlalchemy
 from sqlalchemy import or_, cast, String
 from ..data.colombia_locations import load_colombia_data
 from ..admin.state import AdminConfirmState
+from ..utils.formatting import format_to_cop 
 
 class ProductCardData(rx.Base):
     id: int; title: str; price: float = 0.0; images: list[str] = []
@@ -72,6 +73,10 @@ class CartState(SessionState):
             filtered_db_posts = session.exec(query).all()
             filtered_ids = {p.id for p in filtered_db_posts}
             return [p for p in posts_to_filter if p.id in filtered_ids]
+
+    @rx.var
+    def cart_total_cop(self) -> str:
+        return format_to_cop(self.cart_total)
 
     @rx.event
     def load_posts_and_set_category(self):
