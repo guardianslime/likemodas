@@ -46,12 +46,28 @@ def display_default_address() -> rx.Component:
     )
 
 def cart_item_row(item: rx.Var) -> rx.Component:
+    """
+    Fila de la tabla del carrito con el subtotal calculado correctamente.
+    """
     post, quantity = item[0], item[1]
     return rx.table.row(
         rx.table.cell(rx.text(post.title)),
-        rx.table.cell(rx.hstack(rx.button("-", on_click=CartState.remove_from_cart(post.id), size="1"), rx.text(quantity), rx.button("+", on_click=CartState.add_to_cart(post.id), size="1"), align="center", spacing="3")),
-        rx.table.cell(rx.text(post.price_cop)), # ✅ CAMBIO AQUÍ
-        rx.table.cell(rx.text(subtotal)),     # ✅ CAMBIO AQUÍ
+        rx.table.cell(
+            rx.hstack(
+                rx.button("-", on_click=CartState.remove_from_cart(post.id), size="1"),
+                rx.text(quantity),
+                rx.button("+", on_click=CartState.add_to_cart(post.id), size="1"),
+                align="center",
+                spacing="3"
+            )
+        ),
+        # Usamos la propiedad .price_cop para el precio unitario, que sí funciona
+        rx.table.cell(rx.text(post.price_cop)),
+
+        # --- ✅ CAMBIO CLAVE AQUÍ ---
+        # Calculamos y formateamos el subtotal directamente aquí.
+        # Reflex puede traducir esto para que se calcule en el frontend.
+        rx.table.cell(rx.text(f"${(post.price * quantity):,.0f}")),
     )
 
 @reflex_local_auth.require_login
