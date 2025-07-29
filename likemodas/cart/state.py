@@ -24,10 +24,10 @@ class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     
-    # --- LÓGICA DE DIRECCIÓN PREDETERMINADA ---
+    # Variable para la dirección predeterminada del carrito
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # --- Propiedades para Dashboard y Landing Page ---
+    # Propiedades computadas para Dashboard y Landing Page
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
         return self.posts[:20]
@@ -36,7 +36,7 @@ class CartState(SessionState):
     def landing_page_posts(self) -> list[ProductCardData]:
         return self.posts[:1] if self.posts else []
 
-    # --- Lógica de filtrado ---
+    # Lógica de filtrado
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
