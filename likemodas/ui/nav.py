@@ -72,7 +72,16 @@ def public_navbar() -> rx.Component:
                     ),
                     rx.menu.content(
                         rx.menu.item("Home", on_click=navigation.NavState.to_home),
-                        rx.menu.item("Pricing", on_click=navigation.NavState.to_pricing),
+                        rx.menu.sub(
+                            rx.menu.sub_trigger("Categorías"),
+                            rx.menu.sub_content(
+                                rx.menu.item("Ropa", on_click=rx.redirect("/category/ropa")),
+                                rx.menu.item("Calzado", on_click=rx.redirect("/category/calzado")),
+                                rx.menu.item("Mochilas", on_click=rx.redirect("/category/mochilas")),
+                                rx.menu.separator(),
+                                rx.menu.item("Ver Todo", on_click=rx.redirect("/")),
+                            ),
+                        ),
                         rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
                         rx.menu.separator(),
                         rx.cond(
@@ -119,10 +128,41 @@ def public_navbar() -> rx.Component:
                     width="100%"
                 ),
                 width="100%",
+                display=["none", "none", "flex", "flex"], # <-- LÍNEA AÑADIDA
             ),
             
             # --- Columna Derecha (Iconos) ---
             rx.hstack(
+                rx.popover.root(
+                    rx.popover.trigger(
+                        rx.icon_button(
+                            rx.icon("search", color="white"),
+                            variant="ghost",
+                            size="3",
+                            # Se muestra solo en móvil
+                            display=["flex", "flex", "none", "none"],
+                        )
+                    ),
+                    rx.popover.content(
+                        rx.form(
+                            rx.input(
+                                placeholder="Buscar productos...",
+                                value=SearchState.search_term,
+                                on_change=SearchState.set_search_term,
+                                on_blur=SearchState.perform_search,
+                            ),
+                            on_submit=[
+                                SearchState.perform_search,
+                                rx.set_value("open", False) # Cierra el popover al buscar
+                            ],
+                            width="100%",
+                        ),
+                        # Ajustamos el tamaño para que se vea bien en móviles pequeños
+                        width="80vw",
+                        max_width="350px",
+                    ),
+                    modal=True, # El fondo se oscurece al abrir
+                ),
                 rx.cond(
                     SessionState.is_authenticated,
                     rx.fragment(
