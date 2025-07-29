@@ -24,10 +24,10 @@ class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     
-    # Variable para la dirección predeterminada del carrito
+    # --- LÓGICA DE DIRECCIÓN PREDETERMINADA ---
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # Propiedades computadas para Dashboard y Landing Page
+    # --- Propiedades para Dashboard y Landing Page ---
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
         return self.posts[:20]
@@ -36,7 +36,7 @@ class CartState(SessionState):
     def landing_page_posts(self) -> list[ProductCardData]:
         return self.posts[:1] if self.posts else []
 
-    # Lógica de filtrado
+    # --- Lógica de filtrado ---
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
@@ -101,11 +101,13 @@ class CartState(SessionState):
 
     @rx.event
     def load_posts_and_set_category(self):
+        """Función para las páginas de categorías."""
         self.current_category = self.router.page.params.get("cat_name", "")
         yield self.on_load()
 
     @rx.event
     def on_load(self):
+        """Carga todos los productos en el estado."""
         with rx.session() as session:
             results = session.exec(
                 select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
@@ -188,6 +190,8 @@ class CartState(SessionState):
 
         self.cart.clear(); self.default_shipping_address = None
         
+        # --- ✅ CORRECCIÓN FINAL DEL TypeError: Se añaden los paréntesis ---
         yield AdminConfirmState.notify_admin_of_new_purchase()
+        
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
