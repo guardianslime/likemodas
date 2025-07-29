@@ -6,7 +6,7 @@ from ..ui.base import base_page
 from .state import CartState
 
 def display_default_address() -> rx.Component:
-    """Displays the default shipping address or a prompt to set one."""
+    """Muestra la dirección de envío predeterminada o un mensaje para configurarla."""
     return rx.vstack(
         rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
         rx.cond(
@@ -46,7 +46,6 @@ def display_default_address() -> rx.Component:
     )
 
 def cart_item_row(item: rx.Var) -> rx.Component:
-    """Displays a single row in the shopping cart table."""
     post, quantity = item[0], item[1]
     return rx.table.row(
         rx.table.cell(rx.text(post.title)),
@@ -57,7 +56,6 @@ def cart_item_row(item: rx.Var) -> rx.Component:
 
 @reflex_local_auth.require_login
 def cart_page() -> rx.Component:
-    """The shopping cart page."""
     return base_page(
         rx.vstack(
             rx.heading("Mi Carrito", size="8", color_scheme="violet"),

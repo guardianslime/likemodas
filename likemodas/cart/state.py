@@ -27,6 +27,7 @@ class CartState(SessionState):
     # Variable para la dirección predeterminada del carrito
     default_shipping_address: Optional[ShippingAddressModel] = None
 
+    # Propiedades computadas para Dashboard y Landing Page
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
         return self.posts[:20]
@@ -35,6 +36,7 @@ class CartState(SessionState):
     def landing_page_posts(self) -> list[ProductCardData]:
         return self.posts[:1] if self.posts else []
 
+    # Lógica de filtrado
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
@@ -92,19 +94,18 @@ class CartState(SessionState):
                     query = query.where(or_(cast(BlogPostModel.attributes['talla'], String).ilike(med), cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med), cast(BlogPostModel.attributes['medidas'], String).ilike(med)))
                 if self.filter_color:
                     query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+
             filtered_db_posts = session.exec(query).all()
             filtered_ids = {p.id for p in filtered_db_posts}
             return [p for p in posts_to_filter if p.id in filtered_ids]
 
     @rx.event
     def load_posts_and_set_category(self):
-        """Función necesaria para las páginas de categorías."""
         self.current_category = self.router.page.params.get("cat_name", "")
         yield self.on_load()
 
     @rx.event
     def on_load(self):
-        """Carga todos los productos en el estado."""
         with rx.session() as session:
             results = session.exec(
                 select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
@@ -187,8 +188,6 @@ class CartState(SessionState):
 
         self.cart.clear(); self.default_shipping_address = None
         
-        # --- ✅ CORRECCIÓN FINAL DEL TypeError: Se añaden los paréntesis ---
         yield AdminConfirmState.notify_admin_of_new_purchase()
-        
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
