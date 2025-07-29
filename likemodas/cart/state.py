@@ -21,10 +21,9 @@ class ProductCardData(rx.Base):
     average_rating: float = 0.0
     rating_count: int = 0
 
-    # --- ✅ 2. AÑADE ESTA PROPIEDAD AQUÍ ---
     @property
     def price_cop(self) -> str:
-        """Propiedad para el precio formateado en COP."""
+        """Propiedad para el precio ya formateado."""
         return format_to_cop(self.price)
 
 
