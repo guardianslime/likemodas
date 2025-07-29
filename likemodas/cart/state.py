@@ -19,7 +19,6 @@ class ProductCardData(rx.Base):
 class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
-    
     default_shipping_address: Optional[ShippingAddressModel] = None
 
     @rx.var
@@ -66,7 +65,7 @@ class CartState(SessionState):
             elif self.current_category == Category.MOCHILAS.value:
                 if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
             else:
-                if self.filter_tipo_general: query = query.where(or_(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_general))
+                if self.filter_tipo_general: query = query.where(or_(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila))
                 if self.filter_material_tela: mat = f"%{self.filter_material_tela}%"; query = query.where(or_(cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat), cast(BlogPostModel.attributes['material'], String).ilike(mat)))
                 if self.filter_medida_talla: med = f"%{self.filter_medida_talla}%"; query = query.where(or_(cast(BlogPostModel.attributes['talla'], String).ilike(med), cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med), cast(BlogPostModel.attributes['medidas'], String).ilike(med)))
                 if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
@@ -119,37 +118,24 @@ class CartState(SessionState):
     def handle_checkout(self):
         if not self.is_authenticated or not self.default_shipping_address:
             return rx.toast.error("Por favor, selecciona una dirección predeterminada.")
-        
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info: return rx.window_alert("Usuario no encontrado.")
-            
             post_ids = list(self.cart.keys())
             db_posts_map = {p.id: p for p in session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()}
-
             new_purchase = PurchaseModel(
                 userinfo_id=user_info.id, total_price=self.cart_total, status=PurchaseStatus.PENDING,
-                shipping_name=self.default_shipping_address.name,
-                shipping_city=self.default_shipping_address.city,
-                shipping_neighborhood=self.default_shipping_address.neighborhood,
-                shipping_address=self.default_shipping_address.address,
+                shipping_name=self.default_shipping_address.name, shipping_city=self.default_shipping_address.city,
+                shipping_neighborhood=self.default_shipping_address.neighborhood, shipping_address=self.default_shipping_address.address,
                 shipping_phone=self.default_shipping_address.phone
             )
             session.add(new_purchase); session.commit(); session.refresh(new_purchase)
-
             for post_id, quantity in self.cart.items():
                 if post_id in db_posts_map:
                     post = db_posts_map[post_id]
-                    session.add(PurchaseItemModel(
-                        purchase_id=new_purchase.id, blog_post_id=post.id,
-                        quantity=quantity, price_at_purchase=post.price
-                    ))
+                    session.add(PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=post.id, quantity=quantity, price_at_purchase=post.price))
             session.commit()
-
         self.cart.clear(); self.default_shipping_address = None
-        
-        # --- ✅ CORRECCIÓN FINAL DEL TypeError: Se añaden los paréntesis ---
         yield AdminConfirmState.notify_admin_of_new_purchase()
-        
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")

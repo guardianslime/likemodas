@@ -11,13 +11,10 @@ from .pages import search_results, about_page, pricing_page, dashboard_component
 from .blog import page as blog_page, public_detail as blog_public_detail, list as blog_list, detail as blog_detail, add as blog_add, edit as blog_edit, state as blog_state
 from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
+from .admin import state as admin_state, page as admin_page
 from .contact import page as contact_page, state as contact_state
 from . import navigation
 from .account import page as account_page_module, shipping_info as shipping_info_module, shipping_info_state
-
-# --- ✅ SOLUCIÓN: Se importa state y page de admin desde el lugar correcto ---
-from .admin import state as admin_state
-from .admin import page as admin_page
 
 from .ui.base import base_page
 
@@ -42,7 +39,10 @@ app = rx.App(
 # --- Definición de Rutas de la Aplicación ---
 app.add_page(index, on_load=HomePageState.on_load_main)
 app.add_page(dashboard_component, route="/dashboard", title="Dashboard", on_load=cart_state.CartState.on_load)
+
+# --- ✅ SOLUCIÓN: Se llama a la función directamente ---
 app.add_page(category_page, route="/category/[cat_name]", title="Categoría", on_load=cart_state.CartState.load_posts_and_set_category)
+
 app.add_page(search_results.search_results_page, route="/search-results", title="Resultados de Búsqueda")
 app.add_page(auth_pages.my_login_page, route=reflex_local_auth.routes.LOGIN_ROUTE)
 app.add_page(auth_pages.my_register_page, route=reflex_local_auth.routes.REGISTER_ROUTE)
