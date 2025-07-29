@@ -2,6 +2,8 @@
 
 import reflex as rx
 from typing import List
+
+from likemodas.utils.formatting import format_to_cop
 from ..auth.state import SessionState
 from ..models import PurchaseModel, UserInfo, PurchaseItemModel, NotificationModel, PurchaseStatus
 from sqlmodel import select
@@ -19,6 +21,12 @@ class PurchaseCardData(rx.Base):
     shipping_full_address: str
     shipping_phone: str
     items_formatted: list[str]
+
+    # --- ✅ 2. AÑADE ESTA PROPIEDAD AQUÍ ---
+    @property
+    def total_price_cop(self) -> str:
+        """Propiedad para el precio total formateado en COP."""
+        return format_to_cop(self.total_price)
 
 class AdminConfirmState(SessionState):
     pending_purchases: List[PurchaseCardData] = []
