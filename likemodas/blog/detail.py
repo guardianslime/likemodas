@@ -5,14 +5,14 @@ from ..auth.admin_auth import require_admin
 from ..ui.base import base_page
 from .state import BlogPostState
 from .notfound import blog_post_not_found
-from ..ui.carousel import carousel
+from..ui.carousel import Carousel  # <--- LÍNEA CORREGID
 
 # (Las funciones _image_section y _info_section no cambian)
 def _image_section() -> rx.Component:
     return rx.box(
         rx.cond(
             BlogPostState.post.images & (BlogPostState.post.images.length() > 0),
-            carousel(
+            Carousel(
                 rx.foreach(BlogPostState.post.images, lambda image_url: rx.image(src=rx.get_upload_url(image_url), width="100%", height="auto", max_height="550px", object_fit="contain",)),
                 show_indicators=True, infinite_loop=True, emulate_touch=True, show_thumbs=False, auto_play=False,
             ),
