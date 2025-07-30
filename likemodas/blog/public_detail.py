@@ -278,7 +278,7 @@ def blog_public_detail_page() -> rx.Component:
     return base_page(
         rx.cond(
             CommentState.is_loading,
-            skeleton_product_detail_view(),
-            page_content_with_comments
+            skeleton_product_detail_view(),  # <-- Show skeleton while loading
+            page_content_with_comments     # <-- Show content when loaded
         )
     )

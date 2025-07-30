@@ -370,7 +370,7 @@ class BlogEditFormState(BlogPostState):
 class CommentState(SessionState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
     is_loading: bool = True  # <-- AÑADIDO: Bandera para gestionar el estado de carga
-    post: Optional = None
+    post: Optional[BlogPostModel] = None
     img_idx: int = 0
     comments: list[CommentModel | None] = [None] * 3  # ← 3 Skeletons
     new_comment_text: str = ""
@@ -379,10 +379,10 @@ class CommentState(SessionState):
     @rx.var
     def product_attributes(self) -> list[tuple[str, str]]:
         if not self.post or not self.post.attributes:
-            return
+            return [] # Return an empty list if no attributes
         
-        # CORREGIDO: Inicialización de lista local
-        formatted_attrs =
+        # CORRECTED: Initialize the list locally
+        formatted_attrs = []
         
         for key, value in self.post.attributes.items():
             if value and str(value).strip():
@@ -415,42 +415,49 @@ class CommentState(SessionState):
 
     #... (otras propiedades @rx.var)...
 
+    class CommentState(SessionState):
+    # ... (other variables remain the same)
+    is_loading: bool = True
+    post: Optional[BlogPostModel] = None
+
     @rx.event
     def on_load(self):
+        """
+        Loads the full detail of a single post using its ID.
+        This now includes an explicit join to prevent DetachedInstanceError.
+        """
         self.is_loading = True
         yield
 
+        # Reset state before loading
+        self.post = None
+        self.comments = [None] * 3  # Show 3 comment skeletons
+        # ... (reset other relevant fields)
+
         try:
-            # CORREGIDO: Reseteo de estado con asignación válida
-            self.post = None
-            self.comments = [None] * 3  # Skeletons
-            self.img_idx = 0
-            self.new_comment_text = ""
-            self.new_comment_rating = 0
+            pid = int(self.post_id)
+        except (ValueError, TypeError):
+            self.is_loading = False
+            return
 
-            try:
-                pid = int(self.post_id)
-            except (ValueError, TypeError):
-                # Si el ID no es válido, simplemente terminamos la carga.
-                return
+        with rx.session() as session:
+            # This detailed query is necessary here to get comments and user info
+            db_post_result = session.exec(
+                select(BlogPostModel)
+                .options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.votes)
+                )
+                .where(
+                    BlogPostModel.id == pid,
+                    BlogPostModel.publish_active == True,
+                )
+            ).unique().one_or_none()
 
-            with rx.session() as session:
-                db_post_result = session.exec(
-                    select(BlogPostModel)
-                   .options(
-                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                       .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                       .joinedload(CommentModel.votes)
-                    )
-                   .where(
-                        BlogPostModel.id == pid,
-                        BlogPostModel.publish_active == True,
-                        BlogPostModel.publish_date < datetime.utcnow()
-                    )
-                ).unique().one_or_none()
-
-                if db_post_result:
+            self.post = db_post_result
+            if db_post_result:
                 self.comments = sorted(
                     db_post_result.comments,
                     key=lambda c: c.created_at,
@@ -458,7 +465,8 @@ class CommentState(SessionState):
                 )
             else:
                 self.comments = []
-            self.is_loading = False
+
+        self.is_loading = False
 
     @rx.var
     def has_comments(self) -> bool:

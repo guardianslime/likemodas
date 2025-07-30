@@ -49,4 +49,14 @@ def category_page() -> rx.Component:
         width="100%"
     )
     
-    return base_page(page_content)
+    return base_page(
+        rx.cond(
+            CartState.is_loading,
+            skeleton_product_gallery(count=12), # Show Skeleton
+            rx.cond(
+                CartState.filtered_posts,
+                product_gallery_component(posts=CartState.filtered_posts), # Show Gallery
+                no_products_message # Show No Products Message
+            )
+        )
+    )
