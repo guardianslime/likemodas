@@ -89,6 +89,20 @@ def sidebar_items() -> rx.Component:
         width="100%",
     )
 
+def sidebar_logout_item() -> rx.Component:
+    """Un botón para cerrar la sesión del usuario."""
+    return rx.cond(
+        SessionState.is_authenticated,
+        rx.button(
+            "Logout",
+            rx.icon(tag="log-out", margin_left="0.5em"),
+            on_click=SessionState.logout,
+            width="100%",
+            variant="soft",
+            color_scheme="red"
+        )
+    )
+
 def sidebar() -> rx.Component:
     # Contenido común para ambos layouts (escritorio y móvil)
     sidebar_content = rx.vstack(
