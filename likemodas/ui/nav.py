@@ -53,7 +53,7 @@ def notification_icon() -> rx.Component:
         on_open_change=lambda open: rx.cond(open, NotificationState.mark_all_as_read, None)
     )
 
-ef public_navbar() -> rx.Component:
+def public_navbar() -> rx.Component:
     """
     Una barra de navegación superior fija para todas las páginas públicas.
     con el menú a la izquierda y estilos de color personalizados.
