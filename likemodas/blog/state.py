@@ -367,27 +367,19 @@ class BlogEditFormState(BlogPostState):
 # (La clase CommentState no necesita cambios)
 class CommentState(SessionState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
+    is_loading: bool = True  # <-- AÑADIDO: Bandera para gestionar el estado de carga
     post: Optional = None
     img_idx: int = 0
-    
-    # --- ✅ CASO 1: VARIABLE DE ESTADO ---
-    # Usamos rx.field(default_factory=list) para una variable de estado de tipo lista.
-    # Esto es CRUCIAL para que cada usuario tenga su propia lista de comentarios.
     comments: list[CommentModel] = rx.field(default_factory=list)
-    
     new_comment_text: str = ""
     new_comment_rating: int = 0
 
-    # --- (Propiedades @rx.var) ---
     @rx.var
     def product_attributes(self) -> list[tuple[str, str]]:
         if not self.post or not self.post.attributes:
-            return # Devolver una lista vacía es seguro aquí.
+            return
         
-        # --- ✅ CASO 2: VARIABLE LOCAL TEMPORAL ---
-        # 'formatted_attrs' es una variable local, no de estado.
-        # Se crea y destruye dentro de esta función. La forma correcta
-        # de inicializarla es con. Esto corrige el SyntaxError.
+        # CORREGIDO: Inicialización de lista local
         formatted_attrs =
         
         for key, value in self.post.attributes.items():
@@ -423,46 +415,58 @@ class CommentState(SessionState):
 
     @rx.event
     def on_load(self):
-        """Carga el post y sus comentarios de forma segura y eficiente."""
-        self.post = None
-        
-        # --- ✅ CASO 2 (Resetear Estado): VARIABLE LOCAL ---
-        # Aquí también, estamos asignando un nuevo valor a la variable de estado.
-        # Asignar una lista vacía es correcto para resetearla.
-        self.comments =
-        
-        self.img_idx = 0
-        self.new_comment_text = ""
-        self.new_comment_rating = 0
+        """Carga el post, sus comentarios y gestiona el estado de carga de forma segura."""
+        self.is_loading = True
+        yield
 
         try:
-            pid = int(self.post_id)
-        except (ValueError, TypeError):
-            return
+            # CORREGIDO: Reseteo de estado con asignación válida
+            self.post = None
+            self.comments =
+            self.img_idx = 0
+            self.new_comment_text = ""
+            self.new_comment_rating = 0
 
-        with rx.session() as session:
-            db_post_result = session.exec(
-                select(BlogPostModel)
-              .options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                  .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                  .joinedload(CommentModel.votes)
-                )
-              .where(
-                    BlogPostModel.id == pid,
-                    BlogPostModel.publish_active == True,
-                    BlogPostModel.publish_date < datetime.utcnow()
-                )
-            ).unique().one_or_none()
+            try:
+                pid = int(self.post_id)
+            except (ValueError, TypeError):
+                # Si el ID no es válido, simplemente terminamos la carga.
+                return
 
-            if db_post_result:
-                self.post = db_post_result
-                self.comments = sorted(
-                    db_post_result.comments,
-                    key=lambda c: c.created_at,
-                    reverse=True
-                )
+            with rx.session() as session:
+                db_post_result = session.exec(
+                    select(BlogPostModel)
+                   .options(
+                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                       .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                       .joinedload(CommentModel.votes)
+                    )
+                   .where(
+                        BlogPostModel.id == pid,
+                        BlogPostModel.publish_active == True,
+                        BlogPostModel.publish_date < datetime.utcnow()
+                    )
+                ).unique().one_or_none()
+
+                if db_post_result:
+                    self.post = db_post_result
+                    self.comments = sorted(
+                        db_post_result.comments,
+                        key=lambda c: c.created_at,
+                        reverse=True
+                    )
+        finally:
+            # AÑADIDO: Asegura que la bandera de carga se desactive siempre
+            self.is_loading = False
+
+    @rx.var
+    def has_comments(self) -> bool:
+        """
+        Una propiedad computada que devuelve True si hay comentarios, y False en caso contrario.
+        Esta lógica se ejecuta en el backend, y el resultado (True/False) se expone a la UI.
+        """
+        return len(self.comments) > 0
 
     @rx.var
     def content(self) -> str:
