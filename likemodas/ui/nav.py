@@ -101,7 +101,8 @@ def public_navbar() -> rx.Component:
             rx.box(
                 # Búsqueda para ESCRITORIO
                 rx.form(
-                    rx.text_field.root(
+                    # --- ✨ CAMBIO DE SINTAXIS AQUÍ ---
+                    rx.text_field(
                         rx.text_field.slot(rx.icon("search", size=20)),
                         rx.text_field.input(
                             placeholder="Buscar productos...",
@@ -119,11 +120,12 @@ def public_navbar() -> rx.Component:
                 rx.box(
                     rx.popover.root(
                         rx.popover.trigger(
-                            rx.icon_button(rx.icon("search", color="white", size=22), variant="ghost", size="2") # Tamaño reducido
+                            rx.icon_button(rx.icon("search", color="white", size=22), variant="ghost", size="2")
                         ),
                         rx.popover.content(
                             rx.form(
-                                rx.text_field.root(
+                                # --- ✨ CAMBIO DE SINTAXIS AQUÍ ---
+                                rx.text_field(
                                     rx.text_field.slot(rx.icon("search", size=18)),
                                     rx.text_field.input(placeholder="Buscar...", value=SearchState.search_term, on_change=SearchState.set_search_term),
                                 ),
@@ -143,10 +145,11 @@ def public_navbar() -> rx.Component:
                 rx.cond(
                     SessionState.is_authenticated,
                     rx.fragment(
-                        rx.box(rx.icon("bell", size=22, color="white"), position="relative"), # Placeholder para notification_icon con tamaño reducido
+                        # Usamos el componente de notificación directamente
+                        notification_icon(),
                         rx.link(
                             rx.box(
-                                rx.icon("shopping-cart", size=22, color="white"), # Tamaño reducido
+                                rx.icon("shopping-cart", size=22, color="white"),
                                 rx.cond(
                                     CartState.cart_items_count > 0,
                                     rx.box(
