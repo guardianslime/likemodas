@@ -12,18 +12,20 @@ def _gallery_card(post: BlogPostModel) -> rx.Component:
     return rx.link(
         rx.card(
             rx.inset(
-                # --- LÍNEA CORREGIDA ---
+                # --- CORRECCIÓN 1: La condición ---
+                # Simplemente comprueba si la lista 'image_urls' tiene algo.
                 rx.cond(
-                    # Usa 'image_urls' y la función rx.length()
-                    post.image_urls & (rx.length(post.image_urls) > 0),
+                    post.image_urls,
+                    # --- CORRECCIÓN 2: La fuente de la imagen ---
+                    # Usa la primera imagen de la lista como miniatura.
                     rx.image(
-                        # --- LÍNEA CORREGIDA ---
-                        src=post.image_urls, # Muestra la primera imagen de la lista
+                        src=post.image_urls,
                         width="100%",
                         height="140px",
                         object_fit="cover",
                     ),
-                    rx.box( # Fallback si no hay imágenes
+                    # Fallback si no hay imágenes (esto está bien)
+                    rx.box(
                         rx.icon("image_off", size=48),
                         height="140px",
                         width="100%",
@@ -34,12 +36,12 @@ def _gallery_card(post: BlogPostModel) -> rx.Component:
                     )
                 )
             ),
-            #... resto de la tarjeta con el título, etc.
+            # El resto de tu tarjeta
             rx.text(post.title, weight="bold", as_="div", size="3", margin_bottom="1"),
             rx.text(post.content, as_="p", size="2", color_scheme="gray", trim="end", height="4.5em"),
         ),
         href=f"/blog-public/{post.id}",
-        as_child=True, # Para que toda la tarjeta sea un enlace
+        as_child=True,
         style={"text_decoration": "none"}
     )
 
