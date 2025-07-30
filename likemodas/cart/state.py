@@ -95,12 +95,16 @@ class CartState(SessionState):
 
     @rx.event
     def load_posts_and_set_category(self):
+        """
+        Establece la categoría actual desde la URL y luego encadena la carga de posts.
+        """
         self.is_loading = True
         yield
         
         self.current_category = self.router.page.params.get("cat_name", "")
-        # Llama al on_load original para recargar los posts, que ya gestiona la bandera
-        yield self.on_load
+        
+        # SOLUCIÓN: Usa type(self) para encadenar el siguiente evento de forma segura.
+        yield type(self).on_load
 
     @rx.event
     def on_load(self):
