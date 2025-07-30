@@ -140,7 +140,8 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """Un componente que muestra una galería de productos."""
-    return rx.cond(real_gallery = rx.flex(
+    # Simplemente devuelve el componente flex que contiene la galería
+    return rx.flex(
         rx.foreach(
             posts,
             lambda post: rx.box(
@@ -162,11 +163,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px"
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
-                            
-                            # --- ✅ CAMBIO FINAL AQUÍ ---
-                            # Leemos el campo de texto simple que ya viene formateado.
                             rx.text(post.price_formatted, color=rx.color_mode_cond("black", "white"), size="6"),
-                            
                             _product_card_rating(post),
                             spacing="2", align="start"
                         ),
@@ -190,6 +187,5 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             )
         ),
         wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
-    
-    ))
+    )
     
