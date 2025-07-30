@@ -18,7 +18,7 @@ class ProductCardData(rx.Base):
     title: str
     price: float = 0.0
     price_formatted: str = ""  # <-- ✅ CAMBIO CLAVE: Añadimos este campo
-    image_urls: list[str] =  ""
+    image_urls: list[str] =  # <--- CORRECCIÓN CLAVE AQUÍ
     average_rating: float = 0.0
     rating_count: int = 0
 
