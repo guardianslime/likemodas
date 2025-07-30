@@ -24,12 +24,15 @@ class SearchState(rx.State):
     def perform_search(self):
         """Ejecuta la búsqueda, transforma los datos y redirige."""
         term = self.search_term.strip()
+        
+        # --- ✨ CAMBIO CLAVE ---
+        # Si la búsqueda está vacía, simplemente no hacemos nada.
         if not term:
-            # Si la búsqueda está vacía, simplemente limpia los resultados.
-            self.search_results = []
-            return rx.redirect(navigation.routes.BLOG_PUBLIC_PAGE_ROUTE) 
+            return
+        # --- FIN DEL CAMBIO ---
 
         with rx.session() as session:
+            # ... (el resto de la función sigue igual)
             statement = (
                 select(BlogPostModel)
                 .options(joinedload(BlogPostModel.comments))
@@ -41,8 +44,6 @@ class SearchState(rx.State):
                 .order_by(BlogPostModel.created_at.desc())
             )
             results = session.exec(statement).unique().all()
-
-            # --- CAMBIO 3: Transformamos los resultados de la BD al modelo seguro ---
             self.search_results = [
                 ProductCardData(
                     id=post.id,

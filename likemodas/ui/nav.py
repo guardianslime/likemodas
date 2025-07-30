@@ -55,8 +55,7 @@ def notification_icon() -> rx.Component:
 
 def public_navbar() -> rx.Component:
     """
-    Una barra de navegación superior fija para todas las páginas públicas.
-    con el menú a la izquierda y estilos de color personalizados.
+    Una barra de navegación superior fija, rediseñada para ser más robusta y estéticamente agradable.
     """
     return rx.box(
         rx.grid(
@@ -64,10 +63,7 @@ def public_navbar() -> rx.Component:
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
-                        rx.button(
-                            rx.icon("menu", size=24, color="white"),
-                            variant="ghost"
-                        )
+                        rx.button(rx.icon("menu", size=22, color="white"), variant="ghost") # Tamaño reducido
                     ),
                     rx.menu.content(
                         rx.menu.item("Home", on_click=navigation.NavState.to_home),
@@ -94,49 +90,43 @@ def public_navbar() -> rx.Component:
                                 rx.menu.item("Register", on_click=navigation.NavState.to_register),
                             )
                         ),
-                        bg="#2C004BF0",
-                        style={"backdrop_filter": "blur(10px)"},
+                        bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
                     ),
                 ),
-                rx.image(
-                    src="/logo.png",
-                    width="8em",
-                    height="auto",
-                    border_radius="md",
-                ),
-                align="center",
-                spacing="4",
-                justify="start",
+                rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
+                align="center", spacing="4", justify="start",
             ),
             
-            # --- Columna Central (Búsqueda Responsiva Corregida) ---
-            rx.center(
-                # Búsqueda para ESCRITORIO (se oculta en móvil)
+            # --- Columna Central (Búsqueda Rediseñada) ---
+            rx.box(
+                # Búsqueda para ESCRITORIO
                 rx.form(
-                    rx.input(
-                        placeholder="Buscar productos...", value=SearchState.search_term,
-                        on_change=SearchState.set_search_term, on_blur=SearchState.perform_search,
-                        height=["2.5em", "2.8em", "3em", "3.3em"], padding_x="4",
-                        border_radius="full", border_width="1px",
-                        font_size=rx.breakpoints(sm="2", md="3", lg="3"),
+                    rx.text_field.root(
+                        rx.text_field.slot(rx.icon("search", size=20)),
+                        rx.text_field.input(
+                            placeholder="Buscar productos...",
+                            value=SearchState.search_term,
+                            on_change=SearchState.set_search_term,
+                        ),
+                        radius="full",
+                        width="100%",
                     ),
-                    on_submit=SearchState.perform_search, width="100%",
+                    on_submit=SearchState.perform_search,
+                    width="100%",
                     display=["none", "none", "flex", "flex"],
                 ),
-                # --- ✨ CORRECCIÓN FINAL ---
-                # Se envuelve el popover en un rx.box para que la propiedad display funcione.
+                # Búsqueda para MÓVIL
                 rx.box(
                     rx.popover.root(
                         rx.popover.trigger(
-                            rx.icon_button(
-                                rx.icon("search", color="white"),
-                                variant="ghost", size="3",
-                            )
+                            rx.icon_button(rx.icon("search", color="white", size=22), variant="ghost", size="2") # Tamaño reducido
                         ),
                         rx.popover.content(
                             rx.form(
-                                rx.input(placeholder="Buscar productos...", value=SearchState.search_term,
-                                        on_change=SearchState.set_search_term),
+                                rx.text_field.root(
+                                    rx.text_field.slot(rx.icon("search", size=18)),
+                                    rx.text_field.input(placeholder="Buscar...", value=SearchState.search_term, on_change=SearchState.set_search_term),
+                                ),
                                 on_submit=[SearchState.perform_search, rx.set_value("open", False)],
                                 width="100%",
                             ),
@@ -144,11 +134,8 @@ def public_navbar() -> rx.Component:
                         ),
                         modal=True,
                     ),
-                    # La regla de visualización ahora está en el contenedor 'rx.box'.
                     display=["flex", "flex", "none", "none"],
                 ),
-                width="100%",
-                justify_content="center",
             ),
             
             # --- Columna Derecha (Iconos) ---
@@ -156,10 +143,10 @@ def public_navbar() -> rx.Component:
                 rx.cond(
                     SessionState.is_authenticated,
                     rx.fragment(
-                        notification_icon(),
+                        rx.box(rx.icon("bell", size=22, color="white"), position="relative"), # Placeholder para notification_icon con tamaño reducido
                         rx.link(
                             rx.box(
-                                rx.icon("shopping-cart", size=28, color="white"),
+                                rx.icon("shopping-cart", size=22, color="white"), # Tamaño reducido
                                 rx.cond(
                                     CartState.cart_items_count > 0,
                                     rx.box(
@@ -175,9 +162,7 @@ def public_navbar() -> rx.Component:
                         )
                     )
                 ),
-                align="center",
-                spacing="4",
-                justify="end",
+                align="center", spacing="3", justify="end",
             ),
   
             columns="auto 1fr auto",
