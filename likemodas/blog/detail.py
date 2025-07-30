@@ -9,18 +9,35 @@ from..ui.carousel import Carousel  # <--- LÍNEA CORREGID
 
 # (Las funciones _image_section y _info_section no cambian)
 def _image_section() -> rx.Component:
+    """
+    Muestra las imágenes del post en un carrusel.
+    """
     return rx.box(
-        rx.cond(
-            BlogPostState.post.images & (BlogPostState.post.images.length() > 0),
-            Carousel(
-                rx.foreach(BlogPostState.post.images, lambda image_url: rx.image(src=rx.get_upload_url(image_url), width="100%", height="auto", max_height="550px", object_fit="contain",)),
-                show_indicators=True, infinite_loop=True, emulate_touch=True, show_thumbs=False, auto_play=False,
+        # Usamos Carousel.create() para instanciar el componente
+        Carousel.create(
+            # rx.foreach itera sobre la lista de URLs de las imágenes del estado
+            rx.foreach(
+                BlogPostState.post.image_urls,  # <--- USA EL NOMBRE CORRECTO
+                lambda image_url: rx.image(
+                    src=image_url,
+                    alt=BlogPostState.post.title,
+                    width="100%",
+                    height="auto",
+                    object_fit="cover",
+                    border_radius="var(--radius-3)",
+                )
             ),
-            rx.image(src="/no_image.png", width="100%", height="auto", max_height="550px", object_fit="contain", border_radius="md",)
+            # Propiedades del carrusel
+            show_arrows=True,
+            show_indicators=True,
+            infinite_loop=True,
+            auto_play=True,
+            width="100%"
         ),
         width="100%",
-        max_width="600px",
-        position="relative",
+        max_width="800px",
+        margin="auto",
+        padding_y="1em"
     )
 
 def _info_section() -> rx.Component:
