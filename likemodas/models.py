@@ -1,6 +1,8 @@
 # likemodas/models.py (VERSIÓN RESTAURADA Y ESTABLE)
 
 from typing import Optional, List
+
+import sqlmodel
 from . import utils
 from .utils.formatting import format_to_cop
 from sqlmodel import Field, Relationship, Column, JSON
@@ -74,11 +76,12 @@ class Category(str, enum.Enum):
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
+    id: Optional[int] = sqlmodel.Field(default=None, primary_key=True)
     title: str
     content: str
     price: float = 0.0
     attributes: dict = Field(default={}, sa_column=Column(JSON))
-    images: list[str] = Field(default=[], sa_column=Column(JSON))
+    image_urls: List[str] = sqlmodel.Field(default_factory=list, sa_column=sqlmodel.Column(sqlmodel.JSON))
     publish_active: bool = False
     publish_date: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
