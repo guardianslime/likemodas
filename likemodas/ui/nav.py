@@ -101,16 +101,13 @@ def public_navbar() -> rx.Component:
             rx.box(
                 # Búsqueda para ESCRITORIO
                 rx.form(
-                    # --- ✨ CAMBIO FINAL DE SINTAXIS ---
                     rx.text_field(
+                        rx.text_field.slot(rx.icon("search", size=20)), # <--- Se pasa como argumento directo
                         placeholder="Buscar productos...",
                         value=SearchState.search_term,
                         on_change=SearchState.set_search_term,
                         radius="full",
                         width="100%",
-                        children=[
-                            rx.text_field.slot(rx.icon("search", size=20)),
-                        ]
                     ),
                     on_submit=SearchState.perform_search,
                     width="100%",
@@ -124,14 +121,11 @@ def public_navbar() -> rx.Component:
                         ),
                         rx.popover.content(
                             rx.form(
-                                # --- ✨ CAMBIO FINAL DE SINTAXIS ---
                                 rx.text_field(
+                                    rx.text_field.slot(rx.icon("search", size=18)), # <--- Se pasa como argumento directo
                                     placeholder="Buscar...",
                                     value=SearchState.search_term,
                                     on_change=SearchState.set_search_term,
-                                    children=[
-                                        rx.text_field.slot(rx.icon("search", size=18)),
-                                    ]
                                 ),
                                 on_submit=[SearchState.perform_search, rx.set_value("open", False)],
                                 width="100%",
