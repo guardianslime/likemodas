@@ -2,6 +2,8 @@
 
 from datetime import datetime
 from typing import Optional, List
+from typing import Literal
+from unittest import result
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
@@ -365,6 +367,8 @@ class BlogEditFormState(BlogPostState):
 class CommentState(SessionState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
     post: Optional[BlogPostModel] = None
+    loading_status: Literal["idle", "loading", "error", "success"] = "idle"
+    error_message: str = ""
     img_idx: int = 0
     comments: list[CommentModel] = []
     new_comment_text: str = ""
@@ -453,6 +457,20 @@ class CommentState(SessionState):
     @rx.event
     def on_load(self):
         """Carga el post Y los comentarios al entrar a la página."""
+        self.loading_status = "loading"
+        self.error_message = ""
+        try:
+            #... lógica de consulta a la base de datos...
+            if result:
+                self.post = result
+                self.loading_status = "success"
+            else:
+                self.error_message = "Producto no encontrado."
+                self.loading_status = "error"
+        except Exception as e:
+            self.error_message = f"Ocurrió un error inesperado: {str(e)}"
+            self.loading_status = "error"
+            
         self.post = None
         self.comments = []
         try:
