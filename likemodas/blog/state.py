@@ -21,7 +21,7 @@ BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 # (Las clases BlogPostState y BlogAddFormState no necesitan cambios)
 class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
-    posts: list[BlogPostModel] = []
+    posts: list[BlogPostModel | None] = [None] * 5
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
     
@@ -62,15 +62,17 @@ class BlogPostState(SessionState):
 
     @rx.event
     def load_posts(self):
+        self.posts = [None] * 5  # ← Muestra Skeletons mientras carga
         if not self.is_admin or self.my_userinfo_id is None:
             self.posts = []
             return
         with rx.session() as session:
-            self.posts = session.exec(
+            posts_real = session.exec(
                 select(BlogPostModel)
                 .where(BlogPostModel.userinfo_id == int(self.my_userinfo_id))
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
+            self.posts = posts_real
 
     @rx.event
     def get_post_detail(self):
@@ -370,7 +372,7 @@ class CommentState(SessionState):
     is_loading: bool = True  # <-- AÑADIDO: Bandera para gestionar el estado de carga
     post: Optional = None
     img_idx: int = 0
-    comments: list[CommentModel] = rx.field(default_factory=list)
+    comments: list[CommentModel | None] = [None] * 3  # ← 3 Skeletons
     new_comment_text: str = ""
     new_comment_rating: int = 0
 
@@ -415,14 +417,13 @@ class CommentState(SessionState):
 
     @rx.event
     def on_load(self):
-        """Carga el post, sus comentarios y gestiona el estado de carga de forma segura."""
         self.is_loading = True
         yield
 
         try:
             # CORREGIDO: Reseteo de estado con asignación válida
             self.post = None
-            self.comments =
+            self.comments = [None] * 3  # Skeletons
             self.img_idx = 0
             self.new_comment_text = ""
             self.new_comment_rating = 0
@@ -450,14 +451,13 @@ class CommentState(SessionState):
                 ).unique().one_or_none()
 
                 if db_post_result:
-                    self.post = db_post_result
-                    self.comments = sorted(
-                        db_post_result.comments,
-                        key=lambda c: c.created_at,
-                        reverse=True
-                    )
-        finally:
-            # AÑADIDO: Asegura que la bandera de carga se desactive siempre
+                self.comments = sorted(
+                    db_post_result.comments,
+                    key=lambda c: c.created_at,
+                    reverse=True
+                )
+            else:
+                self.comments = []
             self.is_loading = False
 
     @rx.var
