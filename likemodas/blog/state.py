@@ -1,16 +1,17 @@
-# likemodas/blog/state.py (VERSIÓN CON HORA EN FORMATO 12 HORAS)
+# likemodas/blog/state.py (VERSIÓN CORREGIDA Y ESTRUCTURADA)
 
 from datetime import datetime
 from typing import Optional, List
-from typing import Literal
-from unittest import result
 import reflex as rx
 import sqlalchemy
 from sqlmodel import select
+
 from .. import navigation
 from ..auth.state import SessionState
-
-from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType, PurchaseModel, PurchaseItemModel, PurchaseStatus, Category # <-- AÑADIR Category
+from ..models import (
+    BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType,
+    PurchaseModel, PurchaseItemModel, PurchaseStatus, Category
+)
 from ..data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES
 )
@@ -18,16 +19,13 @@ from ..data.product_options import (
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# (Las clases BlogPostState y BlogAddFormState no necesitan cambios)
+
 class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
     posts: list[BlogPostModel | None] = [None] * 5
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
-    
     search_query: str = ""
-    
-    # Esta es la propiedad computada que ya habías añadido, está correcta.
 
     @rx.var
     def formatted_price(self) -> str:
@@ -44,25 +42,25 @@ class BlogPostState(SessionState):
     @rx.var
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
-    
+
     @rx.var
     def filtered_posts(self) -> list[BlogPostModel]:
+        if not self.posts or any(p is None for p in self.posts):
+             return []
         if not self.search_query.strip():
             return self.posts
         return [
             post for post in self.posts
             if self.search_query.lower() in post.title.lower()
         ]
-    
+
     @rx.var
     def categories(self) -> list[str]:
-        """Devuelve una lista con los valores de las categorías."""
         return [c.value for c in Category]
-
 
     @rx.event
     def load_posts(self):
-        self.posts = [None] * 5  # ← Muestra Skeletons mientras carga
+        self.posts = [None] * 5
         if not self.is_admin or self.my_userinfo_id is None:
             self.posts = []
             return
@@ -96,16 +94,13 @@ class BlogPostState(SessionState):
             post = session.get(BlogPostModel, post_id)
             if post and post.userinfo_id == int(self.my_userinfo_id):
                 post.publish_active = not post.publish_active
-                
                 if post.publish_active:
                     post.publish_date = datetime.utcnow()
                     yield rx.toast.success("¡Publicación activada!")
                 else:
                     yield rx.toast.info("Publicación desactivada.")
-                
                 session.add(post)
                 session.commit()
-      
         yield type(self).get_post_detail
 
     @rx.event
@@ -116,8 +111,7 @@ class BlogPostState(SessionState):
             if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
                 session.delete(post_to_delete)
                 session.commit()
-        return type(self).load_posts
-    
+        return rx.redirect(BLOG_POSTS_ROUTE)
 
 
 class BlogAddFormState(SessionState):
@@ -127,25 +121,17 @@ class BlogAddFormState(SessionState):
     price: float = 0.0
     category: str = ""
     temp_images: list[str] = []
-
-    # Campos para Ropa
     talla: str = ""
     tipo_tela: str = ""
     color_ropa: str = ""
     tipo_prenda: str = ""
-
-    # Campos para Calzado
     numero_calzado: str = ""
     material_calzado: str = ""
     color_calzado: str = ""
     tipo_zapato: str = ""
-
-    # Campos para Mochilas
     material_mochila: str = ""
     medidas: str = ""
     tipo_mochila: str = ""
-    
-    # --- ✨ NUEVOS ESTADOS PARA BÚSQUEDA EN FORMULARIO ---
     search_add_tipo_prenda: str = ""
     search_add_color_ropa: str = ""
     search_add_talla: str = ""
@@ -157,7 +143,6 @@ class BlogAddFormState(SessionState):
     search_add_tipo_mochila: str = ""
     search_add_material_mochila: str = ""
 
-    # --- ✨ NUEVOS EVENT HANDLERS PARA BÚSQUEDA ---
     def set_search_add_tipo_prenda(self, query: str): self.search_add_tipo_prenda = query
     def set_search_add_color_ropa(self, query: str): self.search_add_color_ropa = query
     def set_search_add_talla(self, query: str): self.search_add_talla = query
@@ -169,12 +154,11 @@ class BlogAddFormState(SessionState):
     def set_search_add_tipo_mochila(self, query: str): self.search_add_tipo_mochila = query
     def set_search_add_material_mochila(self, query: str): self.search_add_material_mochila = query
 
-    # --- ✨ NUEVAS PROPIEDADES COMPUTADAS PARA LISTAS FILTRADAS DEL FORMULARIO ---
     @rx.var
     def filtered_add_colores(self) -> list[str]:
         if not self.search_add_color_ropa.strip(): return LISTA_COLORES
         return [op for op in LISTA_COLORES if self.search_add_color_ropa.lower() in op.lower()]
-    
+
     @rx.var
     def filtered_add_tallas(self) -> list[str]:
         if not self.search_add_talla.strip(): return LISTA_TALLAS_ROPA
@@ -191,37 +175,26 @@ class BlogAddFormState(SessionState):
         return [op for op in LISTA_NUMEROS_CALZADO if self.search_add_numero_calzado.lower() in op.lower()]
 
     def _create_post(self, publish: bool) -> rx.event.EventSpec:
-        """Helper method to create and save a post."""
-        if not self.is_admin: return rx.window_alert("No tienes permiso.")
-        if self.price <= 0: return rx.window_alert("El precio debe ser mayor a cero.")
-        if not self.title.strip(): return rx.window_alert("El título no puede estar vacío.")
-        if not self.category: return rx.window_alert("Debes seleccionar una categoría.")
+        if not self.is_admin: return rx.toast.error("No tienes permiso.")
+        if self.price <= 0: return rx.toast.error("El precio debe ser mayor a cero.")
+        if not self.title.strip(): return rx.toast.error("El título no puede estar vacío.")
+        if not self.category: return rx.toast.error("Debes seleccionar una categoría.")
 
-        # ... (la lógica para recolectar los atributos es la misma)
         attributes = {}
         if self.category == Category.ROPA.value:
-            attributes = {
-                "talla": self.talla, "tipo_tela": self.tipo_tela,
-                "color": self.color_ropa, "tipo_prenda": self.tipo_prenda,
-            }
+            attributes = {"talla": self.talla, "tipo_tela": self.tipo_tela, "color": self.color_ropa, "tipo_prenda": self.tipo_prenda}
         elif self.category == Category.CALZADO.value:
-            attributes = {
-                "numero_calzado": self.numero_calzado, "material": self.material_calzado,
-                "color": self.color_calzado, "tipo_zapato": self.tipo_zapato,
-            }
+            attributes = {"numero_calzado": self.numero_calzado, "material": self.material_calzado, "color": self.color_calzado, "tipo_zapato": self.tipo_zapato}
         elif self.category == Category.MOCHILAS.value:
-            attributes = {
-                "material": self.material_mochila, "medidas": self.medidas,
-                "tipo_mochila": self.tipo_mochila,
-            }
+            attributes = {"material": self.material_mochila, "medidas": self.medidas, "tipo_mochila": self.tipo_mochila}
 
         with rx.session() as session:
             post = BlogPostModel(
                 title=self.title.strip(), content=self.content.strip(),
                 price=self.price, image_urls=self.temp_images.copy(),
-                userinfo_id=self.my_userinfo_id, 
+                userinfo_id=self.my_userinfo_id,
                 publish_active=publish,
-                publish_date=datetime.utcnow(),
+                publish_date=datetime.utcnow() if publish else None,
                 category=self.category,
                 attributes=attributes
             )
@@ -229,49 +202,18 @@ class BlogAddFormState(SessionState):
             session.commit()
             session.refresh(post)
             new_post_id = post.id
-        
+
         self.reset()
-        return rx.redirect(f"/blog/{new_post_id}")
-    
+        return rx.redirect(f"/blog-public/{new_post_id}")
+
     @rx.event
     def clear_attribute(self, attribute_name: str):
-        """Limpia el valor de un atributo del formulario."""
         if hasattr(self, attribute_name):
             setattr(self, attribute_name, "")
-            
             search_attribute_name = f"search_add_{attribute_name}"
             if hasattr(self, search_attribute_name):
                 setattr(self, search_attribute_name, "")
 
-    @rx.event
-    def clear_all_attributes(self):
-        """Limpia todos los atributos y campos de búsqueda del formulario."""
-        # Ropa
-        self.talla = ""
-        self.tipo_tela = ""
-        self.color_ropa = ""
-        self.tipo_prenda = ""
-        # Calzado
-        self.numero_calzado = ""
-        self.material_calzado = ""
-        self.color_calzado = ""
-        self.tipo_zapato = ""
-        # Mochilas
-        self.material_mochila = ""
-        self.medidas = ""
-        self.tipo_mochila = ""
-        # Campos de búsqueda
-        self.search_add_tipo_prenda = ""
-        self.search_add_color_ropa = ""
-        self.search_add_talla = ""
-        self.search_add_tipo_tela = ""
-        self.search_add_tipo_zapato = ""
-        self.search_add_color_calzado = ""
-        self.search_add_numero_calzado = ""
-        self.search_add_material_calzado = ""
-        self.search_add_tipo_mochila = ""
-        self.search_add_material_mochila = ""
-    
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
         for file in files:
@@ -286,7 +228,7 @@ class BlogAddFormState(SessionState):
     def remove_image(self, name: str):
         if name in self.temp_images:
             self.temp_images.remove(name)
-    
+
     @rx.event
     def set_price_from_input(self, value: str):
         try:
@@ -296,13 +238,12 @@ class BlogAddFormState(SessionState):
 
     @rx.event
     def submit(self):
-        """Este método crea un post pero NO lo publica."""
         return self._create_post(publish=False)
 
     @rx.event
     def submit_and_publish(self):
-        """Este método crea un post y SÍ lo publica."""
         return self._create_post(publish=True)
+
 
 class BlogEditFormState(BlogPostState):
     """Estado para el formulario de EDITAR posts."""
@@ -331,7 +272,6 @@ class BlogEditFormState(BlogPostState):
     @rx.var
     def publish_display_time(self) -> str:
         if self.post and self.post.publish_date:
-            # --- CAMBIO AQUÍ: de %H:%M:%S a %I:%M:%S %p ---
             return self.post.publish_date.strftime("%I:%M:%S %p")
         return ""
 
@@ -340,17 +280,17 @@ class BlogEditFormState(BlogPostState):
         post_id = int(form_data.pop("post_id", 0))
         if not post_id or not self.is_admin:
             return rx.toast.error("No se puede guardar el post.")
-        
-        form_data["publish_active"] = form_data.get("publish_active") == "on"
+
+        form_data["content"] = self.post_content
+        form_data["publish_active"] = self.post_publish_active
         try:
             form_data["price"] = float(self.price_str)
         except ValueError:
             return rx.toast.error("Precio inválido.")
-        
-        if form_data.get("publish_date") and form_data.get("publish_time"):
+
+        if self.post_publish_active and form_data.get("publish_date") and form_data.get("publish_time"):
             try:
                 dt_str = f"{form_data['publish_date']} {form_data['publish_time']}"
-                # --- CAMBIO AQUÍ: Se ajusta el formato para aceptar AM/PM ---
                 form_data["publish_date"] = datetime.strptime(dt_str, "%Y-%m-%d %I:%M:%S %p")
             except ValueError:
                 form_data["publish_date"] = self.post.publish_date if self.post else datetime.utcnow()
@@ -363,131 +303,63 @@ class BlogEditFormState(BlogPostState):
                     setattr(post_to_update, key, value)
                 session.add(post_to_update)
                 session.commit()
-        
-        return rx.redirect(f"/blog/{post_id}")
 
-# (La clase CommentState no necesita cambios)
+        return rx.redirect(f"/blog-public/{post_id}")
+
+
+# ==============================================================================
+# SECCIÓN CRÍTICA CORREGIDA
+# ==============================================================================
 class CommentState(SessionState):
-    """Estado que maneja tanto la vista del post público como sus comentarios."""
-    is_loading: bool = True  # <-- AÑADIDO: Bandera para gestionar el estado de carga
+    """
+    Estado que maneja la vista del post público y sus comentarios.
+    Esta clase ha sido completamente reestructurada para corregir errores.
+    """
+    is_loading: bool = True
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
-    comments: list[CommentModel | None] = [None] * 3  # ← 3 Skeletons
+    comments: list[CommentModel | None] = []
     new_comment_text: str = ""
     new_comment_rating: int = 0
 
     @rx.var
+    def post_id(self) -> str:
+        return self.router.page.params.get("blog_public_id", "")
+
+    @rx.var
+    def formatted_price(self) -> str:
+        if self.post and self.post.price is not None:
+            return f"${self.post.price:,.0f} COP"
+        return "$0 COP"
+
+    @rx.var
+    def content(self) -> str:
+        return self.post.content if self.post and self.post.content else ""
+
+    @rx.var
     def product_attributes(self) -> list[tuple[str, str]]:
         if not self.post or not self.post.attributes:
-            return [] # Return an empty list if no attributes
+            return []
         
-        # CORRECTED: Initialize the list locally
         formatted_attrs = []
-        
         for key, value in self.post.attributes.items():
             if value and str(value).strip():
                 formatted_key = key.replace('_', ' ').title()
                 formatted_attrs.append((f"{formatted_key}:", str(value)))
-                
         return formatted_attrs
 
-    #... (El resto de tus propiedades @rx.var como rating_count, average_rating, etc., van aquí sin cambios)...
     @rx.var
     def rating_count(self) -> int:
-        return len(self.comments)
+        return len([c for c in self.comments if c is not None])
 
     @rx.var
     def average_rating(self) -> float:
-        if not self.comments:
+        valid_comments = [c for c in self.comments if c is not None]
+        if not valid_comments:
             return 0.0
-        total_rating = sum(comment.rating for comment in self.comments)
-        return total_rating / len(self.comments)
+        total_rating = sum(comment.rating for comment in valid_comments)
+        return total_rating / len(valid_comments)
 
-    @rx.var
-    def post_id(self) -> str:
-        return self.router.page.params.get("blog_public_id", "")
-        
-    @rx.var
-    def formatted_price(self) -> str:
-        if self.post and self.post.price is not None:
-            return f"${self.post.price:,.2f}"
-        return "$0.00"
-
-    #... (otras propiedades @rx.var)...
-
-    class CommentState(SessionState):
-    # ... (other variables remain the same)
-    is_loading: bool = True
-    post: Optional[BlogPostModel] = None
-
-    @rx.event
-    def on_load(self):
-        """
-        Loads the full detail of a single post using its ID.
-        This now includes an explicit join to prevent DetachedInstanceError.
-        """
-        self.is_loading = True
-        yield
-
-        # Reset state before loading
-        self.post = None
-        self.comments = [None] * 3  # Show 3 comment skeletons
-        # ... (reset other relevant fields)
-
-        try:
-            pid = int(self.post_id)
-        except (ValueError, TypeError):
-            self.is_loading = False
-            return
-
-        with rx.session() as session:
-            # This detailed query is necessary here to get comments and user info
-            db_post_result = session.exec(
-                select(BlogPostModel)
-                .options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                    .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                    .joinedload(CommentModel.votes)
-                )
-                .where(
-                    BlogPostModel.id == pid,
-                    BlogPostModel.publish_active == True,
-                )
-            ).unique().one_or_none()
-
-            self.post = db_post_result
-            if db_post_result:
-                self.comments = sorted(
-                    db_post_result.comments,
-                    key=lambda c: c.created_at,
-                    reverse=True
-                )
-            else:
-                self.comments = []
-
-        self.is_loading = False
-
-    @rx.var
-    def has_comments(self) -> bool:
-        """
-        Una propiedad computada que devuelve True si hay comentarios, y False en caso contrario.
-        Esta lógica se ejecuta en el backend, y el resultado (True/False) se expone a la UI.
-        """
-        return len(self.comments) > 0
-
-    @rx.var
-    def content(self) -> str:
-        if self.post and self.post.content:
-            return self.post.content
-        return ""
-
-    @rx.var
-    def imagen_actual(self) -> str:
-        if self.post and self.post.image_urls and len(self.post.image_urls) > self.img_idx:
-            return self.post.image_urls[self.img_idx]
-        return ""
-    
     @rx.var
     def user_has_purchased(self) -> bool:
         if not self.is_authenticated or not self.post or not self.authenticated_user_info:
@@ -519,26 +391,66 @@ class CommentState(SessionState):
     def user_can_comment(self) -> bool:
         return self.user_has_purchased and not self.user_has_commented
 
+    @rx.event
+    def on_load(self):
+        """Maneja la carga de datos de la página de detalle del producto."""
+        self.is_loading = True
+        yield
+        try:
+            # 1. Resetear el estado para mostrar los skeletons
+            self.post = None
+            self.comments = [None] * 3
+            self.img_idx = 0
+            self.new_comment_text = ""
+            self.new_comment_rating = 0
 
-    # --- (El resto de tus eventos como add_comment, handle_vote, etc. van aquí sin cambios) ---
+            # 2. Obtener el ID y cargar el post
+            try:
+                pid = int(self.post_id)
+            except (ValueError, TypeError):
+                # Si el ID no es válido, terminamos la carga.
+                self.comments = []
+                return
+
+            with rx.session() as session:
+                db_post_result = session.exec(
+                    select(BlogPostModel).options(
+                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                        .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                        .joinedload(CommentModel.votes)
+                    )
+                    .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
+                ).unique().one_or_none()
+
+                self.post = db_post_result
+                if db_post_result:
+                    self.comments = sorted(
+                        db_post_result.comments,
+                        key=lambda c: c.created_at,
+                        reverse=True
+                    )
+                else:
+                    self.comments = []
+        finally:
+            # 3. Asegurarnos de que el estado de carga siempre se desactive
+            self.is_loading = False
+
     @rx.event
     def set_new_comment_rating(self, rating: int):
         self.new_comment_rating = rating
-    
+
     @rx.event
     def add_comment(self, form_data: dict):
         content = form_data.get("comment_text", "").strip()
-        
         if not self.user_can_comment or not self.post or not content:
-            return rx.toast.error("No tienes permiso para comentar o el texto está vacío.")
-    
+            return rx.toast.error("No puedes comentar o el texto está vacío.")
         if self.new_comment_rating == 0:
-            return rx.toast.error("Por favor, selecciona una calificación de 1 a 5 estrellas.")
+            return rx.toast.error("Por favor, selecciona una calificación.")
 
         with rx.session() as session:
             comment = CommentModel(
-                content=content,
-                rating=self.new_comment_rating,
+                content=content, rating=self.new_comment_rating,
                 userinfo_id=self.authenticated_user_info.id,
                 blog_post_id=self.post.id
             )
@@ -554,7 +466,6 @@ class CommentState(SessionState):
         vote_type = VoteType(vote_type_str)
         if not self.is_authenticated:
             return rx.toast.error("Debes iniciar sesión para votar.")
-
         with rx.session() as session:
             existing_vote = session.exec(
                 select(CommentVoteModel).where(
@@ -576,16 +487,5 @@ class CommentState(SessionState):
                     comment_id=comment_id
                 )
                 session.add(new_vote)
-            
             session.commit()
         return self.on_load()
-
-    @rx.event
-    def siguiente_imagen(self):
-        if self.post and self.post.image_urls:
-            self.img_idx = (self.img_idx + 1) % len(self.post.image_urls)
-
-    @rx.event
-    def anterior_imagen(self):
-        if self.post and self.post.image_urls:
-            self.img_idx = (self.img_idx - 1 + len(self.post.image_urls)) % len(self.post.image_urls)
