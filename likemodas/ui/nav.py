@@ -59,7 +59,6 @@ def public_navbar() -> rx.Component:
     con el menú a la izquierda y estilos de color personalizados.
     """
     return rx.box(
-        # <<< CAMBIO CLAVE: Se usa rx.grid en lugar de rx.hstack para un mejor control del layout >>>
         rx.grid(
             # --- Columna Izquierda (Logo y Menú) ---
             rx.hstack(
@@ -110,9 +109,9 @@ def public_navbar() -> rx.Component:
                 justify="start",
             ),
             
-            # --- Columna Central (Barra de búsqueda) ---
-           rx.center(
-                # Búsqueda para ESCRITORIO (oculta en móvil)
+            # --- Columna Central (Búsqueda Responsiva) ---
+            rx.center(
+                # Búsqueda para ESCRITORIO (se oculta en móvil)
                 rx.form(
                     rx.input(
                         placeholder="Buscar productos...", value=SearchState.search_term,
@@ -122,9 +121,9 @@ def public_navbar() -> rx.Component:
                         font_size=rx.breakpoints(sm="2", md="3", lg="3"),
                     ),
                     on_submit=SearchState.perform_search, width="100%",
-                    display=["none", "none", "flex", "flex"],
+                    display=["none", "none", "flex", "flex"], # Propiedad en el hijo correcto
                 ),
-                # Búsqueda para MÓVIL (oculta en escritorio)
+                # Búsqueda para MÓVIL (se oculta en escritorio)
                 rx.popover.root(
                     rx.popover.trigger(
                         rx.icon_button(
@@ -143,13 +142,16 @@ def public_navbar() -> rx.Component:
                     ),
                     modal=True,
                 ),
-                # Este display asegura que el ícono de lupa solo se vea en móvil
-                display=["flex", "flex", "none", "none"],
-                justify_content="end", # Alinea la lupa a la derecha de la columna central
+                # --- ✨ CORRECCIÓN CLAVE ---
+                # Se eliminó la propiedad 'display' del 'rx.center' padre
+                # y se colocó en sus hijos (el form y el popover).
+                # Ahora el 'rx.center' siempre es visible.
                 width="100%",
+                # Este display en el popover asegura que solo se vea en móvil
+                display=["flex", "flex", "none", "none"], 
+                justify_content="end"
             ),
-            # --- FIN DEL CAMBIO ---
-
+            
             # --- Columna Derecha (Iconos) ---
             rx.hstack(
                 rx.cond(
