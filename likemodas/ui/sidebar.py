@@ -96,7 +96,7 @@ def sidebar_logout_item() -> rx.Component:
         rx.button(
             "Logout",
             rx.icon(tag="log-out", margin_left="0.5em"),
-            on_click=SessionState.logout,
+            on_click=SessionState.do_logout,  # <--- LÍNEA CORREGIDA
             width="100%",
             variant="soft",
             color_scheme="red"
