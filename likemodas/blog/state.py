@@ -366,11 +366,10 @@ class BlogEditFormState(BlogPostState):
 # (La clase CommentState no necesita cambios)
 class CommentState(SessionState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
-    post: Optional[BlogPostModel] = None
-    loading_status: Literal["idle", "loading", "error", "success"] = "idle"
-    error_message: str = ""
+    # ✅ CORRECCIÓN: Se inicializa la lista correctamente con
+    post: Optional = None # type: ignore
     img_idx: int = 0
-    comments: list[CommentModel] = []
+    comments: list[CommentModel] =
     new_comment_text: str = ""
     new_comment_rating: int = 0
 
@@ -378,12 +377,11 @@ class CommentState(SessionState):
     def product_attributes(self) -> list[tuple[str, str]]:
         """Formatea los atributos específicos del producto para mostrarlos en la UI."""
         if not self.post or not self.post.attributes:
-            return []
+            return
         
-        formatted_attrs = []
+        formatted_attrs =
         for key, value in self.post.attributes.items():
-            if value and str(value).strip():  # Solo muestra atributos con valor
-                # Formatea la clave para que sea legible (ej: 'tipo_tela' -> 'Tipo De Tela')
+            if value and str(value).strip():
                 formatted_key = key.replace('_', ' ').title()
                 formatted_attrs.append((f"{formatted_key}:", str(value)))
                 
@@ -418,7 +416,6 @@ class CommentState(SessionState):
 
     @rx.var
     def imagen_actual(self) -> str:
-        # --- CORRECCIÓN AQUÍ ---
         if self.post and self.post.image_urls and len(self.post.image_urls) > self.img_idx:
             return self.post.image_urls[self.img_idx]
         return ""
@@ -456,48 +453,41 @@ class CommentState(SessionState):
 
     @rx.event
     def on_load(self):
-        """Carga el post y sus comentarios de forma segura y eficiente."""
-        # 1. Resetea el estado con los tipos de datos correctos.
+        """Carga el post y los comentarios al entrar a la página."""
         self.post = None
-        # El error indicaba que esta línea podría haber sido `self.comments = ""`.
-        # La forma correcta es inicializarla como una lista vacía.
+        # ✅ CORRECCIÓN: Se resetea la lista correctamente con
         self.comments =
-        self.img_idx = 0
-        self.new_comment_text = ""
-        self.new_comment_rating = 0
-
         try:
             pid = int(self.post_id)
         except (ValueError, TypeError):
-            return  # Salir si el ID en la URL no es un número válido.
+            return
 
         with rx.session() as session:
-            # 2. Carga el post y sus comentarios en una sola consulta para mayor eficiencia.
-            db_post_result = session.exec(
+            self.post = session.exec(
                 select(BlogPostModel)
-               .options(
-                    # Carga anidada: Carga los comentarios, y para cada comentario, carga el usuario y los votos.
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                   .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                   .joinedload(CommentModel.votes)
-                )
+               .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                .where(
                     BlogPostModel.id == pid,
                     BlogPostModel.publish_active == True,
                     BlogPostModel.publish_date < datetime.utcnow()
                 )
             ).unique().one_or_none()
-
-            # 3. Asigna los resultados de forma segura.
-            if db_post_result:
-                self.post = db_post_result
-                # Ordena los comentarios en Python después de cargarlos.
-                self.comments = sorted(
-                    db_post_result.comments,
-                    key=lambda c: c.created_at,
-                    reverse=True
-                )
+            
+            if self.post:
+                statement = (
+                    select(CommentModel)
+                   .options(
+                        sqlalchemy.orm.joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                        sqlalchemy.orm.joinedload(CommentModel.votes)
+                    )
+                   .where(CommentModel.blog_post_id == self.post.id)
+                   .order_by(CommentModel.created_at.desc())
+                ) 
+                self.comments = session.exec(statement).unique().all()
+    
+        self.img_idx = 0 
+        self.new_comment_text = "" 
+        self.new_comment_rating = 0 
     
     @rx.event
     def set_new_comment_rating(self, rating: int):
@@ -560,10 +550,10 @@ class CommentState(SessionState):
 
     @rx.event
     def siguiente_imagen(self):
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx + 1) % len(self.post.images)
+        if self.post and self.post.image_urls:
+            self.img_idx = (self.img_idx + 1) % len(self.post.image_urls)
 
     @rx.event
     def anterior_imagen(self):
-        if self.post and self.post.images:
-            self.img_idx = (self.img_idx - 1 + len(self.post.images)) % len(self.post.images)
+        if self.post and self.post.image_urls:
+            self.img_idx = (self.img_idx - 1 + len(self.post.image_urls)) % len(self.post.image_urls)
