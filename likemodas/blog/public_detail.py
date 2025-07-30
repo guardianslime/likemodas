@@ -14,21 +14,20 @@ def _image_section() -> rx.Component:
     Muestra las imágenes del post en un carrusel.
     """
     return rx.box(
-        # Usamos Carousel.create() para instanciar el componente
         Carousel.create(
-            # rx.foreach itera sobre la lista de URLs de las imágenes del estado
             rx.foreach(
-                BlogPostState.post.image_urls,
+                # ✅ SOLUCIÓN: Usar el estado correcto (CommentState)
+                CommentState.post.image_urls,
                 lambda image_url: rx.image(
                     src=rx.get_upload_url(image_url),
-                    alt=BlogPostState.post.title, # Texto alternativo para accesibilidad
+                    # ✅ SOLUCIÓN: Usar el estado correcto para el texto alternativo
+                    alt=CommentState.post.title, 
                     width="100%",
                     height="auto",
                     object_fit="cover",
                     border_radius="var(--radius-3)",
                 )
             ),
-            # Las propiedades del carrusel se pasan como argumentos de palabra clave (props)
             show_arrows=True,
             show_indicators=True,
             infinite_loop=True,
@@ -36,7 +35,7 @@ def _image_section() -> rx.Component:
             width="100%"
         ),
         width="100%",
-        max_width="800px", # Limita el ancho máximo para una mejor visualización
+        max_width="800px",
         margin="auto",
         padding_y="1em"
     )
