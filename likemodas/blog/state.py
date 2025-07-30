@@ -9,6 +9,7 @@ import sqlalchemy
 from sqlmodel import select
 from .. import navigation
 from ..auth.state import SessionState
+
 from ..models import BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType, PurchaseModel, PurchaseItemModel, PurchaseStatus, Category # <-- AÑADIR Category
 from ..data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES
@@ -369,21 +370,24 @@ class CommentState(SessionState):
     post: Optional = None
     img_idx: int = 0
     
-    # --- ✅ CORRECCIÓN DEFINITIVA ---
-    # La sintaxis correcta para inicializar una lista vacía en un estado de Reflex.
-    # Mis disculpas por el error de sintaxis en las versiones anteriores.
-    comments: list[CommentModel] =
+    # --- ✅ CORRECCIÓN 1: Inicialización de estado mutable ---
+    # Se utiliza rx.field(default_factory=list) para la inicialización segura
+    # de la lista de comentarios, previniendo el error de estado compartido.
+    comments: list[CommentModel] = rx.field(default_factory=list)
     
     new_comment_text: str = ""
     new_comment_rating: int = 0
 
-    # --- (Todas tus propiedades @rx.var como product_attributes, rating_count, etc. van aquí sin cambios) ---
+    # --- (Propiedades @rx.var sin cambios) ---
     @rx.var
     def product_attributes(self) -> list[tuple[str, str]]:
         if not self.post or not self.post.attributes:
-            return
+            return # Devuelve una lista vacía si no hay post o atributos
         
+        # --- ✅ CORRECCIÓN 2: Inicialización de lista local ---
+        # Se inicializa una lista vacía para poder añadirle elementos.
         formatted_attrs =
+        
         for key, value in self.post.attributes.items():
             if value and str(value).strip():
                 formatted_key = key.replace('_', ' ').title()
@@ -391,6 +395,7 @@ class CommentState(SessionState):
                 
         return formatted_attrs
 
+    #... (el resto de tus propiedades @rx.var como rating_count, average_rating, etc., van aquí sin cambios)...
     @rx.var
     def rating_count(self) -> int:
         return len(self.comments)
@@ -411,6 +416,50 @@ class CommentState(SessionState):
         if self.post and self.post.price is not None:
             return f"${self.post.price:,.2f}"
         return "$0.00"
+
+    #... (el resto de tus propiedades @rx.var)...
+
+    @rx.event
+    def on_load(self):
+        """Carga el post y sus comentarios de forma segura y eficiente."""
+        self.post = None
+        
+        # --- ✅ CORRECCIÓN 3: Reseteo de lista ---
+        # Al resetear el estado, la lista de comentarios debe ser una lista vacía.
+        self.comments =
+        
+        self.img_idx = 0
+        self.new_comment_text = ""
+        self.new_comment_rating = 0
+
+        try:
+            pid = int(self.post_id)
+        except (ValueError, TypeError):
+            return
+
+        with rx.session() as session:
+            db_post_result = session.exec(
+                select(BlogPostModel)
+               .options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                   .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                   .joinedload(CommentModel.votes)
+                )
+               .where(
+                    BlogPostModel.id == pid,
+                    BlogPostModel.publish_active == True,
+                    BlogPostModel.publish_date < datetime.utcnow()
+                )
+            ).unique().one_or_none()
+
+            if db_post_result:
+                self.post = db_post_result
+                self.comments = sorted(
+                    db_post_result.comments,
+                    key=lambda c: c.created_at,
+                    reverse=True
+                )
 
     @rx.var
     def content(self) -> str:
@@ -455,47 +504,6 @@ class CommentState(SessionState):
     def user_can_comment(self) -> bool:
         return self.user_has_purchased and not self.user_has_commented
 
-    @rx.event
-    def on_load(self):
-        """Carga el post y sus comentarios de forma segura y eficiente."""
-        # 1. Resetea el estado con los tipos de datos correctos.
-        self.post = None
-        # ✅ CORRECCIÓN: Se resetea la lista a una lista vacía ``.
-        self.comments =
-        self.img_idx = 0
-        self.new_comment_text = ""
-        self.new_comment_rating = 0
-
-        try:
-            pid = int(self.post_id)
-        except (ValueError, TypeError):
-            return
-
-        with rx.session() as session:
-            # 2. Carga el post y sus comentarios en una sola consulta.
-            db_post_result = session.exec(
-                select(BlogPostModel)
-              .options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                  .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                  .joinedload(CommentModel.votes)
-                )
-              .where(
-                    BlogPostModel.id == pid,
-                    BlogPostModel.publish_active == True,
-                    BlogPostModel.publish_date < datetime.utcnow()
-                )
-            ).unique().one_or_none()
-
-            # 3. Asigna los resultados de forma segura.
-            if db_post_result:
-                self.post = db_post_result
-                self.comments = sorted(
-                    db_post_result.comments,
-                    key=lambda c: c.created_at,
-                    reverse=True
-                )
 
     # --- (El resto de tus eventos como add_comment, handle_vote, etc. van aquí sin cambios) ---
     @rx.event

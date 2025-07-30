@@ -34,6 +34,9 @@ class CartState(SessionState):
     posts: list[ProductCardData] = []
     default_shipping_address: Optional[ShippingAddressModel] = None
 
+    # --- ✅ NUEVA BANDERA DE CARGA ---
+    is_loading: bool = True
+
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
         return self.posts[:20]
@@ -92,12 +95,18 @@ class CartState(SessionState):
 
     @rx.event
     def load_posts_and_set_category(self):
+        self.is_loading = True
+        yield
+        
         self.current_category = self.router.page.params.get("cat_name", "")
-        yield self.on_load()
+        # Llama al on_load original para recargar los posts, que ya gestiona la bandera
+        yield self.on_load
 
     @rx.event
     def on_load(self):
         """Carga los posts y les añade el precio ya formateado."""
+        self.is_loading = True
+        yield
         with rx.session() as session:
             results = session.exec(
                 select(BlogPostModel)
@@ -119,6 +128,7 @@ class CartState(SessionState):
                     rating_count=p.rating_count
                 ) for p in results
             ]
+        self.is_loading = False
              
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())

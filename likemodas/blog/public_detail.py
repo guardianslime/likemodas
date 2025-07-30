@@ -7,6 +7,7 @@ from.state import BlogPostState
 from ..cart.state import CartState
 from ..models import CommentModel
 from ..ui.base import base_page
+from..ui.skeletons import skeleton_product_detail_view
 import math
 
 def _image_section() -> rx.Component:
@@ -242,7 +243,9 @@ def comment_section() -> rx.Component:
     
 
 def blog_public_detail_page() -> rx.Component:
-    """Página que muestra el detalle de una publicación pública."""
+    """Página que muestra el detalle de una publicación pública, ahora con esqueleto de carga."""
+    
+    # El contenido real de la página
     content_grid = rx.cond(
         CommentState.post,
         rx.grid(
@@ -257,9 +260,10 @@ def blog_public_detail_page() -> rx.Component:
         rx.center(rx.text("Publicación no encontrada.", color="red"))
     )
     
-    page_content = rx.center(
+    # El contenido completo de la página, incluyendo la sección de comentarios
+    page_content_with_comments = rx.center(
         rx.vstack(
-            rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"), # <<< CAMBIO CLAVE
+            rx.heading("Detalle del Producto", size="9", margin_bottom="1em"),
             content_grid,
             comment_section(),
             spacing="6",
@@ -269,5 +273,13 @@ def blog_public_detail_page() -> rx.Component:
         ),
         width="100%",
     )
-    
-    return base_page(page_content)
+
+    # --- ✅ LÓGICA DE RENDERIZADO CONDICIONAL ---
+    # La página principal ahora decide si mostrar el esqueleto o el contenido real.
+    return base_page(
+        rx.cond(
+            CommentState.is_loading,
+            skeleton_product_detail_view(),
+            page_content_with_comments
+        )
+    )

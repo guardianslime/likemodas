@@ -2,6 +2,7 @@ import reflex as rx
 import math
 from ..navigation import routes
 from ..cart.state import CartState, ProductCardData
+from.skeletons import skeleton_product_gallery
 from reflex.event import EventSpec
 from ..auth.state import SessionState
 
@@ -139,7 +140,7 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """Un componente que muestra una galería de productos."""
-    return rx.flex(
+    return rx.cond(real_gallery = rx.flex(
         rx.foreach(
             posts,
             lambda post: rx.box(
@@ -189,4 +190,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             )
         ),
         wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
-    )
+    
+    ))
+    
