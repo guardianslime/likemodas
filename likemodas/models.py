@@ -119,6 +119,19 @@ class BlogPostModel(rx.Model, table=True):
     def price_cop(self) -> str:
         """Propiedad nueva para el precio del producto formateado."""
         return format_to_cop(self.price)
+    
+    def dict(self, **kwargs):
+        """
+        Asegura que todas las propiedades calculadas se incluyan
+        cuando el objeto se envía al frontend.
+        """
+        d = super().dict(**kwargs)
+        d["created_at_formatted"] = self.created_at_formatted
+        d["publish_date_formatted"] = self.publish_date_formatted
+        d["price_cop"] = self.price_cop
+        d["rating_count"] = self.rating_count
+        d["average_rating"] = self.average_rating
+        return d
 
     @property
     def average_rating_display(self) -> str:
