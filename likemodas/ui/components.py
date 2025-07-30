@@ -150,7 +150,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 rx.cond(
                                     post.image_urls & (post.image_urls.length() > 0),
                                     rx.image(
-                                        src=rx.get_upload_url(post.image_urls),
+                                        src=rx.get_upload_url(post.image_urls[0]),
                                         width="100%", height="100%", object_fit="cover",
                                     ),
                                     rx.box(

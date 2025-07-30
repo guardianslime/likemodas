@@ -19,7 +19,7 @@ def _image_section() -> rx.Component:
             rx.foreach(
                 BlogPostState.post.image_urls,  # <--- USA EL NOMBRE CORRECTO
                 lambda image_url: rx.image(
-                    src=image_url,
+                    src=rx.get_upload_url(image_url),
                     alt=BlogPostState.post.title,
                     width="100%",
                     height="auto",
