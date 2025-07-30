@@ -113,8 +113,8 @@ class CartState(SessionState):
                     id=p.id,
                     title=p.title,
                     price=p.price,
-                    price_formatted=format_to_cop(p.price), # <-- Llenamos el campo nuevo
-                    image_urls=p.image_urls,
+                    price_formatted=format_to_cop(p.price),
+                    image_urls=p.image_urls or [], # <-- LÍNEA CORREGIDA
                     average_rating=p.average_rating,
                     rating_count=p.rating_count
                 ) for p in results
