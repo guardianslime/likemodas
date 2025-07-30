@@ -370,22 +370,24 @@ class CommentState(SessionState):
     post: Optional = None
     img_idx: int = 0
     
-    # --- ✅ CORRECCIÓN 1: Inicialización de estado mutable ---
-    # Se utiliza rx.field(default_factory=list) para la inicialización segura
-    # de la lista de comentarios, previniendo el error de estado compartido.
+    # --- ✅ CASO 1: VARIABLE DE ESTADO ---
+    # Usamos rx.field(default_factory=list) para una variable de estado de tipo lista.
+    # Esto es CRUCIAL para que cada usuario tenga su propia lista de comentarios.
     comments: list[CommentModel] = rx.field(default_factory=list)
     
     new_comment_text: str = ""
     new_comment_rating: int = 0
 
-    # --- (Propiedades @rx.var sin cambios) ---
+    # --- (Propiedades @rx.var) ---
     @rx.var
     def product_attributes(self) -> list[tuple[str, str]]:
         if not self.post or not self.post.attributes:
-            return # Devuelve una lista vacía si no hay post o atributos
+            return # Devolver una lista vacía es seguro aquí.
         
-        # --- ✅ CORRECCIÓN 2: Inicialización de lista local ---
-        # Se inicializa una lista vacía para poder añadirle elementos.
+        # --- ✅ CASO 2: VARIABLE LOCAL TEMPORAL ---
+        # 'formatted_attrs' es una variable local, no de estado.
+        # Se crea y destruye dentro de esta función. La forma correcta
+        # de inicializarla es con. Esto corrige el SyntaxError.
         formatted_attrs =
         
         for key, value in self.post.attributes.items():
@@ -395,7 +397,7 @@ class CommentState(SessionState):
                 
         return formatted_attrs
 
-    #... (el resto de tus propiedades @rx.var como rating_count, average_rating, etc., van aquí sin cambios)...
+    #... (El resto de tus propiedades @rx.var como rating_count, average_rating, etc., van aquí sin cambios)...
     @rx.var
     def rating_count(self) -> int:
         return len(self.comments)
@@ -417,15 +419,16 @@ class CommentState(SessionState):
             return f"${self.post.price:,.2f}"
         return "$0.00"
 
-    #... (el resto de tus propiedades @rx.var)...
+    #... (otras propiedades @rx.var)...
 
     @rx.event
     def on_load(self):
         """Carga el post y sus comentarios de forma segura y eficiente."""
         self.post = None
         
-        # --- ✅ CORRECCIÓN 3: Reseteo de lista ---
-        # Al resetear el estado, la lista de comentarios debe ser una lista vacía.
+        # --- ✅ CASO 2 (Resetear Estado): VARIABLE LOCAL ---
+        # Aquí también, estamos asignando un nuevo valor a la variable de estado.
+        # Asignar una lista vacía es correcto para resetearla.
         self.comments =
         
         self.img_idx = 0
@@ -440,13 +443,13 @@ class CommentState(SessionState):
         with rx.session() as session:
             db_post_result = session.exec(
                 select(BlogPostModel)
-               .options(
+              .options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                   .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                  .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                   .joinedload(CommentModel.votes)
+                  .joinedload(CommentModel.votes)
                 )
-               .where(
+              .where(
                     BlogPostModel.id == pid,
                     BlogPostModel.publish_active == True,
                     BlogPostModel.publish_date < datetime.utcnow()
