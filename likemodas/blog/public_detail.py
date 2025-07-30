@@ -1,28 +1,23 @@
-# likemodas/blog/public_detail.py (VERSIÓN CON TAMAÑOS AJUSTADOS)
+# likemodas/blog/public_detail.py (VERSIÓN CORREGIDA Y ROBUSTA)
 
 import reflex as rx
-from .state import CommentState, SessionState
-from..ui.carousel import Carousel  # Asegúrate de importar tu componente Carousel
-from.state import BlogPostState 
+import math
+from ..state import CommentState, SessionState
 from ..cart.state import CartState
 from ..models import CommentModel
 from ..ui.base import base_page
-from..ui.skeletons import skeleton_product_detail_view
-import math
+from ..ui.carousel import Carousel
+from ..ui.skeletons import skeleton_product_detail_view
 
 def _image_section() -> rx.Component:
-    """
-    Muestra las imágenes del post en un carrusel.
-    """
+    """Muestra las imágenes del post en un carrusel."""
     return rx.box(
         Carousel.create(
             rx.foreach(
-                # ✅ SOLUCIÓN: Usar el estado correcto (CommentState)
                 CommentState.post.image_urls,
                 lambda image_url: rx.image(
                     src=rx.get_upload_url(image_url),
-                    # ✅ SOLUCIÓN: Usar el estado correcto para el texto alternativo
-                    alt=CommentState.post.title, 
+                    alt=CommentState.post.title,
                     width="100%",
                     height="auto",
                     object_fit="cover",
@@ -42,9 +37,9 @@ def _image_section() -> rx.Component:
     )
 
 def _global_rating_display() -> rx.Component:
+    """Muestra la calificación global del producto con estrellas."""
     average_rating = CommentState.average_rating
     rating_count = CommentState.rating_count
-    
     full_stars = rx.Var.range(math.floor(average_rating))
     has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
     empty_stars = rx.Var.range(5 - math.ceil(average_rating))
@@ -55,21 +50,9 @@ def _global_rating_display() -> rx.Component:
             rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=30)),
             rx.cond(has_half_star, rx.icon("star_half", color="gold", size=30), rx.fragment()),
             rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=30)),
-            
-            rx.text(
-                f"{average_rating:.1f} de 5",
-                size="4",
-                weight="bold",
-                margin_left="0.5em"
-            ),
-            rx.text(
-                f"({rating_count} opiniones)",
-                size="4",
-                color_scheme="gray"
-            ),
-            align="center",
-            spacing="1",
-            padding_y="1em"
+            rx.text(f"{average_rating:.1f} de 5", size="4", weight="bold", margin_left="0.5em"),
+            rx.text(f"({rating_count} opiniones)", size="4", color_scheme="gray"),
+            align="center", spacing="1", padding_y="1em"
         ),
         rx.box(
             rx.text("Este producto aún no tiene calificaciones.", color_scheme="gray", size="4"),
@@ -78,6 +61,7 @@ def _global_rating_display() -> rx.Component:
     )
 
 def _attributes_display() -> rx.Component:
+    """Muestra los atributos (características) del producto."""
     return rx.cond(
         CommentState.product_attributes,
         rx.vstack(
@@ -89,26 +73,20 @@ def _attributes_display() -> rx.Component:
                     lambda attr: rx.hstack(
                         rx.text(attr[0], weight="bold", min_width="160px"),
                         rx.text(attr[1]),
-                        spacing="4",
-                        width="100%",
+                        spacing="4", width="100%",
                     )
                 ),
-                spacing="2",
-                align_items="start",
-                padding_y="0.5em"
+                spacing="2", align_items="start", padding_y="0.5em"
             ),
-            align_items="start",
-            width="100%",
+            align_items="start", width="100%",
         )
     )
 
 def _info_section() -> rx.Component:
+    """Muestra la información de texto del producto."""
     return rx.vstack(
         rx.text(CommentState.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
-        rx.text(
-            "Publicado el " + CommentState.post.created_at_formatted,
-            size="3", color_scheme="gray", margin_bottom="0.5em", text_align="left", width="100%"
-        ),
+        rx.text("Publicado el " + CommentState.post.created_at_formatted, size="3", color_scheme="gray", margin_bottom="0.5em", text_align="left", width="100%"),
         rx.text(CommentState.formatted_price, size="7", color="gray", text_align="left"),
         rx.text(CommentState.content, size="5", margin_top="1em", white_space="pre-wrap", text_align="left"),
         _attributes_display(),
@@ -116,45 +94,39 @@ def _info_section() -> rx.Component:
         rx.spacer(),
         rx.button(
             "Añadir al Carrito",
-            on_click=lambda: CartState.add_to_cart(CommentState.post.id),
-            width="100%", size="4", margin_top="1.5em", color_scheme="violet" # <<< CAMBIO CLAVE
+            on_click=CartState.add_to_cart(CommentState.post.id),
+            width="100%", size="4", margin_top="1.5em", color_scheme="violet"
         ),
-        padding="1em",
-        align="start",
-        width="100%",
-        min_height="350px",
+        padding="1em", align="start", width="100%", min_height="350px",
     )
 
 def _star_rating_input() -> rx.Component:
+    """Input de estrellas para dejar una nueva calificación."""
     return rx.hstack(
         rx.foreach(
             rx.Var.range(5),
             lambda i: rx.icon(
                 tag="star",
                 color=rx.cond(i < CommentState.new_comment_rating, "gold", rx.color("gray", 8)),
-                on_click=lambda: CommentState.set_new_comment_rating(i + 1),
-                cursor="pointer",
-                size=32,
+                on_click=CommentState.set_new_comment_rating(i + 1),
+                cursor="pointer", size=32,
             )
         ),
-        spacing="2",
-        padding_y="0.5em",
+        spacing="2", padding_y="0.5em",
     )
 
 def _star_rating_display(rating: rx.Var[int]) -> rx.Component:
+    """Muestra una calificación de estrellas estática."""
     return rx.hstack(
         rx.foreach(
             rx.Var.range(5),
-            lambda i: rx.icon(
-                tag="star",
-                color=rx.cond(i < rating, "gold", rx.color("gray", 8)),
-                size=22,
-            )
+            lambda i: rx.icon(tag="star", color=rx.cond(i < rating, "gold", rx.color("gray", 8)), size=22)
         ),
         spacing="1"
     )
 
 def _comment_form() -> rx.Component:
+    """Formulario para que un usuario deje un comentario."""
     return rx.cond(
         SessionState.is_authenticated,
         rx.cond(
@@ -164,7 +136,7 @@ def _comment_form() -> rx.Component:
                     rx.text("Tu calificación:", weight="bold", size="4"),
                     _star_rating_input(),
                     rx.text_area(name="comment_text", value=CommentState.new_comment_text, on_change=CommentState.set_new_comment_text, placeholder="Escribe tu opinión sobre el producto...", width="100%", size="3"),
-                    rx.button("Publicar Opinión", type="submit", align_self="flex-end", size="3", color_scheme="violet"), # <<< CAMBIO CLAVE
+                    rx.button("Publicar Opinión", type="submit", align_self="flex-end", size="3", color_scheme="violet"),
                     spacing="3", width="100%",
                 ),
                 on_submit=CommentState.add_comment, width="100%",
@@ -185,6 +157,7 @@ def _comment_form() -> rx.Component:
     )
 
 def _comment_card(comment: CommentModel) -> rx.Component:
+    """Tarjeta individual para mostrar un comentario existente."""
     return rx.box(
         rx.vstack(
             rx.hstack(
@@ -192,26 +165,19 @@ def _comment_card(comment: CommentModel) -> rx.Component:
                     rx.avatar(fallback=comment.userinfo.user.username[0], size="3"),
                     rx.text(comment.userinfo.user.username, weight="bold", size="4"),
                     _star_rating_display(comment.rating),
-                    align="center",
-                    spacing="3",
+                    align="center", spacing="3",
                 ),
                 rx.spacer(),
-                rx.text(
-                    comment.created_at_formatted,
-                    size="3",
-                    color_scheme="gray"
-                ),
-                align="center",
-                width="100%",
+                rx.text(comment.created_at_formatted, size="3", color_scheme="gray"),
+                align="center", width="100%",
             ),
-            
             rx.text(comment.content, padding_left="3em", padding_top="0.5em", font_size="1.1em"),
             rx.cond(
                 SessionState.is_authenticated,
                 rx.hstack(
-                    rx.icon_button(rx.icon("thumbs-up", size=20), on_click=lambda: CommentState.handle_vote(comment.id, "like"), variant="soft"),
+                    rx.icon_button(rx.icon("thumbs-up", size=20), on_click=CommentState.handle_vote(comment.id, "like"), variant="soft"),
                     rx.text(comment.likes, size="3"),
-                    rx.icon_button(rx.icon("thumbs-down", size=20), on_click=lambda: CommentState.handle_vote(comment.id, "dislike"), variant="soft"),
+                    rx.icon_button(rx.icon("thumbs-down", size=20), on_click=CommentState.handle_vote(comment.id, "dislike"), variant="soft"),
                     rx.text(comment.dislikes, size="3"),
                     spacing="2", align="center", padding_left="3em",
                 )
@@ -222,32 +188,33 @@ def _comment_card(comment: CommentModel) -> rx.Component:
     )
 
 def comment_section() -> rx.Component:
+    """La sección completa de comentarios, incluyendo el formulario y la lista."""
     return rx.vstack(
         rx.divider(margin_y="2em"),
-        rx.heading("Opiniones del Producto", size="8", color_scheme="violet"), # <<< CAMBIO CLAVE
+        rx.heading("Opiniones del Producto", size="8", color_scheme="violet"),
         _comment_form(),
         rx.vstack(
             rx.foreach(CommentState.comments, _comment_card),
             spacing="4", width="100%", margin_top="1.5em",
         ),
+        # Condición corregida para mostrar el mensaje cuando no hay comentarios
         rx.cond(
-            ~CommentState.comments,
+            CommentState.rating_count == 0,
             rx.center(rx.text("Sé el primero en dejar tu opinión.", color_scheme="gray", size="4"), padding="2em", width="100%")
         ),
-        spacing="5", 
-        width="100%", 
-        max_width="1120px",
-        align="center", 
-        padding_top="1em",
+        spacing="5", width="100%", max_width="1120px", align="center", padding_top="1em",
     )
-    
 
+# =================================================================
+# FUNCIÓN PRINCIPAL DE LA PÁGINA (ESTRUCTURA CORREGIDA)
+# =================================================================
 def blog_public_detail_page() -> rx.Component:
-    """Página que muestra el detalle de una publicación pública, ahora con esqueleto de carga."""
-    
-    # El contenido real de la página, que se renderizará cuando la carga haya finalizado.
-    content_grid = rx.cond(
-        CommentState.post,
+    """
+    Página de detalle del producto con una lógica de renderizado robusta
+    que previene errores visuales al recargar la página.
+    """
+    # 1. Define el contenido a mostrar si el post se encuentra
+    content_found = rx.vstack(
         rx.grid(
             _image_section(),
             _info_section(),
@@ -257,28 +224,36 @@ def blog_public_detail_page() -> rx.Component:
             width="100%",
             max_width="1400px",
         ),
-        rx.center(rx.text("Publicación no encontrada.", color="red"))
-    )
-    
-    page_content_with_comments = rx.center(
-        rx.vstack(
-            rx.heading("Detalle del Producto", size="9", margin_bottom="1em"),
-            content_grid,
-            comment_section(),
-            spacing="6",
-            width="100%",
-            padding="2em",
-            align="center",
-        ),
+        # La sección de comentarios solo se muestra si el post fue encontrado
+        comment_section(),
+        spacing="6",
         width="100%",
+        align="center",
     )
 
-    # LÓGICA DE RENDERIZADO CONDICIONAL
-    # La página principal ahora decide si mostrar el esqueleto o el contenido real.
+    # 2. Define el contenido a mostrar si el post NO se encuentra
+    content_not_found = rx.center(
+        rx.text("Publicación no encontrada o no disponible.", color="red", size="5"),
+        height="50vh"
+    )
+
+    # 3. Contenedor que decide qué mostrar una vez que la carga ha terminado
+    page_content = rx.vstack(
+        rx.heading("Detalle del Producto", size="9", margin_bottom="1em"),
+        rx.cond(
+            CommentState.post,
+            content_found,
+            content_not_found
+        ),
+        width="100%",
+        padding="2em",
+    )
+
+    # 4. Lógica principal: Muestra el esqueleto mientras carga, o el contenido final.
     return base_page(
         rx.cond(
             CommentState.is_loading,
-            skeleton_product_detail_view(),  # <-- Show skeleton while loading
-            page_content_with_comments     # <-- Show content when loaded
+            skeleton_product_detail_view(),
+            page_content
         )
     )
