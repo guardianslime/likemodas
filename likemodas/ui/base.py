@@ -43,7 +43,10 @@ def public_layout(child: rx.Component) -> rx.Component:
             width="100%",
             id="my-content-area-el"
         ),
-        fixed_color_mode_button()
+        rx.cond(
+            SessionState.is_hydrated,
+            fixed_color_mode_button() # Renderizar el botón SÓLO DESPUÉS de la hidratación
+        )
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:

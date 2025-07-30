@@ -1,4 +1,4 @@
-# likemodas/ui/sidebar.py (VERSIÓN CORREGIDA Y SIMPLIFICADA)
+# likemodas/ui/sidebar.py (VERSIÓN CORREGIDA Y COMPLETA)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
@@ -6,14 +6,22 @@ from..auth.state import SessionState
 from.. import navigation
 
 def sidebar_user_item() -> rx.Component:
-    user_info_obj = SessionState.authenticated_user_info
-    username_via_user_abj = rx.cond(SessionState.authenticated_username, SessionState.authenticated_username, "Account")
+    """Muestra el avatar y el nombre de usuario autenticado."""
+    username = rx.cond(
+        SessionState.authenticated_username, 
+        SessionState.authenticated_username, 
+        "Account"
+    )
     return rx.cond(
-        user_info_obj,
+        SessionState.is_authenticated,
         rx.hstack(
-           ...[source]() rx.color("accent", 11),}, "color": rx.color("accent", 11), "border-radius": "0.5em",},
+            rx.avatar(fallback=username, size="2"),
+            rx.text(username, size="3", weight="medium"),
+            align="center",
+            spacing="3",
         ),
-        on_click=toggle_color_mode, as_='button', underline="none", weight="medium", width="100%",
+        # Fallback para estado no autenticado (aunque el sidebar no debería mostrarse)
+        rx.text("Account", size="3", weight="medium")
     )
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
