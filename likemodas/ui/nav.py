@@ -53,7 +53,7 @@ def notification_icon() -> rx.Component:
         on_open_change=lambda open: rx.cond(open, NotificationState.mark_all_as_read, None)
     )
 
-def public_navbar() -> rx.Component:
+ef public_navbar() -> rx.Component:
     """
     Una barra de navegación superior fija para todas las páginas públicas.
     con el menú a la izquierda y estilos de color personalizados.
@@ -109,9 +109,9 @@ def public_navbar() -> rx.Component:
                 justify="start",
             ),
             
-            # --- ✨ CORRECCIÓN FINAL: Columna Central Responsiva ---
+            # --- Columna Central (Búsqueda Responsiva Corregida) ---
             rx.center(
-                # Búsqueda para ESCRITORIO (oculta en móvil)
+                # Búsqueda para ESCRITORIO (se oculta en móvil)
                 rx.form(
                     rx.input(
                         placeholder="Buscar productos...", value=SearchState.search_term,
@@ -121,33 +121,34 @@ def public_navbar() -> rx.Component:
                         font_size=rx.breakpoints(sm="2", md="3", lg="3"),
                     ),
                     on_submit=SearchState.perform_search, width="100%",
-                    # Esta regla SÍ está en el lugar correcto.
                     display=["none", "none", "flex", "flex"],
                 ),
-                # Búsqueda para MÓVIL (oculta en escritorio)
-                rx.popover.root(
-                    rx.popover.trigger(
-                        rx.icon_button(
-                            rx.icon("search", color="white"),
-                            variant="ghost", size="3",
-                        )
-                    ),
-                    rx.popover.content(
-                        rx.form(
-                            rx.input(placeholder="Buscar productos...", value=SearchState.search_term,
-                                     on_change=SearchState.set_search_term),
-                            on_submit=[SearchState.perform_search, rx.set_value("open", False)],
-                            width="100%",
+                # --- ✨ CORRECCIÓN FINAL ---
+                # Se envuelve el popover en un rx.box para que la propiedad display funcione.
+                rx.box(
+                    rx.popover.root(
+                        rx.popover.trigger(
+                            rx.icon_button(
+                                rx.icon("search", color="white"),
+                                variant="ghost", size="3",
+                            )
                         ),
-                        width="80vw", max_width="350px",
+                        rx.popover.content(
+                            rx.form(
+                                rx.input(placeholder="Buscar productos...", value=SearchState.search_term,
+                                        on_change=SearchState.set_search_term),
+                                on_submit=[SearchState.perform_search, rx.set_value("open", False)],
+                                width="100%",
+                            ),
+                            width="80vw", max_width="350px",
+                        ),
+                        modal=True,
                     ),
-                    modal=True,
-                    # Esta regla TAMBIÉN está en el lugar correcto.
+                    # La regla de visualización ahora está en el contenedor 'rx.box'.
                     display=["flex", "flex", "none", "none"],
                 ),
-                # El 'rx.center' ya NO tiene una propiedad 'display' que lo oculte.
                 width="100%",
-                justify_content="center", # Centra la barra de búsqueda en escritorio
+                justify_content="center",
             ),
             
             # --- Columna Derecha (Iconos) ---
