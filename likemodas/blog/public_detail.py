@@ -2,7 +2,7 @@
 
 import reflex as rx
 from .state import CommentState, SessionState
-from ..ui.carousel import carousel
+from ..ui.carousel import Carousel
 from ..cart.state import CartState
 from ..models import CommentModel
 from ..ui.base import base_page
@@ -12,7 +12,7 @@ def _image_section() -> rx.Component:
     return rx.box(
         rx.cond(
             CommentState.post.images & (CommentState.post.images.length() > 0),
-            carousel(
+            Carousel(
                 rx.foreach(CommentState.post.images, lambda image_url: rx.image(src=rx.get_upload_url(image_url), width="100%", height="auto", max_height="550px", object_fit="contain")),
                 show_indicators=True, infinite_loop=True, emulate_touch=True, show_thumbs=False
             ),
