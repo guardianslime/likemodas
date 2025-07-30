@@ -7,16 +7,15 @@ from.nav import public_navbar
 from.sidebar import sidebar
 
 def fixed_color_mode_button() -> rx.Component:
-    """Un botón de cambio de tema que no se renderiza en el servidor para evitar FOUC."""
-    # NoSSRComponent evita el renderizado en el servidor.
-    return NoSSRComponent.create(
-        rx.box(
-            rx.color_mode.button(),
-            position="fixed",
-            bottom="1.5rem",
-            right="1.5rem",
-            z_index="1000",
-        )
+    """Un botón de cambio de tema que se renderiza solo en el cliente."""
+    # Simplemente devuelve el componente rx.box.
+    # La lógica de renderizado del lado del cliente se maneja en public_layout.
+    return rx.box(
+        rx.color_mode.button(),
+        position="fixed",
+        bottom="1.5rem",
+        right="1.5rem",
+        z_index="1000",
     )
 
 def protected_layout(child: rx.Component) -> rx.Component:
