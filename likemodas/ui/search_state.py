@@ -49,7 +49,7 @@ class SearchState(rx.State):
                     id=post.id,
                     title=post.title,
                     price=post.price,
-                    images=post.images,
+                    image_urls=post.image_urls,
                     average_rating=post.average_rating,
                     rating_count=post.rating_count
                 )

@@ -114,7 +114,7 @@ class CartState(SessionState):
                     title=p.title,
                     price=p.price,
                     price_formatted=format_to_cop(p.price), # <-- Llenamos el campo nuevo
-                    images=p.images,
+                    image_urls=p.image_urls,
                     average_rating=p.average_rating,
                     rating_count=p.rating_count
                 ) for p in results
