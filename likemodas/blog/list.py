@@ -19,7 +19,7 @@ def _gallery_card(post: BlogPostModel) -> rx.Component:
                     # --- CORRECCIÓN 2: La fuente de la imagen ---
                     # Usa la primera imagen de la lista como miniatura.
                     rx.image(
-                        src=post.image_urls,
+                        src=post.image_urls, # Se asume que las URLs ya están completas aquí.
                         width="100%",
                         height="140px",
                         object_fit="cover",

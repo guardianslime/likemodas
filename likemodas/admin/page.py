@@ -74,7 +74,7 @@ def purchase_card_history(purchase: PurchaseCardData) -> rx.Component:
             rx.divider(),
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
+                rx.foreach(purchase.items_formatted, lambda p: purchase_card_admin(p, is_history=True)),
                 spacing="1", align_items="start", width="100%",
             ),
             # NOTA: El botón "Confirmar Pago" ha sido eliminado de aquí.

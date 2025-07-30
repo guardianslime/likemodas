@@ -148,10 +148,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.vstack(
                             rx.box(
                                 rx.cond(
-                                    post.images & (post.images.length() > 0),
+                                    post.image_urls & (post.image_urls.length() > 0),
                                     rx.image(
                                         src=rx.get_upload_url(post.image_urls),
-                                        width="100%", height="100%", object_fit="cover", border_radius="md",
+                                        width="100%", height="100%", object_fit="cover",
                                     ),
                                     rx.box(
                                         "Sin imagen", width="100%", height="100%", bg="#eee",
