@@ -109,9 +109,9 @@ def public_navbar() -> rx.Component:
                 justify="start",
             ),
             
-            # --- Columna Central (Búsqueda Responsiva) ---
+            # --- ✨ CORRECCIÓN FINAL: Columna Central Responsiva ---
             rx.center(
-                # Búsqueda para ESCRITORIO (se oculta en móvil)
+                # Búsqueda para ESCRITORIO (oculta en móvil)
                 rx.form(
                     rx.input(
                         placeholder="Buscar productos...", value=SearchState.search_term,
@@ -121,9 +121,10 @@ def public_navbar() -> rx.Component:
                         font_size=rx.breakpoints(sm="2", md="3", lg="3"),
                     ),
                     on_submit=SearchState.perform_search, width="100%",
-                    display=["none", "none", "flex", "flex"], # Propiedad en el hijo correcto
+                    # Esta regla SÍ está en el lugar correcto.
+                    display=["none", "none", "flex", "flex"],
                 ),
-                # Búsqueda para MÓVIL (se oculta en escritorio)
+                # Búsqueda para MÓVIL (oculta en escritorio)
                 rx.popover.root(
                     rx.popover.trigger(
                         rx.icon_button(
@@ -141,15 +142,12 @@ def public_navbar() -> rx.Component:
                         width="80vw", max_width="350px",
                     ),
                     modal=True,
+                    # Esta regla TAMBIÉN está en el lugar correcto.
+                    display=["flex", "flex", "none", "none"],
                 ),
-                # --- ✨ CORRECCIÓN CLAVE ---
-                # Se eliminó la propiedad 'display' del 'rx.center' padre
-                # y se colocó en sus hijos (el form y el popover).
-                # Ahora el 'rx.center' siempre es visible.
+                # El 'rx.center' ya NO tiene una propiedad 'display' que lo oculte.
                 width="100%",
-                # Este display en el popover asegura que solo se vea en móvil
-                display=["flex", "flex", "none", "none"], 
-                justify_content="end"
+                justify_content="center", # Centra la barra de búsqueda en escritorio
             ),
             
             # --- Columna Derecha (Iconos) ---
