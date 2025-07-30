@@ -456,54 +456,53 @@ class CommentState(SessionState):
 
     @rx.event
     def on_load(self):
-        """Carga el post Y los comentarios al entrar a la página."""
-        self.loading_status = "loading"
-        self.error_message = ""
-        try:
-            #... lógica de consulta a la base de datos...
-            if result:
-                self.post = result
-                self.loading_status = "success"
-            else:
-                self.error_message = "Producto no encontrado."
-                self.loading_status = "error"
-        except Exception as e:
-            self.error_message = f"Ocurrió un error inesperado: {str(e)}"
-            self.loading_status = "error"
-            
+        """Carga el post y los comentarios de forma segura al entrar a la página."""
         self.post = None
-        self.comments = []
+        self.comments = ""
         try:
             pid = int(self.post_id)
         except (ValueError, TypeError):
+            # Si el ID del post en la URL no es válido, detenemos la ejecución.
             return
 
         with rx.session() as session:
-            self.post = session.exec(
+            # Paso 1: Construir la consulta para buscar el post específico.
+            query = (
                 select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                .where(
+               .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+               .where(
                     BlogPostModel.id == pid,
                     BlogPostModel.publish_active == True,
                     BlogPostModel.publish_date < datetime.utcnow()
                 )
-            ).unique().one_or_none()
+            )
             
+            # Paso 2: Ejecutar la consulta y guardar el resultado en una variable temporal.
+            # 'db_post_result' contendrá un objeto BlogPostModel o None.
+            db_post_result = session.exec(query).unique().one_or_none()
+
+            # Paso 3: Asignar el resultado a la variable de estado.
+            # Este es el paso que fallaba. Ahora nos aseguramos de asignar el objeto correcto.
+            self.post = db_post_result
+            
+            # Si el post fue encontrado, procedemos a cargar sus comentarios.
             if self.post:
-                statement = (
+                comment_query = (
                     select(CommentModel)
-                    .options(
+                   .options(
                         sqlalchemy.orm.joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
                         sqlalchemy.orm.joinedload(CommentModel.votes)
                     )
-                    .where(CommentModel.blog_post_id == self.post.id)
-                    .order_by(CommentModel.created_at.desc())
+                   .where(CommentModel.blog_post_id == self.post.id)
+                   .order_by(CommentModel.created_at.desc())
                 ) 
-                self.comments = session.exec(statement).unique().all()
+                self.comments = session.exec(comment_query).unique().all()
     
+        # Reseteamos otros estados del componente para una carga limpia.
         self.img_idx = 0 
         self.new_comment_text = "" 
-        self.new_comment_rating = 0 
+        self.new_comment_rating = 0
+    # --- ✅ FIN DE LA CORRECCIÓN ---
     
     @rx.event
     def set_new_comment_rating(self, rating: int):
