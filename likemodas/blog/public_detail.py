@@ -2,7 +2,10 @@
 
 import reflex as rx
 import math
-from ..state import CommentState, SessionState
+# --- 👇 IMPORTACIONES CORREGIDAS 👇 ---
+from .state import CommentState             # Importa CommentState desde el directorio actual (blog)
+from ..auth.state import SessionState      # Importa SessionState desde el directorio auth
+# --- ----------------------------- ---
 from ..cart.state import CartState
 from ..models import CommentModel
 from ..ui.base import base_page
