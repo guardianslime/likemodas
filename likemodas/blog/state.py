@@ -213,7 +213,7 @@ class BlogAddFormState(SessionState):
         with rx.session() as session:
             post = BlogPostModel(
                 title=self.title.strip(), content=self.content.strip(),
-                price=self.price, images=self.temp_images.copy(),
+                price=self.price, image_urls=self.temp_images.copy(),
                 userinfo_id=self.my_userinfo_id, 
                 publish_active=publish,
                 publish_date=datetime.utcnow(),
@@ -414,8 +414,9 @@ class CommentState(SessionState):
 
     @rx.var
     def imagen_actual(self) -> str:
-        if self.post and self.post.images and len(self.post.images) > self.img_idx:
-            return self.post.images[self.img_idx]
+        # --- CORRECCIÓN AQUÍ ---
+        if self.post and self.post.image_urls and len(self.post.image_urls) > self.img_idx:
+            return self.post.image_urls[self.img_idx]
         return ""
     
     @rx.var
