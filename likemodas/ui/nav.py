@@ -63,7 +63,7 @@ def public_navbar() -> rx.Component:
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
-                        rx.button(rx.icon("menu", size=22, color="white"), variant="ghost") # Tamaño reducido
+                        rx.button(rx.icon("menu", size=22, color="white"), variant="ghost")
                     ),
                     rx.menu.content(
                         rx.menu.item("Home", on_click=navigation.NavState.to_home),
@@ -97,20 +97,20 @@ def public_navbar() -> rx.Component:
                 align="center", spacing="4", justify="start",
             ),
             
-            # --- Columna Central (Búsqueda Rediseñada) ---
+            # --- Columna Central (Búsqueda Corregida) ---
             rx.box(
                 # Búsqueda para ESCRITORIO
                 rx.form(
-                    # --- ✨ CAMBIO DE SINTAXIS AQUÍ ---
+                    # --- ✨ CAMBIO FINAL DE SINTAXIS ---
                     rx.text_field(
-                        rx.text_field.slot(rx.icon("search", size=20)),
-                        rx.text_field.input(
-                            placeholder="Buscar productos...",
-                            value=SearchState.search_term,
-                            on_change=SearchState.set_search_term,
-                        ),
+                        placeholder="Buscar productos...",
+                        value=SearchState.search_term,
+                        on_change=SearchState.set_search_term,
                         radius="full",
                         width="100%",
+                        children=[
+                            rx.text_field.slot(rx.icon("search", size=20)),
+                        ]
                     ),
                     on_submit=SearchState.perform_search,
                     width="100%",
@@ -124,10 +124,14 @@ def public_navbar() -> rx.Component:
                         ),
                         rx.popover.content(
                             rx.form(
-                                # --- ✨ CAMBIO DE SINTAXIS AQUÍ ---
+                                # --- ✨ CAMBIO FINAL DE SINTAXIS ---
                                 rx.text_field(
-                                    rx.text_field.slot(rx.icon("search", size=18)),
-                                    rx.text_field.input(placeholder="Buscar...", value=SearchState.search_term, on_change=SearchState.set_search_term),
+                                    placeholder="Buscar...",
+                                    value=SearchState.search_term,
+                                    on_change=SearchState.set_search_term,
+                                    children=[
+                                        rx.text_field.slot(rx.icon("search", size=18)),
+                                    ]
                                 ),
                                 on_submit=[SearchState.perform_search, rx.set_value("open", False)],
                                 width="100%",
@@ -145,7 +149,6 @@ def public_navbar() -> rx.Component:
                 rx.cond(
                     SessionState.is_authenticated,
                     rx.fragment(
-                        # Usamos el componente de notificación directamente
                         notification_icon(),
                         rx.link(
                             rx.box(
