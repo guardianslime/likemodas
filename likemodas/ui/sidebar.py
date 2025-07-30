@@ -2,8 +2,25 @@
 
 import reflex as rx
 from reflex.style import toggle_color_mode
+
+from likemodas.ui.sidebar_items import sidebar_dark_mode_toggle_item
+from reflex.style import toggle_color_mode
 from..auth.state import SessionState
 from.. import navigation
+
+def sidebar_dark_mode_toggle_item() -> rx.Component:
+    """
+    Un componente que muestra un botón para alternar el modo de color,
+    mostrando un ícono de sol para el modo claro y uno de luna para el modo oscuro.
+    """
+    return rx.button(
+        rx.color_mode_cond(
+            light=rx.icon(tag="sun"),
+            dark=rx.icon(tag="moon")
+        ),
+        on_click=toggle_color_mode,
+        variant="ghost"  # Un estilo de botón sutil
+    )
 
 def sidebar_user_item() -> rx.Component:
     """Muestra el avatar y el nombre de usuario autenticado."""
