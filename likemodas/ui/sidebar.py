@@ -11,7 +11,7 @@ def sidebar_user_item() -> rx.Component:
     return rx.cond(
         user_info_obj,
         rx.hstack(
-          ...[source]() 11),}, "color": rx.color("accent", 11), "border-radius": "0.5em",},
+           ...[source]() rx.color("accent", 11),}, "color": rx.color("accent", 11), "border-radius": "0.5em",},
         ),
         on_click=toggle_color_mode, as_='button', underline="none", weight="medium", width="100%",
     )
