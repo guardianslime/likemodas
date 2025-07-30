@@ -129,7 +129,7 @@ def public_navbar() -> rx.Component:
                                     value=SearchState.search_term,
                                     on_change=SearchState.set_search_term,
                                 ),
-                                on_submit=,
+                                on_submit=SearchState.perform_search,
                                 width="100%",
                             ),
                             width="80vw", max_width="350px",
