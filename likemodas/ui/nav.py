@@ -1,13 +1,14 @@
+# likemodas/ui/nav.py (VERSIÓN CORREGIDA)
+
 import reflex as rx
-from .. import navigation
-from ..navigation.device import NavDeviceState
-from .search_state import SearchState
-from ..cart.state import CartState
-from ..auth.state import SessionState
-from ..notifications.state import NotificationState
+from.. import navigation
+from.search_state import SearchState
+from..cart.state import CartState
+from..auth.state import SessionState
+from..notifications.state import NotificationState
 
 def notification_icon() -> rx.Component:
-    """Ícono de notificaciones que las marca como leídas al abrir el menú."""
+    #... (código sin cambios)
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
@@ -53,6 +54,7 @@ def notification_icon() -> rx.Component:
         on_open_change=lambda open: rx.cond(open, NotificationState.mark_all_as_read, None)
     )
 
+
 def public_navbar() -> rx.Component:
     """
     Una barra de navegación superior fija, rediseñada para ser más robusta y estéticamente agradable.
@@ -97,12 +99,12 @@ def public_navbar() -> rx.Component:
                 align="center", spacing="4", justify="start",
             ),
             
-            # --- Columna Central (Búsqueda Corregida) ---
+            # --- Columna Central (Búsqueda) ---
             rx.box(
                 # Búsqueda para ESCRITORIO
                 rx.form(
                     rx.text_field(
-                        rx.text_field.slot(rx.icon("search", size=20)), # <--- Se pasa como argumento directo
+                        rx.text_field.slot(rx.icon("search", size=20)),
                         placeholder="Buscar productos...",
                         value=SearchState.search_term,
                         on_change=SearchState.set_search_term,
@@ -122,12 +124,12 @@ def public_navbar() -> rx.Component:
                         rx.popover.content(
                             rx.form(
                                 rx.text_field(
-                                    rx.text_field.slot(rx.icon("search", size=18)), # <--- Se pasa como argumento directo
+                                    rx.text_field.slot(rx.icon("search", size=18)),
                                     placeholder="Buscar...",
                                     value=SearchState.search_term,
                                     on_change=SearchState.set_search_term,
                                 ),
-                                on_submit=[SearchState.perform_search, rx.set_value("open", False)],
+                                on_submit=,
                                 width="100%",
                             ),
                             width="80vw", max_width="350px",
@@ -171,7 +173,8 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         position="fixed", top="0", left="0", right="0",
-        width="100%", padding="0.75rem 1.5rem", z_index="99",
+        width="100%", padding="0.75rem 1.5rem", z_index="999", # z-index alto
         bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
-        on_mount=[NavDeviceState.on_mount, NotificationState.load_notifications],
+        # Se elimina on_mount de NavDeviceState y se mantiene el de notificaciones
+        on_mount=NotificationState.load_notifications,
     )
