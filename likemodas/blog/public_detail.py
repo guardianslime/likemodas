@@ -2,23 +2,43 @@
 
 import reflex as rx
 from .state import CommentState, SessionState
-from ..ui.carousel import Carousel
+from..ui.carousel import Carousel  # Asegúrate de importar tu componente Carousel
+from.state import BlogPostState 
 from ..cart.state import CartState
 from ..models import CommentModel
 from ..ui.base import base_page
 import math
 
 def _image_section() -> rx.Component:
+    """
+    Muestra las imágenes del post en un carrusel.
+    """
     return rx.box(
-        rx.cond(
-            CommentState.post.images & (CommentState.post.images.length() > 0),
-            Carousel(
-                rx.foreach(CommentState.post.images, lambda image_url: rx.image(src=rx.get_upload_url(image_url), width="100%", height="auto", max_height="550px", object_fit="contain")),
-                show_indicators=True, infinite_loop=True, emulate_touch=True, show_thumbs=False
+        # Usamos Carousel.create() para instanciar el componente
+        Carousel.create(
+            # rx.foreach itera sobre la lista de URLs de las imágenes del estado
+            rx.foreach(
+                BlogPostState.post.image_urls,
+                lambda image_url: rx.image(
+                    src=image_url,
+                    alt=BlogPostState.post.title, # Texto alternativo para accesibilidad
+                    width="100%",
+                    height="auto",
+                    object_fit="cover",
+                    border_radius="var(--radius-3)",
+                )
             ),
-            rx.image(src="/no_image.png", width="100%", height="auto", max_height="550px", object_fit="contain", border_radius="md")
+            # Las propiedades del carrusel se pasan como argumentos de palabra clave (props)
+            show_arrows=True,
+            show_indicators=True,
+            infinite_loop=True,
+            auto_play=True,
+            width="100%"
         ),
-        width="100%", max_width="600px", position="relative",
+        width="100%",
+        max_width="800px", # Limita el ancho máximo para una mejor visualización
+        margin="auto",
+        padding_y="1em"
     )
 
 def _global_rating_display() -> rx.Component:
