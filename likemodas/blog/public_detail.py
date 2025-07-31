@@ -203,7 +203,8 @@ def comment_section() -> rx.Component:
 # ===============================
 # 🧠 FUNCIÓN PRINCIPAL DE LA PÁGINA
 # ===============================
-@rx.page(route="/blog-public/[id]")
+
+@rx.page(route="/blog-public/[id]")  # ✅ slug unificado
 def blog_public_detail_page() -> rx.Component:
     return rx.cond(
         SessionState.is_hydrated,

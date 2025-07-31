@@ -311,20 +311,17 @@ class BlogEditFormState(BlogPostState):
 # SECCIÓN CRÍTICA CORREGIDA
 # ==============================================================================
 class CommentState(SessionState):
-    """
-    Estado que maneja la vista del post público y sus comentarios.
-    """
     is_loading: bool = True
     post: Optional[BlogPostModel] = None
-    img_idx: int = 0
     comments: list[CommentModel] = []
     new_comment_text: str = ""
     new_comment_rating: int = 0
 
     @rx.var
     def post_id(self) -> str:
-        return self.router.page.params.get("blog_public_id", "")
-
+        # ✅ Slug corregido: usamos "id"
+        return self.router.page.params.get("id", "")
+    
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
