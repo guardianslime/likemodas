@@ -1,7 +1,8 @@
 import reflex as rx
-from..auth.state import SessionState
-from.nav import public_navbar
-from.sidebar import sidebar
+# Se elimina la importación de SessionState de la parte superior del archivo.
+# from..auth.state import SessionState 
+from .nav import public_navbar
+from .sidebar import sidebar
 
 def fixed_color_mode_button() -> rx.Component:
     """Un botón de cambio de tema que se renderiza solo en el cliente."""
@@ -18,6 +19,12 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     Layout base robusto que previene errores visuales por estados sin hidratar
     y mantiene la estructura del DOM estable.
     """
+    # --- CAMBIO CLAVE ---
+    # Se importa SessionState DENTRO de la función.
+    # Esto rompe el ciclo de importación circular, ya que el módulo `auth.state`
+    # solo se carga cuando esta función es ejecutada, no cuando se carga el módulo `ui.base`.
+    from ..auth.state import SessionState
+
     # Protege contra errores en el argumento
     if not isinstance(child, rx.Component):
         child = rx.heading("Error: El elemento hijo no es un componente válido")
@@ -73,10 +80,10 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         align="start",
         spacing="0",
         width="100%",
-        min_height="100vh",  # Esto ayuda a prevenir saltos visuales
+        min_height="100vh",
     )
 
-    # 🛡️ Protege la estructura hasta que el estado esté hidratado
+    # Protege la estructura hasta que el estado esté hidratado
     return rx.cond(
         SessionState.is_hydrated,
         unified_layout,
