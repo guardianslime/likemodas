@@ -1,13 +1,16 @@
+# likemodas/models/cart.py
+
 from sqlmodel import Field, Relationship
 from typing import Optional, List
 from datetime import datetime
 import reflex as rx
 
 from .blog import BlogPostModel
-# --- CAMBIO CLAVE 1 ---
-# Se importa 'UserInfo' directamente para que el compilador de Reflex
-# pueda resolver la relación en `PurchaseModel`.
-from .user import UserInfo
+# Corrección para evitar dependencias circulares
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .user import UserInfo
+
 from .base import format_utc_to_local
 from ..utils.formatting import format_to_cop
 from .enums import PurchaseStatus
@@ -27,12 +30,13 @@ class PurchaseModel(rx.Model, table=True):
     shipping_phone: Optional[str]
 
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
+    # Se usa un string ("UserInfo") para la referencia
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
 
     @property
     def purchase_date_formatted(self) -> str:
         return format_utc_to_local(self.purchase_date)
-
+        
     @property
     def confirmed_at_formatted(self) -> str:
         return format_utc_to_local(self.confirmed_at)
@@ -41,9 +45,6 @@ class PurchaseModel(rx.Model, table=True):
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
     
-    # --- CAMBIO CLAVE 2 ---
-    # Se añade la propiedad 'items_formatted' que se usa en la página de compras.
-    # Esto asegura que el código funcione como se espera.
     @property
     def items_formatted(self) -> list[str]:
         """Devuelve una lista formateada de los artículos de la compra."""
@@ -62,8 +63,6 @@ class PurchaseItemModel(rx.Model, table=True):
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
 
-    # --- CAMBIO CLAVE 3 ---
-    # Se añade la propiedad 'display_name' para que 'items_formatted' funcione.
     @property
     def display_name(self) -> str:
         """Genera un nombre legible para el artículo en la compra."""

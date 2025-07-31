@@ -1,13 +1,14 @@
+# likemodas/models/contact.py
+
 from sqlmodel import Field, Relationship
 from typing import Optional
 from datetime import datetime
 import reflex as rx
 
-# --- CAMBIO CLAVE ---
-# Se importa 'UserInfo' directamente, fuera del bloque TYPE_CHECKING.
-# Esto asegura que el compilador de Reflex pueda encontrar y resolver el tipo
-# 'UserInfo' cuando lo necesite para la relación en NotificationModel.
-from .user import UserInfo
+# Corrección para evitar dependencias circulares
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .user import UserInfo
 
 from .base import format_utc_to_local
 
@@ -19,8 +20,7 @@ class NotificationModel(rx.Model, table=True):
     url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # La relación se mantiene como un string ("forward reference").
-    # El import que añadimos arriba permite que esto se resuelva correctamente.
+    # Se usa un string ("UserInfo") para la referencia, que se resuelve de forma segura
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
 
     @property

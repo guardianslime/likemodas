@@ -1,3 +1,5 @@
+# likemodas/blog/state.py
+
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -39,10 +41,7 @@ class BlogPostState(SessionState):
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
-    # --- CAMBIO CLAVE AQUÍ ---
-    # Se especifica el tipo de los elementos de la lista: list[BlogPostModel].
-    # Esto le dice a Reflex que `filtered_posts` es una lista de objetos `BlogPostModel`,
-    # lo que resuelve el error `UntypedVarError`.
+    # Corrección para UntypedVarError
     @rx.var
     def filtered_posts(self) -> list[BlogPostModel]:
         if not isinstance(self.posts, list):
@@ -118,7 +117,6 @@ class BlogPostState(SessionState):
 
 class BlogAddFormState(SessionState):
     """Estado para el formulario de AÑADIR posts."""
-    # (El resto de esta clase no necesita cambios)
     title: str = ""
     content: str = ""
     price: float = 0.0
@@ -250,7 +248,6 @@ class BlogAddFormState(SessionState):
 
 class BlogEditFormState(BlogPostState):
     """Estado para el formulario de EDITAR posts."""
-    # (El resto de esta clase no necesita cambios)
     post_content: str = ""
     post_publish_active: bool = False
     price_str: str = "0.0"
@@ -311,7 +308,6 @@ class BlogEditFormState(BlogPostState):
         return rx.redirect(f"/blog-public/{post_id}")
 
 class CommentState(SessionState):
-    # (El resto de esta clase no necesita cambios)
     is_loading: bool = True
     post: Optional[BlogPostModel] = None
     comments: list[CommentModel] = []

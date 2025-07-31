@@ -1,6 +1,5 @@
-# -----------------------------------------------------------------------------
 # likemodas/models/enums.py (ARCHIVO CORREGIDO)
-# -----------------------------------------------------------------------------
+
 import enum
 
 # ✅ SOLUCIÓN: Se usan valores en minúsculas para que coincidan con la base de datos.
