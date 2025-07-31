@@ -1,4 +1,30 @@
-# likemodas/models.py (VERSIÓN RESTAURADA Y ESTABLE)
+# likemodas/pages/__init__.py (CORREGIDO)
+
+from .about import about_page
+from .dashboard import dashboard_component
+from .landing import landing_component
+from .pricing import pricing_page
+from .protected import protected_page
+from . import search_results
+# --- ✅ SOLUCIÓN AL ERROR "Elemento no es un componente válido" ---
+# Se corrige la importación para apuntar directamente a la FUNCIÓN `category_page`
+# dentro del módulo, en lugar de importar el módulo completo.
+from .category_page import category_page
+from . import test_page
+
+__all__ = [
+    'about_page',
+    'dashboard_component',
+    'landing_component',
+    'pricing_page',
+    'protected_page',
+    'search_results',
+    'category_page', # Ahora esto exporta la función correctamente.
+    'test_page'
+]
+
+
+# likemodas/models.py (CORREGIDO)
 
 from typing import Optional, List
 
@@ -36,6 +62,14 @@ class VoteType(str, enum.Enum):
     LIKE = "like"
     DISLIKE = "dislike"
 
+class Category(str, enum.Enum):
+    ROPA = "ropa"
+    CALZADO = "calzado"
+    MOCHILAS = "mochilas"
+    OTROS = "otros"
+
+# --- Definiciones de Modelos (UserInfo, Tokens, etc. sin cambios) ---
+
 class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
     email: str
@@ -67,11 +101,6 @@ class PasswordResetToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
-class Category(str, enum.Enum):
-    ROPA = "ropa"
-    CALZADO = "calzado"
-    MOCHILAS = "mochilas"
-    OTROS = "otros"
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -87,25 +116,22 @@ class BlogPostModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
-    category: Category = Field(
-        default=Category.OTROS, 
-        sa_column=Column(
-            String, 
-            server_default=Category.OTROS.value,
-            nullable=False  # <-- La propiedad ahora está en el lugar correcto.
-        )
-    )
+    category: Category = Field(default=Category.OTROS, sa_column=Column(String, server_default=Category.OTROS.value, nullable=False))
     
     @property
     def rating_count(self) -> int:
         return len(self.comments)
 
+    # --- ✅ SOLUCIÓN AL ERROR DE `ZeroDivisionError` EN EL BACKEND ---
+    # Se añade una comprobación para evitar la división por cero cuando un
+    # producto no tiene comentarios. Esto previene el error del servidor.
     @property
     def average_rating(self) -> float:
         if not self.comments:
             return 0.0
         total_rating = sum(comment.rating for comment in self.comments)
-        return total_rating / len(self.comments)
+        # Se añade la condición `if len(self.comments) > 0` para seguridad.
+        return total_rating / len(self.comments) if len(self.comments) > 0 else 0.0
 
     @property
     def created_at_formatted(self) -> str:
@@ -117,14 +143,9 @@ class BlogPostModel(rx.Model, table=True):
     
     @property
     def price_cop(self) -> str:
-        """Propiedad nueva para el precio del producto formateado."""
         return format_to_cop(self.price)
     
     def dict(self, **kwargs):
-        """
-        Asegura que todas las propiedades calculadas se incluyan
-        cuando el objeto se envía al frontend.
-        """
         d = super().dict(**kwargs)
         d["created_at_formatted"] = self.created_at_formatted
         d["publish_date_formatted"] = self.publish_date_formatted
@@ -135,27 +156,22 @@ class BlogPostModel(rx.Model, table=True):
 
     @property
     def average_rating_display(self) -> str:
-        """Propiedad para mostrar la calificación como '4.5'."""
         if self.rating_count > 0:
             return f"{self.average_rating:.1f}"
         return ""
 
+# --- El resto de los modelos (ShippingAddress, Purchase, etc.) no necesitan cambios ---
+
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
-    
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
-    
-    # Campos de la dirección
     name: str
     phone: str
     city: str
     neighborhood: str
     address: str
-    
-    # Campo clave para la dirección predeterminada
     is_default: bool = Field(default=False, nullable=False)
-
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
 class PurchaseModel(rx.Model, table=True):
@@ -166,13 +182,10 @@ class PurchaseModel(rx.Model, table=True):
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
     shipping_name: Optional[str] = None
-    
-    # --- 👇 CAMPOS DE ENVÍO AÑADIDOS 👇 ---
     shipping_city: Optional[str] = None
     shipping_neighborhood: Optional[str] = None
     shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
-    
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
     @property
@@ -184,11 +197,15 @@ class PurchaseModel(rx.Model, table=True):
         return format_utc_to_local(self.confirmed_at)
         
     @property
+    def total_price_cop(self) -> str:
+        return format_to_cop(self.total_price)
+
+    @property
     def items_formatted(self) -> list[str]:
         if not self.items:
             return []
         return [
-            f"{item.quantity}x {item.blog_post.title} - {format_to_cop(item.price_at_purchase)} c/u"
+            f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)"
             for item in self.items
         ]
 
@@ -197,23 +214,8 @@ class PurchaseModel(rx.Model, table=True):
         d["purchase_date_formatted"] = self.purchase_date_formatted
         d["items_formatted"] = self.items_formatted
         d["confirmed_at_formatted"] = self.confirmed_at_formatted
+        d["total_price_cop"] = self.total_price_cop
         return d
-    
-    @property
-    def total_price_cop(self) -> str:
-        """Propiedad nueva para el precio total formateado."""
-        return format_to_cop(self.total_price)
-
-    @property
-    def items_formatted(self) -> list[str]:
-        """Propiedad MEJORADA para la lista de artículos."""
-        if not self.items:
-            return []
-        # El formato ahora es más limpio y usa nuestro formateador central.
-        return [
-            f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)"
-            for item in self.items
-        ]
 
 class PurchaseItemModel(rx.Model, table=True):
     purchase_id: int = Field(foreign_key="purchasemodel.id")
@@ -294,5 +296,3 @@ class CommentVoteModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
     comment_id: int = Field(foreign_key="commentmodel.id")
     comment: "CommentModel" = Relationship(back_populates="votes")
-
-
