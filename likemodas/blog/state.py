@@ -1,5 +1,3 @@
-# likemodas/blog/state.py (CORREGIDO)
-
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -20,7 +18,7 @@ BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
 class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
-    posts: list[BlogPostModel | None] = [None] * 5
+    posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
     search_query: str = ""
@@ -41,16 +39,19 @@ class BlogPostState(SessionState):
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
-    # --- ✅ SOLUCIÓN DEFINITIVA AL ERROR en la línea 42 ---
-    # Se añade una comprobación para asegurar que `self.posts` sea una lista
-    # y se filtran los `None` antes de cualquier operación.
+    # --- CAMBIO CLAVE AQUÍ ---
+    # Se especifica el tipo de los elementos de la lista: list[BlogPostModel].
+    # Esto le dice a Reflex que `filtered_posts` es una lista de objetos `BlogPostModel`,
+    # lo que resuelve el error `UntypedVarError`.
     @rx.var
-    def filtered_posts(self) -> list:
-        if not self.posts or not isinstance(self.posts, list):
-            return
+    def filtered_posts(self) -> list[BlogPostModel]:
+        if not isinstance(self.posts, list):
+            return []
+        
         valid_posts = [p for p in self.posts if p is not None]
         if not self.search_query.strip():
             return valid_posts
+        
         return [
             post for post in valid_posts
             if self.search_query.lower() in post.title.lower()
@@ -62,7 +63,7 @@ class BlogPostState(SessionState):
 
     @rx.event
     def load_posts(self):
-        self.posts = [] # Inicializa como lista vacía para evitar Nones
+        self.posts = []
         if not self.is_admin or self.my_userinfo_id is None:
             return
         with rx.session() as session:
@@ -117,6 +118,7 @@ class BlogPostState(SessionState):
 
 class BlogAddFormState(SessionState):
     """Estado para el formulario de AÑADIR posts."""
+    # (El resto de esta clase no necesita cambios)
     title: str = ""
     content: str = ""
     price: float = 0.0
@@ -248,6 +250,7 @@ class BlogAddFormState(SessionState):
 
 class BlogEditFormState(BlogPostState):
     """Estado para el formulario de EDITAR posts."""
+    # (El resto de esta clase no necesita cambios)
     post_content: str = ""
     post_publish_active: bool = False
     price_str: str = "0.0"
@@ -308,6 +311,7 @@ class BlogEditFormState(BlogPostState):
         return rx.redirect(f"/blog-public/{post_id}")
 
 class CommentState(SessionState):
+    # (El resto de esta clase no necesita cambios)
     is_loading: bool = True
     post: Optional[BlogPostModel] = None
     comments: list[CommentModel] = []
@@ -345,9 +349,6 @@ class CommentState(SessionState):
     def rating_count(self) -> int:
         return len(self.comments)
 
-    # --- ✅ SOLUCIÓN DEFINITIVA AL ERROR en la línea 319 ---
-    # Se añade una guarda al principio y un bloque try-except.
-    # Esto hace imposible que ocurra una división por cero.
     @rx.var
     def average_rating(self) -> float:
         if not self.comments or len(self.comments) == 0:
