@@ -13,15 +13,40 @@ def fixed_color_mode_button() -> rx.Component:
         z_index="1000",
     )
 
+def debug_banner() -> rx.Component:
+    """
+    Un banner de depuración temporal para ver el estado en tiempo real.
+    Se mostrará en la esquina inferior izquierda.
+    """
+    return rx.box(
+        rx.hstack(
+            rx.text("DEBUG:", weight="bold"),
+            rx.text("is_hydrated:"),
+            rx.text(SessionState.is_hydrated.to_string()),
+            rx.text(" | is_authenticated:"),
+            rx.text(SessionState.is_authenticated.to_string()),
+            rx.text(" | is_admin:"),
+            rx.text(SessionState.is_admin.to_string()),
+            spacing="3",
+        ),
+        position="fixed",
+        bottom="10px",
+        left="10px",
+        bg="rgba(220, 50, 50, 0.85)",
+        color="white",
+        padding="10px",
+        border_radius="md",
+        z_index=9999,
+    )
+
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
     Función de layout base unificada y robusta que utiliza posicionamiento fijo
-    para evitar saltos de layout y problemas de renderizado.
+    y un banner de depuración para diagnosticar problemas de estado.
     """
     if not isinstance(child, rx.Component):
         child = rx.heading("This is not a valid child element")
 
-    # Página de advertencia para usuarios no verificados
     verification_required_page = rx.center(
         rx.vstack(
             rx.heading("Verificación Requerida"),
@@ -31,20 +56,19 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         height="80vh"
     )
 
-    # Contenido principal que se mostrará
     main_content = rx.cond(
         (SessionState.is_authenticated & SessionState.authenticated_user_info.is_verified) | ~SessionState.is_authenticated,
         child,
         verification_required_page
     )
 
-    # Layout unificado y responsivo con posicionamiento
+    # Layout unificado con posicionamiento explícito
     unified_layout = rx.box(
-        # La barra lateral del ADMIN se renderiza condicionalmente y se posiciona a la izquierda
+        # La barra lateral del ADMIN se posiciona a la izquierda
         rx.cond(
             SessionState.is_admin,
             rx.box(
-                sidebar(),  # El componente sidebar ya maneja su vista móvil/escritorio
+                sidebar(),
                 position="fixed",
                 top="0px",
                 left="0px",
@@ -52,8 +76,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 z_index=50,
             )
         ),
-
-        # El navbar PÚBLICO se renderiza condicionalmente y se posiciona arriba
+        # El navbar PÚBLICO se posiciona arriba
         rx.cond(
             ~SessionState.is_admin,
             rx.box(
@@ -65,35 +88,27 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 z_index=50,
             )
         ),
-
-        # El área de contenido principal con PADDING RESPONSIVO
+        # El área de contenido principal con PADDING RESPONSIVO Y EXPLÍCITO
         rx.box(
             main_content,
-            # Se añade padding a la izquierda en ESCRITORIO si el usuario es ADMIN
             padding_left=rx.cond(
                 SessionState.is_admin,
-                ["0em", "0em", "16em", "16em"],  # 16em es el ancho de la sidebar
-                "0em"
+                rx.breakpoints(initial="0em", md="16em"), # Padding en escritorio si es admin
+                "0em"                                     # Sin padding si es público
             ),
-            # Se añade padding arriba si el usuario es PÚBLICO para no tapar con el navbar
             padding_top=rx.cond(
                 ~SessionState.is_admin,
-                "6rem", # Altura del navbar
+                "6rem", # Padding para el navbar público
                 "1em"
             ),
             padding_right="1em",
             padding_bottom="1em",
             width="100%",
         ),
-
-        # Botón de modo oscuro para usuarios PÚBLICOS
-        rx.cond(
-            ~SessionState.is_admin,
-            fixed_color_mode_button(),
-        ),
+        fixed_color_mode_button(),
+        debug_banner(), # <-- AÑADIMOS EL BANNER DE DEPURACIÓN AQUÍ
     )
 
-    # Lógica de carga para evitar mostrar contenido antes de la hidratación
     return rx.cond(
         SessionState.is_hydrated,
         unified_layout,
