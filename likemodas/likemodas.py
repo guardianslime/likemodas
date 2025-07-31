@@ -1,12 +1,10 @@
-# likemodas/likemodas.py
-
 import reflex as rx
 import reflex_local_auth
 
 from rxconfig import config
 
 # --- Módulos específicos de la aplicación ---
-# ✨ CAMBIO CLAVE: Se reorganizan las importaciones para mejorar la claridad y el orden de carga.
+# Se mantiene la estructura de importación organizada.
 from . import navigation
 from .auth import pages as auth_pages, state as auth_state, verify_state, reset_password_state
 from .pages import (
@@ -38,7 +36,6 @@ class HomePageState(cart_state.CartState):
     @rx.event
     def on_load_main(self):
         self.current_category = ""
-        # Llama al evento de carga original para obtener los posts
         yield cart_state.CartState.load_posts_and_set_category
 
 def index() -> rx.Component:
