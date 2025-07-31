@@ -2,7 +2,10 @@ from sqlmodel import Field, Relationship
 from datetime import datetime
 import reflex as rx
 
-from likemodas.models.user import UserInfo
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .user import UserInfo
 
 class ShippingAddressModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
