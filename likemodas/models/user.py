@@ -15,10 +15,11 @@ if TYPE_CHECKING:
     from .blog import BlogPostModel
 
 from likemodas.models.cart import PurchaseModel
+
 if TYPE_CHECKING:
     from .comment import CommentModel, CommentVoteModel
 
-from typing import TYPE_CHECKIN
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .contact import ContactEntryModel, NotificationModel
 
