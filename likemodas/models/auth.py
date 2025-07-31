@@ -5,8 +5,10 @@ import reflex as rx
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
+try:
     from .user import UserInfo
+except ImportError:
+    UserInfo = None
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
