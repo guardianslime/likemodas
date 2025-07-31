@@ -6,7 +6,9 @@ import reflex as rx
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .comment import CommentModel
-from likemodas.models.user import UserInfo
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .user import UserInfo
 from .enums import Category
 from .base import format_utc_to_local
 from .utils.formatting import format_to_cop  # asegúrate que este import exista
