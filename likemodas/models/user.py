@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# likemodas/models/user.py (ARCHIVO CORREGIDO)
+# likemodas/models/user.py
 # -----------------------------------------------------------------------------
 from sqlmodel import Field, Relationship
 from typing import Optional, List
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 from .enums import UserRole
 
-# ✅ SOLUCIÓN: Se mueve LocalUser aquí para centralizar modelos de usuario.
 class LocalUser(rx.Model, table=True):
     __table_args__ = {"extend_existing": True}
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -26,7 +25,6 @@ class LocalUser(rx.Model, table=True):
     userinfo: Optional["UserInfo"] = Relationship(back_populates="user")
 
 class UserInfo(rx.Model, table=True):
-    # ✅ SOLUCIÓN: Se añade 'extend_existing' por seguridad.
     __table_args__ = {"extend_existing": True}
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str

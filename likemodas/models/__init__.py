@@ -1,7 +1,6 @@
 # -----------------------------------------------------------------------------
-# likemodas/models/__init__.py (ARCHIVO CORREGIDO)
+# likemodas/models/__init__.py
 # -----------------------------------------------------------------------------
-# ✅ SOLUCIÓN: Se limpia y organiza la importación de modelos.
 from .user import UserInfo, LocalUser
 from .token import VerificationToken, PasswordResetToken
 from .product_data import ProductCardData
