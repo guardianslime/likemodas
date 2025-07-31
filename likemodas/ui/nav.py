@@ -1,4 +1,4 @@
-# likemodas/ui/nav.py (VERSIÓN CORREGIDA)
+# likemodas/ui/nav.py (VERSIÓN CORREGIDA PARA ELIMINAR FLICKERING)
 
 import reflex as rx
 from.. import navigation
@@ -6,9 +6,11 @@ from.search_state import SearchState
 from..cart.state import CartState
 from..auth.state import SessionState
 from..notifications.state import NotificationState
+# Se importa el estado que detecta el tipo de dispositivo
+from ..navigation.device import NavDeviceState
 
 def notification_icon() -> rx.Component:
-    #... (código sin cambios)
+    """Muestra el ícono y el menú de notificaciones."""
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
@@ -57,8 +59,50 @@ def notification_icon() -> rx.Component:
 
 def public_navbar() -> rx.Component:
     """
-    Una barra de navegación superior fija, rediseñada para ser más robusta y estéticamente agradable.
+    Barra de navegación corregida para evitar el "layout shift".
     """
+    # --- ✅ SOLUCIÓN AL FLICKERING ---
+    # Se usa el estado `device_type`. La barra de búsqueda ahora muestra
+    # la versión móvil (un ícono) por defecto mientras el estado es "unknown".
+    # Solo cuando el estado se confirma como "desktop", se expande.
+    # Esto evita el salto visual de grande a pequeño.
+    search_bar = rx.cond(
+        NavDeviceState.device_type == "desktop",
+        # Búsqueda para ESCRITORIO
+        rx.form(
+            rx.text_field(
+                rx.text_field.slot(rx.icon("search", size=20)),
+                placeholder="Buscar productos...",
+                value=SearchState.search_term,
+                on_change=SearchState.set_search_term,
+                radius="full",
+                width="100%",
+            ),
+            on_submit=SearchState.perform_search,
+            width="100%",
+        ),
+        # Búsqueda para MÓVIL (y estado inicial "unknown")
+        rx.popover.root(
+            rx.popover.trigger(
+                rx.icon_button(rx.icon("search", color="white", size=22), variant="ghost", size="2")
+            ),
+            rx.popover.content(
+                rx.form(
+                    rx.text_field(
+                        rx.text_field.slot(rx.icon("search", size=18)),
+                        placeholder="Buscar...",
+                        value=SearchState.search_term,
+                        on_change=SearchState.set_search_term,
+                    ),
+                    on_submit=SearchState.perform_search,
+                    width="100%",
+                ),
+                width="80vw", max_width="350px",
+            ),
+            modal=True,
+        ),
+    )
+
     return rx.box(
         rx.grid(
             # --- Columna Izquierda (Logo y Menú) ---
@@ -101,43 +145,11 @@ def public_navbar() -> rx.Component:
             
             # --- Columna Central (Búsqueda) ---
             rx.box(
-                # Búsqueda para ESCRITORIO
-                rx.form(
-                    rx.text_field(
-                        rx.text_field.slot(rx.icon("search", size=20)),
-                        placeholder="Buscar productos...",
-                        value=SearchState.search_term,
-                        on_change=SearchState.set_search_term,
-                        radius="full",
-                        width="100%",
-                    ),
-                    on_submit=SearchState.perform_search,
-                    width="100%",
-                    display=["none", "none", "flex", "flex"],
-                ),
-                # Búsqueda para MÓVIL
-                rx.box(
-                    rx.popover.root(
-                        rx.popover.trigger(
-                            rx.icon_button(rx.icon("search", color="white", size=22), variant="ghost", size="2")
-                        ),
-                        rx.popover.content(
-                            rx.form(
-                                rx.text_field(
-                                    rx.text_field.slot(rx.icon("search", size=18)),
-                                    placeholder="Buscar...",
-                                    value=SearchState.search_term,
-                                    on_change=SearchState.set_search_term,
-                                ),
-                                on_submit=SearchState.perform_search,
-                                width="100%",
-                            ),
-                            width="80vw", max_width="350px",
-                        ),
-                        modal=True,
-                    ),
-                    display=["flex", "flex", "none", "none"],
-                ),
+                search_bar,
+                display="flex",
+                justify_content="center",
+                align_items="center",
+                width="100%",
             ),
             
             # --- Columna Derecha (Iconos) ---
@@ -173,8 +185,8 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         position="fixed", top="0", left="0", right="0",
-        width="100%", padding="0.75rem 1.5rem", z_index="999", # z-index alto
+        width="100%", padding="0.75rem 1.5rem", z_index="999",
         bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
-        # Se elimina on_mount de NavDeviceState y se mantiene el de notificaciones
-        on_mount=NotificationState.load_notifications,
+        # Se llama al evento on_load para detectar el dispositivo al montar el componente
+        on_mount=[NotificationState.load_notifications, NavDeviceState.on_load_check_device],
     )

@@ -125,13 +125,13 @@ class CartState(SessionState):
             # se use `0.0` por defecto. Esto previene el error del servidor.
             self.posts = [
                 ProductCardData(
-                    id=p.id,
-                    title=p.title,
+                    id=p.id or 0,
+                    title=p.title or "Producto sin nombre",
                     price=p.price or 0.0,
                     price_formatted=format_to_cop(p.price or 0.0),
                     image_urls=p.image_urls or [],
-                    average_rating=p.average_rating,
-                    rating_count=p.rating_count
+                    average_rating=p.average_rating or 0.0,
+                    rating_count=p.rating_count or 0
                 ) for p in results
             ]
         self.is_loading = False

@@ -1,24 +1,27 @@
-# likemodas/navigation/device.py (CÓDIGO CORREGIDO)
+# likemodas/navigation/device.py (CORRECCIÓN DE DETECCIÓN DE DISPOSITIVO)
 
 import reflex as rx
 
 class NavDeviceState(rx.State):
-    """Maneja el estado del dispositivo (móvil o escritorio) para la UI."""
-    is_mobile: bool = False
-    is_desktop: bool = False
+    """
+    Maneja el estado del dispositivo de forma más explícita para evitar el flickering.
+    'unknown' es el estado inicial antes de que el script del navegador se ejecute.
+    """
+    device_type: str = "unknown"
 
-    def on_mount(self):
+    @rx.event
+    def on_load_check_device(self):
+        """
+        Evento que se llama al cargar la página para ejecutar el script que detecta el tamaño.
+        """
         return rx.call_script(
             f"""
             const width = window.innerWidth;
-            
-            // ✨ CORREGIDO: Se cambió el comentario de Python (#) a JavaScript (//).
-            // Se usa el nuevo nombre del estado en el script.
-            if (window.nav_device_state) {{
-                nav_device_state.set_is_mobile(width < 768);
-                nav_device_state.set_is_desktop(width >= 768);
+            // Llama al setter correspondiente en el estado para actualizar device_type
+            if (width < 768) {{
+                {self.set_device_type.get_event_handler_name("mobile")}
             }} else {{
-                console.error("El objeto de estado 'nav_device_state' no fue encontrado.");
+                {self.set_device_type.get_event_handler_name("desktop")}
             }}
             """
         )
