@@ -41,8 +41,13 @@ class BlogPostState(SessionState):
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
+    # --- ✅ SOLUCIÓN DEFINITIVA AL ERROR en la línea 42 ---
+    # Se añade una comprobación para asegurar que `self.posts` sea una lista
+    # y se filtran los `None` antes de cualquier operación.
     @rx.var
     def filtered_posts(self) -> list[BlogPostModel]:
+        if not self.posts or not isinstance(self.posts, list):
+            return []
         valid_posts = [p for p in self.posts if p is not None]
         if not self.search_query.strip():
             return valid_posts
@@ -57,9 +62,8 @@ class BlogPostState(SessionState):
 
     @rx.event
     def load_posts(self):
-        self.posts = [None] * 5
+        self.posts = [] # Inicializa como lista vacía para evitar Nones
         if not self.is_admin or self.my_userinfo_id is None:
-            self.posts = []
             return
         with rx.session() as session:
             posts_real = session.exec(
@@ -309,9 +313,6 @@ class CommentState(SessionState):
     comments: list[CommentModel] = []
     new_comment_text: str = ""
     new_comment_rating: int = 0
-    
-    # --- ✅ SOLUCIÓN AL ERROR SetUndefinedStateVarError ---
-    # Se añade la declaración de la variable `img_idx` que faltaba en este estado.
     img_idx: int = 0
 
     @rx.var
@@ -344,6 +345,9 @@ class CommentState(SessionState):
     def rating_count(self) -> int:
         return len(self.comments)
 
+    # --- ✅ SOLUCIÓN DEFINITIVA AL ERROR en la línea 319 ---
+    # Se añade una guarda al principio y un bloque try-except.
+    # Esto hace imposible que ocurra una división por cero.
     @rx.var
     def average_rating(self) -> float:
         if not self.comments or len(self.comments) == 0:
