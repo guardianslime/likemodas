@@ -1,4 +1,4 @@
-# likemodas/blog/state.py (CORREGIDO Y ROBUSTO)
+# likemodas/blog/state.py (CORREGIDO)
 
 from datetime import datetime
 from typing import Optional, List
@@ -43,7 +43,6 @@ class BlogPostState(SessionState):
 
     @rx.var
     def filtered_posts(self) -> list[BlogPostModel]:
-        # Se asegura de que no haya Nones en la lista antes de filtrar
         valid_posts = [p for p in self.posts if p is not None]
         if not self.search_query.strip():
             return valid_posts
@@ -310,6 +309,10 @@ class CommentState(SessionState):
     comments: list[CommentModel] = []
     new_comment_text: str = ""
     new_comment_rating: int = 0
+    
+    # --- ✅ SOLUCIÓN AL ERROR SetUndefinedStateVarError ---
+    # Se añade la declaración de la variable `img_idx` que faltaba en este estado.
+    img_idx: int = 0
 
     @rx.var
     def post_id(self) -> str:
@@ -343,7 +346,7 @@ class CommentState(SessionState):
 
     @rx.var
     def average_rating(self) -> float:
-        if not self.comments:
+        if not self.comments or len(self.comments) == 0:
             return 0.0
         try:
             total_rating = sum(c.rating for c in self.comments)
@@ -433,7 +436,7 @@ class CommentState(SessionState):
     @rx.event
     def add_comment(self, form_data: dict):
         if not self.user_can_comment or not self.post or self.authenticated_user_info is None:
-            return rx.toast.error("No puedes comentar o el texto está vacío.")
+            return rx.toast.error("No puedes comentar.")
         
         content = form_data.get("comment_text", "").strip()
         if not content:
