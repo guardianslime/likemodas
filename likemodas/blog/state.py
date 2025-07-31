@@ -1,4 +1,4 @@
-# likemodas/blog/state.py (CORREGIDO)
+# likemodas/blog/state.py (CORREGIDO Y ROBUSTO)
 
 from datetime import datetime
 from typing import Optional, List
@@ -43,12 +43,12 @@ class BlogPostState(SessionState):
 
     @rx.var
     def filtered_posts(self) -> list[BlogPostModel]:
-        if not self.posts or any(p is None for p in self.posts):
-             return []
+        # Se asegura de que no haya Nones en la lista antes de filtrar
+        valid_posts = [p for p in self.posts if p is not None]
         if not self.search_query.strip():
-            return self.posts
+            return valid_posts
         return [
-            post for post in self.posts
+            post for post in valid_posts
             if self.search_query.lower() in post.title.lower()
         ]
 
@@ -86,7 +86,7 @@ class BlogPostState(SessionState):
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
-        if not self.is_admin:
+        if not self.is_admin or self.my_userinfo_id is None:
             return rx.toast.error("No tienes permiso para esta acción.")
         with rx.session() as session:
             post = session.get(BlogPostModel, post_id)
@@ -103,7 +103,7 @@ class BlogPostState(SessionState):
 
     @rx.event
     def delete_post(self, post_id: int):
-        if not self.is_admin: return
+        if not self.is_admin or self.my_userinfo_id is None: return
         with rx.session() as session:
             post_to_delete = session.get(BlogPostModel, post_id)
             if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
@@ -173,7 +173,7 @@ class BlogAddFormState(SessionState):
         return [op for op in LISTA_NUMEROS_CALZADO if self.search_add_numero_calzado.lower() in op.lower()]
 
     def _create_post(self, publish: bool) -> rx.event.EventSpec:
-        if not self.is_admin: return rx.toast.error("No tienes permiso.")
+        if not self.is_admin or self.my_userinfo_id is None: return rx.toast.error("No tienes permiso.")
         if self.price <= 0: return rx.toast.error("El precio debe ser mayor a cero.")
         if not self.title.strip(): return rx.toast.error("El título no puede estar vacío.")
         if not self.category: return rx.toast.error("Debes seleccionar una categoría.")
@@ -276,7 +276,7 @@ class BlogEditFormState(BlogPostState):
     @rx.event
     def handle_submit(self, form_data: dict):
         post_id = int(form_data.pop("post_id", 0))
-        if not post_id or not self.is_admin:
+        if not post_id or not self.is_admin or self.my_userinfo_id is None:
             return rx.toast.error("No se puede guardar el post.")
 
         form_data["content"] = self.post_content
@@ -341,9 +341,6 @@ class CommentState(SessionState):
     def rating_count(self) -> int:
         return len(self.comments)
 
-    # --- ✅ SOLUCIÓN AL ERROR ZeroDivisionError ---
-    # Se añade una comprobación explícita para asegurar que no se divida por cero.
-    # Esto hace el cálculo más robusto y previene el error del servidor.
     @rx.var
     def average_rating(self) -> float:
         if not self.comments:
@@ -432,15 +429,19 @@ class CommentState(SessionState):
 
     @rx.event
     def add_comment(self, form_data: dict):
-        content = form_data.get("comment_text", "").strip()
-        if not self.user_can_comment or not self.post or not content:
+        if not self.user_can_comment or not self.post or self.authenticated_user_info is None:
             return rx.toast.error("No puedes comentar o el texto está vacío.")
+        
+        content = form_data.get("comment_text", "").strip()
+        if not content:
+            return rx.toast.error("El comentario no puede estar vacío.")
         if self.new_comment_rating == 0:
             return rx.toast.error("Por favor, selecciona una calificación.")
 
         with rx.session() as session:
             comment = CommentModel(
-                content=content, rating=self.new_comment_rating,
+                content=content, 
+                rating=self.new_comment_rating,
                 userinfo_id=int(self.authenticated_user_info.id),
                 blog_post_id=self.post.id
             )
@@ -454,7 +455,7 @@ class CommentState(SessionState):
     @rx.event
     def handle_vote(self, comment_id: int, vote_type_str: str):
         vote_type = VoteType(vote_type_str)
-        if not self.is_authenticated:
+        if not self.is_authenticated or self.authenticated_user_info is None:
             return rx.toast.error("Debes iniciar sesión para votar.")
         with rx.session() as session:
             existing_vote = session.exec(
