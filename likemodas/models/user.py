@@ -1,16 +1,14 @@
-from reflex_local_auth import LocalUser
 from sqlmodel import Field, Relationship
 from typing import Optional, List
 from datetime import datetime
 import reflex as rx
 
 # Se usan importaciones condicionales con TYPE_CHECKING
-# para evitar que Python intente importar los modelos en un bucle,
-# pero permitiendo que el analizador de tipos (y Reflex) los entienda.
+# para que tu editor de código entienda los tipos, pero sin causar
+# errores de importación en tiempo de ejecución.
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
-    from .auth import VerificationToken
+    from .auth import VerificationToken, LocalUser
     from .blog import BlogPostModel
     from .cart import PurchaseModel
     from .comment import CommentModel, CommentVoteModel
@@ -28,10 +26,13 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+    # --- CAMBIO CLAVE ---
+    # Se usa la referencia de string "LocalUser". SQLModel es lo suficientemente
+    # inteligente como para encontrar el modelo correcto que ha sido registrado,
+    # que en este caso será tu versión extendida de LocalUser.
     user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
     
-    # Las relaciones se definen con strings ("BlogPostModel", etc.)
-    # para romper el ciclo de importación durante la ejecución normal de Python.
+    # El resto de las relaciones también usan strings para mantener la consistencia.
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")

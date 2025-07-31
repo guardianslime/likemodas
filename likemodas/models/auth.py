@@ -3,19 +3,18 @@ from typing import Optional
 from datetime import datetime
 import reflex as rx
 
-# Importación directa para que esté disponible en tiempo de ejecución.
-# Esto es clave para que Reflex encuentre el tipo 'UserInfo'.
-from .user import UserInfo
+from likemodas.models.user import UserInfo
 
+# --- CAMBIO CLAVE 1 ---
+# Se elimina la importación directa de 'UserInfo' para romper el ciclo de importación.
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
     
-    # Se usa el tipo real 'UserInfo' en lugar de un string "UserInfo".
-    # Esto ayuda a Reflex a entender la relación directamente.
-    userinfo: UserInfo = Relationship(back_populates="verification_tokens")
+    # Se usa una referencia de string "UserInfo"
+    userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
 
 
 class PasswordResetToken(rx.Model, table=True):
@@ -31,5 +30,8 @@ class LocalUser(rx.Model, table=True):
     username: str
     password_hash: bytes
     
-    # Aquí también usamos el tipo real para la relación.
+    # --- CAMBIO CLAVE 2 ---
+    # Se usa una referencia de string "UserInfo" para la relación.
+    # Esto es fundamental para que SQLAlchemy pueda resolver la relación más tarde,
+    # sin causar un error de importación ahora.
     userinfo: Optional["UserInfo"] = Relationship(back_populates="user")
