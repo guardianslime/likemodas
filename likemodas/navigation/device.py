@@ -1,5 +1,3 @@
-# likemodas/navigation/device.py (CORRECCIÓN DEFINITIVA)
-
 import reflex as rx
 
 class NavDeviceState(rx.State):

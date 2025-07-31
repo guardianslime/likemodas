@@ -1,9 +1,7 @@
-# likemodas/ui/base.py
-
 import reflex as rx
-from ..auth.state import SessionState
-from .nav import public_navbar
-from .sidebar import sidebar
+from..auth.state import SessionState
+from.nav import public_navbar
+from.sidebar import sidebar
 
 def fixed_color_mode_button() -> rx.Component:
     """Un botón de cambio de tema que se renderiza solo en el cliente."""

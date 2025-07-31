@@ -45,9 +45,9 @@ class BlogPostState(SessionState):
     # Se añade una comprobación para asegurar que `self.posts` sea una lista
     # y se filtran los `None` antes de cualquier operación.
     @rx.var
-    def filtered_posts(self) -> list[BlogPostModel]:
+    def filtered_posts(self) -> list:
         if not self.posts or not isinstance(self.posts, list):
-            return []
+            return
         valid_posts = [p for p in self.posts if p is not None]
         if not self.search_query.strip():
             return valid_posts

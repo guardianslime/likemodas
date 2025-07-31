@@ -1,10 +1,8 @@
-# likemodas/models.py (CORREGIDO)
-
 from typing import Optional, List
 
 import sqlmodel
-from . import utils
-from .utils.formatting import format_to_cop
+from. import utils
+from.utils.formatting import format_to_cop
 from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy import String, inspect
 from datetime import datetime
@@ -16,10 +14,9 @@ import math
 import pytz
 
 # --- ✅ SOLUCIÓN AL ModuleNotFoundError ---
-# Se eliminó la línea `from .about import about_page` que estaba aquí.
+# Se eliminó la línea `from.about import about_page` que estaba aquí.
 # El archivo de modelos (models.py) nunca debe importar componentes de páginas,
 # ya que esto crea una importación circular y es incorrecto estructuralmente.
-
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     if not utc_dt:
         return "N/A"
@@ -54,9 +51,9 @@ class UserInfo(rx.Model, table=True):
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
     is_verified: bool = Field(default=False, nullable=False)
     user: Optional[LocalUser] = Relationship()
-    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
-    verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
-    shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
+    posts: List = Relationship(back_populates="userinfo")
+    verification_tokens: List = Relationship(back_populates="userinfo")
+    shipping_addresses: List = Relationship(back_populates="userinfo")
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
@@ -173,7 +170,7 @@ class PurchaseModel(rx.Model, table=True):
     @property
     def items_formatted(self) -> list[str]:
         if not self.items:
-            return []
+            return
         return [
             f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)"
             for item in self.items
