@@ -4,7 +4,9 @@ from datetime import datetime
 import reflex as rx
 
 from likemodas.models.blog import BlogPostModel
-from likemodas.models.user import UserInfo
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .user import UserInfo
 from .base import format_utc_to_local
 from likemodas.utils.formatting import format_to_cop
 from .enums import PurchaseStatus
