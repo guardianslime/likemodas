@@ -6,7 +6,10 @@ import reflex as rx
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .blog import BlogPostModel
-from likemodas.models.user import UserInfo
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .user import UserInfo
 from .base import format_utc_to_local
 from .enums import VoteType
 

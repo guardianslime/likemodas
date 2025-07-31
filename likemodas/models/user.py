@@ -13,7 +13,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .blog import BlogPostModel
 from likemodas.models.cart import PurchaseModel
-from likemodas.models.comment import CommentModel, CommentVoteModel
+if TYPE_CHECKING:
+    from .comment import CommentModel, CommentVoteModel
 from likemodas.models.contact import ContactEntryModel, NotificationModel
 from likemodas.models.shipping import ShippingAddressModel
 from .enums import UserRole
