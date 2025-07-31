@@ -345,8 +345,11 @@ class CommentState(SessionState):
     def average_rating(self) -> float:
         if not self.comments:
             return 0.0
-        total_rating = sum(c.rating for c in self.comments)
-        return total_rating / len(self.comments) if len(self.comments) > 0 else 0.0
+        try:
+            total_rating = sum(c.rating for c in self.comments)
+            return total_rating / len(self.comments)
+        except ZeroDivisionError:
+            return 0.0
 
     @rx.var
     def user_has_purchased(self) -> bool:
