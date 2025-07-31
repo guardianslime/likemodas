@@ -1,19 +1,17 @@
-# likemodas/blog/public_detail.py (VERSIÓN CORREGIDA Y ROBUSTA)
-
 import reflex as rx
 import math
-# --- 👇 IMPORTACIONES CORREGIDAS 👇 ---
-from .state import CommentState             # Importa CommentState desde el directorio actual (blog)
-from ..auth.state import SessionState      # Importa SessionState desde el directorio auth
-# --- ----------------------------- ---
+
+# --- IMPORTACIONES CORRECTAS ---
+from .state import CommentState
+from ..auth.state import SessionState
 from ..cart.state import CartState
 from ..models import CommentModel
 from ..ui.base import base_page
 from ..ui.carousel import Carousel
 from ..ui.skeletons import skeleton_product_detail_view
 
+# -------------------------------
 def _image_section() -> rx.Component:
-    """Muestra las imágenes del post en un carrusel."""
     return rx.box(
         Carousel.create(
             rx.foreach(
@@ -40,7 +38,6 @@ def _image_section() -> rx.Component:
     )
 
 def _global_rating_display() -> rx.Component:
-    """Muestra la calificación global del producto con estrellas."""
     average_rating = CommentState.average_rating
     rating_count = CommentState.rating_count
     full_stars = rx.Var.range(math.floor(average_rating))
@@ -57,14 +54,10 @@ def _global_rating_display() -> rx.Component:
             rx.text(f"({rating_count} opiniones)", size="4", color_scheme="gray"),
             align="center", spacing="1", padding_y="1em"
         ),
-        rx.box(
-            rx.text("Este producto aún no tiene calificaciones.", color_scheme="gray", size="4"),
-            padding_y="1em"
-        )
+        rx.box(rx.text("Este producto aún no tiene calificaciones.", color_scheme="gray", size="4"), padding_y="1em")
     )
 
 def _attributes_display() -> rx.Component:
-    """Muestra los atributos (características) del producto."""
     return rx.cond(
         CommentState.product_attributes,
         rx.vstack(
@@ -86,7 +79,6 @@ def _attributes_display() -> rx.Component:
     )
 
 def _info_section() -> rx.Component:
-    """Muestra la información de texto del producto."""
     return rx.vstack(
         rx.text(CommentState.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
         rx.text("Publicado el " + CommentState.post.created_at_formatted, size="3", color_scheme="gray", margin_bottom="0.5em", text_align="left", width="100%"),
@@ -104,7 +96,6 @@ def _info_section() -> rx.Component:
     )
 
 def _star_rating_input() -> rx.Component:
-    """Input de estrellas para dejar una nueva calificación."""
     return rx.hstack(
         rx.foreach(
             rx.Var.range(5),
@@ -119,7 +110,6 @@ def _star_rating_input() -> rx.Component:
     )
 
 def _star_rating_display(rating: rx.Var[int]) -> rx.Component:
-    """Muestra una calificación de estrellas estática."""
     return rx.hstack(
         rx.foreach(
             rx.Var.range(5),
@@ -129,7 +119,6 @@ def _star_rating_display(rating: rx.Var[int]) -> rx.Component:
     )
 
 def _comment_form() -> rx.Component:
-    """Formulario para que un usuario deje un comentario."""
     return rx.cond(
         SessionState.is_authenticated,
         rx.cond(
@@ -138,7 +127,13 @@ def _comment_form() -> rx.Component:
                 rx.vstack(
                     rx.text("Tu calificación:", weight="bold", size="4"),
                     _star_rating_input(),
-                    rx.text_area(name="comment_text", value=CommentState.new_comment_text, on_change=CommentState.set_new_comment_text, placeholder="Escribe tu opinión sobre el producto...", width="100%", size="3"),
+                    rx.text_area(
+                        name="comment_text",
+                        value=CommentState.new_comment_text,
+                        on_change=CommentState.set_new_comment_text,
+                        placeholder="Escribe tu opinión sobre el producto...",
+                        width="100%", size="3"
+                    ),
                     rx.button("Publicar Opinión", type="submit", align_self="flex-end", size="3", color_scheme="violet"),
                     spacing="3", width="100%",
                 ),
@@ -160,7 +155,6 @@ def _comment_form() -> rx.Component:
     )
 
 def _comment_card(comment: CommentModel) -> rx.Component:
-    """Tarjeta individual para mostrar un comentario existente."""
     return rx.box(
         rx.vstack(
             rx.hstack(
@@ -191,7 +185,6 @@ def _comment_card(comment: CommentModel) -> rx.Component:
     )
 
 def comment_section() -> rx.Component:
-    """La sección completa de comentarios, incluyendo el formulario y la lista."""
     return rx.vstack(
         rx.divider(margin_y="2em"),
         rx.heading("Opiniones del Producto", size="8", color_scheme="violet"),
@@ -200,7 +193,6 @@ def comment_section() -> rx.Component:
             rx.foreach(CommentState.comments, _comment_card),
             spacing="4", width="100%", margin_top="1.5em",
         ),
-        # Condición corregida para mostrar el mensaje cuando no hay comentarios
         rx.cond(
             CommentState.rating_count == 0,
             rx.center(rx.text("Sé el primero en dejar tu opinión.", color_scheme="gray", size="4"), padding="2em", width="100%")
@@ -208,55 +200,42 @@ def comment_section() -> rx.Component:
         spacing="5", width="100%", max_width="1120px", align="center", padding_top="1em",
     )
 
-# =================================================================
-# FUNCIÓN PRINCIPAL DE LA PÁGINA (ESTRUCTURA CORREGIDA)
-# =================================================================
+# ===============================
+# 🧠 FUNCIÓN PRINCIPAL DE LA PÁGINA
+# ===============================
+@rx.page(route="/blog-public/[id]")
 def blog_public_detail_page() -> rx.Component:
-    """
-    Página de detalle del producto con una lógica de renderizado robusta
-    que previene errores visuales al recargar la página.
-    """
-    # 1. Define el contenido a mostrar si el post se encuentra
-    content_found = rx.vstack(
-        rx.grid(
-            _image_section(),
-            _info_section(),
-            columns={"base": "1", "md": "2"},
-            spacing="4",
-            align_items="start",
-            width="100%",
-            max_width="1400px",
+    return rx.cond(
+        SessionState.is_hydrated,
+        base_page(
+            rx.cond(
+                CommentState.is_loading,
+                skeleton_product_detail_view(),
+                rx.vstack(
+                    rx.heading("Detalle del Producto", size="9", margin_bottom="1em"),
+                    rx.cond(
+                        CommentState.post,
+                        rx.vstack(
+                            rx.grid(
+                                _image_section(),
+                                _info_section(),
+                                columns={"base": "1", "md": "2"},
+                                spacing="4",
+                                align_items="start",
+                                width="100%",
+                                max_width="1400px",
+                            ),
+                            comment_section(),
+                            spacing="6",
+                            width="100%",
+                            align="center",
+                        ),
+                        rx.center(rx.text("Publicación no encontrada o no disponible.", color="red", size="5"), height="50vh")
+                    ),
+                    width="100%",
+                    padding="2em",
+                )
+            )
         ),
-        # La sección de comentarios solo se muestra si el post fue encontrado
-        comment_section(),
-        spacing="6",
-        width="100%",
-        align="center",
-    )
-
-    # 2. Define el contenido a mostrar si el post NO se encuentra
-    content_not_found = rx.center(
-        rx.text("Publicación no encontrada o no disponible.", color="red", size="5"),
-        height="50vh"
-    )
-
-    # 3. Contenedor que decide qué mostrar una vez que la carga ha terminado
-    page_content = rx.vstack(
-        rx.heading("Detalle del Producto", size="9", margin_bottom="1em"),
-        rx.cond(
-            CommentState.post,
-            content_found,
-            content_not_found
-        ),
-        width="100%",
-        padding="2em",
-    )
-
-    # 4. Lógica principal: Muestra el esqueleto mientras carga, o el contenido final.
-    return base_page(
-        rx.cond(
-            CommentState.is_loading,
-            skeleton_product_detail_view(),
-            page_content
-        )
+        rx.center(rx.spinner(), height="100vh")
     )

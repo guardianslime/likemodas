@@ -15,12 +15,14 @@ def fixed_color_mode_button() -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    Layout base unificado que previene desajustes de hidratación al usar
-    una estructura DOM consistente y aplicar condicionales en componentes internos.
+    Layout base robusto que previene errores visuales por estados sin hidratar
+    y mantiene la estructura del DOM estable.
     """
+    # Protege contra errores en el argumento
     if not isinstance(child, rx.Component):
         child = rx.heading("Error: El elemento hijo no es un componente válido")
 
+    # Muestra mensaje si requiere verificación
     verification_required_page = rx.center(
         rx.vstack(
             rx.heading("Verificación Requerida"),
@@ -30,33 +32,30 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         height="80vh"
     )
 
+    # Página principal con verificación condicional
     main_content = rx.cond(
         (SessionState.is_authenticated & SessionState.authenticated_user_info.is_verified) | ~SessionState.is_authenticated,
         child,
         verification_required_page
     )
 
-    # --- LÓGICA DE LAYOUT UNIFICADO (LA SOLUCIÓN CLAVE) ---
+    # Estructura de layout unificado
     unified_layout = rx.hstack(
-        # 1. La barra lateral del admin o un fragmento vacío para el cliente.
-        #    Esto mantiene la estructura hstack pero no renderiza nada visible para el cliente.
+        # Sidebar solo para admins
         rx.cond(
             SessionState.is_admin,
             sidebar(),
-            rx.fragment() # Devuelve un nodo vacío, no afecta el DOM.
+            rx.fragment()
         ),
-        # 2. Contenedor principal para el contenido de la página.
         rx.box(
-            # 3. La navbar pública o un fragmento vacío para el admin.
+            # Navbar solo para usuarios
             rx.cond(
                 ~SessionState.is_admin,
                 public_navbar(),
                 rx.fragment()
             ),
-            # 4. El contenido principal de la página.
             rx.box(
                 main_content,
-                # El padding se ajusta condicionalmente para el cliente.
                 padding_top=rx.cond(~SessionState.is_admin, "6rem", "1em"),
                 padding_right="1em",
                 padding_bottom="1em",
@@ -65,7 +64,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             ),
             width="100%",
         ),
-        # 5. Botón de modo de color solo para clientes.
+        # Botón de modo de color solo para usuarios
         rx.cond(
             ~SessionState.is_admin,
             fixed_color_mode_button(),
@@ -74,9 +73,10 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         align="start",
         spacing="0",
         width="100%",
+        min_height="100vh",  # Esto ayuda a prevenir saltos visuales
     )
 
-    # 6. El condicional final solo muestra un spinner mientras el estado se hidrata.
+    # 🛡️ Protege la estructura hasta que el estado esté hidratado
     return rx.cond(
         SessionState.is_hydrated,
         unified_layout,
