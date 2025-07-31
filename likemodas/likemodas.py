@@ -6,7 +6,6 @@ import reflex_local_auth
 from rxconfig import config
 
 # --- Módulos específicos de la aplicación ---
-# Se mantiene la estructura de importación organizada.
 from . import navigation
 from .auth import pages as auth_pages, state as auth_state, verify_state, reset_password_state
 from .pages import (

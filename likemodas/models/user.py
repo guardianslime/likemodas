@@ -1,4 +1,3 @@
-
 # -----------------------------------------------------------------------------
 # likemodas/models/user.py (ARCHIVO CORREGIDO)
 # -----------------------------------------------------------------------------
@@ -7,13 +6,9 @@ from typing import Optional, List
 from datetime import datetime
 import reflex as rx
 
-# ✅ SOLUCIÓN: Se usan importaciones condicionales con TYPE_CHECKING
-# para que el editor de código entienda los tipos, pero sin causar
-# errores de importación en tiempo de ejecución.
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
-    from .auth import VerificationToken, LocalUser
+    from .token import VerificationToken
     from .blog import BlogPostModel
     from .cart import PurchaseModel
     from .comment import CommentModel, CommentVoteModel
@@ -22,7 +17,17 @@ if TYPE_CHECKING:
 
 from .enums import UserRole
 
+# ✅ SOLUCIÓN: Se mueve LocalUser aquí para centralizar modelos de usuario.
+class LocalUser(rx.Model, table=True):
+    __table_args__ = {"extend_existing": True}
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str
+    password_hash: bytes
+    userinfo: Optional["UserInfo"] = Relationship(back_populates="user")
+
 class UserInfo(rx.Model, table=True):
+    # ✅ SOLUCIÓN: Se añade 'extend_existing' por seguridad.
+    __table_args__ = {"extend_existing": True}
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str
     user_id: int = Field(foreign_key="localuser.id")
@@ -31,8 +36,6 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Se usan "forward references" (strings) para las relaciones,
-    # lo que evita la necesidad de importar las clases directamente en tiempo de ejecución.
     user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
