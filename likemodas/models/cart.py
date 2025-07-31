@@ -3,12 +3,13 @@ from typing import Optional, List
 from datetime import datetime
 import reflex as rx
 
-from likemodas.models.blog import BlogPostModel
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .user import UserInfo
+from .blog import BlogPostModel
+# --- CAMBIO CLAVE 1 ---
+# Se importa 'UserInfo' directamente para que el compilador de Reflex
+# pueda resolver la relación en `PurchaseModel`.
+from .user import UserInfo
 from .base import format_utc_to_local
-from likemodas.utils.formatting import format_to_cop
+from ..utils.formatting import format_to_cop
 from .enums import PurchaseStatus
 
 class PurchaseModel(rx.Model, table=True):
@@ -39,8 +40,20 @@ class PurchaseModel(rx.Model, table=True):
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
+    
+    # --- CAMBIO CLAVE 2 ---
+    # Se añade la propiedad 'items_formatted' que se usa en la página de compras.
+    # Esto asegura que el código funcione como se espera.
+    @property
+    def items_formatted(self) -> list[str]:
+        """Devuelve una lista formateada de los artículos de la compra."""
+        if not self.items:
+            return []
+        return [item.display_name for item in self.items]
+
 
 class PurchaseItemModel(rx.Model, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
     purchase_id: int = Field(foreign_key="purchasemodel.id")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     quantity: int
@@ -48,3 +61,11 @@ class PurchaseItemModel(rx.Model, table=True):
 
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
+
+    # --- CAMBIO CLAVE 3 ---
+    # Se añade la propiedad 'display_name' para que 'items_formatted' funcione.
+    @property
+    def display_name(self) -> str:
+        """Genera un nombre legible para el artículo en la compra."""
+        title = self.blog_post.title if self.blog_post else "Producto no encontrado"
+        return f"{self.quantity} x {title}"
