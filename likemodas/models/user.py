@@ -15,7 +15,10 @@ if TYPE_CHECKING:
 from likemodas.models.cart import PurchaseModel
 if TYPE_CHECKING:
     from .comment import CommentModel, CommentVoteModel
-from likemodas.models.contact import ContactEntryModel, NotificationModel
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .contact import ContactEntryModel, NotificationModel
 from likemodas.models.shipping import ShippingAddressModel
 from .enums import UserRole
 
