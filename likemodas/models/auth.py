@@ -1,21 +1,23 @@
 # -----------------------------------------------------------------------------
-# likemodas/models/auth.py
+# likemodas/models/auth.py (ARCHIVO CORREGIDO)
 # -----------------------------------------------------------------------------
 from sqlmodel import Field, Relationship
 from typing import Optional
 from datetime import datetime
 import reflex as rx
 
-# ✨ CAMBIO CLAVE: Se importa el módulo completo para usar la ruta absoluta.
-import likemodas.models.user
+# ✅ SOLUCIÓN: Se usa TYPE_CHECKING para la importación del tipo.
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .user import UserInfo
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
     
-    # Se usa una referencia de string "UserInfo" para evitar la importación directa.
-    userinfo: "likemodas.models.user.UserInfo" = Relationship(back_populates="verification_tokens")
+    # Se usa un string para la relación.
+    userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
 
 class PasswordResetToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
@@ -29,5 +31,5 @@ class LocalUser(rx.Model, table=True):
     username: str
     password_hash: bytes
     
-    # La relación ahora apunta a la ruta completa y sin ambigüedades de UserInfo.
-    userinfo: Optional["likemodas.models.user.UserInfo"] = Relationship(back_populates="user")
+    # Se usa un string para la relación.
+    userinfo: Optional["UserInfo"] = Relationship(back_populates="user")

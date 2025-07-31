@@ -2,25 +2,15 @@
 # likemodas/ui/base.py
 # -----------------------------------------------------------------------------
 import reflex as rx
-# Se mantienen las importaciones diferidas para romper el ciclo.
 from .sidebar import sidebar
 
 def fixed_color_mode_button() -> rx.Component:
-    """Un botón de cambio de tema que se renderiza solo en el cliente."""
     return rx.box(
         rx.color_mode.button(),
-        position="fixed",
-        bottom="1.5rem",
-        right="1.5rem",
-        z_index="1000",
+        position="fixed", bottom="1.5rem", right="1.5rem", z_index="1000",
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    """
-    Layout base robusto que previene errores visuales por estados sin hidratar
-    y mantiene la estructura del DOM estable.
-    """
-    # Se importan los módulos necesarios DENTRO de la función para romper el ciclo.
     from ..auth.state import SessionState
     from .nav import public_navbar
 
@@ -49,9 +39,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             rx.box(
                 main_content,
                 padding_top=rx.cond(~SessionState.is_admin, "6rem", "1em"),
-                padding_right="1em",
-                padding_bottom="1em",
-                padding_left="1em",
+                padding_right="1em", padding_bottom="1em", padding_left="1em",
                 width="100%",
             ),
             width="100%",

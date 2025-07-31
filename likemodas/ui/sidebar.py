@@ -1,23 +1,18 @@
+
 # -----------------------------------------------------------------------------
-# likemodas/ui/sidebar.py (ARCHIVO CORREGIDO)
+# likemodas/ui/sidebar.py
 # -----------------------------------------------------------------------------
 import reflex as rx
 from reflex.style import toggle_color_mode
-# ✨ CAMBIO CLAVE: Se elimina la importación de SessionState de la parte superior.
-# from..auth.state import SessionState -> ELIMINADA
 from.. import navigation
 
 def sidebar_dark_mode_toggle_item() -> rx.Component:
-    """Botón para alternar el modo de color con íconos de sol/luna."""
     return rx.button(
         rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
-        on_click=toggle_color_mode,
-        variant="ghost"
+        on_click=toggle_color_mode, variant="ghost"
     )
 
 def sidebar_user_item() -> rx.Component:
-    """Muestra el avatar y el nombre de usuario autenticado."""
-    # ✅ SOLUCIÓN: Se importa SessionState localmente.
     from..auth.state import SessionState
     username = rx.cond(SessionState.authenticated_username, SessionState.authenticated_username, "Account")
     return rx.cond(
@@ -31,7 +26,6 @@ def sidebar_user_item() -> rx.Component:
     )
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Componente reutilizable para un elemento del menú lateral."""
     return rx.link(
         rx.hstack(
             rx.icon(icon), rx.text(text, size="4"),
@@ -44,8 +38,6 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
     )
 
 def sidebar_items() -> rx.Component:
-    """Lista de los elementos principales del menú lateral."""
-    # ✅ SOLUCIÓN: Se importa SessionState localmente.
     from..auth.state import SessionState
     return rx.vstack(
         sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
@@ -64,8 +56,6 @@ def sidebar_items() -> rx.Component:
     )
 
 def sidebar_logout_item() -> rx.Component:
-    """Un botón para cerrar la sesión del usuario."""
-    # ✅ SOLUCIÓN: Se importa SessionState localmente.
     from..auth.state import SessionState
     return rx.cond(
         SessionState.is_authenticated,
@@ -77,7 +67,6 @@ def sidebar_logout_item() -> rx.Component:
     )
 
 def sidebar() -> rx.Component:
-    """El componente completo del sidebar, responsivo para móvil y escritorio."""
     sidebar_content = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
@@ -96,9 +85,7 @@ def sidebar() -> rx.Component:
     )
 
     return rx.fragment(
-        # Barra lateral para Escritorio
         rx.box(sidebar_content, width="16em", display=["none", "none", "flex", "flex"]),
-        # Cajón (Drawer) para Móvil
         rx.box(
             rx.drawer.root(
                 rx.drawer.trigger(rx.icon("align-justify", size=30)),

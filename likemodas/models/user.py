@@ -1,21 +1,19 @@
+
 # -----------------------------------------------------------------------------
-# likemodas/models/user.py
+# likemodas/models/user.py (ARCHIVO CORREGIDO)
 # -----------------------------------------------------------------------------
 from sqlmodel import Field, Relationship
 from typing import Optional, List
 from datetime import datetime
 import reflex as rx
 
-# Se usan importaciones condicionales con TYPE_CHECKING
-# para que tu editor de código entienda los tipos, pero sin causar
+# ✅ SOLUCIÓN: Se usan importaciones condicionales con TYPE_CHECKING
+# para que el editor de código entienda los tipos, pero sin causar
 # errores de importación en tiempo de ejecución.
 from typing import TYPE_CHECKING
 
-# ✨ CAMBIO CLAVE: Se importa el módulo completo para usar la ruta absoluta.
-import likemodas.models.auth
-
 if TYPE_CHECKING:
-    from .auth import VerificationToken
+    from .auth import VerificationToken, LocalUser
     from .blog import BlogPostModel
     from .cart import PurchaseModel
     from .comment import CommentModel, CommentVoteModel
@@ -33,12 +31,9 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # --- ✅ SOLUCIÓN AL CICLO DE IMPORTACIÓN ---
-    # Se usa la ruta completa al modelo 'LocalUser' para evitar la ambigüedad.
-    # Esto le dice a SQLAlchemy exactamente a qué clase nos referimos: la tuya.
-    user: Optional["likemodas.models.auth.LocalUser"] = Relationship(back_populates="userinfo")
-    
-    # El resto de las relaciones también usan strings para mantener la consistencia.
+    # Se usan "forward references" (strings) para las relaciones,
+    # lo que evita la necesidad de importar las clases directamente en tiempo de ejecución.
+    user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
