@@ -7,6 +7,7 @@ from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy import String, inspect
 from datetime import datetime
 import reflex as rx
+from .blog import BlogPostModel
 from reflex_local_auth.user import LocalUser
 import sqlalchemy
 import enum
@@ -53,7 +54,7 @@ class UserInfo(rx.Model, table=True):
     is_verified: bool = Field(default=False, nullable=False)
     user: Optional[LocalUser] = Relationship()
 
-    posts: List[BlogPostModel] = Relationship(back_populates="userinfo")
+    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List[VerificationToken] = Relationship(back_populates="userinfo")
     shipping_addresses: List[ShippingAddressModel] = Relationship(back_populates="userinfo")
     contact_entries: List[ContactEntryModel] = Relationship(back_populates="userinfo")
