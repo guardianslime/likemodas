@@ -1,4 +1,4 @@
-# likemodas/blog/state.py (VERSIÓN CORREGIDA Y ESTRUCTURADA)
+# likemodas/blog/state.py (CORREGIDO)
 
 from datetime import datetime
 from typing import Optional, List
@@ -16,9 +16,7 @@ from ..data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES
 )
 
-
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
-
 
 class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
@@ -192,7 +190,7 @@ class BlogAddFormState(SessionState):
             post = BlogPostModel(
                 title=self.title.strip(), content=self.content.strip(),
                 price=self.price, image_urls=self.temp_images.copy(),
-                userinfo_id=self.my_userinfo_id,
+                userinfo_id=int(self.my_userinfo_id),
                 publish_active=publish,
                 publish_date=datetime.utcnow() if publish else None,
                 category=self.category,
@@ -306,10 +304,6 @@ class BlogEditFormState(BlogPostState):
 
         return rx.redirect(f"/blog-public/{post_id}")
 
-
-# ==============================================================================
-# SECCIÓN CRÍTICA CORREGIDA
-# ==============================================================================
 class CommentState(SessionState):
     is_loading: bool = True
     post: Optional[BlogPostModel] = None
@@ -319,7 +313,6 @@ class CommentState(SessionState):
 
     @rx.var
     def post_id(self) -> str:
-        # ✅ Slug corregido: usamos "id"
         return self.router.page.params.get("id", "")
     
     @rx.var
@@ -348,12 +341,15 @@ class CommentState(SessionState):
     def rating_count(self) -> int:
         return len(self.comments)
 
+    # --- ✅ SOLUCIÓN AL ERROR ZeroDivisionError ---
+    # Se añade una comprobación explícita para asegurar que no se divida por cero.
+    # Esto hace el cálculo más robusto y previene el error del servidor.
     @rx.var
     def average_rating(self) -> float:
         if not self.comments:
             return 0.0
-        total_rating = sum(comment.rating for comment in self.comments)
-        return total_rating / len(self.comments)
+        total_rating = sum(c.rating for c in self.comments)
+        return total_rating / len(self.comments) if len(self.comments) > 0 else 0.0
 
     @rx.var
     def user_has_purchased(self) -> bool:
@@ -445,7 +441,7 @@ class CommentState(SessionState):
         with rx.session() as session:
             comment = CommentModel(
                 content=content, rating=self.new_comment_rating,
-                userinfo_id=self.authenticated_user_info.id,
+                userinfo_id=int(self.authenticated_user_info.id),
                 blog_post_id=self.post.id
             )
             session.add(comment)
@@ -464,7 +460,7 @@ class CommentState(SessionState):
             existing_vote = session.exec(
                 select(CommentVoteModel).where(
                     CommentVoteModel.comment_id == comment_id,
-                    CommentVoteModel.userinfo_id == self.authenticated_user_info.id
+                    CommentVoteModel.userinfo_id == int(self.authenticated_user_info.id)
                 )
             ).one_or_none()
 
@@ -477,7 +473,7 @@ class CommentState(SessionState):
             else:
                 new_vote = CommentVoteModel(
                     vote_type=vote_type,
-                    userinfo_id=self.authenticated_user_info.id,
+                    userinfo_id=int(self.authenticated_user_info.id),
                     comment_id=comment_id
                 )
                 session.add(new_vote)
