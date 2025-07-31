@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-# likemodas/ui/components.py (NUEVO ARCHIVO Y CORRECCIONES)
+# likemodas/ui/components.py
 # -----------------------------------------------------------------------------
 import reflex as rx
 import math
@@ -8,7 +8,6 @@ from reflex.event import EventSpec
 from ..navigation import routes
 from ..cart.state import CartState, ProductCardData
 
-# ✅ SOLUCIÓN: Se define el componente que faltaba.
 def searchable_select(
     placeholder: str,
     options: rx.Var[List[str]],
@@ -67,7 +66,6 @@ def searchable_select(
         ),
     )
 
-# Componentes movidos aquí para una mejor estructura
 def categories_button() -> rx.Component:
     """Botón desplegable de categorías."""
     return rx.hstack(

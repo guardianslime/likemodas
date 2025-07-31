@@ -1,15 +1,13 @@
 # -----------------------------------------------------------------------------
-# likemodas/ui/filter_panel.py (ARCHIVO CORREGIDO)
+# likemodas/ui/filter_panel.py
 # -----------------------------------------------------------------------------
 import reflex as rx
 from ..auth.state import SessionState
 from ..models import Category
-# ✅ SOLUCIÓN: Se importa el componente desde su nueva ubicación.
 from ..ui.components import searchable_select
 
 def floating_filter_panel() -> rx.Component:
     """El panel de filtros flotante con todas las funcionalidades implementadas."""
-    # (El código interno de esta función no cambia, solo la importación de arriba)
     return rx.box(
         rx.hstack(
             rx.vstack(

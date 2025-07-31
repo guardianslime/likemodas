@@ -1,13 +1,10 @@
 # -----------------------------------------------------------------------------
-# likemodas/navigation/device.py (NUEVO ARCHIVO)
+# likemodas/navigation/device.py (ARCHIVO CORREGIDO)
 # -----------------------------------------------------------------------------
 import reflex as rx
 
 class NavDeviceState(rx.State):
-    """
-    Maneja el estado del dispositivo (móvil o escritorio) para la UI.
-    'unknown' es el estado inicial para evitar el parpadeo.
-    """
+    """Maneja el estado del dispositivo (móvil o escritorio) para la UI."""
     device_type: str = "unknown"
 
     @rx.event
@@ -19,9 +16,10 @@ class NavDeviceState(rx.State):
     def on_load_check_device(self):
         """
         Evento que se llama al cargar la página para ejecutar el script que detecta el tamaño.
-        Esta es la forma correcta de llamar a un event handler con argumentos desde JS.
         """
-        handler_name = self.set_device_type.get_event_handler_name()
+        # ✅ SOLUCIÓN: Se obtiene el nombre del manejador desde la clase (type(self))
+        # en lugar de la instancia (self), lo que evita el AttributeError.
+        handler_name = type(self).set_device_type.get_event_handler_name()
         return rx.call_script(
             f"""
             const width = window.innerWidth;
