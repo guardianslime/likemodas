@@ -2,30 +2,19 @@ from reflex_local_auth import LocalUser
 from sqlmodel import Field, Relationship
 from typing import Optional, List
 from datetime import datetime
-import sqlalchemy
 import reflex as rx
 
+# Se usan importaciones condicionales con TYPE_CHECKING
+# para evitar que Python intente importar los modelos en un bucle,
+# pero permitiendo que el analizador de tipos (y Reflex) los entienda.
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .auth import VerificationToken
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
     from .blog import BlogPostModel
-
-from likemodas.models.cart import PurchaseModel
-
-if TYPE_CHECKING:
+    from .cart import PurchaseModel
     from .comment import CommentModel, CommentVoteModel
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
     from .contact import ContactEntryModel, NotificationModel
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
     from .shipping import ShippingAddressModel
 
 from .enums import UserRole
@@ -36,12 +25,13 @@ class UserInfo(rx.Model, table=True):
     user_id: int = Field(foreign_key="localuser.id")
     role: UserRole = Field(default=UserRole.CUSTOMER)
     is_verified: bool = Field(default=False)
-
-    user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # Relaciones hacia otros modelos (usando comillas para evitar ciclos)
+    user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
+    
+    # Las relaciones se definen con strings ("BlogPostModel", etc.)
+    # para romper el ciclo de importación durante la ejecución normal de Python.
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")

@@ -1,16 +1,15 @@
-# likemodas/ui/nav.py (VERSIÓN CORREGIDA PARA ELIMINAR FLICKERING)
-
 import reflex as rx
 from.. import navigation
-from.search_state import SearchState
-from..cart.state import CartState
-from..auth.state import SessionState
-from..notifications.state import NotificationState
-# Se importa el estado que detecta el tipo de dispositivo
+from .search_state import SearchState
+from ..cart.state import CartState
+from ..auth.state import SessionState
+from ..notifications.state import NotificationState
+# Se importa el nuevo estado que detecta el tipo de dispositivo
 from ..navigation.device import NavDeviceState
 
 def notification_icon() -> rx.Component:
     """Muestra el ícono y el menú de notificaciones."""
+    # (El código de esta función no necesita cambios, se mantiene igual)
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
@@ -56,12 +55,10 @@ def notification_icon() -> rx.Component:
         on_open_change=lambda open: rx.cond(open, NotificationState.mark_all_as_read, None)
     )
 
-
 def public_navbar() -> rx.Component:
     """
     Barra de navegación corregida para evitar el "layout shift".
     """
-    # --- ✅ SOLUCIÓN AL FLICKERING ---
     # Se usa el estado `device_type`. La barra de búsqueda ahora muestra
     # la versión móvil (un ícono) por defecto mientras el estado es "unknown".
     # Solo cuando el estado se confirma como "desktop", se expande.
@@ -105,7 +102,7 @@ def public_navbar() -> rx.Component:
 
     return rx.box(
         rx.grid(
-            # --- Columna Izquierda (Logo y Menú) ---
+            # Columna Izquierda (Logo y Menú)
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
@@ -143,7 +140,7 @@ def public_navbar() -> rx.Component:
                 align="center", spacing="4", justify="start",
             ),
             
-            # --- Columna Central (Búsqueda) ---
+            # Columna Central (Búsqueda)
             rx.box(
                 search_bar,
                 display="flex",
@@ -152,7 +149,7 @@ def public_navbar() -> rx.Component:
                 width="100%",
             ),
             
-            # --- Columna Derecha (Iconos) ---
+            # Columna Derecha (Iconos)
             rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,

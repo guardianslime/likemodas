@@ -16,12 +16,9 @@ class NavDeviceState(rx.State):
     def on_load_check_device(self):
         """
         Evento que se llama al cargar la página para ejecutar el script que detecta el tamaño.
+        Esta es la forma correcta de llamar a un event handler con argumentos desde JS.
         """
-        # --- ✅ SOLUCIÓN AL AttributeError ---
-        # Esta es la forma correcta de llamar a un event handler con argumentos desde JS.
-        # 1. Obtenemos el nombre base del manejador.
         handler_name = self.set_device_type.get_event_handler_name()
-        # 2. Pasamos los argumentos ("mobile" o "desktop") dentro del script de JS.
         return rx.call_script(
             f"""
             const width = window.innerWidth;
