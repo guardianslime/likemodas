@@ -140,7 +140,6 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """Un componente que muestra una galería de productos."""
-    # Simplemente devuelve el componente flex que contiene la galería
     return rx.flex(
         rx.foreach(
             posts,
@@ -149,6 +148,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.link(
                         rx.vstack(
                             rx.box(
+                                # --- ✅ SOLUCIÓN AL ERROR DE IMAGEN ---
+                                # Se añade `rx.cond` para verificar si la lista `image_urls`
+                                # no está vacía ANTES de intentar acceder a `image_urls[0]`.
+                                # Si está vacía, muestra un placeholder.
                                 rx.cond(
                                     post.image_urls & (post.image_urls.length() > 0),
                                     rx.image(
@@ -156,8 +159,14 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         width="100%", height="100%", object_fit="cover",
                                     ),
                                     rx.box(
-                                        "Sin imagen", width="100%", height="100%", bg="#eee",
-                                        align="center", justify="center", display="flex", border_radius="md"
+                                        rx.vstack(
+                                            rx.icon("image_off", size=48, color=rx.color("gray", 8)),
+                                            rx.text("Sin imagen", size="2", color=rx.color("gray", 8)),
+                                            align="center",
+                                            justify="center",
+                                        ),
+                                        width="100%", height="100%", bg=rx.color("gray", 3),
+                                        display="flex", border_radius="md"
                                     )
                                 ),
                                 position="relative", width="260px", height="260px"
@@ -188,4 +197,3 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         ),
         wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
     )
-    

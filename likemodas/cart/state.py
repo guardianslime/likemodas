@@ -109,6 +109,7 @@ class CartState(SessionState):
 
     @rx.event
     def on_load(self):
+        """Carga los posts de forma segura, manejando posibles datos nulos."""
         self.is_loading = True
         yield
         with rx.session() as session:
@@ -119,12 +120,15 @@ class CartState(SessionState):
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
+            # --- ✅ SOLUCIÓN AL ERROR DE CARGA (línea 105) ---
+            # Se asegura de que si `p.price` es `None` en la base de datos,
+            # se use `0.0` por defecto. Esto previene el error del servidor.
             self.posts = [
                 ProductCardData(
                     id=p.id,
                     title=p.title,
-                    price=p.price,
-                    price_formatted=format_to_cop(p.price),
+                    price=p.price or 0.0,
+                    price_formatted=format_to_cop(p.price or 0.0),
                     image_urls=p.image_urls or [],
                     average_rating=p.average_rating,
                     rating_count=p.rating_count
