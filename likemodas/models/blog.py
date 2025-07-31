@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .user import UserInfo
 from .enums import Category
 from .base import format_utc_to_local
-from .utils.formatting import format_to_cop  # asegúrate que este import exista
+from likemodas.utils.formatting import format_to_cop # asegúrate que este import exista
 
 class BlogPostModel(rx.Model, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

@@ -6,7 +6,7 @@ import reflex as rx
 from likemodas.models.blog import BlogPostModel
 from likemodas.models.user import UserInfo
 from .base import format_utc_to_local
-from .utils.formatting import format_to_cop
+from likemodas.utils.formatting import format_to_cop
 from .enums import PurchaseStatus
 
 class PurchaseModel(rx.Model, table=True):
