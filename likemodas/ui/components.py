@@ -5,82 +5,55 @@ from ..cart.state import CartState, ProductCardData
 from.skeletons import skeleton_product_gallery
 from reflex.event import EventSpec
 from ..auth.state import SessionState
+from ..models.product_data import ProductCardData
+from sqlalchemy.orm import joinedload
+from typing import List
+from sqlmodel import select
+from datetime import datetime
 
-def searchable_select(
-    placeholder: str, 
-    options: rx.Var[list[str]], 
-    on_change_select: EventSpec,
-    value_select: rx.Var[str],
-    search_value: rx.Var[str],
-    on_change_search: EventSpec,
-    filter_name: str,
-    is_disabled: rx.Var[bool] = False, # <-- ✨ LÍNEA AÑADIDA
-) -> rx.Component:
-    """
-    Un componente de selección personalizado con opción de búsqueda y deshabilitado.
-    """
-    is_open = SessionState.open_filter_name == filter_name
 
-    return rx.box(
-        rx.button(
-            rx.cond(value_select, value_select, placeholder),
-            rx.icon(tag="chevron-down"),
-            on_click=SessionState.toggle_filter_dropdown(filter_name),
-            variant="outline",
-            width="100%",
-            justify_content="space-between",
-            color_scheme="gray",
-            size="2",
-            is_disabled=is_disabled, # <-- ✨ LÍNEA AÑADIDA
-        ),
-        rx.cond(
-            is_open,
-            rx.vstack(
-                rx.input(
-                    placeholder="Buscar...",
-                    value=search_value,
-                    on_change=on_change_search,
-                ),
-                rx.scroll_area(
-                    rx.vstack(
-                        rx.foreach(
-                            options,
-                            lambda option: rx.button(
-                                option,
-                                on_click=[
-                                    lambda: on_change_select(option),
-                                    SessionState.toggle_filter_dropdown(filter_name)
-                                ],
-                                width="100%",
-                                variant="soft", 
-                                color_scheme="gray",
-                                justify_content="start"
-                            )
-                        ),
-                        spacing="1",
-                        width="100%",
-                    ),
-                    max_height="200px",
-                    width="100%",
-                    type="auto",
-                    scrollbars="vertical",
-                ),
-                spacing="2",
-                padding="0.75em",
-                bg=rx.color("gray", 3),
-                border="1px solid",
-                border_color=rx.color("gray", 7),
-                border_radius="md",
-                position="absolute",
-                top="105%",
-                width="100%",
-                z_index=10,
+class SearchState(rx.State):
+    """El único y definitivo estado para la búsqueda."""
+    search_term: str = ""
+    search_results: List[ProductCardData] = []
+    search_performed: bool = False
+
+    @rx.event
+    def perform_search(self):
+        """Ejecuta la búsqueda, transforma los datos y redirige."""
+        from ..models import BlogPostModel
+
+        term = self.search_term.strip()
+        if not term:
+            return
+
+        with rx.session() as session:
+            statement = (
+                select(BlogPostModel)
+                .options(joinedload(BlogPostModel.comments))
+                .where(
+                    BlogPostModel.publish_active == True,
+                    BlogPostModel.publish_date < datetime.now(),
+                    BlogPostModel.title.ilike(f"%{term}%")
+                )
+                .order_by(BlogPostModel.created_at.desc())
             )
-        ),
-        position="relative",
-        width="100%",
-    )
+            results = session.exec(statement).unique().all()
+            self.search_results = [
+                ProductCardData(
+                    id=post.id,
+                    title=post.title,
+                    price=post.price,
+                    image_urls=post.image_urls,
+                    average_rating=post.average_rating,
+                    rating_count=post.rating_count
+                )
+                for post in results
+            ]
 
+        self.search_performed = True 
+        return rx.redirect("/search-results")
+    
 # ... (El resto del archivo 'components.py' no necesita cambios) ...
 
 def categories_button() -> rx.Component:
