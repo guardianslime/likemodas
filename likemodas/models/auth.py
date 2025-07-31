@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 import reflex as rx
 
+import likemodas
 from likemodas.models.user import UserInfo
 
 # --- CAMBIO CLAVE 1 ---
@@ -30,8 +31,5 @@ class LocalUser(rx.Model, table=True):
     username: str
     password_hash: bytes
     
-    # --- CAMBIO CLAVE 2 ---
-    # Se usa una referencia de string "UserInfo" para la relación.
-    # Esto es fundamental para que SQLAlchemy pueda resolver la relación más tarde,
-    # sin causar un error de importación ahora.
-    userinfo: Optional["UserInfo"] = Relationship(back_populates="user")
+    # La relación ahora apunta a la ruta completa y sin ambigüedades de UserInfo.
+    userinfo: Optional["likemodas.models.user.UserInfo"] = Relationship(back_populates="user")
