@@ -1,3 +1,5 @@
+# likemodas/blog/public_detail.py
+
 import reflex as rx
 import math
 
