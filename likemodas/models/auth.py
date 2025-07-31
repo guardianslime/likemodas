@@ -3,7 +3,10 @@ from typing import Optional
 from datetime import datetime
 import reflex as rx
 
-from likemodas.models.user import UserInfo
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .user import UserInfo
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)

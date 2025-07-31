@@ -5,7 +5,10 @@ from datetime import datetime
 import sqlalchemy
 import reflex as rx
 
-from likemodas.models.auth import VerificationToken
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .auth import VerificationToken
 from likemodas.models.blog import BlogPostModel
 from likemodas.models.cart import PurchaseModel
 from likemodas.models.comment import CommentModel, CommentVoteModel
