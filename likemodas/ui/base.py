@@ -15,13 +15,14 @@ def fixed_color_mode_button() -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    Función de layout final que renderiza vistas completamente separadas para
-    admin y cliente para evitar bugs de renderizado condicional de estilos.
+    Layout base unificado que previene desajustes de hidratación al usar
+    una estructura DOM consistente y aplicar condicionales en componentes internos.
     """
     if not isinstance(child, rx.Component):
-        child = rx.heading("This is not a valid child element")
+        # Asegura que el hijo sea un componente válido para evitar errores.
+        child = rx.heading("Error: El elemento hijo no es un componente válido")
 
-    # Contenido principal (lógica de verificación sin cambios)
+    # Contenido principal que requiere verificación de email
     verification_required_page = rx.center(
         rx.vstack(
             rx.heading("Verificación Requerida"),
@@ -30,48 +31,54 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         ),
         height="80vh"
     )
+
     main_content = rx.cond(
         (SessionState.is_authenticated & SessionState.authenticated_user_info.is_verified) | ~SessionState.is_authenticated,
         child,
         verification_required_page
     )
 
-    # --- NUEVA LÓGICA DE VISTAS SEPARADAS ---
-
-    # VISTA PARA EL ADMINISTRADOR
-    admin_view = rx.hstack(
-        sidebar(),
+    # --- ✨ LÓGICA DE LAYOUT UNIFICADO (LA SOLUCIÓN CLAVE) ---
+    unified_layout = rx.hstack(
+        # La barra lateral del admin o un fragmento vacío para el cliente.
+        # Esto mantiene la estructura hstack pero no renderiza nada visible para el cliente.
+        rx.cond(
+            SessionState.is_admin,
+            sidebar(),
+            rx.fragment() # Devuelve un nodo vacío, no afecta el DOM.
+        ),
+        # Contenedor principal para el contenido de la página.
         rx.box(
-            main_content,
-            padding="1em",
+            # La navbar pública o un fragmento vacío para el admin.
+            rx.cond(
+                ~SessionState.is_admin,
+                public_navbar(),
+                rx.fragment()
+            ),
+            # El contenido principal de la página.
+            rx.box(
+                main_content,
+                # El padding se ajusta condicionalmente para el cliente para dejar espacio a la navbar fija.
+                padding_top=rx.cond(~SessionState.is_admin, "6rem", "1em"),
+                padding_right="1em",
+                padding_bottom="1em",
+                padding_left="1em",
+                width="100%",
+            ),
             width="100%",
+        ),
+        # Botón de modo de color solo para clientes.
+        rx.cond(
+            ~SessionState.is_admin,
+            fixed_color_mode_button(),
+            rx.fragment()
         ),
         align="start",
         spacing="0",
         width="100%",
     )
 
-    # VISTA PARA EL CLIENTE PÚBLICO
-    customer_view = rx.box(
-        public_navbar(),
-        rx.box(
-            main_content,
-            padding_top="6rem",
-            padding_right="1em",
-            padding_bottom="1em",
-            padding_left="1em",
-            width="100%",
-        ),
-        fixed_color_mode_button(),
-    )
-
-    # El rx.cond principal ahora elige entre las dos vistas completas
-    unified_layout = rx.cond(
-        SessionState.is_admin,
-        admin_view,
-        customer_view
-    )
-
+    # El condicional final solo muestra un spinner mientras el estado principal se hidrata.
     return rx.cond(
         SessionState.is_hydrated,
         unified_layout,
