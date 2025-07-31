@@ -3,7 +3,9 @@ from typing import Optional, List
 from datetime import datetime
 import reflex as rx
 
-from likemodas.models.comment import CommentModel
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .comment import CommentModel
 from likemodas.models.user import UserInfo
 from .enums import Category
 from .base import format_utc_to_local

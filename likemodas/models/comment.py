@@ -3,7 +3,9 @@ from typing import List
 from datetime import datetime
 import reflex as rx
 
-from likemodas.models.blog import BlogPostModel
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .blog import BlogPostModel
 from likemodas.models.user import UserInfo
 from .base import format_utc_to_local
 from .enums import VoteType
