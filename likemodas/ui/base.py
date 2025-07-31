@@ -1,51 +1,17 @@
-# likemodas/ui/base.py (VERSIÓN CORREGIDA Y ROBUSTA)
-
 import reflex as rx
 from reflex.components.component import NoSSRComponent
-from..auth.state import SessionState
-from.nav import public_navbar 
-from.sidebar import sidebar
+from ..auth.state import SessionState
+from .nav import public_navbar
+from .sidebar import sidebar
 
 def fixed_color_mode_button() -> rx.Component:
     """Un botón de cambio de tema que se renderiza solo en el cliente."""
-    # Simplemente devuelve el componente rx.box.
-    # La lógica de renderizado del lado del cliente se maneja en public_layout.
     return rx.box(
         rx.color_mode.button(),
         position="fixed",
         bottom="1.5rem",
         right="1.5rem",
         z_index="1000",
-    )
-
-def protected_layout(child: rx.Component) -> rx.Component:
-    """El layout para usuarios administradores autenticados."""
-    return rx.hstack(
-        sidebar(),
-        rx.box(
-            child,
-            padding="1em",
-            width="100%",
-            id="my-content-area-el"
-        ),
-        align="start"
-    )
-
-def public_layout(child: rx.Component) -> rx.Component:
-    """El layout para usuarios no autenticados y clientes."""
-    return rx.fragment(
-        public_navbar(),
-        rx.box(
-            child,
-            padding="1em",
-            padding_top="6rem", 
-            width="100%",
-            id="my-content-area-el"
-        ),
-        rx.cond(
-            SessionState.is_hydrated,
-            fixed_color_mode_button() # Renderizar el botón SÓLO DESPUÉS de la hidratación
-        )
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
@@ -66,35 +32,42 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         height="80vh"
     )
 
-    # Lógica de renderizado condicional principal
+    # Contenido principal que se mostrará
+    main_content = rx.cond(
+        # Primero verifica si el usuario está autenticado y verificado
+        (SessionState.is_authenticated & SessionState.authenticated_user_info.is_verified) | ~SessionState.is_authenticated,
+        child,
+        verification_required_page
+    )
+
+    # Layout unificado y responsivo
+    unified_layout = rx.fragment(
+        # El navbar superior siempre es visible para todos en el layout público/de cliente
+        rx.cond(~SessionState.is_admin, public_navbar()),
+
+        rx.hstack(
+            # La barra lateral solo se muestra si es admin
+            rx.cond(SessionState.is_admin, sidebar()),
+            
+            # El contenido principal de la página
+            rx.box(
+                main_content,
+                padding="1em",
+                # Ajuste responsivo del padding superior para el navbar fijo
+                padding_top=rx.cond(~SessionState.is_admin, "6rem", "1em"),
+                width="100%",
+                id="my-content-area-el"
+            ),
+            align="start",
+            width="100%"
+        ),
+        
+        # El botón de modo oscuro solo para el layout público
+        rx.cond(~SessionState.is_admin, fixed_color_mode_button())
+    )
+
     return rx.cond(
         SessionState.is_hydrated,
-        # Si el estado está hidratado, procede con la lógica de autenticación y rol
-        rx.cond(
-            ~SessionState.is_authenticated,
-            # 1. Usuario NO autenticado: layout público.
-            public_layout(child),
-            # 2. Usuario SÍ autenticado: verificar rol y estado de verificación.
-            rx.cond(
-                SessionState.is_admin,
-                # 2a. Es ADMIN: layout protegido.
-                protected_layout(
-                    rx.cond(
-                        SessionState.authenticated_user_info.is_verified,
-                        child, # Si está verificado, muestra el contenido.
-                        verification_required_page # Si no, muestra la advertencia.
-                    )
-                ),
-                # 2b. Es CLIENTE: layout público.
-                public_layout(
-                    rx.cond(
-                        SessionState.authenticated_user_info.is_verified,
-                        child, # Si está verificado, muestra el contenido.
-                        verification_required_page # Si no, muestra la advertencia.
-                    )
-                )
-            )
-        ),
-        # Si el estado NO está hidratado, muestra un spinner de carga.
-        rx.center(rx.spinner(size="3"), height="100vh")
+        unified_layout,
+        rx.center(rx.spinner(size="3"), height="100vh") # Esqueleto de carga inicial
     )
