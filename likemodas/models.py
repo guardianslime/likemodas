@@ -49,16 +49,18 @@ class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key="localuser.id")
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
+    
     is_verified: bool = Field(default=False, nullable=False)
     user: Optional[LocalUser] = Relationship()
-    posts: List = Relationship(back_populates="userinfo")
-    verification_tokens: List = Relationship(back_populates="userinfo")
-    shipping_addresses: List = Relationship(back_populates="userinfo")
-    contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
-    purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
-    notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
-    comments: List["CommentModel"] = Relationship(back_populates="userinfo")
-    comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
+
+    posts: List[BlogPostModel] = Relationship(back_populates="userinfo")
+    verification_tokens: List[VerificationToken] = Relationship(back_populates="userinfo")
+    shipping_addresses: List[ShippingAddressModel] = Relationship(back_populates="userinfo")
+    contact_entries: List[ContactEntryModel] = Relationship(back_populates="userinfo")
+    purchases: List[PurchaseModel] = Relationship(back_populates="userinfo")
+    notifications: List[NotificationModel] = Relationship(back_populates="userinfo")
+    comments: List[CommentModel] = Relationship(back_populates="userinfo")
+    comment_votes: List[CommentVoteModel] = Relationship(back_populates="userinfo")
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
