@@ -1,24 +1,30 @@
-# likemodas/cart/state.py
+# likemodas/cart/state.py (CORREGIDO)
 
 import reflex as rx
 from typing import Dict, List, Tuple, Optional
 from ..auth.state import SessionState
 from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
-from sqlmodel import select
+from sqlmodel import select, or_, cast
+from sqlalchemy import String
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
-from sqlalchemy import or_, cast, String
 from ..data.colombia_locations import load_colombia_data
 from ..admin.state import AdminConfirmState
 from ..utils.formatting import format_to_cop 
 
+# --- ✅ SOLUCIÓN AL ERROR ---
+# El problema estaba en la definición de `image_urls`.
+# Su tipo es `list[str]`, pero tenía un valor por defecto de `""` (un string).
+# Esto causa un error de tipo en el servidor que impide que los datos se carguen.
+# La corrección es usar `[]` (una lista vacía) como valor por defecto,
+# que coincide con el tipo `list[str]`.
 class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
-    price_formatted: str = ""  # <-- ✅ CAMBIO CLAVE: Añadimos este campo
-    image_urls: list[str] = ""
+    price_formatted: str = ""
+    image_urls: list[str] = [] # <-- LÍNEA CORREGIDA
     average_rating: float = 0.0
     rating_count: int = 0
 
@@ -27,14 +33,11 @@ class ProductCardData(rx.Base):
         """Propiedad para el precio ya formateado."""
         return format_to_cop(self.price)
 
-
-
 class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # --- ✅ NUEVA BANDERA DE CARGA ---
     is_loading: bool = True
 
     @rx.var
@@ -98,16 +101,9 @@ class CartState(SessionState):
         """
         Establece la categoría desde la URL y carga los posts de forma segura.
         """
-        # Primero, obtenemos el nombre de la categoría desde la URL
         category_name = self.router.page.params.get("cat_name", "")
-
-        # Si el nombre de la categoría es diferente al actual, actualízalo.
-        # Esto previene recargas innecesarias si el estado ya es correcto.
         if self.current_category != category_name:
             self.current_category = category_name
-
-        # Llama al evento on_load principal, que ahora es el único responsable de cargar posts.
-        # Esto asegura una secuencia de carga predecible.
         yield type(self).on_load
 
     @rx.event
@@ -123,15 +119,13 @@ class CartState(SessionState):
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
-            # --- ✅ CAMBIO CLAVE AQUÍ ---
-            # Creamos la lista de posts y llenamos 'price_formatted' al instante.
             self.posts = [
                 ProductCardData(
                     id=p.id,
                     title=p.title,
                     price=p.price,
                     price_formatted=format_to_cop(p.price),
-                    image_urls=p.image_urls or [], # <-- LÍNEA CORREGIDA
+                    image_urls=p.image_urls or [],
                     average_rating=p.average_rating,
                     rating_count=p.rating_count
                 ) for p in results
