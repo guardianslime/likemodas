@@ -1,15 +1,17 @@
+# -----------------------------------------------------------------------------
+# likemodas/ui/nav.py
+# -----------------------------------------------------------------------------
 import reflex as rx
 from.. import navigation
 from .search_state import SearchState
 from ..cart.state import CartState
 from ..auth.state import SessionState
 from ..notifications.state import NotificationState
-# Se importa el nuevo estado que detecta el tipo de dispositivo
+# ✨ CAMBIO CLAVE: Se importa el nuevo estado que detecta el tipo de dispositivo
 from ..navigation.device import NavDeviceState
 
 def notification_icon() -> rx.Component:
     """Muestra el ícono y el menú de notificaciones."""
-    # (El código de esta función no necesita cambios, se mantiene igual)
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
@@ -23,9 +25,7 @@ def notification_icon() -> rx.Component:
                         bg="red", color="white",
                     )
                 ),
-                position="relative",
-                padding="0.5em",
-                cursor="pointer"
+                position="relative", padding="0.5em", cursor="pointer"
             ),
         ),
         rx.menu.content(
@@ -38,31 +38,26 @@ def notification_icon() -> rx.Component:
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
                             rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
                         ),
-                        on_click=rx.cond(
-                            n.url, 
-                            rx.redirect(n.url), 
-                            rx.toast.info("Esta notificación no tiene un enlace.")
-                        )
+                        on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace."))
                     )
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            bg="#2C004BF0",
-            style={"backdrop_filter": "blur(10px)"},
-            max_height="300px",
-            overflow_y="auto"
+            bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
+            max_height="300px", overflow_y="auto"
         ),
         on_open_change=lambda open: rx.cond(open, NotificationState.mark_all_as_read, None)
     )
 
 def public_navbar() -> rx.Component:
     """
-    Barra de navegación corregida para evitar el "layout shift".
+    Barra de navegación corregida para evitar el "layout shift" (cambio de tamaño).
     """
+    # ✅ SOLUCIÓN AL LAYOUT SHIFT:
     # Se usa el estado `device_type`. La barra de búsqueda ahora muestra
     # la versión móvil (un ícono) por defecto mientras el estado es "unknown".
     # Solo cuando el estado se confirma como "desktop", se expande.
-    # Esto evita el salto visual de grande a pequeño.
+    # Esto evita el salto visual de grande a pequeño al cargar.
     search_bar = rx.cond(
         NavDeviceState.device_type == "desktop",
         # Búsqueda para ESCRITORIO

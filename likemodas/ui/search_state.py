@@ -1,7 +1,11 @@
+
+# -----------------------------------------------------------------------------
+# likemodas/ui/search_state.py
+# -----------------------------------------------------------------------------
 import reflex as rx
 from typing import List
-# Se elimina la importación de BlogPostModel de la parte superior.
-# from ..models import BlogPostModel 
+# ✨ CAMBIO CLAVE: Se elimina la importación de BlogPostModel de la parte superior.
+# from ..models import BlogPostModel -> ELIMINADA
 from sqlmodel import select
 from datetime import datetime
 from ..cart.state import ProductCardData
@@ -16,7 +20,7 @@ class SearchState(rx.State):
     @rx.event
     def perform_search(self):
         """Ejecuta la búsqueda, transforma los datos y redirige."""
-        # --- CAMBIO CLAVE ---
+        # --- ✨ CAMBIO CLAVE ---
         # Se importa BlogPostModel DENTRO de la función.
         # Esto rompe el ciclo de importación, ya que el modelo solo se carga
         # cuando la búsqueda se ejecuta, no durante el inicio de la app.

@@ -1,7 +1,10 @@
+# -----------------------------------------------------------------------------
+# likemodas/ui/base.py
+# -----------------------------------------------------------------------------
 import reflex as rx
-# Se elimina la importación de SessionState de la parte superior del archivo.
-# from..auth.state import SessionState 
-from .nav import public_navbar
+# ✨ CAMBIO CLAVE: Se eliminan las importaciones de 'SessionState' y 'public_navbar' de la parte superior.
+# from..auth.state import SessionState -> ELIMINADA
+# from .nav import public_navbar -> ELIMINADA
 from .sidebar import sidebar
 
 def fixed_color_mode_button() -> rx.Component:
@@ -19,11 +22,12 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     Layout base robusto que previene errores visuales por estados sin hidratar
     y mantiene la estructura del DOM estable.
     """
-    # --- CAMBIO CLAVE ---
-    # Se importa SessionState DENTRO de la función.
-    # Esto rompe el ciclo de importación circular, ya que el módulo `auth.state`
-    # solo se carga cuando esta función es ejecutada, no cuando se carga el módulo `ui.base`.
+    # --- ✨ CAMBIO CLAVE ---
+    # Se importan los módulos necesarios DENTRO de la función.
+    # Esto rompe el ciclo de importación circular, ya que los módulos
+    # solo se cargan cuando esta función es ejecutada, no cuando se carga `ui.base`.
     from ..auth.state import SessionState
+    from .nav import public_navbar
 
     # Protege contra errores en el argumento
     if not isinstance(child, rx.Component):

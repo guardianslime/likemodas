@@ -1,3 +1,6 @@
+# -----------------------------------------------------------------------------
+# likemodas/navigation/device.py (NUEVO ARCHIVO)
+# -----------------------------------------------------------------------------
 import reflex as rx
 
 class NavDeviceState(rx.State):

@@ -1,3 +1,6 @@
+# -----------------------------------------------------------------------------
+# likemodas/models/user.py
+# -----------------------------------------------------------------------------
 from sqlmodel import Field, Relationship
 from typing import Optional, List
 from datetime import datetime
@@ -8,9 +11,11 @@ import reflex as rx
 # errores de importación en tiempo de ejecución.
 from typing import TYPE_CHECKING
 
-import likemodas
+# ✨ CAMBIO CLAVE: Se importa el módulo completo para usar la ruta absoluta.
+import likemodas.models.auth
+
 if TYPE_CHECKING:
-    from .auth import VerificationToken, LocalUser
+    from .auth import VerificationToken
     from .blog import BlogPostModel
     from .cart import PurchaseModel
     from .comment import CommentModel, CommentVoteModel
@@ -28,7 +33,7 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    # --- CAMBIO CLAVE ---
+    # --- ✅ SOLUCIÓN AL CICLO DE IMPORTACIÓN ---
     # Se usa la ruta completa al modelo 'LocalUser' para evitar la ambigüedad.
     # Esto le dice a SQLAlchemy exactamente a qué clase nos referimos: la tuya.
     user: Optional["likemodas.models.auth.LocalUser"] = Relationship(back_populates="userinfo")

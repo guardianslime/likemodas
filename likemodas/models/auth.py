@@ -1,28 +1,26 @@
+# -----------------------------------------------------------------------------
+# likemodas/models/auth.py
+# -----------------------------------------------------------------------------
 from sqlmodel import Field, Relationship
 from typing import Optional
 from datetime import datetime
 import reflex as rx
 
-import likemodas
-from likemodas.models.user import UserInfo
-
-# --- CAMBIO CLAVE 1 ---
-# Se elimina la importación directa de 'UserInfo' para romper el ciclo de importación.
+# ✨ CAMBIO CLAVE: Se importa el módulo completo para usar la ruta absoluta.
+import likemodas.models.user
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
     
-    # Se usa una referencia de string "UserInfo"
-    userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
-
+    # Se usa una referencia de string "UserInfo" para evitar la importación directa.
+    userinfo: "likemodas.models.user.UserInfo" = Relationship(back_populates="verification_tokens")
 
 class PasswordResetToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     user_id: int = Field(foreign_key="localuser.id")
     expires_at: datetime
-
 
 class LocalUser(rx.Model, table=True):
     __table_args__ = {"extend_existing": True}
