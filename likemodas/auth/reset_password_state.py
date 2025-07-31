@@ -3,7 +3,7 @@ import reflex_local_auth
 import bcrypt
 import sqlmodel
 from datetime import datetime
-from ..models import PasswordResetToken, LocalUser
+from ..models.auth import PasswordResetToken, LocalUser
 from ..auth.state import SessionState
 from ..utils.validators import validate_password
 
