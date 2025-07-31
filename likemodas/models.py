@@ -1,29 +1,3 @@
-# likemodas/pages/__init__.py (CORREGIDO)
-
-from .about import about_page
-from .dashboard import dashboard_component
-from .landing import landing_component
-from .pricing import pricing_page
-from .protected import protected_page
-from . import search_results
-# --- ✅ SOLUCIÓN AL ERROR "Elemento no es un componente válido" ---
-# Se corrige la importación para apuntar directamente a la FUNCIÓN `category_page`
-# dentro del módulo, en lugar de importar el módulo completo.
-from .category_page import category_page
-from . import test_page
-
-__all__ = [
-    'about_page',
-    'dashboard_component',
-    'landing_component',
-    'pricing_page',
-    'protected_page',
-    'search_results',
-    'category_page', # Ahora esto exporta la función correctamente.
-    'test_page'
-]
-
-
 # likemodas/models.py (CORREGIDO)
 
 from typing import Optional, List
@@ -40,6 +14,11 @@ import sqlalchemy
 import enum
 import math
 import pytz
+
+# --- ✅ SOLUCIÓN AL ModuleNotFoundError ---
+# Se eliminó la línea `from .about import about_page` que estaba aquí.
+# El archivo de modelos (models.py) nunca debe importar componentes de páginas,
+# ya que esto crea una importación circular y es incorrecto estructuralmente.
 
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     if not utc_dt:
@@ -67,8 +46,6 @@ class Category(str, enum.Enum):
     CALZADO = "calzado"
     MOCHILAS = "mochilas"
     OTROS = "otros"
-
-# --- Definiciones de Modelos (UserInfo, Tokens, etc. sin cambios) ---
 
 class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
@@ -101,7 +78,6 @@ class PasswordResetToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
-
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     userinfo: "UserInfo" = Relationship(back_populates="posts")
@@ -122,15 +98,11 @@ class BlogPostModel(rx.Model, table=True):
     def rating_count(self) -> int:
         return len(self.comments)
 
-    # --- ✅ SOLUCIÓN AL ERROR DE `ZeroDivisionError` EN EL BACKEND ---
-    # Se añade una comprobación para evitar la división por cero cuando un
-    # producto no tiene comentarios. Esto previene el error del servidor.
     @property
     def average_rating(self) -> float:
         if not self.comments:
             return 0.0
         total_rating = sum(comment.rating for comment in self.comments)
-        # Se añade la condición `if len(self.comments) > 0` para seguridad.
         return total_rating / len(self.comments) if len(self.comments) > 0 else 0.0
 
     @property
@@ -159,8 +131,6 @@ class BlogPostModel(rx.Model, table=True):
         if self.rating_count > 0:
             return f"{self.average_rating:.1f}"
         return ""
-
-# --- El resto de los modelos (ShippingAddress, Purchase, etc.) no necesitan cambios ---
 
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
