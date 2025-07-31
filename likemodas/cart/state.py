@@ -1,31 +1,22 @@
-# likemodas/cart/state.py (CORREGIDO)
-
 import reflex as rx
 from typing import Dict, List, Tuple, Optional
 from ..auth.state import SessionState
-from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
+from ..models import (
+    Category, PurchaseModel, PurchaseStatus, UserInfo, 
+    PurchaseItemModel, BlogPostModel, ShippingAddressModel
+)
+# --- CAMBIO 1: Se importa ProductCardData desde su nuevo archivo ---
+from ..models.product_data import ProductCardData
 from sqlmodel import select, or_, cast
 from sqlalchemy import String
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
-from ..data.colombia_locations import load_colombia_data
 from ..admin.state import AdminConfirmState
 from ..utils.formatting import format_to_cop 
 
-class ProductCardData(rx.Base):
-    id: int
-    title: str
-    price: float = 0.0
-    price_formatted: str = ""
-    image_urls: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
-
-    @property
-    def price_cop(self) -> str:
-        """Propiedad para el precio ya formateado."""
-        return format_to_cop(self.price)
+# --- CAMBIO 2: Se elimina la definición de ProductCardData de este archivo ---
+# class ProductCardData(rx.Base): ... (ESTA CLASE SE HA MOVIDO)
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
@@ -34,6 +25,7 @@ class CartState(SessionState):
 
     is_loading: bool = True
 
+    # ... (El resto del archivo permanece exactamente igual)
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
         return self.posts[:20]
@@ -86,7 +78,7 @@ class CartState(SessionState):
                 if self.filter_tipo_zapato: query = query.where(cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_zapato)
             elif self.current_category == Category.MOCHILAS.value:
                 if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
-            else: # Filtros generales para "todos" o sin categoría
+            else:
                 if self.filter_tipo_general: query = query.where(or_(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila))
                 if self.filter_material_tela: mat = f"%{self.filter_material_tela}%"; query = query.where(or_(cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat), cast(BlogPostModel.attributes['material'], String).ilike(mat)))
                 if self.filter_medida_talla: med = f"%{self.filter_medida_talla}%"; query = query.where(or_(cast(BlogPostModel.attributes['talla'], String).ilike(med), cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med), cast(BlogPostModel.attributes['medidas'], String).ilike(med)))
@@ -109,7 +101,6 @@ class CartState(SessionState):
 
     @rx.event
     def on_load(self):
-        """Carga los posts de forma segura, manejando posibles datos nulos."""
         self.is_loading = True
         yield
         with rx.session() as session:
@@ -120,15 +111,11 @@ class CartState(SessionState):
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
-            # --- ✅ SOLUCIÓN AL ERROR DE CARGA (línea 105) ---
-            # Se asegura de que si `p.price` es `None` en la base de datos,
-            # se use `0.0` por defecto. Esto previene el error del servidor.
             self.posts = [
                 ProductCardData(
                     id=p.id or 0,
                     title=p.title or "Producto sin nombre",
                     price=p.price or 0.0,
-                    price_formatted=format_to_cop(p.price or 0.0),
                     image_urls=p.image_urls or [],
                     average_rating=p.average_rating or 0.0,
                     rating_count=p.rating_count or 0
@@ -185,11 +172,8 @@ class CartState(SessionState):
             post_ids = list(self.cart.keys())
             db_posts_map = {p.id: p for p in session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()}
             
-            # --- ✅ SOLUCIÓN AL ERROR ---
-            # Se asegura que `user_info.id` sea un entero antes de usarlo.
-            # Esto previene el error del servidor si el ID no está disponible.
             new_purchase = PurchaseModel(
-                userinfo_id=int(user_info.id), # <-- LÍNEA CORREGIDA
+                userinfo_id=int(user_info.id),
                 total_price=self.cart_total, 
                 status=PurchaseStatus.PENDING,
                 shipping_name=self.default_shipping_address.name, 
