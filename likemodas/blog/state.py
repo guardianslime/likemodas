@@ -313,12 +313,11 @@ class BlogEditFormState(BlogPostState):
 class CommentState(SessionState):
     """
     Estado que maneja la vista del post público y sus comentarios.
-    Esta clase ha sido completamente reestructurada para corregir errores.
     """
     is_loading: bool = True
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
-    comments: list[CommentModel | None] = []
+    comments: list[CommentModel] = []
     new_comment_text: str = ""
     new_comment_rating: int = 0
 
@@ -350,15 +349,14 @@ class CommentState(SessionState):
 
     @rx.var
     def rating_count(self) -> int:
-        return len([c for c in self.comments if c is not None])
+        return len(self.comments)
 
     @rx.var
     def average_rating(self) -> float:
-        valid_comments = [c for c in self.comments if c is not None]
-        if not valid_comments:
+        if not self.comments:
             return 0.0
-        total_rating = sum(comment.rating for comment in valid_comments)
-        return total_rating / len(valid_comments)
+        total_rating = sum(comment.rating for comment in self.comments)
+        return total_rating / len(self.comments)
 
     @rx.var
     def user_has_purchased(self) -> bool:
@@ -393,48 +391,47 @@ class CommentState(SessionState):
 
     @rx.event
     def on_load(self):
-        """Maneja la carga de datos de la página de detalle del producto."""
+        if not self.post_id:
+            self.is_loading = False
+            return
+
         self.is_loading = True
         yield
+
         try:
-            # 1. Resetear el estado para mostrar los skeletons
+            pid = int(self.post_id)
+        except (ValueError, TypeError):
             self.post = None
-            self.comments = [None] * 3
-            self.img_idx = 0
-            self.new_comment_text = ""
-            self.new_comment_rating = 0
-
-            # 2. Obtener el ID y cargar el post
-            try:
-                pid = int(self.post_id)
-            except (ValueError, TypeError):
-                # Si el ID no es válido, terminamos la carga.
-                self.comments = []
-                return
-
-            with rx.session() as session:
-                db_post_result = session.exec(
-                    select(BlogPostModel).options(
-                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                        .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                        .joinedload(CommentModel.votes)
-                    )
-                    .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
-                ).unique().one_or_none()
-
-                self.post = db_post_result
-                if db_post_result:
-                    self.comments = sorted(
-                        db_post_result.comments,
-                        key=lambda c: c.created_at,
-                        reverse=True
-                    )
-                else:
-                    self.comments = []
-        finally:
-            # 3. Asegurarnos de que el estado de carga siempre se desactive
+            self.comments = []
             self.is_loading = False
+            return
+
+        with rx.session() as session:
+            db_post_result = session.exec(
+                select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.votes)
+                )
+                .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
+            ).unique().one_or_none()
+
+            if db_post_result:
+                self.post = db_post_result
+                self.comments = sorted(
+                    db_post_result.comments,
+                    key=lambda c: c.created_at,
+                    reverse=True
+                )
+            else:
+                self.post = None
+                self.comments = []
+
+        self.img_idx = 0
+        self.new_comment_text = ""
+        self.new_comment_rating = 0
+        self.is_loading = False
 
     @rx.event
     def set_new_comment_rating(self, rating: int):

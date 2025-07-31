@@ -96,14 +96,18 @@ class CartState(SessionState):
     @rx.event
     def load_posts_and_set_category(self):
         """
-        Establece la categoría actual desde la URL y luego encadena la carga de posts.
+        Establece la categoría desde la URL y carga los posts de forma segura.
         """
-        self.is_loading = True
-        yield
-        
-        self.current_category = self.router.page.params.get("cat_name", "")
-        
-        # SOLUCIÓN: Usa type(self) para encadenar el siguiente evento de forma segura.
+        # Primero, obtenemos el nombre de la categoría desde la URL
+        category_name = self.router.page.params.get("cat_name", "")
+
+        # Si el nombre de la categoría es diferente al actual, actualízalo.
+        # Esto previene recargas innecesarias si el estado ya es correcto.
+        if self.current_category != category_name:
+            self.current_category = category_name
+
+        # Llama al evento on_load principal, que ahora es el único responsable de cargar posts.
+        # Esto asegura una secuencia de carga predecible.
         yield type(self).on_load
 
     @rx.event
