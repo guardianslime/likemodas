@@ -7,6 +7,8 @@ import reflex as rx
 # para que tu editor de código entienda los tipos, pero sin causar
 # errores de importación en tiempo de ejecución.
 from typing import TYPE_CHECKING
+
+import likemodas
 if TYPE_CHECKING:
     from .auth import VerificationToken, LocalUser
     from .blog import BlogPostModel
@@ -27,10 +29,9 @@ class UserInfo(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # --- CAMBIO CLAVE ---
-    # Se usa la referencia de string "LocalUser". SQLModel es lo suficientemente
-    # inteligente como para encontrar el modelo correcto que ha sido registrado,
-    # que en este caso será tu versión extendida de LocalUser.
-    user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
+    # Se usa la ruta completa al modelo 'LocalUser' para evitar la ambigüedad.
+    # Esto le dice a SQLAlchemy exactamente a qué clase nos referimos: la tuya.
+    user: Optional["likemodas.models.auth.LocalUser"] = Relationship(back_populates="userinfo")
     
     # El resto de las relaciones también usan strings para mantener la consistencia.
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
