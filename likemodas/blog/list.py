@@ -8,33 +8,41 @@ from .. import navigation
 from .state import BlogPostState
 
 # (La función _gallery_card no cambia)
-def _gallery_card(post: BlogPostModel):
-    return rx.box(
-        rx.link(
-            rx.vstack(
-                rx.box(
-                    rx.cond(
-                        post.images & (post.images.length() > 0),
-                        rx.image(src=rx.get_upload_url(post.images[0]), width="100%", height="260px", object_fit="cover", border_radius="md", style={"_hover": {"transform": "scale(1.05)"}}),
-                        rx.box("Sin imagen", width="100%", height="260px", bg="#eee", align="center", justify="center", display="flex", border_radius="md")
+def _gallery_card(post: BlogPostModel) -> rx.Component:
+    return rx.link(
+        rx.card(
+            rx.inset(
+                # --- CORRECCIÓN 1: La condición ---
+                # Simplemente comprueba si la lista 'image_urls' tiene algo.
+                rx.cond(
+                    post.image_urls,
+                    # --- CORRECCIÓN 2: La fuente de la imagen ---
+                    # Usa la primera imagen de la lista como miniatura.
+                    rx.image(
+                        src=rx.get_upload_url(post.image_urls[0]), # Se asume que las URLs ya están completas aquí.
+                        width="100%",
+                        height="140px",
+                        object_fit="cover",
                     ),
-                    position="relative",
-                    width="100%",
-                ),
-                rx.heading(post.title, weight="bold", size="4", color=rx.color_mode_cond("black", "white"), margin_top="0.5em"),
-                rx.text(rx.cond(post.price, "$" + post.price.to(str), "$0.00"), color=rx.color_mode_cond("black", "white"), size="4",),
-                spacing="2",
-                align="start",
-                padding="0.5em"
+                    # Fallback si no hay imágenes (esto está bien)
+                    rx.box(
+                        rx.icon("image_off", size=48),
+                        height="140px",
+                        width="100%",
+                        bg=rx.color("gray", 4),
+                        display="flex",
+                        align_items="center",
+                        justify_content="center",
+                    )
+                )
             ),
-            href=f"{navigation.routes.BLOG_POSTS_ROUTE}/{post.id}"
+            # El resto de tu tarjeta
+            rx.text(post.title, weight="bold", as_="div", size="3", margin_bottom="1"),
+            rx.text(post.content, as_="p", size="2", color_scheme="gray", trim="end", height="4.5em"),
         ),
-        bg=rx.color_mode_cond("#f9f9f9", "#1D1D1D"),
-        border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #2a2a2a"),
-        border_radius="lg",
-        box_shadow="lg",
-        overflow="hidden",
-        transition="all 0.2s ease-in-out",
+        href=f"/blog-public/{post.id}",
+        as_child=True,
+        style={"text_decoration": "none"}
     )
 
 # --- ✨ CAMBIO: Se usa el decorador de admin ---

@@ -1,5 +1,6 @@
-# likemodas/auth/state.py
-
+# ============================================================================
+# likemodas/auth/state.py (CORREGIDO)
+# ============================================================================
 import re
 import reflex as rx
 import reflex_local_auth
@@ -261,7 +262,6 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
         
         if self.new_user_id >= 0:
             with rx.session() as session:
-                # 1. Crear el UserInfo
                 is_admin_user = form_data.get("username") == "guardiantlemor01"
                 user_role = UserRole.ADMIN if is_admin_user else UserRole.CUSTOMER
                 
@@ -274,10 +274,8 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
                 session.commit()
                 session.refresh(new_user_info)
 
-                # ✨ --- LÓGICA DE VERIFICACIÓN AÑADIDA --- ✨
-                # 2. Crear el token de verificación
                 token_str = secrets.token_urlsafe(32)
-                expires = datetime.utcnow() + timedelta(hours=24) # El token dura 24 horas
+                expires = datetime.utcnow() + timedelta(hours=24)
                 
                 verification_token = VerificationToken(
                     token=token_str,
@@ -287,12 +285,9 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
                 session.add(verification_token)
                 session.commit()
                 
-                # 3. Enviar el correo electrónico
                 send_verification_email(
                     recipient_email=new_user_info.email,
                     token=token_str
                 )
-                # ✨ --- FIN DE LA LÓGICA --- ✨
                 
         return registration_event
-    

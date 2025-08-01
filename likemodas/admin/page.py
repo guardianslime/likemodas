@@ -45,43 +45,6 @@ def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) ->
         ), width="100%",
     )
 
-def purchase_card_history(purchase: PurchaseCardData) -> rx.Component:
-    """Displays the details of a purchase in the admin history (without confirm button)."""
-    return rx.card(
-        rx.vstack(
-            rx.hstack(
-                rx.vstack(
-                    rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
-                    rx.text(f"Cliente: {purchase.customer_name} ({purchase.customer_email})", size="3"),
-                    rx.text(f"Fecha: {purchase.purchase_date_formatted}", size="3"),
-                    align_items="start",
-                ),
-                rx.spacer(),
-                rx.vstack(
-                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
-                    rx.heading(purchase.total_price_cop, size="6"), # ✅ CAMBIO AQUÍ
-                    align_items="end",
-                ), width="100%",
-            ),
-            rx.divider(),
-            rx.vstack(
-                rx.text("Detalles de Envío:", weight="medium", size="4"),
-                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
-                rx.text(f"Dirección: {purchase.shipping_full_address}", size="3"),
-                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
-                spacing="1", align_items="start", width="100%",
-            ),
-            rx.divider(),
-            rx.vstack(
-                rx.text("Artículos:", weight="medium", size="4"),
-                rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
-                spacing="1", align_items="start", width="100%",
-            ),
-            # NOTA: El botón "Confirmar Pago" ha sido eliminado de aquí.
-            spacing="4", width="100%",
-        ), width="100%",
-    )
-
 @require_admin
 def admin_confirm_page() -> rx.Component:
     """Admin page to confirm pending payments."""
@@ -113,8 +76,8 @@ def payment_history_page() -> rx.Component:
                 rx.cond(
                     PaymentHistoryState.filtered_purchases,
                     # --- ✅ CAMBIO CLAVE AQUÍ ---
-                    # Se llama al nuevo componente que no tiene el botón.
-                    rx.foreach(PaymentHistoryState.filtered_purchases, lambda p: purchase_card_history(p)),
+                    # Se llama a la función principal con el parámetro is_history=True
+                    rx.foreach(PaymentHistoryState.filtered_purchases, lambda p: purchase_card_admin(p, is_history=True)),
                     rx.center(rx.text("No se encontró historial para la búsqueda."), padding_y="2em")
                 ),
                 align="center", spacing="6", padding="2em", width="100%", max_width="960px",

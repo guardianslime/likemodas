@@ -1,35 +1,41 @@
-# likemodas/ui/carousel.py (NUEVA VERSIÓN con react-responsive-carousel)
-
-import reflex as rx
+# ============================================================================
+# ARCHIVO: likemodas/ui/carousel.py
+# REVISIÓN APLICADA: Se reemplaza el contenido con tu código para asegurar la definición correcta.
+# ============================================================================
 from reflex.components.component import NoSSRComponent
+import reflex as rx
 
 class Carousel(NoSSRComponent):
     """
-    Wrapper para el componente react-responsive-carousel.
+    Un componente que envuelve react-responsive-carousel.
+    Un error aquí puede causar un LookupError durante la compilación.
     """
-    # La librería a instalar con npm
-    library = "react-responsive-carousel"
-    # El tag del componente principal
-    tag = "Carousel"
-    # Es una exportación nombrada
-    is_default = False
+    # VERIFICACIÓN CRÍTICA:
+    # 1. 'library' debe coincidir EXACTAMENTE con el nombre del paquete en npm.
+    # 2. 'tag' debe coincidir EXACTAMENTE con el nombre del componente exportado
+    #    (usualmente en PascalCase).
+    library: str = "react-responsive-carousel"
+    tag: str = "Carousel"
 
-    # Propiedades que podemos configurar
-    show_arrows: rx.Var[bool] = True
-    show_indicators: rx.Var[bool] = True
-    show_status: rx.Var[bool] = False
-    infinite_loop: rx.Var[bool] = True
-    auto_play: rx.Var[bool] = True
-    stop_on_hover: rx.Var[bool] = True
-    use_keyboard_arrows: rx.Var[bool] = True
-    swipeable: rx.Var[bool] = True
-    emulate_touch: rx.Var[bool] = True # Permite arrastrar con el mouse
+    # Propiedades del carrusel
+    show_arrows: rx.Var[bool]
+    show_status: rx.Var[bool]
+    show_indicators: rx.Var[bool]
+    show_thumbs: rx.Var[bool]
+    infinite_loop: rx.Var[bool]
+    auto_play: rx.Var[bool]
+    
+    # Se añade el import del CSS necesario para el carrusel
+    def add_imports(self) -> dict[str, str] | None:
+        return {"": "react-responsive-carousel/lib/styles/carousel.min.css"}
 
-    def _get_imports(self) -> dict:
-        """Añade la importación del CSS necesario."""
-        imports = super()._get_imports()
-        imports[""] = imports.get("", set()) | {"react-responsive-carousel/lib/styles/carousel.min.css"}
-        return imports
-
-# Creamos una instancia para usarla fácilmente
-carousel = Carousel.create
+    @classmethod
+    def create(cls, *children, **props):
+        # Aseguramos valores por defecto razonables
+        props.setdefault("show_arrows", True)
+        props.setdefault("show_status", False)
+        props.setdefault("show_indicators", True)
+        props.setdefault("show_thumbs", False)
+        props.setdefault("infinite_loop", True)
+        props.setdefault("auto_play", True)
+        return super().create(*children, **props)

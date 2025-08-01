@@ -1,8 +1,13 @@
+# -----------------------------------------------------------------------------
+# likemodas/auth/reset_password_state.py (ARCHIVO CORREGIDO)
+# -----------------------------------------------------------------------------
 import reflex as rx
 import reflex_local_auth
 import bcrypt
 import sqlmodel
 from datetime import datetime
+
+# ✅ SOLUCIÓN: Se importa desde el __init__.py de models para una ruta única.
 from ..models import PasswordResetToken, LocalUser
 from ..auth.state import SessionState
 from ..utils.validators import validate_password
@@ -45,10 +50,8 @@ class ResetPasswordState(SessionState):
             self.message = "Las contraseñas no coinciden."
             return
         
-        # ✨ 2. Aplica la nueva validación de contraseña
         password_errors = validate_password(self.password)
         if password_errors:
-            # Une los errores en un solo mensaje con saltos de línea
             self.message = "\n".join(password_errors)
             return
 
@@ -64,8 +67,6 @@ class ResetPasswordState(SessionState):
             user = session.get(LocalUser, db_token.user_id)
             if user:
                 hashed_password = bcrypt.hashpw(self.password.encode("utf-8"), bcrypt.gensalt())
-                
-                # ✨ CAMBIO CRÍTICO: Elimina .decode("utf-8") para guardar los bytes directamente
                 user.password_hash = hashed_password
                 
                 session.add(user)

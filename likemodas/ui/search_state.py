@@ -1,38 +1,36 @@
-# likemodas/ui/search_state.py (VERSIÓN FINAL Y CORREGIDA)
 
+# -----------------------------------------------------------------------------
+# likemodas/ui/search_state.py
+# -----------------------------------------------------------------------------
 import reflex as rx
 from typing import List
-from ..models import BlogPostModel
+# ✨ CAMBIO CLAVE: Se elimina la importación de BlogPostModel de la parte superior.
+# from ..models import BlogPostModel -> ELIMINADA
 from sqlmodel import select
 from datetime import datetime
-from .. import navigation
-from sqlalchemy.orm import joinedload
-
-# --- CAMBIO 1: Importamos el modelo de datos seguro ---
 from ..cart.state import ProductCardData
+from sqlalchemy.orm import joinedload
 
 class SearchState(rx.State):
     """El único y definitivo estado para la búsqueda."""
     search_term: str = ""
-    
-    # --- CAMBIO 2: Los resultados ahora serán del tipo seguro ---
     search_results: List[ProductCardData] = []
-    
     search_performed: bool = False
 
     @rx.event
     def perform_search(self):
         """Ejecuta la búsqueda, transforma los datos y redirige."""
-        term = self.search_term.strip()
-        
         # --- ✨ CAMBIO CLAVE ---
-        # Si la búsqueda está vacía, simplemente no hacemos nada.
+        # Se importa BlogPostModel DENTRO de la función.
+        # Esto rompe el ciclo de importación, ya que el modelo solo se carga
+        # cuando la búsqueda se ejecuta, no durante el inicio de la app.
+        from ..models import BlogPostModel
+
+        term = self.search_term.strip()
         if not term:
             return
-        # --- FIN DEL CAMBIO ---
 
         with rx.session() as session:
-            # ... (el resto de la función sigue igual)
             statement = (
                 select(BlogPostModel)
                 .options(joinedload(BlogPostModel.comments))
@@ -49,7 +47,7 @@ class SearchState(rx.State):
                     id=post.id,
                     title=post.title,
                     price=post.price,
-                    images=post.images,
+                    image_urls=post.image_urls,
                     average_rating=post.average_rating,
                     rating_count=post.rating_count
                 )

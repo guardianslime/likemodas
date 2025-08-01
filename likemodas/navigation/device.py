@@ -1,24 +1,32 @@
-# likemodas/navigation/device.py (CÓDIGO CORREGIDO)
-
+# ============================================================================
+# likemodas/navigation/device.py (SOLUCIÓN AL AttributeError)
+# ============================================================================
 import reflex as rx
 
 class NavDeviceState(rx.State):
     """Maneja el estado del dispositivo (móvil o escritorio) para la UI."""
-    is_mobile: bool = False
-    is_desktop: bool = False
+    device_type: str = "unknown"
 
-    def on_mount(self):
+    @rx.event
+    def set_device_type(self, device_type: str):
+        """Event handler para establecer el tipo de dispositivo desde el frontend."""
+        self.device_type = device_type
+
+    @rx.event
+    def on_load_check_device(self):
+        """
+        Evento que se llama al cargar la página para ejecutar el script que detecta el tamaño.
+        """
+        # ✅ SOLUCIÓN AL AttributeError: Se obtiene el nombre del manejador desde la CLASE.
+        handler_name = type(self).set_device_type.get_event_handler_name()
+        
         return rx.call_script(
             f"""
             const width = window.innerWidth;
-            
-            // ✨ CORREGIDO: Se cambió el comentario de Python (#) a JavaScript (//).
-            // Se usa el nuevo nombre del estado en el script.
-            if (window.nav_device_state) {{
-                nav_device_state.set_is_mobile(width < 768);
-                nav_device_state.set_is_desktop(width >= 768);
+            if (width < 768) {{
+                {handler_name}("mobile");
             }} else {{
-                console.error("El objeto de estado 'nav_device_state' no fue encontrado.");
+                {handler_name}("desktop");
             }}
             """
         )
