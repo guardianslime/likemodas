@@ -8,7 +8,7 @@ from ..models import (
     Category, PurchaseModel, PurchaseStatus, UserInfo, 
     PurchaseItemModel, BlogPostModel, ShippingAddressModel
 )
-from ..models.product_data import ProductCardData
+from ..models import ProductCardData # <-- ASÍ DEBE QUEDAR
 from sqlmodel import select, or_
 from sqlalchemy import func
 from datetime import datetime
