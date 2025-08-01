@@ -5,7 +5,7 @@ from reflex_local_auth.pages.login import LoginState
 from reflex_local_auth.pages.registration import RegistrationState
 
 from .. import navigation
-from ..ui.base import base_page
+from ..ui.base import base_page, public_layout
 
 # Importamos los formularios y estados necesarios
 from .forms import my_register_form
@@ -132,7 +132,7 @@ def verification_page() -> rx.Component:
         ),
         min_height="85vh"
     )
-    return base_page(page_content)
+    return public_layout(page_content)
 
 def forgot_password_page() -> rx.Component:
     # ✨ CÓDIGO COMPLETO RESTAURADO AQUÍ
@@ -215,4 +215,4 @@ def reset_password_page() -> rx.Component:
         ),
         min_height="85vh"
     )
-    return base_page(page_content)
+    return public_layout(page_content)
