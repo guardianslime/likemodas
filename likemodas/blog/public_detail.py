@@ -213,7 +213,6 @@ def comment_section() -> rx.Component:
         spacing="5", width="100%", max_width="1120px", align="center", padding_top="1em",
     )
     
-@rx.page(route="/blog-public/[blog_public_id]", on_load=CommentState.on_load)
 def blog_public_detail_page() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
     return base_page(
@@ -221,10 +220,6 @@ def blog_public_detail_page() -> rx.Component:
             rx.vstack(
                 rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
                 
-                # --- ✅ LÓGICA CORREGIDA ---
-                # Se comprueba si `CommentState.post` tiene datos.
-                # Mientras carga, `CommentState.post` será `None` y se mostrará el spinner.
-                # Si no se encuentra, también será `None` y se mostrará el mensaje de error.
                 rx.cond(
                     CommentState.post,
                     rx.fragment(
@@ -242,7 +237,7 @@ def blog_public_detail_page() -> rx.Component:
                     # Muestra un spinner mientras carga o un mensaje si falla
                     rx.center(
                         rx.cond(
-                            CommentState.is_hydrated, # Solo muestra el mensaje después de intentar cargar
+                            CommentState.is_hydrated,
                             rx.text("Publicación no encontrada o no disponible.", color="red"),
                             rx.spinner(size="3")
                         ),
