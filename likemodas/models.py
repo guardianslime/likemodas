@@ -170,6 +170,9 @@ class PurchaseModel(rx.Model, table=True):
 
     @property
     def items_formatted(self) -> list[str]:
+        # --- ✅ CORRECCIÓN CLAVE AQUÍ ---
+        # Se asegura de que siempre se devuelva una lista,
+        # incluso si no hay artículos, para evitar el error 'map' of undefined.
         if not self.items:
             return []
         return [
