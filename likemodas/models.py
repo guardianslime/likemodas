@@ -1,5 +1,5 @@
 # ============================================================================
-# likemodas/models.py (Corregido)
+# likemodas/models.py (SOLUCIÓN FINAL)
 # ============================================================================
 from __future__ import annotations
 from typing import Optional, List
@@ -7,10 +7,11 @@ from sqlmodel import Field, Relationship, Column, JSON
 import sqlalchemy
 from datetime import datetime
 import reflex as rx
-from reflex_local_auth.user import LocalUser as reflex_LocalUser
+# ✅ SOLUCIÓN: Importamos LocalUser directamente de la librería.
+# Ya no definimos nuestra propia clase LocalUser.
+from reflex_local_auth.user import LocalUser
 import enum
 import pytz
-# ✅ SOLUCIÓN: Se cambia la importación de '..' a '.' para que sea relativa al paquete actual.
 from .utils.formatting import format_to_cop
 
 # --- Helper Functions ---
@@ -46,12 +47,7 @@ class Category(str, enum.Enum):
     OTROS = "otros"
 
 # --- Models ---
-class LocalUser(reflex_LocalUser, table=True):
-    __table_args__ = {"extend_existing": True}
-    userinfo: Optional["UserInfo"] = Relationship(back_populates="user")
-
 class UserInfo(rx.Model, table=True):
-    __table_args__ = {"extend_existing": True}
     email: str
     user_id: int = Field(foreign_key="localuser.id")
     role: UserRole = Field(default=UserRole.CUSTOMER)
@@ -59,7 +55,7 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
 
-    user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
+    user: Optional["LocalUser"] = Relationship() # La relación ahora apunta al LocalUser de la librería
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
@@ -70,14 +66,12 @@ class UserInfo(rx.Model, table=True):
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
 
 class VerificationToken(rx.Model, table=True):
-    __table_args__ = {"extend_existing": True}
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
     userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
 
 class PasswordResetToken(rx.Model, table=True):
-    __table_args__ = {"extend_existing": True}
     token: str = Field(unique=True, index=True)
     user_id: int = Field(foreign_key="localuser.id")
     expires_at: datetime
@@ -181,7 +175,7 @@ class ContactEntryModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
     @property
-    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
+def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
 class CommentModel(rx.Model, table=True):
     content: str
