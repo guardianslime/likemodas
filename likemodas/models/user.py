@@ -1,8 +1,8 @@
-# -----------------------------------------------------------------------------
-# likemodas/models/user.py
-# -----------------------------------------------------------------------------
+# ============================================================================
+# likemodas/models/user.py (CORRECCIÓN APLICADA)
+# ============================================================================
 from sqlmodel import Field, Relationship
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 import reflex as rx
 
@@ -35,11 +35,12 @@ class UserInfo(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
-    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
-    verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
-    shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
-    purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
-    notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
-    comments: List["CommentModel"] = Relationship(back_populates="userinfo")
-    contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
-    comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
+    # --- ✅ CAMBIO: Se usa list[...] en lugar de List[...] ---
+    posts: list["BlogPostModel"] = Relationship(back_populates="userinfo")
+    verification_tokens: list["VerificationToken"] = Relationship(back_populates="userinfo")
+    shipping_addresses: list["ShippingAddressModel"] = Relationship(back_populates="userinfo")
+    purchases: list["PurchaseModel"] = Relationship(back_populates="userinfo")
+    notifications: list["NotificationModel"] = Relationship(back_populates="userinfo")
+    comments: list["CommentModel"] = Relationship(back_populates="userinfo")
+    contact_entries: list["ContactEntryModel"] = Relationship(back_populates="userinfo")
+    comment_votes: list["CommentVoteModel"] = Relationship(back_populates="userinfo")

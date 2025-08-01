@@ -1,17 +1,18 @@
+# ============================================================================
+# likemodas/models/blog.py (CORRECCIÓN APLICADA)
+# ============================================================================
 from sqlmodel import Field, Relationship, Column, JSON
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 import reflex as rx
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .comment import CommentModel
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
     from .user import UserInfo
 from .enums import Category
 from .base import format_utc_to_local
-from likemodas.utils.formatting import format_to_cop # asegúrate que este import exista
+from likemodas.utils.formatting import format_to_cop
 
 class BlogPostModel(rx.Model, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -20,7 +21,7 @@ class BlogPostModel(rx.Model, table=True):
     content: str
     price: float = 0.0
     attributes: dict = Field(default={}, sa_column=Column(JSON))
-    image_urls: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    image_urls: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     publish_active: bool = False
     publish_date: datetime = Field(default_factory=datetime.utcnow)
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -28,7 +29,8 @@ class BlogPostModel(rx.Model, table=True):
     category: Category = Field(default=Category.OTROS)
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
-    comments: List["CommentModel"] = Relationship(back_populates="blog_post")
+    # --- ✅ CAMBIO: Se usa list[...] en lugar de List[...] ---
+    comments: list["CommentModel"] = Relationship(back_populates="blog_post")
 
     @property
     def rating_count(self) -> int:
@@ -36,10 +38,8 @@ class BlogPostModel(rx.Model, table=True):
 
     @property
     def average_rating(self) -> float:
-        if not self.comments:
-            return 0.0
-        total_rating = sum(c.rating for c in self.comments)
-        return total_rating / len(self.comments)
+        if not self.comments: return 0.0
+        return sum(c.rating for c in self.comments) / len(self.comments)
 
     @property
     def created_at_formatted(self) -> str:

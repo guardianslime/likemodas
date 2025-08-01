@@ -1,14 +1,13 @@
+# ============================================================================
+# likemodas/models/comment.py (CORRECCIÓN APLICADA)
+# ============================================================================
 from sqlmodel import Field, Relationship, Column
-from typing import List
 from datetime import datetime
 import reflex as rx
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .blog import BlogPostModel
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
     from .user import UserInfo
 from .base import format_utc_to_local
 from .enums import VoteType
@@ -23,7 +22,8 @@ class CommentModel(rx.Model, table=True):
 
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
-    votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
+    # --- ✅ CAMBIO: Se usa list[...] en lugar de List[...] ---
+    votes: list["CommentVoteModel"] = Relationship(back_populates="comment")
 
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column("vote_type", nullable=False))

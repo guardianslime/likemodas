@@ -1,5 +1,7 @@
-# likemodas/navigation/device.py (ARCHIVO CORREGIDO)
-
+# ============================================================================
+# ARCHIVO: likemodas/navigation/device.py
+# CORRECCIÓN: Soluciona el AttributeError en producción
+# ============================================================================
 import reflex as rx
 
 class NavDeviceState(rx.State):
@@ -8,7 +10,7 @@ class NavDeviceState(rx.State):
 
     @rx.event
     def set_device_type(self, device_type: str):
-        """Un event handler para establecer el tipo de dispositivo desde el frontend."""
+        """Event handler para establecer el tipo de dispositivo desde el frontend."""
         self.device_type = device_type
 
     @rx.event
@@ -16,9 +18,14 @@ class NavDeviceState(rx.State):
         """
         Evento que se llama al cargar la página para ejecutar el script que detecta el tamaño.
         """
-        # ✅ SOLUCIÓN: Se obtiene el nombre del manejador desde la clase (type(self))
-        # en lugar de la instancia (self), lo que evita el AttributeError.
+        # --- INICIO DE LA CORRECCIÓN DEL ATTRIBUTEERROR ---
+        # Se obtiene el nombre del manejador desde la CLASE (type(self)) en lugar de la
+        # instancia (self). El objeto 'self' es un proxy de estado y no siempre expone
+        # la metadata de otros manejadores de eventos directamente. Acceder a través
+        # de la clase es la forma segura y correcta.
         handler_name = type(self).set_device_type.get_event_handler_name()
+        # --- FIN DE LA CORRECCIÓN DEL ATTRIBUTEERROR ---
+        
         return rx.call_script(
             f"""
             const width = window.innerWidth;

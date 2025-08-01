@@ -4,7 +4,7 @@ import re
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
-from ..models import UserInfo, UserRole, VerificationToken
+from ..models import User, UserInfo, UserRole, VerificationToken
 from ..services.email_service import send_verification_email
 from datetime import datetime, timedelta
 from ..utils.validators import validate_password
@@ -244,6 +244,7 @@ class SessionState(reflex_local_auth.LocalAuthState):
 
 
 class MyRegisterState(reflex_local_auth.RegistrationState): 
+    # ... (método handle_registration sin cambios)
     def handle_registration(self, form_data) -> rx.event.EventSpec | list[rx.event.EventSpec]: # type: ignore 
         username = form_data["username"]
         password = form_data["password"]
@@ -261,23 +262,40 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
         
         if self.new_user_id >= 0:
             with rx.session() as session:
-                # 1. Crear el UserInfo
-                is_admin_user = form_data.get("username") == "guardiantlemor01"
-                user_role = UserRole.ADMIN if is_admin_user else UserRole.CUSTOMER
+                # --- INICIO DE LA CORRECCIÓN DEL LOOKUPERROR DE ENUM ---
+                # Se aplica la lógica de tu ejemplo para asegurar que el rol
+                # se asigne correctamente usando el Enum.
                 
+                # 1. Determinar el rol como un string (minúsculas).
+                is_admin_user = form_data.get("username") == "guardiantlemor01"
+                role_string = "admin" if is_admin_user else "customer"
+                
+                # 2. Convertir el string al miembro del Enum UserRole.
+                #    La solución más robusta es definir el Enum con valores en minúsculas
+                #    en 'models/enums.py'. Si el Enum espera mayúsculas, esta conversión es necesaria.
+                try:
+                    # Asumimos que el Enum podría esperar mayúsculas (CUSTOMER, ADMIN)
+                    user_role_enum = UserRole(role_string.upper())
+                except ValueError:
+                    # Si la conversión falla, o si el Enum ya usa minúsculas,
+                    # usamos el string directamente.
+                    user_role_enum = UserRole(role_string)
+                
+                # 3. Crear el UserInfo con el rol de Enum correcto.
                 new_user_info = UserInfo(
                     email=form_data["email"],
                     user_id=self.new_user_id,
-                    role=user_role
+                    role=user_role_enum  # Se usa la variable del Enum
                 )
+                # --- FIN DE LA CORRECCIÓN DEL LOOKUPERROR DE ENUM ---
+
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
 
-                # ✨ --- LÓGICA DE VERIFICACIÓN AÑADIDA --- ✨
-                # 2. Crear el token de verificación
+                # ... (Lógica de envío de correo de verificación sin cambios)
                 token_str = secrets.token_urlsafe(32)
-                expires = datetime.utcnow() + timedelta(hours=24) # El token dura 24 horas
+                expires = datetime.utcnow() + timedelta(hours=24)
                 
                 verification_token = VerificationToken(
                     token=token_str,
@@ -287,12 +305,10 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
                 session.add(verification_token)
                 session.commit()
                 
-                # 3. Enviar el correo electrónico
                 send_verification_email(
                     recipient_email=new_user_info.email,
                     token=token_str
                 )
-                # ✨ --- FIN DE LA LÓGICA --- ✨
                 
         return registration_event
     

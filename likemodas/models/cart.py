@@ -1,12 +1,12 @@
-# likemodas/models/cart.py
-
+# ============================================================================
+# likemodas/models/cart.py (CORRECCIÓN APLICADA)
+# ============================================================================
 from sqlmodel import Field, Relationship
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 import reflex as rx
 
 from .blog import BlogPostModel
-# Corrección para evitar dependencias circulares
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .user import UserInfo
@@ -22,15 +22,14 @@ class PurchaseModel(rx.Model, table=True):
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING)
     purchase_date: datetime = Field(default_factory=datetime.utcnow)
     confirmed_at: Optional[datetime] = None
-
     shipping_name: Optional[str]
     shipping_city: Optional[str]
     shipping_neighborhood: Optional[str]
     shipping_address: Optional[str]
     shipping_phone: Optional[str]
 
-    items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
-    # Se usa un string ("UserInfo") para la referencia
+    # --- ✅ CAMBIO: Se usa list[...] en lugar de List[...] ---
+    items: list["PurchaseItemModel"] = Relationship(back_populates="purchase")
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
 
     @property
@@ -47,9 +46,7 @@ class PurchaseModel(rx.Model, table=True):
     
     @property
     def items_formatted(self) -> list[str]:
-        """Devuelve una lista formateada de los artículos de la compra."""
-        if not self.items:
-            return []
+        if not self.items: return []
         return [item.display_name for item in self.items]
 
 
@@ -65,6 +62,5 @@ class PurchaseItemModel(rx.Model, table=True):
 
     @property
     def display_name(self) -> str:
-        """Genera un nombre legible para el artículo en la compra."""
         title = self.blog_post.title if self.blog_post else "Producto no encontrado"
         return f"{self.quantity} x {title}"

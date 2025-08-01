@@ -315,6 +315,9 @@ class CommentState(SessionState):
     new_comment_rating: int = 0
     img_idx: int = 0
 
+
+    
+
     @rx.var
     def post_id(self) -> str:
         return self.router.page.params.get("id", "")
@@ -388,46 +391,55 @@ class CommentState(SessionState):
 
     @rx.event
     def on_load(self):
-        if not self.post_id:
-            self.is_loading = False
-            return
-
+        """
+        Carga el post y todos sus datos relacionados de forma exhaustiva.
+        Esta es la corrección más importante para evitar el fallo de hidratación.
+        """
         self.is_loading = True
-        yield
+        pid = self.router.page.params.get("id", None)
+        if pid is None:
+            self.is_loading = False
+            return rx.redirect("/blog")
 
         try:
-            pid = int(self.post_id)
+            pid = int(pid)
         except (ValueError, TypeError):
-            self.post = None
-            self.comments = []
             self.is_loading = False
-            return
+            return rx.redirect("/404")
 
         with rx.session() as session:
+            # --- INICIO DE LA CORRECCIÓN DE HIDRATACIÓN ---
+            # La clave es usar `joinedload` de forma anidada para cargar TODAS las
+            # relaciones que la UI necesitará para su renderizado inicial.
+            # Esto asegura que el HTML generado en el servidor y el primer renderizado
+            # en el cliente sean idénticos.
             db_post_result = session.exec(
                 select(BlogPostModel).options(
+                    # Carga el autor del post (Post -> UserInfo -> User)
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
+                    
+                    # Carga los comentarios del post
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                    .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    # Y para cada comentario, carga su autor (Comment -> UserInfo -> User)
+                   .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    
+                    # Carga también los votos de cada comentario
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                    .joinedload(CommentModel.votes)
+                   .joinedload(CommentModel.votes)
+                    # Y para cada voto, carga el usuario que votó (Vote -> UserInfo -> User)
+                   .joinedload(CommentVoteModel.userinfo).joinedload(UserInfo.user)
                 )
-                .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
+               .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
             ).unique().one_or_none()
+            # --- FIN DE LA CORRECCIÓN DE HIDRATACIÓN ---
 
             if db_post_result:
                 self.post = db_post_result
-                self.comments = sorted(
-                    db_post_result.comments,
-                    key=lambda c: c.created_at,
-                    reverse=True
-                )
             else:
-                self.post = None
-                self.comments = []
-
-        self.img_idx = 0
-        self.new_comment_text = ""
-        self.new_comment_rating = 0
+                # Si no se encuentra el post, podría ser útil redirigir a un 404
+                # en lugar de simplemente no hacer nada.
+                pass
+        
         self.is_loading = False
 
     @rx.event
