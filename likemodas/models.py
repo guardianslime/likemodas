@@ -10,7 +10,6 @@ import reflex as rx
 from reflex_local_auth.user import LocalUser
 import enum
 import pytz
-# ✅ SOLUCIÓN: Se importa Mapped, mapped_column y ForeignKey.
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import ForeignKey
 from .utils.formatting import format_to_cop
@@ -49,8 +48,8 @@ class Category(str, enum.Enum):
 
 # --- Models ---
 class UserInfo(rx.Model, table=True):
-    email: Mapped[str]
-    # ✅ SOLUCIÓN: Se usa ForeignKey("...") como un objeto, no como un argumento de palabra clave.
+    # ✅ SOLUCIÓN: Se añade mapped_column() para definir explícitamente el tipo de columna.
+    email: Mapped[str] = mapped_column()
     user_id: Mapped[int] = mapped_column(ForeignKey("localuser.id"))
     role: Mapped[UserRole] = mapped_column(default=UserRole.CUSTOMER)
     is_verified: Mapped[bool] = mapped_column(default=False)
@@ -80,8 +79,8 @@ class PasswordResetToken(rx.Model, table=True):
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: Mapped[int] = mapped_column(ForeignKey("userinfo.id"))
-    title: Mapped[str]
-    content: Mapped[str]
+    title: Mapped[str] = mapped_column()
+    content: Mapped[str] = mapped_column()
     price: Mapped[float] = mapped_column(default=0.0)
     attributes: Mapped[dict] = mapped_column(JSON, default={})
     image_urls: Mapped[list[str]] = mapped_column(JSON, default_factory=list)
@@ -109,26 +108,26 @@ class BlogPostModel(rx.Model, table=True):
 
 class ShippingAddressModel(rx.Model, table=True):
     userinfo_id: Mapped[int] = mapped_column(ForeignKey("userinfo.id"))
-    name: Mapped[str]
-    phone: Mapped[str]
-    city: Mapped[str]
-    neighborhood: Mapped[str]
-    address: Mapped[str]
+    name: Mapped[str] = mapped_column()
+    phone: Mapped[str] = mapped_column()
+    city: Mapped[str] = mapped_column()
+    neighborhood: Mapped[str] = mapped_column()
+    address: Mapped[str] = mapped_column()
     is_default: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
     userinfo: Mapped["UserInfo"] = Relationship(back_populates="shipping_addresses")
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: Mapped[int] = mapped_column(ForeignKey("userinfo.id"))
-    total_price: Mapped[float]
+    total_price: Mapped[float] = mapped_column()
     status: Mapped[PurchaseStatus] = mapped_column(default=PurchaseStatus.PENDING)
     purchase_date: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
-    confirmed_at: Mapped[Optional[datetime]]
-    shipping_name: Mapped[Optional[str]]
-    shipping_city: Mapped[Optional[str]]
-    shipping_neighborhood: Mapped[Optional[str]]
-    shipping_address: Mapped[Optional[str]]
-    shipping_phone: Mapped[Optional[str]]
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(default=None)
+    shipping_name: Mapped[Optional[str]] = mapped_column(default=None)
+    shipping_city: Mapped[Optional[str]] = mapped_column(default=None)
+    shipping_neighborhood: Mapped[Optional[str]] = mapped_column(default=None)
+    shipping_address: Mapped[Optional[str]] = mapped_column(default=None)
+    shipping_phone: Mapped[Optional[str]] = mapped_column(default=None)
 
     items: Mapped[list["PurchaseItemModel"]] = Relationship(back_populates="purchase")
     userinfo: Mapped["UserInfo"] = Relationship(back_populates="purchases")
@@ -147,8 +146,8 @@ class PurchaseModel(rx.Model, table=True):
 class PurchaseItemModel(rx.Model, table=True):
     purchase_id: Mapped[int] = mapped_column(ForeignKey("purchasemodel.id"))
     blog_post_id: Mapped[int] = mapped_column(ForeignKey("blogpostmodel.id"))
-    quantity: Mapped[int]
-    price_at_purchase: Mapped[float]
+    quantity: Mapped[int] = mapped_column()
+    price_at_purchase: Mapped[float] = mapped_column()
 
     purchase: Mapped["PurchaseModel"] = Relationship(back_populates="items")
     blog_post: Mapped["BlogPostModel"] = Relationship()
@@ -160,20 +159,20 @@ class PurchaseItemModel(rx.Model, table=True):
 
 class NotificationModel(rx.Model, table=True):
     userinfo_id: Mapped[int] = mapped_column(ForeignKey("userinfo.id"))
-    message: Mapped[str]
+    message: Mapped[str] = mapped_column()
     is_read: Mapped[bool] = mapped_column(default=False)
-    url: Mapped[Optional[str]]
+    url: Mapped[Optional[str]] = mapped_column(default=None)
     created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
     userinfo: Mapped["UserInfo"] = Relationship(back_populates="notifications")
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
 class ContactEntryModel(rx.Model, table=True):
-    userinfo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("userinfo.id"))
-    first_name: Mapped[str]
-    last_name: Mapped[Optional[str]]
-    email: Mapped[Optional[str]]
-    message: Mapped[str]
+    userinfo_id: Mapped[Optional[int]] = mapped_column(ForeignKey("userinfo.id"), default=None)
+    first_name: Mapped[str] = mapped_column()
+    last_name: Mapped[Optional[str]] = mapped_column(default=None)
+    email: Mapped[Optional[str]] = mapped_column(default=None)
+    message: Mapped[str] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
     userinfo: Mapped[Optional["UserInfo"]] = Relationship(back_populates="contact_entries")
     
@@ -182,8 +181,8 @@ class ContactEntryModel(rx.Model, table=True):
         return format_utc_to_local(self.created_at)
 
 class CommentModel(rx.Model, table=True):
-    content: Mapped[str]
-    rating: Mapped[int]
+    content: Mapped[str] = mapped_column()
+    rating: Mapped[int] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow, onupdate=sqlalchemy.func.now())
     userinfo_id: Mapped[int] = mapped_column(ForeignKey("userinfo.id"))
@@ -193,7 +192,7 @@ class CommentModel(rx.Model, table=True):
     votes: Mapped[list["CommentVoteModel"]] = Relationship(back_populates="comment")
 
 class CommentVoteModel(rx.Model, table=True):
-    vote_type: Mapped[VoteType]
+    vote_type: Mapped[VoteType] = mapped_column()
     userinfo_id: Mapped[int] = mapped_column(ForeignKey("userinfo.id"))
     comment_id: Mapped[int] = mapped_column(ForeignKey("commentmodel.id"))
     userinfo: Mapped["UserInfo"] = Relationship(back_populates="comment_votes")
