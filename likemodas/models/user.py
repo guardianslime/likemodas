@@ -1,5 +1,5 @@
 # ============================================================================
-# likemodas/models/user.py (CORRECCIÓN APLICADA)
+# likemodas/models/user.py (CORREGIDO)
 # ============================================================================
 from sqlmodel import Field, Relationship
 from typing import Optional

@@ -4,9 +4,6 @@ import re
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
-# --- ✅ SOLUCIÓN: Se elimina la importación del modelo 'User' que no existe. ---
-# El modelo que maneja usuarios se llama 'LocalUser' pero no necesita ser
-# importado aquí directamente, ya que reflex-local-auth lo gestiona.
 from ..models import UserInfo, UserRole, VerificationToken
 from ..services.email_service import send_verification_email
 from datetime import datetime, timedelta
