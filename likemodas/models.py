@@ -174,8 +174,11 @@ class ContactEntryModel(rx.Model, table=True):
     message: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
+    
+    # ✅ SOLUCIÓN: La propiedad 'created_at_formatted' ahora tiene la sangría correcta.
     @property
-def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
+    def created_at_formatted(self) -> str: 
+        return format_utc_to_local(self.created_at)
 
 class CommentModel(rx.Model, table=True):
     content: str
