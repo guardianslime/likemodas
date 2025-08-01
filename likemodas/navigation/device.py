@@ -5,11 +5,7 @@ import reflex as rx
 class NavDeviceState(rx.State):
     """Maneja el estado del dispositivo (móvil o escritorio) para la UI."""
     is_mobile: bool = False
-
-    @rx.var
-    def is_desktop(self) -> bool:
-        """Propiedad computada para determinar si es escritorio."""
-        return not self.is_mobile
+    is_desktop: bool = False
 
     def on_mount(self):
         """
@@ -21,6 +17,7 @@ class NavDeviceState(rx.State):
             const width = window.innerWidth;
             if (window.nav_device_state) {{
                 nav_device_state.set_is_mobile(width < 768);
+                nav_device_state.set_is_desktop(width >= 768);
             }}
             """
         )
