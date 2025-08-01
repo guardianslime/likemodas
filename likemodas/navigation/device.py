@@ -1,5 +1,5 @@
 # ============================================================================
-# ARCHIVO 2: likemodas/navigation/device.py (REEMPLAZO COMPLETO)
+# likemodas/navigation/device.py (VERIFICADO Y CORRECTO)
 # ============================================================================
 import reflex as rx
 
@@ -17,7 +17,6 @@ class NavDeviceState(rx.State):
         """
         Evento que se llama al cargar la página para ejecutar el script que detecta el tamaño.
         """
-        # ✅ SOLUCIÓN AL AttributeError: Se obtiene el nombre del manejador desde la CLASE.
         handler_name = type(self).set_device_type.get_event_handler_name()
         
         return rx.call_script(

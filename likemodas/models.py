@@ -1,6 +1,5 @@
 # ============================================================================
-# ARCHIVO 1: likemodas/models.py (REEMPLAZO COMPLETO)
-# INSTRUCCIÓN: Borra tu carpeta 'likemodas/models/' y usa este único archivo.
+# likemodas/models.py (ÚNICO ARCHIVO DE MODELOS)
 # ============================================================================
 from __future__ import annotations
 from typing import Optional, List
@@ -26,7 +25,6 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     return local_dt.strftime('%d-%m-%Y %I:%M %p')
 
 # --- Enums (Definición Crítica) ---
-# ✅ SOLUCIÓN AL LookupError: Valores en minúsculas para coincidir con la base de datos.
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
