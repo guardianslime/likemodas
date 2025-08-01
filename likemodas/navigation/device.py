@@ -1,4 +1,4 @@
-# likemodas/navigation/device.py (VERSIÓN CORREGIDA Y ROBUSTA)
+# likemodas/navigation/device.py (VERSIÓN CORRECTA)
 
 import reflex as rx
 
@@ -19,7 +19,6 @@ class NavDeviceState(rx.State):
         return rx.call_script(
             f"""
             const width = window.innerWidth;
-            // Llama al event handler para actualizar el estado en el backend
             if (window.nav_device_state) {{
                 nav_device_state.set_is_mobile(width < 768);
             }}
