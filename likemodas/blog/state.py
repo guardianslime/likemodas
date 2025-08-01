@@ -323,39 +323,32 @@ class BlogEditFormState(BlogPostState):
 
 
 class CommentState(SessionState):
-    """Estado que maneja la vista del post público y sus comentarios."""
-    # CORREGIDO: Tipado explícito para mayor seguridad
+    """Estado que maneja tanto la vista del post público como sus comentarios."""
     post: Optional[BlogPostModel] = None
-    # CORREGIDO: Inicializado como lista vacía
     comments: list[CommentModel] = []
     
     new_comment_text: str = ""
     new_comment_rating: int = 0
     img_idx: int = 0
-    is_loading: bool = True
 
     @rx.var
     def post_id(self) -> str:
-        """Obtiene el ID del post desde la URL."""
-        # CORREGIDO: El parámetro en la ruta es 'blog_public_id'
         return self.router.page.params.get("blog_public_id", "")
-
+        
     @rx.var
     def formatted_price(self) -> str:
-        """Devuelve el precio formateado en COP."""
         if self.post and self.post.price is not None:
-            # Reutiliza la propiedad del modelo para consistencia
-            return self.post.price_cop
-        return "$0"
+            return f"${self.post.price:,.2f}"
+        return "$0.00"
 
     @rx.var
     def content(self) -> str:
-        """Devuelve el contenido del post."""
-        return self.post.content if self.post and self.post.content else ""
+        if self.post and self.post.content:
+            return self.post.content
+        return ""
 
     @rx.var
     def product_attributes(self) -> list[tuple[str, str]]:
-        """Formatea los atributos del producto para mostrarlos."""
         if not self.post or not self.post.attributes:
             return []
         
@@ -364,48 +357,80 @@ class CommentState(SessionState):
             if value and str(value).strip():
                 formatted_key = key.replace('_', ' ').title()
                 formatted_attrs.append((f"{formatted_key}:", str(value)))
+                
         return formatted_attrs
 
     @rx.var
     def rating_count(self) -> int:
-        """Devuelve el número total de comentarios (calificaciones)."""
         return len(self.comments)
 
     @rx.var
     def average_rating(self) -> float:
-        """Calcula la calificación promedio de forma segura."""
         if not self.comments:
             return 0.0
-        total_rating = sum(c.rating for c in self.comments)
+        total_rating = sum(comment.rating for comment in self.comments)
         return total_rating / len(self.comments)
 
-    # Las propiedades 'user_has_purchased', 'user_has_commented', y 'user_can_comment'
-    # se mantienen como en el código original, ya que su lógica es correcta.
+    @rx.var
+    def user_has_purchased(self) -> bool:
+        if not self.is_authenticated or not self.post or not self.authenticated_user_info:
+            return False
+        with rx.session() as session:
+            purchase_record = session.exec(
+                select(PurchaseModel).where(
+                    PurchaseModel.userinfo_id == self.authenticated_user_info.id,
+                    PurchaseModel.status == PurchaseStatus.CONFIRMED,
+                    PurchaseModel.items.any(PurchaseItemModel.blog_post_id == self.post.id)
+                )
+            ).first()
+            return purchase_record is not None
+
+    @rx.var
+    def user_has_commented(self) -> bool:
+        if not self.is_authenticated or not self.post or not self.authenticated_user_info:
+            return False
+        with rx.session() as session:
+            existing_comment = session.exec(
+                select(CommentModel).where(
+                    CommentModel.userinfo_id == self.authenticated_user_info.id,
+                    CommentModel.blog_post_id == self.post.id
+                )
+            ).first()
+            return existing_comment is not None
+
+    @rx.var
+    def user_can_comment(self) -> bool:
+        return self.user_has_purchased and not self.user_has_commented
 
     @rx.event
     def on_load(self):
-        """Carga el post y sus comentarios de forma eficiente y segura."""
-        self.is_loading = True
-        # Limpia el estado anterior antes de cargar nuevos datos
-        self.post, self.comments = None, []
-        yield
+        """Carga el post y sus comentarios de forma segura y eficiente."""
+        self.post = None
+        self.comments = []
+        self.img_idx = 0
+        self.new_comment_text = ""
+        self.new_comment_rating = 0
 
         try:
             pid = int(self.post_id)
         except (ValueError, TypeError):
-            self.is_loading = False
             return
 
         with rx.session() as session:
-            # Carga el post y sus relaciones en una sola consulta para optimizar
             db_post_result = session.exec(
-                select(BlogPostModel).options(
+                select(BlogPostModel)
+                .options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
                     .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
                     .joinedload(CommentModel.votes)
                 )
-                .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
+                .where(
+                    BlogPostModel.id == pid,
+                    # --- ✅ LÍNEA CORREGIDA ---
+                    BlogPostModel.publish_active == True,
+                    BlogPostModel.publish_date < datetime.utcnow()
+                )
             ).unique().one_or_none()
 
             if db_post_result:
@@ -415,15 +440,65 @@ class CommentState(SessionState):
                     key=lambda c: c.created_at,
                     reverse=True
                 )
+
+    @rx.event
+    def set_new_comment_rating(self, rating: int):
+        self.new_comment_rating = rating
+    
+    @rx.event
+    def add_comment(self, form_data: dict):
+        content = form_data.get("comment_text", "").strip()
         
-        # Resetea los campos del formulario
-        self.img_idx = 0
+        if not self.user_can_comment or not self.post or not content:
+            return rx.toast.error("No tienes permiso para comentar o el texto está vacío.")
+    
+        if self.new_comment_rating == 0:
+            return rx.toast.error("Por favor, selecciona una calificación de 1 a 5 estrellas.")
+
+        with rx.session() as session:
+            comment = CommentModel(
+                content=content,
+                rating=self.new_comment_rating,
+                userinfo_id=self.authenticated_user_info.id,
+                blog_post_id=self.post.id
+            )
+            session.add(comment)
+            session.commit()
+        
         self.new_comment_text = ""
         self.new_comment_rating = 0
-        self.is_loading = False
-    
-    # Los métodos 'set_new_comment_rating', 'add_comment', y 'handle_vote'
-    # se mantienen como en el código original, ya que su lógica es correcta.
+        return self.on_load()
+
+    @rx.event
+    def handle_vote(self, comment_id: int, vote_type_str: str):
+        vote_type = VoteType(vote_type_str)
+        if not self.is_authenticated:
+            return rx.toast.error("Debes iniciar sesión para votar.")
+
+        with rx.session() as session:
+            existing_vote = session.exec(
+                select(CommentVoteModel).where(
+                    CommentVoteModel.comment_id == comment_id,
+                    CommentVoteModel.userinfo_id == self.authenticated_user_info.id
+                )
+            ).one_or_none()
+
+            if existing_vote:
+                if existing_vote.vote_type == vote_type:
+                    session.delete(existing_vote)
+                else:
+                    existing_vote.vote_type = vote_type
+                    session.add(existing_vote)
+            else:
+                new_vote = CommentVoteModel(
+                    vote_type=vote_type,
+                    userinfo_id=self.authenticated_user_info.id,
+                    comment_id=comment_id
+                )
+                session.add(new_vote)
+            
+            session.commit()
+        return self.on_load()
 
     @rx.event
     def siguiente_imagen(self):
