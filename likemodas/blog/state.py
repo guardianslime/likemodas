@@ -1,3 +1,5 @@
+# likemodas/blog/state.py (CORRECCIÓN DEFINITIVA)
+
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -321,7 +323,9 @@ class CommentState(SessionState):
 
     @rx.var
     def post_id(self) -> str:
-        return self.router.page.params.get("blog_public_id", "")
+        # --- ✅ CORRECCIÓN CRÍTICA ---
+        # El parámetro en la ruta es `id`, no `blog_public_id`.
+        return self.router.page.params.get("id", "")
         
     @rx.var
     def formatted_price(self) -> str:
@@ -416,6 +420,7 @@ class CommentState(SessionState):
                 .where(
                     BlogPostModel.id == pid,
                     BlogPostModel.publish_active == True,
+                    # Se usa <= para incluir publicaciones hechas en el mismo segundo.
                     BlogPostModel.publish_date <= datetime.utcnow()
                 )
             ).unique().one_or_none()
