@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN FINAL CORREGIDA)
+# likemodas/models.py (VERSIÓN FINAL Y DEFINITIVA)
 
 from __future__ import annotations
 from typing import Optional, List
@@ -8,7 +8,6 @@ import pytz
 import reflex as rx
 import sqlalchemy
 from sqlmodel import Field, Relationship, Column, JSON
-# --- 👇 CAMBIO 1: Importar Mapped ---
 from sqlalchemy.orm import Mapped
 from reflex_local_auth.user import LocalUser
 from . import utils
@@ -17,7 +16,6 @@ from .utils.formatting import format_to_cop
 # --- Funciones de Utilidad ---
 
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
-    """Formatea una fecha UTC a la zona horaria de Colombia."""
     if not utc_dt:
         return "N/A"
     try:
@@ -57,11 +55,10 @@ class UserInfo(rx.Model, table=True):
     user_id: int = Field(foreign_key="localuser.id", unique=True)
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(sqlalchemy.String, server_default=UserRole.CUSTOMER.value, nullable=False))
     is_verified: bool = Field(default=False, nullable=False)
-    
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
-    # --- 👇 CAMBIO 2: Usar Mapped en todas las relaciones ---
+    # --- 👇 CAMBIO CLAVE: Se quitan las comillas de los nombres de los modelos ---
     user: Mapped[Optional[LocalUser]] = Relationship()
     posts: Mapped[List[BlogPostModel]] = Relationship(back_populates="userinfo")
     verification_tokens: Mapped[List[VerificationToken]] = Relationship(back_populates="userinfo")
