@@ -1,5 +1,5 @@
 # ============================================================================
-# likemodas/navigation/device.py (SOLUCIÓN AL AttributeError)
+# ARCHIVO 2: likemodas/navigation/device.py (REEMPLAZO COMPLETO)
 # ============================================================================
 import reflex as rx
 
