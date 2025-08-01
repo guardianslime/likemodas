@@ -1,6 +1,6 @@
-# -----------------------------------------------------------------------------
-# likemodas/models/__init__.py
-# -----------------------------------------------------------------------------
+# ============================================================================
+# likemodas/models/__init__.py (VERIFICADO)
+# ============================================================================
 from .user import UserInfo, LocalUser
 from .token import VerificationToken, PasswordResetToken
 from .product_data import ProductCardData

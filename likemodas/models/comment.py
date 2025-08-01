@@ -22,7 +22,6 @@ class CommentModel(rx.Model, table=True):
 
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
-    # --- ✅ CAMBIO: Se usa list[...] en lugar de List[...] ---
     votes: list["CommentVoteModel"] = Relationship(back_populates="comment")
 
 class CommentVoteModel(rx.Model, table=True):

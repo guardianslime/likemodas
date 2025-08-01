@@ -28,7 +28,6 @@ class PurchaseModel(rx.Model, table=True):
     shipping_address: Optional[str]
     shipping_phone: Optional[str]
 
-    # --- ✅ CAMBIO: Se usa list[...] en lugar de List[...] ---
     items: list["PurchaseItemModel"] = Relationship(back_populates="purchase")
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
 

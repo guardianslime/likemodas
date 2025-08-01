@@ -35,7 +35,6 @@ class UserInfo(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     user: Optional["LocalUser"] = Relationship(back_populates="userinfo")
-    # --- ✅ CAMBIO: Se usa list[...] en lugar de List[...] ---
     posts: list["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: list["VerificationToken"] = Relationship(back_populates="userinfo")
     shipping_addresses: list["ShippingAddressModel"] = Relationship(back_populates="userinfo")

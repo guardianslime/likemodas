@@ -29,7 +29,6 @@ class BlogPostModel(rx.Model, table=True):
     category: Category = Field(default=Category.OTROS)
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
-    # --- ✅ CAMBIO: Se usa list[...] en lugar de List[...] ---
     comments: list["CommentModel"] = Relationship(back_populates="blog_post")
 
     @property
