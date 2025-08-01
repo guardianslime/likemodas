@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN CORREGIDA Y ROBUSTA)
+# likemodas/models.py (VERSIÓN FINAL CORREGIDA)
 
 from __future__ import annotations
 from typing import Optional, List
@@ -8,6 +8,8 @@ import pytz
 import reflex as rx
 import sqlalchemy
 from sqlmodel import Field, Relationship, Column, JSON
+# --- 👇 CAMBIO 1: Importar Mapped ---
+from sqlalchemy.orm import Mapped
 from reflex_local_auth.user import LocalUser
 from . import utils
 from .utils.formatting import format_to_cop
@@ -59,16 +61,16 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
-    # Relaciones
-    user: Optional[LocalUser] = Relationship()
-    posts: List[BlogPostModel] = Relationship(back_populates="userinfo")
-    verification_tokens: List[VerificationToken] = Relationship(back_populates="userinfo")
-    shipping_addresses: List[ShippingAddressModel] = Relationship(back_populates="userinfo")
-    contact_entries: List[ContactEntryModel] = Relationship(back_populates="userinfo")
-    purchases: List[PurchaseModel] = Relationship(back_populates="userinfo")
-    notifications: List[NotificationModel] = Relationship(back_populates="userinfo")
-    comments: List[CommentModel] = Relationship(back_populates="userinfo")
-    comment_votes: List[CommentVoteModel] = Relationship(back_populates="userinfo")
+    # --- 👇 CAMBIO 2: Usar Mapped en todas las relaciones ---
+    user: Mapped[Optional[LocalUser]] = Relationship()
+    posts: Mapped[List[BlogPostModel]] = Relationship(back_populates="userinfo")
+    verification_tokens: Mapped[List[VerificationToken]] = Relationship(back_populates="userinfo")
+    shipping_addresses: Mapped[List[ShippingAddressModel]] = Relationship(back_populates="userinfo")
+    contact_entries: Mapped[List[ContactEntryModel]] = Relationship(back_populates="userinfo")
+    purchases: Mapped[List[PurchaseModel]] = Relationship(back_populates="userinfo")
+    notifications: Mapped[List[NotificationModel]] = Relationship(back_populates="userinfo")
+    comments: Mapped[List[CommentModel]] = Relationship(back_populates="userinfo")
+    comment_votes: Mapped[List[CommentVoteModel]] = Relationship(back_populates="userinfo")
 
 
 class VerificationToken(rx.Model, table=True):
@@ -77,7 +79,7 @@ class VerificationToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     
-    userinfo: UserInfo = Relationship(back_populates="verification_tokens")
+    userinfo: Mapped[UserInfo] = Relationship(back_populates="verification_tokens")
 
 
 class PasswordResetToken(rx.Model, table=True):
@@ -100,9 +102,8 @@ class BlogPostModel(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     category: Category = Field(default=Category.OTROS, nullable=False)
     
-    # Relaciones
-    userinfo: UserInfo = Relationship(back_populates="posts")
-    comments: List[CommentModel] = Relationship(back_populates="blog_post")
+    userinfo: Mapped[UserInfo] = Relationship(back_populates="posts")
+    comments: Mapped[List[CommentModel]] = Relationship(back_populates="blog_post")
     
     @property
     def rating_count(self) -> int:
@@ -138,7 +139,7 @@ class ShippingAddressModel(rx.Model, table=True):
     is_default: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
-    userinfo: UserInfo = Relationship(back_populates="shipping_addresses")
+    userinfo: Mapped[UserInfo] = Relationship(back_populates="shipping_addresses")
 
 
 class PurchaseModel(rx.Model, table=True):
@@ -153,9 +154,8 @@ class PurchaseModel(rx.Model, table=True):
     shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     
-    # Relaciones
-    userinfo: UserInfo = Relationship(back_populates="purchases")
-    items: List[PurchaseItemModel] = Relationship(back_populates="purchase")
+    userinfo: Mapped[UserInfo] = Relationship(back_populates="purchases")
+    items: Mapped[List[PurchaseItemModel]] = Relationship(back_populates="purchase")
 
     @property
     def purchase_date_formatted(self) -> str:
@@ -186,9 +186,8 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
     
-    # Relaciones
-    purchase: PurchaseModel = Relationship(back_populates="items")
-    blog_post: BlogPostModel = Relationship()
+    purchase: Mapped[PurchaseModel] = Relationship(back_populates="items")
+    blog_post: Mapped[BlogPostModel] = Relationship()
 
 
 class NotificationModel(rx.Model, table=True):
@@ -198,7 +197,7 @@ class NotificationModel(rx.Model, table=True):
     url: Optional[str] = None
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
     
-    userinfo: UserInfo = Relationship(back_populates="notifications")
+    userinfo: Mapped[UserInfo] = Relationship(back_populates="notifications")
     
     @property
     def created_at_formatted(self) -> str:
@@ -213,7 +212,7 @@ class ContactEntryModel(rx.Model, table=True):
     message: str
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
 
-    userinfo: Optional[UserInfo] = Relationship(back_populates="contact_entries")
+    userinfo: Mapped[Optional[UserInfo]] = Relationship(back_populates="contact_entries")
 
     @property
     def created_at_formatted(self) -> str:
@@ -228,10 +227,9 @@ class CommentModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     
-    # Relaciones
-    userinfo: UserInfo = Relationship(back_populates="comments")
-    blog_post: BlogPostModel = Relationship(back_populates="comments")
-    votes: List[CommentVoteModel] = Relationship(back_populates="comment")
+    userinfo: Mapped[UserInfo] = Relationship(back_populates="comments")
+    blog_post: Mapped[BlogPostModel] = Relationship(back_populates="comments")
+    votes: Mapped[List[CommentVoteModel]] = Relationship(back_populates="comment")
 
     @property
     def created_at_formatted(self) -> str:
@@ -251,6 +249,5 @@ class CommentVoteModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     comment_id: int = Field(foreign_key="commentmodel.id")
     
-    # Relaciones
-    userinfo: UserInfo = Relationship(back_populates="comment_votes")
-    comment: CommentModel = Relationship(back_populates="votes")
+    userinfo: Mapped[UserInfo] = Relationship(back_populates="comment_votes")
+    comment: Mapped[CommentModel] = Relationship(back_populates="votes")
