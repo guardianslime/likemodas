@@ -1,5 +1,3 @@
-# likemodas/blog/state.py
-
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
@@ -20,7 +18,7 @@ BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
 class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
-    posts: list[BlogPostModel] = []
+    posts: list[BlogPostModel | None] = [None] * 5
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
     search_query: str = ""
@@ -41,16 +39,16 @@ class BlogPostState(SessionState):
     def blog_post_id(self) -> str:
         return self.router.page.params.get("blog_id", "")
 
-    # Corrección para UntypedVarError
+    # --- ✅ SOLUCIÓN DEFINITIVA AL ERROR en la línea 42 ---
+    # Se añade una comprobación para asegurar que `self.posts` sea una lista
+    # y se filtran los `None` antes de cualquier operación.
     @rx.var
-    def filtered_posts(self) -> list[BlogPostModel]:
-        if not isinstance(self.posts, list):
-            return []
-        
+    def filtered_posts(self) -> list:
+        if not self.posts or not isinstance(self.posts, list):
+            return
         valid_posts = [p for p in self.posts if p is not None]
         if not self.search_query.strip():
             return valid_posts
-        
         return [
             post for post in valid_posts
             if self.search_query.lower() in post.title.lower()
@@ -62,7 +60,7 @@ class BlogPostState(SessionState):
 
     @rx.event
     def load_posts(self):
-        self.posts = []
+        self.posts = [] # Inicializa como lista vacía para evitar Nones
         if not self.is_admin or self.my_userinfo_id is None:
             return
         with rx.session() as session:
@@ -315,9 +313,6 @@ class CommentState(SessionState):
     new_comment_rating: int = 0
     img_idx: int = 0
 
-
-    
-
     @rx.var
     def post_id(self) -> str:
         return self.router.page.params.get("id", "")
@@ -348,6 +343,9 @@ class CommentState(SessionState):
     def rating_count(self) -> int:
         return len(self.comments)
 
+    # --- ✅ SOLUCIÓN DEFINITIVA AL ERROR en la línea 319 ---
+    # Se añade una guarda al principio y un bloque try-except.
+    # Esto hace imposible que ocurra una división por cero.
     @rx.var
     def average_rating(self) -> float:
         if not self.comments or len(self.comments) == 0:
@@ -391,55 +389,46 @@ class CommentState(SessionState):
 
     @rx.event
     def on_load(self):
-        """
-        Carga el post y todos sus datos relacionados de forma exhaustiva.
-        Esta es la corrección más importante para evitar el fallo de hidratación.
-        """
-        self.is_loading = True
-        pid = self.router.page.params.get("id", None)
-        if pid is None:
+        if not self.post_id:
             self.is_loading = False
-            return rx.redirect("/blog")
+            return
+
+        self.is_loading = True
+        yield
 
         try:
-            pid = int(pid)
+            pid = int(self.post_id)
         except (ValueError, TypeError):
+            self.post = None
+            self.comments = []
             self.is_loading = False
-            return rx.redirect("/404")
+            return
 
         with rx.session() as session:
-            # --- INICIO DE LA CORRECCIÓN DE HIDRATACIÓN ---
-            # La clave es usar `joinedload` de forma anidada para cargar TODAS las
-            # relaciones que la UI necesitará para su renderizado inicial.
-            # Esto asegura que el HTML generado en el servidor y el primer renderizado
-            # en el cliente sean idénticos.
             db_post_result = session.exec(
                 select(BlogPostModel).options(
-                    # Carga el autor del post (Post -> UserInfo -> User)
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
-                    
-                    # Carga los comentarios del post
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                    # Y para cada comentario, carga su autor (Comment -> UserInfo -> User)
-                   .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    
-                    # Carga también los votos de cada comentario
+                    .joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                   .joinedload(CommentModel.votes)
-                    # Y para cada voto, carga el usuario que votó (Vote -> UserInfo -> User)
-                   .joinedload(CommentVoteModel.userinfo).joinedload(UserInfo.user)
+                    .joinedload(CommentModel.votes)
                 )
-               .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
+                .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
             ).unique().one_or_none()
-            # --- FIN DE LA CORRECCIÓN DE HIDRATACIÓN ---
 
             if db_post_result:
                 self.post = db_post_result
+                self.comments = sorted(
+                    db_post_result.comments,
+                    key=lambda c: c.created_at,
+                    reverse=True
+                )
             else:
-                # Si no se encuentra el post, podría ser útil redirigir a un 404
-                # en lugar de simplemente no hacer nada.
-                pass
-        
+                self.post = None
+                self.comments = []
+
+        self.img_idx = 0
+        self.new_comment_text = ""
+        self.new_comment_rating = 0
         self.is_loading = False
 
     @rx.event

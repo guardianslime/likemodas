@@ -19,4 +19,3 @@ class FilterState(rx.State):
     def set_max_price(self, price: str):
         """Actualiza el valor del precio máximo."""
         self.max_price = price.strip()
-

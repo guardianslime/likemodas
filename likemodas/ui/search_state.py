@@ -1,36 +1,38 @@
+# likemodas/ui/search_state.py (VERSIÓN FINAL Y CORREGIDA)
 
-# -----------------------------------------------------------------------------
-# likemodas/ui/search_state.py
-# -----------------------------------------------------------------------------
 import reflex as rx
 from typing import List
-# ✨ CAMBIO CLAVE: Se elimina la importación de BlogPostModel de la parte superior.
-# from ..models import BlogPostModel -> ELIMINADA
+from ..models import BlogPostModel
 from sqlmodel import select
 from datetime import datetime
-from ..cart.state import ProductCardData
+from .. import navigation
 from sqlalchemy.orm import joinedload
+
+# --- CAMBIO 1: Importamos el modelo de datos seguro ---
+from ..cart.state import ProductCardData
 
 class SearchState(rx.State):
     """El único y definitivo estado para la búsqueda."""
     search_term: str = ""
+    
+    # --- CAMBIO 2: Los resultados ahora serán del tipo seguro ---
     search_results: List[ProductCardData] = []
+    
     search_performed: bool = False
 
     @rx.event
     def perform_search(self):
         """Ejecuta la búsqueda, transforma los datos y redirige."""
-        # --- ✨ CAMBIO CLAVE ---
-        # Se importa BlogPostModel DENTRO de la función.
-        # Esto rompe el ciclo de importación, ya que el modelo solo se carga
-        # cuando la búsqueda se ejecuta, no durante el inicio de la app.
-        from ..models import BlogPostModel
-
         term = self.search_term.strip()
+        
+        # --- ✨ CAMBIO CLAVE ---
+        # Si la búsqueda está vacía, simplemente no hacemos nada.
         if not term:
             return
+        # --- FIN DEL CAMBIO ---
 
         with rx.session() as session:
+            # ... (el resto de la función sigue igual)
             statement = (
                 select(BlogPostModel)
                 .options(joinedload(BlogPostModel.comments))

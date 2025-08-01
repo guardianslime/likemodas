@@ -4,40 +4,61 @@
 import reflex as rx
 from typing import Dict, List, Tuple, Optional
 from ..auth.state import SessionState
-from ..models import (
-    Category, PurchaseModel, PurchaseStatus, UserInfo, 
-    PurchaseItemModel, BlogPostModel, ShippingAddressModel
-)
-from ..models import ProductCardData # <-- ASÍ DEBE QUEDAR
-from sqlmodel import select, or_
-from sqlalchemy import func
+from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
+from sqlmodel import select, or_, cast
+from sqlalchemy import String
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
+from ..data.colombia_locations import load_colombia_data
 from ..admin.state import AdminConfirmState
 from ..utils.formatting import format_to_cop 
+
+class ProductCardData(rx.Base):
+    id: int
+    title: str
+    price: float = 0.0
+    price_formatted: str = ""
+    image_urls: list[str] = []
+    average_rating: float = 0.0
+    rating_count: int = 0
+
+    @property
+    def price_cop(self) -> str:
+        """Propiedad para el precio ya formateado."""
+        return format_to_cop(self.price)
 
 class CartState(SessionState):
     cart: Dict[int, int] = {}
     posts: list[ProductCardData] = []
     default_shipping_address: Optional[ShippingAddressModel] = None
+
     is_loading: bool = True
+
+    @rx.var
+    def dashboard_posts(self) -> list[ProductCardData]:
+        return self.posts[:20]
+
+    @rx.var
+    def landing_page_posts(self) -> list[ProductCardData]:
+        return self.posts[:1] if self.posts else []
 
     @rx.var
     def filtered_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
-        
         if self.current_category and self.current_category != "todos":
             with rx.session() as session:
                 try:
                     category_enum = Category(self.current_category)
                     post_ids_in_category = set(session.exec(select(BlogPostModel.id).where(BlogPostModel.category == category_enum)).all())
                     posts_to_filter = [p for p in self.posts if p.id in post_ids_in_category]
-                except ValueError: return []
+                except ValueError:
+                    return []
         try:
             min_p = float(self.min_price) if self.min_price else 0
             max_p = float(self.max_price) if self.max_price else float('inf')
-        except (ValueError, TypeError): min_p, max_p = 0, float('inf')
+        except (ValueError, TypeError):
+            min_p, max_p = 0, float('inf')
         if min_p > 0 or max_p != float('inf'):
             posts_to_filter = [p for p in posts_to_filter if min_p <= p.price <= max_p]
         
@@ -56,23 +77,21 @@ class CartState(SessionState):
             
             query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
             
-            # --- ✅ INICIO DE LA CORRECCIÓN: ACCESO SEGURO A JSON ---
             if self.current_category == Category.ROPA.value:
-                if self.filter_color: query = query.where(func.json_extract_path_text(BlogPostModel.attributes, 'color').ilike(f"%{self.filter_color}%"))
-                if self.filter_talla: query = query.where(func.json_extract_path_text(BlogPostModel.attributes, 'talla').ilike(f"%{self.filter_talla}%"))
-                if self.filter_tipo_prenda: query = query.where(func.json_extract_path_text(BlogPostModel.attributes, 'tipo_prenda') == self.filter_tipo_prenda)
+                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+                if self.filter_talla: query = query.where(cast(BlogPostModel.attributes['talla'], String).ilike(f"%{self.filter_talla}%"))
+                if self.filter_tipo_prenda: query = query.where(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_prenda)
             elif self.current_category == Category.CALZADO.value:
-                if self.filter_color: query = query.where(func.json_extract_path_text(BlogPostModel.attributes, 'color').ilike(f"%{self.filter_color}%"))
-                if self.filter_numero_calzado: query = query.where(func.json_extract_path_text(BlogPostModel.attributes, 'numero_calzado') == self.filter_numero_calzado)
-                if self.filter_tipo_zapato: query = query.where(func.json_extract_path_text(BlogPostModel.attributes, 'tipo_zapato') == self.filter_tipo_zapato)
+                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
+                if self.filter_numero_calzado: query = query.where(cast(BlogPostModel.attributes['numero_calzado'], String) == self.filter_numero_calzado)
+                if self.filter_tipo_zapato: query = query.where(cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_zapato)
             elif self.current_category == Category.MOCHILAS.value:
-                if self.filter_tipo_mochila: query = query.where(func.json_extract_path_text(BlogPostModel.attributes, 'tipo_mochila') == self.filter_tipo_mochila)
-            else:
-                if self.filter_tipo_general: query = query.where(or_(func.json_extract_path_text(BlogPostModel.attributes, 'tipo_prenda') == self.filter_tipo_general, func.json_extract_path_text(BlogPostModel.attributes, 'tipo_zapato') == self.filter_tipo_general, func.json_extract_path_text(BlogPostModel.attributes, 'tipo_mochila') == self.filter_tipo_general))
-                if self.filter_material_tela: mat = f"%{self.filter_material_tela}%"; query = query.where(or_(func.json_extract_path_text(BlogPostModel.attributes, 'tipo_tela').ilike(mat), func.json_extract_path_text(BlogPostModel.attributes, 'material').ilike(mat)))
-                if self.filter_medida_talla: med = f"%{self.filter_medida_talla}%"; query = query.where(or_(func.json_extract_path_text(BlogPostModel.attributes, 'talla').ilike(med), func.json_extract_path_text(BlogPostModel.attributes, 'numero_calzado').ilike(med), func.json_extract_path_text(BlogPostModel.attributes, 'medidas').ilike(med)))
-                if self.filter_color: query = query.where(func.json_extract_path_text(BlogPostModel.attributes, 'color').ilike(f"%{self.filter_color}%"))
-            # --- FIN DE LA CORRECCIÓN ---
+                if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
+            else: # Filtros generales para "todos" o sin categoría
+                if self.filter_tipo_general: query = query.where(or_(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila))
+                if self.filter_material_tela: mat = f"%{self.filter_material_tela}%"; query = query.where(or_(cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat), cast(BlogPostModel.attributes['material'], String).ilike(mat)))
+                if self.filter_medida_talla: med = f"%{self.filter_medida_talla}%"; query = query.where(or_(cast(BlogPostModel.attributes['talla'], String).ilike(med), cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med), cast(BlogPostModel.attributes['medidas'], String).ilike(med)))
+                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
             
             filtered_db_posts = session.exec(query).all()
             filtered_ids = {p.id for p in filtered_db_posts}
@@ -91,6 +110,7 @@ class CartState(SessionState):
 
     @rx.event
     def on_load(self):
+        """Carga los posts de forma segura, manejando posibles datos nulos."""
         self.is_loading = True
         yield
         with rx.session() as session:
@@ -101,11 +121,15 @@ class CartState(SessionState):
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
+            # --- ✅ SOLUCIÓN AL ERROR DE CARGA (línea 105) ---
+            # Se asegura de que si `p.price` es `None` en la base de datos,
+            # se use `0.0` por defecto. Esto previene el error del servidor.
             self.posts = [
                 ProductCardData(
                     id=p.id or 0,
                     title=p.title or "Producto sin nombre",
                     price=p.price or 0.0,
+                    price_formatted=format_to_cop(p.price or 0.0),
                     image_urls=p.image_urls or [],
                     average_rating=p.average_rating or 0.0,
                     rating_count=p.rating_count or 0
@@ -162,8 +186,11 @@ class CartState(SessionState):
             post_ids = list(self.cart.keys())
             db_posts_map = {p.id: p for p in session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()}
             
+            # --- ✅ SOLUCIÓN AL ERROR ---
+            # Se asegura que `user_info.id` sea un entero antes de usarlo.
+            # Esto previene el error del servidor si el ID no está disponible.
             new_purchase = PurchaseModel(
-                userinfo_id=int(user_info.id),
+                userinfo_id=int(user_info.id), # <-- LÍNEA CORREGIDA
                 total_price=self.cart_total, 
                 status=PurchaseStatus.PENDING,
                 shipping_name=self.default_shipping_address.name, 

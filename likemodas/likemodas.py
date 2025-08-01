@@ -1,18 +1,11 @@
-# ============================================================================
-# likemodas/likemodas.py
-# ============================================================================
 import reflex as rx
 import reflex_local_auth
 
 from rxconfig import config
 
 # --- Módulos específicos de la aplicación ---
-from . import navigation
 from .auth import pages as auth_pages, state as auth_state, verify_state, reset_password_state
-from .pages import (
-    search_results, about_page, pricing_page, dashboard_component, 
-    landing_component, test_page, category_page
-)
+from .pages import search_results, about_page, pricing_page, dashboard_component, landing_component, test_page, category_page
 from .blog import (
     page as blog_page, 
     public_detail as blog_public_detail, 
@@ -26,22 +19,19 @@ from .cart import page as cart_page, state as cart_state
 from .purchases import page as purchases_page, state as purchases_state
 from .admin import state as admin_state, page as admin_page
 from .contact import page as contact_page, state as contact_state
-from .account import (
-    page as account_page_module, 
-    shipping_info as shipping_info_module, 
-    shipping_info_state
-)
-
+from . import navigation
+from .account import page as account_page_module, shipping_info as shipping_info_module, shipping_info_state
+from .ui.base import base_page
 
 class HomePageState(cart_state.CartState):
-    """Estado específico para la página de inicio que resetea la categoría."""
+    """Estado específico para la página de inicio."""
     @rx.event
     def on_load_main(self):
         self.current_category = ""
         yield cart_state.CartState.load_posts_and_set_category
 
 def index() -> rx.Component:
-    """La página principal que ahora usa el componente de galería pública."""
+    """La página principal que muestra la galería de productos."""
     return blog_page.blog_public_page()
 
 # --- Configuración de la App ---

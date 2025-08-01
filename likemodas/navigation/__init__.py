@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 from . import routes
 from .state import NavState
-# ✨ CAMBIO: Se importa y exporta el nuevo estado del dispositivo.
+# ✨ CAMBIO: Se importa y exporta el nuevo nombre del estado.
 from .device import NavDeviceState
 
 __all__ = [

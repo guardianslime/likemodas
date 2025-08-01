@@ -1,5 +1,23 @@
 # likemodas/navigation/state.py (CORREGIDO Y COMPLETO)
 
+HOME_ROUTE="/"
+ABOUT_US_ROUTE="/about"
+MY_ACCOUNT_ROUTE = "/my-account"
+SHIPPING_INFO_ROUTE = "/my-account/shipping-info"
+PURCHASE_HISTORY_ROUTE = "/my-purchases"
+BLOG_POSTS_ROUTE="/blog"
+BLOG_POST_ADD_ROUTE ="/blog/add"
+BLOG_PUBLIC_PAGE_ROUTE = "/blog/page"
+CONTACT_US_ROUTE="/contact"
+CONTACT_ENTRIES_ROUTE="/contact/entries"
+LOGOUT_ROUTE="/logout"
+PRICING_ROUTE="/pricing"
+BLOG_PUBLIC_DETAIL_ROUTE = "/blog-public"
+
+
+
+# likemodas/navigation/state.py (CORREGIDO Y COMPLETO)
+
 import reflex as rx
 import reflex_local_auth
 from . import routes

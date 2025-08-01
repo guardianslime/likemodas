@@ -1,12 +1,12 @@
-# -----------------------------------------------------------------------------
-# likemodas/ui/nav.py
-# -----------------------------------------------------------------------------
+# likemodas/ui/nav.py (VERSIÓN CORREGIDA PARA ELIMINAR FLICKERING)
+
 import reflex as rx
 from.. import navigation
-from .search_state import SearchState
-from ..cart.state import CartState
-from ..auth.state import SessionState
-from ..notifications.state import NotificationState
+from.search_state import SearchState
+from..cart.state import CartState
+from..auth.state import SessionState
+from..notifications.state import NotificationState
+# Se importa el estado que detecta el tipo de dispositivo
 from ..navigation.device import NavDeviceState
 
 def notification_icon() -> rx.Component:
@@ -24,7 +24,9 @@ def notification_icon() -> rx.Component:
                         bg="red", color="white",
                     )
                 ),
-                position="relative", padding="0.5em", cursor="pointer"
+                position="relative",
+                padding="0.5em",
+                cursor="pointer"
             ),
         ),
         rx.menu.content(
@@ -37,33 +39,53 @@ def notification_icon() -> rx.Component:
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
                             rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
                         ),
-                        on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace."))
+                        on_click=rx.cond(
+                            n.url, 
+                            rx.redirect(n.url), 
+                            rx.toast.info("Esta notificación no tiene un enlace.")
+                        )
                     )
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
-            max_height="300px", overflow_y="auto"
+            bg="#2C004BF0",
+            style={"backdrop_filter": "blur(10px)"},
+            max_height="300px",
+            overflow_y="auto"
         ),
         on_open_change=lambda open: rx.cond(open, NotificationState.mark_all_as_read, None)
     )
 
+
 def public_navbar() -> rx.Component:
-    """Barra de navegación corregida para evitar el "layout shift" (cambio de tamaño)."""
+    """
+    Barra de navegación corregida para evitar el "layout shift".
+    """
+    # --- ✅ SOLUCIÓN AL FLICKERING ---
+    # Se usa el estado `device_type`. La barra de búsqueda ahora muestra
+    # la versión móvil (un ícono) por defecto mientras el estado es "unknown".
+    # Solo cuando el estado se confirma como "desktop", se expande.
+    # Esto evita el salto visual de grande a pequeño.
     search_bar = rx.cond(
         NavDeviceState.device_type == "desktop",
+        # Búsqueda para ESCRITORIO
         rx.form(
             rx.text_field(
                 rx.text_field.slot(rx.icon("search", size=20)),
                 placeholder="Buscar productos...",
                 value=SearchState.search_term,
                 on_change=SearchState.set_search_term,
-                radius="full", width="100%",
+                radius="full",
+                width="100%",
             ),
-            on_submit=SearchState.perform_search, width="100%",
+            on_submit=SearchState.perform_search,
+            width="100%",
         ),
+        # Búsqueda para MÓVIL (y estado inicial "unknown")
         rx.popover.root(
-            rx.popover.trigger(rx.icon_button(rx.icon("search", color="white", size=22), variant="ghost", size="2")),
+            rx.popover.trigger(
+                rx.icon_button(rx.icon("search", color="white", size=22), variant="ghost", size="2")
+            ),
             rx.popover.content(
                 rx.form(
                     rx.text_field(
@@ -72,7 +94,8 @@ def public_navbar() -> rx.Component:
                         value=SearchState.search_term,
                         on_change=SearchState.set_search_term,
                     ),
-                    on_submit=SearchState.perform_search, width="100%",
+                    on_submit=SearchState.perform_search,
+                    width="100%",
                 ),
                 width="80vw", max_width="350px",
             ),
@@ -82,9 +105,12 @@ def public_navbar() -> rx.Component:
 
     return rx.box(
         rx.grid(
+            # --- Columna Izquierda (Logo y Menú) ---
             rx.hstack(
                 rx.menu.root(
-                    rx.menu.trigger(rx.button(rx.icon("menu", size=22, color="white"), variant="ghost")),
+                    rx.menu.trigger(
+                        rx.button(rx.icon("menu", size=22, color="white"), variant="ghost")
+                    ),
                     rx.menu.content(
                         rx.menu.item("Home", on_click=navigation.NavState.to_home),
                         rx.menu.sub(
@@ -116,7 +142,17 @@ def public_navbar() -> rx.Component:
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
-            rx.box(search_bar, display="flex", justify_content="center", align_items="center", width="100%"),
+            
+            # --- Columna Central (Búsqueda) ---
+            rx.box(
+                search_bar,
+                display="flex",
+                justify_content="center",
+                align_items="center",
+                width="100%",
+            ),
+            
+            # --- Columna Derecha (Iconos) ---
             rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,
@@ -142,10 +178,15 @@ def public_navbar() -> rx.Component:
                 ),
                 align="center", spacing="3", justify="end",
             ),
-            columns="auto 1fr auto", align_items="center", width="100%", gap="1.5rem",
+  
+            columns="auto 1fr auto",
+            align_items="center",
+            width="100%",
+            gap="1.5rem",
         ),
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
         bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
+        # Se llama al evento on_load para detectar el dispositivo al montar el componente
         on_mount=[NotificationState.load_notifications, NavDeviceState.on_load_check_device],
     )
