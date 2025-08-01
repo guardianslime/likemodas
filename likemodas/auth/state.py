@@ -1,5 +1,6 @@
-# likemodas/auth/state.py
-
+# ============================================================================
+# likemodas/auth/state.py (CORREGIDO)
+# ============================================================================
 import re
 import reflex as rx
 import reflex_local_auth

@@ -103,4 +103,3 @@ app.add_page(shipping_info_module.shipping_info_page, route=navigation.routes.SH
 app.add_page(admin_page.admin_confirm_page, route="/admin/confirm-payments", title="Confirmar Pagos", on_load=admin_state.AdminConfirmState.load_pending_purchases)
 app.add_page(admin_page.payment_history_page, route="/admin/payment-history", title="Historial de Pagos", on_load=admin_state.PaymentHistoryState.load_confirmed_purchases)
 app.add_page(contact_page.contact_entries_list_page, route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=contact_state.ContactState.load_entries)
-
