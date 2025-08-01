@@ -27,4 +27,4 @@ EMAIL_HOST="smtp.gmail.com"
 EMAIL_PORT="587"
 EMAIL_USER="tu_correo@gmail.com"
 # ¡Usa una "Contraseña de aplicación" generada en tu cuenta de Google, no tu contraseña normal!
-EMAIL_PASSWORD="tu_contraseña_de_aplicacion" 
+EMAIL_PASSWORD="tu_contraseña_de_aplicacion"
