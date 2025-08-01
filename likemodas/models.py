@@ -7,11 +7,11 @@ from sqlmodel import Field, Relationship, Column, JSON
 import sqlalchemy
 from datetime import datetime
 import reflex as rx
-# ✅ SOLUCIÓN: Importamos LocalUser directamente de la librería.
-# Ya no definimos nuestra propia clase LocalUser.
 from reflex_local_auth.user import LocalUser
 import enum
 import pytz
+# ✅ SOLUCIÓN: Se importa Mapped y mapped_column para la nueva sintaxis de SQLAlchemy.
+from sqlalchemy.orm import Mapped, mapped_column
 from .utils.formatting import format_to_cop
 
 # --- Helper Functions ---
@@ -48,49 +48,51 @@ class Category(str, enum.Enum):
 
 # --- Models ---
 class UserInfo(rx.Model, table=True):
-    email: str
-    user_id: int = Field(foreign_key="localuser.id")
-    role: UserRole = Field(default=UserRole.CUSTOMER)
-    is_verified: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
+    # ✅ SOLUCIÓN: Se usa Mapped para tipar las columnas.
+    email: Mapped[str]
+    user_id: Mapped[int] = mapped_column(ForeignKey="localuser.id")
+    role: Mapped[UserRole] = mapped_column(default=UserRole.CUSTOMER)
+    is_verified: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow, onupdate=sqlalchemy.func.now(), nullable=False)
 
-    user: Optional["LocalUser"] = Relationship() # La relación ahora apunta al LocalUser de la librería
-    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
-    verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
-    shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
-    purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
-    notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
-    comments: List["CommentModel"] = Relationship(back_populates="userinfo")
-    contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
-    comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
+    # ✅ SOLUCIÓN: Se usa Mapped[] para definir las relaciones.
+    user: Mapped[Optional["LocalUser"]] = Relationship()
+    posts: Mapped[List["BlogPostModel"]] = Relationship(back_populates="userinfo")
+    verification_tokens: Mapped[List["VerificationToken"]] = Relationship(back_populates="userinfo")
+    shipping_addresses: Mapped[List["ShippingAddressModel"]] = Relationship(back_populates="userinfo")
+    purchases: Mapped[List["PurchaseModel"]] = Relationship(back_populates="userinfo")
+    notifications: Mapped[List["NotificationModel"]] = Relationship(back_populates="userinfo")
+    comments: Mapped[List["CommentModel"]] = Relationship(back_populates="userinfo")
+    contact_entries: Mapped[List["ContactEntryModel"]] = Relationship(back_populates="userinfo")
+    comment_votes: Mapped[List["CommentVoteModel"]] = Relationship(back_populates="userinfo")
 
 class VerificationToken(rx.Model, table=True):
-    token: str = Field(unique=True, index=True)
-    userinfo_id: int = Field(foreign_key="userinfo.id")
-    expires_at: datetime
-    userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
+    token: Mapped[str] = mapped_column(unique=True, index=True)
+    userinfo_id: Mapped[int] = mapped_column(ForeignKey="userinfo.id")
+    expires_at: Mapped[datetime]
+    userinfo: Mapped["UserInfo"] = Relationship(back_populates="verification_tokens")
 
 class PasswordResetToken(rx.Model, table=True):
-    token: str = Field(unique=True, index=True)
-    user_id: int = Field(foreign_key="localuser.id")
-    expires_at: datetime
+    token: Mapped[str] = mapped_column(unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey="localuser.id")
+    expires_at: Mapped[datetime]
 
 class BlogPostModel(rx.Model, table=True):
-    userinfo_id: int = Field(foreign_key="userinfo.id")
-    title: str
-    content: str
-    price: float = 0.0
-    attributes: dict = Field(default={}, sa_column=Column(JSON))
-    image_urls: list[str] = Field(default_factory=list, sa_column=Column(JSON))
-    publish_active: bool = False
-    publish_date: datetime = Field(default_factory=datetime.utcnow)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now()})
-    category: Category = Field(default=Category.OTROS)
+    userinfo_id: Mapped[int] = mapped_column(ForeignKey="userinfo.id")
+    title: Mapped[str]
+    content: Mapped[str]
+    price: Mapped[float] = mapped_column(default=0.0)
+    attributes: Mapped[dict] = mapped_column(JSON, default={})
+    image_urls: Mapped[list[str]] = mapped_column(JSON, default_factory=list)
+    publish_active: Mapped[bool] = mapped_column(default=False)
+    publish_date: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow, onupdate=sqlalchemy.func.now())
+    category: Mapped[Category] = mapped_column(default=Category.OTROS)
 
-    userinfo: "UserInfo" = Relationship(back_populates="posts")
-    comments: list["CommentModel"] = Relationship(back_populates="blog_post")
+    userinfo: Mapped["UserInfo"] = Relationship(back_populates="posts")
+    comments: Mapped[list["CommentModel"]] = Relationship(back_populates="blog_post")
 
     @property
     def rating_count(self) -> int: return len(self.comments)
@@ -106,30 +108,30 @@ class BlogPostModel(rx.Model, table=True):
     def price_cop(self) -> str: return format_to_cop(self.price)
 
 class ShippingAddressModel(rx.Model, table=True):
-    userinfo_id: int = Field(foreign_key="userinfo.id")
-    name: str
-    phone: str
-    city: str
-    neighborhood: str
-    address: str
-    is_default: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
+    userinfo_id: Mapped[int] = mapped_column(ForeignKey="userinfo.id")
+    name: Mapped[str]
+    phone: Mapped[str]
+    city: Mapped[str]
+    neighborhood: Mapped[str]
+    address: Mapped[str]
+    is_default: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
+    userinfo: Mapped["UserInfo"] = Relationship(back_populates="shipping_addresses")
 
 class PurchaseModel(rx.Model, table=True):
-    userinfo_id: int = Field(foreign_key="userinfo.id")
-    total_price: float
-    status: PurchaseStatus = Field(default=PurchaseStatus.PENDING)
-    purchase_date: datetime = Field(default_factory=datetime.utcnow)
-    confirmed_at: Optional[datetime] = None
-    shipping_name: Optional[str]
-    shipping_city: Optional[str]
-    shipping_neighborhood: Optional[str]
-    shipping_address: Optional[str]
-    shipping_phone: Optional[str]
+    userinfo_id: Mapped[int] = mapped_column(ForeignKey="userinfo.id")
+    total_price: Mapped[float]
+    status: Mapped[PurchaseStatus] = mapped_column(default=PurchaseStatus.PENDING)
+    purchase_date: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
+    confirmed_at: Mapped[Optional[datetime]]
+    shipping_name: Mapped[Optional[str]]
+    shipping_city: Mapped[Optional[str]]
+    shipping_neighborhood: Mapped[Optional[str]]
+    shipping_address: Mapped[Optional[str]]
+    shipping_phone: Mapped[Optional[str]]
 
-    items: list["PurchaseItemModel"] = Relationship(back_populates="purchase")
-    userinfo: "UserInfo" = Relationship(back_populates="purchases")
+    items: Mapped[list["PurchaseItemModel"]] = Relationship(back_populates="purchase")
+    userinfo: Mapped["UserInfo"] = Relationship(back_populates="purchases")
 
     @property
     def purchase_date_formatted(self) -> str: return format_utc_to_local(self.purchase_date)
@@ -143,13 +145,13 @@ class PurchaseModel(rx.Model, table=True):
         return [item.display_name for item in self.items]
 
 class PurchaseItemModel(rx.Model, table=True):
-    purchase_id: int = Field(foreign_key="purchasemodel.id")
-    blog_post_id: int = Field(foreign_key="blogpostmodel.id")
-    quantity: int
-    price_at_purchase: float
+    purchase_id: Mapped[int] = mapped_column(ForeignKey="purchasemodel.id")
+    blog_post_id: Mapped[int] = mapped_column(ForeignKey="blogpostmodel.id")
+    quantity: Mapped[int]
+    price_at_purchase: Mapped[float]
 
-    purchase: "PurchaseModel" = Relationship(back_populates="items")
-    blog_post: "BlogPostModel" = Relationship()
+    purchase: Mapped["PurchaseModel"] = Relationship(back_populates="items")
+    blog_post: Mapped["BlogPostModel"] = Relationship()
 
     @property
     def display_name(self) -> str:
@@ -157,46 +159,45 @@ class PurchaseItemModel(rx.Model, table=True):
         return f"{self.quantity} x {title}"
 
 class NotificationModel(rx.Model, table=True):
-    userinfo_id: int = Field(foreign_key="userinfo.id")
-    message: str
-    is_read: bool = Field(default=False)
-    url: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    userinfo: "UserInfo" = Relationship(back_populates="notifications")
+    userinfo_id: Mapped[int] = mapped_column(ForeignKey="userinfo.id")
+    message: Mapped[str]
+    is_read: Mapped[bool] = mapped_column(default=False)
+    url: Mapped[Optional[str]]
+    created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
+    userinfo: Mapped["UserInfo"] = Relationship(back_populates="notifications")
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
 class ContactEntryModel(rx.Model, table=True):
-    userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
-    first_name: str
-    last_name: Optional[str] = None
-    email: Optional[str] = None
-    message: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
+    userinfo_id: Mapped[Optional[int]] = mapped_column(ForeignKey="userinfo.id")
+    first_name: Mapped[str]
+    last_name: Mapped[Optional[str]]
+    email: Mapped[Optional[str]]
+    message: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
+    userinfo: Mapped[Optional["UserInfo"]] = Relationship(back_populates="contact_entries")
     
-    # ✅ SOLUCIÓN: La propiedad 'created_at_formatted' ahora tiene la sangría correcta.
     @property
     def created_at_formatted(self) -> str: 
         return format_utc_to_local(self.created_at)
 
 class CommentModel(rx.Model, table=True):
-    content: str
-    rating: int
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": sqlalchemy.func.now()})
-    userinfo_id: int = Field(foreign_key="userinfo.id")
-    blog_post_id: int = Field(foreign_key="blogpostmodel.id")
-    userinfo: "UserInfo" = Relationship(back_populates="comments")
-    blog_post: "BlogPostModel" = Relationship(back_populates="comments")
-    votes: list["CommentVoteModel"] = Relationship(back_populates="comment")
+    content: Mapped[str]
+    rating: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default_factory=datetime.utcnow, onupdate=sqlalchemy.func.now())
+    userinfo_id: Mapped[int] = mapped_column(ForeignKey="userinfo.id")
+    blog_post_id: Mapped[int] = mapped_column(ForeignKey="blogpostmodel.id")
+    userinfo: Mapped["UserInfo"] = Relationship(back_populates="comments")
+    blog_post: Mapped["BlogPostModel"] = Relationship(back_populates="comments")
+    votes: Mapped[list["CommentVoteModel"]] = Relationship(back_populates="comment")
 
 class CommentVoteModel(rx.Model, table=True):
-    vote_type: VoteType
-    userinfo_id: int = Field(foreign_key="userinfo.id")
-    comment_id: int = Field(foreign_key="commentmodel.id")
-    userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
-    comment: "CommentModel" = Relationship(back_populates="votes")
+    vote_type: Mapped[VoteType]
+    userinfo_id: Mapped[int] = mapped_column(ForeignKey="userinfo.id")
+    comment_id: Mapped[int] = mapped_column(ForeignKey="commentmodel.id")
+    userinfo: Mapped["UserInfo"] = Relationship(back_populates="comment_votes")
+    comment: Mapped["CommentModel"] = Relationship(back_populates="votes")
 
 class ProductCardData(rx.Base):
     id: int
