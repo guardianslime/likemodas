@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN FINAL CON IMPORTACIÓN CORREGIDA)
+# likemodas/models.py (VERSIÓN FINAL CON TYPO CORREGIDO)
 
 from __future__ import annotations
 from typing import Optional, List
@@ -9,7 +9,6 @@ import reflex as rx
 import sqlalchemy
 from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy.orm import Mapped
-# --- 👇 IMPORTACIÓN CLAVE AÑADIDA ---
 from sqlalchemy import String
 from reflex_local_auth.user import LocalUser
 from . import utils
@@ -228,7 +227,8 @@ class CommentModel(rx.Model, table=True):
     
     userinfo: Mapped[UserInfo] = Relationship(back_populates="comments")
     blog_post: Mapped[BlogPostModel] = Relationship(back_populates="comments")
-    votes: Mapped[List[CommentVoteModel]] = Relationship(back_pospulates="comment")
+    # --- 👇 LÍNEA CORREGIDA ---
+    votes: Mapped[List[CommentVoteModel]] = Relationship(back_populates="comment")
 
     @property
     def created_at_formatted(self) -> str:
