@@ -16,12 +16,8 @@ from ..data.product_options import (
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# (Las clases BlogAddFormState y BlogEditFormState no necesitan cambios y se mantienen como en tu archivo original)
-# ...
-
 class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
-    # CORREGIDO: Inicializar como una lista vacía en lugar de con Nones.
     posts: list[BlogPostModel] = []
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
@@ -30,7 +26,6 @@ class BlogPostState(SessionState):
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
-            # Usamos el formateador de la propiedad del modelo para consistencia.
             return self.post.price_cop
         return "$0"
 
@@ -95,7 +90,6 @@ class BlogPostState(SessionState):
             if post and post.userinfo_id == int(self.my_userinfo_id):
                 post.publish_active = not post.publish_active
                 if post.publish_active:
-                    # Asigna la fecha actual solo si no ha sido publicada antes
                     if post.publish_date is None:
                         post.publish_date = datetime.utcnow()
                     yield rx.toast.success("¡Publicación activada!")
@@ -103,7 +97,6 @@ class BlogPostState(SessionState):
                     yield rx.toast.info("Publicación desactivada.")
                 session.add(post)
                 session.commit()
-        # Recarga los detalles del post para actualizar la UI
         yield type(self).get_post_detail
 
     @rx.event
@@ -114,7 +107,6 @@ class BlogPostState(SessionState):
             if post_to_delete and post_to_delete.userinfo_id == int(self.my_userinfo_id):
                 session.delete(post_to_delete)
                 session.commit()
-        # Redirige a la lista de posts después de eliminar
         return rx.redirect(BLOG_POSTS_ROUTE)
 
 
@@ -214,7 +206,6 @@ class BlogAddFormState(SessionState):
             new_post_id = post.id
         
         self.reset()
-        # Redirige a la página de detalle del admin, no a la pública.
         return rx.redirect(f"/blog/{new_post_id}")
 
     @rx.event
@@ -264,7 +255,6 @@ class BlogEditFormState(BlogPostState):
 
     @rx.event
     def on_load_edit(self):
-        # Llama a la lógica de get_post_detail de la clase base
         yield type(self).get_post_detail
         if self.post:
             self.post_content = self.post.content or ""
@@ -311,14 +301,12 @@ class BlogEditFormState(BlogPostState):
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, post_id)
             if post_to_update and post_to_update.userinfo_id == int(self.my_userinfo_id):
-                # Actualiza solo los campos que vienen del formulario
                 for key, value in form_data.items():
                     if hasattr(post_to_update, key):
                         setattr(post_to_update, key, value)
                 session.add(post_to_update)
                 session.commit()
         
-        # Redirige de vuelta a la página de detalle del admin
         return rx.redirect(f"/blog/{post_id}")
 
 
@@ -427,9 +415,8 @@ class CommentState(SessionState):
                 )
                 .where(
                     BlogPostModel.id == pid,
-                    # --- ✅ LÍNEA CORREGIDA ---
                     BlogPostModel.publish_active == True,
-                    BlogPostModel.publish_date < datetime.utcnow()
+                    BlogPostModel.publish_date <= datetime.utcnow()
                 )
             ).unique().one_or_none()
 
