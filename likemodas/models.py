@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN FINAL Y DEFINITIVA)
+# likemodas/models.py (VERSIÓN FINAL CON IMPORTACIÓN CORREGIDA)
 
 from __future__ import annotations
 from typing import Optional, List
@@ -9,6 +9,8 @@ import reflex as rx
 import sqlalchemy
 from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy.orm import Mapped
+# --- 👇 IMPORTACIÓN CLAVE AÑADIDA ---
+from sqlalchemy import String
 from reflex_local_auth.user import LocalUser
 from . import utils
 from .utils.formatting import format_to_cop
@@ -16,6 +18,7 @@ from .utils.formatting import format_to_cop
 # --- Funciones de Utilidad ---
 
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
+    """Formatea una fecha UTC a la zona horaria de Colombia."""
     if not utc_dt:
         return "N/A"
     try:
@@ -53,12 +56,11 @@ class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
     email: str
     user_id: int = Field(foreign_key="localuser.id", unique=True)
-    role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(sqlalchemy.String, server_default=UserRole.CUSTOMER.value, nullable=False))
+    role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
     is_verified: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=utils.timing.get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
-    # --- 👇 CAMBIO CLAVE: Se quitan las comillas de los nombres de los modelos ---
     user: Mapped[Optional[LocalUser]] = Relationship()
     posts: Mapped[List[BlogPostModel]] = Relationship(back_populates="userinfo")
     verification_tokens: Mapped[List[VerificationToken]] = Relationship(back_populates="userinfo")
@@ -226,7 +228,7 @@ class CommentModel(rx.Model, table=True):
     
     userinfo: Mapped[UserInfo] = Relationship(back_populates="comments")
     blog_post: Mapped[BlogPostModel] = Relationship(back_populates="comments")
-    votes: Mapped[List[CommentVoteModel]] = Relationship(back_populates="comment")
+    votes: Mapped[List[CommentVoteModel]] = Relationship(back_pospulates="comment")
 
     @property
     def created_at_formatted(self) -> str:
@@ -242,7 +244,7 @@ class CommentModel(rx.Model, table=True):
 
 
 class CommentVoteModel(rx.Model, table=True):
-    vote_type: VoteType = Field(sa_column=Column(sqlalchemy.String))
+    vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")
     comment_id: int = Field(foreign_key="commentmodel.id")
     
