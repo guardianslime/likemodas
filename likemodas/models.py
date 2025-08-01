@@ -1,5 +1,5 @@
 # ============================================================================
-# likemodas/models.py (ÚNICO ARCHIVO DE MODELOS)
+# likemodas/models.py (Corregido)
 # ============================================================================
 from __future__ import annotations
 from typing import Optional, List
@@ -10,7 +10,8 @@ import reflex as rx
 from reflex_local_auth.user import LocalUser as reflex_LocalUser
 import enum
 import pytz
-from ..utils.formatting import format_to_cop
+# ✅ SOLUCIÓN: Se cambia la importación de '..' a '.' para que sea relativa al paquete actual.
+from .utils.formatting import format_to_cop
 
 # --- Helper Functions ---
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
@@ -24,7 +25,7 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     local_dt = aware_utc_dt.astimezone(colombia_tz)
     return local_dt.strftime('%d-%m-%Y %I:%M %p')
 
-# --- Enums (Definición Crítica) ---
+# --- Enums ---
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
