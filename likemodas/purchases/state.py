@@ -12,7 +12,6 @@ class PurchaseHistoryState(SessionState):
 
     search_query: str = ""
 
-    # --- 👇 AÑADIR ESTA PROPIEDAD COMPUTADA 👇 ---
     @rx.var
     def filtered_purchases(self) -> list[PurchaseModel]:
         """Filtra las compras del usuario por ID o contenido."""
