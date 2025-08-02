@@ -34,7 +34,8 @@ class PurchaseHistoryState(SessionState):
         results = []
         for p in self.purchases:
             # Buscamos en el ID y en los nombres de los artículos
-            [cite_start]items_text = " ".join(p.items_formatted).lower() [cite: 1078]
+            # --- ✅ LÍNEA CORREGIDA (sin los marcadores de cita) ---
+            items_text = " ".join(p.items_formatted).lower()
             if query in f"#{p.id}" or query in items_text:
                 results.append(p)
         return results
@@ -56,7 +57,7 @@ class PurchaseHistoryState(SessionState):
                     .joinedload(PurchaseItemModel.blog_post)
                     .joinedload(BlogPostModel.comments)
                 )
-                [cite_start].where(PurchaseModel.userinfo_id == self.authenticated_user_info.id) [cite: 1082]
+                .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
             )
             db_results = session.exec(statement).unique().all()
