@@ -1,11 +1,14 @@
+# likemodas/purchases/page.py
+
 import reflex as rx
 import reflex_local_auth
 from ..ui.base import base_page
-from .state import PurchaseHistoryState
-from ..models import PurchaseModel
+# --- ✨ CAMBIO IMPORTANTE AQUÍ ---
+# Importamos el nuevo DTO y ya no necesitamos PurchaseModel en este archivo.
+from .state import PurchaseHistoryState, PurchaseHistoryCardData
 from ..account.layout import account_layout
 
-def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
+def purchase_detail_card(purchase: PurchaseHistoryCardData) -> rx.Component:
     """
     Componente para mostrar el detalle de una compra en el historial del usuario.
     --- DISEÑO ACTUALIZADO CON TEXTO MÁS GRANDE Y CENTRADO ---
