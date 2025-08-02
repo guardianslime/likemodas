@@ -175,6 +175,7 @@ class PurchaseModel(rx.Model, table=True):
         # incluso si no hay artículos, para evitar el error 'map' of undefined.
         if not self.items:
             return []
+        
         return [
             f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)"
             for item in self.items

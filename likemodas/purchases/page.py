@@ -21,8 +21,10 @@ def purchase_detail_card(purchase: PurchaseModel) -> rx.Component:
                 ),
                 rx.spacer(),
                 rx.vstack(
-                    rx.badge(purchase.status.to(str), color_scheme="blue", variant="soft", size="2"),
-                    rx.heading(purchase.total_price_cop, size="6"), # ✅ CAMBIO AQUÍ
+                    # --- ✅ CAMBIO CLAVE AQUÍ ---
+                    # Se accede al valor del enum con .value
+                    rx.badge(purchase.status.value, color_scheme="blue", variant="soft", size="2"),
+                    rx.heading(purchase.total_price_cop, size="6"), 
                     align_items="end",
                 ),
                 justify="between",
