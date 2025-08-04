@@ -1,7 +1,12 @@
 # likemodas/ui/nav.py
 
 import reflex as rx
-from ..state import AppState
+from .. import navigation
+from .search_state import SearchState
+from ..cart.state import CartState
+from ..auth.state import SessionState
+from ..notifications.state import NotificationState
+# Se elimina la importación de 'AppState' para romper el ciclo
 
 def notification_icon() -> rx.Component:
     """Icono de notificaciones con contador."""
@@ -11,9 +16,9 @@ def notification_icon() -> rx.Component:
             rx.box(
                 rx.icon("bell", size=28, color=icon_color),
                 rx.cond(
-                    AppState.unread_count > 0,
+                    NotificationState.unread_count > 0,
                     rx.box(
-                        rx.text(AppState.unread_count, size="1", weight="bold"),
+                        rx.text(NotificationState.unread_count, size="1", weight="bold"),
                         position="absolute", top="-5px", right="-5px",
                         padding="0 0.4em", border_radius="full",
                         bg="red", color="white",
@@ -26,9 +31,9 @@ def notification_icon() -> rx.Component:
         ),
         rx.menu.content(
             rx.cond(
-                AppState.notifications,
+                NotificationState.notifications,
                 rx.foreach(
-                    AppState.notifications,
+                    NotificationState.notifications,
                     lambda n: rx.menu.item(
                         rx.box(
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
@@ -48,7 +53,7 @@ def notification_icon() -> rx.Component:
             max_height="300px",
             overflow_y="auto"
         ),
-        on_open_change=lambda open: rx.cond(open, AppState.mark_all_as_read, None)
+        on_open_change=lambda open: rx.cond(open, NotificationState.mark_all_as_read, None)
     )
 
 def public_navbar() -> rx.Component:
@@ -63,7 +68,8 @@ def public_navbar() -> rx.Component:
                         rx.button(rx.icon("menu", size=22, color=icon_color), variant="ghost")
                     ),
                     rx.menu.content(
-                        rx.menu.item("Home", on_click=AppState.to_home),
+                        # Las llamadas ahora usan el estado de navegación independiente
+                        rx.menu.item("Home", on_click=navigation.NavState.to_home),
                         rx.menu.sub(
                             rx.menu.sub_trigger("Categorías"),
                             rx.menu.sub_content(
@@ -74,17 +80,17 @@ def public_navbar() -> rx.Component:
                                 rx.menu.item("Ver Todo", on_click=rx.redirect("/")),
                             ),
                         ),
-                        rx.menu.item("Contact", on_click=AppState.to_contact),
+                        rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
                         rx.menu.separator(),
                         rx.cond(
-                            AppState.is_authenticated,
+                            SessionState.is_authenticated,
                             rx.fragment(
-                                rx.menu.item("Mi Cuenta", on_click=AppState.to_my_account),
-                                rx.menu.item("Logout", on_click=AppState.to_logout),
+                                rx.menu.item("Mi Cuenta", on_click=navigation.NavState.to_my_account),
+                                rx.menu.item("Logout", on_click=navigation.NavState.to_logout),
                             ),
                             rx.fragment(
-                                rx.menu.item("Login", on_click=AppState.to_login),
-                                rx.menu.item("Register", on_click=AppState.to_register),
+                                rx.menu.item("Login", on_click=navigation.NavState.to_login),
+                                rx.menu.item("Register", on_click=navigation.NavState.to_register),
                             )
                         ),
                         bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
@@ -97,26 +103,26 @@ def public_navbar() -> rx.Component:
             rx.form(
                 rx.input(
                     placeholder="Buscar productos...",
-                    value=AppState.search_term,
-                    on_change=AppState.set_search_term,
+                    value=SearchState.search_term,
+                    on_change=SearchState.set_search_term,
                     width="100%",
                 ),
-                on_submit=AppState.perform_search,
+                on_submit=SearchState.perform_search,
                 width="100%",
             ),
             
             rx.hstack(
                 rx.cond(
-                    AppState.is_authenticated,
+                    SessionState.is_authenticated,
                     rx.fragment(
                         notification_icon(),
                         rx.link(
                             rx.box(
                                 rx.icon("shopping-cart", size=22, color=icon_color),
                                 rx.cond(
-                                    AppState.cart_items_count > 0,
+                                    CartState.cart_items_count > 0,
                                     rx.box(
-                                        rx.text(AppState.cart_items_count, size="1", weight="bold"),
+                                        rx.text(CartState.cart_items_count, size="1", weight="bold"),
                                         position="absolute", top="-5px", right="-5px",
                                         padding="0 0.4em", border_radius="full",
                                         bg="red", color="white",
@@ -140,6 +146,6 @@ def public_navbar() -> rx.Component:
         width="100%", padding="0.75rem 1.5rem", z_index="999",
         bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
         on_mount=[
-            AppState.load_notifications,
+            NotificationState.load_notifications,
         ],
     )
