@@ -1,23 +1,20 @@
-# likemodas/blog/detail.py (CORREGIDO)
+# likemodas/blog/detail.py
+
 import reflex as rx
-# --- ✨ CAMBIO: Se importa el decorador de admin ---
 from ..auth.admin_auth import require_admin
 from ..ui.base import base_page
 from .state import BlogPostState
 from .notfound import blog_post_not_found
-from..ui.carousel import Carousel  # <--- LÍNEA CORREGID
+from..ui.carousel import Carousel
 
-# (Las funciones _image_section y _info_section no cambian)
 def _image_section() -> rx.Component:
     """
     Muestra las imágenes del post en un carrusel.
     """
     return rx.box(
-        # Usamos Carousel.create() para instanciar el componente
         Carousel.create(
-            # rx.foreach itera sobre la lista de URLs de las imágenes del estado
             rx.foreach(
-                BlogPostState.post.image_urls,  # <--- USA EL NOMBRE CORRECTO
+                BlogPostState.post.image_urls,
                 lambda image_url: rx.image(
                     src=rx.get_upload_url(image_url),
                     alt=BlogPostState.post.title,
@@ -27,7 +24,6 @@ def _image_section() -> rx.Component:
                     border_radius="var(--radius-3)",
                 )
             ),
-            # Propiedades del carrusel
             show_arrows=True,
             show_indicators=True,
             infinite_loop=True,
@@ -47,7 +43,6 @@ def _info_section() -> rx.Component:
         rx.text(BlogPostState.post.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
         rx.spacer(),
         rx.hstack(
-            # ✨ --- NUEVO BOTÓN AÑADIDO --- ✨
             rx.button(
                 rx.cond(BlogPostState.post.publish_active, "Despublicar", "Publicar"),
                 on_click=BlogPostState.toggle_publish_status(BlogPostState.post.id),
@@ -63,8 +58,6 @@ def _info_section() -> rx.Component:
         width="100%",
     )
 
-
-# --- ✨ CAMBIO: Se usa el decorador de admin ---
 @require_admin
 def blog_post_detail_page() -> rx.Component:
     """Página que muestra el detalle de un post del admin."""
@@ -73,7 +66,7 @@ def blog_post_detail_page() -> rx.Component:
         rx.grid(
             _image_section(),
             _info_section(),
-            columns={"base": "1", "md": "2"},
+            columns="2", # Se fija a 2 columnas
             spacing="4",
             align_items="start",
             width="100%",

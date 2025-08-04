@@ -1,3 +1,5 @@
+# likemodas/blog/forms.py
+
 import reflex as rx
 from .state import BlogAddFormState, BlogEditFormState, BlogPostState, SessionState
 from ..models import Category
@@ -7,8 +9,7 @@ from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
     """
-    Formulario para añadir productos con diseños diferentes y optimizados para móvil y escritorio,
-    controlados por la propiedad de visualización (display) responsiva.
+    Formulario para añadir productos con un diseño único para escritorio.
     """
     # --- Contenido común y secciones reutilizables ---
     
@@ -34,7 +35,7 @@ def blog_post_add_form() -> rx.Component:
                     searchable_select(placeholder="Tipo de Tela", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_tipo_tela, value_select=BlogAddFormState.tipo_tela, search_value=BlogAddFormState.search_add_tipo_tela, on_change_search=BlogAddFormState.set_search_add_tipo_tela, filter_name="add_form_tipo_tela"),
                     rx.cond(BlogAddFormState.tipo_tela != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("tipo_tela"), size="1", variant="ghost"))
                 ),
-                columns={"base": "1", "md": "2"}, spacing="4", width="100%"
+                columns="2", spacing="4", width="100%"
             )
         ),
         rx.cond(
@@ -56,7 +57,7 @@ def blog_post_add_form() -> rx.Component:
                     searchable_select(placeholder="Material", options=BlogAddFormState.filtered_add_materiales, on_change_select=BlogAddFormState.set_material_calzado, value_select=BlogAddFormState.material_calzado, search_value=BlogAddFormState.search_add_material_calzado, on_change_search=BlogAddFormState.set_search_add_material_calzado, filter_name="add_form_material_calzado"),
                     rx.cond(BlogAddFormState.material_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_calzado"), size="1", variant="ghost"))
                 ),
-                columns={"base": "1", "md": "2"}, spacing="4", width="100%"
+                columns="2", spacing="4", width="100%"
             )
         ),
         rx.cond(
@@ -71,7 +72,7 @@ def blog_post_add_form() -> rx.Component:
                     rx.cond(BlogAddFormState.material_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=BlogAddFormState.clear_attribute("material_mochila"), size="1", variant="ghost"))
                 ),
                 rx.input(placeholder="Medidas (e.g., 50x30cm)", value=BlogAddFormState.medidas, on_change=BlogAddFormState.set_medidas, size="2"),
-                columns={"base": "1", "md": "2"}, spacing="4", width="100%"
+                columns="2", spacing="4", width="100%"
             )
         ),
         align_items="start", width="100%"
@@ -107,14 +108,12 @@ def blog_post_add_form() -> rx.Component:
     )
 
     basic_info_section = rx.vstack(
-        # 1. Nombre del producto
         rx.input(
             placeholder="Nombre del producto",
             value=BlogAddFormState.title,
             on_change=BlogAddFormState.set_title,
             required=True, size="3"
         ),
-        # 2. Categoría
         rx.select(
             BlogPostState.categories,
             placeholder="Selecciona una categoría...",
@@ -124,7 +123,6 @@ def blog_post_add_form() -> rx.Component:
             size="3",
             width="100%"
         ),
-        # 3. Precio (Nueva ubicación y placeholder mejorado)
         rx.input(
             placeholder="Precio (en COP, ej: 55000)",
             type="number",
@@ -134,14 +132,13 @@ def blog_post_add_form() -> rx.Component:
             size="3",
             width="100%"
         ),
-        # 4. Descripción del producto
         rx.text_area(
             placeholder="Descripción del producto...",
             value=BlogAddFormState.content,
             on_change=BlogAddFormState.set_content,
             required=True,
             size="2",
-            style={"height": "200px"} # Altura ajustada
+            style={"height": "200px"}
         ),
         spacing="4",
         align_items="stretch"
@@ -165,19 +162,10 @@ def blog_post_add_form() -> rx.Component:
         spacing="5", width="100%",
     )
 
-    mobile_layout = rx.vstack(
-        upload_section,
-        basic_info_section,
-        rx.box(characteristics_section, margin_top="1em", width="100%"),
-        action_buttons,
-        spacing="5", width="100%",
-    )
-
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
-            rx.box(desktop_layout, display=["none", "none", "flex", "flex"]),
-            rx.box(mobile_layout, display=["flex", "flex", "none", "none"]),
+            desktop_layout, # Se deja solo el layout de escritorio
             spacing="5",
             width="100%",
             max_width="1600px",

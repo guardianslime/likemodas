@@ -59,7 +59,6 @@ def public_navbar() -> rx.Component:
     """Barra de navegación pública, rediseñada para ser robusta y responsiva."""
     return rx.box(
         rx.grid(
-            # --- Columna Izquierda (Logo y Menú) ---
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
@@ -97,46 +96,17 @@ def public_navbar() -> rx.Component:
                 align="center", spacing="4", justify="start",
             ),
             
-            # --- Columna Central (Búsqueda Responsiva) ---
-            rx.box(
-                # Búsqueda para ESCRITORIO
-                rx.form(
-                    rx.input(
-                        placeholder="Buscar productos...",
-                        value=SearchState.search_term,
-                        on_change=SearchState.set_search_term,
-                        width="100%",
-                    ),
-                    on_submit=SearchState.perform_search,
+            rx.form(
+                rx.input(
+                    placeholder="Buscar productos...",
+                    value=SearchState.search_term,
+                    on_change=SearchState.set_search_term,
                     width="100%",
-                    # ✅ Se muestra solo en pantallas medianas y grandes
-                    display=["none", "none", "flex", "flex"],
                 ),
-                # Búsqueda para MÓVIL (ícono que abre un popover)
-                rx.box(
-                    rx.popover.root(
-                        rx.popover.trigger(
-                            rx.icon_button(rx.icon("search", color="white", size=22), variant="ghost", size="2")
-                        ),
-                        rx.popover.content(
-                            rx.form(
-                                rx.input(
-                                    placeholder="Buscar...",
-                                    value=SearchState.search_term,
-                                    on_change=SearchState.set_search_term,
-                                ),
-                                on_submit=SearchState.perform_search,
-                                width="100%",
-                            ),
-                            width="80vw", max_width="350px",
-                        ),
-                    ),
-                    # ✅ Se muestra solo en pantallas pequeñas
-                    display=["flex", "flex", "none", "none"],
-                ),
+                on_submit=SearchState.perform_search,
+                width="100%",
             ),
             
-            # --- Columna Derecha (Iconos) ---
             rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,
@@ -171,7 +141,6 @@ def public_navbar() -> rx.Component:
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
         bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
-        # ✅ Se montan los event handlers para notificaciones y tipo de dispositivo
         on_mount=[
             NotificationState.load_notifications,
             NavDeviceState.on_mount

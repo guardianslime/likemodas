@@ -16,7 +16,7 @@ def _image_section() -> rx.Component:
                 CommentState.post.image_urls,
                 lambda image_url: rx.image(
                     src=rx.get_upload_url(image_url),
-                    alt=CommentState.post.title, 
+                    alt=CommentState.post.title,
                     width="100%",
                     height="auto",
                     object_fit="cover",
@@ -226,7 +226,7 @@ def blog_public_detail_page() -> rx.Component:
                         rx.grid(
                             _image_section(),
                             _info_section(),
-                            columns={"base": "1", "md": "2"},
+                            columns="2", # Se fija a 2 columnas
                             spacing="4",
                             align_items="start",
                             width="100%",
@@ -234,7 +234,6 @@ def blog_public_detail_page() -> rx.Component:
                         ),
                         comment_section(),
                     ),
-                    # Muestra un spinner mientras carga o un mensaje si falla
                     rx.center(
                         rx.cond(
                             CommentState.is_hydrated,

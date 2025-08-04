@@ -10,8 +10,7 @@ from.. import navigation
 
 def sidebar_dark_mode_toggle_item() -> rx.Component:
     """
-    Un componente que muestra un botón para alternar el modo de color,
-    mostrando un ícono de sol para el modo claro y uno de luna para el modo oscuro.
+    Un componente que muestra un botón para alternar el modo de color.
     """
     return rx.button(
         rx.color_mode_cond(
@@ -19,14 +18,14 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
             dark=rx.icon(tag="moon")
         ),
         on_click=toggle_color_mode,
-        variant="ghost"  # Un estilo de botón sutil
+        variant="ghost"
     )
 
 def sidebar_user_item() -> rx.Component:
     """Muestra el avatar y el nombre de usuario autenticado."""
     username = rx.cond(
-        SessionState.authenticated_username, 
-        SessionState.authenticated_username, 
+        SessionState.authenticated_username,
+        SessionState.authenticated_username,
         "Account"
     )
     return rx.cond(
@@ -37,14 +36,13 @@ def sidebar_user_item() -> rx.Component:
             align="center",
             spacing="3",
         ),
-        # Fallback para estado no autenticado (aunque el sidebar no debería mostrarse)
         rx.text("Account", size="3", weight="medium")
     )
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
     return rx.link(
         rx.hstack(
-            rx.icon(icon), 
+            rx.icon(icon),
             rx.text(text, size="4"),
             rx.spacer(),
             rx.cond(
@@ -104,7 +102,6 @@ def sidebar_logout_item() -> rx.Component:
     )
 
 def sidebar() -> rx.Component:
-    # Contenido común para ambos layouts (escritorio y móvil)
     sidebar_content = rx.vstack(
         rx.hstack(
             rx.image(
@@ -116,7 +113,7 @@ def sidebar() -> rx.Component:
             align="center",
             justify="center",
             width="100%",
-            margin_bottom="1.5em", 
+            margin_bottom="1.5em",
         ),
         sidebar_items(),
         rx.spacer(),
@@ -134,32 +131,8 @@ def sidebar() -> rx.Component:
         align="start", height="100vh",
     )
 
-    return rx.fragment(
-        # --- Barra lateral para Escritorio ---
-        rx.box(
-            sidebar_content,
-            width="16em",
-            display=["none", "none", "flex", "flex"], # Visible solo en md y superior
-        ),
-        # --- Cajón (Drawer) para Móvil ---
-        rx.box(
-            rx.drawer.root(
-                rx.drawer.trigger(rx.icon("align-justify", size=30)), # Botón de menú
-                rx.drawer.overlay(z_index="5"),
-                rx.drawer.portal(
-                    rx.drawer.content(
-                        rx.vstack(
-                            rx.box(rx.drawer.close(rx.icon("x", size=30)), width="100%",),
-                            # Reutiliza el mismo contenido de la barra lateral
-                            sidebar_content,
-                            width="100%",
-                        ),
-                        top="auto", right="auto", height="100%", width="20em", padding="1.5em", bg="#2C004B",
-                    ),
-                ),
-                direction="left",
-            ),
-            padding="1em",
-            display=["flex", "flex", "none", "none"], # Visible solo en base y sm
-        )
+    # Se renderiza directamente la barra lateral de escritorio
+    return rx.box(
+        sidebar_content,
+        width="16em",
     )
