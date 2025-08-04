@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO NUEVO Y CENTRAL)
+# likemodas/state.py
 
 import reflex as rx
 import reflex_local_auth

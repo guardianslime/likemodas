@@ -1,4 +1,4 @@
-# likemodas/__init__.py (CORREGIDO Y COMPLETO)
+# likemodas/likemodas.py
 
 import reflex as rx
 import reflex_local_auth

@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN FINAL CON SINTAXIS SQLMODEL ESTÁNDAR)
+# likemodas/models.py
 
 from typing import Optional, List
 from datetime import datetime
@@ -172,7 +172,7 @@ class PurchaseModel(rx.Model, table=True):
     def items_formatted(self) -> list[str]:
         # --- ✅ CORRECCIÓN CLAVE AQUÍ ---
         # Se asegura de que siempre se devuelva una lista,
-        # incluso si no hay artículos, para evitar el error 'map' of undefined.
+        # incluso si no hay artículos, para evitar errores en el frontend.
         if not self.items:
             return []
         

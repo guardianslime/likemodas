@@ -1,12 +1,12 @@
-# -----------------------------------------------------------------------------
 # likemodas/ui/components.py
-# -----------------------------------------------------------------------------
+
 import reflex as rx
 import math
 from ..navigation import routes
 from ..cart.state import CartState, ProductCardData
-from.skeletons import skeleton_product_gallery
+from .skeletons import skeleton_product_gallery
 from reflex.event import EventSpec
+from ..state import AppState
 from ..auth.state import SessionState
 
 def searchable_select(
@@ -184,7 +184,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.spacer(),
                     rx.button(
                         "Añadir al Carrito",
-                        on_click=lambda: CartState.add_to_cart(post.id),
+                        on_click=lambda: AppState.cart.add_to_cart(post.id),
                         width="100%",
                     ),
                     align="center", spacing="2", height="100%"

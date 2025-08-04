@@ -1,9 +1,8 @@
-# likemodas/ui/base.py (VERSIÓN FINAL Y RESPONSIVA)
+# likemodas/ui/base.py
 
 import reflex as rx
-from..auth.state import SessionState
+from ..state import AppState
 from .nav import public_navbar
-# --- ✨ CAMBIO: Se importan ambos componentes del sidebar ---
 from .sidebar import sidebar, mobile_admin_menu, sidebar_dark_mode_toggle_item
 
 def fixed_color_mode_button() -> rx.Component:
@@ -21,16 +20,16 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     Layout base que implementa un patrón de carga seguro y ahora es
     completamente responsivo para todos los tipos de usuario.
     """
-    # 🛡️ Patrón de renderizado condicional para esperar la hidratación
+    # 🛡️ ✅ CORRECCIÓN CLAVE: Patrón de renderizado condicional para esperar la hidratación
     return rx.cond(
-        ~SessionState.is_hydrated,
+        ~AppState.is_hydrated,
         
         # 1. Muestra un spinner mientras el estado no esté listo.
         rx.center(rx.spinner(size="3"), height="100vh"),
         
         # 2. Cuando el estado está hidratado, decide qué layout mostrar.
         rx.cond(
-            SessionState.is_admin,
+            AppState.is_admin,
             
             # --- ✅ 2a. LAYOUT DE ADMIN RESPONSIVO ---
             rx.box(
