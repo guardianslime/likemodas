@@ -17,65 +17,48 @@ def fixed_color_mode_button() -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    Layout base robusto que previene errores visuales por estados sin hidratar
-    y mantiene la estructura del DOM estable.
+    Layout base que implementa un patrón de carga seguro para prevenir
+    el "salto" de la interfaz al esperar la hidratación del estado.
     """
-    if not isinstance(child, rx.Component):
-        child = rx.heading("Error: El elemento hijo no es un componente válido")
-
-    verification_required_page = rx.center(
-        rx.vstack(
-            rx.heading("Verificación Requerida"),
-            rx.text("Por favor, revisa tu correo para verificar tu cuenta."),
-            spacing="4"
-        ),
-        height="80vh"
-    )
-
-    main_content = rx.cond(
-        (SessionState.is_authenticated & SessionState.authenticated_user_info.is_verified) | ~SessionState.is_authenticated,
-        child,
-        verification_required_page
-    )
-
-    # ✅ Layout para administradores
-    admin_layout = rx.hstack(
-        sidebar(),
-        rx.box(
-            main_content,
-            padding="1em",
-            width="100%",
-        ),
-        align="start",
-        spacing="0",
-        width="100%",
-        min_height="100vh",
-    )
-
-    # ✅ Layout para usuarios públicos y clientes
-    public_layout = rx.box(
-        public_navbar(),
-        rx.box(
-            main_content,
-            padding_top="6rem",
-            padding_right="1em",
-            padding_bottom="1em",
-            padding_left="1em",
-            width="100%",
-        ),
-        fixed_color_mode_button(),
-        width="100%",
-    )
-
-    # 🛡️ CAMBIO CLAVE: Se decide qué layout mostrar DESPUÉS de la hidratación.
-    # Esto previene el "salto" de la interfaz.
+    # 🛡️ Patrón de renderizado condicional recomendado
     return rx.cond(
-        SessionState.is_hydrated,
+        ~SessionState.is_hydrated,
+        
+        # 1. MIENTRAS EL ESTADO NO ESTÉ HIDRATADO: Muestra un loader.
+        # Esto previene que se muestre cualquier layout incorrecto.
+        rx.center(rx.spinner(size="3"), height="100vh"),
+        
+        # 2. CUANDO EL ESTADO ESTÁ HIDRATADO: Decide qué layout mostrar.
+        # La decisión se toma una sola vez, evitando el "salto".
         rx.cond(
             SessionState.is_admin,
-            admin_layout,
-            public_layout
-        ),
-        # Muestra un spinner global mientras se carga el estado inicial.
-        rx.center(rx.spinner(size="3"), height="100vh")
+            
+            # 2a. Si es ADMIN, muestra el layout con sidebar.
+            rx.hstack(
+                sidebar(),
+                rx.box(
+                    child,  # El contenido de la página se inserta aquí.
+                    padding="1em",
+                    width="100%",
+                ),
+                align="start",
+                spacing="0",
+                width="100%",
+                min_height="100vh",
+            ),
+            
+            # 2b. Si es PÚBLICO, muestra el layout con navbar.
+            rx.box(
+                public_navbar(),
+                rx.box(
+                    child,  # El contenido de la página se inserta aquí.
+                    padding_top="6rem",
+                    padding_x="1em",
+                    padding_bottom="1em",
+                    width="100%",
+                ),
+                fixed_color_mode_button(),
+                width="100%",
+            )
+        )
     )

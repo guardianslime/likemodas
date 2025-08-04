@@ -10,11 +10,12 @@ from ..navigation.device import NavDeviceState
 
 def notification_icon() -> rx.Component:
     """Icono de notificaciones con contador."""
+    # ✅ BUENA PRÁCTICA: Usar una variable reactiva al tema.
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
-                rx.icon("bell", size=28, color=icon_color), # <-- BUENA PRÁCTICA
+                rx.icon("bell", size=28, color=icon_color),
                 rx.cond(
                     NotificationState.unread_count > 0,
                     rx.box(
@@ -58,15 +59,15 @@ def notification_icon() -> rx.Component:
 
 def public_navbar() -> rx.Component:
     """Barra de navegación pública, rediseñada para ser robusta y responsiva."""
+    # ✅ BUENA PRÁCTICA: Definir el color reactivo una vez.
     icon_color = rx.color_mode_cond("black", "white")
     
     return rx.box(
         rx.grid(
-            # --- Columna Izquierda (Logo y Menú) ---
             rx.hstack(
                 rx.menu.root(
                     rx.menu.trigger(
-                        rx.button(rx.icon("menu", size=22, color=icon_color), variant="ghost") # <-- BUENA PRÁCTICA
+                        rx.button(rx.icon("menu", size=22, color=icon_color), variant="ghost")
                     ),
                     rx.menu.content(
                         rx.menu.item("Home", on_click=navigation.NavState.to_home),
@@ -100,7 +101,6 @@ def public_navbar() -> rx.Component:
                 align="center", spacing="4", justify="start",
             ),
             
-            # --- Columna Central (Búsqueda) ---
             rx.form(
                 rx.input(
                     placeholder="Buscar productos...",
@@ -112,7 +112,6 @@ def public_navbar() -> rx.Component:
                 width="100%",
             ),
             
-            # --- Columna Derecha (Iconos) ---
             rx.hstack(
                 rx.cond(
                     SessionState.is_authenticated,
@@ -120,7 +119,7 @@ def public_navbar() -> rx.Component:
                         notification_icon(),
                         rx.link(
                             rx.box(
-                                rx.icon("shopping-cart", size=22, color=icon_color), # <-- BUENA PRÁCTICA
+                                rx.icon("shopping-cart", size=22, color=icon_color),
                                 rx.cond(
                                     CartState.cart_items_count > 0,
                                     rx.box(
