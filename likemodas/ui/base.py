@@ -1,6 +1,5 @@
-# -----------------------------------------------------------------------------
 # likemodas/ui/base.py
-# -----------------------------------------------------------------------------
+
 import reflex as rx
 from..auth.state import SessionState
 from.nav import public_navbar
@@ -21,11 +20,9 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     Layout base robusto que previene errores visuales por estados sin hidratar
     y mantiene la estructura del DOM estable.
     """
-    # Protege contra errores en el argumento
     if not isinstance(child, rx.Component):
         child = rx.heading("Error: El elemento hijo no es un componente válido")
 
-    # Muestra mensaje si requiere verificación
     verification_required_page = rx.center(
         rx.vstack(
             rx.heading("Verificación Requerida"),
@@ -35,53 +32,50 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         height="80vh"
     )
 
-    # Página principal con verificación condicional
     main_content = rx.cond(
         (SessionState.is_authenticated & SessionState.authenticated_user_info.is_verified) | ~SessionState.is_authenticated,
         child,
         verification_required_page
     )
 
-    # Estructura de layout unificado
-    unified_layout = rx.hstack(
-        # Sidebar solo para admins
-        rx.cond(
-            SessionState.is_admin,
-            sidebar(),
-            rx.fragment()
-        ),
+    # ✅ Layout para administradores
+    admin_layout = rx.hstack(
+        sidebar(),
         rx.box(
-            # Navbar solo para usuarios
-            rx.cond(
-                ~SessionState.is_admin,
-                public_navbar(),
-                rx.fragment()
-            ),
-            rx.box(
-                main_content,
-                padding_top=rx.cond(~SessionState.is_admin, "6rem", "1em"),
-                padding_right="1em",
-                padding_bottom="1em",
-                padding_left="1em",
-                width="100%",
-            ),
+            main_content,
+            padding="1em",
             width="100%",
-        ),
-        # Botón de modo de color solo para usuarios
-        rx.cond(
-            ~SessionState.is_admin,
-            fixed_color_mode_button(),
-            rx.fragment()
         ),
         align="start",
         spacing="0",
         width="100%",
-        min_height="100vh",  # Esto ayuda a prevenir saltos visuales
+        min_height="100vh",
     )
 
-    # 🛡️ Protege la estructura hasta que el estado esté hidratado
+    # ✅ Layout para usuarios públicos y clientes
+    public_layout = rx.box(
+        public_navbar(),
+        rx.box(
+            main_content,
+            padding_top="6rem",
+            padding_right="1em",
+            padding_bottom="1em",
+            padding_left="1em",
+            width="100%",
+        ),
+        fixed_color_mode_button(),
+        width="100%",
+    )
+
+    # 🛡️ CAMBIO CLAVE: Se decide qué layout mostrar DESPUÉS de la hidratación.
+    # Esto previene el "salto" de la interfaz.
     return rx.cond(
         SessionState.is_hydrated,
-        unified_layout,
+        rx.cond(
+            SessionState.is_admin,
+            admin_layout,
+            public_layout
+        ),
+        # Muestra un spinner global mientras se carga el estado inicial.
         rx.center(rx.spinner(size="3"), height="100vh")
     )
