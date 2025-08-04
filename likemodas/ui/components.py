@@ -6,9 +6,10 @@ from ..navigation import routes
 from .skeletons import skeleton_product_gallery
 from reflex.event import EventSpec
 from ..auth.state import SessionState
-# Se importa el estado específico que se necesita, no el AppState completo.
+# --- CORRECCIÓN CLAVE ---
+# Se elimina la importación de 'AppState' y se importa 'CartState' directamente.
+# Esto rompe el ciclo de importación.
 from ..cart.state import CartState, ProductCardData
-
 
 def searchable_select(
     placeholder: str, 
@@ -20,11 +21,7 @@ def searchable_select(
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
 ) -> rx.Component:
-    """
-    Un componente de selección personalizado con opción de búsqueda y deshabilitado.
-    """
     is_open = SessionState.open_filter_name == filter_name
-
     return rx.box(
         rx.button(
             rx.cond(value_select, value_select, placeholder),
@@ -85,14 +82,45 @@ def searchable_select(
         width="100%",
     )
 
+def categories_button() -> rx.Component:
+    """Un componente reutilizable para el botón desplegable de categorías."""
+    return rx.hstack(
+        rx.popover.root(
+            rx.popover.trigger(
+                rx.button(
+                    "Categorías", 
+                    variant="outline",
+                    size="3",
+                    color=rx.color_mode_cond("black", "white"),
+                    border_radius="full",
+                    style={"border_color": rx.color_mode_cond("black", "white")},
+                )
+            ),
+            rx.popover.content(
+                rx.hstack(
+                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
+                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
+                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
+                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
+                    spacing="3",
+                ),
+                padding="0.5em",
+                side="right",
+                align="center",
+            ),
+        ),
+        justify="start",
+        width="100%",
+        max_width="1800px",
+        padding_bottom="1em"
+    )
+
 def _product_card_rating(post: ProductCardData) -> rx.Component:
     average_rating = post.average_rating
     rating_count = post.rating_count
-    
     full_stars = rx.Var.range(math.floor(average_rating))
     has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
     empty_stars = rx.Var.range(5 - math.ceil(average_rating))
-
     return rx.cond(
         rating_count > 0,
         rx.hstack(
@@ -144,7 +172,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.spacer(),
                     rx.button(
                         "Añadir al Carrito",
-                        # La llamada ahora usa CartState directamente.
+                        # --- CORRECCIÓN CLAVE ---
+                        # La llamada ahora usa CartState directamente, que fue importado arriba.
                         on_click=lambda: CartState.add_to_cart(post.id),
                         width="100%",
                     ),
