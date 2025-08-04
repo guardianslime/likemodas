@@ -1,13 +1,14 @@
-# likemodas/blog/state.py (CORREGIDO)
+# likemodas/blog/state.py (VERSIÓN CON LA CORRECCIÓN DE IMPORTACIÓN CIRCULAR)
 
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
 import sqlalchemy
-from sqlmodel import select, Field  # ✨ 1. Field se importa para default_factory
+from sqlmodel import select, Field
 
-# ✨ 2. Se importa el nuevo estado global y unificado
-from likemodas.state import AppState
+# ✨ 1. CAMBIO CLAVE: Ya no importamos 'AppState'.
+#    En su lugar, importamos 'SessionState', que es la base común.
+from ..auth.state import SessionState
 
 from .. import navigation
 from ..models import (
@@ -20,17 +21,16 @@ from ..data.product_options import (
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-# ✨ 3. Todas las clases ahora heredan de AppState
-class BlogPostState(AppState):
+# ✨ 2. CAMBIO CLAVE: Todas las clases ahora heredan de 'SessionState'.
+#    Esto rompe el ciclo de importación.
+class BlogPostState(SessionState):
     """Estado para la lista y detalle de posts del admin."""
-    # ✨ 4. Las listas se inicializan de forma segura para evitar problemas entre sesiones
     posts: list[BlogPostModel] = Field(default_factory=list)
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
     search_query: str = ""
-
-    # (El resto de los métodos y vars de BlogPostState no necesitan cambios, 
-    # ya que 'self.is_admin', etc., se heredan correctamente de AppState)
+    
+    # (No se necesitan más cambios aquí, los métodos y vars funcionan igual)
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
@@ -102,7 +102,8 @@ class BlogPostState(AppState):
                     yield rx.toast.info("Publicación desactivada.")
                 session.add(post)
                 session.commit()
-        yield type(self).get_post_detail
+        # Aquí usamos self.__class__ en lugar de type(self) para ser más explícitos
+        yield self.__class__.get_post_detail
 
     @rx.event
     def delete_post(self, post_id: int):
@@ -115,7 +116,7 @@ class BlogPostState(AppState):
         return rx.redirect(BLOG_POSTS_ROUTE)
 
 
-class BlogAddFormState(AppState):
+class BlogAddFormState(SessionState):
     """Estado para el formulario de AÑADIR posts."""
     title: str = ""
     content: str = ""
@@ -255,7 +256,7 @@ class BlogEditFormState(BlogPostState):
 
     @rx.event
     def on_load_edit(self):
-        yield type(self).get_post_detail
+        yield self.__class__.get_post_detail
         if self.post:
             self.post_content = self.post.content or ""
             self.post_publish_active = self.post.publish_active
@@ -310,7 +311,7 @@ class BlogEditFormState(BlogPostState):
         return rx.redirect(f"/blog/{post_id}")
 
 
-class CommentState(AppState):
+class CommentState(SessionState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
     post: Optional[BlogPostModel] = None
     comments: list[CommentModel] = Field(default_factory=list)
