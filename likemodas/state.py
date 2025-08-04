@@ -12,18 +12,15 @@ from .contact.state import ContactState
 from .account.shipping_info_state import ShippingInfoState
 from .ui.search_state import SearchState
 from .notifications.state import NotificationState
-# Se importa NavState para la herencia
-from .navigation.state import NavState
+# NavState ya no se importa aquí
 
-# AppState ahora hereda también de NavState
-class AppState(SessionState, NavState):
+class AppState(SessionState):
     """
-    El estado raíz y único de la aplicación.
-    Hereda de SessionState para la autenticación y de NavState para las acciones de navegación.
+    El estado raíz que contiene todos los sub-estados DE DATOS.
+    Ya no hereda de NavState.
     """
     
-    # --- Sub-estados de datos ---
-    # Se elimina la línea 'nav: NavState' porque los métodos ya están heredados.
+    # NavState se elimina de los sub-estados.
     cart: CartState
     blog_posts: BlogPostState
     blog_add_form: BlogAddFormState
@@ -38,9 +35,6 @@ class AppState(SessionState, NavState):
     notifications: NotificationState
 
     def on_load(self):
-        """
-        Un evento on_load genérico para asegurar que los datos iniciales se cargan.
-        """
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
         print("Estado global cargado para el usuario:", self.authenticated_username)

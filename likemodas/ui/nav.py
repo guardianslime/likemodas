@@ -1,12 +1,13 @@
 # likemodas/ui/nav.py
 
 import reflex as rx
+# Se importa el módulo 'navigation' para acceder a NavState
+from .. import navigation
 from .search_state import SearchState
 from ..cart.state import CartState
 from ..auth.state import SessionState
 from ..notifications.state import NotificationState
-# Se importa AppState para acceder a los métodos de navegación heredados
-from ..state import AppState
+# Se elimina la importación de 'AppState'
 
 def notification_icon() -> rx.Component:
     """Icono de notificaciones con contador."""
@@ -68,8 +69,8 @@ def public_navbar() -> rx.Component:
                         rx.button(rx.icon("menu", size=22, color=icon_color), variant="ghost")
                     ),
                     rx.menu.content(
-                        # Las llamadas ahora apuntan directamente a AppState
-                        rx.menu.item("Home", on_click=AppState.to_home),
+                        # Las llamadas ahora apuntan al estado de navegación independiente
+                        rx.menu.item("Home", on_click=navigation.NavState.to_home),
                         rx.menu.sub(
                             rx.menu.sub_trigger("Categorías"),
                             rx.menu.sub_content(
@@ -80,17 +81,17 @@ def public_navbar() -> rx.Component:
                                 rx.menu.item("Ver Todo", on_click=rx.redirect("/")),
                             ),
                         ),
-                        rx.menu.item("Contact", on_click=AppState.to_contact),
+                        rx.menu.item("Contact", on_click=navigation.NavState.to_contact),
                         rx.menu.separator(),
                         rx.cond(
                             SessionState.is_authenticated,
                             rx.fragment(
-                                rx.menu.item("Mi Cuenta", on_click=AppState.to_my_account),
-                                rx.menu.item("Logout", on_click=AppState.to_logout),
+                                rx.menu.item("Mi Cuenta", on_click=navigation.NavState.to_my_account),
+                                rx.menu.item("Logout", on_click=navigation.NavState.to_logout),
                             ),
                             rx.fragment(
-                                rx.menu.item("Login", on_click=AppState.to_login),
-                                rx.menu.item("Register", on_click=AppState.to_register),
+                                rx.menu.item("Login", on_click=navigation.NavState.to_login),
+                                rx.menu.item("Register", on_click=navigation.NavState.to_register),
                             )
                         ),
                         bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
