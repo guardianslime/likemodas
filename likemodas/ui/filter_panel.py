@@ -107,6 +107,7 @@ def floating_filter_panel() -> rx.Component:
                             )
                         ),
                     ),
+                    # Este fragmento es para la categoría "todos" o sin categoría
                     rx.fragment(
                         rx.vstack(
                             rx.divider(),
