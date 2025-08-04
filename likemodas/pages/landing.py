@@ -6,7 +6,7 @@ from .. import navigation
 from ..ui.components import product_gallery_component
 from ..cart.state import CartState
 
-def landing_component() -> rx.Component:
+def landing_content() -> rx.Component:
     return rx.vstack(
         rx.heading("Bienvenidos a Likemodas", size="9"),
         rx.link(
@@ -15,7 +15,6 @@ def landing_component() -> rx.Component:
         ),
         rx.divider(),
         rx.heading("Publicaciones Recientes", size="5"),
-        # ✅ SE USA LA NUEVA PROPIEDAD COMPUTADA
         product_gallery_component(posts=CartState.landing_page_posts),
         spacing="5",
         justify="center",

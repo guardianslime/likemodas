@@ -47,9 +47,8 @@ def _password_input(placeholder: str, name: str, on_change: rx.EventChain = None
     )
 # --- Fin de la lógica del icono ---
 
-def my_login_page() -> rx.Component:
-    return base_page(
-        rx.center(
+def my_login_page_content() -> rx.Component:
+    return rx.center(
             rx.card(
                 rx.vstack(
                     rx.form(
@@ -82,44 +81,39 @@ def my_login_page() -> rx.Component:
             ),
             min_height="85vh",
         )
-    )
+    
 
-def my_register_page() -> rx.Component:
-    return base_page(
-        rx.center(
-            rx.cond(
-                RegistrationState.success,
-                rx.vstack(
-                    rx.text("Registration successful!"),
-                ),
-                rx.card(my_register_form()),
+def my_register_page_content() -> rx.Component:
+    return rx.center(
+        rx.cond(
+            RegistrationState.success,
+            rx.vstack(
+                rx.text("Registration successful!"),
             ),
-            min_height="85vh",
-        )
+            rx.card(my_register_form()),
+        ),
+        min_height="85vh",
     )
 
-def my_logout_page() -> rx.Component:
-    # ✨ CÓDIGO COMPLETO RESTAURADO AQUÍ
-    return base_page(
-        rx.vstack(
-            rx.heading("Are you sure you want to logout?", size="7"),
-            rx.link(
-                rx.button("No", color_scheme="gray"),
-                href=navigation.routes.HOME_ROUTE
-            ),
-            rx.button("Yes, please logout", on_click=SessionState.perform_logout),
-            spacing="5",
-            justify="center",
-            align="center",
-            text_align="center",
-            min_height="85vh",
-            id="my-child"
-        )
+
+def my_logout_page_content() -> rx.Component:
+    return rx.vstack(
+        rx.heading("Are you sure you want to logout?", size="7"),
+        rx.link(
+            rx.button("No", color_scheme="gray"),
+            href=navigation.routes.HOME_ROUTE
+        ),
+        rx.button("Yes, please logout", on_click=SessionState.perform_logout),
+        spacing="5",
+        justify="center",
+        align="center",
+        text_align="center",
+        min_height="85vh",
+        id="my-child"
     )
 
-def verification_page() -> rx.Component:
-    # ✨ CÓDIGO COMPLETO RESTAURADO AQUÍ
-    page_content = rx.center(
+def verification_page_content() -> rx.Component:
+    return rx.center(
         rx.vstack(
             rx.heading("Verificando tu cuenta...", size="8"),
             rx.text(VerifyState.message, text_align="center"),
@@ -132,12 +126,10 @@ def verification_page() -> rx.Component:
         ),
         min_height="85vh"
     )
-    return base_page(page_content)
 
-def forgot_password_page() -> rx.Component:
+def forgot_password_page_content() -> rx.Component:
     # ✨ CÓDIGO COMPLETO RESTAURADO AQUÍ
-    return base_page(
-        rx.center(
+    return rx.center(
             rx.card(
                 rx.form(
                     rx.vstack(
@@ -165,11 +157,10 @@ def forgot_password_page() -> rx.Component:
                 )
             ),
             min_height="85vh"
-        )
     )
 
-def reset_password_page() -> rx.Component:
-    page_content = rx.center(
+def reset_password_page_content() -> rx.Component:
+    return rx.center(
         rx.card(
             rx.cond(
                 ResetPasswordState.is_token_valid,
@@ -215,4 +206,3 @@ def reset_password_page() -> rx.Component:
         ),
         min_height="85vh"
     )
-    return base_page(page_content)

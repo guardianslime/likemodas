@@ -1,15 +1,12 @@
 # likemodas/blog/page.py (VERSIÓN REFACTORIZADA)
 
 import reflex as rx
-from ..ui.base import base_page 
 from ..cart.state import CartState 
 from ..navigation import routes
 import math
 from ..models import BlogPostModel
-# --- 👇 CAMBIO 1: Importa los dos componentes ---
 from ..ui.components import product_gallery_component, categories_button
 from ..ui.filter_panel import floating_filter_panel
-# --- 👇 CAMBIO 2: Importa SessionState para la condición del admin ---
 from ..auth.state import SessionState
 
 
@@ -35,26 +32,22 @@ def _product_card_rating(post: BlogPostModel) -> rx.Component:
 
 
 # --- ✨ PÁGINA SIMPLIFICADA USANDO EL NUEVO COMPONENTE --- ✨
-def blog_public_page():
+def blog_public_page_content():
     """Página pública que ahora es la principal y muestra la galería."""
-    return rx.fragment(
-        rx.cond(
-            SessionState.is_hydrated,
+    return rx.center(
+        rx.vstack(
             rx.cond(
-                ~SessionState.is_admin,
-                floating_filter_panel()
-            )
+                SessionState.is_hydrated,
+                rx.cond(
+                    ~SessionState.is_admin,
+                    floating_filter_panel()
+                )
+            ),
+            product_gallery_component(posts=CartState.filtered_posts),
+            spacing="6", 
+            width="100%", 
+            padding="2em", 
+            align="center"
         ),
-        base_page(
-            rx.center(
-                rx.vstack(
-                    product_gallery_component(posts=CartState.filtered_posts),
-                    spacing="6", 
-                    width="100%", 
-                    padding="2em", 
-                    align="center"
-                ),
-                width="100%"
-            )
-        )
+        width="100%"
     )

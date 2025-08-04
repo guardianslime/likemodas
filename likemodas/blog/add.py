@@ -8,11 +8,9 @@ from . import forms
 
 # --- ✨ CAMBIO: Se usa el decorador de admin ---
 @require_admin
-def blog_post_add_page() -> rx.Component:
-    return base_page(
-        rx.center(
-            blog_post_add_form(),
-            min_height="85vh",
-            padding="2em",
-        )
+def blog_post_add_content() -> rx.Component:
+    return rx.center(
+        blog_post_add_form(),
+        min_height="85vh",
+        padding="2em",
     )

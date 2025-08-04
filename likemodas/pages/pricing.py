@@ -161,7 +161,7 @@ def pricing_cards() -> rx.Component:
         align_items="center",
     )
 
-def pricing_page() -> rx.Component:
+def pricing_page_content() -> rx.Component:
     my_child=rx.vstack(
             rx.heading("Pricing", size="9"),
             pricing_cards(),
@@ -171,5 +171,4 @@ def pricing_page() -> rx.Component:
             min_height="85vh",
             id="my-child"
         )
-
-    return base_page(my_child)
+    return my_child

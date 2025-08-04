@@ -71,7 +71,6 @@ def cart_item_row(item: rx.Var) -> rx.Component:
     )
 
 
-# ✅ FUNCIÓN CORREGIDA
 @reflex_local_auth.require_login
 def cart_page_content() -> rx.Component:
     return rx.vstack(

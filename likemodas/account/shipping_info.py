@@ -107,28 +107,26 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
     )
 
 @reflex_local_auth.require_login
-def shipping_info_page() -> rx.Component:
+def shipping_info_content() -> rx.Component:
     """Página para gestionar las direcciones de envío."""
-    return base_page(
-        account_layout(
-            rx.vstack(
-                rx.heading("Mi Información para Envíos", size="7"),
-                rx.text(
-                    "Aquí puedes gestionar tus direcciones de envío. La dirección predeterminada se usará para tus futuras compras.",
-                    margin_bottom="1.5em"
-                ),
-                rx.foreach(ShippingInfoState.addresses, address_card),
-                rx.cond(
-                    ~ShippingInfoState.show_form,
-                    rx.button("Crear Nueva Dirección", on_click=ShippingInfoState.toggle_form, margin_top="2em"),
-                ),
-                rx.cond(
-                    ShippingInfoState.show_form,
-                    address_form()
-                ),
-                align_items="start",
-                width="100%",
-                max_width="700px"
-            )
+    return account_layout(
+        rx.vstack(
+            rx.heading("Mi Información para Envíos", size="7"),
+            rx.text(
+                "Aquí puedes gestionar tus direcciones de envío. La dirección predeterminada se usará para tus futuras compras.",
+                margin_bottom="1.5em"
+            ),
+            rx.foreach(ShippingInfoState.addresses, address_card),
+            rx.cond(
+                ~ShippingInfoState.show_form,
+                rx.button("Crear Nueva Dirección", on_click=ShippingInfoState.toggle_form, margin_top="2em"),
+            ),
+            rx.cond(
+                ShippingInfoState.show_form,
+                address_form()
+            ),
+            align_items="start",
+            width="100%",
+            max_width="700px"
         )
     )

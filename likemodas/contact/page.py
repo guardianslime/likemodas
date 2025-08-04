@@ -30,47 +30,38 @@ def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
     )
 
 @reflex_local_auth.require_login
-def contact_entries_list_page() -> rx.Component:
+def contact_entries_list_content() -> rx.Component:
     """Página que muestra la lista de todas las entradas."""
-    return base_page(
-        rx.vstack(
-            rx.heading("Historial de Contacto", size="7"),
-            
-            # --- 👇 AÑADIR LA BARRA DE BÚSQUEDA 👇 ---
-            rx.input(
-                placeholder="Buscar en mensajes...",
-                value=ContactState.search_query,
-                on_change=ContactState.set_search_query,
-                width="100%",
-                max_width="400px",
-                margin_y="1.5em",
-            ),
-
-            # --- 👇 USA LA LISTA FILTRADA AQUÍ 👇 ---
-            rx.foreach(ContactState.filtered_entries, contact_entry_list_item),
-            
-            spacing="5",
-            align="center",
+    return rx.vstack(
+        rx.heading("Historial de Contacto", size="7"),
+        rx.input(
+            placeholder="Buscar en mensajes...",
+            value=ContactState.search_query,
+            on_change=ContactState.set_search_query,
             width="100%",
-            max_width="800px",
-            margin="auto",
-            min_height="85vh"
-        )
+            max_width="400px",
+            margin_y="1.5em",
+        ),
+        rx.foreach(ContactState.filtered_entries, contact_entry_list_item),
+        spacing="5",
+        align="center",
+        width="100%",
+        max_width="800px",
+        margin="auto",
+        min_height="85vh"
     )
 
-def contact_page() -> rx.Component:
+def contact_page_content() -> rx.Component:
     """Página principal de contacto con formulario o mensaje de agradecimiento."""
-    return base_page(
-        rx.vstack(
-            rx.heading("Contáctanos", size="9"),
-            rx.cond(
-                ContactState.did_submit,
-                rx.heading(ContactState.thank_you_message, size="5", text_align="center"),
-                contact_form()
-            ),
-            spacing="5",
-            justify="center",
-            align="center",
-            min_height="85vh",
-        )
+    return rx.vstack(
+        rx.heading("Contáctanos", size="9"),
+        rx.cond(
+            ContactState.did_submit,
+            rx.heading(ContactState.thank_you_message, size="5", text_align="center"),
+            contact_form()
+        ),
+        spacing="5",
+        justify="center",
+        align="center",
+        min_height="85vh",
     )

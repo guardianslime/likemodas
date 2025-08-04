@@ -64,9 +64,9 @@ def purchase_detail_card(purchase: PurchaseHistoryCardData) -> rx.Component:
         padding="1.5em",
     )
 
-# ✅ FUNCIÓN CORREGIDA
+
 @reflex_local_auth.require_login
-def purchase_history_page_content() -> rx.Component:
+def purchase_history_content() -> rx.Component:
     """Página del historial de compras del usuario."""
     page_content = rx.center(
         rx.vstack(
@@ -94,6 +94,4 @@ def purchase_history_page_content() -> rx.Component:
         ),
         width="100%"
     )
-    
-    # Devuelve solo el layout secundario, no el base
     return account_layout(page_content)

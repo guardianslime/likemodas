@@ -39,38 +39,34 @@ def _gallery_card(post: BlogPostModel) -> rx.Component:
     )
 
 @require_admin
-def blog_post_list_page() -> rx.Component:
+def blog_post_list_content() -> rx.Component:
     """Página que muestra la galería de posts del admin."""
-    return base_page(
-        rx.center(
-            rx.vstack(
-                rx.heading("Mis Publicaciones", size="8", margin_bottom="1em"),
-                
-                rx.input(
-                    placeholder="Buscar por nombre...",
-                    value=BlogPostState.search_query,
-                    on_change=BlogPostState.set_search_query,
-                    width="100%",
-                    max_width="400px",
-                    margin_bottom="1.5em",
-                ),
-
-                rx.cond(
-                    BlogPostState.filtered_posts,
-                    rx.grid(
-                        rx.foreach(BlogPostState.filtered_posts, _gallery_card),
-                        columns="4", # Se fija a 4 columnas
-                        spacing="6",
-                        width="100%",
-                        max_width="1200px",
-                    ),
-                    rx.center(rx.text("No se encontraron publicaciones."), padding_y="4em")
-                ),
-                spacing="6",
+    return rx.center(
+        rx.vstack(
+            rx.heading("Mis Publicaciones", size="8", margin_bottom="1em"),
+            rx.input(
+                placeholder="Buscar por nombre...",
+                value=BlogPostState.search_query,
+                on_change=BlogPostState.set_search_query,
                 width="100%",
-                padding="2em",
-                align="center"
+                max_width="400px",
+                margin_bottom="1.5em",
             ),
-            width="100%"
-        )
+            rx.cond(
+                BlogPostState.filtered_posts,
+                rx.grid(
+                    rx.foreach(BlogPostState.filtered_posts, _gallery_card),
+                    columns="4",
+                    spacing="6",
+                    width="100%",
+                    max_width="1200px",
+                ),
+                rx.center(rx.text("No se encontraron publicaciones."), padding_y="4em")
+            ),
+            spacing="6",
+            width="100%",
+            padding="2em",
+            align="center"
+        ),
+        width="100%"
     )

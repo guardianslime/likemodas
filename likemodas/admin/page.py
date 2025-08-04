@@ -46,41 +46,39 @@ def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) ->
     )
 
 @require_admin
-def admin_confirm_page() -> rx.Component:
+def admin_confirm_content() -> rx.Component:
     """Admin page to confirm pending payments."""
-    return base_page(
-        rx.center(
-            rx.vstack(
-                rx.heading("Confirmar Pagos Pendientes", size="8"),
-                rx.cond(
-                    AdminConfirmState.pending_purchases,
-                    rx.foreach(AdminConfirmState.pending_purchases, lambda p: purchase_card_admin(p, is_history=False)),
-                    rx.center(rx.text("No hay compras pendientes por confirmar."), padding_y="2em")
-                ),
-                align="center", spacing="5", padding="2em", width="100%", max_width="960px", 
-            ), width="100%"
-        )
+    return rx.center(
+        rx.vstack(
+            rx.heading("Confirmar Pagos Pendientes", size="8"),
+            rx.cond(
+                AdminConfirmState.pending_purchases,
+                rx.foreach(AdminConfirmState.pending_purchases, lambda p: purchase_card_admin(p, is_history=False)),
+                rx.center(rx.text("No hay compras pendientes por confirmar."), padding_y="2em")
+            ),
+            align="center", spacing="5", padding="2em", width="100%", max_width="960px", 
+        ), width="100%"
     )
 
 @require_admin
-def payment_history_page() -> rx.Component:
+def payment_history_content() -> rx.Component:
     """Admin page to view payment history."""
-    return base_page(
-        rx.center(
-            rx.vstack(
-                rx.heading("Historial de Pagos", size="8"),
-                rx.input(
-                    placeholder="Buscar por ID, cliente o email...", value=PaymentHistoryState.search_query,
-                    on_change=PaymentHistoryState.set_search_query, width="100%", max_width="400px", margin_y="1.5em",
-                ),
-                rx.cond(
-                    PaymentHistoryState.filtered_purchases,
-                    # --- ✅ CAMBIO CLAVE AQUÍ ---
-                    # Se llama a la función principal con el parámetro is_history=True
-                    rx.foreach(PaymentHistoryState.filtered_purchases, lambda p: purchase_card_admin(p, is_history=True)),
-                    rx.center(rx.text("No se encontró historial para la búsqueda."), padding_y="2em")
-                ),
-                align="center", spacing="6", padding="2em", width="100%", max_width="960px",
-            ), width="100%"
-        )
+    return rx.center(
+        rx.vstack(
+            rx.heading("Historial de Pagos", size="8"),
+            rx.input(
+                placeholder="Buscar por ID, cliente o email...", 
+                value=PaymentHistoryState.search_query,
+                on_change=PaymentHistoryState.set_search_query, 
+                width="100%", 
+                max_width="400px", 
+                margin_y="1.5em",
+            ),
+            rx.cond(
+                PaymentHistoryState.filtered_purchases,
+                rx.foreach(PaymentHistoryState.filtered_purchases, lambda p: purchase_card_admin(p, is_history=True)),
+                rx.center(rx.text("No se encontró historial para la búsqueda."), padding_y="2em")
+            ),
+            align="center", spacing="6", padding="2em", width="100%", max_width="960px",
+        ), width="100%"
     )
