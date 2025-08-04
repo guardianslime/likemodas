@@ -1,7 +1,8 @@
 # likemodas/ui/base.py
 
 import reflex as rx
-from ..state import AppState
+# Se importa el estado base (SessionState) en lugar del estado completo (AppState)
+from ..auth.state import SessionState
 from .nav import public_navbar
 from .sidebar import sidebar, mobile_admin_menu, sidebar_dark_mode_toggle_item
 
@@ -20,18 +21,18 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     Layout base que implementa un patrón de carga seguro y ahora es
     completamente responsivo para todos los tipos de usuario.
     """
-    # 🛡️ ✅ CORRECCIÓN CLAVE: Patrón de renderizado condicional para esperar la hidratación
+    # Se usa SessionState para las comprobaciones, rompiendo el ciclo de importación.
     return rx.cond(
-        ~AppState.is_hydrated,
+        ~SessionState.is_hydrated,
         
         # 1. Muestra un spinner mientras el estado no esté listo.
         rx.center(rx.spinner(size="3"), height="100vh"),
         
         # 2. Cuando el estado está hidratado, decide qué layout mostrar.
         rx.cond(
-            AppState.is_admin,
+            SessionState.is_admin,
             
-            # --- ✅ 2a. LAYOUT DE ADMIN RESPONSIVO ---
+            # --- 2a. LAYOUT DE ADMIN RESPONSIVO ---
             rx.box(
                 # --- Layout para Móvil (sm y menor) ---
                 rx.vstack(
