@@ -1,8 +1,8 @@
 # likemodas/state.py
 
 import reflex as rx
+import reflex_local_auth
 
-# Importa el estado BASE y las CLASES de los sub-estados
 from .auth.state import SessionState
 from .cart.state import CartState
 from .blog.state import BlogPostState, BlogAddFormState, BlogEditFormState, CommentState
@@ -41,5 +41,5 @@ class AppState(SessionState):
         Un evento on_load genérico para asegurar que los datos iniciales se cargan.
         """
         if not self.is_authenticated:
-            return rx.redirect("/login") # Usar reflex_local_auth.routes.LOGIN_ROUTE es mejor
+            return reflex_local_auth.LoginState.redir
         print("Estado global cargado para el usuario:", self.authenticated_username)

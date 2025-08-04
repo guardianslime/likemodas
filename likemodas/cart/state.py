@@ -8,8 +8,7 @@ from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
 
-# ✅ Se importa AppState para la herencia
-from likemodas.state import AppState
+from ..auth.state import SessionState
 from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
 from ..utils.formatting import format_to_cop 
 
@@ -24,18 +23,13 @@ class ProductCardData(rx.Base):
 
     @property
     def price_cop(self) -> str:
-        """Propiedad para el precio ya formateado."""
         return format_to_cop(self.price)
 
-# ✅ CAMBIO CLAVE: La clase ahora hereda de SessionState
-class CartState(AppState):
+class CartState(SessionState):
     cart: Dict[int, int] = rx.Field(default_factory=dict)
     posts: list[ProductCardData] = rx.Field(default_factory=list)
     default_shipping_address: Optional[ShippingAddressModel] = None
-
     is_loading: bool = True
-    
-    # ... El resto del archivo permanece exactamente igual ...
     
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
@@ -89,11 +83,6 @@ class CartState(AppState):
                 if self.filter_tipo_zapato: query = query.where(cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_zapato)
             elif self.current_category == Category.MOCHILAS.value:
                 if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
-            else: # Filtros generales para "todos" o sin categoría
-                if self.filter_tipo_general: query = query.where(or_(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_general, cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila))
-                if self.filter_material_tela: mat = f"%{self.filter_material_tela}%"; query = query.where(or_(cast(BlogPostModel.attributes['tipo_tela'], String).ilike(mat), cast(BlogPostModel.attributes['material'], String).ilike(mat)))
-                if self.filter_medida_talla: med = f"%{self.filter_medida_talla}%"; query = query.where(or_(cast(BlogPostModel.attributes['talla'], String).ilike(med), cast(BlogPostModel.attributes['numero_calzado'], String).ilike(med), cast(BlogPostModel.attributes['medidas'], String).ilike(med)))
-                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
             
             filtered_db_posts = session.exec(query).all()
             filtered_ids = {p.id for p in filtered_db_posts}
@@ -213,9 +202,6 @@ class CartState(AppState):
         self.cart.clear()
         self.default_shipping_address = None
         
-        # ✅ ✅ CAMBIO CLAVE Y DEFINITIVO ✅ ✅
-        # Se llama al evento definido en el estado padre (AppState).
-        # Esto rompe la dependencia circular.
         yield type(self).notify_admin_of_new_purchase
         
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
