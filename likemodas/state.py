@@ -15,8 +15,10 @@ from .ui.search_state import SearchState
 from .notifications.state import NotificationState
 from .navigation.state import NavState
 
+# --- CORRECCIÓN FINAL ---
+# Se elimina 'SessionState' de la lista de bases, porque las otras clases
+# ya heredan de ella. Python lo resolverá automáticamente.
 class AppState(
-    SessionState, 
     NavState, 
     CartState, 
     BlogPostState, 
