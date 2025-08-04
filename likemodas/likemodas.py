@@ -1,4 +1,4 @@
-# likemodas/__init__.py (REVISADO Y COMPLETO)
+# likemodas/__init__.py (CORREGIDO Y COMPLETO)
 
 import reflex as rx
 import reflex_local_auth
@@ -16,7 +16,6 @@ from .pages import (
     test_page, 
     category_page
 )
-# ✅ Se importa el paquete de blog completo. Los nombres correctos se resuelven desde su __init__.py
 from .blog import (
     blog_public_page_content,
     blog_public_detail_content,
@@ -55,7 +54,10 @@ app = rx.App(
 )
 
 # --- Definición de Rutas de la Aplicación ---
-app.add_page(base_page(index_content()), on_load=HomePageState.on_load_main)
+
+# ✅ LÍNEA CORREGIDA: Se añade 'route="/"' para la página de inicio.
+app.add_page(base_page(index_content()), route="/", on_load=HomePageState.on_load_main)
+
 app.add_page(base_page(dashboard_component.dashboard_content()), route="/dashboard", title="Dashboard", on_load=cart_state.CartState.on_load)
 app.add_page(base_page(category_page.category_content()), route="/category/[cat_name]", title="Categoría", on_load=cart_state.CartState.load_posts_and_set_category)
 app.add_page(base_page(search_results.search_results_content()), route="/search-results", title="Resultados de Búsqueda")
