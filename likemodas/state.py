@@ -21,21 +21,28 @@ class AppState(SessionState):
     Contiene todos los demás estados como sub-estados.
     """
     
-    nav: NavState = NavState()
-    cart: CartState = CartState()
-    blog_posts: BlogPostState = BlogPostState()
-    blog_add_form: BlogAddFormState = BlogAddFormState()
-    blog_edit_form: BlogEditFormState = BlogEditFormState()
-    comments: CommentState = CommentState()
-    shipping_info: ShippingInfoState = ShippingInfoState()
-    purchase_history: PurchaseHistoryState = PurchaseHistoryState()
-    admin_confirm: AdminConfirmState = AdminConfirmState()
-    payment_history: PaymentHistoryState = PaymentHistoryState()
-    contact: ContactState = ContactState()
-    search: SearchState = SearchState()
-    notifications: NotificationState = NotificationState()
+    # --- CORRECCIÓN FINAL ---
+    # Se eliminan los paréntesis () de la instanciación.
+    # Ahora solo declaramos el tipo del sub-estado.
+    
+    nav: NavState
+    cart: CartState
+    blog_posts: BlogPostState
+    blog_add_form: BlogAddFormState
+    blog_edit_form: BlogEditFormState
+    comments: CommentState
+    shipping_info: ShippingInfoState
+    purchase_history: PurchaseHistoryState
+    admin_confirm: AdminConfirmState
+    payment_history: PaymentHistoryState
+    contact: ContactState
+    search: SearchState
+    notifications: NotificationState
 
     def on_load(self):
+        """
+        Un evento on_load genérico para asegurar que los datos iniciales se cargan.
+        """
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
         print("Estado global cargado para el usuario:", self.authenticated_username)
