@@ -25,11 +25,9 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         ~SessionState.is_hydrated,
         
         # 1. MIENTRAS EL ESTADO NO ESTÉ HIDRATADO: Muestra un loader.
-        # Esto previene que se muestre cualquier layout incorrecto.
         rx.center(rx.spinner(size="3"), height="100vh"),
         
         # 2. CUANDO EL ESTADO ESTÁ HIDRATADO: Decide qué layout mostrar.
-        # La decisión se toma una sola vez, evitando el "salto".
         rx.cond(
             SessionState.is_admin,
             
@@ -37,7 +35,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             rx.hstack(
                 sidebar(),
                 rx.box(
-                    child,  # El contenido de la página se inserta aquí.
+                    child,
                     padding="1em",
                     width="100%",
                 ),
@@ -51,7 +49,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             rx.box(
                 public_navbar(),
                 rx.box(
-                    child,  # El contenido de la página se inserta aquí.
+                    child,
                     padding_top="6rem",
                     padding_x="1em",
                     padding_bottom="1em",
