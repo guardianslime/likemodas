@@ -2,9 +2,7 @@
 
 import reflex as rx
 import reflex_local_auth
-from ..ui.base import base_page
-# --- ✨ CAMBIO IMPORTANTE AQUÍ ---
-# Importamos el nuevo DTO y ya no necesitamos PurchaseModel en este archivo.
+# Se elimina la importación de base_page
 from .state import PurchaseHistoryState, PurchaseHistoryCardData
 from ..account.layout import account_layout
 
@@ -66,14 +64,13 @@ def purchase_detail_card(purchase: PurchaseHistoryCardData) -> rx.Component:
         padding="1.5em",
     )
 
+# ✅ FUNCIÓN CORREGIDA
 @reflex_local_auth.require_login
-def purchase_history_page() -> rx.Component:
+def purchase_history_page_content() -> rx.Component:
     """Página del historial de compras del usuario."""
     page_content = rx.center(
         rx.vstack(
             rx.heading("Mi Historial de Compras", size="7"),
-            
-            # --- 👇 AÑADIR LA BARRA DE BÚSQUEDA 👇 ---
             rx.input(
                 placeholder="Buscar por ID o producto...",
                 value=PurchaseHistoryState.search_query,
@@ -82,10 +79,8 @@ def purchase_history_page() -> rx.Component:
                 max_width="400px",
                 margin_y="1.5em",
             ),
-            
             rx.cond(
-                PurchaseHistoryState.filtered_purchases, # <-- Usa la lista filtrada
-                # --- 👇 USA LA LISTA FILTRADA AQUÍ 👇 ---
+                PurchaseHistoryState.filtered_purchases,
                 rx.foreach(PurchaseHistoryState.filtered_purchases, purchase_detail_card),
                 rx.center(
                     rx.text("No se encontraron compras para tu búsqueda."),
@@ -100,4 +95,5 @@ def purchase_history_page() -> rx.Component:
         width="100%"
     )
     
-    return base_page(account_layout(page_content))
+    # Devuelve solo el layout secundario, no el base
+    return account_layout(page_content)

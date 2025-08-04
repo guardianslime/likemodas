@@ -213,41 +213,39 @@ def comment_section() -> rx.Component:
         spacing="5", width="100%", max_width="1120px", align="center", padding_top="1em",
     )
     
-def blog_public_detail_page() -> rx.Component:
+# ✅ FUNCIÓN CORREGIDA
+def blog_public_detail_content() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
-    return base_page(
-        rx.center(
-            rx.vstack(
-                rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
-                
-                rx.cond(
-                    CommentState.post,
-                    rx.fragment(
-                        rx.grid(
-                            _image_section(),
-                            _info_section(),
-                            columns="2", # Se fija a 2 columnas
-                            spacing="4",
-                            align_items="start",
-                            width="100%",
-                            max_width="1400px",
-                        ),
-                        comment_section(),
+    return rx.center(
+        rx.vstack(
+            rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
+            rx.cond(
+                CommentState.post,
+                rx.fragment(
+                    rx.grid(
+                        _image_section(),
+                        _info_section(),
+                        columns="2",
+                        spacing="4",
+                        align_items="start",
+                        width="100%",
+                        max_width="1400px",
                     ),
-                    rx.center(
-                        rx.cond(
-                            CommentState.is_hydrated,
-                            rx.text("Publicación no encontrada o no disponible.", color="red"),
-                            rx.spinner(size="3")
-                        ),
-                        min_height="50vh"
-                    )
+                    comment_section(),
                 ),
-                spacing="6",
-                width="100%",
-                padding="2em",
-                align="center",
+                rx.center(
+                    rx.cond(
+                        CommentState.is_hydrated,
+                        rx.text("Publicación no encontrada o no disponible.", color="red"),
+                        rx.spinner(size="3")
+                    ),
+                    min_height="50vh"
+                )
             ),
+            spacing="6",
             width="100%",
-        )
+            padding="2em",
+            align="center",
+        ),
+        width="100%",
     )
