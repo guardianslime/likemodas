@@ -1,17 +1,21 @@
+# likemodas/account/shipping_info_state.py
+
 import reflex as rx
 from typing import List, Dict
-from ..auth.state import SessionState
-from ..models import ShippingAddressModel
 from sqlmodel import select, update
-from ..data.colombia_locations import load_colombia_data # <-- Se importa la data
 
-class ShippingInfoState(SessionState):
+# Se importa el estado unificado
+from likemodas.state import AppState
+from ..models import ShippingAddressModel
+from ..data.colombia_locations import load_colombia_data
+
+class ShippingInfoState(AppState):
     """Gestiona las direcciones de envío del usuario."""
     
-    addresses: List[ShippingAddressModel] = []
+    # ✅ Se usa Field(default_factory=list) para inicializar la lista de forma segura
+    addresses: List[ShippingAddressModel] = rx.Field(default_factory=list)
     show_form: bool = False
 
-    # --- ✨ NUEVO ESTADO PARA LOS SELECTORES CON BÚSQUEDA ---
     colombia_data: Dict[str, List[str]] = load_colombia_data()
     city: str = ""
     neighborhood: str = ""

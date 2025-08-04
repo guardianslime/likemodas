@@ -1,16 +1,16 @@
-# ============================================================================
-# likemodas/cart/state.py (CORRECCIÓN CRÍTICA APLICADA)
-# ============================================================================
+# likemodas/cart/state.py
+
 import reflex as rx
 from typing import Dict, List, Tuple, Optional
-from ..auth.state import SessionState
-from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
 from sqlmodel import select, or_, cast
 from sqlalchemy import String
 from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
-from ..data.colombia_locations import load_colombia_data
+
+# Se importa el estado unificado
+from likemodas.state import AppState
+from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
 from ..admin.state import AdminConfirmState
 from ..utils.formatting import format_to_cop 
 
@@ -28,11 +28,11 @@ class ProductCardData(rx.Base):
         """Propiedad para el precio ya formateado."""
         return format_to_cop(self.price)
 
-class CartState(SessionState):
-    cart: Dict[int, int] = {}
-    posts: list[ProductCardData] = []
+class CartState(AppState):
+    # ✅ Inicialización segura para diccionarios y listas
+    cart: Dict[int, int] = rx.Field(default_factory=dict)
+    posts: list[ProductCardData] = rx.Field(default_factory=list)
     default_shipping_address: Optional[ShippingAddressModel] = None
-
     is_loading: bool = True
 
     @rx.var

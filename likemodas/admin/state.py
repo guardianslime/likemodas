@@ -2,13 +2,15 @@
 
 import reflex as rx
 from typing import List
-
-from likemodas.utils.formatting import format_to_cop
-from ..auth.state import SessionState
-from ..models import PurchaseModel, UserInfo, PurchaseItemModel, NotificationModel, PurchaseStatus
+import sqlalchemy
 from sqlmodel import select
 from datetime import datetime
-import sqlalchemy
+
+# Se importa el estado unificado
+from likemodas.auth.state import SessionState
+from likemodas.state import AppState
+from likemodas.utils.formatting import format_to_cop
+from ..models import PurchaseModel, UserInfo, PurchaseItemModel, NotificationModel, PurchaseStatus
 
 class PurchaseCardData(rx.Base):
     id: int
@@ -22,18 +24,19 @@ class PurchaseCardData(rx.Base):
     shipping_phone: str
     items_formatted: list[str]
 
-    # --- ✅ 2. AÑADE ESTA PROPIEDAD AQUÍ ---
     @property
     def total_price_cop(self) -> str:
-        """Propiedad para el precio total formateado en COP."""
         return format_to_cop(self.total_price)
-
-class AdminConfirmState(SessionState):
-    pending_purchases: List[PurchaseCardData] = []
+    
+class AdminConfirmState(AppState):
+    # ✅ Inicialización segura de la lista
+    pending_purchases: List[PurchaseCardData] = rx.Field(default_factory=list)
 
     @rx.event
     def load_pending_purchases(self):
-        if not self.is_admin: self.pending_purchases = []; return
+        if not self.is_admin: 
+            self.pending_purchases = []
+            return
         with rx.session() as session:
             db_results = session.exec(
                 select(PurchaseModel).options(
@@ -72,8 +75,9 @@ class AdminConfirmState(SessionState):
     def notify_admin_of_new_purchase(cls):
         return SessionState.set_new_purchase_notification(True)
 
-class PaymentHistoryState(SessionState):
-    all_purchases: List[PurchaseCardData] = []
+class PaymentHistoryState(AppState):
+    # ✅ Inicialización segura de la lista
+    all_purchases: List[PurchaseCardData] = rx.Field(default_factory=list)
     search_query: str = ""
 
     @rx.var

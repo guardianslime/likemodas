@@ -1,11 +1,13 @@
-# likemodas/purchases/state.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/purchases/state.py
 
 import reflex as rx
 from typing import List
-from ..auth.state import SessionState
-from ..models import PurchaseModel, UserInfo, PurchaseItemModel, BlogPostModel
 from sqlmodel import select
 import sqlalchemy
+
+# Se importa el estado unificado
+from likemodas.state import AppState
+from ..models import PurchaseModel, UserInfo, PurchaseItemModel, BlogPostModel
 
 # Modelo de datos simple para la UI con los campos de dirección separados
 class PurchaseHistoryCardData(rx.Base):
@@ -20,8 +22,9 @@ class PurchaseHistoryCardData(rx.Base):
     shipping_phone: str
     items_formatted: list[str]
 
-class PurchaseHistoryState(SessionState):
-    purchases: List[PurchaseHistoryCardData] = []
+class PurchaseHistoryState(AppState):
+    # ✅ Inicialización segura de la lista
+    purchases: List[PurchaseHistoryCardData] = rx.Field(default_factory=list)
     search_query: str = ""
 
     @rx.var
