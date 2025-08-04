@@ -1,4 +1,4 @@
-# likemodas/ui/sidebar.py (VERSIÓN CORREGIDA Y COMPLETA)
+# likemodas/ui/sidebar.py (VERSIÓN RESPONSIVA COMPLETA)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
@@ -9,9 +9,7 @@ from..auth.state import SessionState
 from.. import navigation
 
 def sidebar_dark_mode_toggle_item() -> rx.Component:
-    """
-    Un componente que muestra un botón para alternar el modo de color.
-    """
+    """Un componente que muestra un botón para alternar el modo de color."""
     return rx.button(
         rx.color_mode_cond(
             light=rx.icon(tag="sun"),
@@ -94,15 +92,49 @@ def sidebar_logout_item() -> rx.Component:
         rx.button(
             "Logout",
             rx.icon(tag="log-out", margin_left="0.5em"),
-            on_click=SessionState.do_logout,  # <--- LÍNEA CORREGIDA
+            on_click=SessionState.do_logout,
             width="100%",
             variant="soft",
             color_scheme="red"
         )
     )
 
+# --- ✨ NUEVO COMPONENTE: Menú de hamburguesa para Admin en móvil ---
+def mobile_admin_menu() -> rx.Component:
+    """
+    Un menú desplegable (hamburguesa) que contiene los mismos enlaces 
+    que la barra lateral, para ser usado en vistas móviles.
+    """
+    return rx.box(
+        rx.menu.root(
+            rx.menu.trigger(
+                rx.button(rx.icon("menu", size=22), variant="ghost")
+            ),
+            rx.menu.content(
+                rx.menu.item("Dashboard", on_click=rx.redirect(navigation.routes.HOME_ROUTE)),
+                rx.menu.separator(),
+                rx.menu.item("Blog", on_click=rx.redirect(navigation.routes.BLOG_POSTS_ROUTE)),
+                rx.menu.item("Crear Post", on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE)),
+                rx.menu.item("Confirmar Pagos", on_click=rx.redirect("/admin/confirm-payments")),
+                rx.menu.item("Historial de Pagos", on_click=rx.redirect("/admin/payment-history")),
+                rx.menu.separator(),
+                rx.menu.item("Contacto", on_click=rx.redirect(navigation.routes.CONTACT_US_ROUTE)),
+                rx.menu.item("Historial de Contacto", on_click=rx.redirect(navigation.routes.CONTACT_ENTRIES_ROUTE)),
+                rx.menu.separator(),
+                rx.menu.item("Logout", on_click=SessionState.do_logout, color="red"),
+            ),
+        ),
+        # Se muestra solo en móvil ('block') y se oculta en escritorio ('none')
+        display=["block", "block", "none", "none", "none"],
+    )
+
 def sidebar() -> rx.Component:
-    sidebar_content = rx.vstack(
+    """
+    Este componente ahora renderiza tanto la barra lateral para escritorio como 
+    un menú de hamburguesa para móvil, usando estilos responsivos.
+    """
+    # Contenido de la barra lateral de escritorio
+    desktop_sidebar_content = rx.vstack(
         rx.hstack(
             rx.image(
                 src="/logo.png",
@@ -131,8 +163,16 @@ def sidebar() -> rx.Component:
         align="start", height="100vh",
     )
 
-    # Se renderiza directamente la barra lateral de escritorio
-    return rx.box(
-        sidebar_content,
-        width="16em",
+    return rx.fragment(
+        # --- Barra lateral para Escritorio ---
+        # Se oculta en móvil y se muestra en escritorio
+        rx.box(
+            desktop_sidebar_content,
+            width="16em",
+            display=["none", "none", "block", "block", "block"],
+        ),
+        # --- Menú para Móvil (se añade aquí para mantener la lógica junta) ---
+        # Este menú se debe colocar en la parte superior de la vista móvil.
+        # Lo incluimos aquí pero lo posicionaremos en `base_page.py`.
+        mobile_admin_menu(),
     )

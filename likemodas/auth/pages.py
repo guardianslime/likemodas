@@ -109,7 +109,7 @@ def my_logout_page_content() -> rx.Component:
         align="center",
         text_align="center",
         min_height="85vh",
-        id="my-child"
+        #id="my-child"
     )
 
 def verification_page_content() -> rx.Component:

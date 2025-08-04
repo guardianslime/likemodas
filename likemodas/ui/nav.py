@@ -6,7 +6,6 @@ from .search_state import SearchState
 from ..cart.state import CartState
 from ..auth.state import SessionState
 from ..notifications.state import NotificationState
-from ..navigation.device import NavDeviceState
 
 def notification_icon() -> rx.Component:
     """Icono de notificaciones con contador."""
@@ -148,6 +147,5 @@ def public_navbar() -> rx.Component:
         bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
         on_mount=[
             NotificationState.load_notifications,
-            NavDeviceState.on_mount
         ],
     )
