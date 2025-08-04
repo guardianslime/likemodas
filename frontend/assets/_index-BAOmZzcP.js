@@ -1,1 +1,0 @@
-import{w as t,a as r}from"./chunk-QMGIS6GS-suYYFPSk.js";import{o as e}from"./stateful_components-LhXdfQ-j.js";import{j as o}from"./state-CJhah0mi.js";import"./createLucideIcon-DQJ01aAu.js";import"./index-GZitOFEf.js";const c=t(function(){return o(r.Fragment,{},o(e,{}),o("title",{},"Likemodas | Index"),o("meta",{content:"favicon.ico",property:"og:image"}))});export{c as default};
