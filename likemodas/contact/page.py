@@ -1,6 +1,7 @@
+# likemodas/contact/page.py (REVISADO)
+
 import reflex as rx
 import reflex_local_auth
-from ..ui.base import base_page
 from ..models import ContactEntryModel
 from .form import contact_form
 from .state import ContactState

@@ -1,10 +1,10 @@
-# likemodas/contact/__init__.py
+# likemodas/contact/__init__.py (CORREGIDO)
 
-from .page import contact_page, contact_entries_list_page
-from .state import ContactState # Exporta el estado único
+from .page import contact_page_content, contact_entries_list_content
+from .state import ContactState
 
 __all__ = [
-    "contact_page",
-    "contact_entries_list_page",
+    "contact_page_content",
+    "contact_entries_list_content",
     "ContactState",
 ]
