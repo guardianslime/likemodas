@@ -4,15 +4,15 @@ import reflex as rx
 from typing import List, Dict
 from sqlmodel import select, update
 
-# Se importa el estado unificado
-from likemodas.state import AppState
+# Se importa el estado BASE, no el global
+from ..auth.state import SessionState
 from ..models import ShippingAddressModel
 from ..data.colombia_locations import load_colombia_data
 
-class ShippingInfoState(AppState):
+# La clase ahora hereda de SessionState
+class ShippingInfoState(SessionState):
     """Gestiona las direcciones de envío del usuario."""
     
-    # ✅ Se usa Field(default_factory=list) para inicializar la lista de forma segura
     addresses: List[ShippingAddressModel] = rx.Field(default_factory=list)
     show_form: bool = False
 
@@ -39,39 +39,14 @@ class ShippingInfoState(AppState):
             return all_neighborhoods
         return [n for n in all_neighborhoods if self.search_neighborhood.lower() in n.lower()]
 
-    # --- ✨ NUEVOS MANEJADORES DE EVENTOS ---
     def set_city(self, city: str):
-        """Establece la ciudad y resetea el barrio."""
         self.city = city
         self.neighborhood = ""
         self.search_neighborhood = ""
 
     def set_neighborhood(self, neighborhood: str):
         self.neighborhood = neighborhood
-
-    def set_search_city(self, query: str):
-        self.search_city = query
-
-    def set_search_neighborhood(self, query: str):
-        self.search_neighborhood = query
         
-    def _reset_form_fields(self):
-        """Ayudante para resetear todos los campos del formulario."""
-        self.show_form = False
-        self.city = ""
-        self.neighborhood = ""
-        self.search_city = ""
-        self.search_neighborhood = ""
-    # --- FIN DE LAS ADICIONES ---
-
-    @rx.event
-    def toggle_form(self):
-        """Muestra u oculta el formulario para añadir una nueva dirección."""
-        self.show_form = not self.show_form
-        # Resetea los campos si se cancela el formulario
-        if not self.show_form:
-            self._reset_form_fields()
-
     @rx.event
     def load_addresses(self):
         """Carga todas las direcciones del usuario actual."""
@@ -89,7 +64,6 @@ class ShippingInfoState(AppState):
     @rx.event
     def add_new_address(self, form_data: dict):
         """Guarda una nueva dirección en la base de datos."""
-        # --- ✨ MODIFICADO: Ahora lee ciudad y barrio desde el estado ---
         if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
             return rx.toast.error("Por favor, completa todos los campos requeridos.")
 
@@ -100,15 +74,14 @@ class ShippingInfoState(AppState):
                 userinfo_id=self.authenticated_user_info.id,
                 name=form_data["name"],
                 phone=form_data["phone"],
-                city=self.city,                   # <-- Usa la variable de estado
-                neighborhood=self.neighborhood,  # <-- Usa la variable de estado
+                city=self.city,
+                neighborhood=self.neighborhood,
                 address=form_data["address"],
                 is_default=is_first_address
             )
             session.add(new_address)
             session.commit()
         
-        self._reset_form_fields()
         return self.load_addresses()
 
     @rx.event

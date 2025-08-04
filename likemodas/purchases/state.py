@@ -5,11 +5,10 @@ from typing import List
 from sqlmodel import select
 import sqlalchemy
 
-# Se importa el estado unificado
-from likemodas.state import AppState
+# Se importa el estado BASE
+from ..auth.state import SessionState
 from ..models import PurchaseModel, UserInfo, PurchaseItemModel, BlogPostModel
 
-# Modelo de datos simple para la UI con los campos de dirección separados
 class PurchaseHistoryCardData(rx.Base):
     id: int
     purchase_date_formatted: str
@@ -22,8 +21,8 @@ class PurchaseHistoryCardData(rx.Base):
     shipping_phone: str
     items_formatted: list[str]
 
-class PurchaseHistoryState(AppState):
-    # ✅ Inicialización segura de la lista
+# La clase ahora hereda de SessionState
+class PurchaseHistoryState(SessionState):
     purchases: List[PurchaseHistoryCardData] = rx.Field(default_factory=list)
     search_query: str = ""
 
@@ -36,8 +35,6 @@ class PurchaseHistoryState(AppState):
         query = self.search_query.lower()
         results = []
         for p in self.purchases:
-            # Buscamos en el ID y en los nombres de los artículos
-            # --- ✅ LÍNEA CORREGIDA (sin los marcadores de cita) ---
             items_text = " ".join(p.items_formatted).lower()
             if query in f"#{p.id}" or query in items_text:
                 results.append(p)
@@ -51,21 +48,18 @@ class PurchaseHistoryState(AppState):
             return
 
         with rx.session() as session:
-            # La consulta a la base de datos es correcta y carga los datos relacionados
             statement = (
                 select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items)
                     .joinedload(PurchaseItemModel.blog_post)
-                    .joinedload(BlogPostModel.comments)
                 )
                 .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
             )
             db_results = session.exec(statement).unique().all()
 
-            # Convertir los resultados de la base de datos al DTO seguro
             self.purchases = [
                 PurchaseHistoryCardData(
                     id=p.id,

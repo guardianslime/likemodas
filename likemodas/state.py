@@ -2,6 +2,7 @@
 
 import reflex as rx
 
+# Importa el estado BASE y las CLASES de los sub-estados
 from .auth.state import SessionState
 from .cart.state import CartState
 from .blog.state import BlogPostState, BlogAddFormState, BlogEditFormState, CommentState
@@ -16,8 +17,11 @@ from .navigation.state import NavState
 class AppState(SessionState):
     """
     El estado raíz y único de la aplicación.
+    Hereda de SessionState para obtener la lógica de autenticación y tema.
+    Contiene todos los demás estados como sub-estados.
     """
     
+    # --- Sub-estados de cada módulo de la aplicación ---
     nav: NavState = NavState()
     cart: CartState = CartState()
     blog_posts: BlogPostState = BlogPostState()
@@ -31,3 +35,11 @@ class AppState(SessionState):
     contact: ContactState = ContactState()
     search: SearchState = SearchState()
     notifications: NotificationState = NotificationState()
+
+    def on_load(self):
+        """
+        Un evento on_load genérico para asegurar que los datos iniciales se cargan.
+        """
+        if not self.is_authenticated:
+            return rx.redirect("/login") # Usar reflex_local_auth.routes.LOGIN_ROUTE es mejor
+        print("Estado global cargado para el usuario:", self.authenticated_username)
