@@ -6,12 +6,10 @@ import sqlalchemy
 from sqlmodel import select
 from datetime import datetime
 
-# ✅ Se importa el estado unificado para la herencia
-from likemodas.state import AppState
+# Se importa el estado base
+from ..auth.state import SessionState
 from likemodas.utils.formatting import format_to_cop
 from ..models import PurchaseModel, UserInfo, PurchaseItemModel, NotificationModel, PurchaseStatus
-
-
 
 class PurchaseCardData(rx.Base):
     id: int
@@ -29,8 +27,7 @@ class PurchaseCardData(rx.Base):
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
     
-class AdminConfirmState(AppState):
-    # ✅ Inicialización segura de la lista
+class AdminConfirmState(SessionState):
     pending_purchases: List[PurchaseCardData] = rx.Field(default_factory=list)
 
     @rx.event
@@ -49,12 +46,15 @@ class AdminConfirmState(AppState):
             self.pending_purchases = [
                 PurchaseCardData(
                     id=p.id,
-                    customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "Usuario no disponible",
+                    customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A",
                     customer_email=p.userinfo.email if p.userinfo else "N/A",
-                    purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
+                    purchase_date_formatted=p.purchase_date_formatted,
+                    status=p.status.value,
+                    total_price=p.total_price,
                     shipping_name=p.shipping_name or "",
                     shipping_full_address=f"{p.shipping_address or ''}, {p.shipping_neighborhood or ''}, {p.shipping_city or ''}",
-                    shipping_phone=p.shipping_phone or "", items_formatted=p.items_formatted
+                    shipping_phone=p.shipping_phone or "",
+                    items_formatted=p.items_formatted
                 ) for p in db_results
             ]
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
@@ -68,13 +68,13 @@ class AdminConfirmState(AppState):
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.utcnow()
                 notification = NotificationModel(userinfo_id=purchase.userinfo_id, message=f"¡Tu compra #{purchase.id} ha sido confirmada!", url="/my-purchases")
-                session.add(purchase); session.add(notification); session.commit()
+                session.add(purchase)
+                session.add(notification)
+                session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
                 yield AdminConfirmState.load_pending_purchases
 
-
-class PaymentHistoryState(AppState):
-    # ✅ Inicialización segura de la lista
+class PaymentHistoryState(SessionState):
     all_purchases: List[PurchaseCardData] = rx.Field(default_factory=list)
     search_query: str = ""
 
@@ -86,7 +86,9 @@ class PaymentHistoryState(AppState):
 
     @rx.event
     def load_confirmed_purchases(self):
-        if not self.is_admin: self.all_purchases = []; return
+        if not self.is_admin: 
+            self.all_purchases = []
+            return
         with rx.session() as session:
             db_results = session.exec(
                 select(PurchaseModel).options(
@@ -98,11 +100,14 @@ class PaymentHistoryState(AppState):
             self.all_purchases = [
                 PurchaseCardData(
                     id=p.id,
-                    customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "Usuario no disponible",
+                    customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A",
                     customer_email=p.userinfo.email if p.userinfo else "N/A",
-                    purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
+                    purchase_date_formatted=p.purchase_date_formatted,
+                    status=p.status.value,
+                    total_price=p.total_price,
                     shipping_name=p.shipping_name or "",
                     shipping_full_address=f"{p.shipping_address or ''}, {p.shipping_neighborhood or ''}, {p.shipping_city or ''}",
-                    shipping_phone=p.shipping_phone or "", items_formatted=p.items_formatted
+                    shipping_phone=p.shipping_phone or "",
+                    items_formatted=p.items_formatted
                 ) for p in db_results
             ]

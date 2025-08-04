@@ -1,9 +1,7 @@
 # likemodas/state.py
 
 import reflex as rx
-import reflex_local_auth
 
-# Importa las CLASES de estado de tus módulos
 from .auth.state import SessionState
 from .cart.state import CartState
 from .blog.state import BlogPostState, BlogAddFormState, BlogEditFormState, CommentState
@@ -15,16 +13,11 @@ from .ui.search_state import SearchState
 from .notifications.state import NotificationState
 from .navigation.state import NavState
 
-
-# ✅ La clase raíz sigue heredando de SessionState y conteniendo los demás
 class AppState(SessionState):
     """
     El estado raíz y único de la aplicación.
-    Hereda de SessionState para obtener la lógica de autenticación y tema.
-    Contiene todos los demás estados como sub-estados.
     """
     
-    # --- Sub-estados de cada módulo de la aplicación ---
     nav: NavState = NavState()
     cart: CartState = CartState()
     blog_posts: BlogPostState = BlogPostState()
@@ -38,23 +31,3 @@ class AppState(SessionState):
     contact: ContactState = ContactState()
     search: SearchState = SearchState()
     notifications: NotificationState = NotificationState()
-
-    def on_load(self):
-        """
-        Un evento on_load genérico que puedes llamar desde las páginas
-        para asegurarte de que los datos iniciales se cargan.
-        """
-        if not self.is_authenticated:
-            return reflex_local_auth.LoginState.redir
-        print("Estado global cargado para el usuario:", self.authenticated_username)
-
-    # ✅ --- NUEVO EVENTO CENTRALIZADO AÑADIDO --- ✅
-    @rx.event
-    def notify_admin_of_new_purchase(self):
-        """
-        Evento central que se encarga de la lógica de notificación.
-        Esto puede ser tan simple o complejo como se necesite.
-        """
-        self.new_purchase_notification = True
-        # Si en el futuro se necesitara recargar el panel del admin,
-        # la lógica iría aquí. Por ahora, activar el flag es suficiente.
