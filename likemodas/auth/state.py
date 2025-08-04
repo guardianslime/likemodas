@@ -79,15 +79,6 @@ class SessionState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    def set_min_price(self, price: str):
-        self.min_price = price.strip()
-
-    def set_max_price(self, price: str):
-        self.max_price = price.strip()
-
-    def toggle_filters(self):
-        self.show_filters = not self.show_filters
-        
 class MyRegisterState(reflex_local_auth.RegistrationState): 
     def handle_registration_email(self, form_data):
         registration_event = self.handle_registration(form_data)
@@ -121,5 +112,4 @@ class MyRegisterState(reflex_local_auth.RegistrationState):
                     recipient_email=new_user_info.email,
                     token=token_str
                 )
-                
         return registration_event

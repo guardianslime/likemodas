@@ -3,11 +3,12 @@
 import reflex as rx
 import math
 from ..navigation import routes
-from ..cart.state import CartState, ProductCardData
 from .skeletons import skeleton_product_gallery
 from reflex.event import EventSpec
-from ..state import AppState
 from ..auth.state import SessionState
+# Se importa el estado específico que se necesita, no el AppState completo.
+from ..cart.state import CartState, ProductCardData
+
 
 def searchable_select(
     placeholder: str, 
@@ -17,7 +18,7 @@ def searchable_select(
     search_value: rx.Var[str],
     on_change_search: EventSpec,
     filter_name: str,
-    is_disabled: rx.Var[bool] = False, # <-- ✨ LÍNEA AÑADIDA
+    is_disabled: rx.Var[bool] = False,
 ) -> rx.Component:
     """
     Un componente de selección personalizado con opción de búsqueda y deshabilitado.
@@ -34,7 +35,7 @@ def searchable_select(
             justify_content="space-between",
             color_scheme="gray",
             size="2",
-            is_disabled=is_disabled, # <-- ✨ LÍNEA AÑADIDA
+            is_disabled=is_disabled,
         ),
         rx.cond(
             is_open,
@@ -84,43 +85,7 @@ def searchable_select(
         width="100%",
     )
 
-# ... (El resto del archivo 'components.py' no necesita cambios) ...
-
-def categories_button() -> rx.Component:
-    """Un componente reutilizable para el botón desplegable de categorías."""
-    return rx.hstack(
-        rx.popover.root(
-            rx.popover.trigger(
-                rx.button(
-                    "Categorías", 
-                    variant="outline",
-                    size="3",
-                    color=rx.color_mode_cond("black", "white"),
-                    border_radius="full",
-                    style={"border_color": rx.color_mode_cond("black", "white")},
-                )
-            ),
-            rx.popover.content(
-                rx.hstack(
-                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
-                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
-                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
-                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-                    spacing="3",
-                ),
-                padding="0.5em",
-                side="right",
-                align="center",
-            ),
-        ),
-        justify="start",
-        width="100%",
-        max_width="1800px",
-        padding_bottom="1em"
-    )
-
 def _product_card_rating(post: ProductCardData) -> rx.Component:
-    """Muestra la calificación con estrellas para una tarjeta de producto."""
     average_rating = post.average_rating
     rating_count = post.rating_count
     
@@ -137,7 +102,6 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
             rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
-        # Si no hay calificaciones, deja un espacio vacío para mantener el diseño alineado
         rx.box(height="21px")
     )
 
@@ -151,10 +115,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.link(
                         rx.vstack(
                             rx.box(
-                                # --- ✅ SOLUCIÓN AL ERROR DE IMAGEN ---
-                                # Se añade `rx.cond` para verificar si la lista `image_urls`
-                                # no está vacía ANTES de intentar acceder a `image_urls[0]`.
-                                # Si está vacía, muestra un placeholder.
                                 rx.cond(
                                     post.image_urls & (post.image_urls.length() > 0),
                                     rx.image(
@@ -184,7 +144,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.spacer(),
                     rx.button(
                         "Añadir al Carrito",
-                        on_click=lambda: AppState.cart.add_to_cart(post.id),
+                        # La llamada ahora usa CartState directamente.
+                        on_click=lambda: CartState.add_to_cart(post.id),
                         width="100%",
                     ),
                     align="center", spacing="2", height="100%"

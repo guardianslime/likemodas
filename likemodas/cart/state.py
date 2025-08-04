@@ -32,76 +32,17 @@ class CartState(SessionState):
     is_loading: bool = True
     
     @rx.var
-    def dashboard_posts(self) -> list[ProductCardData]:
-        return self.posts[:20]
-
+    def cart_total(self) -> float:
+        return sum(p.price * q for p, q in self.cart_details if p and p.price)
+    
     @rx.var
-    def landing_page_posts(self) -> list[ProductCardData]:
-        return self.posts[:1] if self.posts else []
-
-    @rx.var
-    def filtered_posts(self) -> list[ProductCardData]:
-        posts_to_filter = self.posts
-        if self.current_category and self.current_category != "todos":
-            with rx.session() as session:
-                try:
-                    category_enum = Category(self.current_category)
-                    post_ids_in_category = set(session.exec(select(BlogPostModel.id).where(BlogPostModel.category == category_enum)).all())
-                    posts_to_filter = [p for p in self.posts if p.id in post_ids_in_category]
-                except ValueError:
-                    return []
-        try:
-            min_p = float(self.min_price) if self.min_price else 0
-            max_p = float(self.max_price) if self.max_price else float('inf')
-        except (ValueError, TypeError):
-            min_p, max_p = 0, float('inf')
-        if min_p > 0 or max_p != float('inf'):
-            posts_to_filter = [p for p in posts_to_filter if min_p <= p.price <= max_p]
-        
-        active_filters = any([
-            self.filter_color, self.filter_talla, self.filter_tipo_prenda, 
-            self.filter_numero_calzado, self.filter_tipo_zapato, 
-            self.filter_tipo_mochila, self.filter_tipo_general, 
-            self.filter_material_tela, self.filter_medida_talla
-        ])
-        if not active_filters:
-            return posts_to_filter
-
-        with rx.session() as session:
-            post_ids = [p.id for p in posts_to_filter]
-            if not post_ids: return []
-            
-            query = select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
-            
-            if self.current_category == Category.ROPA.value:
-                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
-                if self.filter_talla: query = query.where(cast(BlogPostModel.attributes['talla'], String).ilike(f"%{self.filter_talla}%"))
-                if self.filter_tipo_prenda: query = query.where(cast(BlogPostModel.attributes['tipo_prenda'], String) == self.filter_tipo_prenda)
-            elif self.current_category == Category.CALZADO.value:
-                if self.filter_color: query = query.where(cast(BlogPostModel.attributes['color'], String).ilike(f"%{self.filter_color}%"))
-                if self.filter_numero_calzado: query = query.where(cast(BlogPostModel.attributes['numero_calzado'], String) == self.filter_numero_calzado)
-                if self.filter_tipo_zapato: query = query.where(cast(BlogPostModel.attributes['tipo_zapato'], String) == self.filter_tipo_zapato)
-            elif self.current_category == Category.MOCHILAS.value:
-                if self.filter_tipo_mochila: query = query.where(cast(BlogPostModel.attributes['tipo_mochila'], String) == self.filter_tipo_mochila)
-            
-            filtered_db_posts = session.exec(query).all()
-            filtered_ids = {p.id for p in filtered_db_posts}
-            return [p for p in posts_to_filter if p.id in filtered_ids]
-
-    @rx.var
-    def cart_total_cop(self) -> str:
-        return format_to_cop(self.cart_total)
-
-    @rx.event
-    def load_posts_and_set_category(self):
-        category_name = self.router.page.params.get("cat_name", "")
-        if self.current_category != category_name:
-            self.current_category = category_name
-        yield type(self).on_load
+    def cart_details(self) -> List[Tuple[ProductCardData, int]]:
+        if not self.cart: return []
+        post_map = {p.id: p for p in self.posts}
+        return [(post_map[pid], self.cart[pid]) for pid in self.cart if pid in post_map]
 
     @rx.event
     def on_load(self):
-        """Carga los posts de forma segura, manejando posibles datos nulos."""
         self.is_loading = True
         yield
         with rx.session() as session:
@@ -124,42 +65,6 @@ class CartState(SessionState):
                 ) for p in results
             ]
         self.is_loading = False
-             
-    @rx.var
-    def cart_items_count(self) -> int: return sum(self.cart.values())
-
-    @rx.var
-    def cart_details(self) -> List[Tuple[ProductCardData, int]]:
-        if not self.cart: return []
-        post_map = {p.id: p for p in self.posts}
-        return [(post_map[pid], self.cart[pid]) for pid in self.cart if pid in post_map]
-
-    @rx.var
-    def cart_total(self) -> float:
-        return sum(p.price * q for p, q in self.cart_details if p and p.price)
-
-    @rx.event
-    def add_to_cart(self, post_id: int):
-        if not self.is_authenticated or self.authenticated_user_info is None:
-            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-        self.cart[post_id] = self.cart.get(post_id, 0) + 1
-
-    @rx.event
-    def remove_from_cart(self, post_id: int):
-        if post_id in self.cart:
-            if self.cart[post_id] > 1: self.cart[post_id] -= 1
-            else: self.cart.pop(post_id, None); self.cart = self.cart
-
-    @rx.event
-    def load_default_shipping_info(self):
-        if self.authenticated_user_info:
-            with rx.session() as session:
-                self.default_shipping_address = session.exec(
-                    select(ShippingAddressModel).where(
-                        ShippingAddressModel.userinfo_id == self.authenticated_user_info.id, 
-                        ShippingAddressModel.is_default == True
-                    )
-                ).one_or_none()
 
     @rx.event
     def handle_checkout(self):
@@ -168,7 +73,7 @@ class CartState(SessionState):
         
         user_info = self.authenticated_user_info
         if not user_info or user_info.id is None:
-            return rx.toast.error("Error de usuario. Por favor, vuelve a iniciar sesión.")
+            return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
 
         with rx.session() as session:
             post_ids = list(self.cart.keys())

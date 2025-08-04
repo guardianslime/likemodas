@@ -21,7 +21,6 @@ class AppState(SessionState):
     Contiene todos los demás estados como sub-estados.
     """
     
-    # --- Sub-estados de cada módulo de la aplicación ---
     nav: NavState = NavState()
     cart: CartState = CartState()
     blog_posts: BlogPostState = BlogPostState()
@@ -37,9 +36,6 @@ class AppState(SessionState):
     notifications: NotificationState = NotificationState()
 
     def on_load(self):
-        """
-        Un evento on_load genérico para asegurar que los datos iniciales se cargan.
-        """
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
         print("Estado global cargado para el usuario:", self.authenticated_username)
