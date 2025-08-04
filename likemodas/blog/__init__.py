@@ -1,20 +1,22 @@
-# likemodas/blog/__init__.py (VERSIÓN CORREGIDA)
+# likemodas/blog/__init__.py (CORREGIDO)
 
-from .add import blog_post_add_page
-from .detail import blog_post_detail_page
-from .edit import blog_post_edit_page
-from .list import blog_post_list_page
-# --- 👇 CAMBIO: Se elimina 'BlogViewState' de esta línea ---
+from .add import blog_post_add_content
+from .detail import blog_post_detail_content
+from .edit import blog_post_edit_content
+from .list import blog_post_list_content
+from .page import blog_public_page_content
+from .public_detail import blog_public_detail_content
 from .state import BlogPostState, BlogAddFormState, BlogEditFormState, CommentState
 
 __all__ = [
-    'blog_post_add_page',
-    'blog_post_detail_page',
-    'blog_post_edit_page',
-    'blog_post_list_page',
+    'blog_post_add_content',
+    'blog_post_detail_content',
+    'blog_post_edit_content',
+    'blog_post_list_content',
+    'blog_public_page_content',
+    'blog_public_detail_content',
     'BlogPostState',
     'BlogAddFormState',
     'BlogEditFormState',
-    # --- 👇 CAMBIO: Se elimina 'BlogViewState' de esta lista ---
     'CommentState',
 ]

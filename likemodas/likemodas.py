@@ -1,4 +1,4 @@
-# likemodas/__init__.py (CORREGIDO Y COMPLETO)
+# likemodas/__init__.py (REVISADO Y COMPLETO)
 
 import reflex as rx
 import reflex_local_auth
@@ -7,7 +7,6 @@ from rxconfig import config
 
 # --- Módulos específicos de la aplicación ---
 from .auth import pages as auth_pages, state as auth_state, verify_state, reset_password_state
-# ✅ Se importan los módulos de página con sus nombres originales
 from .pages import (
     search_results, 
     about as about_page, 
@@ -17,13 +16,14 @@ from .pages import (
     test_page, 
     category_page
 )
+# ✅ Se importa el paquete de blog completo. Los nombres correctos se resuelven desde su __init__.py
 from .blog import (
-    page as blog_page, 
-    public_detail as blog_public_detail, 
-    list as blog_list, 
-    detail as blog_detail, 
-    add as blog_add, 
-    edit as blog_edit, 
+    blog_public_page_content,
+    blog_public_detail_content,
+    blog_post_list_content,
+    blog_post_detail_content,
+    blog_post_add_content,
+    blog_post_edit_content,
     state as blog_state
 )
 from .cart import page as cart_page, state as cart_state
@@ -32,19 +32,16 @@ from .admin import state as admin_state, page as admin_page
 from .contact import page as contact_page, state as contact_state
 from . import navigation
 from .account import page as account_page_module, shipping_info as shipping_info_module, shipping_info_state
-# ✅ Se importa el layout base para usarlo como wrapper
 from .ui.base import base_page
 
 class HomePageState(cart_state.CartState):
-    """Estado específico para la página de inicio."""
     @rx.event
     def on_load_main(self):
         self.current_category = ""
         yield cart_state.CartState.load_posts_and_set_category
 
 def index_content() -> rx.Component:
-    """La página principal que muestra la galería de productos."""
-    return blog_page.blog_public_page_content()
+    return blog_public_page_content()
 
 # --- Configuración de la App ---
 app = rx.App(
@@ -52,13 +49,11 @@ app = rx.App(
         appearance="dark", 
         has_background=True, 
         panel_background="solid",
-        # ✅ Se elimina la propiedad 'scaling' para evitar saltos de tamaño
         radius="medium", 
         accent_color="sky"
     ),
 )
 
-# --- ✅ Todas las páginas ahora se envuelven en base_page ---
 # --- Definición de Rutas de la Aplicación ---
 app.add_page(base_page(index_content()), on_load=HomePageState.on_load_main)
 app.add_page(base_page(dashboard_component.dashboard_content()), route="/dashboard", title="Dashboard", on_load=cart_state.CartState.on_load)
@@ -79,17 +74,17 @@ app.add_page(base_page(pricing_page.pricing_page_content()), route=navigation.ro
 app.add_page(base_page(contact_page.contact_page_content()), route=navigation.routes.CONTACT_US_ROUTE)
 
 # --- Rutas del Blog/Galería de Productos ---
-app.add_page(base_page(blog_page.blog_public_page_content()), route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE, title="Galería de Productos", on_load=cart_state.CartState.on_load)
+app.add_page(base_page(blog_public_page_content()), route=navigation.routes.BLOG_PUBLIC_PAGE_ROUTE, title="Galería de Productos", on_load=cart_state.CartState.on_load)
 app.add_page(
-    base_page(blog_public_detail.blog_public_detail_content()), 
+    base_page(blog_public_detail_content()), 
     route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[id]",
     title="Detalle del Producto", 
     on_load=blog_state.CommentState.on_load
 )
-app.add_page(base_page(blog_list.blog_post_list_content()), route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)
-app.add_page(base_page(blog_detail.blog_post_detail_content()), route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
-app.add_page(base_page(blog_add.blog_post_add_content()), route=navigation.routes.BLOG_POST_ADD_ROUTE)
-app.add_page(base_page(blog_edit.blog_post_edit_content()), route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
+app.add_page(base_page(blog_post_list_content()), route=navigation.routes.BLOG_POSTS_ROUTE, on_load=blog_state.BlogPostState.load_posts)
+app.add_page(base_page(blog_post_detail_content()), route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=blog_state.BlogPostState.get_post_detail)
+app.add_page(base_page(blog_post_add_content()), route=navigation.routes.BLOG_POST_ADD_ROUTE)
+app.add_page(base_page(blog_post_edit_content()), route="/blog/[blog_id]/edit", on_load=blog_state.BlogEditFormState.on_load_edit)
 
 # --- Rutas de Cuenta, Carrito y Compras ---
 app.add_page(
