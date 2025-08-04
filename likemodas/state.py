@@ -16,6 +16,7 @@ from .notifications.state import NotificationState
 from .navigation.state import NavState
 
 
+# ✅ La clase raíz sigue heredando de SessionState y conteniendo los demás
 class AppState(SessionState):
     """
     El estado raíz y único de la aplicación.

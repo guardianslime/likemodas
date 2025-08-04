@@ -8,9 +8,10 @@ from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
 
-# Se importa el estado unificado
-from likemodas.state import AppState
+# ✅ CAMBIO CLAVE: Se importa la base común, no el estado unificado.
+from ..auth.state import SessionState 
 from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
+# Se importa AdminConfirmState por separado para notificar, esto no crea un ciclo.
 from ..admin.state import AdminConfirmState
 from ..utils.formatting import format_to_cop 
 
@@ -28,13 +29,16 @@ class ProductCardData(rx.Base):
         """Propiedad para el precio ya formateado."""
         return format_to_cop(self.price)
 
-class CartState(AppState):
-    # ✅ Inicialización segura para diccionarios y listas
+# ✅ CAMBIO CLAVE: La clase ahora hereda de SessionState
+class CartState(SessionState):
     cart: Dict[int, int] = rx.Field(default_factory=dict)
     posts: list[ProductCardData] = rx.Field(default_factory=list)
     default_shipping_address: Optional[ShippingAddressModel] = None
-    is_loading: bool = True
 
+    is_loading: bool = True
+    
+    # ... El resto del archivo permanece exactamente igual ...
+    
     @rx.var
     def dashboard_posts(self) -> list[ProductCardData]:
         return self.posts[:20]
@@ -121,9 +125,6 @@ class CartState(AppState):
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
-            # --- ✅ SOLUCIÓN AL ERROR DE CARGA (línea 105) ---
-            # Se asegura de que si `p.price` es `None` en la base de datos,
-            # se use `0.0` por defecto. Esto previene el error del servidor.
             self.posts = [
                 ProductCardData(
                     id=p.id or 0,
@@ -186,11 +187,8 @@ class CartState(AppState):
             post_ids = list(self.cart.keys())
             db_posts_map = {p.id: p for p in session.exec(select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()}
             
-            # --- ✅ SOLUCIÓN AL ERROR ---
-            # Se asegura que `user_info.id` sea un entero antes de usarlo.
-            # Esto previene el error del servidor si el ID no está disponible.
             new_purchase = PurchaseModel(
-                userinfo_id=int(user_info.id), # <-- LÍNEA CORREGIDA
+                userinfo_id=int(user_info.id),
                 total_price=self.cart_total, 
                 status=PurchaseStatus.PENDING,
                 shipping_name=self.default_shipping_address.name, 
