@@ -3,7 +3,7 @@
 import reflex as rx
 import reflex_local_auth
 
-# Importa las CLASES de estado de tus módulos, no las instancias.
+# Importa las CLASES de estado de tus módulos
 from .auth.state import SessionState
 from .cart.state import CartState
 from .blog.state import BlogPostState, BlogAddFormState, BlogEditFormState, CommentState
@@ -47,3 +47,14 @@ class AppState(SessionState):
         if not self.is_authenticated:
             return reflex_local_auth.LoginState.redir
         print("Estado global cargado para el usuario:", self.authenticated_username)
+
+    # ✅ --- NUEVO EVENTO CENTRALIZADO AÑADIDO --- ✅
+    @rx.event
+    def notify_admin_of_new_purchase(self):
+        """
+        Evento central que se encarga de la lógica de notificación.
+        Esto puede ser tan simple o complejo como se necesite.
+        """
+        self.new_purchase_notification = True
+        # Si en el futuro se necesitara recargar el panel del admin,
+        # la lógica iría aquí. Por ahora, activar el flag es suficiente.

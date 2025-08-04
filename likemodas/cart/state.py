@@ -8,11 +8,9 @@ from datetime import datetime
 import reflex_local_auth
 import sqlalchemy
 
-# ✅ CAMBIO CLAVE: Se importa la base común, no el estado unificado.
-from ..auth.state import SessionState 
+# ✅ Se importa AppState para la herencia
+from likemodas.state import AppState
 from ..models import Category, PurchaseModel, PurchaseStatus, UserInfo, PurchaseItemModel, BlogPostModel, NotificationModel, ShippingAddressModel
-# Se importa AdminConfirmState por separado para notificar, esto no crea un ciclo.
-from ..admin.state import AdminConfirmState
 from ..utils.formatting import format_to_cop 
 
 class ProductCardData(rx.Base):
@@ -30,7 +28,7 @@ class ProductCardData(rx.Base):
         return format_to_cop(self.price)
 
 # ✅ CAMBIO CLAVE: La clase ahora hereda de SessionState
-class CartState(SessionState):
+class CartState(AppState):
     cart: Dict[int, int] = rx.Field(default_factory=dict)
     posts: list[ProductCardData] = rx.Field(default_factory=list)
     default_shipping_address: Optional[ShippingAddressModel] = None
@@ -214,6 +212,11 @@ class CartState(SessionState):
 
         self.cart.clear()
         self.default_shipping_address = None
-        yield AdminConfirmState.notify_admin_of_new_purchase()
+        
+        # ✅ ✅ CAMBIO CLAVE Y DEFINITIVO ✅ ✅
+        # Se llama al evento definido en el estado padre (AppState).
+        # Esto rompe la dependencia circular.
+        yield type(self).notify_admin_of_new_purchase
+        
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")

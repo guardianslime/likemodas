@@ -6,11 +6,12 @@ import sqlalchemy
 from sqlmodel import select
 from datetime import datetime
 
-# Se importa el estado unificado
-from likemodas.auth.state import SessionState
+# ✅ Se importa el estado unificado para la herencia
 from likemodas.state import AppState
 from likemodas.utils.formatting import format_to_cop
 from ..models import PurchaseModel, UserInfo, PurchaseItemModel, NotificationModel, PurchaseStatus
+
+
 
 class PurchaseCardData(rx.Base):
     id: int
@@ -56,7 +57,7 @@ class AdminConfirmState(AppState):
                     shipping_phone=p.shipping_phone or "", items_formatted=p.items_formatted
                 ) for p in db_results
             ]
-            yield SessionState.set_new_purchase_notification(len(self.pending_purchases) > 0)
+            yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
 
     @rx.event
     def confirm_payment(self, purchase_id: int):
@@ -71,9 +72,6 @@ class AdminConfirmState(AppState):
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
                 yield AdminConfirmState.load_pending_purchases
 
-    @classmethod
-    def notify_admin_of_new_purchase(cls):
-        return SessionState.set_new_purchase_notification(True)
 
 class PaymentHistoryState(AppState):
     # ✅ Inicialización segura de la lista
