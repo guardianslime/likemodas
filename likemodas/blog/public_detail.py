@@ -1,22 +1,27 @@
-# likemodas/blog/public_detail.py (VERSIÓN CORREGIDA)
+# likemodas/blog/public_detail.py (CORREGIDO)
 
 import reflex as rx
-from .state import CommentState, SessionState
+import math
+
+# ✨ 1. Se importa el estado global y unificado
+from likemodas.state import AppState
+
 from ..ui.carousel import Carousel
-from ..cart.state import CartState
 from ..models import CommentModel
 from ..ui.base import base_page
-import math
+
+# ✨ 2. Todas las llamadas a estados específicos (CommentState, CartState, SessionState)
+#    se reemplazan por AppState y su sub-estado correspondiente (comments, cart, etc.)
 
 def _image_section() -> rx.Component:
     """Muestra las imágenes del post en un carrusel."""
     return rx.box(
         Carousel.create(
             rx.foreach(
-                CommentState.post.image_urls,
+                AppState.comments.post.image_urls,
                 lambda image_url: rx.image(
                     src=rx.get_upload_url(image_url),
-                    alt=CommentState.post.title,
+                    alt=AppState.comments.post.title,
                     width="100%",
                     height="auto",
                     object_fit="cover",
@@ -37,8 +42,8 @@ def _image_section() -> rx.Component:
 
 def _global_rating_display() -> rx.Component:
     """Muestra la calificación promedio del producto."""
-    average_rating = CommentState.average_rating
-    rating_count = CommentState.rating_count
+    average_rating = AppState.comments.average_rating
+    rating_count = AppState.comments.rating_count
     full_stars = rx.Var.range(math.floor(average_rating))
     has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
     empty_stars = rx.Var.range(5 - math.ceil(average_rating))
@@ -62,13 +67,13 @@ def _global_rating_display() -> rx.Component:
 def _attributes_display() -> rx.Component:
     """Muestra las características (atributos) del producto."""
     return rx.cond(
-        CommentState.product_attributes,
+        AppState.comments.product_attributes,
         rx.vstack(
             rx.divider(margin_y="1em"),
             rx.heading("Características", size="5", width="100%", text_align="left", margin_bottom="0.5em"),
             rx.vstack(
                 rx.foreach(
-                    CommentState.product_attributes,
+                    AppState.comments.product_attributes,
                     lambda attr: rx.hstack(
                         rx.text(attr[0], weight="bold", min_width="160px"),
                         rx.text(attr[1]),
@@ -85,16 +90,16 @@ def _attributes_display() -> rx.Component:
 def _info_section() -> rx.Component:
     """Muestra la información principal del producto."""
     return rx.vstack(
-        rx.text(CommentState.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
-        rx.text("Publicado el " + CommentState.post.created_at_formatted, size="3", color_scheme="gray", margin_bottom="0.5em", text_align="left", width="100%"),
-        rx.text(CommentState.formatted_price, size="7", color="gray", text_align="left"),
-        rx.text(CommentState.content, size="5", margin_top="1em", white_space="pre-wrap", text_align="left"),
+        rx.text(AppState.comments.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
+        rx.text("Publicado el " + AppState.comments.post.created_at_formatted, size="3", color_scheme="gray", margin_bottom="0.5em", text_align="left", width="100%"),
+        rx.text(AppState.comments.formatted_price, size="7", color="gray", text_align="left"),
+        rx.text(AppState.comments.content, size="5", margin_top="1em", white_space="pre-wrap", text_align="left"),
         _attributes_display(),
         _global_rating_display(),
         rx.spacer(),
         rx.button(
             "Añadir al Carrito",
-            on_click=lambda: CartState.add_to_cart(CommentState.post.id),
+            on_click=lambda: AppState.cart.add_to_cart(AppState.comments.post.id),
             width="100%", size="4", margin_top="1.5em", color_scheme="violet"
         ),
         padding="1em",
@@ -110,8 +115,8 @@ def _star_rating_input() -> rx.Component:
             rx.Var.range(5),
             lambda i: rx.icon(
                 tag="star",
-                color=rx.cond(i < CommentState.new_comment_rating, "gold", rx.color("gray", 8)),
-                on_click=lambda: CommentState.set_new_comment_rating(i + 1),
+                color=rx.cond(i < AppState.comments.new_comment_rating, "gold", rx.color("gray", 8)),
+                on_click=lambda: AppState.comments.set_new_comment_rating(i + 1),
                 cursor="pointer",
                 size=32,
             )
@@ -133,23 +138,23 @@ def _star_rating_display(rating: rx.Var[int]) -> rx.Component:
 def _comment_form() -> rx.Component:
     """Formulario para añadir un nuevo comentario."""
     return rx.cond(
-        SessionState.is_authenticated,
+        AppState.is_authenticated,
         rx.cond(
-            CommentState.user_can_comment,
+            AppState.comments.user_can_comment,
             rx.form(
                 rx.vstack(
                     rx.text("Tu calificación:", weight="bold", size="4"),
                     _star_rating_input(),
-                    rx.text_area(name="comment_text", value=CommentState.new_comment_text, on_change=CommentState.set_new_comment_text, placeholder="Escribe tu opinión sobre el producto...", width="100%", size="3"),
+                    rx.text_area(name="comment_text", value=AppState.comments.new_comment_text, on_change=AppState.comments.set_new_comment_text, placeholder="Escribe tu opinión sobre el producto...", width="100%", size="3"),
                     rx.button("Publicar Opinión", type="submit", align_self="flex-end", size="3", color_scheme="violet"),
                     spacing="3", width="100%",
                 ),
-                on_submit=CommentState.add_comment, width="100%",
+                on_submit=AppState.comments.add_comment, width="100%",
             ),
             # Mensajes para usuarios que no pueden comentar
             rx.box(
                 rx.cond(
-                    CommentState.user_has_commented,
+                    AppState.comments.user_has_commented,
                     rx.text("Ya has publicado una opinión para este producto.", size="4"),
                     rx.text("Debes haber comprado este producto para poder dejar tu opinión.", size="4")
                 ),
@@ -182,11 +187,11 @@ def _comment_card(comment: CommentModel) -> rx.Component:
             ),
             rx.text(comment.content, padding_left="3em", padding_top="0.5em", font_size="1.1em"),
             rx.cond(
-                SessionState.is_authenticated,
+                AppState.is_authenticated,
                 rx.hstack(
-                    rx.icon_button(rx.icon("thumbs-up", size=20), on_click=lambda: CommentState.handle_vote(comment.id, "like"), variant="soft"),
+                    rx.icon_button(rx.icon("thumbs-up", size=20), on_click=lambda: AppState.comments.handle_vote(comment.id, "like"), variant="soft"),
                     rx.text(comment.likes, size="3"),
-                    rx.icon_button(rx.icon("thumbs-down", size=20), on_click=lambda: CommentState.handle_vote(comment.id, "dislike"), variant="soft"),
+                    rx.icon_button(rx.icon("thumbs-down", size=20), on_click=lambda: AppState.comments.handle_vote(comment.id, "dislike"), variant="soft"),
                     rx.text(comment.dislikes, size="3"),
                     spacing="2", align="center", padding_left="3em",
                 )
@@ -203,24 +208,23 @@ def comment_section() -> rx.Component:
         rx.heading("Opiniones del Producto", size="8", color_scheme="violet"),
         _comment_form(),
         rx.vstack(
-            rx.foreach(CommentState.comments, _comment_card),
+            rx.foreach(AppState.comments.comments, _comment_card),
             spacing="4", width="100%", margin_top="1.5em",
         ),
         rx.cond(
-            ~CommentState.comments,
+            ~AppState.comments.comments,
             rx.center(rx.text("Sé el primero en dejar tu opinión.", color_scheme="gray", size="4"), padding="2em", width="100%")
         ),
         spacing="5", width="100%", max_width="1120px", align="center", padding_top="1em",
     )
     
-# ✅ FUNCIÓN CORREGIDA
 def blog_public_detail_content() -> rx.Component:
     """Página que muestra el detalle de una publicación pública."""
     return rx.center(
         rx.vstack(
             rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
             rx.cond(
-                CommentState.post,
+                AppState.comments.post,
                 rx.fragment(
                     rx.grid(
                         _image_section(),
@@ -235,7 +239,7 @@ def blog_public_detail_content() -> rx.Component:
                 ),
                 rx.center(
                     rx.cond(
-                        CommentState.is_hydrated,
+                        AppState.is_hydrated,
                         rx.text("Publicación no encontrada o no disponible.", color="red"),
                         rx.spinner(size="3")
                     ),

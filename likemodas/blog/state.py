@@ -1,13 +1,15 @@
-# likemodas/blog/state.py (CORRECCIÓN DEFINITIVA)
+# likemodas/blog/state.py (CORREGIDO)
 
 from datetime import datetime
 from typing import Optional, List
 import reflex as rx
 import sqlalchemy
-from sqlmodel import select
+from sqlmodel import select, Field  # ✨ 1. Field se importa para default_factory
+
+# ✨ 2. Se importa el nuevo estado global y unificado
+from likemodas.state import AppState
 
 from .. import navigation
-from ..auth.state import SessionState
 from ..models import (
     BlogPostModel, UserInfo, CommentModel, CommentVoteModel, VoteType,
     PurchaseModel, PurchaseItemModel, PurchaseStatus, Category
@@ -18,13 +20,17 @@ from ..data.product_options import (
 
 BLOG_POSTS_ROUTE = navigation.routes.BLOG_POSTS_ROUTE.rstrip("/")
 
-class BlogPostState(SessionState):
+# ✨ 3. Todas las clases ahora heredan de AppState
+class BlogPostState(AppState):
     """Estado para la lista y detalle de posts del admin."""
-    posts: list[BlogPostModel] = []
+    # ✨ 4. Las listas se inicializan de forma segura para evitar problemas entre sesiones
+    posts: list[BlogPostModel] = Field(default_factory=list)
     post: Optional[BlogPostModel] = None
     img_idx: int = 0
     search_query: str = ""
 
+    # (El resto de los métodos y vars de BlogPostState no necesitan cambios, 
+    # ya que 'self.is_admin', etc., se heredan correctamente de AppState)
     @rx.var
     def formatted_price(self) -> str:
         if self.post and self.post.price is not None:
@@ -43,7 +49,6 @@ class BlogPostState(SessionState):
 
     @rx.var
     def filtered_posts(self) -> list[BlogPostModel]:
-        """Propiedad computada simplificada para filtrar los posts."""
         if not self.search_query.strip():
             return self.posts
         return [
@@ -53,12 +58,10 @@ class BlogPostState(SessionState):
 
     @rx.var
     def categories(self) -> list[str]:
-        """Devuelve una lista con los valores de las categorías."""
         return [c.value for c in Category]
 
     @rx.event
     def load_posts(self):
-        """Carga los posts del admin desde la base de datos."""
         if not self.is_admin or self.my_userinfo_id is None:
             self.posts = []
             return
@@ -112,15 +115,14 @@ class BlogPostState(SessionState):
         return rx.redirect(BLOG_POSTS_ROUTE)
 
 
-class BlogAddFormState(SessionState):
+class BlogAddFormState(AppState):
     """Estado para el formulario de AÑADIR posts."""
     title: str = ""
     content: str = ""
     price: float = 0.0
     category: str = ""
-    temp_images: list[str] = []
+    temp_images: list[str] = Field(default_factory=list)
 
-    # Atributos específicos por categoría
     talla: str = ""
     tipo_tela: str = ""
     color_ropa: str = ""
@@ -132,8 +134,6 @@ class BlogAddFormState(SessionState):
     material_mochila: str = ""
     medidas: str = ""
     tipo_mochila: str = ""
-
-    # Estados para la búsqueda en los selectores
     search_add_tipo_prenda: str = ""
     search_add_color_ropa: str = ""
     search_add_talla: str = ""
@@ -145,7 +145,6 @@ class BlogAddFormState(SessionState):
     search_add_tipo_mochila: str = ""
     search_add_material_mochila: str = ""
 
-    # Setters para la búsqueda
     def set_search_add_tipo_prenda(self, query: str): self.search_add_tipo_prenda = query
     def set_search_add_color_ropa(self, query: str): self.search_add_color_ropa = query
     def set_search_add_talla(self, query: str): self.search_add_talla = query
@@ -157,7 +156,6 @@ class BlogAddFormState(SessionState):
     def set_search_add_tipo_mochila(self, query: str): self.search_add_tipo_mochila = query
     def set_search_add_material_mochila(self, query: str): self.search_add_material_mochila = query
 
-    # Propiedades computadas para filtrar las opciones de los selectores
     @rx.var
     def filtered_add_colores(self) -> list[str]:
         if not self.search_add_color_ropa.strip(): return LISTA_COLORES
@@ -312,10 +310,10 @@ class BlogEditFormState(BlogPostState):
         return rx.redirect(f"/blog/{post_id}")
 
 
-class CommentState(SessionState):
+class CommentState(AppState):
     """Estado que maneja tanto la vista del post público como sus comentarios."""
     post: Optional[BlogPostModel] = None
-    comments: list[CommentModel] = []
+    comments: list[CommentModel] = Field(default_factory=list)
     
     new_comment_text: str = ""
     new_comment_rating: int = 0
@@ -323,8 +321,6 @@ class CommentState(SessionState):
 
     @rx.var
     def post_id(self) -> str:
-        # --- ✅ CORRECCIÓN CRÍTICA ---
-        # El parámetro en la ruta es `id`, no `blog_public_id`.
         return self.router.page.params.get("id", "")
         
     @rx.var
@@ -420,7 +416,6 @@ class CommentState(SessionState):
                 .where(
                     BlogPostModel.id == pid,
                     BlogPostModel.publish_active == True,
-                    # Se usa <= para incluir publicaciones hechas en el mismo segundo.
                     BlogPostModel.publish_date <= datetime.utcnow()
                 )
             ).unique().one_or_none()
