@@ -1,6 +1,7 @@
 # likemodas/ui/base.py (VERSIÓN FINAL Y VERIFICADA)
 
 import reflex as rx
+from reflex.style import toggle_color_mode # <-- Añadir esta importación
 from ..state import AppState
 from .nav import public_navbar
 # Asegúrate de tener skeleton_navbar en tus importaciones
@@ -9,7 +10,15 @@ from .sidebar import sidebar, mobile_admin_menu, sidebar_dark_mode_toggle_item
 
 def fixed_color_mode_button() -> rx.Component:
     return rx.box(
-        rx.color_mode.button(),
+        rx.button(
+            rx.color_mode_cond(
+                light=rx.icon(tag="sun"), 
+                dark=rx.icon(tag="moon")
+            ),
+            on_click=toggle_color_mode,
+            variant="soft",
+            radius="full"
+        ),
         position="fixed", bottom="1.5rem", right="1.5rem", z_index="1000",
     )
 
