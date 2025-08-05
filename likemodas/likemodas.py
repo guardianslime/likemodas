@@ -3,23 +3,23 @@
 import reflex as rx
 import reflex_local_auth
 
-from .state import AppState
+from.state import AppState
 
 # --- Módulos de la aplicación ---
-from .auth import pages as auth_pages
-from .pages import search_results, category_page
-from .blog import (
+from.auth import pages as auth_pages
+from.pages import search_results, category_page
+from.blog import (
     blog_public_page_content, blog_public_detail_content, blog_post_list_content,
     blog_post_detail_content, blog_post_add_content, blog_post_edit_content
 )
-from .cart import page as cart_page
-from .purchases import page as purchases_page
-from .admin import page as admin_page
-from .contact import page as contact_page
-from . import navigation
-from .account import shipping_info as shipping_info_module
-from .ui.base import base_page
-from . import models
+from.cart import page as cart_page
+from.purchases import page as purchases_page
+from.admin import page as admin_page
+from.contact import page as contact_page
+from. import navigation
+from.account import shipping_info as shipping_info_module
+from.ui.base import base_page
+from. import models
 
 # Estado específico para la página de inicio para manejar su carga
 class HomePageState(AppState):

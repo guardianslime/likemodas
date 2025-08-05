@@ -4,6 +4,7 @@ import reflex as rx
 from ..state import AppState
 from ..ui.carousel import Carousel
 from ..models import CommentModel
+from ..ui.skeletons import skeleton_product_detail_view # Importa el esqueleto
 
 def _image_section() -> rx.Component:
     return rx.box(
@@ -36,30 +37,32 @@ def _info_section() -> rx.Component:
         padding="1em", align="start", width="100%", min_height="350px",
     )
 
-# ... (El resto de las funciones como _star_rating_input, _comment_form, etc., también deben usar AppState en lugar de CommentState o SessionState)
-
 def blog_public_detail_content() -> rx.Component:
     return rx.center(
         rx.vstack(
             rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
+            # ✅ CORRECCIÓN: Patrón de estado de carga completo
             rx.cond(
-                AppState.post,
-                rx.fragment(
-                    rx.grid(
-                        _image_section(), _info_section(),
-                        columns="2", spacing="4", align_items="start",
-                        width="100%", max_width="1400px",
+                AppState.is_hydrated,
+                rx.cond(
+                    AppState.post,
+                    # Si el post existe, muestra los detalles
+                    rx.fragment(
+                        rx.grid(
+                            _image_section(), _info_section(),
+                            columns="2", spacing="4", align_items="start",
+                            width="100%", max_width="1400px",
+                        ),
+                        # comment_section(), # Puedes añadir esta sección después
                     ),
-                    # comment_section(),
-                ),
-                rx.center(
-                    rx.cond(
-                        AppState.is_hydrated,
+                    # Si el post no existe (después de cargar), muestra mensaje de no encontrado
+                    rx.center(
                         rx.text("Publicación no encontrada o no disponible.", color="red"),
-                        rx.spinner(size="3")
-                    ),
-                    min_height="50vh"
-                )
+                        min_height="50vh"
+                    )
+                ),
+                # Muestra un esqueleto o spinner mientras los datos se cargan
+                skeleton_product_detail_view()
             ),
             spacing="6", width="100%", padding="2em", align="center",
         ),

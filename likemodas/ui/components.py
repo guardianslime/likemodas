@@ -35,7 +35,8 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
-                                on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
+                                # ✅ CORRECCIÓN: Se añade el cierre del dropdown al hacer click
+                                on_click=[on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
                         ),
@@ -67,7 +68,8 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
             rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
-        rx.box(height="21px")
+        # Renderiza una caja vacía para mantener el layout consistente si no hay rating
+        rx.box(height="21px") 
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
@@ -80,9 +82,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.link(
                         rx.vstack(
                             rx.box(
+                                # ✅ CORRECCIÓN: Comprueba reactivamente si hay imágenes
                                 rx.cond(
                                     post.image_urls & (post.image_urls.length() > 0),
                                     rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="100%", object_fit="cover"),
+                                    # Placeholder si no hay imágenes
                                     rx.box(
                                         rx.vstack(
                                             rx.icon("image_off", size=48, color=rx.color("gray", 8)),

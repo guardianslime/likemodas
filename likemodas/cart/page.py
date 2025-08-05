@@ -2,6 +2,8 @@
 
 import reflex as rx
 import reflex_local_auth
+
+from likemodas.utils.formatting import format_to_cop
 from ..state import AppState
 
 def display_default_address() -> rx.Component:
@@ -9,6 +11,7 @@ def display_default_address() -> rx.Component:
         rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
         rx.cond(
             AppState.default_shipping_address,
+            # Si hay dirección por defecto
             rx.box(
                 rx.vstack(
                     rx.hstack(
@@ -25,6 +28,7 @@ def display_default_address() -> rx.Component:
                 ),
                 border="1px solid #ededed", border_radius="md", padding="1em", width="100%"
             ),
+            # Si NO hay dirección por defecto
             rx.box(
                 rx.vstack(
                     rx.text("No tienes una dirección de envío predeterminada."),
@@ -38,12 +42,13 @@ def display_default_address() -> rx.Component:
             "Finalizar Compra", 
             on_click=AppState.handle_checkout, 
             width="100%", size="3", margin_top="1em",
-            is_disabled=~AppState.default_shipping_address 
+            is_disabled=~AppState.default_shipping_address # Se deshabilita si no hay dirección
         ),
         width="100%", spacing="4",
     )
 
 def cart_item_row(item: rx.Var) -> rx.Component:
+    # ✅ CORRECCIÓN: Acceso correcto a la tupla (modelo, cantidad)
     post, quantity = item[0], item[1]
     return rx.table.row(
         rx.table.cell(rx.text(post.title)),
@@ -56,7 +61,8 @@ def cart_item_row(item: rx.Var) -> rx.Component:
             )
         ),
         rx.table.cell(rx.text(post.price_cop)),
-        rx.table.cell(rx.text(f"${(post.price * quantity):,.0f}")),
+        # ✅ CORRECCIÓN: Cálculo reactivo del subtotal
+        rx.table.cell(rx.text(format_to_cop(post.price * quantity))),
     )
 
 @reflex_local_auth.require_login
@@ -65,9 +71,11 @@ def cart_page_content() -> rx.Component:
         rx.heading("Mi Carrito", size="8", color_scheme="violet"),
         rx.cond(
             AppState.cart_items_count > 0,
+            # Si el carrito no está vacío
             rx.vstack(
                 rx.table.root(
                     rx.table.header(rx.table.row(rx.table.column_header_cell("Producto"), rx.table.column_header_cell("Cantidad"), rx.table.column_header_cell("Precio Unitario"), rx.table.column_header_cell("Subtotal"))),
+                    # ✅ CORRECCIÓN: Itera sobre la lista reactiva de detalles del carrito
                     rx.table.body(rx.foreach(AppState.cart_details, cart_item_row))
                 ),
                 rx.divider(),
@@ -79,6 +87,7 @@ def cart_page_content() -> rx.Component:
                 display_default_address(),
                 spacing="5", width="100%", max_width="700px"
             ),
+            # Si el carrito está vacío
             rx.center(
                 rx.vstack(rx.text("Tu carrito está vacío."), rx.link("Explorar productos", href="/"), spacing="3"),
                 min_height="50vh"
