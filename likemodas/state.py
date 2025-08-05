@@ -214,7 +214,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     def toggle_filters(self): self.show_filters = ~self.show_filters
     def clear_all_filters(self):
-        # Reinicia todos los filtros
         self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
         self.filter_tipo_prenda, self.filter_tipo_zapato, self.filter_tipo_mochila = "", "", ""
         self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla = "", "", ""
@@ -333,7 +332,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
         with rx.session() as session:
             results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(timezone.utc)).order_by(BlogPostModel.created_at.desc())).unique().all()
-            self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price, image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
+            # ✅ CORREGIDO: Se añade "or []" para manejar valores nulos de image_urls y "or 0.0" para price.
+            self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price or 0.0, image_urls=p.image_urls or [], average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
         self.is_loading = False
     
     # --- GESTIÓN DE FORMULARIO DE AÑADIR PRODUCTO (ADMIN) ---
@@ -370,10 +370,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_add_tipo_prenda(self, value: str):
         self.search_add_tipo_prenda = value
 
-    # ✅ CORREGIDO: Se elimina @rx.background y se usa @rx.event
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
-        """Maneja la subida de archivos y los añade a una lista temporal."""
         uploaded_filenames = []
         for file in files:
             upload_data = await file.read()
@@ -668,7 +666,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def load_admin_posts(self):
-        """Carga todos los posts para la vista de lista del admin."""
         if not self.is_admin:
             self.admin_posts = []
             return
@@ -677,7 +674,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def get_post_detail(self):
-        """Carga el detalle de un post específico para el admin."""
         try:
             pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
@@ -688,7 +684,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_edit(self):
-        """Carga los datos del post en el formulario de edición."""
         try:
             pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
@@ -704,7 +699,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def handle_edit_submit(self, form_data: dict):
-        """Guarda los cambios de un post editado."""
         if not self.is_admin or not self.post:
             return rx.toast.error("No se pudo guardar el post.")
         with rx.session() as session:
@@ -723,7 +717,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def delete_post(self, post_id: int):
-        """Elimina una publicación del blog (solo admin)."""
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
         with rx.session() as session:
@@ -736,7 +729,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
-        """Cambia el estado de publicación de un post (solo admin)."""
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
         with rx.session() as session:
