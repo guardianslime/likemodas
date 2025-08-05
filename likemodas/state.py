@@ -337,6 +337,128 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price, image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
         self.is_loading = False
     
+    # --- GESTIÓN DE FORMULARIO DE AÑADIR PRODUCTO (ADMIN) ---
+    title: str = ""
+    content: str = ""
+    price: str = "" # Usamos string para el input, se convierte a float al guardar
+    category: str = ""
+    tipo_prenda: str = ""
+    # ... aquí puedes añadir más variables para otras características si las necesitas
+
+    # Para el buscador dentro del formulario
+    search_add_tipo_prenda: str = ""
+
+    temp_images: list[str] = rx.Field(default_factory=list)
+
+    @rx.var
+    def categories(self) -> list[str]:
+        """Devuelve una lista con los valores del Enum Category."""
+        return [c.value for c in Category]
+    
+    # Setters para los campos del formulario
+    def set_title(self, value: str):
+        self.title = value
+
+    def set_content(self, value: str):
+        self.content = value
+
+    def set_price_from_input(self, value: str):
+        self.price = value
+
+    def set_category(self, value: str):
+        self.category = value
+        # Reinicia los campos específicos cuando cambia la categoría
+        self.tipo_prenda = ""
+
+    def set_tipo_prenda(self, value: str):
+        self.tipo_prenda = value
+    
+    def set_search_add_tipo_prenda(self, value: str):
+        self.search_add_tipo_prenda = value
+
+
+    @rx.background
+    async def handle_upload(self, files: list[rx.UploadFile]):
+        """Maneja la subida de archivos y los añade a una lista temporal."""
+        async with self:
+            for file in files:
+                upload_data = await file.read()
+                outfile = rx.get_upload_dir() / file.filename
+                outfile.write_bytes(upload_data)
+                # Actualiza el estado en el hilo principal
+                self.temp_images.append(file.filename)
+
+    @rx.event
+    def remove_image(self, filename: str):
+        """Elimina una imagen de la lista de previsualización."""
+        self.temp_images.remove(filename)
+
+    def _clear_add_form(self):
+        """Método auxiliar para limpiar los campos del formulario."""
+        self.title = ""
+        self.content = ""
+        self.price = ""
+        self.category = ""
+        self.tipo_prenda = ""
+        self.temp_images = []
+
+    def _create_post_from_state(self, is_published: bool) -> BlogPostModel:
+        """Crea una instancia de BlogPostModel a partir del estado actual del formulario."""
+        try:
+            price_float = float(self.price) if self.price else 0.0
+        except ValueError:
+            price_float = 0.0
+
+        attributes = {}
+        if self.category == Category.ROPA.value:
+            attributes['tipo_prenda'] = self.tipo_prenda
+        # ... aquí puedes añadir lógica para otras categorías (CALZADO, MOCHILAS)
+
+        return BlogPostModel(
+            userinfo_id=self.authenticated_user_info.id,
+            title=self.title,
+            content=self.content,
+            price=price_float,
+            image_urls=self.temp_images,
+            category=self.category,
+            attributes=attributes,
+            publish_active=is_published,
+            publish_date=datetime.now(timezone.utc) if is_published else None
+        )
+
+    @rx.event
+    def submit_draft(self):
+        """Guarda la publicación como un borrador."""
+        if not self.is_admin or not self.title:
+            return rx.toast.error("El título es obligatorio para guardar un borrador.")
+        
+        new_post = self._create_post_from_state(is_published=False)
+        with rx.session() as session:
+            session.add(new_post)
+            session.commit()
+        
+        self._clear_add_form()
+        yield rx.toast.success("Borrador guardado correctamente.")
+        return rx.redirect(navigation.routes.BLOG_POSTS_ROUTE)
+
+    @rx.event
+    def submit_and_publish(self):
+        """Guarda y publica la nueva publicación."""
+        if not self.is_admin or not self.title or not self.price or not self.category:
+            return rx.toast.error("Título, precio y categoría son obligatorios para publicar.")
+            
+        new_post = self._create_post_from_state(is_published=True)
+        with rx.session() as session:
+            session.add(new_post)
+            session.commit()
+            session.refresh(new_post)
+            new_id = new_post.id
+        
+        self._clear_add_form()
+        yield rx.toast.success("Producto publicado correctamente.")
+        return rx.redirect(f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/{new_id}")
+
+
     # --- DETALLE PÚBLICO DEL BLOG Y COMENTARIOS ---
     post: Optional[BlogPostModel] = None
     comments: list[CommentModel] = rx.Field(default_factory=list)
@@ -391,7 +513,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
             return rx.toast.error("Por favor, completa todos los campos requeridos.")
         with rx.session() as session:
-            # Si no hay direcciones, esta será la predeterminada
             is_first_address = len(self.addresses) == 0
             new_addr = ShippingAddressModel(
                 userinfo_id=self.authenticated_user_info.id,
@@ -419,7 +540,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 ).one_or_none()
 
-    # --- ✨ NUEVO: Métodos de gestión de direcciones ---
     @rx.event
     def delete_address(self, address_id: int):
         """Elimina una dirección de envío de la base de datos."""
@@ -483,6 +603,25 @@ class AppState(reflex_local_auth.LocalAuthState):
     pending_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
     confirmed_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
     new_purchase_notification: bool = False
+    
+    # NUEVO: Búsqueda para la lista de posts del admin
+    search_query_admin_posts: str = ""
+
+    def set_search_query_admin_posts(self, query: str):
+        self.search_query_admin_posts = query
+        
+    @rx.var
+    def filtered_admin_posts(self) -> list[BlogPostModel]:
+        # Esta propiedad requiere que cargues los posts del admin en una variable,
+        # por ejemplo, self.admin_posts: List[BlogPostModel]
+        # Aquí asumimos que ya existe. Si no, necesitas un método para cargarla.
+        if not hasattr(self, 'admin_posts'):
+            return []
+        if not self.search_query_admin_posts.strip():
+            return self.admin_posts
+        q = self.search_query_admin_posts.lower()
+        return [p for p in self.admin_posts if q in p.title.lower()]
+
 
     def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
     @rx.event
@@ -511,6 +650,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
     # --- HISTORIAL DE PAGOS (ADMIN) ---
     search_query_admin_history: str = ""
+    def set_search_query_admin_history(self, query: str): # Setter que faltaba
+        self.search_query_admin_history = query
+
     @rx.var
     def filtered_admin_purchases(self) -> list[AdminPurchaseCardData]:
         if not self.search_query_admin_history.strip(): return self.confirmed_purchases
@@ -524,14 +666,42 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status != PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.desc())).unique().all()
             self.confirmed_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
     
-    # --- ✨ NUEVO: Métodos de gestión de publicaciones (Admin) ---
+    # --- GESTIÓN DE BLOG (ADMIN) ---
+    admin_posts: List[BlogPostModel] = [] # Para la lista de posts del admin
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
+    
+    @rx.var
+    def blog_post_edit_url(self) -> str:
+        if not self.post:
+            return ""
+        return f"/blog/{self.post.id}/edit"
+
 
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
     def set_price(self, price: str): self.price_str = price
+
+    @rx.event
+    def load_admin_posts(self):
+        """Carga todos los posts para la vista de lista del admin."""
+        if not self.is_admin:
+            self.admin_posts = []
+            return
+        with rx.session() as session:
+            self.admin_posts = session.exec(sqlmodel.select(BlogPostModel).order_by(BlogPostModel.created_at.desc())).all()
+
+    @rx.event
+    def get_post_detail(self):
+        """Carga el detalle de un post específico para el admin."""
+        try:
+            pid = int(self.router.page.params.get("blog_id", "0"))
+        except (ValueError, TypeError):
+            self.post = None
+            return
+        with rx.session() as session:
+            self.post = session.get(BlogPostModel, pid)
 
     @rx.event
     def on_load_edit(self):
@@ -592,17 +762,21 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_to_update.publish_active = not post_to_update.publish_active
                 session.add(post_to_update)
                 session.commit()
-                yield self.on_load_public_detail() 
+                yield self.get_post_detail() # Recarga el detalle para reflejar el cambio
                 return rx.toast.info(f"Estado de publicación cambiado a: {post_to_update.publish_active}")
                 
     # --- HISTORIAL DE COMPRAS (USUARIO) ---
     user_purchases: List[UserPurchaseHistoryCardData] = rx.Field(default_factory=list)
     search_query_user_history: str = ""
+    
+    def set_search_query_user_history(self, query: str): # Setter que faltaba
+        self.search_query_user_history = query
+
     @rx.var
     def filtered_user_purchases(self) -> list[UserPurchaseHistoryCardData]:
         if not self.search_query_user_history.strip(): return self.user_purchases
         q = self.search_query_user_history.lower()
-        return [p for p in self.user_purchases if q in f"#{p.id}" or q in " ".join(p.items_formatted).lower()]
+        return [p for p in self.user_purchases if q in f"#{p.id}" or any(q in item.lower() for item in p.items_formatted)]
 
     @rx.event
     def load_purchases(self):
@@ -616,6 +790,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     did_submit_contact: bool = False
     contact_entries: list[ContactEntryModel] = rx.Field(default_factory=list)
     search_query_contact: str = ""
+    
+    def set_search_query_contact(self, query: str): # Setter que faltaba
+        self.search_query_contact = query
+
     @rx.var
     def thank_you_message(self) -> str:
         first_name = self.form_data.get("first_name", "")
@@ -657,6 +835,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- BÚSQUEDA ---
     search_term: str = ""
+    def set_search_term(self, term: str): # Setter que faltaba
+        self.search_term = term
+
     search_results: List[ProductCardData] = []
     
     @rx.event
