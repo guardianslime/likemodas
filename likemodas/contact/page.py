@@ -1,12 +1,30 @@
-# likemodas/contact/page.py (REVISADO)
+# likemodas/contact/page.py (CORREGIDO Y COMPLETO)
 
 import reflex as rx
 import reflex_local_auth
 from ..models import ContactEntryModel
-from .form import contact_form
-from .state import ContactState
+from ..state import AppState
+
+def contact_form() -> rx.Component:
+    """Formulario para enviar un mensaje de contacto, usando AppState."""
+    return rx.form(
+        rx.vstack(
+            rx.hstack(
+                rx.input(name="first_name", placeholder="Nombre", width="100%", required=True),
+                rx.input(name="last_name", placeholder="Apellido", width="100%"),
+                width="100%",
+            ),
+            rx.input(name="email", placeholder="Tu Email", type="email", width="100%", required=True),
+            rx.text_area(name="message", placeholder="Tu mensaje", required=True, width="100%"),
+            rx.button("Enviar", type="submit"),
+        ),
+        # CAMBIO CLAVE: El on_submit ahora apunta al método en AppState.
+        on_submit=AppState.handle_contact_submit,
+        reset_on_submit=True,
+    )
 
 def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
+    """Muestra un mensaje de contacto individual."""
     return rx.box(
         rx.heading(
             rx.cond(
@@ -32,18 +50,19 @@ def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
 
 @reflex_local_auth.require_login
 def contact_entries_list_content() -> rx.Component:
-    """Página que muestra la lista de todas las entradas."""
+    """Página que muestra la lista de todas las entradas de contacto."""
     return rx.vstack(
         rx.heading("Historial de Contacto", size="7"),
         rx.input(
             placeholder="Buscar en mensajes...",
-            value=ContactState.search_query,
-            on_change=ContactState.set_search_query,
+            # CAMBIO CLAVE: Todas las referencias de estado apuntan a AppState.
+            value=AppState.search_query_contact,
+            on_change=AppState.set_search_query_contact,
             width="100%",
             max_width="400px",
             margin_y="1.5em",
         ),
-        rx.foreach(ContactState.filtered_entries, contact_entry_list_item),
+        rx.foreach(AppState.filtered_entries, contact_entry_list_item),
         spacing="5",
         align="center",
         width="100%",
@@ -57,8 +76,9 @@ def contact_page_content() -> rx.Component:
     return rx.vstack(
         rx.heading("Contáctanos", size="9"),
         rx.cond(
-            ContactState.did_submit,
-            rx.heading(ContactState.thank_you_message, size="5", text_align="center"),
+            # CAMBIO CLAVE: Se usa la variable de estado de AppState.
+            AppState.did_submit_contact,
+            rx.heading(AppState.thank_you_message, size="5", text_align="center"),
             contact_form()
         ),
         spacing="5",

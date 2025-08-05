@@ -1,19 +1,13 @@
-# likemodas/account/layout.py
+# likemodas/account/layout.py (CORREGIDO)
 
 import reflex as rx
 from .sidebar import account_sidebar
-# ✅ Se importa SessionState para verificar la hidratación
-from ..auth.state import SessionState
+from ..state import AppState
 
 def account_layout(child: rx.Component) -> rx.Component:
-    """
-    Layout que envuelve las páginas de la sección Mi Cuenta,
-    ahora con un patrón de carga seguro que espera la hidratación del estado.
-    """
-    # 🛡️ Se añade el condicional para esperar la hidratación
+    """Layout que envuelve las páginas de la sección Mi Cuenta."""
     return rx.cond(
-        ~SessionState.is_hydrated,
-        
+        ~AppState.is_hydrated,
         # Muestra un spinner si el estado no está listo
         rx.center(rx.spinner(size="3"), height="85vh"),
         

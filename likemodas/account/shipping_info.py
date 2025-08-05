@@ -1,13 +1,14 @@
+# likemodas/account/shipping_info.py (CORREGIDO)
+
 import reflex as rx
 import reflex_local_auth
-from ..ui.base import base_page
-from .layout import account_layout
-from .shipping_info_state import ShippingInfoState
+from ..state import AppState
+from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
 
 def address_form() -> rx.Component:
-    """Formulario para crear una nueva dirección con selectores de búsqueda."""
+    """Formulario para crear una nueva dirección."""
     return rx.form(
         rx.vstack(
             rx.heading("Nueva Dirección de Envío", size="6", width="100%"),
@@ -26,11 +27,11 @@ def address_form() -> rx.Component:
                     rx.text("Ciudad*"),
                     searchable_select(
                         placeholder="Selecciona una ciudad...",
-                        options=ShippingInfoState.cities,
-                        on_change_select=ShippingInfoState.set_city,
-                        value_select=ShippingInfoState.city,
-                        search_value=ShippingInfoState.search_city,
-                        on_change_search=ShippingInfoState.set_search_city,
+                        options=AppState.cities,
+                        on_change_select=AppState.set_city,
+                        value_select=AppState.city,
+                        search_value=AppState.search_city,
+                        on_change_search=AppState.set_search_city,
                         filter_name="shipping_city_filter",
                     ),
                     spacing="1", align_items="start",
@@ -39,14 +40,13 @@ def address_form() -> rx.Component:
                     rx.text("Barrio"),
                     searchable_select(
                         placeholder="Selecciona un barrio...",
-                        options=ShippingInfoState.neighborhoods,
-                        on_change_select=ShippingInfoState.set_neighborhood,
-                        value_select=ShippingInfoState.neighborhood,
-                        search_value=ShippingInfoState.search_neighborhood,
-                        on_change_search=ShippingInfoState.set_search_neighborhood,
+                        options=AppState.neighborhoods,
+                        on_change_select=AppState.set_neighborhood,
+                        value_select=AppState.neighborhood,
+                        search_value=AppState.search_neighborhood,
+                        on_change_search=AppState.set_search_neighborhood,
                         filter_name="shipping_neighborhood_filter",
-                        # ✨ LÍNEA CORREGIDA: Esta es la sintaxis correcta.
-                        is_disabled=~ShippingInfoState.neighborhoods,
+                        is_disabled=~AppState.neighborhoods,
                     ),
                     spacing="1", align_items="start",
                 ),
@@ -59,13 +59,13 @@ def address_form() -> rx.Component:
                 columns="2", spacing="4", width="100%",
             ),
             rx.hstack(
-                rx.button("Cancelar", on_click=ShippingInfoState.toggle_form, color_scheme="gray"),
+                rx.button("Cancelar", on_click=AppState.toggle_form, color_scheme="gray"),
                 rx.button("Guardar Dirección", type="submit", width="auto"),
                 justify="end", width="100%", margin_top="1em"
             ),
             spacing="4", width="100%",
         ),
-        on_submit=ShippingInfoState.add_new_address,
+        on_submit=AppState.add_new_address,
         reset_on_submit=True,
     )
 
@@ -76,10 +76,7 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             rx.hstack(
                 rx.text(address.name, weight="bold"),
                 rx.spacer(),
-                rx.cond(
-                    address.is_default,
-                    rx.badge("Predeterminada", color_scheme="green"),
-                ),
+                rx.cond(address.is_default, rx.badge("Predeterminada", color_scheme="green")),
                 width="100%"
             ),
             rx.text(f"{address.address}, {address.neighborhood}"),
@@ -87,23 +84,18 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             rx.text(f"Tel: {address.phone}"),
             rx.divider(),
             rx.hstack(
-                rx.button("Eliminar", on_click=ShippingInfoState.delete_address(address.id), variant="soft", color_scheme="red", size="2"),
+                rx.button("Eliminar", on_click=AppState.delete_address(address.id), variant="soft", color_scheme="red", size="2"),
                 rx.button(
                     "Hacer Predeterminada",
-                    on_click=ShippingInfoState.set_as_default(address.id),
+                    on_click=AppState.set_as_default(address.id),
                     is_disabled=address.is_default,
-                    variant="outline",
-                    size="2"
+                    variant="outline", size="2"
                 ),
                 justify="end", width="100%"
             ),
-            align_items="start",
-            spacing="2"
+            align_items="start", spacing="2"
         ),
-        border="1px solid #ededed",
-        border_radius="md",
-        padding="1em",
-        width="100%"
+        border="1px solid #ededed", border_radius="md", padding="1em", width="100%"
     )
 
 @reflex_local_auth.require_login
@@ -112,21 +104,13 @@ def shipping_info_content() -> rx.Component:
     return account_layout(
         rx.vstack(
             rx.heading("Mi Información para Envíos", size="7"),
-            rx.text(
-                "Aquí puedes gestionar tus direcciones de envío. La dirección predeterminada se usará para tus futuras compras.",
-                margin_bottom="1.5em"
-            ),
-            rx.foreach(ShippingInfoState.addresses, address_card),
+            rx.text("Aquí puedes gestionar tus direcciones de envío.", margin_bottom="1.5em"),
+            rx.foreach(AppState.addresses, address_card),
             rx.cond(
-                ~ShippingInfoState.show_form,
-                rx.button("Crear Nueva Dirección", on_click=ShippingInfoState.toggle_form, margin_top="2em"),
+                ~AppState.show_form,
+                rx.button("Crear Nueva Dirección", on_click=AppState.toggle_form, margin_top="2em"),
             ),
-            rx.cond(
-                ShippingInfoState.show_form,
-                address_form()
-            ),
-            align_items="start",
-            width="100%",
-            max_width="700px"
+            rx.cond(AppState.show_form, address_form()),
+            align_items="start", width="100%", max_width="700px"
         )
     )

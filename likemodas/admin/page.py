@@ -1,12 +1,11 @@
-# likemodas/admin/page.py
+# likemodas/admin/page.py (CORREGIDO)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
-from ..ui.base import base_page
-from ..admin.state import AdminConfirmState, PaymentHistoryState, PurchaseCardData
+from ..state import AppState, AdminPurchaseCardData
 
-def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) -> rx.Component:
-    """Displays the details of a purchase in the admin panel."""
+def purchase_card_admin(purchase: AdminPurchaseCardData, is_history: bool = False) -> rx.Component:
+    """Muestra los detalles de una compra en el panel de admin."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -19,7 +18,7 @@ def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) ->
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
-                    rx.heading(f"${purchase.total_price:,.2f}", size="6"),
+                    rx.heading(purchase.total_price_cop, size="6"),
                     align_items="end",
                 ), width="100%",
             ),
@@ -39,7 +38,7 @@ def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) ->
             ),
             rx.cond(
                 ~is_history,
-                rx.button("Confirmar Pago", on_click=AdminConfirmState.confirm_payment(purchase.id), width="100%", margin_top="1em")
+                rx.button("Confirmar Pago", on_click=AppState.confirm_payment(purchase.id), width="100%", margin_top="1em")
             ),
             spacing="4", width="100%",
         ), width="100%",
@@ -47,13 +46,13 @@ def purchase_card_admin(purchase: PurchaseCardData, is_history: bool = False) ->
 
 @require_admin
 def admin_confirm_content() -> rx.Component:
-    """Admin page to confirm pending payments."""
+    """Página de admin para confirmar pagos pendientes."""
     return rx.center(
         rx.vstack(
             rx.heading("Confirmar Pagos Pendientes", size="8"),
             rx.cond(
-                AdminConfirmState.pending_purchases,
-                rx.foreach(AdminConfirmState.pending_purchases, lambda p: purchase_card_admin(p, is_history=False)),
+                AppState.pending_purchases,
+                rx.foreach(AppState.pending_purchases, lambda p: purchase_card_admin(p, is_history=False)),
                 rx.center(rx.text("No hay compras pendientes por confirmar."), padding_y="2em")
             ),
             align="center", spacing="5", padding="2em", width="100%", max_width="960px", 
@@ -62,21 +61,19 @@ def admin_confirm_content() -> rx.Component:
 
 @require_admin
 def payment_history_content() -> rx.Component:
-    """Admin page to view payment history."""
+    """Página de admin para ver el historial de pagos."""
     return rx.center(
         rx.vstack(
             rx.heading("Historial de Pagos", size="8"),
             rx.input(
                 placeholder="Buscar por ID, cliente o email...", 
-                value=PaymentHistoryState.search_query,
-                on_change=PaymentHistoryState.set_search_query, 
-                width="100%", 
-                max_width="400px", 
-                margin_y="1.5em",
+                value=AppState.search_query_admin_history,
+                on_change=AppState.set_search_query_admin_history, # Necesitarás este método en AppState
+                width="100%", max_width="400px", margin_y="1.5em",
             ),
             rx.cond(
-                PaymentHistoryState.filtered_purchases,
-                rx.foreach(PaymentHistoryState.filtered_purchases, lambda p: purchase_card_admin(p, is_history=True)),
+                AppState.filtered_admin_purchases,
+                rx.foreach(AppState.filtered_admin_purchases, lambda p: purchase_card_admin(p, is_history=True)),
                 rx.center(rx.text("No se encontró historial para la búsqueda."), padding_y="2em")
             ),
             align="center", spacing="6", padding="2em", width="100%", max_width="960px",

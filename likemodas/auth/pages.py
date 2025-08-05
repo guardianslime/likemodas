@@ -1,206 +1,128 @@
+# likemodas/auth/pages.py (CORREGIDO)
+
 import reflex as rx
 import reflex_local_auth
-
-from reflex_local_auth.pages.login import LoginState
-from reflex_local_auth.pages.registration import RegistrationState
-
-from .. import navigation
-from ..ui.base import base_page
-
-# Importamos los formularios y estados necesarios
-from .forms import my_register_form
-from .state import SessionState
-from .verify_state import VerifyState
-from .forgot_password_state import ForgotPasswordState
-from .reset_password_state import ResetPasswordState
-
-# --- Lógica para el icono de mostrar/ocultar contraseña ---
-class PasswordState(rx.State):
-    show_password: bool = False
-    def toggle_visibility(self):
-        self.show_password = ~self.show_password
-
-def _password_input(placeholder: str, name: str, on_change: rx.EventChain = None) -> rx.Component:
-    return rx.box(
-        rx.input(
-            placeholder=placeholder,
-            name=name,
-            on_change=on_change,
-            type=rx.cond(PasswordState.show_password, "text", "password"),
-            width="100%",
-            pr="2.5em",
-        ),
-        rx.box(
-            rx.icon(
-                tag=rx.cond(PasswordState.show_password, "eye_off", "eye"),
-                on_click=PasswordState.toggle_visibility,
-                cursor="pointer",
-                color=rx.color("gray", 10),
-            ),
-            position="absolute",
-            right="0.75em",
-            top="50%",
-            transform="translateY(-50%)",
-        ),
-        position="relative",
-        width="100%",
-    )
-# --- Fin de la lógica del icono ---
+from reflex_local_auth.pages.components import input_100w, MIN_WIDTH
+from ..ui.password_input import password_input
+from .forms import my_register_form # El formulario se puede mantener si es complejo
+from ..state import AppState
 
 def my_login_page_content() -> rx.Component:
     return rx.center(
-            rx.card(
-                rx.vstack(
-                    rx.form(
-                        rx.vstack(
-                            rx.heading("Login into your Account", size="7"),
-                            rx.text("Username"),
-                            rx.input(
-                                placeholder="Username",
-                                name="username",
-                                width="100%"
+        rx.card(
+            rx.vstack(
+                rx.form(
+                    rx.vstack(
+                        rx.heading("Login into your Account", size="7"),
+                        # Componente para mostrar errores de login
+                        rx.cond(
+                            reflex_local_auth.LoginState.error_message != "",
+                            rx.callout(
+                                reflex_local_auth.LoginState.error_message,
+                                icon="triangle_alert", color_scheme="red", role="alert", width="100%"
                             ),
-                            rx.text("Password"),
-                            _password_input(
-                                placeholder="Password",
-                                name="password",
-                            ),
-                            rx.button("Sign in", width="100%", type="submit"),
-                            spacing="4"
                         ),
-                        on_submit=LoginState.on_submit
+                        rx.text("Username"),
+                        input_100w("username"),
+                        rx.text("Password"),
+                        password_input(
+                            placeholder="Password",
+                            on_change=reflex_local_auth.LoginState.set_password,
+                            name="password"
+                        ),
+                        rx.button("Sign in", width="100%", type="submit"),
+                        spacing="4"
                     ),
-                    rx.link(
-                        "¿Olvidaste tu contraseña?", 
-                        href="/forgot-password", 
-                        size="2", 
-                        text_align="center",
-                        margin_top="1em"
-                    )
+                    on_submit=reflex_local_auth.LoginState.on_submit
+                ),
+                rx.link(
+                    "¿Olvidaste tu contraseña?", 
+                    href="/forgot-password", 
+                    size="2", 
+                    text_align="center",
+                    margin_top="1em"
                 )
-            ),
-            min_height="85vh",
-        )
-    
+            )
+        ),
+        min_height="85vh",
+    )
 
 def my_register_page_content() -> rx.Component:
     return rx.center(
         rx.cond(
-            RegistrationState.success,
+            reflex_local_auth.RegistrationState.success,
             rx.vstack(
-                rx.text("Registration successful!"),
+                rx.text("Registration successful! Check your email to verify your account."),
             ),
             rx.card(my_register_form()),
         ),
         min_height="85vh",
     )
 
-
-def my_logout_page_content() -> rx.Component:
-    return rx.vstack(
-        rx.heading("Are you sure you want to logout?", size="7"),
-        rx.link(
-            rx.button("No", color_scheme="gray"),
-            href=navigation.routes.HOME_ROUTE
-        ),
-        rx.button("Yes, please logout", on_click=SessionState.perform_logout),
-        spacing="5",
-        justify="center",
-        align="center",
-        text_align="center",
-        min_height="85vh",
-        #id="my-child"
-    )
-
 def verification_page_content() -> rx.Component:
     return rx.center(
         rx.vstack(
             rx.heading("Verificando tu cuenta...", size="8"),
-            rx.text(VerifyState.message, text_align="center"),
+            rx.text(AppState.message, text_align="center"),
             rx.spinner(size="3"),
-            spacing="5",
-            padding="2em",
-            border_radius="md",
-            box_shadow="lg",
-            bg=rx.color("gray", 2)
+            spacing="5", padding="2em",
         ),
         min_height="85vh"
     )
 
 def forgot_password_page_content() -> rx.Component:
-    # ✨ CÓDIGO COMPLETO RESTAURADO AQUÍ
     return rx.center(
-            rx.card(
-                rx.form(
-                    rx.vstack(
-                        rx.heading("Recuperar Contraseña", size="7"),
-                        rx.text("Introduce tu correo y te enviaremos un enlace."),
-                        rx.input(
-                            placeholder="Email",
-                            on_change=ForgotPasswordState.set_email,
-                            type="email",
+        rx.card(
+            rx.form(
+                rx.vstack(
+                    rx.heading("Recuperar Contraseña", size="7"),
+                    rx.text("Introduce tu correo y te enviaremos un enlace."),
+                    rx.input(placeholder="Email", name="email", type="email", width="100%"),
+                    rx.button("Enviar Enlace", type="submit", width="100%"),
+                    rx.cond(
+                        AppState.message,
+                        rx.callout(
+                            AppState.message,
+                            icon="info",
+                            color_scheme=rx.cond(AppState.is_success, "green", "red"),
                             width="100%"
-                        ),
-                        rx.button("Enviar Enlace", type="submit", width="100%"),
-                        rx.cond(
-                            ForgotPasswordState.message,
-                            rx.callout(
-                                ForgotPasswordState.message,
-                                icon="info",
-                                color_scheme=rx.cond(ForgotPasswordState.is_success, "green", "red"),
-                                width="100%"
-                            )
-                        ),
-                        spacing="4"
+                        )
                     ),
-                    on_submit=ForgotPasswordState.handle_submit
-                )
-            ),
-            min_height="85vh"
+                    spacing="4"
+                ),
+                on_submit=AppState.handle_forgot_password
+            )
+        ),
+        min_height="85vh"
     )
 
 def reset_password_page_content() -> rx.Component:
     return rx.center(
         rx.card(
             rx.cond(
-                ResetPasswordState.is_token_valid,
+                AppState.is_token_valid,
                 rx.form(
                     rx.vstack(
                         rx.heading("Nueva Contraseña", size="7"),
-                        _password_input(
-                            placeholder="Nueva contraseña",
-                            name="password",
-                            on_change=ResetPasswordState.set_password,
-                        ),
-                        _password_input(
-                            placeholder="Confirmar nueva contraseña",
-                            name="confirm_password",
-                            on_change=ResetPasswordState.set_confirm_password,
-                        ),
+                        password_input(placeholder="Nueva contraseña", name="password"),
+                        password_input(placeholder="Confirmar nueva contraseña", name="confirm_password"),
                         rx.button("Guardar Contraseña", type="submit", width="100%"),
                         rx.cond(
-                            ResetPasswordState.message,
+                            AppState.message,
                             rx.callout(
-                                # ✨ Añade rx.text con white_space="pre-wrap"
-                                rx.text(
-                                    ResetPasswordState.message,
-                                    white_space="pre-wrap"
-                                ),
-                                icon="triangle_alert",
-                                color_scheme="red",
-                                width="100%"
+                                rx.text(AppState.message, white_space="pre-wrap"),
+                                icon="triangle_alert", color_scheme="red", width="100%"
                             )
                         ),
                         spacing="4"
                     ),
-                    on_submit=ResetPasswordState.handle_reset_password
+                    on_submit=AppState.handle_reset_password
                 ),
                 rx.vstack(
                     rx.heading("Enlace no válido", size="7"),
-                    rx.text(ResetPasswordState.message),
+                    rx.text(AppState.message),
                     rx.link("Solicitar un nuevo enlace", href="/forgot-password"),
-                    spacing="4",
-                    align="center"
+                    spacing="4", align="center"
                 )
             )
         ),

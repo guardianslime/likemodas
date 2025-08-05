@@ -1,15 +1,10 @@
-# likemodas/ui/components.py
+# likemodas/ui/components.py (CORREGIDO)
 
 import reflex as rx
 import math
 from ..navigation import routes
-from .skeletons import skeleton_product_gallery
+from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
-from ..auth.state import SessionState
-# --- CORRECCIÓN CLAVE ---
-# Se elimina la importación de 'AppState' y se importa 'CartState' directamente.
-# Esto rompe el ciclo de importación.
-from ..cart.state import CartState, ProductCardData
 
 def searchable_select(
     placeholder: str, 
@@ -21,98 +16,40 @@ def searchable_select(
     filter_name: str,
     is_disabled: rx.Var[bool] = False,
 ) -> rx.Component:
-    is_open = SessionState.open_filter_name == filter_name
+    is_open = AppState.open_filter_name == filter_name
     return rx.box(
         rx.button(
             rx.cond(value_select, value_select, placeholder),
             rx.icon(tag="chevron-down"),
-            on_click=SessionState.toggle_filter_dropdown(filter_name),
-            variant="outline",
-            width="100%",
-            justify_content="space-between",
-            color_scheme="gray",
-            size="2",
-            is_disabled=is_disabled,
+            on_click=AppState.toggle_filter_dropdown(filter_name),
+            variant="outline", width="100%", justify_content="space-between",
+            color_scheme="gray", size="2", is_disabled=is_disabled,
         ),
         rx.cond(
             is_open,
             rx.vstack(
-                rx.input(
-                    placeholder="Buscar...",
-                    value=search_value,
-                    on_change=on_change_search,
-                ),
+                rx.input(placeholder="Buscar...", value=search_value, on_change=on_change_search),
                 rx.scroll_area(
                     rx.vstack(
                         rx.foreach(
                             options,
                             lambda option: rx.button(
                                 option,
-                                on_click=[
-                                    lambda: on_change_select(option),
-                                    SessionState.toggle_filter_dropdown(filter_name)
-                                ],
-                                width="100%",
-                                variant="soft", 
-                                color_scheme="gray",
-                                justify_content="start"
+                                on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
+                                width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
                         ),
-                        spacing="1",
-                        width="100%",
+                        spacing="1", width="100%",
                     ),
-                    max_height="200px",
-                    width="100%",
-                    type="auto",
-                    scrollbars="vertical",
+                    max_height="200px", width="100%", type="auto", scrollbars="vertical",
                 ),
-                spacing="2",
-                padding="0.75em",
-                bg=rx.color("gray", 3),
-                border="1px solid",
-                border_color=rx.color("gray", 7),
-                border_radius="md",
-                position="absolute",
-                top="105%",
-                width="100%",
-                z_index=10,
+                spacing="2", padding="0.75em", bg=rx.color("gray", 3),
+                border="1px solid", border_color=rx.color("gray", 7),
+                border_radius="md", position="absolute", top="105%",
+                width="100%", z_index=10,
             )
         ),
-        position="relative",
-        width="100%",
-    )
-
-def categories_button() -> rx.Component:
-    """Un componente reutilizable para el botón desplegable de categorías."""
-    return rx.hstack(
-        rx.popover.root(
-            rx.popover.trigger(
-                rx.button(
-                    "Categorías", 
-                    variant="outline",
-                    size="3",
-                    color=rx.color_mode_cond("black", "white"),
-                    border_radius="full",
-                    style={"border_color": rx.color_mode_cond("black", "white")},
-                )
-            ),
-            rx.popover.content(
-                rx.hstack(
-                    rx.button("Ropa", on_click=rx.redirect("/category/ropa"), variant="soft"),
-                    rx.button("Calzado", on_click=rx.redirect("/category/calzado"), variant="soft"),
-                    rx.button("Mochilas", on_click=rx.redirect("/category/mochilas"), variant="soft"),
-                    rx.button("Ver Todo", on_click=rx.redirect("/"), variant="soft"),
-                    spacing="3",
-                ),
-                padding="0.5em",
-                side="right",
-                align="center",
-            ),
-        ),
-        justify="start",
-        width="100%",
-        max_width="1800px",
-        padding_bottom="1em"
+        position="relative", width="100%",
     )
 
 def _product_card_rating(post: ProductCardData) -> rx.Component:
@@ -145,25 +82,20 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             rx.box(
                                 rx.cond(
                                     post.image_urls & (post.image_urls.length() > 0),
-                                    rx.image(
-                                        src=rx.get_upload_url(post.image_urls[0]),
-                                        width="100%", height="100%", object_fit="cover",
-                                    ),
+                                    rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="100%", object_fit="cover"),
                                     rx.box(
                                         rx.vstack(
                                             rx.icon("image_off", size=48, color=rx.color("gray", 8)),
                                             rx.text("Sin imagen", size="2", color=rx.color("gray", 8)),
-                                            align="center",
-                                            justify="center",
+                                            align="center", justify="center",
                                         ),
-                                        width="100%", height="100%", bg=rx.color("gray", 3),
-                                        display="flex", border_radius="md"
+                                        width="100%", height="100%", bg=rx.color("gray", 3), display="flex", border_radius="md"
                                     )
                                 ),
                                 position="relative", width="260px", height="260px"
                             ),
                             rx.text(post.title, weight="bold", size="6", color=rx.color_mode_cond("black", "white")),
-                            rx.text(post.price_formatted, color=rx.color_mode_cond("black", "white"), size="6"),
+                            rx.text(post.price_cop, color=rx.color_mode_cond("black", "white"), size="6"),
                             _product_card_rating(post),
                             spacing="2", align="start"
                         ),
@@ -172,20 +104,14 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.spacer(),
                     rx.button(
                         "Añadir al Carrito",
-                        # --- CORRECCIÓN CLAVE ---
-                        # La llamada ahora usa CartState directamente, que fue importado arriba.
-                        on_click=lambda: CartState.add_to_cart(post.id),
+                        on_click=lambda: AppState.add_to_cart(post.id),
                         width="100%",
                     ),
                     align="center", spacing="2", height="100%"
                 ),
-                width="290px", 
-                height="450px",
-                bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+                width="290px", height="450px", bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
-                border_radius="8px",
-                box_shadow="md",
-                padding="1em",
+                border_radius="8px", box_shadow="md", padding="1em",
             )
         ),
         wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",

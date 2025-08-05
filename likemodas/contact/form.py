@@ -1,8 +1,10 @@
+# likemodas/contact/form.py (CORREGIDO Y COMPLETO)
+
 import reflex as rx
-from .state import ContactState
+from ..state import AppState
 
 def contact_form() -> rx.Component:
-    """Formulario para enviar un mensaje de contacto."""
+    """Formulario para enviar un mensaje de contacto, usando AppState."""
     return rx.form(
         rx.vstack(
             rx.hstack(
@@ -14,6 +16,7 @@ def contact_form() -> rx.Component:
             rx.text_area(name="message", placeholder="Tu mensaje", required=True, width="100%"),
             rx.button("Enviar", type="submit"),
         ),
-        on_submit=ContactState.handle_submit,
+        # CAMBIO CLAVE: El on_submit ahora apunta al método en AppState.
+        on_submit=AppState.handle_contact_submit,
         reset_on_submit=True,
     )

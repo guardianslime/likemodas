@@ -1,5 +1,6 @@
-# likemodas/state.py
+# likemodas/state.py (ARCHIVO COMPLETO Y CENTRALIZADO)
 
+from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
@@ -7,28 +8,27 @@ import sqlalchemy
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta
 import secrets
+import bcrypt
 import re
+import asyncio
 
 from . import navigation
 from .models import (
     UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
     PurchaseModel, PurchaseStatus, PurchaseItemModel, NotificationModel, Category,
-    CommentModel, CommentVoteModel, VoteType, ContactEntryModel
+    CommentModel, PasswordResetToken, LocalUser, ContactEntryModel,
+    CommentVoteModel, VoteType
 )
-from .services.email_service import send_verification_email
+from .services.email_service import send_verification_email, send_password_reset_email
 from .utils.formatting import format_to_cop
+from .utils.validators import validate_password
 from .data.colombia_locations import load_colombia_data
-from .data.product_options import (
-    LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL,
-    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
-)
 
-# Modelo de datos que se puede usar en varios lugares
+# --- MODELOS DE DATOS SEGUROS PARA LA UI ---
 class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
-    price_formatted: str = ""
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
@@ -36,88 +36,411 @@ class ProductCardData(rx.Base):
     def price_cop(self) -> str:
         return format_to_cop(self.price)
 
+class AdminPurchaseCardData(rx.Base):
+    id: int
+    customer_name: str
+    customer_email: str
+    purchase_date_formatted: str
+    status: str
+    total_price: float
+    shipping_name: str
+    shipping_full_address: str
+    shipping_phone: str
+    items_formatted: list[str]
+    @property
+    def total_price_cop(self) -> str:
+        return format_to_cop(self.total_price)
+        
+class UserPurchaseHistoryCardData(rx.Base):
+    id: int
+    purchase_date_formatted: str
+    status: str
+    total_price_cop: str
+    shipping_name: str
+    shipping_address: str
+    shipping_neighborhood: str
+    shipping_city: str
+    shipping_phone: str
+    items_formatted: list[str]
+
+# --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
-    """
-    El estado único y monolítico de la aplicación.
-    Contiene todas las variables y métodos de los estados modulares.
-    """
-    
-    # --- Variables de SessionState (Auth) ---
-    new_purchase_notification: bool = False
-    min_price: str = ""
-    max_price: str = ""
-    show_filters: bool = False
-    current_category: str = ""
-    filter_color: str = ""
-    # ... (y todas las demás variables de filtro)
+    """El estado único y monolítico de la aplicación."""
 
-    # --- Variables de NavState ---
-    # (No tiene variables, solo métodos)
-
-    # --- Variables de CartState ---
-    cart: Dict[int, int] = rx.Field(default_factory=dict)
-    posts: list[ProductCardData] = rx.Field(default_factory=list)
-    default_shipping_address: Optional[ShippingAddressModel] = None
-    is_loading: bool = True
-
-    # --- Variables de BlogPostState ---
-    admin_posts: list[BlogPostModel] = rx.Field(default_factory=list) # Renombrado para evitar colisión
-    post: Optional[BlogPostModel] = None
-    
-    # --- Variables de CommentState ---
-    comments: list[CommentModel] = rx.Field(default_factory=list)
-    new_comment_text: str = ""
-    new_comment_rating: int = 0
-
-    # --- Variables de SearchState ---
-    search_term: str = ""
-    search_results: List[ProductCardData] = []
-    
-    # --- Y así sucesivamente para las variables de los demás estados... ---
-    
-    # --- MÉTODOS DE TODOS LOS ESTADOS FUSIONADOS ---
-
-    # Métodos de SessionState / Auth
+    # --- AUTH / SESSION ---
     @rx.var(cache=True)
-    def authenticated_user_info(self) -> UserInfo | None: 
-        if not self.authenticated_user or self.authenticated_user.id < 0:
+    def authenticated_user_info(self) -> UserInfo | None:
+        if not self.is_authenticated or self.authenticated_user.id < 0:
             return None
         with rx.session() as session:
             return session.exec(
                 sqlmodel.select(UserInfo).where(UserInfo.user_id == self.authenticated_user.id)
             ).one_or_none()
 
+    @rx.var(cache=True)
+    def my_userinfo_id(self) -> str | None: 
+        if self.authenticated_user_info is None:
+            return None
+        return str(self.authenticated_user_info.id)
+
     @rx.var
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    # Métodos de NavState
-    def to_home(self): return rx.redirect(navigation.routes.HOME_ROUTE)
-    def to_login(self): return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-    def to_register(self): return rx.redirect(reflex_local_auth.routes.REGISTER_ROUTE)
-    def to_logout(self): return rx.redirect(navigation.routes.LOGOUT_ROUTE)
-    def to_my_account(self): return rx.redirect(navigation.routes.MY_ACCOUNT_ROUTE)
-    def to_contact(self): return rx.redirect(navigation.routes.CONTACT_US_ROUTE)
+    # --- REGISTRO Y VERIFICACIÓN ---
+    def handle_registration_email(self, form_data: dict):
+        password = form_data.get("password")
+        password_errors = validate_password(password)
+        if password_errors:
+            self.error_message = "\n".join(password_errors)
+            return
+            
+        registration_event = self.handle_registration(form_data)
+        if self.new_user_id >= 0:
+            with rx.session() as session:
+                user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
+                new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
+                session.add(new_user_info)
+                session.commit()
+                session.refresh(new_user_info)
 
-    # Métodos de CartState
+                token_str = secrets.token_urlsafe(32)
+                expires = datetime.utcnow() + timedelta(hours=24)
+                verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
+                session.add(verification_token)
+                session.commit()
+                send_verification_email(recipient_email=new_user_info.email, token=token_str)
+        return registration_event
+
+    message: str = ""
+    is_verified: bool = False
+
+    @rx.event
+    def verify_token(self):
+        token = self.router.page.params.get("token", "")
+        if not token:
+            self.message = "Error: No se proporcionó un token de verificación."
+            return
+        with rx.session() as session:
+            db_token = session.exec(sqlmodel.select(VerificationToken).where(VerificationToken.token == token)).one_or_none()
+            if not db_token or datetime.utcnow() > db_token.expires_at:
+                self.message = "El token de verificación es inválido o ha expirado."
+                if db_token: session.delete(db_token); session.commit()
+                return
+            user_info = session.get(UserInfo, db_token.userinfo_id)
+            if user_info:
+                user_info.is_verified = True
+                session.add(user_info)
+                session.delete(db_token)
+                session.commit()
+                yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
+                return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+            self.message = "Error: No se encontró el usuario asociado a este token."
+
+    # --- MANEJO DE CONTRASEÑA ---
+    email: str = ""
+    is_success: bool = False
+    token: str = ""
+    is_token_valid: bool = False
+    password: str = ""
+    confirm_password: str = ""
+
+    def handle_forgot_password(self, form_data: dict):
+        self.email = form_data.get("email", "")
+        if not self.email:
+            self.message, self.is_success = "Por favor, introduce tu correo electrónico.", False
+            return
+        with rx.session() as session:
+            user_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == self.email)).one_or_none()
+            if user_info:
+                token_str = secrets.token_urlsafe(32)
+                expires = datetime.utcnow() + timedelta(hours=1)
+                reset_token = PasswordResetToken(token=token_str, user_id=user_info.user_id, expires_at=expires)
+                session.add(reset_token)
+                session.commit()
+                send_password_reset_email(recipient_email=self.email, token=token_str)
+        self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
+
+    def on_load_check_token(self):
+        self.token = self.router.page.params.get("token", "")
+        if not self.token:
+            self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
+            return
+        with rx.session() as session:
+            db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
+            if not db_token or datetime.utcnow() > db_token.expires_at:
+                self.message, self.is_token_valid = "El enlace de reseteo es inválido o ha expirado.", False
+                if db_token: session.delete(db_token); session.commit()
+                return
+            self.is_token_valid = True
+
+    def handle_reset_password(self, form_data: dict):
+        self.password, self.confirm_password = form_data.get("password", ""), form_data.get("confirm_password", "")
+        if not self.is_token_valid: self.message = "Token no válido. Por favor, solicita un nuevo enlace."; return
+        if self.password != self.confirm_password: self.message = "Las contraseñas no coinciden."; return
+        password_errors = validate_password(self.password)
+        if password_errors: self.message = "\n".join(password_errors); return
+        with rx.session() as session:
+            db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
+            if not db_token: self.message = "El token ha expirado o ya fue utilizado."; return
+            user = session.get(LocalUser, db_token.user_id)
+            if user:
+                user.password_hash = bcrypt.hashpw(self.password.encode("utf-8"), bcrypt.gensalt())
+                session.add(user)
+                session.delete(db_token)
+                session.commit()
+                yield rx.toast.success("¡Contraseña actualizada con éxito!")
+                return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+
+    # --- FILTROS ---
+    min_price: str = ""
+    max_price: str = ""
+    show_filters: bool = False
+    current_category: str = ""
+    open_filter_name: str = ""
+    filter_color: str = ""
+    filter_talla: str = ""
+    filter_tipo_prenda: str = ""
+    search_query: str = "" # Búsqueda general
+
+    def toggle_filters(self): self.show_filters = ~self.show_filters
+    def clear_all_filters(self): self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
+    def toggle_filter_dropdown(self, name: str): self.open_filter_name = "" if self.open_filter_name == name else name
+    def clear_filter(self, filter_name: str): setattr(self, filter_name, "")
+    def set_min_price(self, price: str): self.min_price = price
+    def set_max_price(self, price: str): self.max_price = price
+    def set_filter_tipo_prenda(self, prenda: str): self.filter_tipo_prenda = prenda
+    def set_filter_color(self, color: str): self.filter_color = color
+    def set_filter_talla(self, talla: str): self.filter_talla = talla
+
+
+    # --- PRODUCTOS Y CARRITO ---
+    cart: Dict[int, int] = rx.Field(default_factory=dict)
+    posts: list[ProductCardData] = rx.Field(default_factory=list)
+    is_loading: bool = True
+
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
-    
     @rx.var
-    def cart_details(self) -> List[Tuple[ProductCardData, int]]:
+    def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
+    @rx.var
+    def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
+    @rx.var
+    def cart_details(self) -> List[Tuple[Optional[ProductCardData], int]]:
         if not self.cart: return []
         post_map = {p.id: p for p in self.posts}
-        return [(post_map[pid], self.cart[pid]) for pid in self.cart if pid in post_map]
-
-    @rx.var
-    def cart_total(self) -> float:
-        return sum(p.price * q for p, q in self.cart_details if p and p.price)
-        
+        return [(post_map.get(pid), self.cart[pid]) for pid in self.cart]
+    
     @rx.event
     def add_to_cart(self, post_id: int):
-        if not self.is_authenticated:
-            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+        if not self.is_authenticated: return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         self.cart[post_id] = self.cart.get(post_id, 0) + 1
+        return rx.toast.success("Producto añadido al carrito.")
+        
+    @rx.event
+    def remove_from_cart(self, post_id: int):
+        if post_id in self.cart:
+            self.cart[post_id] -= 1
+            if self.cart[post_id] <= 0: del self.cart[post_id]
 
-    # ... y así sucesivamente para TODOS los demás métodos de TODOS tus archivos de estado.
-    # Debes copiarlos y pegarlos aquí dentro del cuerpo de la clase AppState.
+    @rx.event
+    def on_load(self):
+        self.is_loading = True
+        yield
+        with rx.session() as session:
+            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now()).order_by(BlogPostModel.created_at.desc())).unique().all()
+            self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price, image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
+        self.is_loading = False
+    
+    # --- DETALLE PÚBLICO DEL BLOG Y COMENTARIOS ---
+    post: Optional[BlogPostModel] = None
+    comments: list[CommentModel] = rx.Field(default_factory=list)
+    new_comment_text: str = ""
+    new_comment_rating: int = 0
+    
+    @rx.event
+    def on_load_public_detail(self):
+        try: pid = int(self.router.page.params.get("id", "0"))
+        except (ValueError, TypeError): self.post = None; return
+        with rx.session() as session:
+            db_post = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user)).where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)).unique().one_or_none()
+            if db_post: self.post, self.comments = db_post, sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
+            else: self.post, self.comments = None, []
+
+    # --- DIRECCIONES DE ENVÍO ---
+    addresses: List[ShippingAddressModel] = rx.Field(default_factory=list)
+    show_form: bool = False
+    colombia_data: Dict[str, List[str]] = rx.Field(default_factory=load_colombia_data)
+    city: str = ""
+    neighborhood: str = ""
+    search_city: str = ""
+    search_neighborhood: str = ""
+    default_shipping_address: Optional[ShippingAddressModel] = None
+
+    def toggle_form(self): self.show_form = ~self.show_form
+    def set_city(self, city: str): self.city, self.neighborhood, self.search_neighborhood = city, "", ""
+    def set_neighborhood(self, hood: str): self.neighborhood = hood
+    def set_search_city(self, query: str): self.search_city = query
+    def set_search_neighborhood(self, query: str): self.search_neighborhood = query
+    
+    @rx.var
+    def cities(self) -> List[str]:
+        if not self.search_city.strip(): return sorted(list(self.colombia_data.keys()))
+        return [c for c in self.colombia_data if self.search_city.lower() in c.lower()]
+    @rx.var
+    def neighborhoods(self) -> List[str]:
+        if not self.city: return []
+        all_hoods = self.colombia_data.get(self.city, [])
+        if not self.search_neighborhood.strip(): return all_hoods
+        return [n for n in all_hoods if self.search_neighborhood.lower() in n.lower()]
+
+    @rx.event
+    def load_addresses(self):
+        self.addresses = []
+        if self.authenticated_user_info:
+            with rx.session() as session:
+                self.addresses = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id).order_by(ShippingAddressModel.created_at.desc())).all()
+
+    @rx.event
+    def add_new_address(self, form_data: dict):
+        if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
+            return rx.toast.error("Por favor, completa todos los campos requeridos.")
+        with rx.session() as session:
+            new_addr = ShippingAddressModel(userinfo_id=self.authenticated_user_info.id, name=form_data["name"], phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood, address=form_data["address"], is_default=len(self.addresses) == 0)
+            session.add(new_addr); session.commit()
+        return self.load_addresses()
+
+    # --- CHECKOUT ---
+    @rx.event
+    def handle_checkout(self):
+        if not self.is_authenticated or not self.default_shipping_address: return rx.toast.error("Por favor, selecciona una dirección predeterminada.")
+        if not self.authenticated_user_info: return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
+        with rx.session() as session:
+            new_purchase = PurchaseModel(userinfo_id=int(self.authenticated_user_info.id), total_price=self.cart_total, status=PurchaseStatus.PENDING, shipping_name=self.default_shipping_address.name, shipping_city=self.default_shipping_address.city, shipping_neighborhood=self.default_shipping_address.neighborhood, shipping_address=self.default_shipping_address.address, shipping_phone=self.default_shipping_address.phone)
+            session.add(new_purchase); session.commit(); session.refresh(new_purchase)
+            post_map = {p.id: p for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(list(self.cart.keys())))).all()}
+            for post_id, quantity in self.cart.items():
+                if post_id in post_map: session.add(PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=post_map[post_id].id, quantity=quantity, price_at_purchase=post_map[post_id].price))
+            session.commit()
+        self.cart.clear(); self.default_shipping_address = None
+        yield self.notify_admin_of_new_purchase
+        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+        return rx.redirect("/my-purchases")
+        
+    # --- PANEL DE ADMINISTRACIÓN ---
+    pending_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
+    confirmed_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
+    new_purchase_notification: bool = False
+
+    def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
+    @rx.event
+    def notify_admin_of_new_purchase(self): self.new_purchase_notification = True
+
+    @rx.event
+    def load_pending_purchases(self):
+        if not self.is_admin: self.pending_purchases = []; return
+        with rx.session() as session:
+            results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status == PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.asc())).unique().all()
+            self.pending_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
+            yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
+            
+    @rx.event
+    def confirm_payment(self, purchase_id: int):
+        if not self.is_admin: return
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if purchase:
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.utcnow()
+                notification = NotificationModel(userinfo_id=purchase.userinfo_id, message=f"¡Tu compra #{purchase.id} ha sido confirmada!", url="/my-purchases")
+                session.add(purchase); session.add(notification); session.commit()
+                yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
+                yield AppState.load_pending_purchases
+                
+    # --- HISTORIAL DE PAGOS (ADMIN) ---
+    search_query_admin_history: str = ""
+    @rx.var
+    def filtered_admin_purchases(self) -> list[AdminPurchaseCardData]:
+        if not self.search_query_admin_history.strip(): return self.confirmed_purchases
+        q = self.search_query_admin_history.lower()
+        return [p for p in self.confirmed_purchases if q in f"#{p.id}" or q in p.customer_name.lower() or q in p.customer_email.lower()]
+
+    @rx.event
+    def load_confirmed_purchases(self):
+        if not self.is_admin: self.confirmed_purchases = []; return
+        with rx.session() as session:
+            results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status != PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.desc())).unique().all()
+            self.confirmed_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
+    
+    # --- HISTORIAL DE COMPRAS (USUARIO) ---
+    user_purchases: List[UserPurchaseHistoryCardData] = rx.Field(default_factory=list)
+    search_query_user_history: str = ""
+    @rx.var
+    def filtered_user_purchases(self) -> list[UserPurchaseHistoryCardData]:
+        if not self.search_query_user_history.strip(): return self.user_purchases
+        q = self.search_query_user_history.lower()
+        return [p for p in self.user_purchases if q in f"#{p.id}" or q in " ".join(p.items_formatted).lower()]
+
+    @rx.event
+    def load_purchases(self):
+        if not self.authenticated_user_info: self.user_purchases = []; return
+        with rx.session() as session:
+            results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == self.authenticated_user_info.id).order_by(PurchaseModel.purchase_date.desc())).unique().all()
+            self.user_purchases = [UserPurchaseHistoryCardData(id=p.id, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price_cop=p.total_price_cop, shipping_name=p.shipping_name, shipping_address=p.shipping_address, shipping_neighborhood=p.shipping_neighborhood, shipping_city=p.shipping_city, shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
+
+    # --- CONTACTO ---
+    form_data: dict = {}
+    did_submit_contact: bool = False
+    contact_entries: list[ContactEntryModel] = rx.Field(default_factory=list)
+    search_query_contact: str = ""
+    @rx.var
+    def thank_you_message(self) -> str:
+        first_name = self.form_data.get("first_name", "")
+        return f"¡Gracias, {first_name}!" if first_name else "¡Gracias por tu mensaje!"
+    @rx.var
+    def filtered_entries(self) -> list[ContactEntryModel]:
+        if not self.search_query_contact.strip(): return self.contact_entries
+        q = self.search_query_contact.lower()
+        return [e for e in self.contact_entries if q in f"{e.first_name} {e.last_name} {e.email} {e.message}".lower()]
+    async def handle_contact_submit(self, form_data: dict):
+        self.form_data = form_data
+        with rx.session() as session:
+            user_info = self.authenticated_user_info
+            entry = ContactEntryModel(first_name=form_data.get("first_name"), last_name=form_data.get("last_name"), email=form_data.get("email"), message=form_data.get("message"), userinfo_id=user_info.id if user_info else None)
+            session.add(entry); session.commit()
+        self.did_submit_contact = True; yield
+        await asyncio.sleep(4)
+        self.did_submit_contact = False; yield
+    def load_entries(self):
+        with rx.session() as session: self.contact_entries = session.exec(sqlmodel.select(ContactEntryModel).order_by(ContactEntryModel.id.desc())).all()
+
+    # --- NOTIFICACIONES ---
+    notifications: List[NotificationModel] = []
+    @rx.var
+    def unread_count(self) -> int: return sum(1 for n in self.notifications if not n.is_read)
+    @rx.event
+    def load_notifications(self):
+        if not self.authenticated_user_info: self.notifications = []; return
+        with rx.session() as session: self.notifications = session.exec(sqlmodel.select(NotificationModel).where(NotificationModel.userinfo_id == self.authenticated_user_info.id).order_by(sqlmodel.col(NotificationModel.created_at).desc())).all()
+    @rx.event
+    def mark_all_as_read(self):
+        if not self.authenticated_user_info: return
+        unread_ids = [n.id for n in self.notifications if not n.is_read]
+        if not unread_ids: return
+        for n in self.notifications: n.is_read = True
+        with rx.session() as session:
+            stmt = sqlmodel.update(NotificationModel).where(NotificationModel.id.in_(unread_ids)).values(is_read=True)
+            session.exec(stmt); session.commit()
+
+    # --- BÚSQUEDA ---
+    search_term: str = ""
+    search_results: List[ProductCardData] = []
+    
+    @rx.event
+    def perform_search(self):
+        term = self.search_term.strip()
+        if not term: return
+        with rx.session() as session:
+            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(), BlogPostModel.title.ilike(f"%{term}%")).order_by(BlogPostModel.created_at.desc())).unique().all()
+            self.search_results = [ProductCardData(id=p.id, title=p.title, price=p.price, image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
+        return rx.redirect("/search-results")
