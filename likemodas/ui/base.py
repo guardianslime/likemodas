@@ -1,9 +1,9 @@
-# likemodas/ui/base.py (VERSIÓN FINAL Y CORRECTA)
+# likemodas/ui/base.py (VERSIÓN FINAL Y VERIFICADA)
 
 import reflex as rx
 from ..state import AppState
 from .nav import public_navbar
-# ✅ ¡Importante! Importa el nuevo esqueleto y los componentes de la barra lateral.
+# Asegúrate de tener skeleton_navbar en tus importaciones
 from .skeletons import skeleton_navbar 
 from .sidebar import sidebar, mobile_admin_menu, sidebar_dark_mode_toggle_item
 
@@ -14,25 +14,29 @@ def fixed_color_mode_button() -> rx.Component:
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    # La guarda de hidratación ahora envuelve TODA la lógica de renderizado.
+    """
+    Esta es la estructura correcta que resuelve el problema.
+    Renderiza un esqueleto estable en el servidor y el contenido real
+    solo después de que el cliente esté completamente inicializado.
+    """
     return rx.cond(
         ~AppState.is_hydrated,
-        # --- LAYOUT ESQUELETO (Para SSR y renderizado inicial del cliente) ---
-        # Muestra una versión estática y sin estado del layout. Esto es clave.
+        # --- LAYOUT ESQUELETO (Renderizado en Servidor) ---
+        # Crea una estructura estable que no cambiará de tamaño.
         rx.box(
-            skeleton_navbar(),  # Usa el nuevo navbar esqueleto.
+            skeleton_navbar(),
             rx.box(
-                # El 'child' se pasa aquí también, permitiendo que muestre su PROPIO esqueleto.
+                # La página hija (con su propio esqueleto) se renderiza aquí dentro.
                 child,
                 padding_top="6rem", padding_x="1em", padding_bottom="1em", width="100%"
             ),
             width="100%",
         ),
-        # --- LAYOUT COMPLETAMENTE HIDRATADO (Seguro para renderizar) ---
-        # Una vez que el cliente está listo, se renderiza el layout real con estado.
+        # --- LAYOUT HIDRATADO (Renderizado en Cliente) ---
+        # Se renderiza el layout real con estado, sin causar saltos.
         rx.cond(
             AppState.is_admin,
-            # --- LAYOUT DE ADMIN RESPONSIVO ---
+            # --- LAYOUT DE ADMIN ---
             rx.box(
                 rx.vstack(
                     rx.hstack(
@@ -51,11 +55,11 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                     align="start", spacing="0", width="100%", min_height="100vh",
                 ),
             ),
-            # --- LAYOUT PÚBLICO (Ahora seguro y sin glitches) ---
+            # --- LAYOUT PÚBLICO ---
             rx.box(
-                public_navbar(),  # El navbar real y con estado.
+                public_navbar(),
                 rx.box(child, padding_top="6rem", padding_x="1em", padding_bottom="1em", width="100%"),
-                fixed_color_mode_button(),  # El botón de modo de color real.
+                fixed_color_mode_button(),
                 width="100%",
             )
         )
