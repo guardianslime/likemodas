@@ -24,17 +24,32 @@ def _image_section() -> rx.Component:
 
 def _info_section() -> rx.Component:
     return rx.vstack(
-        rx.text(AppState.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
-        rx.text("Publicado el " + AppState.post.created_at_formatted, size="3", color_scheme="gray", margin_bottom="0.5em", text_align="left", width="100%"),
-        rx.text(AppState.post.price_cop, size="7", color="gray", text_align="left"),
-        rx.text(AppState.post.content, size="5", margin_top="1em", white_space="pre-wrap", text_align="left"),
-        rx.spacer(),
+        # Se agrupa todo el contenido superior en un vstack propio.
+        rx.vstack(
+            rx.text(AppState.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
+            rx.text("Publicado el " + AppState.post.created_at_formatted, size="3", color_scheme="gray", margin_bottom="0.5em", text_align="left", width="100%"),
+            rx.text(AppState.post.price_cop, size="7", color="gray", text_align="left"),
+            rx.text(AppState.post.content, size="5", margin_top="1em", white_space="pre-wrap", text_align="left"),
+            align="start",
+            spacing="2", # Ajusta el espaciado si es necesario
+        ),
+        
+        # El botón ahora es un hijo directo del vstack principal.
         rx.button(
             "Añadir al Carrito",
             on_click=lambda: AppState.add_to_cart(AppState.post.id),
             width="100%", size="4", margin_top="1.5em", color_scheme="violet"
         ),
-        padding="1em", align="start", width="100%", min_height="350px",
+        
+        # --- CAMBIOS CLAVE ---
+        # 1. Se elimina el `rx.spacer()`.
+        # 2. Se usa `justify_content` para empujar el botón hacia abajo.
+        justify_content="space-between",
+        
+        padding="1em", 
+        align_items="stretch", # Asegura que los hijos ocupen el ancho.
+        width="100%", 
+        min_height="350px",
     )
 
 def blog_public_detail_content() -> rx.Component:
