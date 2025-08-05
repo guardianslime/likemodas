@@ -23,6 +23,10 @@ from .services.email_service import send_verification_email, send_password_reset
 from .utils.formatting import format_to_cop
 from .utils.validators import validate_password
 from .data.colombia_locations import load_colombia_data
+from .data.product_options import (
+    LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL,
+    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
+)
 
 # --- MODELOS DE DATOS SEGUROS PARA LA UI ---
 class ProductCardData(rx.Base):
@@ -192,7 +196,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
-    # --- FILTROS ---
+    # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
     max_price: str = ""
     show_filters: bool = False
@@ -201,10 +205,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_color: str = ""
     filter_talla: str = ""
     filter_tipo_prenda: str = ""
-    search_query: str = "" # Búsqueda general
-
+    filter_tipo_zapato: str = ""
+    filter_tipo_mochila: str = ""
+    filter_tipo_general: str = ""
+    filter_material_tela: str = ""
+    filter_medida_talla: str = ""
+    
     def toggle_filters(self): self.show_filters = ~self.show_filters
-    def clear_all_filters(self): self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
+    def clear_all_filters(self):
+        self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
+        self.filter_tipo_prenda, self.filter_tipo_zapato, self.filter_tipo_mochila = "", "", ""
+        self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla = "", "", ""
     def toggle_filter_dropdown(self, name: str): self.open_filter_name = "" if self.open_filter_name == name else name
     def clear_filter(self, filter_name: str): setattr(self, filter_name, "")
     def set_min_price(self, price: str): self.min_price = price
@@ -212,7 +223,69 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_filter_tipo_prenda(self, prenda: str): self.filter_tipo_prenda = prenda
     def set_filter_color(self, color: str): self.filter_color = color
     def set_filter_talla(self, talla: str): self.filter_talla = talla
+    def set_filter_tipo_zapato(self, zapato: str): self.filter_tipo_zapato = zapato
+    def set_filter_tipo_mochila(self, mochila: str): self.filter_tipo_mochila = mochila
+    def set_filter_tipo_general(self, general: str): self.filter_tipo_general = general
+    def set_filter_material_tela(self, material: str): self.filter_material_tela = material
+    def set_filter_medida_talla(self, medida: str): self.filter_medida_talla = medida
 
+    # --- FILTROS DINÁMICOS PARA SELECTS ---
+    search_tipo_prenda: str = ""
+    search_tipo_zapato: str = ""
+    search_tipo_mochila: str = ""
+    search_tipo_general: str = ""
+    search_color: str = ""
+    search_talla: str = ""
+    search_numero_calzado: str = ""
+    search_material_tela: str = ""
+    search_medida_talla: str = ""
+
+    def set_search_tipo_prenda(self, query: str): self.search_tipo_prenda = query
+    def set_search_tipo_zapato(self, query: str): self.search_tipo_zapato = query
+    def set_search_tipo_mochila(self, query: str): self.search_tipo_mochila = query
+    def set_search_tipo_general(self, query: str): self.search_tipo_general = query
+    def set_search_color(self, query: str): self.search_color = query
+    def set_search_talla(self, query: str): self.search_talla = query
+    def set_search_numero_calzado(self, query: str): self.search_numero_calzado = query
+    def set_search_material_tela(self, query: str): self.search_material_tela = query
+    def set_search_medida_talla(self, query: str): self.search_medida_talla = query
+
+    @rx.var
+    def filtered_tipos_ropa(self) -> list[str]:
+        if not self.search_tipo_prenda.strip(): return LISTA_TIPOS_ROPA
+        return [o for o in LISTA_TIPOS_ROPA if self.search_tipo_prenda.lower() in o.lower()]
+    @rx.var
+    def filtered_tipos_zapatos(self) -> list[str]:
+        if not self.search_tipo_zapato.strip(): return LISTA_TIPOS_ZAPATOS
+        return [o for o in LISTA_TIPOS_ZAPATOS if self.search_tipo_zapato.lower() in o.lower()]
+    @rx.var
+    def filtered_tipos_mochilas(self) -> list[str]:
+        if not self.search_tipo_mochila.strip(): return LISTA_TIPOS_MOCHILAS
+        return [o for o in LISTA_TIPOS_MOCHILAS if self.search_tipo_mochila.lower() in o.lower()]
+    @rx.var
+    def filtered_colores(self) -> list[str]:
+        if not self.search_color.strip(): return LISTA_COLORES
+        return [o for o in LISTA_COLORES if self.search_color.lower() in o.lower()]
+    @rx.var
+    def filtered_tallas_ropa(self) -> list[str]:
+        if not self.search_talla.strip(): return LISTA_TALLAS_ROPA
+        return [o for o in LISTA_TALLAS_ROPA if self.search_talla.lower() in o.lower()]
+    @rx.var
+    def filtered_numeros_calzado(self) -> list[str]:
+        if not self.search_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
+        return [o for o in LISTA_NUMEROS_CALZADO if self.search_numero_calzado.lower() in o.lower()]
+    @rx.var
+    def filtered_materiales(self) -> list[str]:
+        if not self.search_material_tela.strip(): return LISTA_MATERIALES
+        return [o for o in LISTA_MATERIALES if self.search_material_tela.lower() in o.lower()]
+    @rx.var
+    def filtered_tipos_general(self) -> list[str]:
+        if not self.search_tipo_general.strip(): return LISTA_TIPOS_GENERAL
+        return [o for o in LISTA_TIPOS_GENERAL if self.search_tipo_general.lower() in o.lower()]
+    @rx.var
+    def filtered_medidas_general(self) -> list[str]:
+        if not self.search_medida_talla.strip(): return LISTA_MEDIDAS_GENERAL
+        return [o for o in LISTA_MEDIDAS_GENERAL if self.search_medida_talla.lower() in o.lower()]
 
     # --- PRODUCTOS Y CARRITO ---
     cart: Dict[int, int] = rx.Field(default_factory=dict)
@@ -309,6 +382,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             new_addr = ShippingAddressModel(userinfo_id=self.authenticated_user_info.id, name=form_data["name"], phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood, address=form_data["address"], is_default=len(self.addresses) == 0)
             session.add(new_addr); session.commit()
         return self.load_addresses()
+
+    @rx.event
+    def load_default_shipping_info(self):
+        if self.authenticated_user_info:
+            with rx.session() as session:
+                self.default_shipping_address = session.exec(
+                    sqlmodel.select(ShippingAddressModel).where(
+                        ShippingAddressModel.userinfo_id == self.authenticated_user_info.id,
+                        ShippingAddressModel.is_default == True
+                    )
+                ).one_or_none()
 
     # --- CHECKOUT ---
     @rx.event
