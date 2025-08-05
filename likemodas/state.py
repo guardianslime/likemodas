@@ -216,6 +216,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     def toggle_filters(self):
         self.show_filters = not self.show_filters # <- Por esta
+        
     def clear_all_filters(self):
         self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
         self.filter_tipo_prenda, self.filter_tipo_zapato, self.filter_tipo_mochila = "", "", ""
