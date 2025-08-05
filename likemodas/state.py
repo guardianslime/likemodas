@@ -206,6 +206,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_talla: str = ""
     filter_tipo_prenda: str = ""
     filter_tipo_zapato: str = ""
+    filter_numero_calzado: str = ""  # <--- ✨ LÍNEA AÑADIDA
     filter_tipo_mochila: str = ""
     filter_tipo_general: str = ""
     filter_material_tela: str = ""
