@@ -206,7 +206,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_talla: str = ""
     filter_tipo_prenda: str = ""
     filter_tipo_zapato: str = ""
-    filter_numero_calzado: str = ""  # <--- ✨ LÍNEA AÑADIDA
+    filter_numero_calzado: str = ""
     filter_tipo_mochila: str = ""
     filter_tipo_general: str = ""
     filter_material_tela: str = ""
@@ -221,9 +221,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def toggle_filter_dropdown(self, name: str): self.open_filter_name = "" if self.open_filter_name == name else name
     def clear_filter(self, filter_name: str): setattr(self, filter_name, "")
     
-    # ========================================================================
-    # ✨ BLOQUE CORREGIDO: AÑADE TODOS ESTOS MÉTODOS "SETTER"
-    # ========================================================================
     def set_min_price(self, price: str): self.min_price = price
     def set_max_price(self, price: str): self.max_price = price
     def set_filter_color(self, color: str): self.filter_color = color
@@ -308,8 +305,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def cart_details(self) -> List[Tuple[Optional[ProductCardData], int]]:
         if not self.cart: return []
-        post_map = {p.id: p for p in self.posts}
-        return [(post_map.get(pid), self.cart[pid]) for pid in self.cart]
+        with rx.session() as session:
+            # Aseguramos tener los posts actualizados para el cálculo
+            post_ids = list(self.cart.keys())
+            if not post_ids:
+                return []
+            results = session.exec(
+                sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
+            ).all()
+            post_map = {p.id: p for p in results}
+            return [(post_map.get(pid), self.cart[pid]) for pid in post_ids]
     
     @rx.event
     def add_to_cart(self, post_id: int):
@@ -379,16 +384,29 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.addresses = []
         if self.authenticated_user_info:
             with rx.session() as session:
-                self.addresses = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id).order_by(ShippingAddressModel.created_at.desc())).all()
+                self.addresses = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id).order_by(ShippingAddressModel.is_default.desc(), ShippingAddressModel.created_at.desc())).all()
 
     @rx.event
     def add_new_address(self, form_data: dict):
         if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
             return rx.toast.error("Por favor, completa todos los campos requeridos.")
         with rx.session() as session:
-            new_addr = ShippingAddressModel(userinfo_id=self.authenticated_user_info.id, name=form_data["name"], phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood, address=form_data["address"], is_default=len(self.addresses) == 0)
-            session.add(new_addr); session.commit()
-        return self.load_addresses()
+            # Si no hay direcciones, esta será la predeterminada
+            is_first_address = len(self.addresses) == 0
+            new_addr = ShippingAddressModel(
+                userinfo_id=self.authenticated_user_info.id,
+                name=form_data["name"],
+                phone=form_data["phone"],
+                city=self.city,
+                neighborhood=self.neighborhood,
+                address=form_data["address"],
+                is_default=is_first_address
+            )
+            session.add(new_addr)
+            session.commit()
+        self.show_form = False
+        yield self.load_addresses()
+        return rx.toast.success("Nueva dirección guardada.")
 
     @rx.event
     def load_default_shipping_info(self):
@@ -400,6 +418,49 @@ class AppState(reflex_local_auth.LocalAuthState):
                         ShippingAddressModel.is_default == True
                     )
                 ).one_or_none()
+
+    # --- ✨ NUEVO: Métodos de gestión de direcciones ---
+    @rx.event
+    def delete_address(self, address_id: int):
+        """Elimina una dirección de envío de la base de datos."""
+        if not self.authenticated_user_info:
+            return rx.toast.error("Debes iniciar sesión para eliminar direcciones.")
+        with rx.session() as session:
+            address_to_delete = session.exec(
+                sqlmodel.select(ShippingAddressModel).where(
+                    ShippingAddressModel.id == address_id,
+                    ShippingAddressModel.userinfo_id == self.authenticated_user_info.id
+                )
+            ).one_or_none()
+            if address_to_delete:
+                session.delete(address_to_delete)
+                session.commit()
+                yield self.load_addresses()
+                return rx.toast.success("Dirección eliminada correctamente.")
+            return rx.toast.error("No se encontró la dirección o no tienes permiso para eliminarla.")
+
+    @rx.event
+    def set_as_default(self, address_id: int):
+        """Establece una dirección como predeterminada."""
+        if not self.authenticated_user_info:
+            return rx.toast.error("Debes iniciar sesión.")
+        with rx.session() as session:
+            current_default = session.exec(
+                sqlmodel.select(ShippingAddressModel).where(
+                    ShippingAddressModel.userinfo_id == self.authenticated_user_info.id,
+                    ShippingAddressModel.is_default == True
+                )
+            ).one_or_none()
+            if current_default:
+                current_default.is_default = False
+                session.add(current_default)
+            new_default = session.get(ShippingAddressModel, address_id)
+            if new_default and new_default.userinfo_id == self.authenticated_user_info.id:
+                new_default.is_default = True
+                session.add(new_default)
+                session.commit()
+                yield self.load_addresses()
+                return rx.toast.success(f"'{new_default.name}' es ahora tu dirección predeterminada.")
 
     # --- CHECKOUT ---
     @rx.event
@@ -463,6 +524,77 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status != PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.desc())).unique().all()
             self.confirmed_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
     
+    # --- ✨ NUEVO: Métodos de gestión de publicaciones (Admin) ---
+    post_title: str = ""
+    post_content: str = ""
+    price_str: str = ""
+
+    def set_post_title(self, title: str): self.post_title = title
+    def set_post_content(self, content: str): self.post_content = content
+    def set_price(self, price: str): self.price_str = price
+
+    @rx.event
+    def on_load_edit(self):
+        """Carga los datos del post en el formulario de edición."""
+        try:
+            pid = int(self.router.page.params.get("blog_id", "0"))
+        except (ValueError, TypeError):
+            self.post = None
+            return
+        with rx.session() as session:
+            db_post = session.get(BlogPostModel, pid)
+            if db_post:
+                self.post = db_post
+                self.post_title = db_post.title
+                self.post_content = db_post.content
+                self.price_str = str(db_post.price)
+
+    @rx.event
+    def handle_edit_submit(self, form_data: dict):
+        """Guarda los cambios de un post editado."""
+        if not self.is_admin or not self.post:
+            return rx.toast.error("No se pudo guardar el post.")
+        with rx.session() as session:
+            post_to_update = session.get(BlogPostModel, self.post.id)
+            if post_to_update:
+                post_to_update.title = form_data.get("title", post_to_update.title)
+                post_to_update.content = form_data.get("content", post_to_update.content)
+                try:
+                    post_to_update.price = float(form_data.get("price", post_to_update.price))
+                except (ValueError, TypeError):
+                    return rx.toast.error("El precio debe ser un número válido.")
+                session.add(post_to_update)
+                session.commit()
+                yield rx.toast.success("Post actualizado correctamente.")
+                return rx.redirect(f"/blog-public/{self.post.id}")
+
+    @rx.event
+    def delete_post(self, post_id: int):
+        """Elimina una publicación del blog (solo admin)."""
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
+        with rx.session() as session:
+            post_to_delete = session.get(BlogPostModel, post_id)
+            if post_to_delete:
+                session.delete(post_to_delete)
+                session.commit()
+                yield rx.toast.success("Publicación eliminada.")
+                return rx.redirect(navigation.routes.BLOG_POSTS_ROUTE)
+
+    @rx.event
+    def toggle_publish_status(self, post_id: int):
+        """Cambia el estado de publicación de un post (solo admin)."""
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
+        with rx.session() as session:
+            post_to_update = session.get(BlogPostModel, post_id)
+            if post_to_update:
+                post_to_update.publish_active = not post_to_update.publish_active
+                session.add(post_to_update)
+                session.commit()
+                yield self.on_load_public_detail() 
+                return rx.toast.info(f"Estado de publicación cambiado a: {post_to_update.publish_active}")
+                
     # --- HISTORIAL DE COMPRAS (USUARIO) ---
     user_purchases: List[UserPurchaseHistoryCardData] = rx.Field(default_factory=list)
     search_query_user_history: str = ""
