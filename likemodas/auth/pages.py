@@ -27,7 +27,7 @@ def my_login_page_content() -> rx.Component:
                         rx.text("Password"),
                         password_input(
                             placeholder="Password",
-                            on_change=reflex_local_auth.LoginState.set_password,
+                            #on_change=reflex_local_auth.LoginState.set_password,
                             name="password"
                         ),
                         rx.button("Sign in", width="100%", type="submit"),
