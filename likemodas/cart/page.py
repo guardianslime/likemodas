@@ -48,7 +48,6 @@ def display_default_address() -> rx.Component:
     )
 
 def cart_item_row(item: rx.Var) -> rx.Component:
-    # ✅ CORRECCIÓN: Acceso correcto a la tupla (modelo, cantidad)
     post, quantity = item[0], item[1]
     return rx.table.row(
         rx.table.cell(rx.text(post.title)),
@@ -61,8 +60,18 @@ def cart_item_row(item: rx.Var) -> rx.Component:
             )
         ),
         rx.table.cell(rx.text(post.price_cop)),
-        # ✅ CORRECCIÓN: Cálculo reactivo del subtotal
-        rx.table.cell(rx.text(format_to_cop(post.price * quantity))),
+        # ✅ LÍNEA CORREGIDA
+        rx.table.cell(
+            rx.text(
+                "$", 
+                (post.price * quantity).to_string(
+                    locale="es-CO",
+                    style="currency",
+                    currency="COP",
+                    minimum_fraction_digits=0
+                )
+            )
+        ),
     )
 
 @reflex_local_auth.require_login
