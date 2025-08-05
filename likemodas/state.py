@@ -109,7 +109,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.refresh(new_user_info)
 
                 token_str = secrets.token_urlsafe(32)
-                expires = datetime.utcnow() + timedelta(hours=24)
+                expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
@@ -127,7 +127,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(VerificationToken).where(VerificationToken.token == token)).one_or_none()
-            if not db_token or datetime.utcnow() > db_token.expires_at:
+            if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
                 self.message = "El token de verificación es inválido o ha expirado."
                 if db_token: session.delete(db_token); session.commit()
                 return
@@ -158,7 +158,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             user_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == self.email)).one_or_none()
             if user_info:
                 token_str = secrets.token_urlsafe(32)
-                expires = datetime.utcnow() + timedelta(hours=1)
+                expires = datetime.now(timezone.utc) + timedelta(hours=1)
                 reset_token = PasswordResetToken(token=token_str, user_id=user_info.user_id, expires_at=expires)
                 session.add(reset_token)
                 session.commit()
@@ -172,7 +172,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
-            if not db_token or datetime.utcnow() > db_token.expires_at:
+            if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
                 self.message, self.is_token_valid = "El enlace de reseteo es inválido o ha expirado.", False
                 if db_token: session.delete(db_token); session.commit()
                 return
@@ -306,7 +306,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def cart_details(self) -> List[Tuple[Optional[ProductCardData], int]]:
         if not self.cart: return []
         with rx.session() as session:
-            # Aseguramos tener los posts actualizados para el cálculo
             post_ids = list(self.cart.keys())
             if not post_ids:
                 return []
@@ -333,29 +332,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = True
         yield
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now()).order_by(BlogPostModel.created_at.desc())).unique().all()
+            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(timezone.utc)).order_by(BlogPostModel.created_at.desc())).unique().all()
             self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price, image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
         self.is_loading = False
     
     # --- GESTIÓN DE FORMULARIO DE AÑADIR PRODUCTO (ADMIN) ---
     title: str = ""
     content: str = ""
-    price: str = "" # Usamos string para el input, se convierte a float al guardar
+    price: str = "" 
     category: str = ""
     tipo_prenda: str = ""
-    # ... aquí puedes añadir más variables para otras características si las necesitas
 
-    # Para el buscador dentro del formulario
     search_add_tipo_prenda: str = ""
 
     temp_images: list[str] = rx.Field(default_factory=list)
 
     @rx.var
     def categories(self) -> list[str]:
-        """Devuelve una lista con los valores del Enum Category."""
         return [c.value for c in Category]
     
-    # Setters para los campos del formulario
     def set_title(self, value: str):
         self.title = value
 
@@ -367,7 +362,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_category(self, value: str):
         self.category = value
-        # Reinicia los campos específicos cuando cambia la categoría
         self.tipo_prenda = ""
 
     def set_tipo_prenda(self, value: str):
@@ -376,25 +370,25 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_add_tipo_prenda(self, value: str):
         self.search_add_tipo_prenda = value
 
-
-    @rx.background
+    # ✅ CORREGIDO: Se elimina @rx.background y se usa @rx.event
+    @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
         """Maneja la subida de archivos y los añade a una lista temporal."""
+        uploaded_filenames = []
+        for file in files:
+            upload_data = await file.read()
+            outfile = rx.get_upload_dir() / file.filename
+            outfile.write_bytes(upload_data)
+            uploaded_filenames.append(file.filename)
+        
         async with self:
-            for file in files:
-                upload_data = await file.read()
-                outfile = rx.get_upload_dir() / file.filename
-                outfile.write_bytes(upload_data)
-                # Actualiza el estado en el hilo principal
-                self.temp_images.append(file.filename)
+            self.temp_images.extend(uploaded_filenames)
 
     @rx.event
     def remove_image(self, filename: str):
-        """Elimina una imagen de la lista de previsualización."""
         self.temp_images.remove(filename)
 
     def _clear_add_form(self):
-        """Método auxiliar para limpiar los campos del formulario."""
         self.title = ""
         self.content = ""
         self.price = ""
@@ -403,7 +397,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.temp_images = []
 
     def _create_post_from_state(self, is_published: bool) -> BlogPostModel:
-        """Crea una instancia de BlogPostModel a partir del estado actual del formulario."""
         try:
             price_float = float(self.price) if self.price else 0.0
         except ValueError:
@@ -412,8 +405,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         attributes = {}
         if self.category == Category.ROPA.value:
             attributes['tipo_prenda'] = self.tipo_prenda
-        # ... aquí puedes añadir lógica para otras categorías (CALZADO, MOCHILAS)
-
+        
         return BlogPostModel(
             userinfo_id=self.authenticated_user_info.id,
             title=self.title,
@@ -428,7 +420,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def submit_draft(self):
-        """Guarda la publicación como un borrador."""
         if not self.is_admin or not self.title:
             return rx.toast.error("El título es obligatorio para guardar un borrador.")
         
@@ -443,7 +434,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def submit_and_publish(self):
-        """Guarda y publica la nueva publicación."""
         if not self.is_admin or not self.title or not self.price or not self.category:
             return rx.toast.error("Título, precio y categoría son obligatorios para publicar.")
             
@@ -542,7 +532,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def delete_address(self, address_id: int):
-        """Elimina una dirección de envío de la base de datos."""
         if not self.authenticated_user_info:
             return rx.toast.error("Debes iniciar sesión para eliminar direcciones.")
         with rx.session() as session:
@@ -561,7 +550,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def set_as_default(self, address_id: int):
-        """Establece una dirección como predeterminada."""
         if not self.authenticated_user_info:
             return rx.toast.error("Debes iniciar sesión.")
         with rx.session() as session:
@@ -604,7 +592,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     confirmed_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
     new_purchase_notification: bool = False
     
-    # NUEVO: Búsqueda para la lista de posts del admin
     search_query_admin_posts: str = ""
 
     def set_search_query_admin_posts(self, query: str):
@@ -612,9 +599,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         
     @rx.var
     def filtered_admin_posts(self) -> list[BlogPostModel]:
-        # Esta propiedad requiere que cargues los posts del admin en una variable,
-        # por ejemplo, self.admin_posts: List[BlogPostModel]
-        # Aquí asumimos que ya existe. Si no, necesitas un método para cargarla.
         if not hasattr(self, 'admin_posts'):
             return []
         if not self.search_query_admin_posts.strip():
@@ -642,7 +626,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase:
                 purchase.status = PurchaseStatus.CONFIRMED
-                purchase.confirmed_at = datetime.utcnow()
+                purchase.confirmed_at = datetime.now(timezone.utc)
                 notification = NotificationModel(userinfo_id=purchase.userinfo_id, message=f"¡Tu compra #{purchase.id} ha sido confirmada!", url="/my-purchases")
                 session.add(purchase); session.add(notification); session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
@@ -650,7 +634,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
     # --- HISTORIAL DE PAGOS (ADMIN) ---
     search_query_admin_history: str = ""
-    def set_search_query_admin_history(self, query: str): # Setter que faltaba
+    def set_search_query_admin_history(self, query: str):
         self.search_query_admin_history = query
 
     @rx.var
@@ -667,7 +651,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.confirmed_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
     
     # --- GESTIÓN DE BLOG (ADMIN) ---
-    admin_posts: List[BlogPostModel] = [] # Para la lista de posts del admin
+    admin_posts: List[BlogPostModel] = [] 
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
@@ -677,7 +661,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.post:
             return ""
         return f"/blog/{self.post.id}/edit"
-
 
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
@@ -762,14 +745,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_to_update.publish_active = not post_to_update.publish_active
                 session.add(post_to_update)
                 session.commit()
-                yield self.get_post_detail() # Recarga el detalle para reflejar el cambio
+                yield self.get_post_detail() 
                 return rx.toast.info(f"Estado de publicación cambiado a: {post_to_update.publish_active}")
                 
     # --- HISTORIAL DE COMPRAS (USUARIO) ---
     user_purchases: List[UserPurchaseHistoryCardData] = rx.Field(default_factory=list)
     search_query_user_history: str = ""
     
-    def set_search_query_user_history(self, query: str): # Setter que faltaba
+    def set_search_query_user_history(self, query: str):
         self.search_query_user_history = query
 
     @rx.var
@@ -791,7 +774,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     contact_entries: list[ContactEntryModel] = rx.Field(default_factory=list)
     search_query_contact: str = ""
     
-    def set_search_query_contact(self, query: str): # Setter que faltaba
+    def set_search_query_contact(self, query: str):
         self.search_query_contact = query
 
     @rx.var
@@ -835,7 +818,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- BÚSQUEDA ---
     search_term: str = ""
-    def set_search_term(self, term: str): # Setter que faltaba
+    def set_search_term(self, term: str):
         self.search_term = term
 
     search_results: List[ProductCardData] = []
@@ -845,6 +828,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         term = self.search_term.strip()
         if not term: return
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(), BlogPostModel.title.ilike(f"%{term}%")).order_by(BlogPostModel.created_at.desc())).unique().all()
+            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(timezone.utc), BlogPostModel.title.ilike(f"%{term}%")).order_by(BlogPostModel.created_at.desc())).unique().all()
             self.search_results = [ProductCardData(id=p.id, title=p.title, price=p.price, image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
         return rx.redirect("/search-results")
