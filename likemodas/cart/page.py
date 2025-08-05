@@ -60,16 +60,10 @@ def cart_item_row(item: rx.Var) -> rx.Component:
             )
         ),
         rx.table.cell(rx.text(post.price_cop)),
-        # ✅ LÍNEA CORREGIDA
+        # ✅ LÍNEA CORREGIDA Y SIMPLIFICADA
         rx.table.cell(
             rx.text(
-                "$", 
-                (post.price * quantity).to_string(
-                    locale="es-CO",
-                    style="currency",
-                    currency="COP",
-                    minimum_fraction_digits=0
-                )
+                "$", (post.price * quantity).to_string()
             )
         ),
     )
