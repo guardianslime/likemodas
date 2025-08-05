@@ -52,6 +52,7 @@ def _info_section() -> rx.Component:
         min_height="350px",
     )
 
+
 def blog_public_detail_content() -> rx.Component:
     return rx.center(
         rx.vstack(
