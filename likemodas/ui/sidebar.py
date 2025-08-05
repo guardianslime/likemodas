@@ -13,14 +13,17 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
     )
 
 def sidebar_user_item() -> rx.Component:
-    username = rx.cond(AppState.authenticated_username, AppState.authenticated_username, "Account")
+    """Muestra el avatar y el nombre de usuario autenticado."""
     return rx.cond(
         AppState.is_authenticated,
         rx.hstack(
-            rx.avatar(fallback=username, size="2"),
-            rx.text(username, size="3", weight="medium"),
-            align="center", spacing="3",
+            # Accede al username a través del objeto authenticated_user
+            rx.avatar(fallback=AppState.authenticated_user.username, size="2"),
+            rx.text(AppState.authenticated_user.username, size="3", weight="medium"),
+            align="center",
+            spacing="3",
         ),
+        # Si no está autenticado, muestra un texto genérico
         rx.text("Account", size="3", weight="medium")
     )
 
