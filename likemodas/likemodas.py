@@ -32,13 +32,7 @@ def index_content() -> rx.Component:
     return blog_public_page_content()
 
 # --- Configuración de la App ---
-app = rx.App(
-    # Se elimina el argumento 'state=AppState', ya que Reflex lo detecta solo.
-    theme=rx.theme(
-        appearance="dark", has_background=True, panel_background="solid",
-        radius="medium", accent_color="sky"
-    ),
-)
+app = rx.App()
 
 # --- Definición de Rutas ---
 app.add_page(base_page(index_content()), route="/", on_load=HomePageState.on_load_main)
