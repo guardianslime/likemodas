@@ -33,7 +33,7 @@ def index_content() -> rx.Component:
 
 # --- Configuración de la App ---
 app = rx.App(
-    state=AppState,
+    # Se elimina el argumento 'state=AppState', ya que Reflex lo detecta solo.
     theme=rx.theme(
         appearance="dark", has_background=True, panel_background="solid",
         radius="medium", accent_color="sky"
