@@ -1,5 +1,28 @@
 import reflex as rx
 
+
+def skeleton_navbar() -> rx.Component:
+    """Un esqueleto estático para la barra de navegación pública."""
+    return rx.box(
+        rx.grid(
+            rx.hstack(
+                rx.box(width="8em", height="36px", bg=rx.color("gray", 4), border_radius="md"),
+                align="center", spacing="4", justify="start",
+            ),
+            rx.box(height="36px", bg=rx.color("gray", 4), border_radius="md", width="100%"),
+            rx.hstack(
+                rx.box(width="36px", height="36px", bg=rx.color("gray", 4), border_radius="full"),
+                rx.box(width="36px", height="36px", bg=rx.color("gray", 4), border_radius="full"),
+                align="center", spacing="3", justify="end",
+            ),
+            columns="auto 1fr auto", align_items="center", width="100%", gap="1.5rem",
+        ),
+        position="fixed", top="0", left="0", right="0",
+        width="100%", padding="0.75rem 1.5rem", z_index="999",
+        bg="#2C004BF0", 
+        style={"backdrop_filter": "blur(10px)"},
+    )
+
 def skeleton_block(height: str, width: str = "100%", **props) -> rx.Component:
     """Un bloque de esqueleto genérico y reutilizable con animación de pulso."""
     return rx.box(
