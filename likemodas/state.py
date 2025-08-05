@@ -213,17 +213,23 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     def toggle_filters(self): self.show_filters = ~self.show_filters
     def clear_all_filters(self):
+        # Reinicia todos los filtros
         self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
         self.filter_tipo_prenda, self.filter_tipo_zapato, self.filter_tipo_mochila = "", "", ""
         self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla = "", "", ""
     def toggle_filter_dropdown(self, name: str): self.open_filter_name = "" if self.open_filter_name == name else name
     def clear_filter(self, filter_name: str): setattr(self, filter_name, "")
+    
+    # ========================================================================
+    # ✨ BLOQUE CORREGIDO: AÑADE TODOS ESTOS MÉTODOS "SETTER"
+    # ========================================================================
     def set_min_price(self, price: str): self.min_price = price
     def set_max_price(self, price: str): self.max_price = price
-    def set_filter_tipo_prenda(self, prenda: str): self.filter_tipo_prenda = prenda
     def set_filter_color(self, color: str): self.filter_color = color
     def set_filter_talla(self, talla: str): self.filter_talla = talla
+    def set_filter_tipo_prenda(self, prenda: str): self.filter_tipo_prenda = prenda
     def set_filter_tipo_zapato(self, zapato: str): self.filter_tipo_zapato = zapato
+    def set_filter_numero_calzado(self, numero: str): self.filter_numero_calzado = numero
     def set_filter_tipo_mochila(self, mochila: str): self.filter_tipo_mochila = mochila
     def set_filter_tipo_general(self, general: str): self.filter_tipo_general = general
     def set_filter_material_tela(self, material: str): self.filter_material_tela = material
