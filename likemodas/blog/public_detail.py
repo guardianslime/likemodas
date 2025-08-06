@@ -1,4 +1,4 @@
-# likemodas/blog/public_detail.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/blog/public_detail.py (VERSIÓN FINAL Y ROBUSTA)
 
 import reflex as rx
 from ..state import AppState
@@ -7,18 +7,37 @@ from ..models import CommentModel
 from ..ui.skeletons import skeleton_product_detail_view
 
 def _image_section() -> rx.Component:
-    """Muestra el carrusel de imágenes del producto."""
+    """Muestra el carrusel de imágenes, protegido contra condiciones de carrera."""
     return rx.box(
-        Carousel.create(
-            rx.foreach(
-                AppState.post.image_urls,
-                lambda image_url: rx.image(
-                    src=rx.get_upload_url(image_url), alt=AppState.post.title,
-                    width="100%", height="auto", object_fit="cover", border_radius="var(--radius-3)",
-                )
+        # --- ▼▼▼ GUARDIA DE RENDERIZADO PARA EL CARRUSEL ▼▼▼ ---
+        # Solo se renderiza el carrusel si el post existe Y su lista de image_urls no está vacía.
+        rx.cond(
+            AppState.post & AppState.post.image_urls,
+            Carousel.create(
+                rx.foreach(
+                    AppState.post.image_urls,
+                    lambda image_url: rx.image(
+                        src=rx.get_upload_url(image_url), alt=AppState.post.title,
+                        width="100%", height="auto", object_fit="cover", border_radius="var(--radius-3)",
+                    )
+                ),
+                show_arrows=True, show_indicators=True, infinite_loop=True,
+                auto_play=True, width="100%"
             ),
-            show_arrows=True, show_indicators=True, infinite_loop=True,
-            auto_play=True, width="100%"
+            # Fallback: Muestra un placeholder dimensionalmente idéntico si no hay imágenes.
+            # Esto mantiene el tamaño del layout consistente y evita el salto de diseño.
+            rx.box(
+                rx.vstack(
+                    rx.icon("image_off", size=48, color=rx.color("gray", 8)),
+                    rx.text("Sin imagen disponible"),
+                    align="center", justify="center"
+                ),
+                width="100%",
+                height="500px",  # Ajusta esta altura a la altura esperada de tu carrusel
+                bg=rx.color("gray", 3),
+                border_radius="var(--radius-3)",
+                display="flex",
+            )
         ),
         width="100%", max_width="800px", margin="auto", padding_y="1em"
     )
@@ -47,22 +66,17 @@ def _info_section() -> rx.Component:
     )
 
 def blog_public_detail_content() -> rx.Component:
-    """
-    Página de detalle del producto con una guardia de carga robusta
-    que elimina la condición de carrera y el parpadeo.
-    """
+    """Página de detalle con la lógica de carga y renderizado final."""
     return rx.center(
         rx.vstack(
-            # --- ✅ LÓGICA DE RENDERIZADO A PRUEBA DE FALLOS ---
             rx.cond(
                 AppState.is_post_loading,
-                # ESTADO 1: Muestra el esqueleto MIENTRAS la carga está en progreso.
+                # ESTADO 1: Cargando
                 skeleton_product_detail_view(),
-                
-                # Una vez que la carga TERMINA, decide qué mostrar.
+                # ESTADO 2: Carga Finalizada
                 rx.cond(
                     AppState.post,
-                    # ESTADO 3: Si el post EXISTE, muestra el contenido real.
+                    # Sub-Estado 2a: Contenido Real (si hay post)
                     rx.fragment(
                         rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
                         rx.grid(
@@ -71,7 +85,7 @@ def blog_public_detail_content() -> rx.Component:
                             width="100%", max_width="1400px",
                         ),
                     ),
-                    # ESTADO 2: Si la carga terminó y el post NO EXISTE, muestra un error permanente.
+                    # Sub-Estado 2b: Error (si no hay post)
                     rx.center(
                         rx.text("Publicación no encontrada o no disponible.", color="red"),
                         min_height="50vh"
