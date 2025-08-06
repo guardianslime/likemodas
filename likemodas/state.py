@@ -142,6 +142,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "Error: No se encontró el usuario asociado a este token."
+
     # --- MANEJO DE CONTRASEÑA ---
     email: str = ""
     is_success: bool = False
@@ -214,7 +215,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_medida_talla: str = ""
     
     def toggle_filters(self):
-        self.show_filters = not self.show_filters # <- Por esta
+        self.show_filters = not self.show_filters
         
     def clear_all_filters(self):
         self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
@@ -434,21 +435,44 @@ class AppState(reflex_local_auth.LocalAuthState):
     comments: list[CommentModel] = rx.Field(default_factory=list)
     new_comment_text: str = ""
     new_comment_rating: int = 0
-    is_post_loading: bool = True # <--- ✅ NUEVA VARIABLE DE ESTADO
+    is_post_loading: bool = True
+
+    # --- ✅ LÓGICA PARA EL CARRUSEL NATIVO ---
+    current_image_index: int = 0
+
+    @rx.var
+    def current_image_url(self) -> str:
+        """Devuelve la URL de la imagen actual a mostrar."""
+        if self.post and self.post.image_urls:
+            # Asegura que el índice esté siempre dentro de los límites
+            safe_index = self.current_image_index % len(self.post.image_urls)
+            return self.post.image_urls[safe_index]
+        return "" # Devuelve una cadena vacía si no hay imágenes
+
+    def next_image(self):
+        """Pasa a la siguiente imagen en el carrusel."""
+        if self.post and self.post.image_urls:
+            self.current_image_index = (self.current_image_index + 1) % len(self.post.image_urls)
+
+    def prev_image(self):
+        """Vuelve a la imagen anterior en el carrusel."""
+        if self.post and self.post.image_urls:
+            self.current_image_index = (self.current_image_index - 1 + len(self.post.image_urls)) % len(self.post.image_urls)
 
     @rx.event
     def on_load_public_detail(self):
         """
         Evento robusto para cargar los detalles del post, gestionando el estado de carga.
         """
-        self.is_post_loading = True  # <--- ✅ INICIA EL ESTADO DE CARGA
-        self.post = None             # Limpia el estado anterior para evitar mostrar datos viejos
+        self.current_image_index = 0 # ✅ Resetea el índice del carrusel
+        self.is_post_loading = True
+        self.post = None
         yield
 
         try: 
             pid = int(self.router.page.params.get("id", "0"))
         except (ValueError, TypeError):
-            self.is_post_loading = False # <--- ✅ FINALIZA LA CARGA SI HAY ERROR
+            self.is_post_loading = False
             return
 
         with rx.session() as session:
@@ -468,7 +492,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             else: 
                 self.comments = []
             
-            self.is_post_loading = False # <--- ✅ FINALIZA LA CARGA AL COMPLETAR
+            self.is_post_loading = False
     
     # --- DIRECCIONES DE ENVÍO ---
     addresses: List[ShippingAddressModel] = rx.Field(default_factory=list)
