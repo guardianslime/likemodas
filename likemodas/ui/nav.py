@@ -62,10 +62,10 @@ def public_navbar() -> rx.Component:
                 width="100%",
             ),
             rx.hstack(
-                # ✅ ESTE ES EL CAMBIO CLAVE
+                # --- ✅ ESTE ES EL CAMBIO FINAL Y MÁS IMPORTANTE ---
                 rx.cond(
                     AppState.is_authenticated,
-                    # Cuando está autenticado, muestra los iconos reales.
+                    # 1. Cuando el usuario ESTÁ autenticado, muestra los iconos.
                     rx.fragment(
                         notification_icon(),
                         rx.link(
@@ -84,10 +84,11 @@ def public_navbar() -> rx.Component:
                             href="/cart"
                         )
                     ),
-                    # Cuando NO está autenticado, reserva el espacio con cajas invisibles.
+                    # 2. Cuando NO ESTÁ autenticado, reserva su espacio con cajas invisibles.
+                    #    Esto evita que la barra de búsqueda se mueva.
                     rx.fragment(
-                        rx.box(width="44px", height="44px"), # Espacio para el icono de notificaciones
-                        rx.box(width="38px", height="44px")  # Espacio para el icono del carrito
+                        rx.box(width="44px", height="44px"), # Espacio reservado para el icono de notificaciones
+                        rx.box(width="38px", height="44px")  # Espacio reservado para el icono del carrito
                     )
                 ),
                 align="center", spacing="3", justify="end",
