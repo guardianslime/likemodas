@@ -48,7 +48,6 @@ def public_navbar() -> rx.Component:
     return rx.box(
         rx.grid(
             rx.hstack(
-                # ... Menú de hamburguesa (sin cambios de estado) ...
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
@@ -63,8 +62,10 @@ def public_navbar() -> rx.Component:
                 width="100%",
             ),
             rx.hstack(
+                # ✅ ESTE ES EL CAMBIO CLAVE
                 rx.cond(
                     AppState.is_authenticated,
+                    # Cuando está autenticado, muestra los iconos reales.
                     rx.fragment(
                         notification_icon(),
                         rx.link(
@@ -82,6 +83,11 @@ def public_navbar() -> rx.Component:
                             ),
                             href="/cart"
                         )
+                    ),
+                    # Cuando NO está autenticado, reserva el espacio con cajas invisibles.
+                    rx.fragment(
+                        rx.box(width="44px", height="44px"), # Espacio para el icono de notificaciones
+                        rx.box(width="38px", height="44px")  # Espacio para el icono del carrito
                     )
                 ),
                 align="center", spacing="3", justify="end",
@@ -90,7 +96,8 @@ def public_navbar() -> rx.Component:
         ),
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
-        bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
+        bg="#2C004BF0", 
+        style={"backdrop_filter": "blur(10px)"},
         on_mount=[AppState.load_notifications],
     )
 
