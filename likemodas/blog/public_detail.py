@@ -56,32 +56,24 @@ def _info_section() -> rx.Component:
 def blog_public_detail_content() -> rx.Component:
     return rx.center(
         rx.vstack(
-            # ✅ CORRECCIÓN: Patrón de estado de carga completo
+            # ▼▼▼ CAMBIO CLAVE ▼▼▼
+            # La condición ahora es: "No está hidratado O el post no se ha cargado".
             rx.cond(
-                AppState.is_hydrated,
-                # --- Contenido Hidratado ---
-                # Se renderiza todo junto solo cuando el cliente está listo.
-                rx.cond(
-                    AppState.post,
-                    # Si el post existe, muestra el título y los detalles.
-                    rx.fragment(
-                        # El título ahora está DENTRO de la guarda.
-                        rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
-                        rx.grid(
-                            _image_section(), _info_section(),
-                            columns="2", spacing="4", align_items="start",
-                            width="100%", max_width="1400px",
-                        ),
+                ~AppState.is_hydrated | (AppState.post.id == 0), # Asumiendo que el ID por defecto es 0 o None
+                # --- Muestra el esqueleto si cualquiera de las dos condiciones es cierta ---
+                skeleton_product_detail_view(),
+                
+                # --- Contenido Real y Verificado ---
+                # Este fragmento SÓLO se renderizará cuando el cliente esté listo
+                # Y el AppState.post contenga datos reales del producto.
+                rx.fragment(
+                    rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
+                    rx.grid(
+                        _image_section(), _info_section(),
+                        columns="2", spacing="4", align_items="start",
+                        width="100%", max_width="1400px",
                     ),
-                    # Si el post no existe, muestra un mensaje de error.
-                    rx.center(
-                        rx.text("Publicación no encontrada o no disponible.", color="red"),
-                        min_height="50vh"
-                    )
                 ),
-                # --- Esqueleto de Carga ---
-                # Muestra un esqueleto completo mientras se espera la hidratación y los datos.
-                skeleton_product_detail_view()
             ),
             spacing="6", width="100%", padding="2em", align="center",
         ),
