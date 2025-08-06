@@ -1,20 +1,52 @@
-# likemodas/blog/detail.py (CORREGIDO)
-
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from ..state import AppState
 from .notfound import blog_post_not_found
-from ..ui.carousel import Carousel
 
 def _image_section() -> rx.Component:
-    """Muestra las imágenes del post del admin."""
+    """Muestra las imágenes del post del admin usando el carrusel nativo."""
+    FIXED_HEIGHT = "500px"
+
+    # --- USANDO EL CARRUSEL NATIVO Y SEGURO ---
+    native_carousel = rx.box(
+        rx.image(
+            src=rx.get_upload_url(AppState.current_image_url),
+            alt=AppState.post.title,
+            width="100%",
+            height="100%",
+            object_fit="cover",
+        ),
+        rx.button(
+            rx.icon(tag="chevron-left"),
+            on_click=AppState.prev_image,
+            position="absolute", top="50%", left="0.5rem",
+            transform="translateY(-50%)", variant="soft", color_scheme="gray",
+        ),
+        rx.button(
+            rx.icon(tag="chevron-right"),
+            on_click=AppState.next_image,
+            position="absolute", top="50%", right="0.5rem",
+            transform="translateY(-50%)", variant="soft", color_scheme="gray",
+        ),
+        position="relative", width="100%", height=FIXED_HEIGHT,
+        border_radius="var(--radius-3)", overflow="hidden",
+    )
+
+    placeholder_component = rx.box(
+        rx.vstack(
+            rx.icon("image_off", size=48, color=rx.color("gray", 8)),
+            rx.text("Sin imagen disponible"),
+            align="center", justify="center"
+        ),
+        width="100%", height=FIXED_HEIGHT, bg=rx.color("gray", 3),
+        border_radius="var(--radius-3)", display="flex",
+    )
+
     return rx.box(
-        Carousel.create(
-            rx.foreach(
-                AppState.post.image_urls,
-                lambda image_url: rx.image(src=rx.get_upload_url(image_url), alt=AppState.post.title, width="100%", height="auto", object_fit="cover", border_radius="var(--radius-3)")
-            ),
-            show_arrows=True, show_indicators=True, infinite_loop=True, auto_play=True, width="100%"
+        rx.cond(
+            AppState.post & AppState.post.image_urls,
+            native_carousel,
+            placeholder_component
         ),
         width="100%", max_width="800px", margin="auto", padding_y="1em"
     )
