@@ -1,4 +1,4 @@
-# likemodas/blog/public_detail.py (VERSIÓN FINAL Y ROBUSTA)
+# likemodas/blog/public_detail.py (VERSIÓN CON LA SOLUCIÓN 'key')
 
 import reflex as rx
 from ..state import AppState
@@ -6,63 +6,55 @@ from ..ui.carousel import Carousel
 from ..models import CommentModel
 from ..ui.skeletons import skeleton_product_detail_view
 
-# --- ▼▼▼ CAMBIO CRÍTICO AQUÍ ▼▼▼ ---
-
 def _image_section() -> rx.Component:
     """
-    Muestra el carrusel o un placeholder, ambos forzados a tener una altura fija
-    para eliminar el salto de diseño (layout shift).
+    Muestra el carrusel o un placeholder, usando una 'key' dinámica para
+    forzar un re-montaje limpio y eliminar errores de inicialización.
     """
-    # Define una altura fija y consistente para el contenedor de la imagen.
-    # Puedes ajustar este valor (ej. "450px", "60vh", etc.) según tu diseño.
     FIXED_HEIGHT = "500px"
 
-    # El carrusel real, ahora con una altura fija.
-    carousel_component = Carousel.create(
-        rx.foreach(
-            AppState.post.image_urls,
-            lambda image_url: rx.image(
-                src=rx.get_upload_url(image_url),
-                alt=AppState.post.title,
-                width="100%",
-                height="100%", # Ocupa el 100% de la altura del contenedor
-                object_fit="cover",
-            )
-        ),
-        show_arrows=True, show_indicators=True, infinite_loop=True,
-        auto_play=True, width="100%",
-        # La altura se aplica al contenedor del carrusel.
-        height=FIXED_HEIGHT,
-        border_radius="var(--radius-3)",
-    )
-
-    # El marcador de posición (placeholder), con EXACTAMENTE la misma altura fija.
     placeholder_component = rx.box(
         rx.vstack(
             rx.icon("image_off", size=48, color=rx.color("gray", 8)),
             rx.text("Sin imagen disponible"),
             align="center", justify="center"
         ),
-        width="100%",
-        height=FIXED_HEIGHT,
-        bg=rx.color("gray", 3),
-        border_radius="var(--radius-3)",
-        display="flex",
+        width="100%", height=FIXED_HEIGHT, bg=rx.color("gray", 3),
+        border_radius="var(--radius-3)", display="flex",
     )
 
     return rx.box(
         rx.cond(
             AppState.post & AppState.post.image_urls,
-            carousel_component,
+            # --- ▼▼▼ LA CORRECCIÓN DEFINITIVA ESTÁ AQUÍ ▼▼▼ ---
+            # Al añadir una 'key' única, forzamos a Reflex/React a destruir
+            # cualquier instancia anterior del carrusel y crear una NUEVA desde cero
+            # solo cuando los datos están listos. Esto limpia cualquier estado
+            # de inicialización corrupto que causaba los errores de la consola.
+            Carousel.create(
+                rx.foreach(
+                    AppState.post.image_urls,
+                    lambda image_url: rx.image(
+                        src=rx.get_upload_url(image_url),
+                        alt=AppState.post.title,
+                        width="100%",
+                        height="100%",
+                        object_fit="cover",
+                    )
+                ),
+                key=AppState.post.id,  # <-- LA CLAVE DEL ARREGLO
+                show_arrows=True, show_indicators=True, infinite_loop=True,
+                auto_play=True, width="100%", height=FIXED_HEIGHT,
+                border_radius="var(--radius-3)",
+            ),
             placeholder_component
         ),
         width="100%", max_width="800px", margin="auto", padding_y="1em"
     )
 
-# --- El resto del archivo permanece igual ---
+# --- El resto del archivo permanece exactamente igual ---
 
 def _info_section() -> rx.Component:
-    """Muestra la información de texto y el botón de compra del producto."""
     # (Sin cambios en esta función)
     return rx.vstack(
         rx.vstack(
@@ -82,7 +74,6 @@ def _info_section() -> rx.Component:
     )
 
 def blog_public_detail_content() -> rx.Component:
-    """Página de detalle con la lógica de carga y renderizado final."""
     # (Sin cambios en esta función)
     return rx.center(
         rx.vstack(
