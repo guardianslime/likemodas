@@ -1,4 +1,4 @@
-# likemodas/blog/public_detail.py (CORREGIDO)
+# likemodas/blog/public_detail.py (CORREGIDO Y ROBUSTO)
 
 import reflex as rx
 from ..state import AppState
@@ -41,39 +41,44 @@ def _info_section() -> rx.Component:
             width="100%", size="4", margin_top="1.5em", color_scheme="violet"
         ),
         
-        # --- CAMBIOS CLAVE ---
-        # 1. Se elimina el `rx.spacer()`.
-        # 2. Se usa `justify_content` para empujar el botón hacia abajo.
         justify_content="space-between",
-        
         padding="1em", 
         align_items="stretch", # Asegura que los hijos ocupen el ancho.
         width="100%", 
         min_height="350px",
     )
 
-
 def blog_public_detail_content() -> rx.Component:
+    """
+    Página de detalle del producto con una guardia de carga robusta
+    para prevenir condiciones de carrera y parpadeos.
+    """
     return rx.center(
         rx.vstack(
-            # ▼▼▼ CAMBIO CLAVE ▼▼▼
-            # La condición ahora es: "No está hidratado O el post no se ha cargado".
+            # --- ✅ PATRÓN DE CARGA A PRUEBA DE FALLOS ---
             rx.cond(
-                ~AppState.is_hydrated | (AppState.post.id == 0), # Asumiendo que el ID por defecto es 0 o None
-                # --- Muestra el esqueleto si cualquiera de las dos condiciones es cierta ---
+                AppState.is_post_loading,
+                # 1. Muestra el esqueleto MIENTRAS la carga está en progreso.
                 skeleton_product_detail_view(),
                 
-                # --- Contenido Real y Verificado ---
-                # Este fragmento SÓLO se renderizará cuando el cliente esté listo
-                # Y el AppState.post contenga datos reales del producto.
-                rx.fragment(
-                    rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
-                    rx.grid(
-                        _image_section(), _info_section(),
-                        columns="2", spacing="4", align_items="start",
-                        width="100%", max_width="1400px",
+                # 2. Una vez que la carga TERMINA, decide qué mostrar.
+                rx.cond(
+                    AppState.post,
+                    # 2a. Si el post se encontró, muestra el contenido.
+                    rx.fragment(
+                        rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
+                        rx.grid(
+                            _image_section(), _info_section(),
+                            columns="2", spacing="4", align_items="start",
+                            width="100%", max_width="1400px",
+                        ),
                     ),
-                ),
+                    # 2b. Si la carga terminó y no hay post, muestra un error.
+                    rx.center(
+                        rx.text("Publicación no encontrada o no disponible.", color="red"),
+                        min_height="50vh"
+                    )
+                )
             ),
             spacing="6", width="100%", padding="2em", align="center",
         ),

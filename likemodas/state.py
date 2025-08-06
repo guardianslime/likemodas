@@ -142,7 +142,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "Error: No se encontró el usuario asociado a este token."
-
     # --- MANEJO DE CONTRASEÑA ---
     email: str = ""
     is_success: bool = False
@@ -435,22 +434,42 @@ class AppState(reflex_local_auth.LocalAuthState):
     comments: list[CommentModel] = rx.Field(default_factory=list)
     new_comment_text: str = ""
     new_comment_rating: int = 0
-    
+    is_post_loading: bool = True # <--- ✅ NUEVA VARIABLE DE ESTADO
+
     @rx.event
     def on_load_public_detail(self):
-        self.post = None # Reset state before loading
+        """
+        Evento robusto para cargar los detalles del post, gestionando el estado de carga.
+        """
+        self.is_post_loading = True  # <--- ✅ INICIA EL ESTADO DE CARGA
+        self.post = None             # Limpia el estado anterior para evitar mostrar datos viejos
+        yield
+
         try: 
             pid = int(self.router.page.params.get("id", "0"))
-        except (ValueError, TypeError): 
+        except (ValueError, TypeError):
+            self.is_post_loading = False # <--- ✅ FINALIZA LA CARGA SI HAY ERROR
             return
+
         with rx.session() as session:
-            db_post = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user)).where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)).unique().one_or_none()
+            db_post = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.userinfo)
+                    .joinedload(UserInfo.user)
+                )
+                .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
+            ).unique().one_or_none()
+
             if db_post: 
                 self.post = db_post
                 self.comments = sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
             else: 
                 self.comments = []
-
+            
+            self.is_post_loading = False # <--- ✅ FINALIZA LA CARGA AL COMPLETAR
+    
     # --- DIRECCIONES DE ENVÍO ---
     addresses: List[ShippingAddressModel] = rx.Field(default_factory=list)
     show_form: bool = False
