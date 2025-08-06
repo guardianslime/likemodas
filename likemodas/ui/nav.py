@@ -5,6 +5,7 @@ from .. import navigation
 from ..state import AppState
 
 def notification_icon() -> rx.Component:
+    """Componente para el icono y menú de notificaciones."""
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
@@ -44,7 +45,49 @@ def notification_icon() -> rx.Component:
     )
 
 def public_navbar() -> rx.Component:
+    """
+    La barra de navegación pública definitiva. Utiliza un marcador de posición
+    dimensionalmente idéntico para eliminar el 'layout shift' al iniciar sesión.
+    """
     icon_color = rx.color_mode_cond("black", "white")
+    
+    # --- ✅ CONTENIDO REAL DE LOS ICONOS (PARA USUARIOS AUTENTICADOS) ---
+    authenticated_icons = rx.hstack(
+        notification_icon(),
+        rx.link(
+            rx.box(
+                rx.icon("shopping-cart", size=22, color=icon_color),
+                rx.cond(
+                    AppState.cart_items_count > 0,
+                    rx.box(
+                        rx.text(AppState.cart_items_count, size="1", weight="bold"),
+                        position="absolute", top="-5px", right="-5px",
+                        padding="0 0.4em", border_radius="full", bg="red", color="white",
+                    )
+                ),
+                position="relative", padding="0.5em"
+            ),
+            href="/cart"
+        ),
+        align="center",
+        spacing="3", # Este espaciado es crucial
+        justify="end",
+    )
+    
+    # --- ✅ MARCADOR DE POSICIÓN (PLACEHOLDER) IDÉNTICO ---
+    # Este componente imita la estructura y el tamaño del `authenticated_icons`.
+    placeholder_icons = rx.hstack(
+        # Espacio para el icono de notificación. El padding debe ser el mismo.
+        rx.box(width="44px", height="44px", padding="0.5em"), # 28px del icono + 2*8px de padding
+        
+        # Espacio para el icono del carrito. El padding debe ser el mismo.
+        rx.box(width="38px", height="44px", padding="0.5em"), # 22px del icono + 2*8px de padding
+
+        align="center",
+        spacing="3", # Debe ser EXACTAMENTE el mismo `spacing` que el de arriba.
+        justify="end",
+    )
+
     return rx.box(
         rx.grid(
             rx.hstack(
@@ -61,39 +104,20 @@ def public_navbar() -> rx.Component:
                 on_submit=AppState.perform_search,
                 width="100%",
             ),
-            rx.hstack(
-                # --- ✅ ESTE ES EL CAMBIO FINAL Y MÁS IMPORTANTE ---
-                rx.cond(
-                    AppState.is_authenticated,
-                    # 1. Cuando el usuario ESTÁ autenticado, muestra los iconos.
-                    rx.fragment(
-                        notification_icon(),
-                        rx.link(
-                            rx.box(
-                                rx.icon("shopping-cart", size=22, color=icon_color),
-                                rx.cond(
-                                    AppState.cart_items_count > 0,
-                                    rx.box(
-                                        rx.text(AppState.cart_items_count, size="1", weight="bold"),
-                                        position="absolute", top="-5px", right="-5px",
-                                        padding="0 0.4em", border_radius="full", bg="red", color="white",
-                                    )
-                                ),
-                                position="relative", padding="0.5em"
-                            ),
-                            href="/cart"
-                        )
-                    ),
-                    # 2. Cuando NO ESTÁ autenticado, reserva su espacio con cajas invisibles.
-                    #    Esto evita que la barra de búsqueda se mueva.
-                    rx.fragment(
-                        rx.box(width="44px", height="44px"), # Espacio reservado para el icono de notificaciones
-                        rx.box(width="38px", height="44px")  # Espacio reservado para el icono del carrito
-                    )
-                ),
-                align="center", spacing="3", justify="end",
+            
+            # --- ✅ LÓGICA DE RENDERIZADO FINAL ---
+            # Se elige entre los iconos reales y el marcador de posición.
+            # Como ambos ocupan exactamente el mismo espacio, no hay salto de diseño.
+            rx.cond(
+                AppState.is_authenticated,
+                authenticated_icons,
+                placeholder_icons
             ),
-            columns="auto 1fr auto", align_items="center", width="100%", gap="1.5rem",
+
+            columns="auto 1fr auto",
+            align_items="center",
+            width="100%",
+            gap="1.5rem",
         ),
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
@@ -101,4 +125,3 @@ def public_navbar() -> rx.Component:
         style={"backdrop_filter": "blur(10px)"},
         on_mount=[AppState.load_notifications],
     )
-
