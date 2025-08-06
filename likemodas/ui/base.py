@@ -1,14 +1,12 @@
-# likemodas/ui/base.py (VERSIÓN FINAL Y VERIFICADA)
-
 import reflex as rx
-from reflex.style import toggle_color_mode # <-- Añadir esta importación
+from reflex.style import toggle_color_mode
 from ..state import AppState
 from .nav import public_navbar
-# Asegúrate de tener skeleton_navbar en tus importaciones
-from .skeletons import skeleton_navbar 
+from .skeletons import skeleton_navbar
 from .sidebar import sidebar, mobile_admin_menu, sidebar_dark_mode_toggle_item
 
 def fixed_color_mode_button() -> rx.Component:
+    """Botón flotante para cambiar el modo de color."""
     return rx.box(
         rx.button(
             rx.color_mode_cond(

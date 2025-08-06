@@ -1,5 +1,3 @@
-# likemodas/ui/nav.py (CORREGIDO Y COMPLETO)
-
 import reflex as rx
 from .. import navigation
 from ..state import AppState
@@ -51,7 +49,7 @@ def public_navbar() -> rx.Component:
     """
     icon_color = rx.color_mode_cond("black", "white")
     
-    # --- ✅ CONTENIDO REAL DE LOS ICONOS (PARA USUARIOS AUTENTICADOS) ---
+    # --- CONTENIDO REAL DE LOS ICONOS (PARA USUARIOS AUTENTICADOS) ---
     authenticated_icons = rx.hstack(
         notification_icon(),
         rx.link(
@@ -74,7 +72,7 @@ def public_navbar() -> rx.Component:
         justify="end",
     )
     
-    # --- ✅ MARCADOR DE POSICIÓN (PLACEHOLDER) IDÉNTICO ---
+    # --- MARCADOR DE POSICIÓN (PLACEHOLDER) IDÉNTICO ---
     # Este componente imita la estructura y el tamaño del `authenticated_icons`.
     placeholder_icons = rx.hstack(
         # Espacio para el icono de notificación. El padding debe ser el mismo.
@@ -105,7 +103,7 @@ def public_navbar() -> rx.Component:
                 width="100%",
             ),
             
-            # --- ✅ LÓGICA DE RENDERIZADO FINAL ---
+            # --- LÓGICA DE RENDERIZADO FINAL ---
             # Se elige entre los iconos reales y el marcador de posición.
             # Como ambos ocupan exactamente el mismo espacio, no hay salto de diseño.
             rx.cond(
