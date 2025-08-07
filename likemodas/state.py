@@ -73,6 +73,26 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
+    # ========================================================================= #
+    # ==================== ✨ INICIO: CORRECCIÓN DE HIDRATACIÓN ==================== #
+    # ========================================================================= #
+
+    # Esta variable es la clave para la estabilidad de la UI.
+    # Comienza en False en el servidor.
+    is_hydrated: bool = False
+
+    # Este evento es llamado por CADA PÁGINA al cargar en el navegador.
+    # Pone is_hydrated en True, activando el renderizado del contenido real.
+    @rx.event
+    def on_load(self):
+        """Marca el estado del cliente como hidratado."""
+        self.is_hydrated = True
+
+    # ========================================================================= #
+    # ===================== ✨ FIN: CORRECCIÓN DE HIDRATACIÓN ===================== #
+    # ========================================================================= #
+
+
     # --- AUTH / SESSION ---
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
@@ -93,6 +113,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
+    # ... (El resto del archivo 'state.py' sigue exactamente igual que el tuyo)
+    # ... (Pega aquí el resto de tu código de AppState sin modificarlo)
     # --- REGISTRO Y VERIFICACIÓN ---
     def handle_registration_email(self, form_data: dict):
         password = form_data.get("password")
@@ -142,7 +164,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "Error: No se encontró el usuario asociado a este token."
-
+    
     # --- MANEJO DE CONTRASEÑA ---
     email: str = ""
     is_success: bool = False
