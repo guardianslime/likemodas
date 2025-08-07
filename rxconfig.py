@@ -1,31 +1,38 @@
-# likemodas/rxconfig.py
+# likemodas/rxconfig.py (SOLUCIÓN DEFINITIVA)
 
 import reflex as rx
 import os
 from reflex.plugins import SitemapPlugin
 
-# Para desarrollo local, usará "http://localhost:8000".
-# En Railway, usará la URL que definas en las variables de entorno.
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+# --- URLs (Conservamos tu estructura) ---
+API_URL_PROD = "https://full-stack-python-production.up.railway.app"
+DEPLOY_URL = "https://likemodas.com"
+PREVIEW_URL = "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app"
+VERCEL_LEGACY_URL = "https://full-stack-python.vercel.app"
 
-# Reintroducimos tu configuración original de CORS para máxima compatibilidad
+# ✨ EXPLICACIÓN: Esta es la línea clave.
+# Usará la URL de producción por defecto, pero si estás corriendo
+# localmente, puedes crear un archivo `.env` para sobreescribirla.
+API_URL = os.getenv("API_URL", API_URL_PROD)
+
+# --- CORS (Conservamos tu estructura) ---
 default_origins = [
     "http://localhost:3000",
-    "https://full-stack-python-production.up.railway.app",
-    "https://likemodas.com",
+    API_URL,
+    DEPLOY_URL,
     "https://www.likemodas.com",
-    "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app",
-    "https://full-stack-python.vercel.app",
+    PREVIEW_URL,
+    VERCEL_LEGACY_URL,
 ]
-additional_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 cors_allowed_origins = list(
     {
         origen.strip()
-        for origen in default_origins + additional_origins
+        for origen in default_origins + os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
         if origen.strip()
     }
 )
 
+# --- Configuración Principal ---
 config = rx.Config(
     app_name="likemodas",
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
