@@ -3,7 +3,7 @@
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
-from urllib.parse import urlparse, parse_qs # ✅ <--- AÑADE ESTA IMPORTACIÓN AL INICIO DEL ARCHIVO
+from urllib.parse import urlparse, parse_qs
 import sqlmodel
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
@@ -93,29 +93,21 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    # ✅ <--- AÑADE ESTAS LÍNEAS AQUÍ
     error_message: str = ""
     success: bool = False
 
     # --- REGISTRO Y VERIFICACIÓN ---
     @rx.event
     def handle_registration_email(self, form_data: dict):
-        """
-        Manejador de registro personalizado que valida la contraseña,
-        crea el usuario manualmente y luego ejecuta acciones personalizadas
-        como crear un UserInfo y enviar un email de verificación.
-        """
         username = form_data.get("username")
         password = form_data.get("password")
 
-        # 1. Validación de contraseña
         password_errors = validate_password(password)
         if password_errors:
            self.error_message = "\n".join(password_errors)
            return
 
         with rx.session() as session:
-            # 2. Verificar si el usuario ya existe
             existing_user = session.exec(
                 sqlmodel.select(LocalUser).where(LocalUser.username == username)
             ).one_or_none()
@@ -124,27 +116,21 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = f"El usuario '{username}' ya existe."
                 return
 
-            # 3. Hashear la contraseña y crear el nuevo usuario
             password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
             new_user = LocalUser(username=username, password_hash=password_hash)
             session.add(new_user)
             session.commit()
             session.refresh(new_user)
             
-            # Guardar el ID del nuevo usuario para usarlo a continuación
-            # (Aunque no lo usas después, es una buena práctica si lo necesitaras)
             self.new_user_id = new_user.id
             
-            # 4. Lógica personalizada (crear UserInfo y enviar email)
             if self.new_user_id >= 0:
-                # Asignar rol de ADMIN si el username es el específico
                 user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
                 new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
 
-                # Crear y enviar token de verificación
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
@@ -153,17 +139,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 send_verification_email(recipient_email=new_user_info.email, token=token_str)
 
-        # 5. Marcar el registro como exitoso para que la UI reaccione
         self.success = True
 
     @rx.event
     def verify_token(self):
-        """Manejador para verificar el token de email."""
         if not self.router.url:
-            # Espera a que el router esté listo
             return
 
-        # ✅ CAMBIO: Usar self.router.url y parsear los parámetros
         parsed_url = urlparse(self.router.url)
         query_params = parse_qs(parsed_url.query)
         token = query_params.get("token", [""])[0]
@@ -198,7 +180,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     is_token_valid: bool = False
     password: str = ""
     confirm_password: str = ""
-    info_message: str = ""  # ✅ <--- AÑADE ESTA LÍNEA AQUÍ
+    info_message: str = ""
 
     def handle_forgot_password(self, form_data: dict):
         self.email = form_data.get("email", "")
@@ -490,7 +472,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_post)
             session.commit()
             session.refresh(new_post)
-            new_id = new_post.id
+        new_id = new_post.id
         
         self._clear_add_form()
         yield rx.toast.success("Producto publicado correctamente.")
@@ -644,7 +626,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_search_query_admin_posts(self, query: str):
         self.search_query_admin_posts = query
-        
+    
     @rx.var
     def filtered_admin_posts(self) -> list[BlogPostModel]:
         if not hasattr(self, 'admin_posts'):
@@ -675,7 +657,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 notification = NotificationModel(userinfo_id=purchase.userinfo_id, message=f"¡Tu compra #{purchase.id} ha sido confirmada!", url="/my-purchases")
-                session.add(purchase); session.add(notification); session.commit()
+                session.add(purchase); session.add(notification);
+                session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
                 yield AppState.load_pending_purchases
                 

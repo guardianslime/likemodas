@@ -58,7 +58,6 @@ class UserInfo(rx.Model, table=True):
     user_id: int = Field(foreign_key="localuser.id", unique=True)
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
     is_verified: bool = Field(default=False, nullable=False)
-    # Estos ya estaban correctos, los dejamos como están.
     created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), onupdate=sqlalchemy.func.now(), server_default=sqlalchemy.func.now(), nullable=False))
 
@@ -76,7 +75,6 @@ class UserInfo(rx.Model, table=True):
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
     expires_at: datetime = Field(sa_column=Column(sqlalchemy.DateTime(timezone=True), nullable=False))
     created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
     
@@ -86,7 +84,6 @@ class VerificationToken(rx.Model, table=True):
 class PasswordResetToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     user_id: int = Field(foreign_key="localuser.id")
-    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
     expires_at: datetime = Field(sa_column=Column(sqlalchemy.DateTime(timezone=True), nullable=False))
     created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
 
@@ -99,7 +96,6 @@ class BlogPostModel(rx.Model, table=True):
     attributes: dict = Field(default={}, sa_column=Column(JSON))
     image_urls: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     publish_active: bool = False
-    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
     publish_date: Optional[datetime] = Field(default=None, sa_column=Column(sqlalchemy.DateTime(timezone=True)))
     created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), onupdate=sqlalchemy.func.now(), server_default=sqlalchemy.func.now(), nullable=False))
@@ -143,7 +139,6 @@ class ShippingAddressModel(rx.Model, table=True):
     neighborhood: str
     address: str
     is_default: bool = Field(default=False, nullable=False)
-    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
     created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
 
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
@@ -151,7 +146,6 @@ class ShippingAddressModel(rx.Model, table=True):
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
     purchase_date: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
     confirmed_at: Optional[datetime] = Field(default=None, sa_column=Column(sqlalchemy.DateTime(timezone=True)))
     total_price: float
@@ -203,7 +197,6 @@ class NotificationModel(rx.Model, table=True):
     message: str
     is_read: bool = Field(default=False)
     url: Optional[str] = None
-    # Este ya estaba correcto.
     created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), nullable=False))
     
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
@@ -219,7 +212,6 @@ class ContactEntryModel(rx.Model, table=True):
     last_name: Optional[str] = None
     email: Optional[str] = None
     message: str
-    # Este ya estaba correcto.
     created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), nullable=False))
 
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
@@ -232,7 +224,6 @@ class ContactEntryModel(rx.Model, table=True):
 class CommentModel(rx.Model, table=True):
     content: str
     rating: int 
-    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
     created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), onupdate=sqlalchemy.func.now(), server_default=sqlalchemy.func.now(), nullable=False))
     userinfo_id: int = Field(foreign_key="userinfo.id")
