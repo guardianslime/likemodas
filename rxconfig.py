@@ -1,5 +1,8 @@
+# rxconfig.py (CORREGIDO)
+
 import reflex as rx
 import os
+from reflex.plugins import SitemapPlugin # <--- 1. Importa la clase del plugin
 
 API_URL = "https://full-stack-python-production.up.railway.app"
 DEPLOY_URL = "https://likemodas.com"
@@ -32,8 +35,8 @@ config = rx.Config(
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
     
-    # Se añade la lista de plugins para declarar explícitamente el sitemap
+    # ▼▼▼ 2. Usa una instancia del plugin, no un string ▼▼▼
     plugins=[
-        "reflex.plugins.sitemap.SitemapPlugin",
+        SitemapPlugin(),
     ],
 )
