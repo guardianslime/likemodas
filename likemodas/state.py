@@ -70,6 +70,7 @@ class UserPurchaseHistoryCardData(rx.Base):
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
+    new_user_id: int = -1
 
     # --- AUTH / SESSION ---
     @rx.var(cache=True)
