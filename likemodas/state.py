@@ -62,16 +62,18 @@ class AppState(rx.State):
         yield rx.toast.success("¡Producto creado con éxito!")
         return rx.set_value("form-create-product", "")
 
+
 class ProductDetailState(AppState):
     product_detail: Optional[Product] = None
     is_loading: bool = True
 
     # ▼▼▼ ESTA ES LA FUNCIÓN CORREGIDA ▼▼▼
-    # Se cambia 'def' por 'async def'
     @rx.event
     async def load_product_detail(self):
         self.is_loading = True
         with rx.session() as session:
+            # Reflex poblará self.product_id automáticamente
             self.product_detail = session.get(Product, int(self.product_id))
-        yield asyncio.sleep(0.05)
+        # Se cambia 'yield' por 'await' para la operación asíncrona
+        await asyncio.sleep(0.05)
         self.is_loading = False
