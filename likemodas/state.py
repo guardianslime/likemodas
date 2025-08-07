@@ -64,8 +64,8 @@ class AppState(rx.State):
 
     @rx.event
     def load_product_detail(self):
-        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA Y DEFINITIVA ▼▼▼
-        product_id = self.router.params.get("product_id", "0")
+        # ▼▼▼ REVERTIMOS A LA VERSIÓN OBSOLETA PERO FUNCIONAL ▼▼▼
+        product_id = self.router.page.params.get("product_id", "0")
         with rx.session() as session:
             self.product_detail = session.get(Product, int(product_id))
 
