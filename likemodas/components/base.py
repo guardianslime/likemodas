@@ -1,14 +1,12 @@
-# likemodas/components/base.py (CORREGIDO Y DEFINITIVO)
+# likemodas/components/base.py (CORREGIDO Y SIMPLIFICADO)
 
 import reflex as rx
 from .navbar import navbar
-from reflex.components.sonner import Toaster # <--- 1. AÑADE ESTA IMPORTACIÓN DIRECTA
 
 def base_page(child: rx.Component) -> rx.Component:
-    """Un layout base que incluye la navbar y el contenedor de notificaciones."""
+    """Un layout base que solo incluye la navbar."""
     return rx.box(
         navbar(),
         child,
-        # ▼▼▼ 2. USA EL COMPONENTE IMPORTADO DIRECTAMENTE ▼▼▼
-        Toaster(position="bottom-right", theme="dark"),
+        # La línea del toaster/toast se ha eliminado por completo.
     )
