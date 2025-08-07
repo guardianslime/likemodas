@@ -1,7 +1,7 @@
 import reflex as rx
 from reflex.style import toggle_color_mode
 from ..state import AppState
-from .nav import public_navbar
+from .nav import public_navbar  # Importa la nueva navbar de prueba
 from .skeletons import skeleton_navbar
 from .sidebar import sidebar, mobile_admin_menu, sidebar_dark_mode_toggle_item
 
@@ -21,9 +21,9 @@ def fixed_color_mode_button() -> rx.Component:
     )
 
 def public_layout(child: rx.Component) -> rx.Component:
-    """El layout para las páginas públicas, con la barra de navegación."""
+    """El layout para las páginas públicas, ahora con la navbar de prueba."""
     return rx.box(
-        public_navbar(),
+        public_navbar(),  # <-- Usando la navbar segura
         rx.box(
             child,
             padding_top="6rem",
@@ -36,9 +36,8 @@ def public_layout(child: rx.Component) -> rx.Component:
     )
 
 def admin_layout(child: rx.Component) -> rx.Component:
-    """El layout para las páginas de administración, con el menú lateral."""
+    """El layout para las páginas de administración."""
     return rx.fragment(
-        # Vista para móviles
         rx.box(
             rx.vstack(
                 rx.hstack(
@@ -51,7 +50,6 @@ def admin_layout(child: rx.Component) -> rx.Component:
                 display=["flex", "flex", "none", "none", "none"], spacing="0",
             ),
         ),
-        # Vista para escritorio
         rx.hstack(
             sidebar(),
             rx.box(child, padding="1em", width="100%"),
@@ -61,14 +59,10 @@ def admin_layout(child: rx.Component) -> rx.Component:
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    """
-    La página base definitiva para la aplicación.
-    Renderiza un esqueleto en el servidor y el layout real después de la hidratación.
-    """
+    """La página base que aplica el layout correcto."""
     return rx.cond(
         ~AppState.is_hydrated,
-        # --- 1. Layout Esqueleto (Renderizado en el Servidor) ---
-        # Muestra una estructura estable que no cambiará de tamaño.
+        # Layout Esqueleto (Funciona como antes)
         rx.box(
             skeleton_navbar(),
             rx.box(
@@ -77,12 +71,11 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             ),
             width="100%",
         ),
-        # --- 2. Layout Real (Renderizado en el Cliente) ---
-        # Usa rx.match para elegir el layout correcto de forma segura.
+        # Layout Real (Ahora usa los componentes de layout seguros)
         rx.match(
             AppState.is_admin,
             (True, admin_layout(child)),
             (False, public_layout(child)),
-            public_layout(child),  # Layout por defecto si hay algún problema
+            public_layout(child),
         ),
     )
