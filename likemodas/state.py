@@ -55,7 +55,6 @@ class AppState(rx.State):
 
         self.temp_images = []
         yield rx.toast.success("¡Producto creado con éxito!")
-        # ▼▼▼ CORRECCIÓN 1: Cambiado de set_val a set_value ▼▼▼
         return rx.set_value("form-create-product", "")
 
     @rx.event
@@ -65,8 +64,8 @@ class AppState(rx.State):
 
     @rx.event
     def load_product_detail(self):
-        # ▼▼▼ CORRECCIÓN 2: Cambiado de self.router.page.params a self.router.query ▼▼▼
-        product_id = self.router.query.get("product_id", "0")
+        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA Y DEFINITIVA ▼▼▼
+        product_id = self.router.params.get("product_id", "0")
         with rx.session() as session:
             self.product_detail = session.get(Product, int(product_id))
 
