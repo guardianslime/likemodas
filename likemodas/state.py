@@ -94,32 +94,58 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- REGISTRO Y VERIFICACIÓN ---
     @rx.event
     def handle_registration_email(self, form_data: dict):
+        """
+        Manejador de registro personalizado que valida la contraseña,
+        crea el usuario manualmente y luego ejecuta acciones personalizadas
+        como crear un UserInfo y enviar un email de verificación.
+        """
+        username = form_data.get("username")
         password = form_data.get("password")
+
+        # 1. Validación de contraseña (tu lógica actual)
         password_errors = validate_password(password)
         if password_errors:
             self.error_message = "\n".join(password_errors)
             return
 
-        registration_event = self._handle_registration(form_data)
+        with rx.session() as session:
+            # 2. Verificar si el usuario ya existe
+            existing_user = session.exec(
+                sqlmodel.select(LocalUser).where(LocalUser.username == username)
+            ).one_or_none()
 
-        if self.new_user_id >= 0:
-            with rx.session() as session:
-                user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
+            if existing_user:
+                self.error_message = f"El usuario '{username}' ya existe."
+                return
+
+            # 3. Hashear la contraseña y crear el nuevo usuario
+            password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+            new_user = LocalUser(username=username, password_hash=password_hash)
+            session.add(new_user)
+            session.commit()
+            session.refresh(new_user)
+            
+            # Guardar el ID del nuevo usuario para usarlo a continuación
+            self.new_user_id = new_user.id
+            
+            # 4. Lógica personalizada (crear UserInfo y enviar email)
+            if self.new_user_id >= 0:
+                user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
                 new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
+
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
+                
                 send_verification_email(recipient_email=new_user_info.email, token=token_str)
-        
-        return registration_event
 
-    info_message: str = ""
-    is_verified: bool = False
+        # 5. Marcar el registro como exitoso para que la UI reaccione
+        self.success = True
 
     @rx.event
     def verify_token(self):
