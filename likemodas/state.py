@@ -1,4 +1,4 @@
-# likemodas/state.py (SOLUCIÓN FINAL Y CORRECTA)
+# likemodas/state.py (CORREGIDO)
 
 import reflex as rx
 from sqlmodel import Field, Column, JSON
@@ -13,6 +13,7 @@ class Product(rx.Model, table=True):
     is_published: bool = Field(default=False)
 
 class AppState(rx.State):
+    # ... (código de AppState sin cambios) ...
     products: list[Product] = []
     cart: Dict[int, int] = {}
     temp_images: list[str] = []
@@ -62,16 +63,14 @@ class AppState(rx.State):
         return rx.set_value("form-create-product", "")
 
 class ProductDetailState(AppState):
-    # ▼▼▼ LA LÍNEA problematica `product_id: str = ""` HA SIDO ELIMINADA ▼▼▼
-    # Reflex ahora creará y gestionará `self.product_id` automáticamente.
     product_detail: Optional[Product] = None
     is_loading: bool = True
 
+    # ▼▼▼ ESTA ES LA FUNCIÓN CORREGIDA ▼▼▼
+    # Se cambia 'def' por 'async def'
     @rx.event
-    def load_product_detail(self):
+    async def load_product_detail(self):
         self.is_loading = True
-        # Ahora podemos acceder a self.product_id de forma segura,
-        # porque Reflex garantiza que existe.
         with rx.session() as session:
             self.product_detail = session.get(Product, int(self.product_id))
         yield asyncio.sleep(0.05)
