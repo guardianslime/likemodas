@@ -92,16 +92,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
     # --- REGISTRO Y VERIFICACIÓN ---
+    @rx.event
     def handle_registration_email(self, form_data: dict):
+        """
+        Manejador de registro personalizado que primero valida la contraseña,
+        luego llama a la lógica de registro de la librería y finalmente
+        ejecuta acciones personalizadas como crear un UserInfo y enviar un email.
+        """
         password = form_data.get("password")
         password_errors = validate_password(password)
         if password_errors:
             self.error_message = "\n".join(password_errors)
             return
 
-        # ✅ CORRECCIÓN 1: Usar 'yield' para llamar al manejador de registro original.
-        yield reflex_local_auth.RegistrationState.on_submit(form_data)
+        # ✅ CORRECCIÓN: Llamar al método interno '_handle_registration' de la librería.
+        # Esto realiza la creación del usuario y el hasheo de la contraseña.
+        registration_event = self._handle_registration(form_data)
 
+        # Después de que la librería crea el usuario, 'self.new_user_id' tendrá un valor.
+        # Usamos ese ID para nuestra lógica personalizada.
         if self.new_user_id >= 0:
             with rx.session() as session:
                 user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
@@ -116,10 +125,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(verification_token)
                 session.commit()
                 send_verification_email(recipient_email=new_user_info.email, token=token_str)
-
-    message: str = ""
-    is_verified: bool = False
-
+        
+        # Devolvemos el evento original de la librería.
+        return registration_event
     @rx.event
     def verify_token(self):
         # ✅ CORRECCIÓN 3: Usar 'query_params' en lugar de 'params'.
