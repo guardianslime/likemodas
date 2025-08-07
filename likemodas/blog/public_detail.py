@@ -79,28 +79,44 @@ def _info_section() -> rx.Component:
     )
 
 def blog_public_detail_content() -> rx.Component:
+    """
+    Página pública de detalle de producto con manejo de estados de carga robusto.
+    """
     return rx.center(
         rx.vstack(
+            rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
+            
+            # Condición principal que maneja la carga
             rx.cond(
                 AppState.is_post_loading,
+                
+                # 1. Muestra el esqueleto mientras los datos del post están cargando
                 skeleton_product_detail_view(),
+                
+                # 2. Cuando la carga termina, decide qué mostrar
                 rx.cond(
                     AppState.post,
-                    rx.fragment(
-                        rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
-                        rx.grid(
-                            _image_section(), _info_section(),
-                            columns="2", spacing="4", align_items="start",
-                            width="100%", max_width="1400px",
-                        ),
+                    # 2a. Si el post existe, muestra el contenido
+                    rx.grid(
+                        _image_section(), 
+                        _info_section(),
+                        columns="2", 
+                        spacing="4", 
+                        align_items="start",
+                        width="100%", 
+                        max_width="1400px",
                     ),
+                    # 2b. Si el post no se encontró, muestra un mensaje
                     rx.center(
                         rx.text("Publicación no encontrada o no disponible.", color="red"),
                         min_height="50vh"
                     )
                 )
             ),
-            spacing="6", width="100%", padding="2em", align="center",
+            spacing="6", 
+            width="100%", 
+            padding="2em", 
+            align="center"
         ),
         width="100%",
     )

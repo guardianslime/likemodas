@@ -1,5 +1,3 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
-
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -73,25 +71,14 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
-    # ========================================================================= #
-    # ==================== ✨ INICIO: CORRECCIÓN DE HIDRATACIÓN ==================== #
-    # ========================================================================= #
-
-    # Esta variable es la clave para la estabilidad de la UI.
-    # Comienza en False en el servidor.
+    # --- HIDRATACIÓN Y ESTADO DE CARGA ---
     is_hydrated: bool = False
+    is_post_loading: bool = True # Inicia como True por defecto
 
-    # Este evento es llamado por CADA PÁGINA al cargar en el navegador.
-    # Pone is_hydrated en True, activando el renderizado del contenido real.
     @rx.event
     def on_load(self):
         """Marca el estado del cliente como hidratado."""
         self.is_hydrated = True
-
-    # ========================================================================= #
-    # ===================== ✨ FIN: CORRECCIÓN DE HIDRATACIÓN ===================== #
-    # ========================================================================= #
-
 
     # --- AUTH / SESSION ---
     @rx.var(cache=True)
@@ -113,8 +100,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    # ... (El resto del archivo 'state.py' sigue exactamente igual que el tuyo)
-    # ... (Pega aquí el resto de tu código de AppState sin modificarlo)
     # --- REGISTRO Y VERIFICACIÓN ---
     def handle_registration_email(self, form_data: dict):
         password = form_data.get("password")
@@ -353,15 +338,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.cart[post_id] -= 1
             if self.cart[post_id] <= 0: del self.cart[post_id]
 
-    @rx.event
-    def on_load(self):
-        self.is_loading = True
-        yield
-        with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(timezone.utc)).order_by(BlogPostModel.created_at.desc())).unique().all()
-            self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price or 0.0, image_urls=p.image_urls or [], average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
-        self.is_loading = False
-    
     # --- GESTIÓN DE FORMULARIO DE AÑADIR PRODUCTO (ADMIN) ---
     title: str = ""
     content: str = ""
@@ -457,65 +433,66 @@ class AppState(reflex_local_auth.LocalAuthState):
     comments: list[CommentModel] = rx.Field(default_factory=list)
     new_comment_text: str = ""
     new_comment_rating: int = 0
-    is_post_loading: bool = True
-
-    # --- ✅ LÓGICA PARA EL CARRUSEL NATIVO ---
     current_image_index: int = 0
 
     @rx.var
     def current_image_url(self) -> str:
         """Devuelve la URL de la imagen actual a mostrar."""
         if self.post and self.post.image_urls:
-            # Asegura que el índice esté siempre dentro de los límites
             safe_index = self.current_image_index % len(self.post.image_urls)
             return self.post.image_urls[safe_index]
-        return "" # Devuelve una cadena vacía si no hay imágenes
+        return ""
 
     def next_image(self):
-        """Pasa a la siguiente imagen en el carrusel."""
         if self.post and self.post.image_urls:
             self.current_image_index = (self.current_image_index + 1) % len(self.post.image_urls)
 
     def prev_image(self):
-        """Vuelve a la imagen anterior en el carrusel."""
         if self.post and self.post.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.post.image_urls)) % len(self.post.image_urls)
 
-    @rx.event
-    def on_load_public_detail(self):
+    # ▼▼▼ MÉTODO CORREGIDO Y ROBUSTO ▼▼▼
+    async def on_load_public_detail(self):
         """
-        Evento robusto para cargar los detalles del post, gestionando el estado de carga.
+        Carga los detalles de una publicación de forma asíncrona y segura,
+        gestionando los estados de carga para evitar errores en la UI.
         """
-        self.current_image_index = 0 # ✅ Resetea el índice del carrusel
-        self.is_post_loading = True
         self.post = None
-        yield
+        self.is_post_loading = True
+        self.current_image_index = 0
+        try:
+            yield
 
-        try: 
-            pid = int(self.router.page.params.get("id", "0"))
-        except (ValueError, TypeError):
+            post_id_str = self.router.page.params.get("id", "")
+            if not post_id_str.isdigit():
+                print(f"Error: ID de post inválido en la URL: '{post_id_str}'")
+                return
+
+            post_id = int(post_id_str)
+            with rx.session() as session:
+                db_post = session.exec(
+                    sqlmodel.select(BlogPostModel)
+                    .options(
+                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                        .joinedload(CommentModel.userinfo)
+                        .joinedload(UserInfo.user)
+                    )
+                    .where(BlogPostModel.id == post_id, BlogPostModel.publish_active == True)
+                ).unique().one_or_none()
+
+                if db_post:
+                    self.post = db_post
+                    self.comments = sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
+                else:
+                    print(f"Post con ID {post_id} no encontrado o no está publicado.")
+                    self.post = None
+                    self.comments = []
+        except Exception as e:
+            print(f"Ocurrió un error al cargar el post: {e}")
+            self.post = None
+        finally:
             self.is_post_loading = False
-            return
 
-        with rx.session() as session:
-            db_post = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                    .joinedload(CommentModel.userinfo)
-                    .joinedload(UserInfo.user)
-                )
-                .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
-            ).unique().one_or_none()
-
-            if db_post: 
-                self.post = db_post
-                self.comments = sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
-            else: 
-                self.comments = []
-            
-            self.is_post_loading = False
-    
     # --- DIRECCIONES DE ENVÍO ---
     addresses: List[ShippingAddressModel] = rx.Field(default_factory=list)
     show_form: bool = False
