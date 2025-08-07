@@ -92,6 +92,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
+    # ✅ <--- AÑADE ESTAS LÍNEAS AQUÍ
+    error_message: str = ""
+    success: bool = False
+
     # --- REGISTRO Y VERIFICACIÓN ---
     @rx.event
     def handle_registration_email(self, form_data: dict):
