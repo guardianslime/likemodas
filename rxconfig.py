@@ -1,41 +1,14 @@
-# rxconfig.py (CORREGIDO)
+# rxconfig.py (SOLUCIÓN)
 
 import reflex as rx
-import os
-from reflex.plugins import SitemapPlugin # <--- 1. Importa la clase del plugin
+from reflex.plugins import SitemapPlugin
 
-API_URL = "https://full-stack-python-production.up.railway.app"
-DEPLOY_URL = "https://likemodas.com"
-PREVIEW_URL = "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app"
-VERCEL_LEGACY_URL = "https://full-stack-python.vercel.app"
-
-default_origins = [
-    "http://localhost:3000",
-    API_URL,
-    DEPLOY_URL,
-    "https://www.likemodas.com",
-    PREVIEW_URL,
-    VERCEL_LEGACY_URL,
-]
-
-additional_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
-cors_allowed_origins = list(
-    {
-        origen.strip()
-        for origen in default_origins + additional_origins
-        if origen.strip()
-    }
-)
-
-# --- Configuración Principal ---
+# La lógica de CORS se puede simplificar o eliminar si no es estrictamente necesaria.
+# Para Railway, a menudo no se necesita una configuración de CORS tan compleja.
 config = rx.Config(
     app_name="likemodas",
-    show_built_with_reflex=False,
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
-    api_url=API_URL,
-    cors_allowed_origins=cors_allowed_origins,
-    
-    # ▼▼▼ 2. Usa una instancia del plugin, no un string ▼▼▼
+    # Eliminamos api_url para que Reflex lo gestione automáticamente.
     plugins=[
         SitemapPlugin(),
     ],

@@ -18,6 +18,11 @@ class AppState(rx.State):
     cart: Dict[int, int] = {}
     temp_images: list[str] = []
     is_uploading: bool = False
+    is_hydrated: bool = False # <--- AÑADIR ESTA LÍNEA
+
+    def set_hydrated(self):
+        """Se llamará cuando el cliente esté listo."""
+        self.is_hydrated = True
 
     @rx.event
     def load_products(self):
@@ -67,13 +72,10 @@ class ProductDetailState(AppState):
     product_detail: Optional[Product] = None
     is_loading: bool = True
 
-    # ▼▼▼ ESTA ES LA FUNCIÓN CORREGIDA ▼▼▼
     @rx.event
     async def load_product_detail(self):
         self.is_loading = True
         with rx.session() as session:
-            # Reflex poblará self.product_id automáticamente
             self.product_detail = session.get(Product, int(self.product_id))
-        # Se cambia 'yield' por 'await' para la operación asíncrona
         await asyncio.sleep(0.05)
         self.is_loading = False

@@ -1,7 +1,7 @@
-# likemodas/likemodas.py (SOLUCIÓN DEFINITIVA)
+# likemodas/likemodas.py (SOLUCIÓN)
 
 import reflex as rx
-from likemodas.state import AppState, ProductDetailState # <--- Importamos ambos estados
+from likemodas.state import AppState, ProductDetailState
 from likemodas.components.base import base_page
 from likemodas.pages.index import index_page
 from likemodas.pages.product import product_page
@@ -12,9 +12,12 @@ app = rx.App()
 app.add_page(base_page(index_page()), route="/", on_load=AppState.load_products)
 app.add_page(base_page(admin_page()), route="/admin")
 
-# ✨ EXPLICACIÓN: La página de producto ahora usa ProductDetailState y su método de carga.
 app.add_page(
     base_page(product_page()),
     route="/product/[product_id]",
-    on_load=ProductDetailState.load_product_detail
+    on_load=ProductDetailState.load_product_detail,
+    # ✨ EXPLICACIÓN: on_mount solo se ejecuta en el cliente.
+    # Le decimos a nuestro estado que el cliente está listo,
+    # lo que activará el rx.cond para mostrar el contenido real.
+    on_mount=ProductDetailState.set_hydrated,
 )
