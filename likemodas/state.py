@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO CORREGIDO)
+# likemodas/state.py (ARCHIVO CORREGIDO Y COMPLETO)
 
 from __future__ import annotations
 import reflex as rx
@@ -106,11 +106,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         # ✅ CORRECCIÓN: Llamar al método interno '_handle_registration' de la librería.
-        # Esto realiza la creación del usuario y el hasheo de la contraseña.
         registration_event = self._handle_registration(form_data)
 
-        # Después de que la librería crea el usuario, 'self.new_user_id' tendrá un valor.
-        # Usamos ese ID para nuestra lógica personalizada.
         if self.new_user_id >= 0:
             with rx.session() as session:
                 user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
@@ -126,19 +123,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 send_verification_email(recipient_email=new_user_info.email, token=token_str)
         
-        # Devolvemos el evento original de la librería.
         return registration_event
+
+    # ✅ CORRECCIÓN: Variable renombrada para evitar conflictos.
+    info_message: str = ""
+    is_verified: bool = False
+
     @rx.event
     def verify_token(self):
-        # ✅ CORRECCIÓN 3: Usar 'query_params' en lugar de 'params'.
         token = self.router.page.query_params.get("token", "")
         if not token:
-            self.message = "Error: No se proporcionó un token de verificación."
+            self.info_message = "Error: No se proporcionó un token de verificación."
             return
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(VerificationToken).where(VerificationToken.token == token)).one_or_none()
             if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
-                self.message = "El token de verificación es inválido o ha expirado."
+                self.info_message = "El token de verificación es inválido o ha expirado."
                 if db_token: session.delete(db_token); session.commit()
                 return
             user_info = session.get(UserInfo, db_token.userinfo_id)
@@ -149,7 +149,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-            self.message = "Error: No se encontró el usuario asociado a este token."
+            self.info_message = "Error: No se encontró el usuario asociado a este token."
 
     # --- MANEJO DE CONTRASEÑA ---
     email: str = ""
@@ -162,7 +162,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def handle_forgot_password(self, form_data: dict):
         self.email = form_data.get("email", "")
         if not self.email:
-            self.message, self.is_success = "Por favor, introduce tu correo electrónico.", False
+            self.info_message, self.is_success = "Por favor, introduce tu correo electrónico.", False
             return
         with rx.session() as session:
             user_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == self.email)).one_or_none()
@@ -173,31 +173,30 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(reset_token)
                 session.commit()
                 send_password_reset_email(recipient_email=self.email, token=token_str)
-        self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
+        self.info_message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        # ✅ CORRECCIÓN 3: Usar 'query_params' en lugar de 'params'.
         self.token = self.router.page.query_params.get("token", "")
         if not self.token:
-            self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
+            self.info_message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
             if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
-                self.message, self.is_token_valid = "El enlace de reseteo es inválido o ha expirado.", False
+                self.info_message, self.is_token_valid = "El enlace de reseteo es inválido o ha expirado.", False
                 if db_token: session.delete(db_token); session.commit()
                 return
             self.is_token_valid = True
 
     def handle_reset_password(self, form_data: dict):
         self.password, self.confirm_password = form_data.get("password", ""), form_data.get("confirm_password", "")
-        if not self.is_token_valid: self.message = "Token no válido. Por favor, solicita un nuevo enlace."; return
-        if self.password != self.confirm_password: self.message = "Las contraseñas no coinciden."; return
+        if not self.is_token_valid: self.info_message = "Token no válido. Por favor, solicita un nuevo enlace."; return
+        if self.password != self.confirm_password: self.info_message = "Las contraseñas no coinciden."; return
         password_errors = validate_password(self.password)
-        if password_errors: self.message = "\n".join(password_errors); return
+        if password_errors: self.info_message = "\n".join(password_errors); return
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
-            if not db_token: self.message = "El token ha expirado o ya fue utilizado."; return
+            if not db_token: self.info_message = "El token ha expirado o ya fue utilizado."; return
             user = session.get(LocalUser, db_token.user_id)
             if user:
                 user.password_hash = bcrypt.hashpw(self.password.encode("utf-8"), bcrypt.gensalt())
@@ -223,7 +222,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_material_tela: str = ""
     filter_medida_talla: str = ""
     
-    # ✅ CORRECCIÓN 2: Usar 'not' en lugar de '~'.
     def toggle_filters(self): self.show_filters = not self.show_filters
     
     def clear_all_filters(self):
@@ -465,7 +463,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def on_load_public_detail(self):
-        # ✅ CORRECCIÓN 3: Usar 'query_params' en lugar de 'params'.
         try: pid = int(self.router.page.query_params.get("id", "0"))
         except (ValueError, TypeError): self.post = None; return
         with rx.session() as session:
@@ -483,7 +480,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # ✅ CORRECCIÓN 2: Usar 'not' en lugar de '~'.
     def toggle_form(self): self.show_form = not self.show_form
     
     def set_city(self, city: str): self.city, self.neighborhood, self.search_neighborhood = city, "", ""
@@ -687,7 +683,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_post_detail(self):
         try:
-            # ✅ CORRECCIÓN 3: Usar 'query_params' en lugar de 'params'.
             pid = int(self.router.page.query_params.get("blog_id", "0"))
         except (ValueError, TypeError):
             self.post = None
@@ -698,7 +693,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_edit(self):
         try:
-            # ✅ CORRECCIÓN 3: Usar 'query_params' en lugar de 'params'.
             pid = int(self.router.page.query_params.get("blog_id", "0"))
         except (ValueError, TypeError):
             self.post = None
