@@ -49,9 +49,11 @@ def my_login_page_content() -> rx.Component:
 def my_register_page_content() -> rx.Component:
     return rx.center(
         rx.cond(
-            reflex_local_auth.RegistrationState.success,
+            # ✅ CAMBIO: Apuntar a la variable de éxito de nuestro AppState
+            AppState.success,
             rx.vstack(
-                rx.text("Registration successful! Check your email to verify your account."),
+                rx.heading("¡Registro Exitoso!", size="7"),
+                rx.text("Revisa tu correo para verificar tu cuenta."),
             ),
             rx.card(my_register_form()),
         ),
