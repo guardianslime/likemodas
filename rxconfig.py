@@ -24,12 +24,16 @@ cors_allowed_origins = list(
     }
 )
 
-# --- Configuración Principal (SIN EL THEME) ---
-# El tema ahora se aplicará directamente en la definición de la app.
+# --- Configuración Principal ---
 config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
+    
+    # Se añade la lista de plugins para declarar explícitamente el sitemap
+    plugins=[
+        "reflex.plugins.sitemap.SitemapPlugin",
+    ],
 )
