@@ -1,10 +1,10 @@
-# likemodas/pages/product.py (SOLUCIÓN)
+# likemodas/pages/product.py (CORREGIDO)
 
 import reflex as rx
 from likemodas.state import ProductDetailState
 
 def skeleton_loader() -> rx.Component:
-    # ... (el código del esqueleto no cambia, sigue siendo necesario) ...
+    # ... (el código del esqueleto no cambia) ...
     return rx.grid(
         rx.box(height="400px", background_color=rx.color("gray", 4), border_radius="md"),
         rx.vstack(
@@ -21,12 +21,8 @@ def skeleton_loader() -> rx.Component:
 def product_page() -> rx.Component:
     """Página de detalle con manejo de hidratación para evitar errores."""
     return rx.container(
-        # ✨ EXPLICACIÓN: Condición principal basada en la hidratación del cliente.
-        # Tanto el servidor como el cliente renderizarán el esqueleto al inicio.
-        # Solo cuando el cliente esté 100% listo (`on_mount`), se mostrará el contenido.
         rx.cond(
             ProductDetailState.is_hydrated,
-            # Si está hidratado, muestra el contenido real
             rx.grid(
                 rx.image(src=rx.get_upload_url(ProductDetailState.product_detail.image_urls[0]), width="100%", height="auto", border_radius="md"),
                 rx.vstack(
@@ -44,8 +40,9 @@ def product_page() -> rx.Component:
                 ),
                 columns={"initial": "1", "md": "2"}, spacing="6", width="100%",
             ),
-            # Si no está hidratado, muestra el esqueleto
             skeleton_loader(),
         ),
         padding_top="8em",
+        # ▼▼▼ on_mount AHORA ESTÁ AQUÍ, EN EL COMPONENTE RAÍZ DE LA PÁGINA ▼▼▼
+        on_mount=ProductDetailState.set_hydrated,
     )
