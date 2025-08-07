@@ -1,4 +1,4 @@
-# likemodas/models.py
+# likemodas/models.py (CORREGIDO Y OPTIMIZADO)
 
 from typing import Optional, List
 from datetime import datetime
@@ -20,11 +20,14 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
         return "N/A"
     try:
         colombia_tz = pytz.timezone("America/Bogota")
-        aware_utc_dt = utc_dt.replace(tzinfo=pytz.utc)
-        local_dt = aware_utc_dt.astimezone(colombia_tz)
+        # Si la fecha que llega no tiene timezone, se asume que es UTC
+        if utc_dt.tzinfo is None:
+            utc_dt = utc_dt.replace(tzinfo=pytz.utc)
+        local_dt = utc_dt.astimezone(colombia_tz)
         return local_dt.strftime('%d-%m-%Y %I:%M %p')
     except Exception:
-        return utc_dt.strftime('%Y-%m-%d %H:%M')
+        # Fallback por si algo sale mal
+        return utc_dt.strftime('%Y-%m-%d %H:%M') if utc_dt else "N/A"
 
 # --- Enumeraciones ---
 
@@ -55,8 +58,9 @@ class UserInfo(rx.Model, table=True):
     user_id: int = Field(foreign_key="localuser.id", unique=True)
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
     is_verified: bool = Field(default=False, nullable=False)
-    created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
-    updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
+    # Estos ya estaban correctos, los dejamos como están.
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
+    updated_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), onupdate=sqlalchemy.func.now(), server_default=sqlalchemy.func.now(), nullable=False))
 
     user: Optional["LocalUser"] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
@@ -72,8 +76,9 @@ class UserInfo(rx.Model, table=True):
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    expires_at: datetime
-    created_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
+    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
+    expires_at: datetime = Field(sa_column=Column(sqlalchemy.DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
     
     userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
 
@@ -81,8 +86,9 @@ class VerificationToken(rx.Model, table=True):
 class PasswordResetToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     user_id: int = Field(foreign_key="localuser.id")
-    expires_at: datetime
-    created_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
+    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
+    expires_at: datetime = Field(sa_column=Column(sqlalchemy.DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
 
 
 class BlogPostModel(rx.Model, table=True):
@@ -93,9 +99,10 @@ class BlogPostModel(rx.Model, table=True):
     attributes: dict = Field(default={}, sa_column=Column(JSON))
     image_urls: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     publish_active: bool = False
-    publish_date: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
-    updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
+    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
+    publish_date: Optional[datetime] = Field(default=None, sa_column=Column(sqlalchemy.DateTime(timezone=True)))
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
+    updated_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), onupdate=sqlalchemy.func.now(), server_default=sqlalchemy.func.now(), nullable=False))
     category: Category = Field(
         default=Category.OTROS, 
         sa_column=Column(String, nullable=False, server_default=Category.OTROS.value)
@@ -136,15 +143,17 @@ class ShippingAddressModel(rx.Model, table=True):
     neighborhood: str
     address: str
     is_default: bool = Field(default=False, nullable=False)
-    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
 
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
 
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    purchase_date: datetime = Field(default_factory=get_utc_now, nullable=False)
-    confirmed_at: Optional[datetime] = Field(default=None)
+    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
+    purchase_date: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
+    confirmed_at: Optional[datetime] = Field(default=None, sa_column=Column(sqlalchemy.DateTime(timezone=True)))
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
     shipping_name: Optional[str] = None
@@ -170,12 +179,8 @@ class PurchaseModel(rx.Model, table=True):
 
     @property
     def items_formatted(self) -> list[str]:
-        # --- ✅ CORRECCIÓN CLAVE AQUÍ ---
-        # Se asegura de que siempre se devuelva una lista,
-        # incluso si no hay artículos, para evitar errores en el frontend.
         if not self.items:
             return []
-        
         return [
             f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)"
             for item in self.items
@@ -198,7 +203,8 @@ class NotificationModel(rx.Model, table=True):
     message: str
     is_read: bool = Field(default=False)
     url: Optional[str] = None
-    created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
+    # Este ya estaba correcto.
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), nullable=False))
     
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
     
@@ -213,7 +219,8 @@ class ContactEntryModel(rx.Model, table=True):
     last_name: Optional[str] = None
     email: Optional[str] = None
     message: str
-    created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
+    # Este ya estaba correcto.
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), nullable=False))
 
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
 
@@ -225,8 +232,9 @@ class ContactEntryModel(rx.Model, table=True):
 class CommentModel(rx.Model, table=True):
     content: str
     rating: int 
-    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
-    updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
+    # ✅ CORRECCIÓN: Añadido soporte de zona horaria a la columna.
+    created_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), server_default=sqlalchemy.func.now(), nullable=False))
+    updated_at: datetime = Field(default_factory=get_utc_now, sa_column=Column(sqlalchemy.DateTime(timezone=True), onupdate=sqlalchemy.func.now(), server_default=sqlalchemy.func.now(), nullable=False))
     userinfo_id: int = Field(foreign_key="userinfo.id")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     
