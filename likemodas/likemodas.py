@@ -4,7 +4,7 @@ import reflex as rx
 import reflex_local_auth
 
 from .state import AppState
-
+from . import pages  # Importa el nuevo archivo central de páginas
 # --- Módulos de la aplicación ---
 from .auth import pages as auth_pages
 from .pages import search_results, category_page
@@ -46,9 +46,9 @@ app.add_page(base_page(index_content()), route="/", on_load=HomePageState.on_loa
 app.add_page(base_page(search_results.search_results_content()), route="/search-results", title="Resultados de Búsqueda")
 
 # Rutas de Autenticación
-app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE)
-app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE)
-app.add_page(base_page(auth_pages.verification_page_content()), route="/verify-email", on_load=AppState.verify_token)
+app.add_page(base_page(pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE)
+app.add_page(base_page(pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE)
+app.add_page(base_page(pages.verification_page_content()), route="/verify-email", on_load=AppState.verify_token)
 app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgot-password")
 app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-password", on_load=AppState.on_load_check_token)
 
