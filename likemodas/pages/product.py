@@ -50,5 +50,5 @@ def product_page() -> rx.Component:
             ),
             padding_top="8em",
         ),
-        rx.center(rx.circular_progress(is_indeterminate=True), padding_top="10em")
+        rx.center(rx.spinner(size="3"), padding_top="10em")
     )
