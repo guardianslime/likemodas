@@ -1,4 +1,4 @@
-# likemodas/state.py (CORREGIDO)
+# likemodas/state.py
 
 import reflex as rx
 from sqlmodel import Field, Column, JSON
@@ -13,16 +13,15 @@ class Product(rx.Model, table=True):
     is_published: bool = Field(default=False)
 
 class AppState(rx.State):
-    # ... (código de AppState sin cambios) ...
+    is_hydrated: bool = False
+
+    def set_is_hydrated(self, hydrated: bool):
+        self.is_hydrated = hydrated
+
     products: list[Product] = []
     cart: Dict[int, int] = {}
     temp_images: list[str] = []
     is_uploading: bool = False
-    is_hydrated: bool = False # <--- AÑADIR ESTA LÍNEA
-
-    def set_hydrated(self):
-        """Se llamará cuando el cliente esté listo."""
-        self.is_hydrated = True
 
     @rx.event
     def load_products(self):
@@ -35,19 +34,16 @@ class AppState(rx.State):
 
     @rx.event
     def add_to_cart(self, product_id: int):
-        if product_id not in self.cart:
-            self.cart[product_id] = 0
+        if product_id not in self.cart: self.cart[product_id] = 0
         self.cart[product_id] += 1
-        return rx.toast.info(f"Producto añadido al carrito. Total: {self.cart[product_id]}")
+        return rx.toast.info(f"Producto añadido. Total: {self.cart[product_id]}")
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.is_uploading = True
         for file in files:
-            upload_data = await file.read()
-            outfile = rx.get_upload_dir() / file.name
-            with outfile.open("wb") as file_object:
-                file_object.write(upload_data)
+            upload_data, outfile = await file.read(), rx.get_upload_dir() / file.name
+            with outfile.open("wb") as file_object: file_object.write(upload_data)
             self.temp_images.append(file.name)
         self.is_uploading = False
 
@@ -67,7 +63,6 @@ class AppState(rx.State):
         yield rx.toast.success("¡Producto creado con éxito!")
         return rx.set_value("form-create-product", "")
 
-
 class ProductDetailState(AppState):
     product_detail: Optional[Product] = None
     is_loading: bool = True
@@ -77,5 +72,5 @@ class ProductDetailState(AppState):
         self.is_loading = True
         with rx.session() as session:
             self.product_detail = session.get(Product, int(self.product_id))
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.1)
         self.is_loading = False
