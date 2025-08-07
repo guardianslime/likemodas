@@ -1,4 +1,14 @@
+# alembic/env.py (CORREGIDO Y ROBUSTO)
+
 from logging.config import fileConfig
+
+# ✅ INICIO DE LA CORRECCIÓN: Añadir la ruta del proyecto
+import os
+import sys
+# Añade la ruta del directorio raíz del proyecto al sys.path
+# Esto asegura que Alembic siempre pueda encontrar el módulo 'likemodas'
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# ✅ FIN DE LA CORRECCIÓN
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -7,6 +17,7 @@ from alembic import context
 
 import reflex as rx
 
+# Ahora la importación funcionará sin problemas
 from likemodas import models
 
 # this is the Alembic Config object, which provides
@@ -20,8 +31,6 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
 target_metadata = rx.Model.metadata
 
 # other values from the config, defined by the needs of env.py,
