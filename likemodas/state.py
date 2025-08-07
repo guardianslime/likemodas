@@ -3,6 +3,7 @@
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
+from urllib.parse import urlparse, parse_qs # ✅ <--- AÑADE ESTA IMPORTACIÓN AL INICIO DEL ARCHIVO
 import sqlmodel
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
@@ -157,16 +158,29 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def verify_token(self):
-        token = self.router.page.query_params.get("token", "")
+        """Manejador para verificar el token de email."""
+        if not self.router.url:
+            # Espera a que el router esté listo
+            return
+
+        # ✅ CAMBIO: Usar self.router.url y parsear los parámetros
+        parsed_url = urlparse(self.router.url)
+        query_params = parse_qs(parsed_url.query)
+        token = query_params.get("token", [""])[0]
+
         if not token:
             self.info_message = "Error: No se proporcionó un token de verificación."
             return
+
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(VerificationToken).where(VerificationToken.token == token)).one_or_none()
             if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
                 self.info_message = "El token de verificación es inválido o ha expirado."
-                if db_token: session.delete(db_token); session.commit()
+                if db_token: 
+                    session.delete(db_token)
+                    session.commit()
                 return
+            
             user_info = session.get(UserInfo, db_token.userinfo_id)
             if user_info:
                 user_info.is_verified = True
@@ -175,16 +189,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+            
             self.info_message = "Error: No se encontró el usuario asociado a este token."
 
-    # --- MANEJO DE CONTRASEÑA ---
-    email: str = ""
-    is_success: bool = False
-    token: str = ""
-    is_token_valid: bool = False
-    password: str = ""
-    confirm_password: str = ""
-    info_message: str = ""  # ✅ <--- AÑADE ESTA LÍNEA AQUÍ
 
     def handle_forgot_password(self, form_data: dict):
         self.email = form_data.get("email", "")
