@@ -102,11 +102,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         username = form_data.get("username")
         password = form_data.get("password")
 
-        # 1. Validación de contraseña (tu lógica actual)
+        # 1. Validación de contraseña
         password_errors = validate_password(password)
         if password_errors:
-            self.error_message = "\n".join(password_errors)
-            return
+           self.error_message = "\n".join(password_errors)
+           return
 
         with rx.session() as session:
             # 2. Verificar si el usuario ya existe
@@ -126,16 +126,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.refresh(new_user)
             
             # Guardar el ID del nuevo usuario para usarlo a continuación
+            # (Aunque no lo usas después, es una buena práctica si lo necesitaras)
             self.new_user_id = new_user.id
             
             # 4. Lógica personalizada (crear UserInfo y enviar email)
             if self.new_user_id >= 0:
+                # Asignar rol de ADMIN si el username es el específico
                 user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
                 new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
 
+                # Crear y enviar token de verificación
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
