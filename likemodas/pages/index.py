@@ -28,12 +28,17 @@ def product_card(product: rx.Var[dict]) -> rx.Component:
 
 def index_page() -> rx.Component:
     """La página de inicio que muestra la galería de productos."""
-    # Ya no se necesita rx.box ni navbar() aquí.
     return rx.container(
         rx.heading("Nuestros Productos", size="8", margin_top="3em", margin_bottom="1em"),
         rx.grid(
             rx.foreach(AppState.products, product_card),
-            columns=["1", "2", "3", "4"],
+            # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
+            columns={
+                "initial": "1", # 1 columna en el tamaño más pequeño (móvil)
+                "sm": "2",      # 2 columnas en pantallas pequeñas y superiores
+                "md": "3",      # 3 columnas en pantallas medianas y superiores
+                "lg": "4",      # 4 columnas en pantallas grandes y superiores
+            },
             spacing="4",
             width="100%",
         ),
