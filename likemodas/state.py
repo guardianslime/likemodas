@@ -46,9 +46,9 @@ class AdminPurchaseCardData(rx.Base):
     purchase_date_formatted: str
     status: str
     total_price: float
-    shipping_name: str
-    shipping_full_address: str
-    shipping_phone: str
+    shipping_name: Optional[str] = ""
+    shipping_full_address: Optional[str] = ""
+    shipping_phone: Optional[str] = ""
     items_formatted: list[str]
 
     @property
@@ -60,11 +60,12 @@ class UserPurchaseHistoryCardData(rx.Base):
     purchase_date_formatted: str
     status: str
     total_price_cop: str
-    shipping_name: str
-    shipping_address: str
-    shipping_neighborhood: str
-    shipping_city: str
-    shipping_phone: str
+    # ▼▼▼ CORRECCIÓN 1: Permite que los campos de envío puedan ser nulos ▼▼▼
+    shipping_name: Optional[str] = ""
+    shipping_address: Optional[str] = ""
+    shipping_neighborhood: Optional[str] = ""
+    shipping_city: Optional[str] = ""
+    shipping_phone: Optional[str] = ""
     items_formatted: list[str]
 
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
@@ -73,7 +74,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- HIDRATACIÓN Y ESTADO DE CARGA ---
     is_hydrated: bool = False
-    is_post_loading: bool = True # Inicia como True por defecto
+    is_post_loading: bool = True 
 
     @rx.event
     def on_load(self):
@@ -488,7 +489,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     self.post = None
                     self.comments = []
         except Exception as e:
-            print(f"Ocurrió un error al cargar el post: {e}")
+            print(f"Ocurrió un error al cargar los detalles del producto: {e}")
             self.post = None
         finally:
             self.is_post_loading = False
@@ -642,7 +643,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.is_admin: self.pending_purchases = []; return
         with rx.session() as session:
             results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status == PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.asc())).unique().all()
-            self.pending_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
+            self.pending_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name or "", shipping_full_address=f"{p.shipping_address or ''}, {p.shipping_neighborhood or ''}, {p.shipping_city or ''}", shipping_phone=p.shipping_phone or "", items_formatted=p.items_formatted) for p in results]
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
             
     @rx.event
@@ -673,7 +674,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.is_admin: self.confirmed_purchases = []; return
         with rx.session() as session:
             results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status != PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.desc())).unique().all()
-            self.confirmed_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
+            self.confirmed_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name or "", shipping_full_address=f"{p.shipping_address or ''}, {p.shipping_neighborhood or ''}, {p.shipping_city or ''}", shipping_phone=p.shipping_phone or "", items_formatted=p.items_formatted) for p in results]
     
     # --- GESTIÓN DE BLOG (ADMIN) ---
     admin_posts: List[BlogPostModel] = rx.Field(default_factory=list) 
@@ -778,12 +779,35 @@ class AppState(reflex_local_auth.LocalAuthState):
         q = self.search_query_user_history.lower()
         return [p for p in self.user_purchases if q in f"#{p.id}" or any(q in item.lower() for item in p.items_formatted)]
 
+    # ▼▼▼ CORRECCIÓN 3: Lógica de carga de compras a prueba de nulos ▼▼▼
     @rx.event
     def load_purchases(self):
-        if not self.authenticated_user_info: self.user_purchases = []; return
+        if not self.authenticated_user_info: 
+            self.user_purchases = []
+            return
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.userinfo_id == self.authenticated_user_info.id).order_by(PurchaseModel.purchase_date.desc())).unique().all()
-            self.user_purchases = [UserPurchaseHistoryCardData(id=p.id, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price_cop=p.total_price_cop, shipping_name=p.shipping_name, shipping_address=p.shipping_address, shipping_neighborhood=p.shipping_neighborhood, shipping_city=p.shipping_city, shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
+            results = session.exec(
+                sqlmodel.select(PurchaseModel)
+                .options(sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post))
+                .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
+                .order_by(PurchaseModel.purchase_date.desc())
+            ).unique().all()
+            
+            # Se construye la lista de forma segura, asignando "" si un campo es nulo
+            self.user_purchases = [
+                UserPurchaseHistoryCardData(
+                    id=p.id, 
+                    purchase_date_formatted=p.purchase_date_formatted, 
+                    status=p.status.value, 
+                    total_price_cop=p.total_price_cop, 
+                    shipping_name=p.shipping_name or "",
+                    shipping_address=p.shipping_address or "",
+                    shipping_neighborhood=p.shipping_neighborhood or "", 
+                    shipping_city=p.shipping_city or "", 
+                    shipping_phone=p.shipping_phone or "", 
+                    items_formatted=p.items_formatted
+                ) for p in results
+            ]
 
     # --- CONTACTO ---
     form_data: dict = {}
