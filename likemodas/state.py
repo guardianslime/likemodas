@@ -1,11 +1,10 @@
-# likemodas/state.py (SOLUCIÓN DEFINITIVA)
+# likemodas/state.py (SOLUCIÓN FINAL Y CORRECTA)
 
 import reflex as rx
 from sqlmodel import Field, Column, JSON
 from typing import List, Dict, Optional
 import asyncio
 
-# --- MODELO DE DATOS (Sin cambios) ---
 class Product(rx.Model, table=True):
     title: str
     content: str
@@ -13,7 +12,6 @@ class Product(rx.Model, table=True):
     image_urls: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     is_published: bool = Field(default=False)
 
-# --- ESTADO PRINCIPAL DE LA APP (Sin cambios en su mayoría) ---
 class AppState(rx.State):
     products: list[Product] = []
     cart: Dict[int, int] = {}
@@ -36,7 +34,6 @@ class AppState(rx.State):
         self.cart[product_id] += 1
         return rx.toast.info(f"Producto añadido al carrito. Total: {self.cart[product_id]}")
 
-    # --- Administración (Sin cambios) ---
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
         self.is_uploading = True
@@ -53,7 +50,6 @@ class AppState(rx.State):
 
     @rx.event
     def create_product(self, form_data: dict):
-        # ... (lógica de create_product sin cambios)
         title, content, price = form_data.get("title"), form_data.get("content"), form_data.get("price")
         if not all([title, content, price, self.temp_images]):
             return rx.toast.error("Todos los campos y al menos una imagen son requeridos.")
@@ -65,23 +61,18 @@ class AppState(rx.State):
         yield rx.toast.success("¡Producto creado con éxito!")
         return rx.set_value("form-create-product", "")
 
-
-# --- ESTADO ESPECIALIZADO PARA LA PÁGINA DE DETALLE ---
-# ✨ EXPLICACIÓN: Esta es la solución al error de Railway.
-# Al crear un estado que hereda de AppState, Reflex automáticamente
-# poblará la variable `product_id` con el valor de la URL ([product_id]).
-# Esto ocurre ANTES de que se llame a cualquier evento, garantizando que el ID siempre exista.
 class ProductDetailState(AppState):
-    product_id: str = ""  # Reflex llenará esto automáticamente desde la URL.
+    # ▼▼▼ LA LÍNEA problematica `product_id: str = ""` HA SIDO ELIMINADA ▼▼▼
+    # Reflex ahora creará y gestionará `self.product_id` automáticamente.
     product_detail: Optional[Product] = None
     is_loading: bool = True
 
     @rx.event
     def load_product_detail(self):
-        """Carga los datos usando el product_id que ya está en el estado."""
         self.is_loading = True
+        # Ahora podemos acceder a self.product_id de forma segura,
+        # porque Reflex garantiza que existe.
         with rx.session() as session:
             self.product_detail = session.get(Product, int(self.product_id))
-        # Pequeña pausa para que la UI se actualice
         yield asyncio.sleep(0.05)
         self.is_loading = False
