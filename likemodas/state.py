@@ -94,18 +94,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- REGISTRO Y VERIFICACIÓN ---
     @rx.event
     def handle_registration_email(self, form_data: dict):
-        """
-        Manejador de registro personalizado que primero valida la contraseña,
-        luego llama a la lógica de registro de la librería y finalmente
-        ejecuta acciones personalizadas como crear un UserInfo y enviar un email.
-        """
         password = form_data.get("password")
         password_errors = validate_password(password)
         if password_errors:
             self.error_message = "\n".join(password_errors)
             return
 
-        # ✅ CORRECCIÓN: Llamar al método interno '_handle_registration' de la librería.
         registration_event = self._handle_registration(form_data)
 
         if self.new_user_id >= 0:
@@ -115,7 +109,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
-
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
@@ -125,12 +118,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         return registration_event
 
-    # ✅ CORRECCIÓN: Variable renombrada para evitar conflictos.
+    # ✅ CORRECCIÓN 1: Variable renombrada a 'info_message' para evitar conflictos.
     info_message: str = ""
     is_verified: bool = False
 
     @rx.event
     def verify_token(self):
+        # ✅ CORRECCIÓN 2: Usar 'query_params' para la nueva API de Reflex.
         token = self.router.page.query_params.get("token", "")
         if not token:
             self.info_message = "Error: No se proporcionó un token de verificación."
@@ -222,6 +216,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_material_tela: str = ""
     filter_medida_talla: str = ""
     
+    # ✅ CORRECCIÓN 3: Usar 'not' en lugar de '~'.
     def toggle_filters(self): self.show_filters = not self.show_filters
     
     def clear_all_filters(self):
