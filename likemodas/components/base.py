@@ -8,7 +8,7 @@ def base_page(child: rx.Component) -> rx.Component:
     return rx.box(
         navbar(),
         child,
-        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
-        # Usamos rx.sonner.toaster para el contenedor.
-        rx.sonner.toaster(position="bottom-right", theme="dark"),
+        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA Y DEFINITIVA ▼▼▼
+        # El alias correcto es rx.toaster (todo en minúscula)
+        rx.toaster(position="bottom-right", theme="dark"),
     )
