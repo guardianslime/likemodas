@@ -118,13 +118,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         return registration_event
 
-    # ✅ CORRECCIÓN 1: Variable renombrada a 'info_message' para evitar conflictos.
+    # ✅ CORRECCIÓN: Variable renombrada a 'info_message' para evitar conflictos.
     info_message: str = ""
     is_verified: bool = False
 
     @rx.event
     def verify_token(self):
-        # ✅ CORRECCIÓN 2: Usar 'query_params' para la nueva API de Reflex.
         token = self.router.page.query_params.get("token", "")
         if not token:
             self.info_message = "Error: No se proporcionó un token de verificación."
@@ -216,7 +215,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_material_tela: str = ""
     filter_medida_talla: str = ""
     
-    # ✅ CORRECCIÓN 3: Usar 'not' en lugar de '~'.
     def toggle_filters(self): self.show_filters = not self.show_filters
     
     def clear_all_filters(self):
