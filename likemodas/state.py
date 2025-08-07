@@ -118,7 +118,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         return registration_event
 
-    # ✅ CORRECCIÓN: Variable renombrada a 'info_message' para evitar conflictos.
     info_message: str = ""
     is_verified: bool = False
 
@@ -473,7 +472,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # ✅ CORRECCIÓN 3: Usar 'not' en lugar de '~'.
     def toggle_form(self): self.show_form = not self.show_form
     
     def set_city(self, city: str): self.city, self.neighborhood, self.search_neighborhood = city, "", ""
