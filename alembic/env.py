@@ -7,7 +7,7 @@ import os
 import sys
 # Añade la ruta del directorio raíz del proyecto al sys.path
 # Esto asegura que Alembic SIEMPRE pueda encontrar el módulo 'likemodas'
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) 
 # FIN DE LA CORRECCIÓN
 
 from sqlalchemy import engine_from_config
@@ -18,12 +18,10 @@ import reflex as rx
 # Ahora la importación funcionará 100% seguro
 from likemodas import models
 
-# ... (El resto del archivo no necesita cambios, puedes dejarlo como estaba o copiar el que te di antes)
-# ... (Solo asegúrate de que las líneas de arriba estén presentes)
-
+# ... (El resto del archivo no necesita cambios)
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name) 
 
 target_metadata = rx.Model.metadata
 
@@ -42,7 +40,7 @@ def run_migrations_online() -> None:
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+        poolclass=pool.NullPool, 
     )
     with connectable.connect() as connection:
         context.configure(
