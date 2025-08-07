@@ -192,6 +192,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             self.info_message = "Error: No se encontró el usuario asociado a este token."
 
+    email: str = ""
+    is_success: bool = False
+    token: str = ""
+    is_token_valid: bool = False
+    password: str = ""
+    confirm_password: str = ""
+    info_message: str = ""  # ✅ <--- AÑADE ESTA LÍNEA AQUÍ
 
     def handle_forgot_password(self, form_data: dict):
         self.email = form_data.get("email", "")
