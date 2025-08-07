@@ -2,15 +2,14 @@
 
 import reflex as rx
 from likemodas.state import AppState
-# Se elimina la importación de la navbar de aquí
 
 def product_page() -> rx.Component:
     """Página de detalle para un producto específico."""
-    # Ya no se necesita el rx.box exterior
     return rx.cond(
         AppState.product_detail,
         rx.container(
             rx.grid(
+                # Columna de la imagen (sin cambios)
                 rx.vstack(
                     rx.image(
                         src=rx.get_upload_url(AppState.product_detail.image_urls[0]),
@@ -20,6 +19,7 @@ def product_page() -> rx.Component:
                     ),
                     align="center",
                 ),
+                # Columna de la información (sin cambios)
                 rx.vstack(
                     rx.heading(AppState.product_detail.title, size="8"),
                     rx.text(
@@ -40,7 +40,11 @@ def product_page() -> rx.Component:
                     align="start",
                     height="100%",
                 ),
-                columns=["1", "1", "1", "2"],
+                # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
+                columns={
+                    "initial": "1", # 1 columna en móvil
+                    "md": "2",      # 2 columnas en tablets y escritorios
+                },
                 spacing="6",
                 width="100%",
             ),
