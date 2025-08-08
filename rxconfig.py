@@ -11,7 +11,6 @@ default_origins = [
     API_URL,
     DEPLOY_URL,
 ]
-# Permite añadir orígenes adicionales desde variables de entorno
 additional_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 cors_allowed_origins = list(
     {
@@ -27,6 +26,9 @@ config = rx.Config(
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
+    
+    # Desactiva el plugin de sitemap para eliminar la advertencia
+    disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
     
     # Tema unificado para toda la aplicación
     theme=rx.theme(
