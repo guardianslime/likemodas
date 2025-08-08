@@ -4,7 +4,7 @@ import reflex as rx
 import reflex_local_auth
 
 from.state import AppState
-from fastapi import Response
+from starlette.responses import Response
 # --- Módulos de la aplicación ---
 from.auth import pages as auth_pages
 from.pages import search_results, category_page
