@@ -461,15 +461,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_public_detail(self):
         """
-        Evento robusto para cargar los detalles del post, gestionando el estado de carga.
+        Evento robusto para cargar los detalles del post, usando la sintaxis moderna.
         """
-        self.current_image_index = 0 # Resetea el índice del carrusel
+        self.current_image_index = 0
         self.is_post_loading = True
         self.post = None
         yield
 
+        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA Y DEFINITIVA ▼▼▼
+        # Usamos la nueva sintaxis self.router.params, que es más limpia.
+        post_id = self.router.params.get("id", "0")
+        
+        # El resto de la función sigue igual...
         try: 
-            pid = int(self.router.page.params.get("id", "0"))
+            pid = int(post_id)
         except (ValueError, TypeError):
             self.is_post_loading = False
             return
