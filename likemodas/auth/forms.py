@@ -1,20 +1,18 @@
-# likemodas/auth/forms.py (CORREGIDO)
+# likemodas/auth/forms.py (CORREGIDO Y COMPLETO)
 
 import reflex as rx
 import reflex_local_auth
 from reflex_local_auth.pages.components import input_100w, MIN_WIDTH
 from ..ui.password_input import password_input
-from ..state import AppState  # Asegúrate de que AppState está importado
+from ..state import AppState
 
 def register_error() -> rx.Component:
     """Muestra errores de registro."""
     return rx.cond(
-        # ✅ CAMBIO: Apuntar a la variable de error de nuestro AppState
-        AppState.error_message != "",
+        reflex_local_auth.RegistrationState.error_message != "",
         rx.callout(
             rx.text(
-                # ✅ CAMBIO: Mostrar el mensaje de error de nuestro AppState
-                AppState.error_message,
+                reflex_local_auth.RegistrationState.error_message, 
                 white_space="pre-wrap"
             ),
             icon="triangle_alert",

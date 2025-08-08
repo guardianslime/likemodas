@@ -4,7 +4,7 @@ import reflex as rx
 import reflex_local_auth
 from reflex_local_auth.pages.components import input_100w, MIN_WIDTH
 from ..ui.password_input import password_input
-from .forms import my_register_form
+from .forms import my_register_form # El formulario se puede mantener si es complejo
 from ..state import AppState
 
 def my_login_page_content() -> rx.Component:
@@ -27,6 +27,7 @@ def my_login_page_content() -> rx.Component:
                         rx.text("Password"),
                         password_input(
                             placeholder="Password",
+                            #on_change=reflex_local_auth.LoginState.set_password,
                             name="password"
                         ),
                         rx.button("Sign in", width="100%", type="submit"),
@@ -49,11 +50,9 @@ def my_login_page_content() -> rx.Component:
 def my_register_page_content() -> rx.Component:
     return rx.center(
         rx.cond(
-            # ✅ CAMBIO: Apuntar a la variable de éxito de nuestro AppState
-            AppState.success,
+            reflex_local_auth.RegistrationState.success,
             rx.vstack(
-                rx.heading("¡Registro Exitoso!", size="7"),
-                rx.text("Revisa tu correo para verificar tu cuenta."),
+                rx.text("Registration successful! Check your email to verify your account."),
             ),
             rx.card(my_register_form()),
         ),
@@ -64,8 +63,7 @@ def verification_page_content() -> rx.Component:
     return rx.center(
         rx.vstack(
             rx.heading("Verificando tu cuenta...", size="8"),
-            # ✅ CORRECCIÓN: Usar 'info_message' en lugar de 'message'.
-            rx.text(AppState.info_message, text_align="center"),
+            rx.text(AppState.message, text_align="center"),
             rx.spinner(size="3"),
             spacing="5", padding="2em",
         ),
@@ -82,10 +80,9 @@ def forgot_password_page_content() -> rx.Component:
                     rx.input(placeholder="Email", name="email", type="email", width="100%"),
                     rx.button("Enviar Enlace", type="submit", width="100%"),
                     rx.cond(
-                        # ✅ CORRECCIÓN: Usar 'info_message'.
-                        AppState.info_message,
+                        AppState.message,
                         rx.callout(
-                            AppState.info_message,
+                            AppState.message,
                             icon="info",
                             color_scheme=rx.cond(AppState.is_success, "green", "red"),
                             width="100%"
@@ -111,10 +108,9 @@ def reset_password_page_content() -> rx.Component:
                         password_input(placeholder="Confirmar nueva contraseña", name="confirm_password"),
                         rx.button("Guardar Contraseña", type="submit", width="100%"),
                         rx.cond(
-                            # ✅ CORRECCIÓN: Usar 'info_message'.
-                            AppState.info_message,
+                            AppState.message,
                             rx.callout(
-                                rx.text(AppState.info_message, white_space="pre-wrap"),
+                                rx.text(AppState.message, white_space="pre-wrap"),
                                 icon="triangle_alert", color_scheme="red", width="100%"
                             )
                         ),
@@ -124,8 +120,7 @@ def reset_password_page_content() -> rx.Component:
                 ),
                 rx.vstack(
                     rx.heading("Enlace no válido", size="7"),
-                    # ✅ CORRECCIÓN: Usar 'info_message'.
-                    rx.text(AppState.info_message),
+                    rx.text(AppState.message),
                     rx.link("Solicitar un nuevo enlace", href="/forgot-password"),
                     spacing="4", align="center"
                 )

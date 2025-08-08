@@ -1,9 +1,8 @@
-# likemodas/state.py (ARCHIVO CORREGIDO Y COMPLETO)
+# likemodas/state.py (ARCHIVO COMPLETO Y CENTRALIZADO)
 
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
-from urllib.parse import urlparse, parse_qs
 import sqlmodel
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
@@ -55,7 +54,7 @@ class AdminPurchaseCardData(rx.Base):
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
-
+        
 class UserPurchaseHistoryCardData(rx.Base):
     id: int
     purchase_date_formatted: str
@@ -71,7 +70,6 @@ class UserPurchaseHistoryCardData(rx.Base):
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
-    new_user_id: int = -1
 
     # --- AUTH / SESSION ---
     @rx.var(cache=True)
@@ -84,7 +82,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).one_or_none()
 
     @rx.var(cache=True)
-    def my_userinfo_id(self) -> str | None:
+    def my_userinfo_id(self) -> str | None: 
         if self.authenticated_user_info is None:
             return None
         return str(self.authenticated_user_info.id)
@@ -93,39 +91,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    error_message: str = ""
-    success: bool = False
-
     # --- REGISTRO Y VERIFICACIÓN ---
-    @rx.event
     def handle_registration_email(self, form_data: dict):
-        username = form_data.get("username")
         password = form_data.get("password")
-
         password_errors = validate_password(password)
         if password_errors:
-           self.error_message = "\n".join(password_errors)
-           return
-
-        with rx.session() as session:
-            existing_user = session.exec(
-                sqlmodel.select(LocalUser).where(LocalUser.username == username)
-            ).one_or_none()
-
-            if existing_user:
-                self.error_message = f"El usuario '{username}' ya existe."
-                return
-
-            password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-            new_user = LocalUser(username=username, password_hash=password_hash)
-            session.add(new_user)
-            session.commit()
-            session.refresh(new_user)
+            self.error_message = "\n".join(password_errors)
+            return
             
-            self.new_user_id = new_user.id
-            
-            if self.new_user_id >= 0:
-                user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
+        registration_event = self.handle_registration(form_data)
+        if self.new_user_id >= 0:
+            with rx.session() as session:
+                user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
                 new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
@@ -136,33 +113,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
-                
                 send_verification_email(recipient_email=new_user_info.email, token=token_str)
+        return registration_event
 
-        self.success = True
+    message: str = ""
+    is_verified: bool = False
 
     @rx.event
     def verify_token(self):
-        if not self.router.url:
-            return
-
-        parsed_url = urlparse(self.router.url)
-        query_params = parse_qs(parsed_url.query)
-        token = query_params.get("token", [""])[0]
-
+        token = self.router.page.params.get("token", "")
         if not token:
-            self.info_message = "Error: No se proporcionó un token de verificación."
+            self.message = "Error: No se proporcionó un token de verificación."
             return
-
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(VerificationToken).where(VerificationToken.token == token)).one_or_none()
             if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
-                self.info_message = "El token de verificación es inválido o ha expirado."
-                if db_token: 
-                    session.delete(db_token)
-                    session.commit()
+                self.message = "El token de verificación es inválido o ha expirado."
+                if db_token: session.delete(db_token); session.commit()
                 return
-            
             user_info = session.get(UserInfo, db_token.userinfo_id)
             if user_info:
                 user_info.is_verified = True
@@ -171,21 +139,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-            
-            self.info_message = "Error: No se encontró el usuario asociado a este token."
+            self.message = "Error: No se encontró el usuario asociado a este token."
 
+    # --- MANEJO DE CONTRASEÑA ---
     email: str = ""
     is_success: bool = False
     token: str = ""
     is_token_valid: bool = False
     password: str = ""
     confirm_password: str = ""
-    info_message: str = ""
 
     def handle_forgot_password(self, form_data: dict):
         self.email = form_data.get("email", "")
         if not self.email:
-            self.info_message, self.is_success = "Por favor, introduce tu correo electrónico.", False
+            self.message, self.is_success = "Por favor, introduce tu correo electrónico.", False
             return
         with rx.session() as session:
             user_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == self.email)).one_or_none()
@@ -196,30 +163,30 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(reset_token)
                 session.commit()
                 send_password_reset_email(recipient_email=self.email, token=token_str)
-        self.info_message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
+        self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        self.token = self.router.page.query_params.get("token", "")
+        self.token = self.router.page.params.get("token", "")
         if not self.token:
-            self.info_message, self.is_token_valid = "Enlace no válido. Falta el token.", False
+            self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
             if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
-                self.info_message, self.is_token_valid = "El enlace de reseteo es inválido o ha expirado.", False
+                self.message, self.is_token_valid = "El enlace de reseteo es inválido o ha expirado.", False
                 if db_token: session.delete(db_token); session.commit()
                 return
             self.is_token_valid = True
 
     def handle_reset_password(self, form_data: dict):
         self.password, self.confirm_password = form_data.get("password", ""), form_data.get("confirm_password", "")
-        if not self.is_token_valid: self.info_message = "Token no válido. Por favor, solicita un nuevo enlace."; return
-        if self.password != self.confirm_password: self.info_message = "Las contraseñas no coinciden."; return
+        if not self.is_token_valid: self.message = "Token no válido. Por favor, solicita un nuevo enlace."; return
+        if self.password != self.confirm_password: self.message = "Las contraseñas no coinciden."; return
         password_errors = validate_password(self.password)
-        if password_errors: self.info_message = "\n".join(password_errors); return
+        if password_errors: self.message = "\n".join(password_errors); return
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
-            if not db_token: self.info_message = "El token ha expirado o ya fue utilizado."; return
+            if not db_token: self.message = "El token ha expirado o ya fue utilizado."; return
             user = session.get(LocalUser, db_token.user_id)
             if user:
                 user.password_hash = bcrypt.hashpw(self.password.encode("utf-8"), bcrypt.gensalt())
@@ -245,13 +212,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_material_tela: str = ""
     filter_medida_talla: str = ""
     
-    def toggle_filters(self): self.show_filters = not self.show_filters
-    
+    def toggle_filters(self): self.show_filters = ~self.show_filters
     def clear_all_filters(self):
         self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
         self.filter_tipo_prenda, self.filter_tipo_zapato, self.filter_tipo_mochila = "", "", ""
         self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla = "", "", ""
-
     def toggle_filter_dropdown(self, name: str): self.open_filter_name = "" if self.open_filter_name == name else name
     def clear_filter(self, filter_name: str): setattr(self, filter_name, "")
     
@@ -348,13 +313,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
             post_map = {p.id: p for p in results}
             return [(post_map.get(pid), self.cart[pid]) for pid in post_ids]
-
+    
     @rx.event
     def add_to_cart(self, post_id: int):
         if not self.is_authenticated: return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         self.cart[post_id] = self.cart.get(post_id, 0) + 1
         return rx.toast.success("Producto añadido al carrito.")
-
+        
     @rx.event
     def remove_from_cart(self, post_id: int):
         if post_id in self.cart:
@@ -367,16 +332,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
         with rx.session() as session:
             results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(timezone.utc)).order_by(BlogPostModel.created_at.desc())).unique().all()
+            # ✅ CORREGIDO: Se añade "or []" para manejar valores nulos de image_urls y "or 0.0" para price.
             self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price or 0.0, image_urls=p.image_urls or [], average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
         self.is_loading = False
     
     # --- GESTIÓN DE FORMULARIO DE AÑADIR PRODUCTO (ADMIN) ---
     title: str = ""
     content: str = ""
-    price: str = ""
+    price: str = "" 
     category: str = ""
     tipo_prenda: str = ""
+
     search_add_tipo_prenda: str = ""
+
     temp_images: list[str] = rx.Field(default_factory=list)
 
     @rx.var
@@ -472,11 +440,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_post)
             session.commit()
             session.refresh(new_post)
-        new_id = new_post.id
+            new_id = new_post.id
         
         self._clear_add_form()
         yield rx.toast.success("Producto publicado correctamente.")
         return rx.redirect(f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/{new_id}")
+
 
     # --- DETALLE PÚBLICO DEL BLOG Y COMENTARIOS ---
     post: Optional[BlogPostModel] = None
@@ -486,7 +455,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def on_load_public_detail(self):
-        try: pid = int(self.router.page.query_params.get("id", "0"))
+        try: pid = int(self.router.page.params.get("id", "0"))
         except (ValueError, TypeError): self.post = None; return
         with rx.session() as session:
             db_post = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user)).where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)).unique().one_or_none()
@@ -503,8 +472,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    def toggle_form(self): self.show_form = not self.show_form
-    
+    def toggle_form(self): self.show_form = ~self.show_form
     def set_city(self, city: str): self.city, self.neighborhood, self.search_neighborhood = city, "", ""
     def set_neighborhood(self, hood: str): self.neighborhood = hood
     def set_search_city(self, query: str): self.search_city = query
@@ -616,7 +584,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield self.notify_admin_of_new_purchase
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
-
+        
     # --- PANEL DE ADMINISTRACIÓN ---
     pending_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
     confirmed_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
@@ -626,7 +594,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_search_query_admin_posts(self, query: str):
         self.search_query_admin_posts = query
-    
+        
     @rx.var
     def filtered_admin_posts(self) -> list[BlogPostModel]:
         if not hasattr(self, 'admin_posts'):
@@ -635,6 +603,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return self.admin_posts
         q = self.search_query_admin_posts.lower()
         return [p for p in self.admin_posts if q in p.title.lower()]
+
 
     def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
     @rx.event
@@ -647,7 +616,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status == PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.asc())).unique().all()
             self.pending_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
-
+            
     @rx.event
     def confirm_payment(self, purchase_id: int):
         if not self.is_admin: return
@@ -657,8 +626,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 notification = NotificationModel(userinfo_id=purchase.userinfo_id, message=f"¡Tu compra #{purchase.id} ha sido confirmada!", url="/my-purchases")
-                session.add(purchase); session.add(notification);
-                session.commit()
+                session.add(purchase); session.add(notification); session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
                 yield AppState.load_pending_purchases
                 
@@ -681,7 +649,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.confirmed_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
     
     # --- GESTIÓN DE BLOG (ADMIN) ---
-    admin_posts: List[BlogPostModel] = []
+    admin_posts: List[BlogPostModel] = [] 
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
@@ -707,7 +675,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_post_detail(self):
         try:
-            pid = int(self.router.page.query_params.get("blog_id", "0"))
+            pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
             self.post = None
             return
@@ -717,7 +685,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_edit(self):
         try:
-            pid = int(self.router.page.query_params.get("blog_id", "0"))
+            pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
             self.post = None
             return
@@ -769,7 +737,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_to_update.publish_active = not post_to_update.publish_active
                 session.add(post_to_update)
                 session.commit()
-                yield self.get_post_detail()
+                yield self.get_post_detail() 
                 return rx.toast.info(f"Estado de publicación cambiado a: {post_to_update.publish_active}")
                 
     # --- HISTORIAL DE COMPRAS (USUARIO) ---
