@@ -102,10 +102,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
             
         # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA Y DEFINITIVA ▼▼▼
-        # Se usa el método 'register_user' que provee la librería para esta finalidad.
-        self.register_user(form_data)
+        # Se llama al método de la clase RegistrationState, pasándole la instancia actual (self).
+        registration_result = reflex_local_auth.RegistrationState.handle_registration(self, form_data)
         
-        # El resto del código continúa después de que register_user hace su trabajo.
         if self.new_user_id >= 0:
             with rx.session() as session:
                 user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
@@ -120,6 +119,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(verification_token)
                 session.commit()
                 send_verification_email(recipient_email=new_user_info.email, token=token_str)
+        
+        return registration_result
 
     message: str = ""
     is_verified: bool = False
