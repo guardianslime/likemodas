@@ -101,9 +101,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.error_message = "\n".join(password_errors)
             return
             
-        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
-        registration_event = super().handle_registration(form_data)
+        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA Y DEFINITIVA ▼▼▼
+        # Se usa el método 'register_user' que provee la librería para esta finalidad.
+        self.register_user(form_data)
         
+        # El resto del código continúa después de que register_user hace su trabajo.
         if self.new_user_id >= 0:
             with rx.session() as session:
                 user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
@@ -118,7 +120,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(verification_token)
                 session.commit()
                 send_verification_email(recipient_email=new_user_info.email, token=token_str)
-        return registration_event
 
     message: str = ""
     is_verified: bool = False
