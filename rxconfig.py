@@ -8,6 +8,7 @@ DEPLOY_URL = os.getenv("DEPLOY_URL", "http://localhost:3000")
 # --- Orígenes CORS permitidos ---
 default_origins = [
     "http://localhost:3000",
+    "https://www.likemodas.com",  # URL añadida para solucionar el error
     API_URL,
     DEPLOY_URL,
 ]
