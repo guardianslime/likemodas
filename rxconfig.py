@@ -5,12 +5,17 @@ import os
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 DEPLOY_URL = os.getenv("DEPLOY_URL", "http://localhost:3000")
 
+# URLs de despliegue adicionales
+VERCEL_LEGACY_URL = "https://full-stack-python.vercel.app"
+LIKEMODAS_URL = "https://www.likemodas.com"
+
 # --- Orígenes CORS permitidos ---
 default_origins = [
     "http://localhost:3000",
-    "https://www.likemodas.com",  # URL añadida para solucionar el error
     API_URL,
     DEPLOY_URL,
+    VERCEL_LEGACY_URL, # URL añadida para Vercel
+    LIKEMODAS_URL,     # URL del dominio principal
 ]
 additional_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 cors_allowed_origins = list(
