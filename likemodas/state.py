@@ -1,5 +1,4 @@
 # likemodas/state.py
-
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -94,21 +93,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
     # --- REGISTRO Y VERIFICACIÓN ---
-    def handle_registration_email(self, form_data: dict):
-        password = form_data.get("password")
-        password_errors = validate_password(password)
-        if password_errors:
-            self.error_message = "\n".join(password_errors)
-            return
-            
-        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA Y DEFINITIVA ▼▼▼
-        # Se llama al método de la clase RegistrationState, pasándole la instancia actual (self).
-        registration_result = reflex_local_auth.RegistrationState.handle_registration(self, form_data)
-        
-        if self.new_user_id >= 0:
+    @rx.event
+    def post_registration_tasks(self, new_user_id: int, email: str, username: str):
+        """
+        Este evento se ejecuta DESPUÉS de un registro exitoso.
+        Crea el UserInfo y envía el correo de verificación.
+        """
+        if new_user_id >= 0:
             with rx.session() as session:
-                user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
-                new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
+                user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
+                new_user_info = UserInfo(email=email, user_id=new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
@@ -119,8 +113,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(verification_token)
                 session.commit()
                 send_verification_email(recipient_email=new_user_info.email, token=token_str)
-        
-        return registration_result
+    
+    # El antiguo 'handle_registration_email' se ha eliminado.
 
     message: str = ""
     is_verified: bool = False
