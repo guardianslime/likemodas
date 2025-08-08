@@ -4,7 +4,7 @@ import reflex as rx
 import reflex_local_auth
 
 from.state import AppState
-
+from fastapi import Response
 # --- Módulos de la aplicación ---
 from.auth import pages as auth_pages
 from.pages import search_results, category_page
@@ -62,3 +62,14 @@ app.add_page(base_page(blog_post_add_content()), route=navigation.routes.BLOG_PO
 app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Confirmar Pagos", on_load=AppState.load_pending_purchases)
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
 app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries)
+
+
+
+# Este endpoint especial se añade al API de FastAPI subyacente de Reflex.
+@app.api.get("/health")
+def health_check():
+    """
+    Endpoint simple para que Railway (o cualquier servicio de monitoreo) verifique 
+    que la aplicación está activa y respondiendo correctamente.
+    """
+    return Response(status_code=200, content="OK")
