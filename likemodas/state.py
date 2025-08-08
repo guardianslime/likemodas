@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
+# likemodas/state.py
 
 from __future__ import annotations
 import reflex as rx
@@ -101,7 +101,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.error_message = "\n".join(password_errors)
             return
             
-        registration_event = self.handle_registration(form_data)
+        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
+        registration_event = super().handle_registration(form_data)
+        
         if self.new_user_id >= 0:
             with rx.session() as session:
                 user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
