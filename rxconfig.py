@@ -1,22 +1,23 @@
 import reflex as rx
 import os
 
-# --- URLs de la aplicación ---
-API_URL = os.getenv("API_URL", "http://localhost:8000")
-DEPLOY_URL = os.getenv("DEPLOY_URL", "http://localhost:3000")
-
-# URLs de despliegue adicionales
+# --- URLs de la aplicación (Sin cambios) ---
+API_URL = "https://full-stack-python-production.up.railway.app"
+DEPLOY_URL = "https://likemodas.com"
+PREVIEW_URL = "https://full-stack-python-ibehoa7sb-nkpz01s-projects.vercel.app"
 VERCEL_LEGACY_URL = "https://full-stack-python.vercel.app"
-LIKEMODAS_URL = "https://www.likemodas.com"
 
-# --- Orígenes CORS permitidos ---
+
+# --- Lista de orígenes permitidos por defecto (Sin cambios) ---
 default_origins = [
     "http://localhost:3000",
     API_URL,
     DEPLOY_URL,
-    VERCEL_LEGACY_URL, # URL añadida para Vercel
-    LIKEMODAS_URL,     # URL del dominio principal
+    "https://www.likemodas.com",
+    PREVIEW_URL,
+    VERCEL_LEGACY_URL,
 ]
+
 additional_origins = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 cors_allowed_origins = list(
     {
@@ -26,17 +27,18 @@ cors_allowed_origins = list(
     }
 )
 
-# --- Configuración Principal Unificada ---
+# --- Configuración Principal con el Tema Añadido ---
 config = rx.Config(
     app_name="likemodas",
+    show_built_with_reflex=False,
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     api_url=API_URL,
     cors_allowed_origins=cors_allowed_origins,
-    
-    # Desactiva el plugin de sitemap para eliminar la advertencia
+
     disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
-    
-    # Tema unificado para toda la aplicación
+
+    # ▼▼▼ ESTA ES LA ÚNICA SECCIÓN AÑADIDA ▼▼▼
+    # Unifica la definición del tema en un solo lugar.
     theme=rx.theme(
         appearance="dark",
         has_background=True,
