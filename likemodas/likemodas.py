@@ -4,7 +4,7 @@ import reflex as rx
 import reflex_local_auth
 
 from.state import AppState
-from starlette.responses import Response
+
 # --- Módulos de la aplicación ---
 from.auth import pages as auth_pages
 from.pages import search_results, category_page
@@ -65,14 +65,3 @@ app.add_page(base_page(contact_page.contact_entries_list_content()), route=navig
 
 
 
-# Este endpoint especial se añade al API de FastAPI subyacente de Reflex.
-def health_check():
-    """
-    Endpoint simple para que Railway (o cualquier servicio) verifique 
-    que la aplicación está activa y respondiendo.
-    """
-    from starlette.responses import Response
-    return Response(status_code=200, content="OK")
-
-# 2. Añade la ruta al objeto app usando el método add_api_route
-app.add_api_route("/health", health_check, methods=["GET"])
