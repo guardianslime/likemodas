@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CENTRALIZADO)
+# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
 
 from __future__ import annotations
 import reflex as rx
@@ -28,7 +28,7 @@ from .data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
-# --- MODELOS DE DATOS SEGUROS PARA LA UI ---
+# --- MODELOS DE DATOS SEGUROS PARA LA UI (DTOs) ---
 class ProductCardData(rx.Base):
     id: int
     title: str
@@ -36,6 +36,7 @@ class ProductCardData(rx.Base):
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
+    
     @property
     def price_cop(self) -> str:
         return format_to_cop(self.price)
@@ -51,6 +52,7 @@ class AdminPurchaseCardData(rx.Base):
     shipping_full_address: str
     shipping_phone: str
     items_formatted: list[str]
+
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
@@ -140,7 +142,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "Error: No se encontró el usuario asociado a este token."
-
+    
     # --- MANEJO DE CONTRASEÑA ---
     email: str = ""
     is_success: bool = False
@@ -212,11 +214,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_material_tela: str = ""
     filter_medida_talla: str = ""
     
-    def toggle_filters(self): self.show_filters = ~self.show_filters
+    def toggle_filters(self):
+        self.show_filters = not self.show_filters
+        
     def clear_all_filters(self):
         self.min_price, self.max_price, self.filter_color, self.filter_talla = "", "", "", ""
         self.filter_tipo_prenda, self.filter_tipo_zapato, self.filter_tipo_mochila = "", "", ""
         self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla = "", "", ""
+
     def toggle_filter_dropdown(self, name: str): self.open_filter_name = "" if self.open_filter_name == name else name
     def clear_filter(self, filter_name: str): setattr(self, filter_name, "")
     
@@ -301,8 +306,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
     @rx.var
     def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
+    
     @rx.var
-    def cart_details(self) -> List[Tuple[Optional[ProductCardData], int]]:
+    def cart_details(self) -> List[Tuple[Optional[BlogPostModel], int]]:
         if not self.cart: return []
         with rx.session() as session:
             post_ids = list(self.cart.keys())
@@ -332,8 +338,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
         with rx.session() as session:
             results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(timezone.utc)).order_by(BlogPostModel.created_at.desc())).unique().all()
-            # ✅ CORREGIDO: Se añade "or []" para manejar valores nulos de image_urls y "or 0.0" para price.
-            self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price or 0.0, image_urls=p.image_urls or [], average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
+        self.posts = [ProductCardData(id=p.id, title=p.title, price=p.price or 0.0, image_urls=p.image_urls or [], average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
         self.is_loading = False
     
     # --- GESTIÓN DE FORMULARIO DE AÑADIR PRODUCTO (ADMIN) ---
@@ -342,33 +347,21 @@ class AppState(reflex_local_auth.LocalAuthState):
     price: str = "" 
     category: str = ""
     tipo_prenda: str = ""
-
     search_add_tipo_prenda: str = ""
-
     temp_images: list[str] = rx.Field(default_factory=list)
 
     @rx.var
     def categories(self) -> list[str]:
         return [c.value for c in Category]
     
-    def set_title(self, value: str):
-        self.title = value
-
-    def set_content(self, value: str):
-        self.content = value
-
-    def set_price_from_input(self, value: str):
-        self.price = value
-
+    def set_title(self, value: str): self.title = value
+    def set_content(self, value: str): self.content = value
+    def set_price_from_input(self, value: str): self.price = value
     def set_category(self, value: str):
         self.category = value
         self.tipo_prenda = ""
-
-    def set_tipo_prenda(self, value: str):
-        self.tipo_prenda = value
-    
-    def set_search_add_tipo_prenda(self, value: str):
-        self.search_add_tipo_prenda = value
+    def set_tipo_prenda(self, value: str): self.tipo_prenda = value
+    def set_search_add_tipo_prenda(self, value: str): self.search_add_tipo_prenda = value
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -387,11 +380,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.temp_images.remove(filename)
 
     def _clear_add_form(self):
-        self.title = ""
-        self.content = ""
-        self.price = ""
-        self.category = ""
-        self.tipo_prenda = ""
+        self.title, self.content, self.price, self.category, self.tipo_prenda = "", "", "", "", ""
         self.temp_images = []
 
     def _create_post_from_state(self, is_published: bool) -> BlogPostModel:
@@ -406,13 +395,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         return BlogPostModel(
             userinfo_id=self.authenticated_user_info.id,
-            title=self.title,
-            content=self.content,
-            price=price_float,
-            image_urls=self.temp_images,
-            category=self.category,
-            attributes=attributes,
-            publish_active=is_published,
+            title=self.title, content=self.content, price=price_float,
+            image_urls=self.temp_images, category=self.category,
+            attributes=attributes, publish_active=is_published,
             publish_date=datetime.now(timezone.utc) if is_published else None
         )
 
@@ -446,22 +431,70 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("Producto publicado correctamente.")
         return rx.redirect(f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/{new_id}")
 
-
     # --- DETALLE PÚBLICO DEL BLOG Y COMENTARIOS ---
     post: Optional[BlogPostModel] = None
     comments: list[CommentModel] = rx.Field(default_factory=list)
     new_comment_text: str = ""
     new_comment_rating: int = 0
-    
+    is_post_loading: bool = True
+
+    # --- LÓGICA PARA EL CARRUSEL NATIVO ---
+    current_image_index: int = 0
+
+    @rx.var
+    def current_image_url(self) -> str:
+        """Devuelve la URL de la imagen actual a mostrar."""
+        if self.post and self.post.image_urls:
+            # Asegura que el índice esté siempre dentro de los límites
+            safe_index = self.current_image_index % len(self.post.image_urls)
+            return self.post.image_urls[safe_index]
+        return "" # Devuelve una cadena vacía si no hay imágenes
+
+    def next_image(self):
+        """Pasa a la siguiente imagen en el carrusel."""
+        if self.post and self.post.image_urls:
+            self.current_image_index = (self.current_image_index + 1) % len(self.post.image_urls)
+
+    def prev_image(self):
+        """Vuelve a la imagen anterior en el carrusel."""
+        if self.post and self.post.image_urls:
+            self.current_image_index = (self.current_image_index - 1 + len(self.post.image_urls)) % len(self.post.image_urls)
+
     @rx.event
     def on_load_public_detail(self):
-        try: pid = int(self.router.page.params.get("id", "0"))
-        except (ValueError, TypeError): self.post = None; return
-        with rx.session() as session:
-            db_post = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user)).where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)).unique().one_or_none()
-            if db_post: self.post, self.comments = db_post, sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
-            else: self.post, self.comments = None, []
+        """
+        Evento robusto para cargar los detalles del post, gestionando el estado de carga.
+        """
+        self.current_image_index = 0 # Resetea el índice del carrusel
+        self.is_post_loading = True
+        self.post = None
+        yield
 
+        try: 
+            pid = int(self.router.page.params.get("id", "0"))
+        except (ValueError, TypeError):
+            self.is_post_loading = False
+            return
+
+        with rx.session() as session:
+            db_post = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.userinfo)
+                    .joinedload(UserInfo.user)
+                )
+                .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
+            ).unique().one_or_none()
+
+            if db_post: 
+                self.post = db_post
+                self.comments = sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
+            else: 
+                self.comments = []
+            
+            self.is_post_loading = False
+    
     # --- DIRECCIONES DE ENVÍO ---
     addresses: List[ShippingAddressModel] = rx.Field(default_factory=list)
     show_form: bool = False
@@ -503,13 +536,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             is_first_address = len(self.addresses) == 0
             new_addr = ShippingAddressModel(
-                userinfo_id=self.authenticated_user_info.id,
-                name=form_data["name"],
-                phone=form_data["phone"],
-                city=self.city,
-                neighborhood=self.neighborhood,
-                address=form_data["address"],
-                is_default=is_first_address
+                userinfo_id=self.authenticated_user_info.id, name=form_data["name"],
+                phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood,
+                address=form_data["address"], is_default=is_first_address
             )
             session.add(new_addr)
             session.commit()
@@ -548,8 +577,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def set_as_default(self, address_id: int):
-        if not self.authenticated_user_info:
-            return rx.toast.error("Debes iniciar sesión.")
+        if not self.authenticated_user_info: return rx.toast.error("Debes iniciar sesión.")
         with rx.session() as session:
             current_default = session.exec(
                 sqlmodel.select(ShippingAddressModel).where(
@@ -574,13 +602,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.is_authenticated or not self.default_shipping_address: return rx.toast.error("Por favor, selecciona una dirección predeterminada.")
         if not self.authenticated_user_info: return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
         with rx.session() as session:
-            new_purchase = PurchaseModel(userinfo_id=int(self.authenticated_user_info.id), total_price=self.cart_total, status=PurchaseStatus.PENDING, shipping_name=self.default_shipping_address.name, shipping_city=self.default_shipping_address.city, shipping_neighborhood=self.default_shipping_address.neighborhood, shipping_address=self.default_shipping_address.address, shipping_phone=self.default_shipping_address.phone)
+            new_purchase = PurchaseModel(
+                userinfo_id=int(self.authenticated_user_info.id), total_price=self.cart_total, 
+                status=PurchaseStatus.PENDING, shipping_name=self.default_shipping_address.name, 
+                shipping_city=self.default_shipping_address.city, shipping_neighborhood=self.default_shipping_address.neighborhood, 
+                shipping_address=self.default_shipping_address.address, shipping_phone=self.default_shipping_address.phone
+            )
             session.add(new_purchase); session.commit(); session.refresh(new_purchase)
             post_map = {p.id: p for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(list(self.cart.keys())))).all()}
             for post_id, quantity in self.cart.items():
-                if post_id in post_map: session.add(PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=post_map[post_id].id, quantity=quantity, price_at_purchase=post_map[post_id].price))
+                if post_id in post_map: 
+                    session.add(PurchaseItemModel(purchase_id=new_purchase.id, blog_post_id=post_map[post_id].id, quantity=quantity, price_at_purchase=post_map[post_id].price))
             session.commit()
-        self.cart.clear(); self.default_shipping_address = None
+        self.cart.clear()
+        self.default_shipping_address = None
         yield self.notify_admin_of_new_purchase
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
@@ -589,21 +624,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     pending_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
     confirmed_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
     new_purchase_notification: bool = False
-    
     search_query_admin_posts: str = ""
 
-    def set_search_query_admin_posts(self, query: str):
-        self.search_query_admin_posts = query
+    def set_search_query_admin_posts(self, query: str): self.search_query_admin_posts = query
         
     @rx.var
     def filtered_admin_posts(self) -> list[BlogPostModel]:
-        if not hasattr(self, 'admin_posts'):
-            return []
-        if not self.search_query_admin_posts.strip():
-            return self.admin_posts
+        if not hasattr(self, 'admin_posts'): return []
+        if not self.search_query_admin_posts.strip(): return self.admin_posts
         q = self.search_query_admin_posts.lower()
         return [p for p in self.admin_posts if q in p.title.lower()]
-
 
     def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
     @rx.event
@@ -632,8 +662,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
     # --- HISTORIAL DE PAGOS (ADMIN) ---
     search_query_admin_history: str = ""
-    def set_search_query_admin_history(self, query: str):
-        self.search_query_admin_history = query
+    def set_search_query_admin_history(self, query: str): self.search_query_admin_history = query
 
     @rx.var
     def filtered_admin_purchases(self) -> list[AdminPurchaseCardData]:
@@ -649,15 +678,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.confirmed_purchases = [AdminPurchaseCardData(id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email, purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price, shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}", shipping_phone=p.shipping_phone, items_formatted=p.items_formatted) for p in results]
     
     # --- GESTIÓN DE BLOG (ADMIN) ---
-    admin_posts: List[BlogPostModel] = [] 
+    admin_posts: List[BlogPostModel] = rx.Field(default_factory=list) 
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
     
     @rx.var
     def blog_post_edit_url(self) -> str:
-        if not self.post:
-            return ""
+        if not self.post: return ""
         return f"/blog/{self.post.id}/edit"
 
     def set_post_title(self, title: str): self.post_title = title
@@ -674,20 +702,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def get_post_detail(self):
+        self.post = None # Reset
         try:
             pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
-            self.post = None
             return
         with rx.session() as session:
             self.post = session.get(BlogPostModel, pid)
 
     @rx.event
     def on_load_edit(self):
+        self.post = None # Reset
         try:
             pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
-            self.post = None
             return
         with rx.session() as session:
             db_post = session.get(BlogPostModel, pid)
@@ -744,8 +772,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     user_purchases: List[UserPurchaseHistoryCardData] = rx.Field(default_factory=list)
     search_query_user_history: str = ""
     
-    def set_search_query_user_history(self, query: str):
-        self.search_query_user_history = query
+    def set_search_query_user_history(self, query: str): self.search_query_user_history = query
 
     @rx.var
     def filtered_user_purchases(self) -> list[UserPurchaseHistoryCardData]:
@@ -766,18 +793,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     contact_entries: list[ContactEntryModel] = rx.Field(default_factory=list)
     search_query_contact: str = ""
     
-    def set_search_query_contact(self, query: str):
-        self.search_query_contact = query
+    def set_search_query_contact(self, query: str): self.search_query_contact = query
 
     @rx.var
     def thank_you_message(self) -> str:
         first_name = self.form_data.get("first_name", "")
         return f"¡Gracias, {first_name}!" if first_name else "¡Gracias por tu mensaje!"
+        
     @rx.var
     def filtered_entries(self) -> list[ContactEntryModel]:
         if not self.search_query_contact.strip(): return self.contact_entries
         q = self.search_query_contact.lower()
         return [e for e in self.contact_entries if q in f"{e.first_name} {e.last_name} {e.email} {e.message}".lower()]
+    
     async def handle_contact_submit(self, form_data: dict):
         self.form_data = form_data
         with rx.session() as session:
@@ -787,17 +815,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.did_submit_contact = True; yield
         await asyncio.sleep(4)
         self.did_submit_contact = False; yield
+
     def load_entries(self):
         with rx.session() as session: self.contact_entries = session.exec(sqlmodel.select(ContactEntryModel).order_by(ContactEntryModel.id.desc())).all()
 
     # --- NOTIFICACIONES ---
-    notifications: List[NotificationModel] = []
+    notifications: List[NotificationModel] = rx.Field(default_factory=list)
+    
     @rx.var
     def unread_count(self) -> int: return sum(1 for n in self.notifications if not n.is_read)
+    
     @rx.event
     def load_notifications(self):
         if not self.authenticated_user_info: self.notifications = []; return
         with rx.session() as session: self.notifications = session.exec(sqlmodel.select(NotificationModel).where(NotificationModel.userinfo_id == self.authenticated_user_info.id).order_by(sqlmodel.col(NotificationModel.created_at).desc())).all()
+    
     @rx.event
     def mark_all_as_read(self):
         if not self.authenticated_user_info: return
@@ -810,10 +842,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- BÚSQUEDA ---
     search_term: str = ""
-    def set_search_term(self, term: str):
-        self.search_term = term
+    def set_search_term(self, term: str): self.search_term = term
 
-    search_results: List[ProductCardData] = []
+    search_results: List[ProductCardData] = rx.Field(default_factory=list)
     
     @rx.event
     def perform_search(self):
@@ -821,5 +852,5 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not term: return
         with rx.session() as session:
             results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(timezone.utc), BlogPostModel.title.ilike(f"%{term}%")).order_by(BlogPostModel.created_at.desc())).unique().all()
-            self.search_results = [ProductCardData(id=p.id, title=p.title, price=p.price, image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
+        self.search_results = [ProductCardData(id=p.id, title=p.title, price=p.price or 0.0, image_urls=p.image_urls or [], average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
         return rx.redirect("/search-results")

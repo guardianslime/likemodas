@@ -159,7 +159,7 @@ class PurchaseModel(rx.Model, table=True):
     @property
     def purchase_date_formatted(self) -> str:
         return format_utc_to_local(self.purchase_date)
-        
+         
     @property
     def confirmed_at_formatted(self) -> str:
         return format_utc_to_local(self.confirmed_at)
@@ -170,9 +170,6 @@ class PurchaseModel(rx.Model, table=True):
 
     @property
     def items_formatted(self) -> list[str]:
-        # --- ✅ CORRECCIÓN CLAVE AQUÍ ---
-        # Se asegura de que siempre se devuelva una lista,
-        # incluso si no hay artículos, para evitar errores en el frontend.
         if not self.items:
             return []
         

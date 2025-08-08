@@ -1,10 +1,11 @@
-# likemodas/ui/nav.py (CORREGIDO Y COMPLETO)
+# likemodas/ui/nav.py
 
 import reflex as rx
 from .. import navigation
 from ..state import AppState
 
 def notification_icon() -> rx.Component:
+    """Componente para el icono y menú de notificaciones."""
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
@@ -44,11 +45,44 @@ def notification_icon() -> rx.Component:
     )
 
 def public_navbar() -> rx.Component:
+    """
+    La barra de navegación pública definitiva, optimizada para evitar 'layout shift'.
+    """
     icon_color = rx.color_mode_cond("black", "white")
+    
+    authenticated_icons = rx.hstack(
+        notification_icon(),
+        rx.link(
+            rx.box(
+                rx.icon("shopping-cart", size=22, color=icon_color),
+                rx.cond(
+                    AppState.cart_items_count > 0,
+                    rx.box(
+                        rx.text(AppState.cart_items_count, size="1", weight="bold"),
+                        position="absolute", top="-5px", right="-5px",
+                        padding="0 0.4em", border_radius="full", bg="red", color="white",
+                    )
+                ),
+                position="relative", padding="0.5em"
+            ),
+            href="/cart"
+        ),
+        align="center",
+        spacing="3",
+        justify="end",
+    )
+    
+    placeholder_icons = rx.hstack(
+        rx.box(width="44px", height="44px", padding="0.5em"),
+        rx.box(width="38px", height="44px", padding="0.5em"),
+        align="center",
+        spacing="3",
+        justify="end",
+    )
+
     return rx.box(
         rx.grid(
             rx.hstack(
-                # ... Menú de hamburguesa (sin cambios de estado) ...
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
@@ -62,34 +96,21 @@ def public_navbar() -> rx.Component:
                 on_submit=AppState.perform_search,
                 width="100%",
             ),
-            rx.hstack(
-                rx.cond(
-                    AppState.is_authenticated,
-                    rx.fragment(
-                        notification_icon(),
-                        rx.link(
-                            rx.box(
-                                rx.icon("shopping-cart", size=22, color=icon_color),
-                                rx.cond(
-                                    AppState.cart_items_count > 0,
-                                    rx.box(
-                                        rx.text(AppState.cart_items_count, size="1", weight="bold"),
-                                        position="absolute", top="-5px", right="-5px",
-                                        padding="0 0.4em", border_radius="full", bg="red", color="white",
-                                    )
-                                ),
-                                position="relative", padding="0.5em"
-                            ),
-                            href="/cart"
-                        )
-                    )
-                ),
-                align="center", spacing="3", justify="end",
+            
+            rx.cond(
+                AppState.is_authenticated,
+                authenticated_icons,
+                placeholder_icons
             ),
-            columns="auto 1fr auto", align_items="center", width="100%", gap="1.5rem",
+
+            columns="auto 1fr auto",
+            align_items="center",
+            width="100%",
+            gap="1.5rem",
         ),
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
-        bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
+        bg="#2C004BF0", 
+        style={"backdrop_filter": "blur(10px)"},
         on_mount=[AppState.load_notifications],
     )
