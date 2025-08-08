@@ -30,11 +30,12 @@ class CustomRegistrationState(reflex_local_auth.RegistrationState):
 
 def register_error() -> rx.Component:
     """Muestra errores de registro."""
+    # El cambio es usar 'CustomRegistrationState' en lugar de 'reflex_local_auth.RegistrationState'
     return rx.cond(
-        reflex_local_auth.RegistrationState.error_message != "",
+        CustomRegistrationState.error_message != "",
         rx.callout(
             rx.text(
-                reflex_local_auth.RegistrationState.error_message, 
+                CustomRegistrationState.error_message, 
                 white_space="pre-wrap"
             ),
             icon="triangle_alert",
