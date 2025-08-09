@@ -73,7 +73,6 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
-    # ▼▼▼ LÍNEAS QUE SOLUCIONAN LOS ERRORES DE EXPORTACIÓN ▼▼▼
     success: bool = False
     error_message: str = ""
     
@@ -97,48 +96,81 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    # --- REGISTRO Y VERIFICACIÓN (VERSIÓN ROBUSTA) ---
+    # --- REGISTRO Y VERIFICACIÓN (VERSIÓN DEFINITIVA) ---
     def handle_registration_email(self, form_data: dict):
         """
-        Manejador de registro unificado y a prueba de fallos.
+        Manejador de registro final y completo que no depende de métodos heredados.
         """
+        self.success = False
+        self.error_message = ""
+        username = form_data.get("username")
+        email = form_data.get("email")
         password = form_data.get("password")
-        
-        # 1. Validar la contraseña primero
+        confirm_password = form_data.get("confirm_password")
+
+        # 1. Validación de campos
+        if not all([username, email, password, confirm_password]):
+            self.error_message = "Todos los campos son obligatorios."
+            return
+        if password != confirm_password:
+            self.error_message = "Las contraseñas no coinciden."
+            return
         password_errors = validate_password(password)
         if password_errors:
             self.error_message = "\n".join(password_errors)
             return
 
-        # 2. Intentar el registro con la librería base
-        yield self.handle_registration(form_data)
-
-        if self.new_user_id < 0:
-            return
-
-        # 3. Bloque `try...except` para nuestras operaciones personalizadas
         try:
             with rx.session() as session:
-                user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
+                # 2. Verificar si el usuario o email ya existen
+                existing_user = session.exec(
+                    sqlmodel.select(LocalUser).where(
+                        (LocalUser.username == username) | (LocalUser.email == email)
+                    )
+                ).first()
+                if existing_user:
+                    self.error_message = "El nombre de usuario o el email ya están en uso."
+                    return
+
+                # 3. Hashear contraseña y crear el LocalUser
+                password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+                new_user = LocalUser(
+                    username=username,
+                    email=email,
+                    password_hash=password_hash,
+                    enabled=True
+                )
+                session.add(new_user)
+                session.commit()
+                session.refresh(new_user)
                 
-                new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
+                new_user_id = new_user.id
+
+                # 4. Crear tu UserInfo personalizado
+                user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
+                new_user_info = UserInfo(email=email, user_id=new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
 
+                # 5. Crear token de verificación
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
-
-            # 4. Enviar correo
-            send_verification_email(recipient_email=new_user_info.email, token=token_str)
             
+            # 6. Enviar correo (fuera de la sesión de base de datos)
+            send_verification_email(recipient_email=new_user_info.email, token=token_str)
+
+            # 7. Marcar como exitoso
+            self.success = True
+            return
+
         except Exception as e:
-            self.success = False
-            self.error_message = f"Error inesperado post-registro: {e}"
-            print(f"Error en post-registro: {e}")
+            self.error_message = f"Error inesperado durante el registro: {e}"
+            print(f"Error en handle_registration_email: {e}") # Log para depuración en el servidor
+
 
     message: str = ""
     is_verified: bool = False
