@@ -1,5 +1,3 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO FINAL)
-
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -433,18 +431,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
-        """
-        Manejador de subida de archivos corregido.
-        """
         uploaded_filenames = []
         for file in files:
             upload_data = await file.read()
-            # CORRECCIÓN 1: Usar file.name en lugar de file.filename
             outfile = rx.get_upload_dir() / file.name
             outfile.write_bytes(upload_data)
             uploaded_filenames.append(file.name)
         
-        # CORRECCIÓN 2: Eliminar el bloque 'async with self' y modificar el estado directamente
         self.temp_images.extend(uploaded_filenames)
 
     @rx.event
@@ -534,12 +527,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_post_loading = True
         self.post = None
         yield
-        post_id = self.router.params.get("id", "0")
-        try: 
-            pid = int(post_id)
-        except (ValueError, TypeError):
+        
+        pid = self.router.page.params.get("id", 0)
+        if pid == 0:
             self.is_post_loading = False
             return
+
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -765,9 +758,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_post_detail(self):
         self.post = None
-        try:
-            pid = int(self.router.params.get("blog_id", "0"))
-        except (ValueError, TypeError):
+        pid = self.router.page.params.get("blog_id", 0)
+        if pid == 0:
             return
         with rx.session() as session:
             self.post = session.get(BlogPostModel, pid)
@@ -775,9 +767,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_edit(self):
         self.post = None
-        try:
-            pid = int(self.router.params.get("blog_id", "0"))
-        except (ValueError, TypeError):
+        pid = self.router.page.params.get("blog_id", 0)
+        if pid == 0:
             return
         with rx.session() as session:
             db_post = session.get(BlogPostModel, pid)
