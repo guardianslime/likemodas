@@ -1,10 +1,8 @@
-# likemodas/auth/pages.py (CORREGIDO)
-
 import reflex as rx
 import reflex_local_auth
 from reflex_local_auth.pages.components import input_100w, MIN_WIDTH
 from ..ui.password_input import password_input
-from .forms import my_register_form # El formulario se puede mantener si es complejo
+from .forms import my_register_form
 from ..state import AppState
 
 def my_login_page_content() -> rx.Component:
@@ -13,8 +11,7 @@ def my_login_page_content() -> rx.Component:
             rx.vstack(
                 rx.form(
                     rx.vstack(
-                        rx.heading("Login into your Account", size="7"),
-                        # Componente para mostrar errores de login
+                        rx.heading("Inicia Sesión en tu Cuenta", size="7"),
                         rx.cond(
                             reflex_local_auth.LoginState.error_message != "",
                             rx.callout(
@@ -22,15 +19,14 @@ def my_login_page_content() -> rx.Component:
                                 icon="triangle_alert", color_scheme="red", role="alert", width="100%"
                             ),
                         ),
-                        rx.text("Username"),
+                        rx.text("Nombre de usuario"),
                         input_100w("username"),
-                        rx.text("Password"),
+                        rx.text("Contraseña"),
                         password_input(
                             placeholder="Password",
-                            #on_change=reflex_local_auth.LoginState.set_password,
                             name="password"
                         ),
-                        rx.button("Sign in", width="100%", type="submit"),
+                        rx.button("Iniciar Sesión", width="100%", type="submit"),
                         spacing="4"
                     ),
                     on_submit=reflex_local_auth.LoginState.on_submit
@@ -48,11 +44,14 @@ def my_login_page_content() -> rx.Component:
     )
 
 def my_register_page_content() -> rx.Component:
+    """Página de registro que muestra éxito o el formulario desde AppState."""
     return rx.center(
         rx.cond(
-            reflex_local_auth.RegistrationState.success,
+            AppState.success,
             rx.vstack(
-                rx.text("Registration successful! Check your email to verify your account."),
+                rx.heading("¡Registro Exitoso!", size="7"),
+                rx.text("Revisa tu correo electrónico para verificar tu cuenta."),
+                rx.link(rx.button("Ir a Iniciar Sesión"), href=reflex_local_auth.routes.LOGIN_ROUTE)
             ),
             rx.card(my_register_form()),
         ),

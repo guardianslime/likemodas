@@ -1,4 +1,5 @@
-# likemodas/state.py
+# likemodas/state.py (CLASE AppState COMPLETA Y CORREGIDA)
+
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -92,29 +93,55 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    # --- REGISTRO Y VERIFICACIÓN ---
-    @rx.event
-    def post_registration_tasks(self, new_user_id: int, email: str, username: str):
+    # --- REGISTRO Y VERIFICACIÓN (VERSIÓN ROBUSTA) ---
+    def handle_registration_email(self, form_data: dict):
         """
-        Este evento se ejecuta DESPUÉS de un registro exitoso.
-        Crea el UserInfo y envía el correo de verificación.
+        Manejador de registro unificado y a prueba de fallos.
         """
-        if new_user_id >= 0:
+        password = form_data.get("password")
+        
+        # 1. Validar la contraseña primero
+        password_errors = validate_password(password)
+        if password_errors:
+            self.error_message = "\n".join(password_errors)
+            return
+
+        # 2. Intentar el registro con la librería base
+        # Esto ya maneja errores como "email/usuario ya existe"
+        yield self.handle_registration(form_data)
+
+        # Si el evento anterior de la librería falló, error_message ya tendrá un valor.
+        # Si tuvo éxito, self.new_user_id será válido.
+        if self.new_user_id < 0:
+            return
+
+        # 3. Bloque `try...except` para nuestras operaciones personalizadas
+        try:
             with rx.session() as session:
-                user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
-                new_user_info = UserInfo(email=email, user_id=new_user_id, role=user_role)
+                # Determinar rol
+                user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
+                
+                # Crear UserInfo
+                new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
 
+                # Crear token de verificación
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
-                send_verification_email(recipient_email=new_user_info.email, token=token_str)
-    
-    # El antiguo 'handle_registration_email' se ha eliminado.
+
+            # 4. Enviar correo (fuera de la sesión de BD)
+            send_verification_email(recipient_email=new_user_info.email, token=token_str)
+            
+        except Exception as e:
+            # Si algo falla aquí (DB, email), atrapamos el error y lo mostramos
+            self.success = False
+            self.error_message = f"Error inesperado post-registro: {e}"
+            print(f"Error en post-registro: {e}")
 
     message: str = ""
     is_verified: bool = False
@@ -140,7 +167,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "Error: No se encontró el usuario asociado a este token."
-    
+            
     # --- MANEJO DE CONTRASEÑA ---
     email: str = ""
     is_success: bool = False
@@ -443,10 +470,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     def current_image_url(self) -> str:
         """Devuelve la URL de la imagen actual a mostrar."""
         if self.post and self.post.image_urls:
-            # Asegura que el índice esté siempre dentro de los límites
             safe_index = self.current_image_index % len(self.post.image_urls)
             return self.post.image_urls[safe_index]
-        return "" # Devuelve una cadena vacía si no hay imágenes
+        return ""
 
     def next_image(self):
         """Pasa a la siguiente imagen en el carrusel."""
@@ -460,19 +486,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_public_detail(self):
-        """
-        Evento robusto para cargar los detalles del post, usando la sintaxis moderna.
-        """
         self.current_image_index = 0
         self.is_post_loading = True
         self.post = None
         yield
 
-        # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA Y DEFINITIVA ▼▼▼
-        # Usamos la nueva sintaxis self.router.params, que es más limpia.
         post_id = self.router.params.get("id", "0")
         
-        # El resto de la función sigue igual...
         try: 
             pid = int(post_id)
         except (ValueError, TypeError):
@@ -705,7 +725,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def get_post_detail(self):
-        self.post = None # Reset
+        self.post = None
         try:
             pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
@@ -715,7 +735,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_edit(self):
-        self.post = None # Reset
+        self.post = None
         try:
             pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
