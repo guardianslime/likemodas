@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
+# likemodas/state.py (ARCHIVO COMPLETO Y DEFINITIVO)
 
 from __future__ import annotations
 import reflex as rx
@@ -122,21 +122,26 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         try:
             with rx.session() as session:
-                # 2. Verificar si el usuario o email ya existen
-                existing_user = session.exec(
-                    sqlmodel.select(LocalUser).where(
-                        (LocalUser.username == username) | (LocalUser.email == email)
-                    )
+                # 2. Verificar si el usuario o email ya existen (CORREGIDO)
+                existing_username = session.exec(
+                    sqlmodel.select(LocalUser).where(LocalUser.username == username)
                 ).first()
-                if existing_user:
-                    self.error_message = "El nombre de usuario o el email ya están en uso."
+                if existing_username:
+                    self.error_message = "El nombre de usuario ya está en uso."
+                    return
+
+                existing_email = session.exec(
+                    sqlmodel.select(UserInfo).where(UserInfo.email == email)
+                ).first()
+                if existing_email:
+                    self.error_message = "El email ya está registrado."
                     return
 
                 # 3. Hashear contraseña y crear el LocalUser
                 password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
                 new_user = LocalUser(
                     username=username,
-                    email=email,
+                    email=email, # El email se guarda aquí temporalmente, pero no es una columna de la BD
                     password_hash=password_hash,
                     enabled=True
                 )
