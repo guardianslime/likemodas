@@ -1,18 +1,15 @@
-# likemodas/blog/public_detail.py (VERSIÓN FINAL CON CARRUSEL NATIVO)
+# likemodas/blog/public_detail.py (CORREGIDO)
 
 import reflex as rx
 from ..state import AppState
-from ..models import CommentModel
 from ..ui.skeletons import skeleton_product_detail_view
 
 def _image_section() -> rx.Component:
     """
-    Un carrusel de imágenes nativo y simple construido con componentes de Reflex,
-    eliminando la librería externa y los errores de hidratación.
+    Un carrusel de imágenes nativo y simple para el producto.
     """
     FIXED_HEIGHT = "500px"
 
-    # --- CARRUSEL NATIVO Y SEGURO ---
     native_carousel = rx.box(
         rx.image(
             src=rx.get_upload_url(AppState.current_image_url),
@@ -21,14 +18,12 @@ def _image_section() -> rx.Component:
             height="100%",
             object_fit="cover",
         ),
-        # Botón "Anterior"
         rx.button(
             rx.icon(tag="chevron-left"),
             on_click=AppState.prev_image,
             position="absolute", top="50%", left="0.5rem",
             transform="translateY(-50%)", variant="soft", color_scheme="gray",
         ),
-        # Botón "Siguiente"
         rx.button(
             rx.icon(tag="chevron-right"),
             on_click=AppState.next_image,
@@ -59,6 +54,7 @@ def _image_section() -> rx.Component:
     )
 
 def _info_section() -> rx.Component:
+    """La sección de información del producto."""
     return rx.vstack(
         rx.vstack(
             rx.text(AppState.post.title, size="9", font_weight="bold", margin_bottom="0.25em", text_align="left"),
@@ -77,6 +73,7 @@ def _info_section() -> rx.Component:
     )
 
 def blog_public_detail_content() -> rx.Component:
+    """La página pública que muestra el detalle de un producto."""
     return rx.center(
         rx.vstack(
             rx.cond(
@@ -87,9 +84,13 @@ def blog_public_detail_content() -> rx.Component:
                     rx.fragment(
                         rx.heading("Detalle del Producto", size="9", margin_bottom="1em", color_scheme="violet"),
                         rx.grid(
-                            _image_section(), _info_section(),
-                            columns="2", spacing="4", align_items="start",
-                            width="100%", max_width="1400px",
+                            _image_section(), 
+                            _info_section(),
+                            columns={"initial": "1", "md": "2"}, 
+                            spacing="4", 
+                            align_items="start",
+                            width="100%", 
+                            max_width="1400px",
                         ),
                     ),
                     rx.center(
