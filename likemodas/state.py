@@ -76,10 +76,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     success: bool = False
     error_message: str = ""
     
-    # --- Variables para Rutas Dinámicas ---
-    id: int = 0
-    blog_id: int = 0
-    
     # --- AUTH / SESSION ---
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
