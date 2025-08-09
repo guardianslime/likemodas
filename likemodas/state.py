@@ -1,5 +1,3 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
-
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -96,11 +94,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    # --- REGISTRO Y VERIFICACIÓN (VERSIÓN DEFINITIVA) ---
+    # --- REGISTRO Y VERIFICACIÓN ---
     def handle_registration_email(self, form_data: dict):
-        """
-        Manejador de registro final y completo que no depende de métodos heredados.
-        """
         self.success = False
         self.error_message = ""
         username = form_data.get("username")
@@ -108,7 +103,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         password = form_data.get("password")
         confirm_password = form_data.get("confirm_password")
 
-        # 1. Validación de campos
         if not all([username, email, password, confirm_password]):
             self.error_message = "Todos los campos son obligatorios."
             return
@@ -122,7 +116,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         try:
             with rx.session() as session:
-                # 2. Verificar si el usuario o email ya existen
                 existing_username = session.exec(
                     sqlmodel.select(LocalUser).where(LocalUser.username == username)
                 ).first()
@@ -137,7 +130,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     self.error_message = "El email ya está registrado."
                     return
 
-                # 3. Hashear contraseña y crear el LocalUser
                 password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
                 new_user = LocalUser(
                     username=username,
@@ -151,25 +143,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 new_user_id = new_user.id
 
-                # 4. Crear tu UserInfo personalizado
                 user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
                 new_user_info = UserInfo(email=email, user_id=new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
 
-                # 5. Crear token de verificación
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
             
-            # 6. Enviar correo (fuera de la sesión de base de datos)
-            # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
             send_verification_email(recipient_email=email, token=token_str)
-
-            # 7. Marcar como exitoso
             self.success = True
             return
 
@@ -177,22 +163,32 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.error_message = f"Error inesperado durante el registro: {e}"
             print(f"Error en handle_registration_email: {e}")
 
-
     message: str = ""
     is_verified: bool = False
 
     @rx.event
     def verify_token(self):
-        token = self.router.page.params.get("token", "")
+        token = self.router.params.get("token", "")
         if not token:
             self.message = "Error: No se proporcionó un token de verificación."
             return
+        
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(VerificationToken).where(VerificationToken.token == token)).one_or_none()
-            if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
+
+            if db_token:
+                expires_at_aware = db_token.expires_at.replace(tzinfo=timezone.utc)
+                is_expired = datetime.now(timezone.utc) > expires_at_aware
+            else:
+                is_expired = True
+
+            if not db_token or is_expired:
                 self.message = "El token de verificación es inválido o ha expirado."
-                if db_token: session.delete(db_token); session.commit()
+                if db_token: 
+                    session.delete(db_token)
+                    session.commit()
                 return
+            
             user_info = session.get(UserInfo, db_token.userinfo_id)
             if user_info:
                 user_info.is_verified = True
@@ -201,6 +197,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+            
             self.message = "Error: No se encontró el usuario asociado a este token."
             
     # --- MANEJO DE CONTRASEÑA ---
@@ -228,15 +225,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        self.token = self.router.page.params.get("token", "")
+        self.token = self.router.params.get("token", "")
         if not self.token:
             self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
-            if not db_token or datetime.now(timezone.utc) > db_token.expires_at:
+            
+            if db_token:
+                expires_at_aware = db_token.expires_at.replace(tzinfo=timezone.utc)
+                is_expired = datetime.now(timezone.utc) > expires_at_aware
+            else:
+                is_expired = True
+
+            if not db_token or is_expired:
                 self.message, self.is_token_valid = "El enlace de reseteo es inválido o ha expirado.", False
-                if db_token: session.delete(db_token); session.commit()
+                if db_token: 
+                    session.delete(db_token)
+                    session.commit()
                 return
             self.is_token_valid = True
 
@@ -258,7 +264,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
-    # ... (El resto del archivo `state.py` se mantiene exactamente igual)
     # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
     max_price: str = ""
@@ -755,7 +760,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def get_post_detail(self):
         self.post = None
         try:
-            pid = int(self.router.page.params.get("blog_id", "0"))
+            pid = int(self.router.params.get("blog_id", "0"))
         except (ValueError, TypeError):
             return
         with rx.session() as session:
@@ -765,7 +770,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def on_load_edit(self):
         self.post = None
         try:
-            pid = int(self.router.page.params.get("blog_id", "0"))
+            pid = int(self.router.params.get("blog_id", "0"))
         except (ValueError, TypeError):
             return
         with rx.session() as session:
