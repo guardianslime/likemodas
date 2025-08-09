@@ -1,4 +1,4 @@
-# likemodas/state.py (CLASE AppState COMPLETA Y CORREGIDA)
+# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
 
 from __future__ import annotations
 import reflex as rx
@@ -73,6 +73,9 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
+    # ▼▼▼ ESTA ES LA LÍNEA AÑADIDA QUE SOLUCIONA EL ERROR DE EXPORTACIÓN ▼▼▼
+    success: bool = False
+    
     # --- AUTH / SESSION ---
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
@@ -107,38 +110,31 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         # 2. Intentar el registro con la librería base
-        # Esto ya maneja errores como "email/usuario ya existe"
         yield self.handle_registration(form_data)
 
-        # Si el evento anterior de la librería falló, error_message ya tendrá un valor.
-        # Si tuvo éxito, self.new_user_id será válido.
         if self.new_user_id < 0:
             return
 
         # 3. Bloque `try...except` para nuestras operaciones personalizadas
         try:
             with rx.session() as session:
-                # Determinar rol
                 user_role = UserRole.ADMIN if form_data.get("username") == "guardiantlemor01" else UserRole.CUSTOMER
                 
-                # Crear UserInfo
                 new_user_info = UserInfo(email=form_data["email"], user_id=self.new_user_id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
 
-                # Crear token de verificación
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
 
-            # 4. Enviar correo (fuera de la sesión de BD)
+            # 4. Enviar correo
             send_verification_email(recipient_email=new_user_info.email, token=token_str)
             
         except Exception as e:
-            # Si algo falla aquí (DB, email), atrapamos el error y lo mostramos
             self.success = False
             self.error_message = f"Error inesperado post-registro: {e}"
             print(f"Error en post-registro: {e}")
@@ -223,6 +219,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
+    # ... (El resto del archivo `state.py` se mantiene exactamente igual)
     # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
     max_price: str = ""
@@ -468,19 +465,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def current_image_url(self) -> str:
-        """Devuelve la URL de la imagen actual a mostrar."""
         if self.post and self.post.image_urls:
             safe_index = self.current_image_index % len(self.post.image_urls)
             return self.post.image_urls[safe_index]
         return ""
 
     def next_image(self):
-        """Pasa a la siguiente imagen en el carrusel."""
         if self.post and self.post.image_urls:
             self.current_image_index = (self.current_image_index + 1) % len(self.post.image_urls)
 
     def prev_image(self):
-        """Vuelve a la imagen anterior en el carrusel."""
         if self.post and self.post.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.post.image_urls)) % len(self.post.image_urls)
 
@@ -490,15 +484,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_post_loading = True
         self.post = None
         yield
-
         post_id = self.router.params.get("id", "0")
-        
         try: 
             pid = int(post_id)
         except (ValueError, TypeError):
             self.is_post_loading = False
             return
-
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -509,13 +500,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 .where(BlogPostModel.id == pid, BlogPostModel.publish_active == True)
             ).unique().one_or_none()
-
             if db_post: 
                 self.post = db_post
                 self.comments = sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
             else: 
                 self.comments = []
-            
             self.is_post_loading = False
     
     # --- DIRECCIONES DE ENVÍO ---
