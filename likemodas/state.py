@@ -1,3 +1,5 @@
+# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO FINAL)
+
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -503,6 +505,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     new_comment_rating: int = 0
     is_post_loading: bool = True
 
+    @rx.var
+    def id(self) -> int:
+        return self.router.page.params.get("id", 0)
+
+    @rx.var
+    def blog_id(self) -> int:
+        return self.router.page.params.get("blog_id", 0)
+
     # --- LÓGICA PARA EL CARRUSEL NATIVO ---
     current_image_index: int = 0
 
@@ -528,8 +538,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.post = None
         yield
         
-        pid = self.router.page.params.get("id", 0)
-        if pid == 0:
+        pid = self.id
+        if not pid:
             self.is_post_loading = False
             return
 
@@ -758,8 +768,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_post_detail(self):
         self.post = None
-        pid = self.router.page.params.get("blog_id", 0)
-        if pid == 0:
+        pid = self.blog_id
+        if not pid:
             return
         with rx.session() as session:
             self.post = session.get(BlogPostModel, pid)
@@ -767,8 +777,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_edit(self):
         self.post = None
-        pid = self.router.page.params.get("blog_id", 0)
-        if pid == 0:
+        pid = self.blog_id
+        if not pid:
             return
         with rx.session() as session:
             db_post = session.get(BlogPostModel, pid)
