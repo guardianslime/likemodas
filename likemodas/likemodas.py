@@ -28,14 +28,14 @@ class HomePageState(AppState):
         self.current_category = ""
         yield AppState.on_load 
 
-def index_content() -> rx.Component:
-    return blog_public_page_content()
+def index() -> rx.Component:
+    return rx.text("Página de inicio antigua")
 
 # --- Configuración de la App ---
 app = rx.App()
 
 # --- Definición de Rutas ---
-app.add_page(base_page(index_content()), route="/", on_load=HomePageState.on_load_main)
+
 # app.add_page(base_page(category_page.category_content()), route="/category/[cat_name]", title="Categoría", on_load=AppState.load_posts_and_set_category)
 app.add_page(base_page(search_results.search_results_content()), route="/search-results", title="Resultados de Búsqueda")
 
@@ -48,7 +48,7 @@ app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-
 
 # Rutas del Blog/Galería
 
-app.add_page(blog_public_page_content, route="/")
+app.add_page(index)
 app.add_page(base_page(blog_public_detail_content()), route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[id]", title="Detalle del Producto", on_load=AppState.on_load_public_detail)
 
 # Rutas de Cuenta, Carrito y Compras
