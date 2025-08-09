@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y DEFINITIVO)
+# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO FINAL)
 
 from __future__ import annotations
 import reflex as rx
@@ -75,6 +75,10 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     success: bool = False
     error_message: str = ""
+    
+    # --- Variables para Rutas Dinámicas ---
+    id: int = 0
+    blog_id: int = 0
     
     # --- AUTH / SESSION ---
     @rx.var(cache=True)
@@ -170,7 +174,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def verify_token(self):
-        token = self.router.params.get("token", "")
+        token = self.router.page.query_params.get("token", "")
         if not token:
             self.message = "Error: No se proporcionó un token de verificación."
             return
@@ -227,7 +231,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        self.token = self.router.params.get("token", "")
+        self.token = self.router.page.query_params.get("token", "")
         if not self.token:
             self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
