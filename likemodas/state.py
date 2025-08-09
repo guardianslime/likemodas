@@ -505,6 +505,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     new_comment_rating: int = 0
     is_post_loading: bool = True
 
+    @rx.var
+    def id(self) -> int:
+        return self.router.page.params.get("id", 0)
+
+    @rx.var
+    def blog_id(self) -> int:
+        return self.router.page.params.get("blog_id", 0)
+
     # --- LÓGICA PARA EL CARRUSEL NATIVO ---
     current_image_index: int = 0
 
@@ -522,14 +530,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def prev_image(self):
         if self.post and self.post.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.post.image_urls)) % len(self.post.image_urls)
-
-    @rx.var
-    def id(self) -> int:
-        return self.router.page.params.get("id", 0)
-
-    @rx.var
-    def blog_id(self) -> int:
-        return self.router.page.params.get("blog_id", 0)
 
     @rx.event
     def on_load_public_detail(self):
