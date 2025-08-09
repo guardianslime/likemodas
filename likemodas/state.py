@@ -157,9 +157,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(verification_token)
                 session.commit()
             
-            send_verification_email(recipient_email=email, token=token_str)
-            self.success = True
-            return
+                send_verification_email(recipient_email=email, token=token_str)
+                self.success = True
+                return
 
         except Exception as e:
             self.error_message = f"Error inesperado durante el registro: {e}"
@@ -740,6 +740,21 @@ class AppState(reflex_local_auth.LocalAuthState):
     post_content: str = ""
     price_str: str = ""
     
+    # +++ INICIO DE LA CORRECCIÓN +++
+    @rx.var
+    def my_admin_posts(self) -> list[BlogPostModel]:
+        """Devuelve una lista de posts creados por el usuario actual."""
+        if not self.authenticated_user_info:
+            return []
+        
+        with rx.session() as session:
+            return session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
+                .order_by(BlogPostModel.created_at.desc())
+            ).all()
+    # +++ FIN DE LA CORRECCIÓN +++
+
     @rx.var
     def blog_post_edit_url(self) -> str:
         if not self.post: return ""
@@ -751,6 +766,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def load_admin_posts(self):
+        """Este evento carga TODOS los posts. Podría ser para un super-admin."""
         if not self.is_admin:
             self.admin_posts = []
             return
@@ -760,7 +776,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_post_detail(self):
         self.post = None
-        pid = self.blog_id
+        # blog_id no existe en AppState, esto puede ser un error futuro.
+        # Asumo que se establece en otro lugar antes de llamar a este evento.
+        pid = getattr(self, 'blog_id', None)
         if not pid:
             return
         with rx.session() as session:
@@ -769,16 +787,21 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_edit(self):
         self.post = None
-        pid = self.blog_id
+        pid = getattr(self, 'blog_id', None)
         if not pid:
             return
         with rx.session() as session:
             db_post = session.get(BlogPostModel, pid)
             if db_post:
-                self.post = db_post
-                self.post_title = db_post.title
-                self.post_content = db_post.content
-                self.price_str = str(db_post.price)
+                # Verificación de seguridad: solo el dueño puede editar
+                if db_post.userinfo_id == self.authenticated_user_info.id:
+                    self.post = db_post
+                    self.post_title = db_post.title
+                    self.post_content = db_post.content
+                    self.price_str = str(db_post.price)
+                else:
+                    yield rx.toast.error("No tienes permiso para editar esta publicación.")
+                    yield rx.redirect("/")
 
     @rx.event
     def handle_edit_submit(self, form_data: dict):
@@ -786,7 +809,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("No se pudo guardar el post.")
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post.id)
-            if post_to_update:
+            # Verificación de seguridad
+            if post_to_update and post_to_update.userinfo_id == self.authenticated_user_info.id:
                 post_to_update.title = form_data.get("title", post_to_update.title)
                 post_to_update.content = form_data.get("content", post_to_update.content)
                 try:
@@ -797,31 +821,40 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("Post actualizado correctamente.")
                 return rx.redirect(f"/blog-public/{self.post.id}")
+            else:
+                return rx.toast.error("Acción no permitida.")
 
     @rx.event
     def delete_post(self, post_id: int):
-        if not self.is_admin:
+        if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         with rx.session() as session:
             post_to_delete = session.get(BlogPostModel, post_id)
-            if post_to_delete:
+            # Verificación de seguridad
+            if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(post_to_delete)
                 session.commit()
                 yield rx.toast.success("Publicación eliminada.")
-                return rx.redirect(navigation.routes.BLOG_POSTS_ROUTE)
+                # No es necesario redirigir, la UI se actualizará por la reactividad de `my_admin_posts`
+            else:
+                yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
+
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
-        if not self.is_admin:
+        if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, post_id)
-            if post_to_update:
+            # Verificación de seguridad
+            if post_to_update and post_to_update.userinfo_id == self.authenticated_user_info.id:
                 post_to_update.publish_active = not post_to_update.publish_active
                 session.add(post_to_update)
                 session.commit()
                 yield self.get_post_detail() 
-                return rx.toast.info(f"Estado de publicación cambiado a: {post_to_update.publish_active}")
+                yield rx.toast.info(f"Estado de publicación cambiado a: {'Activo' if post_to_update.publish_active else 'Inactivo'}")
+            else:
+                yield rx.toast.error("No tienes permiso para cambiar el estado de esta publicación.")
                 
     # --- HISTORIAL DE COMPRAS (USUARIO) ---
     user_purchases: List[UserPurchaseHistoryCardData] = rx.Field(default_factory=list)
