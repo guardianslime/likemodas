@@ -1,19 +1,20 @@
-# likemodas/likemodas.py (ARCHIVO PRINCIPAL CORREGIDO Y COMPLETO)
+# likemodas/likemodas.py (ARCHIVO FINAL CORREGIDO)
 
 import reflex as rx
 import reflex_local_auth
 
-from .state import AppState
-from .ui.base import base_page  # Importamos el layout base
+# --- Módulos de la aplicación (páginas y estado) ---
+from .state import AppState  # Asegúrate de que el estado se importa, Reflex lo usará.
+from .ui.base import base_page
 
-# --- Módulos de la aplicación (páginas) ---
 from .auth import pages as auth_pages
 from .pages import search_results, category_page
 from .blog import (
     blog_public_page_content, 
     blog_admin_page, 
     blog_public_detail_content,
-    blog_post_add_content
+    blog_post_add_content,
+    blog_post_edit_content  # Asegúrate de que esta importación sea necesaria/correcta
 )
 from .cart import page as cart_page
 from .purchases import page as purchases_page
@@ -23,20 +24,22 @@ from .account import shipping_info as shipping_info_module
 from . import navigation
 
 # --- Configuración de la App ---
-# Usamos el layout `base_page` como plantilla para todas las páginas.
-# Si alguna página no debe usarlo, se añade con app.add_page(componente)
-# en lugar de app.add_page(base_page(componente)).
-app = rx.App(state=AppState, style={"font_family": "Arial, sans-serif"})
+#
+# CORRECCIÓN: Se elimina el argumento `state=AppState`. 
+# Reflex ahora detecta el estado importado automáticamente.
+#
+app = rx.App(
+    style={"font_family": "Arial, sans-serif"}
+)
 
 # --- Definición de Rutas ---
 
 # Ruta principal (la galería de productos)
-# Esta es la única función que debe estar en la ruta "/".
-# Eliminamos la función `index()` y `app.add_page(index)` para evitar conflictos.
 app.add_page(
     base_page(blog_public_page_content()),
     route="/",
-    on_load=AppState.on_load  # Evento para cargar productos en la página principal
+    on_load=AppState.on_load,
+    title="Likemodas | Inicio"
 )
 
 # Rutas de Autenticación
@@ -56,7 +59,7 @@ app.add_page(base_page(purchases_page.purchase_history_content()), route="/my-pu
 app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
 
 # --- Rutas de Administración ---
-# Esta es la ruta que estamos arreglando.
+# Esta es la ruta que hemos estado arreglando.
 app.add_page(base_page(blog_admin_page()), route="/my-blog-posts", title="Mis Publicaciones")
 
 # Ruta para añadir nuevos posts/productos
