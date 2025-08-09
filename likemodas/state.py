@@ -1,3 +1,5 @@
+# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
+
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -434,9 +436,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         uploaded_filenames = []
         for file in files:
             upload_data = await file.read()
-            outfile = rx.get_upload_dir() / file.filename
+            # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
+            outfile = rx.get_upload_dir() / file.name
             outfile.write_bytes(upload_data)
-            uploaded_filenames.append(file.filename)
+            uploaded_filenames.append(file.name)
         
         async with self:
             self.temp_images.extend(uploaded_filenames)
