@@ -9,7 +9,7 @@ from.state import AppState
 from.auth import pages as auth_pages
 from.pages import search_results, category_page
 from.blog import (
-    blog_public_page_content, blog_public_detail_content, blog_post_list_content,
+    blog_public_page_content, blog_admin_page, blog_public_detail_content, blog_post_list_content,
     blog_post_detail_content, blog_post_add_content, blog_post_edit_content
 )
 from.cart import page as cart_page
@@ -47,6 +47,8 @@ app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgo
 app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-password", on_load=AppState.on_load_check_token)
 
 # Rutas del Blog/Galería
+
+app.add_page(blog_public_page_content, route="/")
 app.add_page(base_page(blog_public_detail_content()), route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[id]", title="Detalle del Producto", on_load=AppState.on_load_public_detail)
 
 # Rutas de Cuenta, Carrito y Compras
@@ -59,6 +61,7 @@ app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navi
 # app.add_page(base_page(blog_post_detail_content()), route=f"{navigation.routes.BLOG_POSTS_ROUTE}/[blog_id]", on_load=AppState.get_post_detail)
 app.add_page(base_page(blog_post_add_content()), route=navigation.routes.BLOG_POST_ADD_ROUTE)
 # app.add_page(base_page(blog_post_edit_content()), route="/blog/[blog_id]/edit", on_load=AppState.on_load_edit)
+app.add_page(blog_admin_page, route="/my-blog-posts") 
 app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Confirmar Pagos", on_load=AppState.load_pending_purchases)
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
 app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries)
