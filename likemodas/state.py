@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y DEFINITIVO)
+# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
 
 from __future__ import annotations
 import reflex as rx
@@ -122,7 +122,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         try:
             with rx.session() as session:
-                # 2. Verificar si el usuario o email ya existen (CORREGIDO)
+                # 2. Verificar si el usuario o email ya existen
                 existing_username = session.exec(
                     sqlmodel.select(LocalUser).where(LocalUser.username == username)
                 ).first()
@@ -141,7 +141,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
                 new_user = LocalUser(
                     username=username,
-                    email=email, # El email se guarda aquí temporalmente, pero no es una columna de la BD
+                    email=email,
                     password_hash=password_hash,
                     enabled=True
                 )
@@ -166,7 +166,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
             
             # 6. Enviar correo (fuera de la sesión de base de datos)
-            send_verification_email(recipient_email=new_user_info.email, token=token_str)
+            # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
+            send_verification_email(recipient_email=email, token=token_str)
 
             # 7. Marcar como exitoso
             self.success = True
@@ -174,7 +175,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         except Exception as e:
             self.error_message = f"Error inesperado durante el registro: {e}"
-            print(f"Error en handle_registration_email: {e}") # Log para depuración en el servidor
+            print(f"Error en handle_registration_email: {e}")
 
 
     message: str = ""
@@ -257,6 +258,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
+    # ... (El resto del archivo `state.py` se mantiene exactamente igual)
     # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
     max_price: str = ""
