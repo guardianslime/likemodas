@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
+# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO FINAL)
 
 from __future__ import annotations
 import reflex as rx
@@ -170,7 +170,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def verify_token(self):
-        token = self.router.params.get("token", "")
+        token = self.router.page.query_params.get("token", "")
         if not token:
             self.message = "Error: No se proporcionó un token de verificación."
             return
@@ -227,7 +227,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        self.token = self.router.params.get("token", "")
+        self.token = self.router.page.query_params.get("token", "")
         if not self.token:
             self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
@@ -436,13 +436,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         uploaded_filenames = []
         for file in files:
             upload_data = await file.read()
-            # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
             outfile = rx.get_upload_dir() / file.name
             outfile.write_bytes(upload_data)
             uploaded_filenames.append(file.name)
         
-        async with self:
-            self.temp_images.extend(uploaded_filenames)
+        self.temp_images.extend(uploaded_filenames)
 
     @rx.event
     def remove_image(self, filename: str):
@@ -525,18 +523,26 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.post and self.post.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.post.image_urls)) % len(self.post.image_urls)
 
+    @rx.var
+    def id(self) -> int:
+        return self.router.page.params.get("id", 0)
+
+    @rx.var
+    def blog_id(self) -> int:
+        return self.router.page.params.get("blog_id", 0)
+
     @rx.event
     def on_load_public_detail(self):
         self.current_image_index = 0
         self.is_post_loading = True
         self.post = None
         yield
-        post_id = self.router.params.get("id", "0")
-        try: 
-            pid = int(post_id)
-        except (ValueError, TypeError):
+        
+        pid = self.id
+        if not pid:
             self.is_post_loading = False
             return
+
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -762,9 +768,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_post_detail(self):
         self.post = None
-        try:
-            pid = int(self.router.params.get("blog_id", "0"))
-        except (ValueError, TypeError):
+        pid = self.blog_id
+        if not pid:
             return
         with rx.session() as session:
             self.post = session.get(BlogPostModel, pid)
@@ -772,9 +777,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_edit(self):
         self.post = None
-        try:
-            pid = int(self.router.params.get("blog_id", "0"))
-        except (ValueError, TypeError):
+        pid = self.blog_id
+        if not pid:
             return
         with rx.session() as session:
             db_post = session.get(BlogPostModel, pid)
