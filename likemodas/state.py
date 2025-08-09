@@ -73,8 +73,9 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
-    # ▼▼▼ ESTA ES LA LÍNEA AÑADIDA QUE SOLUCIONA EL ERROR DE EXPORTACIÓN ▼▼▼
+    # ▼▼▼ LÍNEAS QUE SOLUCIONAN LOS ERRORES DE EXPORTACIÓN ▼▼▼
     success: bool = False
+    error_message: str = ""
     
     # --- AUTH / SESSION ---
     @rx.var(cache=True)
@@ -219,7 +220,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
-    # ... (El resto del archivo `state.py` se mantiene exactamente igual)
     # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
     max_price: str = ""
