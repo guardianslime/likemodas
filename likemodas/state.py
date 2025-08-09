@@ -1,4 +1,4 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO)
+# likemodas/state.py (ARCHIVO COMPLETO Y DEFINITIVO)
 
 from __future__ import annotations
 import reflex as rx
@@ -433,16 +433,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
+        """
+        Manejador de subida de archivos corregido.
+        """
         uploaded_filenames = []
         for file in files:
             upload_data = await file.read()
-            # ▼▼▼ ESTA ES LA LÍNEA CORREGIDA ▼▼▼
+            # CORRECCIÓN 1: Usar file.name en lugar de file.filename
             outfile = rx.get_upload_dir() / file.name
             outfile.write_bytes(upload_data)
             uploaded_filenames.append(file.name)
         
-        async with self:
-            self.temp_images.extend(uploaded_filenames)
+        # CORRECCIÓN 2: Eliminar el bloque 'async with self' y modificar el estado directamente
+        self.temp_images.extend(uploaded_filenames)
 
     @rx.event
     def remove_image(self, filename: str):
