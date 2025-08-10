@@ -19,6 +19,7 @@ from .blog import (
 from .cart import page as cart_page
 from .purchases import page as purchases_page
 from .admin import page as admin_page
+from .admin.users_page import user_management_page # <-- Importa la nueva página
 from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
 from . import navigation
@@ -63,6 +64,13 @@ app.add_page(
     base_page(blog_admin_page()), 
     route="/blog", 
     title="Mis Publicaciones"
+)
+
+app.add_page(
+    base_page(user_management_page()), 
+    route="/admin/users", 
+    on_load=AppState.load_all_users,
+    title="Gestión de Usuarios"
 )
 
 # 2. RUTA AÑADIDA: La página para editar una publicación específica.

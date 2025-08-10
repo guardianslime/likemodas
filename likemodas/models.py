@@ -55,6 +55,10 @@ class UserInfo(rx.Model, table=True):
     user_id: int = Field(foreign_key="localuser.id", unique=True)
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
     is_verified: bool = Field(default=False, nullable=False)
+    # +++ INICIO DE CAMPOS NUEVOS +++
+    is_banned: bool = Field(default=False, nullable=False)
+    ban_expires_at: Optional[datetime] = Field(default=None)
+    # +++ FIN DE CAMPOS NUEVOS +++
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 

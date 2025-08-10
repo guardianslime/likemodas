@@ -17,13 +17,11 @@ def sidebar_user_item() -> rx.Component:
     return rx.cond(
         AppState.is_authenticated,
         rx.hstack(
-            # Accede al username a través del objeto authenticated_user
-            rx.avatar(fallback=AppState.authenticated_user.username, size="2"),
+            rx.avatar(fallback=AppState.authenticated_user.username[0].upper(), size="2"),
             rx.text(AppState.authenticated_user.username, size="3", weight="medium"),
             align="center",
             spacing="3",
         ),
-        # Si no está autenticado, muestra un texto genérico
         rx.text("Account", size="3", weight="medium")
     )
 
@@ -44,23 +42,38 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
     )
 
 def sidebar_items() -> rx.Component:
+    """Define los elementos del menú de la barra lateral."""
     return rx.vstack(
-        sidebar_item("Dashboard", "layout-dashboard", navigation.routes.HOME_ROUTE),
+        # --- INICIO DE LA CORRECCIÓN ---
+        # El Dashboard ahora es un panel de administración y solo visible para admins.
+        # Todos los enlaces de administración se agrupan aquí.
         rx.cond(
             AppState.is_admin,
             rx.fragment(
-                sidebar_item("Blog", "newspaper", navigation.routes.BLOG_POSTS_ROUTE),
-                sidebar_item("Create post", "square-library", navigation.routes.BLOG_POST_ADD_ROUTE),
-                sidebar_item(
-                    "Confirmar Pagos", "dollar-sign", "/admin/confirm-payments",
-                    has_notification=AppState.new_purchase_notification
+                rx.vstack(
+                    sidebar_item("Dashboard", "users", "/admin/users"),
+                    sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
+                    sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
+                    sidebar_item(
+                        "Confirmar Pagos", "dollar-sign", "/admin/confirm-payments",
+                        has_notification=AppState.new_purchase_notification
+                    ),
+                    sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
+                    sidebar_item("Mensajes de Contacto", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
+                    spacing="1",
+                    width="100%"
                 ),
-                sidebar_item("Historial de Pagos", "history", "/admin/payment-history")
+                rx.divider(margin_y="1em"), # Separador para distinguir admin de publico
             )
         ),
-        sidebar_item("Contact", "mail", navigation.routes.CONTACT_US_ROUTE),
-        sidebar_item("Contact History", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
-        spacing="1", width="100%",
+        # --- FIN DE LA CORRECCIÓN ---
+
+        # Enlaces públicos
+        sidebar_item("Tienda", "store", navigation.routes.HOME_ROUTE),
+        sidebar_item("Contacto", "mail", navigation.routes.CONTACT_US_ROUTE),
+        
+        spacing="1", 
+        width="100%",
     )
 
 def sidebar_logout_item() -> rx.Component:
@@ -68,7 +81,7 @@ def sidebar_logout_item() -> rx.Component:
         AppState.is_authenticated,
         rx.button(
             "Logout", rx.icon(tag="log-out", margin_left="0.5em"),
-            on_click=AppState.do_logout,
+            on_click=AppState.do_logout,  # Asegúrate de que este método exista en tu AppState
             width="100%", variant="soft", color_scheme="red"
         )
     )
@@ -78,10 +91,18 @@ def mobile_admin_menu() -> rx.Component:
         rx.menu.root(
             rx.menu.trigger(rx.button(rx.icon("menu", size=22), variant="ghost")),
             rx.menu.content(
-                rx.menu.item("Dashboard", on_click=rx.redirect(navigation.routes.HOME_ROUTE)),
+                rx.menu.item("Tienda", on_click=rx.redirect(navigation.routes.HOME_ROUTE)),
                 rx.menu.separator(),
-                # ... resto de los items ...
-                rx.menu.separator(),
+                # Menú móvil también muestra opciones de admin si es admin
+                rx.cond(
+                    AppState.is_admin,
+                    rx.fragment(
+                        rx.menu.item("Dashboard", on_click=rx.redirect("/admin/users")),
+                        rx.menu.item("Mis Publicaciones", on_click=rx.redirect("/blog")),
+                        rx.menu.item("Crear Publicación", on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE)),
+                        rx.menu.separator(),
+                    )
+                ),
                 rx.menu.item("Logout", on_click=AppState.do_logout, color="red"),
             ),
         ),
