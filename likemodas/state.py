@@ -391,77 +391,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             return [(post_map.get(pid), self.cart[pid]) for pid in post_ids]
     
     @rx.event
-    def load_all_users(self):
-        """Carga todos los usuarios. Protegido solo para administradores."""
-        if not self.is_admin:
-            self.all_users = []
-            return rx.redirect("/") # Redirige si no es admin
-        
-        with rx.session() as session:
-            # Usamos joinedload para traer los datos del usuario relacionado (username)
-            # en una sola consulta eficiente.
-            self.all_users = session.exec(
-                sqlmodel.select(UserInfo).options(
-                    sqlalchemy.orm.joinedload(UserInfo.user)
-                )
-            ).all()
-
-    @rx.event
-    def toggle_admin_role(self, userinfo_id: int):
-        """Cambia el rol de un usuario entre Admin y Customer."""
-        if not self.is_admin:
-            return rx.toast.error("No tienes permisos.")
-            
-        with rx.session() as session:
-            user_info = session.get(UserInfo, userinfo_id)
-            if user_info:
-                # Evita que el admin se quite el rol a sí mismo
-                if user_info.id == self.authenticated_user_info.id:
-                    return rx.toast.warning("No puedes cambiar tu propio rol.")
-                
-                if user_info.role == UserRole.ADMIN:
-                    user_info.role = UserRole.CUSTOMER
-                else:
-                    user_info.role = UserRole.ADMIN
-                session.add(user_info)
-                session.commit()
-        # Recargamos la lista para que la UI se actualice
-        return self.load_all_users()
-
-    @rx.event
-    def ban_user(self, userinfo_id: int, days: int = 7):
-        """Veta a un usuario por un número determinado de días."""
-        if not self.is_admin:
-            return rx.toast.error("No tienes permisos.")
-        
-        with rx.session() as session:
-            user_info = session.get(UserInfo, userinfo_id)
-            if user_info:
-                if user_info.id == self.authenticated_user_info.id:
-                    return rx.toast.warning("No puedes vetarte a ti mismo.")
-
-                user_info.is_banned = True
-                user_info.ban_expires_at = datetime.now(timezone.utc) + timedelta(days=days)
-                session.add(user_info)
-                session.commit()
-        return self.load_all_users()
-
-    @rx.event
-    def unban_user(self, userinfo_id: int):
-        """Levanta el veto a un usuario."""
-        if not self.is_admin:
-            return rx.toast.error("No tienes permisos.")
-
-        with rx.session() as session:
-            user_info = session.get(UserInfo, userinfo_id)
-            if user_info:
-                user_info.is_banned = False
-                user_info.ban_expires_at = None
-                session.add(user_info)
-                session.commit()
-        return self.load_all_users()
-
-    @rx.event
     def add_to_cart(self, post_id: int):
         if not self.is_authenticated: return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         self.cart[post_id] = self.cart.get(post_id, 0) + 1
@@ -755,6 +684,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     confirmed_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
     new_purchase_notification: bool = False
     search_query_admin_posts: str = ""
+    
+    # +++ INICIO DE LA CORRECCIÓN +++
+    # La variable `all_users` debe declararse aquí para que Reflex la reconozca.
+    all_users: List[UserInfo] = []
+    # +++ FIN DE LA CORRECCIÓN +++
 
     def set_search_query_admin_posts(self, query: str): self.search_query_admin_posts = query
         
@@ -813,7 +747,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     post_content: str = ""
     price_str: str = ""
     
-    # +++ INICIO DE LA CORRECCIÓN +++
     @rx.var
     def my_admin_posts(self) -> list[BlogPostModel]:
         """Devuelve una lista de posts creados por el usuario actual."""
@@ -826,7 +759,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
-    # +++ FIN DE LA CORRECCIÓN +++
 
     @rx.var
     def blog_post_edit_url(self) -> str:
@@ -849,8 +781,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_post_detail(self):
         self.post = None
-        # blog_id no existe en AppState, esto puede ser un error futuro.
-        # Asumo que se establece en otro lugar antes de llamar a este evento.
         pid = getattr(self, 'blog_id', None)
         if not pid:
             return
@@ -866,7 +796,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             db_post = session.get(BlogPostModel, pid)
             if db_post:
-                # Verificación de seguridad: solo el dueño puede editar
                 if db_post.userinfo_id == self.authenticated_user_info.id:
                     self.post = db_post
                     self.post_title = db_post.title
@@ -882,7 +811,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("No se pudo guardar el post.")
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post.id)
-            # Verificación de seguridad
             if post_to_update and post_to_update.userinfo_id == self.authenticated_user_info.id:
                 post_to_update.title = form_data.get("title", post_to_update.title)
                 post_to_update.content = form_data.get("content", post_to_update.content)
@@ -903,12 +831,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Acción no permitida.")
         with rx.session() as session:
             post_to_delete = session.get(BlogPostModel, post_id)
-            # Verificación de seguridad
             if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(post_to_delete)
                 session.commit()
                 yield rx.toast.success("Publicación eliminada.")
-                # No es necesario redirigir, la UI se actualizará por la reactividad de `my_admin_posts`
             else:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
 
@@ -919,7 +845,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Acción no permitida.")
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, post_id)
-            # Verificación de seguridad
             if post_to_update and post_to_update.userinfo_id == self.authenticated_user_info.id:
                 post_to_update.publish_active = not post_to_update.publish_active
                 session.add(post_to_update)
@@ -1015,3 +940,76 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True, BlogPostModel.publish_date < datetime.now(timezone.utc), BlogPostModel.title.ilike(f"%{term}%")).order_by(BlogPostModel.created_at.desc())).unique().all()
         self.search_results = [ProductCardData(id=p.id, title=p.title, price=p.price or 0.0, image_urls=p.image_urls or [], average_rating=p.average_rating, rating_count=p.rating_count) for p in results]
         return rx.redirect("/search-results")
+    
+    # --- GESTIÓN DE USUARIOS (ADMIN) ---
+    # Los métodos que ya tenías están correctos, solo faltaba la declaración de la variable.
+    @rx.event
+    def load_all_users(self):
+        """Carga todos los usuarios. Protegido solo para administradores."""
+        if not self.is_admin:
+            self.all_users = []
+            return rx.redirect("/") # Redirige si no es admin
+        
+        with rx.session() as session:
+            # Usamos joinedload para traer los datos del usuario relacionado (username)
+            # en una sola consulta eficiente.
+            self.all_users = session.exec(
+                sqlmodel.select(UserInfo).options(
+                    sqlalchemy.orm.joinedload(UserInfo.user)
+                )
+            ).all()
+
+    @rx.event
+    def toggle_admin_role(self, userinfo_id: int):
+        """Cambia el rol de un usuario entre Admin y Customer."""
+        if not self.is_admin:
+            return rx.toast.error("No tienes permisos.")
+            
+        with rx.session() as session:
+            user_info = session.get(UserInfo, userinfo_id)
+            if user_info:
+                # Evita que el admin se quite el rol a sí mismo
+                if user_info.id == self.authenticated_user_info.id:
+                    return rx.toast.warning("No puedes cambiar tu propio rol.")
+                
+                if user_info.role == UserRole.ADMIN:
+                    user_info.role = UserRole.CUSTOMER
+                else:
+                    user_info.role = UserRole.ADMIN
+                session.add(user_info)
+                session.commit()
+        # Recargamos la lista para que la UI se actualice
+        return self.load_all_users()
+
+    @rx.event
+    def ban_user(self, userinfo_id: int, days: int = 7):
+        """Veta a un usuario por un número determinado de días."""
+        if not self.is_admin:
+            return rx.toast.error("No tienes permisos.")
+        
+        with rx.session() as session:
+            user_info = session.get(UserInfo, userinfo_id)
+            if user_info:
+                if user_info.id == self.authenticated_user_info.id:
+                    return rx.toast.warning("No puedes vetarte a ti mismo.")
+
+                user_info.is_banned = True
+                user_info.ban_expires_at = datetime.now(timezone.utc) + timedelta(days=days)
+                session.add(user_info)
+                session.commit()
+        return self.load_all_users()
+
+    @rx.event
+    def unban_user(self, userinfo_id: int):
+        """Levanta el veto a un usuario."""
+        if not self.is_admin:
+            return rx.toast.error("No tienes permisos.")
+
+        with rx.session() as session:
+            user_info = session.get(UserInfo, userinfo_id)
+            if user_info:
+                user_info.is_banned = False
+                user_info.ban_expires_at = None
+                session.add(user_info)
+                session.commit()
+        return self.load_all_users()
