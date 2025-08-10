@@ -1,4 +1,4 @@
-# likemodas/blog/edit_page.py (NUEVO ARCHIVO)
+# likemodas/blog/edit_page.py (CORREGIDO)
 
 import reflex as rx
 from ..state import AppState
@@ -28,7 +28,9 @@ def blog_post_edit_content() -> rx.Component:
                         on_change=AppState.set_post_content,
                         placeholder="Describe los detalles, materiales, etc.",
                         width="100%",
-                        rows=8,
+                        # --- CORRECCIÓN ---
+                        # Se pasa el número de filas como un string "8" en lugar del entero 8.
+                        rows="8",
                     ),
 
                     rx.text("Precio (COP)", as_="div", size="2", margin_bottom="2px", weight="bold"),
@@ -50,5 +52,5 @@ def blog_post_edit_content() -> rx.Component:
             width="100%",
         ),
         padding_y="2em",
-        max_width="800px", # Un contenedor más pequeño para el formulario
+        max_width="800px",
     )
