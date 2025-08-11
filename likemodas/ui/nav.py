@@ -1,54 +1,67 @@
-# likemodas/ui/nav.py (CORRECCIÓN DEFINITIVA PARA 0.7.0)
+# likemodas/ui/nav.py (SOLUCIÓN DEFINITIVA CON POPOVER PARA 0.7.0)
 
 import reflex as rx
 from .. import navigation
 from ..state import AppState
 
 def notification_icon() -> rx.Component:
-    """Componente para el icono de notificaciones con la sintaxis correcta para 0.7.0."""
+    """Componente para el icono de notificaciones, construido con rx.popover."""
     icon_color = rx.color_mode_cond("black", "white")
     
-    # --- CAMBIO CLAVE FINAL ---
-    # Se elimina `rx.menu_list`. El `rx.cond` y `rx.foreach` que generan
-    # los `rx.menu_item` son ahora hijos directos de `rx.menu`.
-    return rx.menu(
-        # 1. El primer hijo es el TRIGGER (el botón que abre el menú)
-        rx.box(
-            rx.icon("bell", size=28, color=icon_color),
-            rx.cond(
-                AppState.unread_count > 0,
-                rx.box(
-                    rx.text(AppState.unread_count, font_size="0.7em", weight="bold"),
-                    position="absolute", top="-5px", right="-5px",
-                    padding="0 0.4em", border_radius="full",
-                    bg="red", color="white",
-                )
-            ),
-            position="relative", 
-            padding="0.5em", 
-            cursor="pointer",
-            on_click=AppState.mark_all_as_read
-        ),
-        
-        # 2. El resto de hijos son los ITEMS del menú
-        rx.cond(
-            AppState.notifications,
-            rx.foreach(
-                AppState.notifications,
-                lambda n: rx.menu_item(
+    # --- CAMBIO FUNDAMENTAL: Usamos rx.popover en lugar de rx.menu ---
+    return rx.popover(
+        # El rx.popover_trigger envuelve el elemento en el que se hace clic.
+        rx.popover_trigger(
+            rx.box(
+                rx.icon("bell", size=28, color=icon_color),
+                rx.cond(
+                    AppState.unread_count > 0,
                     rx.box(
-                        rx.text(n.message, weight=rx.cond(n.is_read, "normal", "bold")),
-                        rx.text(n.created_at_formatted, font_size="0.8em", color_scheme="gray"),
-                    ),
-                    on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace."))
-                )
-            ),
-            rx.menu_item("No tienes notificaciones.")
+                        rx.text(AppState.unread_count, font_size="0.7em", weight="bold"),
+                        position="absolute", top="-5px", right="-5px",
+                        padding="0 0.4em", border_radius="full",
+                        bg="red", color="white",
+                    )
+                ),
+                position="relative", 
+                padding="0.5em", 
+                cursor="pointer",
+                on_click=AppState.mark_all_as_read
+            )
         ),
+        # El rx.popover_content es el contenedor que aparece.
+        rx.popover_content(
+            rx.vstack(
+                rx.cond(
+                    AppState.notifications,
+                    rx.foreach(
+                        AppState.notifications,
+                        # Usamos un rx.button con apariencia de item de menú
+                        lambda n: rx.button(
+                            rx.box(
+                                rx.text(n.message, weight=rx.cond(n.is_read, "normal", "bold")),
+                                rx.text(n.created_at_formatted, font_size="0.8em", color_scheme="gray"),
+                                text_align="left",
+                            ),
+                            on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace.")),
+                            variant="ghost", # Apariencia limpia
+                            width="100%",
+                            padding_y="0.5em",
+                            height="auto",
+                        )
+                    ),
+                    rx.text("No tienes notificaciones.", padding="1em")
+                ),
+                spacing="0",
+                max_height="300px", 
+                overflow_y="auto",
+                width="300px", # Ancho del menú desplegable
+            )
+        )
     )
 
 def public_navbar() -> rx.Component:
-    """La barra de navegación pública."""
+    """La barra de navegación pública (sin cambios en esta función)."""
     icon_color = rx.color_mode_cond("black", "white")
     
     authenticated_icons = rx.hstack(
