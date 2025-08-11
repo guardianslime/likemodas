@@ -5,9 +5,7 @@ from reflex.style import toggle_color_mode
 from ..state import AppState
 from .. import navigation
 
-# Las funciones internas como sidebar_item, etc., no necesitan cambios.
-# Las incluyo para que puedas reemplazar el archivo completo.
-
+# No hay cambios en las funciones internas del sidebar
 def sidebar_dark_mode_toggle_item() -> rx.Component:
     return rx.button(
         rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
@@ -81,7 +79,7 @@ def sidebar_logout_item() -> rx.Component:
 
 def sliding_admin_sidebar() -> rx.Component:
     """
-    El componente principal del sidebar con la posición y altura corregidas.
+    Componente del sidebar con posicionamiento vertical estabilizado mediante transform.
     """
     SIDEBAR_WIDTH = "16em"
 
@@ -123,16 +121,14 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         # --- CORRECCIONES CLAVE DE POSICIÓN ---
         position="fixed",
-        top="0",                 # Anclarlo a la parte superior
-        left="0",                # Anclarlo a la izquierda
-        height="100vh",          # Ocupar el 100% de la altura de la ventana
-        display="flex",          # Usar flexbox para centrar verticalmente
-        align_items="center",    # Centrar el hstack (panel + botón) verticalmente
-        transform=rx.cond(
-            AppState.show_admin_sidebar,
-            "translateX(0)",
-            f"translateX(-{SIDEBAR_WIDTH})"
-        ),
+        top="50%",  # Lo posicionamos al 50% de la altura de la ventana
+        left="0",
         transition="transform 0.4s ease-in-out",
         z_index="1000",
+        # Combinamos el transform para centrarlo verticalmente Y moverlo horizontalmente
+        transform=rx.cond(
+            AppState.show_admin_sidebar,
+            "translate(0, -50%)",
+            f"translate(-{SIDEBAR_WIDTH}, -50%)"
+        ),
     )
