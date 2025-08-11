@@ -19,6 +19,7 @@ from .blog import (
 from .cart import page as cart_page
 from .purchases import page as purchases_page
 from .admin import page as admin_page
+from .admin.store_page import admin_store_page
 from .admin.users_page import user_management_page # <-- Importa la nueva página
 from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
@@ -91,5 +92,11 @@ app.add_page(
 
 # --- Otras rutas de Admin ---
 app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Confirmar Pagos", on_load=AppState.load_pending_purchases)
+app.add_page(
+    base_page(admin_store_page()), 
+    route="/admin/store", 
+    on_load=AppState.on_load_admin_store,
+    title="Admin | Tienda"
+)
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
 app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries, title="Mensajes de Contacto")

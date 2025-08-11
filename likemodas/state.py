@@ -1003,3 +1003,34 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(user_info)
                 session.commit()
         return self.load_all_users()
+    
+    admin_store_posts: list[ProductCardData] = []
+
+    @rx.event
+    def on_load_admin_store(self):
+        """
+        Carga todos los productos (publicados o no) en la variable de estado
+        de la tienda de admin para que el admin pueda ver todo.
+        """
+        if not self.is_admin:
+            return rx.redirect("/")
+
+        with rx.session() as session:
+            # Consulta para traer TODOS los posts, no solo los activos.
+            results = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .order_by(BlogPostModel.created_at.desc())
+            ).unique().all()
+            
+            # Poblamos la nueva variable de estado.
+            self.admin_store_posts = [
+                ProductCardData(
+                    id=p.id, 
+                    title=p.title, 
+                    price=p.price or 0.0, 
+                    image_urls=p.image_urls or [], 
+                    average_rating=p.average_rating, 
+                    rating_count=p.rating_count
+                ) for p in results
+            ]
