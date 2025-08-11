@@ -1,4 +1,4 @@
-# likemodas/admin/users_page.py (CORREGIDO 'size' EN BOTONES)
+# likemodas/admin/users_page.py (CORRECCIÓN FINAL CON rx.el.*)
 
 import reflex as rx
 from ..state import AppState
@@ -17,18 +17,17 @@ def user_status_badge(user: UserInfo) -> rx.Component:
     )
 
 def user_row(user: UserInfo) -> rx.Component:
-    """Componente para renderizar una fila de la tabla de usuarios con 'size' corregido."""
-    return rx.tr(
-        rx.td(user.user.username),
-        rx.td(user.email),
-        rx.td(rx.badge(user.role)),
-        rx.td(user_status_badge(user)),
-        rx.td(
+    """Componente para renderizar una fila de la tabla de usuarios con sintaxis rx.el.*."""
+    return rx.el.tr(
+        rx.el.td(user.user.username),
+        rx.el.td(user.email),
+        rx.el.td(rx.badge(user.role)),
+        rx.el.td(user_status_badge(user)),
+        rx.el.td(
             rx.hstack(
                 rx.button(
                     rx.cond(user.role == UserRole.ADMIN, "Quitar Admin", "Hacer Admin"),
                     on_click=lambda: AppState.toggle_admin_role(user.id),
-                    # --- CAMBIO: size="sm" -> size="2" ---
                     size="2"
                 ),
                 rx.cond(
@@ -48,20 +47,19 @@ def user_management_page() -> rx.Component:
             rx.heading("Gestión de Usuarios", font_size="2em"),
             rx.text("Administra los roles y el estado de todos los usuarios registrados."),
             rx.divider(margin_y="1.5em"),
-            rx.table(
-                rx.thead(
-                    rx.tr(
-                        rx.th("Usuario"),
-                        rx.th("Email"),
-                        rx.th("Rol"),
-                        rx.th("Estado"),
-                        rx.th("Acciones"),
+            rx.el.table(
+                rx.el.thead(
+                    rx.el.tr(
+                        rx.el.th("Usuario"),
+                        rx.el.th("Email"),
+                        rx.el.th("Rol"),
+                        rx.el.th("Estado"),
+                        rx.el.th("Acciones"),
                     )
                 ),
-                rx.tbody(
+                rx.el.tbody(
                     rx.foreach(AppState.all_users, user_row)
                 ),
-                variant="striped",
                 width="100%",
             ),
             align_items="stretch",

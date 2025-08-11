@@ -1,4 +1,4 @@
-# likemodas/blog/admin_page.py (CORREGIDO 'size' EN BOTONES)
+# likemodas/blog/admin_page.py (SINTAXIS FINAL Y CORRECTA CON rx.el.*)
 
 import reflex as rx
 from ..state import AppState
@@ -6,16 +6,17 @@ from ..models import BlogPostModel
 from .. import navigation
 
 def post_admin_row(post: BlogPostModel) -> rx.Component:
-    """Fila de la tabla de admin con el 'size' del botón corregido."""
-    return rx.tr(
-        rx.td(
+    """Fila de la tabla de admin con la sintaxis correcta de rx.el.*."""
+    # --- Se usa la sintaxis rx.el.tr y rx.el.td ---
+    return rx.el.tr(
+        rx.el.td(
             rx.cond(
                 post.image_urls & (post.image_urls.length() > 0),
                 rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4"),
                 rx.avatar(fallback="?", size="4")
             )
         ),
-        rx.td(
+        rx.el.td(
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
@@ -26,15 +27,14 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                 align_items="center",
             )
         ),
-        rx.td(post.title),
-        rx.td(post.price_cop),
-        rx.td(
+        rx.el.td(post.title),
+        rx.el.td(post.price_cop),
+        rx.el.td(
             rx.hstack(
                 rx.button(
                     "Editar",
                     on_click=rx.redirect(f"/blog/{post.id}/edit"),
                     variant="outline",
-                    # --- CAMBIO: size="sm" -> size="2" ---
                     size="2"
                 ),
                 rx.alert_dialog(
@@ -55,13 +55,12 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                     on_click=rx.set_value(f"delete-dialog-{post.id}", True),
                     color_scheme="red",
                     variant="ghost",
-                    # --- CAMBIO: size="sm" -> size="2" ---
                     size="2"
                 ),
                 spacing="3",
             )
         ),
-        vertical_align="middle",
+        style={"vertical_align": "middle"},
     )
 
 def blog_admin_page() -> rx.Component:
@@ -78,20 +77,21 @@ def blog_admin_page() -> rx.Component:
                 rx.divider(margin_y="1.5em"),
                 rx.cond(
                     AppState.my_admin_posts,
-                    rx.table(
-                        rx.thead(
-                            rx.tr(
-                                rx.th("Imagen"),
-                                rx.th("Estado"),
-                                rx.th("Título"),
-                                rx.th("Precio"),
-                                rx.th("Acciones"),
+                    # --- Se usa la sintaxis rx.el.table y sus hijos ---
+                    rx.el.table(
+                        rx.el.thead(
+                            rx.el.tr(
+                                rx.el.th("Imagen"),
+                                rx.el.th("Estado"),
+                                rx.el.th("Título"),
+                                rx.el.th("Precio"),
+                                rx.el.th("Acciones"),
                             )
                         ),
-                        rx.tbody(
+                        rx.el.tbody(
                             rx.foreach(AppState.my_admin_posts, post_admin_row)
                         ),
-                        variant="simple", width="100%",
+                        width="100%",
                     ),
                     rx.center(
                         rx.vstack(
