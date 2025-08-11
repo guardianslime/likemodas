@@ -39,4 +39,4 @@ config = rx.Config(
         radius="medium",
         accent_color="sky"
     ),
-)   
+)

@@ -1,149 +1,102 @@
-# likemodas/likemodas.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/likemodas.py (VERSIÓN FINAL, COMPLETA Y CORREGIDA)
 
 import reflex as rx
 import reflex_local_auth
+
+# --- Módulos de la aplicación ---
 from .state import AppState
-from .models import Product
+from .ui.base import base_page
 
-# --- Componentes Reutilizables ---
+from .auth import pages as auth_pages
+from .pages import search_results, category_page
+from .blog import (
+    blog_public_page_content, 
+    blog_admin_page, 
+    blog_public_detail_content,
+    blog_post_add_content,
+    blog_post_edit_content  # Importación para la página de edición
+)
+from .cart import page as cart_page
+from .purchases import page as purchases_page
+from .admin import page as admin_page
+from .admin.store_page import admin_store_page
+from .admin.users_page import user_management_page # <-- Importa la nueva página
+from .contact import page as contact_page
+from .account import shipping_info as shipping_info_module
+from . import navigation
 
-def product_card(p: Product) -> rx.Component:
-    """Componente de UI para mostrar una tarjeta de producto."""
-    return rx.card(
-        rx.vstack(
-            rx.heading(p.title, size="5"),
-            rx.text(f"${p.price.to_string()}"),
-            rx.button("Añadir al carrito", on_click=lambda: AppState.add_to_cart(p.id))
-        )
-    )
+# --- Configuración de la App ---
+# Se quita el argumento `state=AppState`, ya que Reflex lo detecta automáticamente.
+app = rx.App(
+    style={"font_family": "Arial, sans-serif"}
+)
 
-def main_layout(child: rx.Component) -> rx.Component:
-    """Layout principal con la barra de navegación."""
-    return rx.vstack(
-        rx.hstack(
-            rx.link(rx.heading("Likemodas"), href="/"),
-            rx.spacer(),
-            rx.hstack(
-                rx.link("Tienda", href="/"),
-                rx.cond(
-                    AppState.is_authenticated,
-                    rx.menu.root(
-                        rx.menu.trigger(rx.button(AppState.authenticated_user.username)),
-                        rx.menu.content(
-                            rx.menu.item("Mi Cuenta", on_click=rx.redirect("/my-account")),
-                            rx.cond(AppState.is_admin, rx.menu.item("Admin", on_click=rx.redirect("/admin"))),
-                            rx.menu.separator(),
-                            rx.menu.item("Cerrar Sesión", on_click=AppState.do_logout),
-                        ),
-                    ),
-                    rx.link(rx.button("Login"), href="/login")
-                ),
-                rx.link(
-                    rx.hstack(
-                        rx.icon("shopping-cart"),
-                        rx.badge(AppState.cart_items_count),
-                    ),
-                    href="/cart"
-                ),
-                spacing="4",
-                align="center"
-            )
-        ),
-        rx.container(child, padding_y="2em", width="100%"),
-        align="center",
-    )
+# --- Definición de Rutas ---
 
-# --- Páginas Públicas ---
-def index_page() -> rx.Component:
-    """Página de la tienda."""
-    return rx.flex(
-        rx.foreach(AppState.products, product_card),
-        wrap="wrap", spacing="4"
-    )
+# Ruta principal (la galería de productos)
+app.add_page(
+    base_page(blog_public_page_content()),
+    route="/",
+    on_load=AppState.on_load,
+    title="Likemodas | Inicio"
+)
 
-def cart_page() -> rx.Component:
-    """Página del carrito."""
-    return rx.vstack(
-        rx.heading("Carrito de Compras", size="8"),
-        rx.heading(f"Total: {AppState.cart_total_cop}", size="5"),
-        rx.button("Finalizar Compra", on_click=AppState.handle_checkout)
-    )
+# --- Rutas de Autenticación ---
+app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
+app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE, title="Registrarse")
+app.add_page(base_page(auth_pages.verification_page_content()), route="/verify-email", on_load=AppState.verify_token, title="Verificar Email")
+app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgot-password", title="Recuperar Contraseña")
+app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-password", on_load=AppState.on_load_check_token, title="Restablecer Contraseña")
 
-@reflex_local_auth.require_login
-def my_account_page() -> rx.Component:
-    return rx.vstack(
-        rx.heading("Mi Cuenta", size="8"),
-        rx.heading("Mis Pedidos", size="5"),
-    )
+# --- Rutas de Blog/Galería y Productos ---
+app.add_page(base_page(blog_public_detail_content()), route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[id]", title="Detalle del Producto", on_load=AppState.on_load_public_detail)
+app.add_page(base_page(search_results.search_results_content()), route="/search-results", title="Resultados de Búsqueda")
 
-# --- Páginas de Administración ---
-@reflex_local_auth.require_login
-def admin_page() -> rx.Component:
-    return rx.cond(
-        AppState.is_admin,
-        rx.vstack(
-            rx.heading("Panel de Admin", size="8"),
-            rx.link("Gestionar Productos", href="/admin/products"),
-        ),
-        rx.text("Acceso denegado.")
-    )
+# --- Rutas de Cuenta, Carrito y Compras ---
+app.add_page(base_page(cart_page.cart_page_content()), route="/cart", title="Mi Carrito", on_load=[AppState.on_load, AppState.load_default_shipping_info])
+app.add_page(base_page(purchases_page.purchase_history_content()), route="/my-purchases", title="Mis Compras", on_load=AppState.load_purchases)
+app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
 
-# --- Páginas de Autenticación Personalizadas ---
+# --- Rutas de Administración ---
 
-def login_page() -> rx.Component:
-    """Página de inicio de sesión personalizada."""
-    return rx.vstack(
-        rx.heading("Iniciar Sesión", size="7"),
-        rx.form(
-            rx.vstack(
-                rx.input(placeholder="Username", name="username", required=True),
-                rx.input(placeholder="Password", name="password", type="password", required=True),
-                rx.button("Iniciar Sesión", type="submit"),
-            ),
-            on_submit=AppState.handle_login,
-        ),
-        rx.link("¿No tienes cuenta? Regístrate aquí.", href="/register"),
-        rx.cond(
-            reflex_local_auth.LoginState.error_message != "",
-            rx.callout(reflex_local_auth.LoginState.error_message, color_scheme="red", icon="triangle_alert")
-        )
-    )
+# 1. CORRECCIÓN PRINCIPAL: La página de gestión de publicaciones del admin.
+# Se cambia la ruta a "/blog" para que coincida con tu sidebar.
+app.add_page(
+    base_page(blog_admin_page()), 
+    route="/blog", 
+    title="Mis Publicaciones"
+)
 
-def register_page() -> rx.Component:
-    """Página de registro personalizada."""
-    return rx.vstack(
-        rx.heading("Crear Cuenta", size="7"),
-        rx.form(
-            rx.vstack(
-                rx.input(placeholder="Username", name="username", required=True),
-                rx.input(placeholder="Email", name="email", type="email", required=True),
-                rx.input(placeholder="Password", name="password", type="password", required=True),
-                rx.button("Crear Cuenta", type="submit"),
-            ),
-            on_submit=AppState.handle_registration_custom,
-        ),
-        rx.link("¿Ya tienes cuenta? Inicia sesión.", href="/login"),
-        rx.cond(
-            AppState.error_message != "",
-            rx.callout(AppState.error_message, color_scheme="red", icon="triangle_alert")
-        ),
-        rx.cond(
-            AppState.success_message != "",
-            # ▼▼▼ CORRECCIÓN DEL ICONO ▼▼▼
-            rx.callout(AppState.success_message, color_scheme="green", icon="check")
-        )
-    )
+app.add_page(
+    base_page(user_management_page()), 
+    route="/admin/users", 
+    on_load=AppState.load_all_users,
+    title="Gestión de Usuarios"
+)
 
-# --- Inicialización y Rutas ---
-app = rx.App()
+# 2. RUTA AÑADIDA: La página para editar una publicación específica.
+# El botón "Editar" en la tabla ahora funcionará.
+app.add_page(
+    base_page(blog_post_edit_content()), 
+    route="/blog/[blog_id]/edit", 
+    on_load=AppState.on_load_edit, 
+    title="Editar Publicación"
+)
 
-app.add_page(main_layout(index_page()), route="/", on_load=AppState.load_products)
-app.add_page(main_layout(cart_page()), route="/cart")
-app.add_page(main_layout(my_account_page()), route="/my-account", on_load=AppState.load_my_purchases)
-app.add_page(main_layout(admin_page()), route="/admin")
+# 3. Ruta para añadir nuevos posts/productos
+app.add_page(
+    base_page(blog_post_add_content()), 
+    route=navigation.routes.BLOG_POST_ADD_ROUTE, 
+    title="Añadir Producto"
+)
 
-app.add_page(main_layout(login_page()), route=reflex_local_auth.routes.LOGIN_ROUTE)
-app.add_page(main_layout(register_page()), route=reflex_local_auth.routes.REGISTER_ROUTE)
-
-# ▼▼▼ LÍNEA ELIMINADA ▼▼▼
-# app.compile()
+# --- Otras rutas de Admin ---
+app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Confirmar Pagos", on_load=AppState.load_pending_purchases)
+app.add_page(
+    base_page(admin_store_page()), 
+    route="/admin/store", 
+    on_load=AppState.on_load_admin_store,
+    title="Admin | Tienda"
+)
+app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
+app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries, title="Mensajes de Contacto")
