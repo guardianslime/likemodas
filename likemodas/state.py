@@ -1,4 +1,4 @@
-# likemodas/state.py (VERSIÓN FINAL Y CORRECTA)
+# likemodas/state.py (SOLUCIÓN FINAL)
 
 import reflex as rx
 import reflex_local_auth
@@ -26,7 +26,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def is_admin(self) -> bool:
-        return self.authenticated_user_info and self.authenticated_user_info.role == UserRole.ADMIN
+        # ▼▼▼ ESTA ES LA FUNCIÓN CORREGIDA ▼▼▼
+        # Nos aseguramos de que siempre devuelva True o False.
+        if self.authenticated_user_info is None:
+            return False
+        return self.authenticated_user_info.role == UserRole.ADMIN
 
     #--- Registro Personalizado ---
     def handle_registration_custom(self, form_data: dict):
