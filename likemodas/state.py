@@ -1034,3 +1034,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     rating_count=p.rating_count
                 ) for p in results
             ]
+
+
+    show_admin_sidebar: bool = False
+
+    def toggle_admin_sidebar(self):
+        """Muestra u oculta la barra lateral de administración."""
+        self.show_admin_sidebar = not self.show_admin_sidebar

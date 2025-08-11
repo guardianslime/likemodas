@@ -6,9 +6,7 @@ from ..state import AppState
 from .. import navigation
 
 def sidebar_dark_mode_toggle_item() -> rx.Component:
-    """
-    Un componente que muestra un botón para alternar el modo de color.
-    """
+    """Un componente que muestra un botón para alternar el modo de color."""
     return rx.button(
         rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
         on_click=toggle_color_mode,
@@ -30,6 +28,7 @@ def sidebar_user_item() -> rx.Component:
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
     """Componente reutilizable para un elemento del menú lateral."""
+    # Ahora el on_click también cierra el sidebar para una mejor experiencia móvil
     return rx.link(
         rx.hstack(
             rx.icon(icon),
@@ -42,7 +41,11 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
             width="100%", padding_x="0.5rem", padding_y="0.75rem", align="center",
             style={"_hover": {"bg": rx.color("accent", 4), "color": rx.color("accent", 11)}, "border-radius": "0.5em"},
         ),
-        href=href, underline="none", weight="medium", width="100%",
+        href=href,
+        underline="none",
+        weight="medium",
+        width="100%",
+        on_click=AppState.toggle_admin_sidebar,
     )
 
 def sidebar_items() -> rx.Component:
@@ -70,12 +73,7 @@ def sidebar_items() -> rx.Component:
         ),
         
         # --- SECCIÓN PÚBLICA / GENERAL ---
-        
-        # --- ENLACE CORREGIDO ---
-        # Este es el cambio clave. El enlace de "Tienda" ahora apunta a la
-        # nueva ruta de la tienda para administradores.
         sidebar_item("Tienda", "store", "/admin/store"),
-
         sidebar_item("Contacto", "mail", navigation.routes.CONTACT_US_ROUTE),
         
         spacing="1", 
@@ -93,33 +91,12 @@ def sidebar_logout_item() -> rx.Component:
         )
     )
 
-def mobile_admin_menu() -> rx.Component:
-    """Menú hamburguesa para la vista móvil de administradores."""
-    return rx.box(
-        rx.menu.root(
-            rx.menu.trigger(rx.button(rx.icon("menu", size=22), variant="ghost")),
-            rx.menu.content(
-                # --- ENLACE MÓVIL CORREGIDO ---
-                rx.menu.item("Tienda", on_click=rx.redirect("/admin/store")),
-                rx.menu.separator(),
-                rx.cond(
-                    AppState.is_admin,
-                    rx.fragment(
-                        rx.menu.item("Dashboard", on_click=rx.redirect("/admin/users")),
-                        rx.menu.item("Mis Publicaciones", on_click=rx.redirect("/blog")),
-                        rx.menu.item("Crear Publicación", on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE)),
-                        rx.menu.separator(),
-                    )
-                ),
-                rx.menu.item("Logout", on_click=AppState.do_logout, color="red"),
-            ),
-        ),
-        display=["block", "block", "none", "none", "none"],
-    )
-
 def sidebar() -> rx.Component:
-    """La barra lateral completa."""
-    desktop_sidebar_content = rx.vstack(
+    """
+    La barra lateral completa, ahora rediseñada como un panel deslizable
+    que se activa con el estado AppState.show_admin_sidebar.
+    """
+    sidebar_content = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%", margin_bottom="1.5em",
@@ -133,9 +110,21 @@ def sidebar() -> rx.Component:
             width="100%", spacing="5",
         ),
         spacing="5", padding_x="1em", padding_y="1.5em", bg="#2C004B",
-        align="start", height="100vh",
+        align="start", height="100vh", width="16em",
     )
-    return rx.fragment(
-        rx.box(desktop_sidebar_content, width="16em", display=["none", "none", "block", "block", "block"]),
-        mobile_admin_menu(),
+
+    # Lógica de panel deslizable inspirada en el panel de filtros
+    return rx.box(
+        sidebar_content,
+        position="fixed",
+        top="0",
+        left="0",
+        height="100%",
+        transform=rx.cond(
+            AppState.show_admin_sidebar,
+            "translateX(0)",
+            "translateX(-100%)"
+        ),
+        transition="transform 0.3s ease-in-out",
+        z_index="1000",
     )
