@@ -1,4 +1,4 @@
-# likemodas/models.py
+# likemodas/models.py (CORREGIDO)
 
 from typing import Optional, List
 from datetime import datetime, timezone
@@ -24,7 +24,7 @@ class UserInfo(rx.Model, table=True):
     email: str = Field(unique=True, index=True)
     role: UserRole = Field(default=UserRole.CUSTOMER)
     created_at: datetime = Field(default_factory=get_utc_now)
-    is_banned: bool = Field(default=False) # Para la funcionalidad de amonestaciones
+    is_banned: bool = Field(default=False)
 
     user_id: int = Field(foreign_key="localuser.id", unique=True)
     user: Optional[LocalUser] = Relationship()
@@ -37,16 +37,14 @@ class Product(rx.Model, table=True):
     title: str
     content: str
     price: float = Field(default=0.0)
-    image_url: Optional[str] = None # Simplificado a una sola imagen principal
+    image_url: Optional[str] = None
     is_published: bool = Field(default=True)
     created_at: datetime = Field(default_factory=get_utc_now)
 
     seller_id: int = Field(foreign_key="userinfo.id")
     seller: UserInfo = Relationship(back_populates="products")
 
-    @rx.var
-    def price_cop(self) -> str:
-        return f"${self.price:,.0f}"
+    # Eliminamos el @rx.var de aquí. El modelo ya no formatea la moneda.
 
 class Purchase(rx.Model, table=True):
     """Una compra realizada por un usuario."""
