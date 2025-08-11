@@ -1,4 +1,4 @@
-# likemodas/state.py
+# likemodas/state.py (SOLUCIÓN FINAL)
 
 import reflex as rx
 import reflex_local_auth
@@ -9,12 +9,12 @@ from .models import UserInfo, UserRole, Product, Purchase, PurchaseItem, Purchas
 class AppState(reflex_local_auth.LocalAuthState):
     """Estado central de la aplicación."""
 
-
-    # ▼▼▼ MÉTODO AÑADIDO PARA SOLUCIONAR EL ERROR ▼▼▼
+    # ▼▼▼ LÍNEAS AÑADIDAS PARA SOLUCIONAR EL ERROR ▼▼▼
+    error_message: str = ""
+    success_message: str = ""
+    
     def handle_login(self, form_data: dict):
-        """
-        Manejador de login explícito que llama a la lógica de la librería.
-        """
+        """Manejador de login explícito que llama a la lógica de la librería."""
         return super().handle_login(form_data)
 
     #--- Propiedades de Usuario ---
@@ -31,35 +31,28 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     #--- Registro Personalizado ---
     def handle_registration_custom(self, form_data: dict):
+        # Limpiamos los mensajes antes de intentar el registro
+        self.error_message = ""
+        self.success_message = ""
+        
+        # Primero, se llama al manejador de la librería base
         super().handle_registration(form_data)
+
+        # Si la librería base no encontró errores (ej. usuario duplicado)
+        # y creó un new_user_id, entonces procedemos.
         if self.new_user_id is not None and self.new_user_id >= 0:
             with rx.session() as session:
                 role = UserRole.ADMIN if form_data["username"] == "admin" else UserRole.CUSTOMER
                 user_info = UserInfo(email=form_data["email"], role=role, user_id=self.new_user_id)
                 session.add(user_info)
                 session.commit()
-                
-    #--- Propiedades de Usuario ---
-    @rx.var
-    def authenticated_user_info(self) -> Optional[UserInfo]:
-        if self.is_authenticated:
-            with rx.session() as session:
-                return session.exec(select(UserInfo).where(UserInfo.user_id == self.authenticated_user.id)).one_or_none()
-        return None
-
-    @rx.var
-    def is_admin(self) -> bool:
-        return self.authenticated_user_info and self.authenticated_user_info.role == UserRole.ADMIN
-
-    #--- Registro Personalizado ---
-    def handle_registration_custom(self, form_data: dict):
-        super().handle_registration(form_data)
-        if self.new_user_id is not None and self.new_user_id >= 0:
-            with rx.session() as session:
-                role = UserRole.ADMIN if form_data["username"] == "admin" else UserRole.CUSTOMER
-                user_info = UserInfo(email=form_data["email"], role=role, user_id=self.new_user_id)
-                session.add(user_info)
-                session.commit()
+            
+            # Asignamos el mensaje de éxito
+            self.success_message = "¡Cuenta creada con éxito! Ya puedes iniciar sesión."
+        else:
+            # Si la librería base falló, copiamos su mensaje de error a nuestro estado.
+            # `super().error_message` es el mensaje de error de reflex-local-auth
+            self.error_message = super().error_message
 
     #--- Gestión de Productos (Público y Admin) ---
     products: List[Product] = []
