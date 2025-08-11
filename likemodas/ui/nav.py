@@ -1,17 +1,18 @@
-# likemodas/ui/nav.py (CORREGIDO Y COMPATIBLE CON REFLEX 0.7.0)
+# likemodas/ui/nav.py (CORRECCIÓN DEFINITIVA PARA 0.7.0)
 
 import reflex as rx
 from .. import navigation
 from ..state import AppState
 
 def notification_icon() -> rx.Component:
-    """Componente para el icono y menú de notificaciones con la sintaxis correcta para 0.7.0."""
+    """Componente para el icono de notificaciones con la sintaxis correcta para 0.7.0."""
     icon_color = rx.color_mode_cond("black", "white")
     
-    # --- CAMBIO CLAVE ---
-    # Se elimina `rx.menu_button`. El `rx.box` ahora es el primer hijo de `rx.menu`
-    # y actúa como el botón que abre el menú.
+    # --- CAMBIO CLAVE FINAL ---
+    # Se elimina `rx.menu_list`. El `rx.cond` y `rx.foreach` que generan
+    # los `rx.menu_item` son ahora hijos directos de `rx.menu`.
     return rx.menu(
+        # 1. El primer hijo es el TRIGGER (el botón que abre el menú)
         rx.box(
             rx.icon("bell", size=28, color=icon_color),
             rx.cond(
@@ -26,35 +27,28 @@ def notification_icon() -> rx.Component:
             position="relative", 
             padding="0.5em", 
             cursor="pointer",
-            # El evento para marcar como leídas se pone en el botón que abre el menú.
             on_click=AppState.mark_all_as_read
         ),
-        # El rx.menu_list se mantiene igual.
-        rx.menu_list(
-            rx.cond(
+        
+        # 2. El resto de hijos son los ITEMS del menú
+        rx.cond(
+            AppState.notifications,
+            rx.foreach(
                 AppState.notifications,
-                rx.foreach(
-                    AppState.notifications,
-                    lambda n: rx.menu_item(
-                        rx.box(
-                            rx.text(n.message, weight=rx.cond(n.is_read, "normal", "bold")),
-                            rx.text(n.created_at_formatted, font_size="0.8em", color_scheme="gray"),
-                        ),
-                        on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace."))
-                    )
-                ),
-                rx.menu_item("No tienes notificaciones.")
+                lambda n: rx.menu_item(
+                    rx.box(
+                        rx.text(n.message, weight=rx.cond(n.is_read, "normal", "bold")),
+                        rx.text(n.created_at_formatted, font_size="0.8em", color_scheme="gray"),
+                    ),
+                    on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace."))
+                )
             ),
-            max_height="300px", 
-            overflow_y="auto"
+            rx.menu_item("No tienes notificaciones.")
         ),
     )
 
 def public_navbar() -> rx.Component:
-    """
-    La barra de navegación pública. Este código ya era mayormente compatible,
-    pero lo incluyo completo por consistencia.
-    """
+    """La barra de navegación pública."""
     icon_color = rx.color_mode_cond("black", "white")
     
     authenticated_icons = rx.hstack(
