@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (SOLUCIÓN FINAL CORREGIDA)
+# likemodas/likemodas.py (CORREGIDO)
 
 import reflex as rx
 import reflex_local_auth
@@ -30,8 +30,6 @@ def main_layout(child: rx.Component) -> rx.Component:
                     rx.menu.root(
                         rx.menu.trigger(rx.button(AppState.authenticated_user.username)),
                         rx.menu.content(
-                            # ▼▼▼ ESTA ES LA SECCIÓN CORREGIDA ▼▼▼
-                            # Usamos on_click para la navegación, en lugar de envolver con rx.link
                             rx.menu.item("Mi Cuenta", on_click=rx.redirect("/my-account")),
                             rx.cond(
                                 AppState.is_admin,
@@ -79,10 +77,10 @@ def cart_page() -> rx.Component:
 
 @reflex_local_auth.require_login
 def my_account_page() -> rx.Component:
+    # ▼▼▼ CORRECCIÓN 1: Se elimina el on_load de aquí ▼▼▼
     return rx.vstack(
         rx.heading("Mi Cuenta", size="8"),
         rx.heading("Mis Pedidos", size="5"),
-        on_load=AppState.load_my_purchases,
     )
 
 # --- Páginas de Administración ---
@@ -149,9 +147,16 @@ app.add_page(
     on_load=AppState.load_products
 )
 app.add_page(main_layout(cart_page()), route="/cart")
-app.add_page(main_layout(my_account_page()), route="/my-account")
+
+# ▼▼▼ CORRECCIÓN 2: Se añade el on_load a la definición de la página ▼▼▼
+app.add_page(
+    main_layout(my_account_page()),
+    route="/my-account",
+    on_load=AppState.load_my_purchases # <--- Este es el lugar correcto
+)
+
 app.add_page(main_layout(admin_page()), route="/admin")
-# ... (Aquí irían tus otras rutas de admin, como /admin/products)
+# ... (Aquí irían tus otras rutas de admin)
 
 # Rutas de Autenticación
 app.add_page(
