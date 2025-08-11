@@ -1,31 +1,33 @@
 import reflex as rx
 import os
 
-# --- Configuración Principal Corregida para Reflex 0.7.0 ---
+# --- Configuración Definitiva para Reflex 0.7.0 en Railway ---
 
-# Las URLs se obtienen de las variables de entorno que Railway proporciona.
+# 1. Obtener la URL base de la API desde las variables de entorno de Railway.
+#    Si no existe, se usa la URL de desarrollo local.
 API_URL = os.getenv("RAILWAY_PUBLIC_URL", "http://localhost:8000")
-DEPLOY_URL = os.getenv("DEPLOY_URL", "http://localhost:3000")
 
-# Lista de orígenes permitidos
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "https://full-stack-python.vercel.app", # Tu URL de Vercel
-    "https://www.likemodas.com", # Tu dominio de producción
-]
+# 2. Leer los orígenes CORS desde la variable de entorno. Railway las pasa como un string separado por comas.
+cors_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if cors_env:
+    # Si la variable de entorno existe, la separamos por comas para crear la lista.
+    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_env.split(",")]
+else:
+    # Si no, usamos una lista segura para desarrollo local.
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "https://full-stack-python.vercel.app",
+        "https://www.likemodas.com",
+    ]
 
-# Si la URL de Railway está presente, la añadimos dinámicamente.
-if "railway.app" in API_URL:
+# 3. Nos aseguramos de que la propia URL de la API esté en la lista.
+if API_URL not in CORS_ALLOWED_ORIGINS:
     CORS_ALLOWED_ORIGINS.append(API_URL)
 
-
+# 4. Creamos el objeto de configuración.
 config = rx.Config(
     app_name="likemodas",
     api_url=API_URL,
-    deploy_url=DEPLOY_URL,
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     cors_allowed_origins=CORS_ALLOWED_ORIGINS,
-    
-    # El telemetría es opcional, pero es buena práctica gestionarlo.
-    # telemetry_enabled=False, 
 )
