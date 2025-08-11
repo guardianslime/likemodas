@@ -1,4 +1,4 @@
-# likemodas/blog/admin_page.py (CORRECCIÓN FINAL CON rx.el.*)
+# likemodas/blog/admin_page.py (CORRECCIÓN FINAL DE 'size' EN AVATAR)
 
 import reflex as rx
 from ..state import AppState
@@ -6,17 +6,18 @@ from ..models import BlogPostModel
 from .. import navigation
 
 def post_admin_row(post: BlogPostModel) -> rx.Component:
-    """Fila de la tabla de admin con la sintaxis correcta de rx.el.*."""
-    # --- CAMBIO DEFINITIVO: Se usa rx.el.tr y rx.el.td ---
-    return rx.el.tr(
-        rx.el.td(
+    """Fila de la tabla de admin con el 'size' del avatar corregido."""
+    return rx.tr(
+        rx.td(
             rx.cond(
                 post.image_urls & (post.image_urls.length() > 0),
-                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="md"),
-                rx.avatar(fallback="?", size="md")
+                # --- CAMBIO CLAVE: size="md" -> size="4" ---
+                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4"),
+                # --- CAMBIO CLAVE: size="md" -> size="4" ---
+                rx.avatar(fallback="?", size="4")
             )
         ),
-        rx.el.td(
+        rx.td(
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
@@ -27,9 +28,9 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                 align_items="center",
             )
         ),
-        rx.el.td(post.title),
-        rx.el.td(post.price_cop),
-        rx.el.td(
+        rx.td(post.title),
+        rx.td(post.price_cop),
+        rx.td(
             rx.hstack(
                 rx.button(
                     "Editar",
@@ -60,7 +61,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                 spacing="3",
             )
         ),
-        style={"vertical_align": "middle"}, # Estilos directos para elementos 'el'
+        vertical_align="middle",
     )
 
 def blog_admin_page() -> rx.Component:
@@ -77,23 +78,20 @@ def blog_admin_page() -> rx.Component:
                 rx.divider(margin_y="1.5em"),
                 rx.cond(
                     AppState.my_admin_posts,
-                    # --- CAMBIO DEFINITIVO: Se usa rx.el.table y sus hijos ---
-                    rx.el.table(
-                        rx.el.thead(
-                            rx.el.tr(
-                                rx.el.th("Imagen"),
-                                rx.el.th("Estado"),
-                                rx.el.th("Título"),
-                                rx.el.th("Precio"),
-                                rx.el.th("Acciones"),
+                    rx.table(
+                        rx.thead(
+                            rx.tr(
+                                rx.th("Imagen"),
+                                rx.th("Estado"),
+                                rx.th("Título"),
+                                rx.th("Precio"),
+                                rx.th("Acciones"),
                             )
                         ),
-                        rx.el.tbody(
+                        rx.tbody(
                             rx.foreach(AppState.my_admin_posts, post_admin_row)
                         ),
-                        width="100%",
-                        # Los estilos se aplican directamente en lugar de 'variant'
-                        className="rx-Table", # Clase para estilos si es necesario
+                        variant="simple", width="100%",
                     ),
                     rx.center(
                         rx.vstack(
