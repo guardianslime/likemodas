@@ -1,3 +1,8 @@
+# alembic/versions/dc72dd3b2fae_.py (CORREGIDO)
+# ----------------------------------------------------
+# Se han añadido las columnas 'is_banned' y 'ban_expires_at'
+# a la creación de la tabla 'userinfo'.
+
 """empty message
 
 Revision ID: dc72dd3b2fae
@@ -54,18 +59,24 @@ def upgrade() -> None:
     with op.batch_alter_table('passwordresettoken', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_passwordresettoken_token'), ['token'], unique=True)
 
+    # --- INICIO DE LA CORRECCIÓN ---
     op.create_table('userinfo',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('role', sa.String(), server_default='customer', nullable=False),
     sa.Column('is_verified', sa.Boolean(), nullable=False),
+    # Las dos columnas que faltaban se añaden aquí
+    sa.Column('is_banned', sa.Boolean(), server_default='false', nullable=False),
+    sa.Column('ban_expires_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['localuser.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
     )
+    # --- FIN DE LA CORRECCIÓN ---
+    
     op.create_table('blogpostmodel',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('userinfo_id', sa.Integer(), nullable=False),

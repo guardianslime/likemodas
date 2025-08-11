@@ -1,4 +1,7 @@
-# likemodas/state.py (ARCHIVO COMPLETO Y CORREGIDO FINAL)
+# likemodas/state.py
+# ------------------
+# Se ha revisado el estado para asegurar que la lógica relacionada con el baneo de usuarios
+# y la carga de información del usuario sea robusta.
 
 from __future__ import annotations
 import reflex as rx
@@ -82,6 +85,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.is_authenticated or self.authenticated_user.id < 0:
             return None
         with rx.session() as session:
+            # Esta es la consulta que estaba fallando.
+            # Una vez la migración se aplique, funcionará correctamente.
             return session.exec(
                 sqlmodel.select(UserInfo).where(UserInfo.user_id == self.authenticated_user.id)
             ).one_or_none()
@@ -282,8 +287,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_material_tela: str = ""
     filter_medida_talla: str = ""
 
-
-    
     def toggle_filters(self):
         self.show_filters = not self.show_filters
         
@@ -684,11 +687,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     confirmed_purchases: List[AdminPurchaseCardData] = rx.Field(default_factory=list)
     new_purchase_notification: bool = False
     search_query_admin_posts: str = ""
-    
-    # +++ INICIO DE LA CORRECCIÓN +++
-    # La variable `all_users` debe declararse aquí para que Reflex la reconozca.
     all_users: List[UserInfo] = []
-    # +++ FIN DE LA CORRECCIÓN +++
 
     def set_search_query_admin_posts(self, query: str): self.search_query_admin_posts = query
         
@@ -942,17 +941,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/search-results")
     
     # --- GESTIÓN DE USUARIOS (ADMIN) ---
-    # Los métodos que ya tenías están correctos, solo faltaba la declaración de la variable.
     @rx.event
     def load_all_users(self):
-        """Carga todos los usuarios. Protegido solo para administradores."""
         if not self.is_admin:
             self.all_users = []
-            return rx.redirect("/") # Redirige si no es admin
+            return rx.redirect("/")
         
         with rx.session() as session:
-            # Usamos joinedload para traer los datos del usuario relacionado (username)
-            # en una sola consulta eficiente.
             self.all_users = session.exec(
                 sqlmodel.select(UserInfo).options(
                     sqlalchemy.orm.joinedload(UserInfo.user)
@@ -961,14 +956,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def toggle_admin_role(self, userinfo_id: int):
-        """Cambia el rol de un usuario entre Admin y Customer."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
             
         with rx.session() as session:
             user_info = session.get(UserInfo, userinfo_id)
             if user_info:
-                # Evita que el admin se quite el rol a sí mismo
                 if user_info.id == self.authenticated_user_info.id:
                     return rx.toast.warning("No puedes cambiar tu propio rol.")
                 
@@ -978,12 +971,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     user_info.role = UserRole.ADMIN
                 session.add(user_info)
                 session.commit()
-        # Recargamos la lista para que la UI se actualice
         return self.load_all_users()
 
     @rx.event
     def ban_user(self, userinfo_id: int, days: int = 7):
-        """Veta a un usuario por un número determinado de días."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
         
@@ -1001,7 +992,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def unban_user(self, userinfo_id: int):
-        """Levanta el veto a un usuario."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
 
