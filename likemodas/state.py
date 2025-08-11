@@ -1,7 +1,4 @@
-# likemodas/state.py
-# ------------------
-# Se ha revisado el estado para asegurar que la lógica relacionada con el baneo de usuarios
-# y la carga de información del usuario sea robusta.
+# likemodas/state.py (VERSIÓN COMPLETA Y CORREGIDA)
 
 from __future__ import annotations
 import reflex as rx
@@ -85,8 +82,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.is_authenticated or self.authenticated_user.id < 0:
             return None
         with rx.session() as session:
-            # Esta es la consulta que estaba fallando.
-            # Una vez la migración se aplique, funcionará correctamente.
             return session.exec(
                 sqlmodel.select(UserInfo).where(UserInfo.user_id == self.authenticated_user.id)
             ).one_or_none()
@@ -270,12 +265,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-            
+
+    # --- UI STATE / ESTADO DE LA INTERFAZ ---
     show_notifications: bool = False
+    show_confirm_delete_dialog_id: Optional[int] = None
 
     def toggle_notifications(self):
         """Muestra u oculta el menú de notificaciones."""
         self.show_notifications = not self.show_notifications
+
+    def show_delete_dialog(self, post_id: int):
+        """Abre el diálogo de confirmación para un post específico."""
+        self.show_confirm_delete_dialog_id = post_id
+
+    def hide_delete_dialog(self):
+        """Cierra el diálogo de confirmación."""
+        self.show_confirm_delete_dialog_id = None
 
     # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
@@ -839,6 +844,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(post_to_delete)
                 session.commit()
+                self.show_confirm_delete_dialog_id = None # Cierra el diálogo
                 yield rx.toast.success("Publicación eliminada.")
             else:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
@@ -1047,3 +1053,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     def toggle_admin_sidebar(self):
         """Muestra u oculta la barra lateral de administración."""
         self.show_admin_sidebar = not self.show_admin_sidebar
+    
+    @rx.var
+    def get_post_by_id(self, post_id: int) -> Optional[BlogPostModel]:
+        """Encuentra un post en la lista actual por su ID."""
+        if post_id is None:
+            return None
+        # Usamos la lista de posts del admin, que es la relevante en este contexto
+        for post in self.my_admin_posts:
+            if post.id == post_id:
+                return post
+        return None
