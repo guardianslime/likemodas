@@ -1,4 +1,4 @@
-# likemodas/blog/admin_page.py (ACTUALIZADO CON MÁS FUNCIONALIDAD)
+# likemodas/blog/admin_page.py (CORREGIDO PARA 0.7.0)
 
 import reflex as rx
 from ..state import AppState
@@ -6,33 +6,16 @@ from ..models import BlogPostModel
 from .. import navigation
 
 def post_admin_row(post: BlogPostModel) -> rx.Component:
-    """Componente mejorado para una fila de la tabla de administración con imagen."""
-    return rx.table.row(
-        rx.table.cell(
-            # --- SOLUCIÓN DEFINITIVA ---
-            # Se usa rx.cond para elegir qué componente mostrar:
-            # el avatar con la imagen, o una caja con el ícono.
+    """Fila de la tabla de admin con sintaxis de Chakra UI."""
+    return rx.tr(
+        rx.td(
             rx.cond(
                 post.image_urls & (post.image_urls.length() > 0),
-                # Caso 1: Si hay imagen, se muestra el avatar.
-                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4", radius="full"),
-                # Caso 2: Si no hay imagen, se muestra una caja con el ícono.
-                rx.box(
-                    rx.icon("image_off", size=24),
-                    display="flex",
-                    align_items="center",
-                    justify_content="center",
-                    # Usamos las variables de tamaño del tema para que sea idéntico al avatar
-                    width="var(--avatar-size-4)",
-                    height="var(--avatar-size-4)",
-                    border_radius="100%",
-                    bg=rx.color("gray", 3),
-                    color=rx.color("gray", 8),
-                )
+                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="md"),
+                rx.avatar(fallback="?", size="md") # Un fallback simple
             )
         ),
-        rx.table.cell(
-            # Switch para habilitar/inhabilitar la publicación
+        rx.td(
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
@@ -40,41 +23,45 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                 ),
                 rx.text(rx.cond(post.publish_active, "Visible", "Oculto")),
                 spacing="2",
-                align="center",
+                align_items="center",
             )
         ),
-        rx.table.cell(post.title),
-        rx.table.cell(post.price_cop),
-        rx.table.cell(
+        rx.td(post.title),
+        rx.td(post.price_cop),
+        rx.td(
             rx.hstack(
-                # Botón Editar
                 rx.button(
                     "Editar", 
                     on_click=rx.redirect(f"/blog/{post.id}/edit"),
                     variant="outline",
-                    size="2"
+                    size="sm"
                 ),
-                # Botón Eliminar
-                rx.alert_dialog.root(
-                    rx.alert_dialog.trigger(
-                        rx.button("Eliminar", color_scheme="red", variant="soft", size="2")
-                    ),
-                    rx.alert_dialog.content(
-                        rx.alert_dialog.title("Confirmar Eliminación"),
-                        rx.alert_dialog.description(f"¿Seguro que quieres eliminar '{post.title}'?"),
-                        rx.flex(
-                            rx.alert_dialog.cancel(rx.button("Cancelar")),
-                            rx.alert_dialog.action(
-                                rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))
+                # --- Sintaxis de rx.alert_dialog para v0.7.0 ---
+                rx.alert_dialog(
+                    rx.alert_dialog_overlay(
+                        rx.alert_dialog_content(
+                            rx.alert_dialog_header("Confirmar Eliminación"),
+                            rx.alert_dialog_body(f"¿Seguro que quieres eliminar '{post.title}'?"),
+                            rx.alert_dialog_footer(
+                                rx.button("Cancelar", on_click=rx.cancel_alert),
+                                rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id)),
                             ),
-                            spacing="3", margin_top="1em", justify="end",
-                        ),
+                        )
                     ),
+                    # Se usa un ID único para el diálogo
+                    id=f"delete-dialog-{post.id}" 
+                ),
+                rx.button(
+                    "Eliminar", 
+                    on_click=rx.set_value(f"delete-dialog-{post.id}", True), # Esto abre el diálogo
+                    color_scheme="red", 
+                    variant="ghost", 
+                    size="sm"
                 ),
                 spacing="3",
             )
         ),
-        align="center",
+        vertical_align="middle", # Para alinear el contenido de la fila
     )
 
 def blog_admin_page() -> rx.Component:
@@ -83,7 +70,7 @@ def blog_admin_page() -> rx.Component:
         rx.container(
             rx.vstack(
                 rx.hstack(
-                    rx.heading("Mis Publicaciones", size="7"),
+                    rx.heading("Mis Publicaciones", font_size="2em"),
                     rx.spacer(),
                     rx.button("Crear Nueva Publicación", on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE)),
                     justify="between", align="center", width="100%",
@@ -91,20 +78,20 @@ def blog_admin_page() -> rx.Component:
                 rx.divider(margin_y="1.5em"),
                 rx.cond(
                     AppState.my_admin_posts,
-                    rx.table.root(
-                        rx.table.header(
-                            rx.table.row(
-                                rx.table.column_header_cell("Imagen"),
-                                rx.table.column_header_cell("Estado"),
-                                rx.table.column_header_cell("Título"),
-                                rx.table.column_header_cell("Precio"),
-                                rx.table.column_header_cell("Acciones"),
+                    rx.table(
+                        rx.thead(
+                            rx.tr(
+                                rx.th("Imagen"),
+                                rx.th("Estado"),
+                                rx.th("Título"),
+                                rx.th("Precio"),
+                                rx.th("Acciones"),
                             )
                         ),
-                        rx.table.body(
+                        rx.tbody(
                             rx.foreach(AppState.my_admin_posts, post_admin_row)
                         ),
-                        variant="surface", width="100%",
+                        variant="simple", width="100%",
                     ),
                     rx.center(
                         rx.vstack(

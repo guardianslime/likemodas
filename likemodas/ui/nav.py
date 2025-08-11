@@ -1,20 +1,21 @@
-# likemodas/ui/nav.py
+# likemodas/ui/nav.py (CORREGIDO PARA 0.7.0)
 
 import reflex as rx
 from .. import navigation
 from ..state import AppState
 
 def notification_icon() -> rx.Component:
-    """Componente para el icono y menú de notificaciones."""
+    """Componente para el icono y menú de notificaciones con sintaxis de Chakra UI."""
     icon_color = rx.color_mode_cond("black", "white")
-    return rx.menu.root(
-        rx.menu.trigger(
+    
+    return rx.menu(
+        rx.menu_button(
             rx.box(
                 rx.icon("bell", size=28, color=icon_color),
                 rx.cond(
                     AppState.unread_count > 0,
                     rx.box(
-                        rx.text(AppState.unread_count, size="1", weight="bold"),
+                        rx.text(AppState.unread_count, font_size="0.7em", weight="bold"),
                         position="absolute", top="-5px", right="-5px",
                         padding="0 0.4em", border_radius="full",
                         bg="red", color="white",
@@ -23,25 +24,26 @@ def notification_icon() -> rx.Component:
                 position="relative", padding="0.5em", cursor="pointer"
             ),
         ),
-        rx.menu.content(
+        rx.menu_list(
             rx.cond(
                 AppState.notifications,
                 rx.foreach(
                     AppState.notifications,
-                    lambda n: rx.menu.item(
+                    lambda n: rx.menu_item(
                         rx.box(
-                            rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
-                            rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
+                            rx.text(n.message, weight=rx.cond(n.is_read, "normal", "bold")),
+                            rx.text(n.created_at_formatted, font_size="0.8em", color_scheme="gray"),
                         ),
                         on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace."))
                     )
                 ),
-                rx.menu.item("No tienes notificaciones.")
+                rx.menu_item("No tienes notificaciones.")
             ),
-            bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
-            max_height="300px", overflow_y="auto"
+            # El evento on_open_change no existe en 0.7.0, se puede usar on_click en el menu_button
+            on_click=AppState.mark_all_as_read, 
+            max_height="300px", 
+            overflow_y="auto"
         ),
-        on_open_change=lambda open: rx.cond(open, AppState.mark_all_as_read, None)
     )
 
 def public_navbar() -> rx.Component:
@@ -58,7 +60,7 @@ def public_navbar() -> rx.Component:
                 rx.cond(
                     AppState.cart_items_count > 0,
                     rx.box(
-                        rx.text(AppState.cart_items_count, size="1", weight="bold"),
+                        rx.text(AppState.cart_items_count, font_size="0.7em", weight="bold"),
                         position="absolute", top="-5px", right="-5px",
                         padding="0 0.4em", border_radius="full", bg="red", color="white",
                     )
@@ -103,7 +105,7 @@ def public_navbar() -> rx.Component:
                 placeholder_icons
             ),
 
-            columns="auto 1fr auto",
+            template_columns="auto 1fr auto", # grid-template-columns en Chakra
             align_items="center",
             width="100%",
             gap="1.5rem",
