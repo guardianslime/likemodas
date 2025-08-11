@@ -61,7 +61,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
         self.load_products()
 
-    #--- Carrito ---
+    # --- Carrito ---
     cart: Dict[int, int] = {} # product_id: quantity
 
     def add_to_cart(self, product_id: int):
@@ -70,6 +70,33 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def cart_items_count(self) -> int:
         return sum(self.cart.values())
+
+    @rx.var
+    def cart_items(self) -> list[tuple[Product, int]]:
+        """Devuelve los productos y cantidades del carrito."""
+        if not self.cart:
+            return []
+        with rx.session() as session:
+            items = []
+            for pid, qty in self.cart.items():
+                product = session.get(Product, pid)
+                if product:
+                    items.append((product, qty))
+            return items
+
+    @rx.var
+    def cart_total(self) -> float:
+        """Calcula el total del carrito."""
+        total = 0.0
+        for product, qty in self.cart_items:
+            total += product.price * qty
+        return total
+
+    # ▼▼▼ NUEVA PROPIEDAD COMPUTADA PARA EL FORMATO ▼▼▼
+    @rx.var
+    def cart_total_cop(self) -> str:
+        """Devuelve el total del carrito formateado como moneda colombiana."""
+        return f"${self.cart_total:,.0f}"
 
     #--- Checkout ---
     my_purchases: List[Purchase] = []
