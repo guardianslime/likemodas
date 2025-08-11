@@ -1,8 +1,8 @@
-# alembic/versions/dc72dd3b2fae_.py (CORREGIDO)
-# ----------------------------------------------------
-# Se han añadido las columnas 'is_banned' y 'ban_expires_at'
-# a la creación de la tabla 'userinfo'.
-
+# ==============================================================================
+# ARCHIVO 1: alembic/versions/dc72dd3b2fae_.py (PARA REEMPLAZAR)
+# Descripción: Esta es tu migración inicial, corregida para incluir los
+# campos de baneo desde el principio.
+# ==============================================================================
 """empty message
 
 Revision ID: dc72dd3b2fae
@@ -59,14 +59,12 @@ def upgrade() -> None:
     with op.batch_alter_table('passwordresettoken', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_passwordresettoken_token'), ['token'], unique=True)
 
-    # --- INICIO DE LA CORRECCIÓN ---
     op.create_table('userinfo',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('email', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('role', sa.String(), server_default='customer', nullable=False),
-    sa.Column('is_verified', sa.Boolean(), nullable=False),
-    # Las dos columnas que faltaban se añaden aquí
+    sa.Column('is_verified', sa.Boolean(), server_default='false', nullable=False),
     sa.Column('is_banned', sa.Boolean(), server_default='false', nullable=False),
     sa.Column('ban_expires_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -75,7 +73,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
     )
-    # --- FIN DE LA CORRECCIÓN ---
     
     op.create_table('blogpostmodel',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -218,3 +215,55 @@ def downgrade() -> None:
 
     op.drop_table('localauthsession')
     # ### end Alembic commands ###
+
+# ==============================================================================
+# ARCHIVO 2: alembic/versions/e2a5a9e3d3c7_add_banned_fields_to_userinfo.py (CREAR NUEVO)
+# Descripción: Esta es la migración de actualización. Arreglará tu base de
+# datos existente en Railway.
+# ==============================================================================
+"""add banned fields to userinfo
+
+Revision ID: e2a5a9e3d3c7
+Revises: dc72dd3b2fae
+Create Date: 2025-08-10 20:00:00.000000
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+import sqlmodel
+
+
+# revision identifiers, used by Alembic.
+revision: str = 'e2a5a9e3d3c7'
+down_revision: Union[str, Sequence[str], None] = 'dc72dd3b2fae'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    """
+    Añade las columnas 'is_banned' y 'ban_expires_at' a la tabla 'userinfo' existente.
+    """
+    try:
+        with op.batch_alter_table('userinfo', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('is_banned', sa.Boolean(), nullable=False, server_default=sa.text('false')))
+            batch_op.add_column(sa.Column('ban_expires_at', sa.DateTime(), nullable=True))
+    except Exception as e:
+        # Esto evita que el script falle si por alguna razón las columnas ya existen.
+        print(f"Advertencia al añadir columnas a userinfo (puede que ya existan): {e}")
+        pass
+
+
+def downgrade() -> None:
+    """
+    Revierte los cambios, eliminando las columnas.
+    """
+    try:
+        with op.batch_alter_table('userinfo', schema=None) as batch_op:
+            batch_op.drop_column('ban_expires_at')
+            batch_op.drop_column('is_banned')
+    except Exception as e:
+        print(f"Advertencia al eliminar columnas de userinfo: {e}")
+        pass
