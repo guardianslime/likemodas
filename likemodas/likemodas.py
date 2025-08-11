@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (SOLUCIÓN FINAL)
+# likemodas/likemodas.py (VERSIÓN FINAL Y CORREGIDA)
 
 import reflex as rx
 import reflex_local_auth
@@ -88,7 +88,7 @@ def admin_page() -> rx.Component:
         rx.text("Acceso denegado.")
     )
 
-# --- ▼▼▼ NUEVAS PÁGINAS DE AUTENTICACIÓN PERSONALIZADAS ▼▼▼ ---
+# --- Páginas de Autenticación Personalizadas ---
 
 def login_page() -> rx.Component:
     """Página de inicio de sesión personalizada."""
@@ -100,11 +100,9 @@ def login_page() -> rx.Component:
                 rx.input(placeholder="Password", name="password", type="password", required=True),
                 rx.button("Iniciar Sesión", type="submit"),
             ),
-            # Conecta el formulario a la lógica de estado de la librería
             on_submit=AppState.handle_login,
         ),
         rx.link("¿No tienes cuenta? Regístrate aquí.", href="/register"),
-        # Muestra los mensajes de error desde el estado
         rx.cond(
             reflex_local_auth.LoginState.error_message != "",
             rx.callout(reflex_local_auth.LoginState.error_message, color_scheme="red", icon="triangle_alert")
@@ -122,21 +120,19 @@ def register_page() -> rx.Component:
                 rx.input(placeholder="Password", name="password", type="password", required=True),
                 rx.button("Crear Cuenta", type="submit"),
             ),
-            # Conecta el formulario a nuestra lógica personalizada en AppState
             on_submit=AppState.handle_registration_custom,
         ),
         rx.link("¿Ya tienes cuenta? Inicia sesión.", href="/login"),
-        # Muestra mensajes de éxito o error desde nuestro estado
         rx.cond(
             AppState.error_message != "",
             rx.callout(AppState.error_message, color_scheme="red", icon="triangle_alert")
         ),
         rx.cond(
             AppState.success_message != "",
-            rx.callout(AppState.success_message, color_scheme="green", icon="check_circle")
+            # ▼▼▼ CORRECCIÓN DEL ICONO ▼▼▼
+            rx.callout(AppState.success_message, color_scheme="green", icon="check")
         )
     )
-
 
 # --- Inicialización y Rutas ---
 app = rx.App()
@@ -145,16 +141,9 @@ app.add_page(main_layout(index_page()), route="/", on_load=AppState.load_product
 app.add_page(main_layout(cart_page()), route="/cart")
 app.add_page(main_layout(my_account_page()), route="/my-account", on_load=AppState.load_my_purchases)
 app.add_page(main_layout(admin_page()), route="/admin")
-# ... tus otras rutas de admin
 
-# ▼▼▼ CORRECCIÓN: Usamos nuestras nuevas funciones de página ▼▼▼
-app.add_page(
-    main_layout(login_page()),
-    route=reflex_local_auth.routes.LOGIN_ROUTE
-)
-app.add_page(
-    main_layout(register_page()),
-    route=reflex_local_auth.routes.REGISTER_ROUTE
-)
+app.add_page(main_layout(login_page()), route=reflex_local_auth.routes.LOGIN_ROUTE)
+app.add_page(main_layout(register_page()), route=reflex_local_auth.routes.REGISTER_ROUTE)
 
-app.compile()
+# ▼▼▼ LÍNEA ELIMINADA ▼▼▼
+# app.compile()
