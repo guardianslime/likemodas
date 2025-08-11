@@ -1,34 +1,42 @@
+# /app/rxconfig.py (VERSIÓN DEFINITIVA Y A PRUEBA DE ERRORES)
+
 import reflex as rx
 import os
 
-# --- Configuración Definitiva para Reflex 0.7.0 en Railway ---
+# --- 1. Obtener las URLs base de las variables de entorno ---
+# Si no existen, usamos valores por defecto para el desarrollo local.
+API_URL = os.getenv("API_URL", "http://localhost:8000")
+DEPLOY_URL = os.getenv("DEPLOY_URL", "http://localhost:3000")
 
-# 1. Obtener la URL base de la API desde las variables de entorno de Railway.
-#    Si no existe, se usa la URL de desarrollo local.
-API_URL = os.getenv("RAILWAY_PUBLIC_URL", "http://localhost:8000")
+# --- 2. Lógica robusta para procesar CORS ---
+# Leemos la variable de entorno CORS_ALLOWED_ORIGINS como un simple string.
+cors_env_str = os.getenv("cors_allowed_origins", "")
 
-# 2. Leer los orígenes CORS desde la variable de entorno. Railway las pasa como un string separado por comas.
-cors_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
-if cors_env:
-    # Si la variable de entorno existe, la separamos por comas para crear la lista.
-    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_env.split(",")]
-else:
-    # Si no, usamos una lista segura para desarrollo local.
-    CORS_ALLOWED_ORIGINS = [
-        "http://localhost:3000",
-        "https://full-stack-python.vercel.app",
-        "https://www.likemodas.com",
-    ]
+# Creamos nuestra lista base de orígenes permitidos.
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://likemodas.com",
+    "https://full-stack-python.vercel.app",
+    API_URL,
+    DEPLOY_URL,
+]
 
-# 3. Nos aseguramos de que la propia URL de la API esté en la lista.
-if API_URL not in CORS_ALLOWED_ORIGINS:
-    CORS_ALLOWED_ORIGINS.append(API_URL)
+# Si Railway nos pasó un string con orígenes, lo procesamos.
+if cors_env_str:
+    # Separamos el string por comas y limpiamos los espacios.
+    # Esto convierte "url1, url2, url3" en ["url1", "url2", "url3"]
+    parsed_origins = [origin.strip() for origin in cors_env_str.split(",")]
+    # Añadimos los orígenes parseados a nuestra lista principal.
+    CORS_ALLOWED_ORIGINS.extend(parsed_origins)
 
-# 4. Creamos el objeto de configuración.
+# --- 3. Eliminamos duplicados y creamos la configuración ---
+# Usamos set() para asegurar que no haya URLs repetidas.
+final_cors_list = sorted(list(set(CORS_ALLOWED_ORIGINS)))
+
 config = rx.Config(
     app_name="likemodas",
     api_url=API_URL,
-    db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
-    cors_allowed_origins=CORS_ALLOWED_ORIGINS,
-    disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"], # <-- AÑADE ESTA LÍNEA
+    deploy_url=DEPLOY_URL,
+    db_url=os.getenv("DB_URL"), # Es mejor leerla siempre del entorno por seguridad
+    cors_allowed_origins=final_cors_list,
 )
