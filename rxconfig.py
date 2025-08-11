@@ -30,4 +30,5 @@ config = rx.Config(
     api_url=API_URL,
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     cors_allowed_origins=CORS_ALLOWED_ORIGINS,
+    disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"], # <-- AÑADE ESTA LÍNEA
 )
