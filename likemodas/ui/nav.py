@@ -1,67 +1,82 @@
-# likemodas/ui/nav.py (SOLUCIÓN DEFINITIVA CON POPOVER PARA 0.7.0)
+# likemodas/ui/nav.py (SOLUCIÓN MANUAL Y DEFINITIVA PARA 0.7.0)
 
 import reflex as rx
 from .. import navigation
 from ..state import AppState
 
 def notification_icon() -> rx.Component:
-    """Componente para el icono de notificaciones, construido con rx.popover."""
+    """Componente de notificaciones construido manualmente para máxima compatibilidad."""
     icon_color = rx.color_mode_cond("black", "white")
-    
-    # --- CAMBIO FUNDAMENTAL: Usamos rx.popover en lugar de rx.menu ---
-    return rx.popover(
-        # El rx.popover_trigger envuelve el elemento en el que se hace clic.
-        rx.popover_trigger(
-            rx.box(
-                rx.icon("bell", size=28, color=icon_color),
-                rx.cond(
-                    AppState.unread_count > 0,
+
+    # El menú desplegable como un Vstack que se muestra/oculta con rx.cond
+    notifications_dropdown = rx.vstack(
+        rx.cond(
+            AppState.notifications,
+            rx.foreach(
+                AppState.notifications,
+                lambda n: rx.button(
                     rx.box(
-                        rx.text(AppState.unread_count, font_size="0.7em", weight="bold"),
-                        position="absolute", top="-5px", right="-5px",
-                        padding="0 0.4em", border_radius="full",
-                        bg="red", color="white",
-                    )
-                ),
-                position="relative", 
-                padding="0.5em", 
-                cursor="pointer",
-                on_click=AppState.mark_all_as_read
-            )
-        ),
-        # El rx.popover_content es el contenedor que aparece.
-        rx.popover_content(
-            rx.vstack(
-                rx.cond(
-                    AppState.notifications,
-                    rx.foreach(
-                        AppState.notifications,
-                        # Usamos un rx.button con apariencia de item de menú
-                        lambda n: rx.button(
-                            rx.box(
-                                rx.text(n.message, weight=rx.cond(n.is_read, "normal", "bold")),
-                                rx.text(n.created_at_formatted, font_size="0.8em", color_scheme="gray"),
-                                text_align="left",
-                            ),
-                            on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace.")),
-                            variant="ghost", # Apariencia limpia
-                            width="100%",
-                            padding_y="0.5em",
-                            height="auto",
-                        )
+                        rx.text(n.message, weight=rx.cond(n.is_read, "normal", "bold")),
+                        rx.text(n.created_at_formatted, font_size="0.8em", color_scheme="gray"),
+                        text_align="left",
                     ),
-                    rx.text("No tienes notificaciones.", padding="1em")
-                ),
-                spacing="0",
-                max_height="300px", 
-                overflow_y="auto",
-                width="300px", # Ancho del menú desplegable
-            )
-        )
+                    on_click=[
+                        rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace.")),
+                        AppState.toggle_notifications, # Cierra el menú al hacer clic
+                    ],
+                    variant="ghost",
+                    width="100%",
+                    padding_y="0.5em",
+                    height="auto",
+                )
+            ),
+            rx.text("No tienes notificaciones.", padding="1em")
+        ),
+        # Estilos para que aparezca como un menú flotante
+        position="absolute",
+        top="120%", # Un poco debajo del icono
+        right="0",
+        bg=rx.color_mode_cond("white", "#2C004B"),
+        border="1px solid #ededed",
+        border_radius="md",
+        box_shadow="lg",
+        z_index="1000",
+        width="300px",
+        spacing="0",
+        max_height="300px",
+        overflow_y="auto",
     )
 
+    # El contenedor principal
+    return rx.box(
+        # El icono de la campana que actúa como botón
+        rx.box(
+            rx.icon("bell", size=28, color=icon_color),
+            rx.cond(
+                AppState.unread_count > 0,
+                rx.box(
+                    rx.text(AppState.unread_count, font_size="0.7em", weight="bold"),
+                    position="absolute", top="-5px", right="-5px",
+                    padding="0 0.4em", border_radius="full",
+                    bg="red", color="white",
+                )
+            ),
+            position="relative", 
+            padding="0.5em", 
+            cursor="pointer",
+            on_click=[AppState.mark_all_as_read, AppState.toggle_notifications]
+        ),
+        # El menú desplegable que se muestra condicionalmente
+        rx.cond(
+            AppState.show_notifications,
+            notifications_dropdown
+        ),
+        position="relative" # Clave para que el menú se posicione correctamente
+    )
+
+
 def public_navbar() -> rx.Component:
-    """La barra de navegación pública (sin cambios en esta función)."""
+    """La barra de navegación pública."""
     icon_color = rx.color_mode_cond("black", "white")
     
     authenticated_icons = rx.hstack(

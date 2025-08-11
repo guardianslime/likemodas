@@ -270,6 +270,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+            
+    show_notifications: bool = False
+
+    def toggle_notifications(self):
+        """Muestra u oculta el menú de notificaciones."""
+        self.show_notifications = not self.show_notifications
 
     # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
