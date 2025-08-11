@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (CORREGIDO)
+# likemodas/likemodas.py (SOLUCIÓN FINAL)
 
 import reflex as rx
 import reflex_local_auth
@@ -31,10 +31,7 @@ def main_layout(child: rx.Component) -> rx.Component:
                         rx.menu.trigger(rx.button(AppState.authenticated_user.username)),
                         rx.menu.content(
                             rx.menu.item("Mi Cuenta", on_click=rx.redirect("/my-account")),
-                            rx.cond(
-                                AppState.is_admin,
-                                rx.menu.item("Admin", on_click=rx.redirect("/admin"))
-                            ),
+                            rx.cond(AppState.is_admin, rx.menu.item("Admin", on_click=rx.redirect("/admin"))),
                             rx.menu.separator(),
                             rx.menu.item("Cerrar Sesión", on_click=AppState.do_logout),
                         ),
@@ -60,10 +57,7 @@ def main_layout(child: rx.Component) -> rx.Component:
 def index_page() -> rx.Component:
     """Página de la tienda."""
     return rx.flex(
-        rx.foreach(
-            AppState.products,
-            product_card
-        ),
+        rx.foreach(AppState.products, product_card),
         wrap="wrap", spacing="4"
     )
 
@@ -77,7 +71,6 @@ def cart_page() -> rx.Component:
 
 @reflex_local_auth.require_login
 def my_account_page() -> rx.Component:
-    # ▼▼▼ CORRECCIÓN 1: Se elimina el on_load de aquí ▼▼▼
     return rx.vstack(
         rx.heading("Mi Cuenta", size="8"),
         rx.heading("Mis Pedidos", size="5"),
@@ -95,76 +88,72 @@ def admin_page() -> rx.Component:
         rx.text("Acceso denegado.")
     )
 
-@reflex_local_auth.require_login
-def admin_products_page() -> rx.Component:
-    """Página para gestionar productos."""
-    return rx.cond(
-        AppState.is_admin,
-        rx.vstack(
-            rx.heading("Gestionar Productos", size="7"),
-            rx.card(
-                rx.form(
-                    rx.vstack(
-                        rx.heading("Crear Nuevo Producto", size="5"),
-                        rx.input(placeholder="Título", name="title", required=True),
-                        rx.text_area(placeholder="Descripción", name="content"),
-                        rx.input(placeholder="Precio", name="price", type="number", required=True),
-                        rx.button("Crear Producto", type="submit"),
-                    ),
-                    on_submit=AppState.handle_product_create
-                )
+# --- ▼▼▼ NUEVAS PÁGINAS DE AUTENTICACIÓN PERSONALIZADAS ▼▼▼ ---
+
+def login_page() -> rx.Component:
+    """Página de inicio de sesión personalizada."""
+    return rx.vstack(
+        rx.heading("Iniciar Sesión", size="7"),
+        rx.form(
+            rx.vstack(
+                rx.input(placeholder="Username", name="username", required=True),
+                rx.input(placeholder="Password", name="password", type="password", required=True),
+                rx.button("Iniciar Sesión", type="submit"),
             ),
-            rx.table.root(
-                rx.table.header(
-                    rx.table.row(rx.table.column_header_cell("ID"), rx.table.column_header_cell("Título"), rx.table.column_header_cell("Acciones"))
-                ),
-                rx.table.body(
-                    rx.foreach(
-                        AppState.products,
-                        lambda p: rx.table.row(
-                            rx.table.cell(p.id),
-                            rx.table.cell(p.title),
-                            rx.table.cell(
-                                rx.button("Eliminar", on_click=lambda: AppState.delete_product(p.id), color_scheme="red")
-                            )
-                        )
-                    )
-                )
-            ),
-            on_load=AppState.load_products,
-            align_items="start"
+            # Conecta el formulario a la lógica de estado de la librería
+            on_submit=AppState.handle_login,
         ),
-        rx.text("No tienes permiso.")
+        rx.link("¿No tienes cuenta? Regístrate aquí.", href="/register"),
+        # Muestra los mensajes de error desde el estado
+        rx.cond(
+            reflex_local_auth.LoginState.error_message != "",
+            rx.callout(reflex_local_auth.LoginState.error_message, color_scheme="red", icon="triangle_alert")
+        )
+    )
+
+def register_page() -> rx.Component:
+    """Página de registro personalizada."""
+    return rx.vstack(
+        rx.heading("Crear Cuenta", size="7"),
+        rx.form(
+            rx.vstack(
+                rx.input(placeholder="Username", name="username", required=True),
+                rx.input(placeholder="Email", name="email", type="email", required=True),
+                rx.input(placeholder="Password", name="password", type="password", required=True),
+                rx.button("Crear Cuenta", type="submit"),
+            ),
+            # Conecta el formulario a nuestra lógica personalizada en AppState
+            on_submit=AppState.handle_registration_custom,
+        ),
+        rx.link("¿Ya tienes cuenta? Inicia sesión.", href="/login"),
+        # Muestra mensajes de éxito o error desde nuestro estado
+        rx.cond(
+            AppState.error_message != "",
+            rx.callout(AppState.error_message, color_scheme="red", icon="triangle_alert")
+        ),
+        rx.cond(
+            AppState.success_message != "",
+            rx.callout(AppState.success_message, color_scheme="green", icon="check_circle")
+        )
     )
 
 
 # --- Inicialización y Rutas ---
 app = rx.App()
 
-app.add_page(
-    main_layout(index_page()),
-    route="/",
-    on_load=AppState.load_products
-)
+app.add_page(main_layout(index_page()), route="/", on_load=AppState.load_products)
 app.add_page(main_layout(cart_page()), route="/cart")
-
-# ▼▼▼ CORRECCIÓN 2: Se añade el on_load a la definición de la página ▼▼▼
-app.add_page(
-    main_layout(my_account_page()),
-    route="/my-account",
-    on_load=AppState.load_my_purchases # <--- Este es el lugar correcto
-)
-
+app.add_page(main_layout(my_account_page()), route="/my-account", on_load=AppState.load_my_purchases)
 app.add_page(main_layout(admin_page()), route="/admin")
-# ... (Aquí irían tus otras rutas de admin)
+# ... tus otras rutas de admin
 
-# Rutas de Autenticación
+# ▼▼▼ CORRECCIÓN: Usamos nuestras nuevas funciones de página ▼▼▼
 app.add_page(
-    main_layout(reflex_local_auth.login_page(on_submit=AppState.handle_login)),
+    main_layout(login_page()),
     route=reflex_local_auth.routes.LOGIN_ROUTE
 )
 app.add_page(
-    main_layout(reflex_local_auth.register_page(on_submit=AppState.handle_registration_custom)),
+    main_layout(register_page()),
     route=reflex_local_auth.routes.REGISTER_ROUTE
 )
 
