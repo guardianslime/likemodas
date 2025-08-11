@@ -1,42 +1,31 @@
 import reflex as rx
 import os
 
-# La URL pública donde vivirá tu aplicación en Railway.
-RAILWAY_PUBLIC_URL = "https://full-stack-python-production.up.railway.app"
+# --- Configuración Principal Corregida para Reflex 0.7.0 ---
 
-# La URL final para tus usuarios.
-PRODUCTION_DOMAIN = "https://www.likemodas.com"
+# Las URLs se obtienen de las variables de entorno que Railway proporciona.
+API_URL = os.getenv("RAILWAY_PUBLIC_URL", "http://localhost:8000")
+DEPLOY_URL = os.getenv("DEPLOY_URL", "http://localhost:3000")
 
-# La URL de Vercel que estaba causando el error de CORS.
-VERCEL_PREVIEW_URL = "https://full-stack-python.vercel.app"
+# Lista de orígenes permitidos
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://full-stack-python.vercel.app", # Tu URL de Vercel
+    "https://www.likemodas.com", # Tu dominio de producción
+]
 
-# --- Configuración Principal Corregida ---
+# Si la URL de Railway está presente, la añadimos dinámicamente.
+if "railway.app" in API_URL:
+    CORS_ALLOWED_ORIGINS.append(API_URL)
+
+
 config = rx.Config(
     app_name="likemodas",
-    
-    # Reflex necesita saber su propia URL pública para funcionar correctamente.
-    api_url=RAILWAY_PUBLIC_URL,
-    
-    # Lista blanca de dominios permitidos para conectarse.
-    # Se añaden la URL de Vercel y la de desarrollo local.
-    cors_allowed_origins=[
-        "http://localhost:3000", # Para desarrollo local
-        RAILWAY_PUBLIC_URL,
-        PRODUCTION_DOMAIN,
-        VERCEL_PREVIEW_URL,
-    ],
-    
+    api_url=API_URL,
+    deploy_url=DEPLOY_URL,
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
+    cors_allowed_origins=CORS_ALLOWED_ORIGINS,
     
-    # Desactivamos el plugin de sitemap que daba problemas en algunas versiones.
-    disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
-    
-    # Definimos el tema aquí para mantener todo en un solo lugar.
-    theme=rx.theme(
-        appearance="dark",
-        has_background=True,
-        panel_background="solid",
-        radius="medium",
-        accent_color="sky"
-    ),
+    # El telemetría es opcional, pero es buena práctica gestionarlo.
+    # telemetry_enabled=False, 
 )
