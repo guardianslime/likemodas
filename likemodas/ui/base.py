@@ -4,7 +4,6 @@ import reflex as rx
 from reflex.style import toggle_color_mode
 from ..state import AppState
 from .nav import public_navbar
-# Se quita la importación de skeleton_navbar porque usaremos un spinner
 from .sidebar import sliding_admin_sidebar
 
 def fixed_color_mode_button() -> rx.Component:
@@ -24,7 +23,7 @@ def fixed_color_mode_button() -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    Estructura de página base con centrado forzado para el contenido de admin.
+    Estructura de página base más estable, que no fuerza el centrado del child.
     """
     loading_screen = rx.center(
         rx.spinner(size="3"),
@@ -38,21 +37,17 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         loading_screen,
         rx.cond(
             AppState.is_admin,
-            # --- LAYOUT DE ADMIN CORREGIDO ---
+            # --- LAYOUT DE ADMIN MÁS SIMPLE ---
             rx.box(
                 sliding_admin_sidebar(),
-                # --- CAMBIO CLAVE: Centramos el contenedor del child ---
-                rx.center(
-                    # El child (tu página) ahora está dentro de un rx.center
-                    rx.box(
-                        child,
-                        padding="1em",
-                        width="100%",
-                    ),
-                    width="100%", # El center ocupa todo el ancho disponible
+                # Se elimina el rx.center de aquí. El child ahora tiene control total.
+                rx.box(
+                    child,
+                    padding="1em",
+                    width="100%",
+                    height="100vh" # Aseguramos que el contenedor del child ocupe toda la altura.
                 ),
                 width="100%",
-                min_height="100vh",
             ),
             # --- LAYOUT PÚBLICO (Sin cambios) ---
             rx.box(

@@ -121,14 +121,16 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         # --- CORRECCIONES CLAVE DE POSICIÓN ---
         position="fixed",
-        top="50%",  # Lo posicionamos al 50% de la altura de la ventana
+        top="0",
         left="0",
+        height="100vh", # Ocupar el 100% de la altura
+        display="flex",
+        align_items="center", # Centrar verticalmente usando flexbox
         transition="transform 0.4s ease-in-out",
         z_index="1000",
-        # Combinamos el transform para centrarlo verticalmente Y moverlo horizontalmente
         transform=rx.cond(
             AppState.show_admin_sidebar,
-            "translate(0, -50%)",
-            f"translate(-{SIDEBAR_WIDTH}, -50%)"
+            "translateX(0)",
+            f"translateX(-{SIDEBAR_WIDTH})"
         ),
     )

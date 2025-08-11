@@ -47,75 +47,43 @@ def _image_display_section() -> rx.Component:
     )
 
 def blog_post_edit_content() -> rx.Component:
-    """Contenido de la página para editar una publicación existente."""
-    # Envolvemos todo en rx.center para centrar el contenido vertical y horizontalmente.
+    """
+    Contenido de la página de edición, ahora responsable de su propio centrado.
+    """
+    # --- CAMBIO CLAVE ---
+    # Este rx.center ahora ocupa todo el espacio disponible y centra el container.
     return rx.center(
         rx.container(
-            rx.vstack(
-                rx.heading("Editar Publicación", size="8"),
-                rx.text("Modifica los detalles de tu producto y guárdalos."),
-                rx.divider(margin_y="1.5em"),
-                
-                # Usamos un condicional para mostrar el contenido solo si el post está cargado
-                rx.cond(
-                    AppState.post,
-                    rx.vstack(
-                        # Nueva sección para mostrar las imágenes
-                        _image_display_section(),
-                        
-                        # Formulario de edición
-                        rx.form(
-                            rx.vstack(
-                                rx.text("Título del Producto", as_="div", size="2", margin_bottom="2px", weight="bold"),
-                                rx.input(
-                                    name="title", # Se añade el name
-                                    value=AppState.post_title,
-                                    on_change=AppState.set_post_title,
-                                    placeholder="Ej: Camisa de Lino",
-                                    width="100%"
-                                ),
-                                
-                                rx.text("Descripción", as_="div", size="2", margin_bottom="2px", weight="bold"),
-                                rx.text_area(
-                                    name="content", # Se añade el name
-                                    value=AppState.post_content,
-                                    on_change=AppState.set_post_content,
-                                    placeholder="Describe los detalles, materiales, etc.",
-                                    width="100%",
-                                    rows="8",
-                                ),
-
-                                rx.text("Precio (COP)", as_="div", size="2", margin_bottom="2px", weight="bold"),
-                                rx.input(
-                                    name="price", # Se añade el name
-                                    value=AppState.price_str,
-                                    on_change=AppState.set_price,
-                                    placeholder="Ej: 80000",
-                                    width="100%"
-                                ),
-                                
-                                rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3"),
-                                spacing="4",
-                                width="100%"
-                            ),
-                            # Asegúrate de que el handler en AppState use los names del form
-                            on_submit=AppState.handle_edit_submit,
-                            width="100%",
-                            margin_top="2em" # Espacio entre las imágenes y el form
+            rx.cond(
+                AppState.post,
+                rx.vstack(
+                    rx.heading("Editar Publicación", size="8"),
+                    rx.text("Modifica los detalles de tu producto y guárdalos."),
+                    rx.divider(margin_y="1.5em"),
+                    _image_display_section(),
+                    rx.form(
+                        rx.vstack(
+                            rx.text("Título del Producto", as_="div", size="2", margin_bottom="2px", weight="bold"),
+                            rx.input(name="title", value=AppState.post_title, on_change=AppState.set_post_title, placeholder="Ej: Camisa de Lino", width="100%"),
+                            rx.text("Descripción", as_="div", size="2", margin_bottom="2px", weight="bold"),
+                            rx.text_area(name="content", value=AppState.post_content, on_change=AppState.set_post_content, placeholder="Describe los detalles, materiales, etc.", width="100%", rows="8"),
+                            rx.text("Precio (COP)", as_="div", size="2", margin_bottom="2px", weight="bold"),
+                            rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price, placeholder="Ej: 80000", width="100%"),
+                            rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3"),
+                            spacing="4", width="100%"
                         ),
-                        spacing="6",
-                        width="100%",
+                        on_submit=AppState.handle_edit_submit,
+                        width="100%", margin_top="2em"
                     ),
-                    # Muestra un spinner mientras carga la información del post
-                    rx.center(rx.spinner(), height="50vh")
+                    spacing="5", width="100%",
                 ),
-                spacing="5",
-                width="100%",
+                # Muestra un spinner mientras carga la información del post
+                rx.center(rx.spinner(), height="50vh")
             ),
-            padding_y="2em",
-            max_width="900px", # Aumentamos un poco el ancho para dar espacio
+            padding_y="2em", max_width="900px",
         ),
-        min_height="85vh",
+        # Le damos al rx.center un tamaño para que sepa dónde centrar.
         width="100%",
-        padding="1em"
+        height="100%",
+        overflow_y="auto" # Añadimos scroll si el contenido es muy largo
     )
