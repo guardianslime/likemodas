@@ -48,14 +48,17 @@ def _image_display_section() -> rx.Component:
 
 def blog_post_edit_content() -> rx.Component:
     """
-    Contenido de la página de edición, ahora responsable de su propio centrado.
+    Contenido de la página de edición con el patrón "Loading Gate" para evitar fallos de layout.
     """
-    # --- CAMBIO CLAVE ---
-    # Este rx.center ahora ocupa todo el espacio disponible y centra el container.
-    return rx.center(
-        rx.container(
-            rx.cond(
-                AppState.post,
+    # --- LA SOLUCIÓN DEFINITIVA: "LOADING GATE" ---
+    # Si los datos del post aún no han llegado desde el on_load,
+    # devolvemos un componente de carga de tamaño completo.
+    # Esto le da al layout padre algo estable para centrar.
+    return rx.cond(
+        AppState.post,
+        # Si AppState.post YA tiene datos, renderizamos el contenido completo.
+        rx.center(
+            rx.container(
                 rx.vstack(
                     rx.heading("Editar Publicación", size="8"),
                     rx.text("Modifica los detalles de tu producto y guárdalos."),
@@ -77,13 +80,12 @@ def blog_post_edit_content() -> rx.Component:
                     ),
                     spacing="5", width="100%",
                 ),
-                # Muestra un spinner mientras carga la información del post
-                rx.center(rx.spinner(), height="50vh")
+                padding_y="2em", max_width="900px",
             ),
-            padding_y="2em", max_width="900px",
+            width="100%",
+            height="100%",
+            overflow_y="auto"
         ),
-        # Le damos al rx.center un tamaño para que sepa dónde centrar.
-        width="100%",
-        height="100%",
-        overflow_y="auto" # Añadimos scroll si el contenido es muy largo
+        # Si AppState.post es None (está cargando), mostramos el spinner.
+        rx.center(rx.spinner(size="3"), height="80vh")
     )

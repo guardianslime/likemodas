@@ -78,11 +78,7 @@ def sidebar_logout_item() -> rx.Component:
     )
 
 def sliding_admin_sidebar() -> rx.Component:
-    """
-    Componente del sidebar con posicionamiento vertical estabilizado mediante transform.
-    """
     SIDEBAR_WIDTH = "16em"
-
     sidebar_panel = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
@@ -99,7 +95,6 @@ def sliding_admin_sidebar() -> rx.Component:
         spacing="5", padding_x="1em", padding_y="1.5em", bg="#2C004B",
         align="start", height="100%", width=SIDEBAR_WIDTH,
     )
-
     return rx.box(
         rx.hstack(
             sidebar_panel,
@@ -119,13 +114,12 @@ def sliding_admin_sidebar() -> rx.Component:
             align_items="center",
             spacing="0",
         ),
-        # --- CORRECCIONES CLAVE DE POSICIÓN ---
         position="fixed",
         top="0",
         left="0",
-        height="100vh", # Ocupar el 100% de la altura
+        height="100vh",
         display="flex",
-        align_items="center", # Centrar verticalmente usando flexbox
+        align_items="center",
         transition="transform 0.4s ease-in-out",
         z_index="1000",
         transform=rx.cond(
