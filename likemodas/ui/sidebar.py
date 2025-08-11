@@ -1,4 +1,4 @@
-# likemodas/ui/sidebar.py (CORREGIDO)
+# likemodas/ui/sidebar.py
 
 import reflex as rx
 from reflex.style import toggle_color_mode
@@ -6,6 +6,9 @@ from ..state import AppState
 from .. import navigation
 
 def sidebar_dark_mode_toggle_item() -> rx.Component:
+    """
+    Un componente que muestra un botón para alternar el modo de color.
+    """
     return rx.button(
         rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
         on_click=toggle_color_mode,
@@ -26,6 +29,7 @@ def sidebar_user_item() -> rx.Component:
     )
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
+    """Componente reutilizable para un elemento del menú lateral."""
     return rx.link(
         rx.hstack(
             rx.icon(icon),
@@ -44,9 +48,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
 def sidebar_items() -> rx.Component:
     """Define los elementos del menú de la barra lateral."""
     return rx.vstack(
-        # --- INICIO DE LA CORRECCIÓN ---
-        # El Dashboard ahora es un panel de administración y solo visible para admins.
-        # Todos los enlaces de administración se agrupan aquí.
+        # --- SECCIÓN DE ADMINISTRACIÓN ---
         rx.cond(
             AppState.is_admin,
             rx.fragment(
@@ -63,13 +65,17 @@ def sidebar_items() -> rx.Component:
                     spacing="1",
                     width="100%"
                 ),
-                rx.divider(margin_y="1em"), # Separador para distinguir admin de publico
+                rx.divider(margin_y="1em"),
             )
         ),
-        # --- FIN DE LA CORRECCIÓN ---
+        
+        # --- SECCIÓN PÚBLICA / GENERAL ---
+        
+        # --- ENLACE CORREGIDO ---
+        # Este es el cambio clave. El enlace de "Tienda" ahora apunta a la
+        # nueva ruta de la tienda para administradores.
+        sidebar_item("Tienda", "store", "/admin/store"),
 
-        # Enlaces públicos
-        sidebar_item("Tienda", "store", navigation.routes.HOME_ROUTE),
         sidebar_item("Contacto", "mail", navigation.routes.CONTACT_US_ROUTE),
         
         spacing="1", 
@@ -77,23 +83,25 @@ def sidebar_items() -> rx.Component:
     )
 
 def sidebar_logout_item() -> rx.Component:
+    """Botón para cerrar sesión."""
     return rx.cond(
         AppState.is_authenticated,
         rx.button(
             "Logout", rx.icon(tag="log-out", margin_left="0.5em"),
-            on_click=AppState.do_logout,  # Asegúrate de que este método exista en tu AppState
+            on_click=AppState.do_logout,
             width="100%", variant="soft", color_scheme="red"
         )
     )
 
 def mobile_admin_menu() -> rx.Component:
+    """Menú hamburguesa para la vista móvil de administradores."""
     return rx.box(
         rx.menu.root(
             rx.menu.trigger(rx.button(rx.icon("menu", size=22), variant="ghost")),
             rx.menu.content(
-                rx.menu.item("Tienda", on_click=rx.redirect(navigation.routes.HOME_ROUTE)),
+                # --- ENLACE MÓVIL CORREGIDO ---
+                rx.menu.item("Tienda", on_click=rx.redirect("/admin/store")),
                 rx.menu.separator(),
-                # Menú móvil también muestra opciones de admin si es admin
                 rx.cond(
                     AppState.is_admin,
                     rx.fragment(
@@ -110,6 +118,7 @@ def mobile_admin_menu() -> rx.Component:
     )
 
 def sidebar() -> rx.Component:
+    """La barra lateral completa."""
     desktop_sidebar_content = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
