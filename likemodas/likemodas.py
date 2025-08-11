@@ -30,8 +30,14 @@ def main_layout(child: rx.Component) -> rx.Component:
                     rx.menu.root(
                         rx.menu.trigger(rx.button(AppState.authenticated_user.username)),
                         rx.menu.content(
-                            rx.link(rx.menu.item("Mi Cuenta"), href="/my-account"),
-                            rx.cond(AppState.is_admin, rx.link(rx.menu.item("Admin"), href="/admin")),
+                            # ▼▼▼ ESTA ES LA SECCIÓN CORREGIDA ▼▼▼
+                            # Usamos on_click para la navegación, en lugar de envolver con rx.link
+                            rx.menu.item("Mi Cuenta", on_click=rx.redirect("/my-account")),
+                            rx.cond(
+                                AppState.is_admin,
+                                rx.menu.item("Admin", on_click=rx.redirect("/admin"))
+                            ),
+                            rx.menu.separator(),
                             rx.menu.item("Cerrar Sesión", on_click=AppState.do_logout),
                         ),
                     ),
@@ -54,13 +60,12 @@ def main_layout(child: rx.Component) -> rx.Component:
 
 # --- Páginas Públicas ---
 def index_page() -> rx.Component:
-    """Página de la tienda. Ya NO necesita el on_load aquí."""
+    """Página de la tienda."""
     return rx.flex(
         rx.foreach(
             AppState.products,
             product_card
         ),
-        # ▼▼▼ CORRECCIÓN 1: Se elimina el on_load de aquí ▼▼▼
         wrap="wrap", spacing="4"
     )
 
@@ -138,16 +143,15 @@ def admin_products_page() -> rx.Component:
 # --- Inicialización y Rutas ---
 app = rx.App()
 
-# ▼▼▼ CORRECCIÓN 2: Se añade el on_load a la definición de la página ▼▼▼
 app.add_page(
     main_layout(index_page()),
     route="/",
-    on_load=AppState.load_products  # <--- Este es el lugar correcto
+    on_load=AppState.load_products
 )
-
 app.add_page(main_layout(cart_page()), route="/cart")
 app.add_page(main_layout(my_account_page()), route="/my-account")
 app.add_page(main_layout(admin_page()), route="/admin")
+# ... (Aquí irían tus otras rutas de admin, como /admin/products)
 
 # Rutas de Autenticación
 app.add_page(
