@@ -62,7 +62,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    # --- REGISTRO Y VERIFICACIÓN (Sin cambios) ---
+    # --- REGISTRO Y VERIFICACIÓN ---
     def handle_registration_email(self, form_data: dict):
         self.success = False; self.error_message = ""
         username, email, password, confirm_password = form_data.get("username"), form_data.get("email"), form_data.get("password"), form_data.get("confirm_password")
@@ -106,7 +106,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "Usuario no encontrado."
             
-    # --- MANEJO DE CONTRASEÑA (Sin cambios) ---
+    # --- MANEJO DE CONTRASEÑA ---
     email: str = ""; is_success: bool = False; token: str = ""; is_token_valid: bool = False; password: str = ""; confirm_password: str = ""
     def handle_forgot_password(self, form_data: dict):
         self.email = form_data.get("email", "")
@@ -161,7 +161,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Cierra el diálogo de confirmación."""
         self.post_to_delete = None
 
-    # --- FILTROS (Sin cambios) ---
+    # --- FILTROS ---
     min_price: str = ""; max_price: str = ""; show_filters: bool = False; current_category: str = ""; open_filter_name: str = ""; filter_color: str = ""; filter_talla: str = ""; filter_tipo_prenda: str = ""; filter_tipo_zapato: str = ""; filter_numero_calzado: str = ""; filter_tipo_mochila: str = ""; filter_tipo_general: str = ""; filter_material_tela: str = ""; filter_medida_talla: str = ""
     def toggle_filters(self): self.show_filters = not self.show_filters
     def clear_all_filters(self): self.min_price, self.max_price, self.filter_color, self.filter_talla, self.filter_tipo_prenda, self.filter_tipo_zapato, self.filter_tipo_mochila, self.filter_tipo_general, self.filter_material_tela, self.filter_medida_talla = "", "", "", "", "", "", "", "", "", ""
@@ -225,7 +225,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.search_medida_talla.strip(): return LISTA_MEDIDAS_GENERAL
         return [o for o in LISTA_MEDIDAS_GENERAL if self.search_medida_talla.lower() in o.lower()]
 
-    # --- PRODUCTOS Y CARRITO (Sin cambios) ---
+    # --- PRODUCTOS Y CARRITO ---
     cart: Dict[int, int] = rx.Field(default_factory=dict); posts: list[ProductCardData] = rx.Field(default_factory=list); is_loading: bool = True
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
@@ -259,7 +259,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.posts = [ProductCardData.from_orm(p) for p in results]
         self.is_loading = False
     
-    # --- GESTIÓN DE AÑADIR PRODUCTO (Sin cambios) ---
+    # --- GESTIÓN DE AÑADIR PRODUCTO ---
     title: str = ""; content: str = ""; price: str = ""; category: str = ""; tipo_prenda: str = ""; search_add_tipo_prenda: str = ""; temp_images: list[str] = rx.Field(default_factory=list)
     @rx.var
     def categories(self) -> list[str]: return [c.value for c in Category]
@@ -301,7 +301,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self._clear_add_form(); yield rx.toast.success("Producto publicado.")
         return rx.redirect(f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/{new_id}")
 
-    # --- DETALLE PÚBLICO DEL BLOG (Sin cambios) ---
+    # --- DETALLE PÚBLICO DEL BLOG ---
     post: Optional[BlogPostModel] = None; comments: list[CommentModel] = rx.Field(default_factory=list); new_comment_text: str = ""; new_comment_rating: int = 0; is_post_loading: bool = True; current_image_index: int = 0
     @rx.var
     def current_image_url(self) -> str:
@@ -322,7 +322,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             else: self.comments = []
             self.is_post_loading = False
     
-    # --- DIRECCIONES DE ENVÍO (Sin cambios) ---
+    # --- DIRECCIONES DE ENVÍO ---
     addresses: List[ShippingAddressModel] = rx.Field(default_factory=list); show_form: bool = False; colombia_data: Dict[str, List[str]] = rx.Field(default_factory=load_colombia_data); city: str = ""; neighborhood: str = ""; search_city: str = ""; search_neighborhood: str = ""; default_shipping_address: Optional[ShippingAddressModel] = None
     def toggle_form(self): self.show_form = ~self.show_form
     def set_city(self, city: str): self.city, self.neighborhood, self.search_neighborhood = city, "", ""
@@ -375,7 +375,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 new_default.is_default = True; session.add(new_default); session.commit()
                 yield self.load_addresses(); return rx.toast.success(f"'{new_default.name}' es ahora tu dirección predeterminada.")
 
-    # --- CHECKOUT (Sin cambios) ---
+    # --- CHECKOUT ---
     @rx.event
     def handle_checkout(self):
         if not self.is_authenticated or not self.default_shipping_address: return rx.toast.error("Selecciona una dirección predeterminada.")
@@ -486,9 +486,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     def delete_post(self):
         if not self.authenticated_user_info or not self.post_to_delete: return rx.toast.error("Acción no permitida.")
         with rx.session() as session:
-            post_to_delete = session.get(BlogPostModel, self.post_to_delete.id)
-            if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
-                session.delete(post_to_delete); session.commit()
+            # Re-fetch the object in the current session before deleting
+            post_to_delete_in_session = session.get(BlogPostModel, self.post_to_delete.id)
+            if post_to_delete_in_session and post_to_delete_in_session.userinfo_id == self.authenticated_user_info.id:
+                session.delete(post_to_delete_in_session); session.commit()
                 self.post_to_delete = None
                 return rx.toast.success("Publicación eliminada.")
         return rx.toast.error("No tienes permiso para eliminar.")
@@ -534,7 +535,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     async def handle_contact_submit(self, form_data: dict):
         self.form_data = form_data
         with rx.session() as session:
-            entry = ContactEntryModel(first_name=form_data.get("first_name"), last_name=form_data.get("last_name"), email=form_data.get("email"), message=form_data.get("message"), userinfo_id=self.my_userinfo_id)
+            user_info_id = self.my_userinfo_id
+            entry = ContactEntryModel(first_name=form_data.get("first_name"), last_name=form_data.get("last_name"), email=form_data.get("email"), message=form_data.get("message"), userinfo_id=user_info_id)
             session.add(entry); session.commit()
         self.did_submit_contact = True; yield; await asyncio.sleep(4); self.did_submit_contact = False; yield
     def load_entries(self):

@@ -1,4 +1,4 @@
-# likemodas/blog/admin_page.py (CON DIÁLOGO MANUAL)
+# likemodas/blog/admin_page.py (VERSIÓN FINAL)
 
 import reflex as rx
 from ..state import AppState
@@ -7,31 +7,25 @@ from .. import navigation
 
 def confirm_delete_dialog() -> rx.Component:
     """Un diálogo de confirmación de borrado construido manualmente."""
-    # Obtenemos el post que se va a borrar del estado
-    post_to_delete = AppState.get_post_by_id(AppState.show_confirm_delete_dialog_id)
-    post_title = rx.cond(post_to_delete, post_to_delete.title, "este elemento")
-
     return rx.cond(
-        AppState.show_confirm_delete_dialog_id.is_not_none(),
+        AppState.post_to_delete.is_not_none(),
         rx.box(
-            # Contenido del diálogo
             rx.vstack(
                 rx.heading("Confirmar Eliminación"),
-                rx.text(f"¿Seguro que quieres eliminar '{post_title}'? Esta acción no se puede deshacer."),
+                rx.text(f"¿Seguro que quieres eliminar '{AppState.post_to_delete.title}'? Esta acción no se puede deshacer."),
                 rx.hstack(
                     rx.button("Cancelar", on_click=AppState.hide_delete_dialog, variant="ghost"),
-                    rx.button("Sí, Eliminar", on_click=AppState.delete_post(AppState.show_confirm_delete_dialog_id)),
+                    rx.button("Sí, Eliminar", on_click=AppState.delete_post),
                     justify="end",
                     width="100%",
                     margin_top="1em"
                 ),
-                bg="white",
+                bg=rx.color_mode_cond("white", "gray"), # Adaptado para modo claro/oscuro
                 padding="2em",
                 border_radius="md",
                 box_shadow="lg",
                 spacing="4",
             ),
-            # Fondo oscuro semitransparente
             position="fixed",
             top="0",
             left="0",
@@ -47,15 +41,15 @@ def confirm_delete_dialog() -> rx.Component:
 
 def post_admin_row(post: BlogPostModel) -> rx.Component:
     """Fila de la tabla de admin con el nuevo botón de borrado."""
-    return rx.tr(
-        rx.td(
+    return rx.el.tr(
+        rx.el.td(
             rx.cond(
                 post.image_urls & (post.image_urls.length() > 0),
                 rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4"),
                 rx.avatar(fallback="?", size="4")
             )
         ),
-        rx.td(
+        rx.el.td(
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
@@ -66,9 +60,9 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                 align_items="center",
             )
         ),
-        rx.td(post.title),
-        rx.td(post.price_cop),
-        rx.td(
+        rx.el.td(post.title),
+        rx.el.td(post.price_cop),
+        rx.el.td(
             rx.hstack(
                 rx.button(
                     "Editar",
@@ -76,7 +70,6 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                     variant="outline",
                     size="2"
                 ),
-                # --- CAMBIO: El botón ahora llama a nuestro método del estado ---
                 rx.button(
                     "Eliminar",
                     on_click=AppState.show_delete_dialog(post.id),
@@ -87,13 +80,12 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                 spacing="3",
             )
         ),
-        vertical_align="middle",
+        style={"vertical_align": "middle"},
     )
 
 def blog_admin_page() -> rx.Component:
     """Página de 'Mis Publicaciones' con el diálogo de borrado."""
     return rx.fragment(
-        # El diálogo se pone aquí, fuera de la tabla, para que se renderice correctamente
         confirm_delete_dialog(),
         rx.center(
             rx.container(
@@ -107,20 +99,20 @@ def blog_admin_page() -> rx.Component:
                     rx.divider(margin_y="1.5em"),
                     rx.cond(
                         AppState.my_admin_posts,
-                        rx.table(
-                            rx.thead(
-                                rx.tr(
-                                    rx.th("Imagen"),
-                                    rx.th("Estado"),
-                                    rx.th("Título"),
-                                    rx.th("Precio"),
-                                    rx.th("Acciones"),
+                        rx.el.table(
+                            rx.el.thead(
+                                rx.el.tr(
+                                    rx.el.th("Imagen"),
+                                    rx.el.th("Estado"),
+                                    rx.el.th("Título"),
+                                    rx.el.th("Precio"),
+                                    rx.el.th("Acciones"),
                                 )
                             ),
-                            rx.tbody(
+                            rx.el.tbody(
                                 rx.foreach(AppState.my_admin_posts, post_admin_row)
                             ),
-                            variant="simple", width="100%",
+                            width="100%",
                         ),
                         rx.center(
                             rx.vstack(
