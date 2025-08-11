@@ -1,29 +1,35 @@
-# likemodas/ui/nav.py (CORREGIDO PARA 0.7.0)
+# likemodas/ui/nav.py (CORREGIDO Y COMPATIBLE CON REFLEX 0.7.0)
 
 import reflex as rx
 from .. import navigation
 from ..state import AppState
 
 def notification_icon() -> rx.Component:
-    """Componente para el icono y menú de notificaciones con sintaxis de Chakra UI."""
+    """Componente para el icono y menú de notificaciones con la sintaxis correcta para 0.7.0."""
     icon_color = rx.color_mode_cond("black", "white")
     
+    # --- CAMBIO CLAVE ---
+    # Se elimina `rx.menu_button`. El `rx.box` ahora es el primer hijo de `rx.menu`
+    # y actúa como el botón que abre el menú.
     return rx.menu(
-        rx.menu_button(
-            rx.box(
-                rx.icon("bell", size=28, color=icon_color),
-                rx.cond(
-                    AppState.unread_count > 0,
-                    rx.box(
-                        rx.text(AppState.unread_count, font_size="0.7em", weight="bold"),
-                        position="absolute", top="-5px", right="-5px",
-                        padding="0 0.4em", border_radius="full",
-                        bg="red", color="white",
-                    )
-                ),
-                position="relative", padding="0.5em", cursor="pointer"
+        rx.box(
+            rx.icon("bell", size=28, color=icon_color),
+            rx.cond(
+                AppState.unread_count > 0,
+                rx.box(
+                    rx.text(AppState.unread_count, font_size="0.7em", weight="bold"),
+                    position="absolute", top="-5px", right="-5px",
+                    padding="0 0.4em", border_radius="full",
+                    bg="red", color="white",
+                )
             ),
+            position="relative", 
+            padding="0.5em", 
+            cursor="pointer",
+            # El evento para marcar como leídas se pone en el botón que abre el menú.
+            on_click=AppState.mark_all_as_read
         ),
+        # El rx.menu_list se mantiene igual.
         rx.menu_list(
             rx.cond(
                 AppState.notifications,
@@ -39,8 +45,6 @@ def notification_icon() -> rx.Component:
                 ),
                 rx.menu_item("No tienes notificaciones.")
             ),
-            # El evento on_open_change no existe en 0.7.0, se puede usar on_click en el menu_button
-            on_click=AppState.mark_all_as_read, 
             max_height="300px", 
             overflow_y="auto"
         ),
@@ -48,7 +52,8 @@ def notification_icon() -> rx.Component:
 
 def public_navbar() -> rx.Component:
     """
-    La barra de navegación pública definitiva, optimizada para evitar 'layout shift'.
+    La barra de navegación pública. Este código ya era mayormente compatible,
+    pero lo incluyo completo por consistencia.
     """
     icon_color = rx.color_mode_cond("black", "white")
     
@@ -105,7 +110,7 @@ def public_navbar() -> rx.Component:
                 placeholder_icons
             ),
 
-            template_columns="auto 1fr auto", # grid-template-columns en Chakra
+            template_columns="auto 1fr auto",
             align_items="center",
             width="100%",
             gap="1.5rem",
