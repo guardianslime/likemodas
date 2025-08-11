@@ -9,11 +9,19 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
     """Componente mejorado para una fila de la tabla de administración con imagen."""
     return rx.table.row(
         rx.table.cell(
-            # Columna para la imagen
+            # --- CORRECCIÓN CLAVE ---
+            # Usamos rx.cond para decidir si renderizar el Avatar o el Icono.
             rx.cond(
                 post.image_urls & (post.image_urls.length() > 0),
-                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4"),
-                rx.avatar(fallback=rx.icon("image_off"), size="4")
+                # Si hay imagen, muestra el avatar con la imagen.
+                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4", radius="full"),
+                # Si NO hay imagen, muestra el ícono directamente.
+                rx.avatar(
+                    fallback=rx.icon("image_off", size=24), 
+                    size="4", 
+                    radius="full", 
+                    color_scheme="gray"
+                )
             )
         ),
         rx.table.cell(
