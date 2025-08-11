@@ -9,18 +9,25 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
     """Componente mejorado para una fila de la tabla de administración con imagen."""
     return rx.table.row(
         rx.table.cell(
-            # --- CORRECCIÓN CLAVE ---
-            # Usamos rx.cond para decidir si renderizar el Avatar o el Icono.
+            # --- SOLUCIÓN DEFINITIVA ---
+            # Se usa rx.cond para elegir qué componente mostrar:
+            # el avatar con la imagen, o una caja con el ícono.
             rx.cond(
                 post.image_urls & (post.image_urls.length() > 0),
-                # Si hay imagen, muestra el avatar con la imagen.
+                # Caso 1: Si hay imagen, se muestra el avatar.
                 rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4", radius="full"),
-                # Si NO hay imagen, muestra el ícono directamente.
-                rx.avatar(
-                    fallback=rx.icon("image_off", size=24), 
-                    size="4", 
-                    radius="full", 
-                    color_scheme="gray"
+                # Caso 2: Si no hay imagen, se muestra una caja con el ícono.
+                rx.box(
+                    rx.icon("image_off", size=24),
+                    display="flex",
+                    align_items="center",
+                    justify_content="center",
+                    # Usamos las variables de tamaño del tema para que sea idéntico al avatar
+                    width="var(--avatar-size-4)",
+                    height="var(--avatar-size-4)",
+                    border_radius="100%",
+                    bg=rx.color("gray", 3),
+                    color=rx.color("gray", 8),
                 )
             )
         ),
@@ -72,7 +79,6 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
 
 def blog_admin_page() -> rx.Component:
     """Página de 'Mis Publicaciones' para el vendedor."""
-    # Envolvemos el contenido en un rx.center para asegurar la alineación vertical.
     return rx.center(
         rx.container(
             rx.vstack(
@@ -88,7 +94,6 @@ def blog_admin_page() -> rx.Component:
                     rx.table.root(
                         rx.table.header(
                             rx.table.row(
-                                # Nueva cabecera de columna para la imagen
                                 rx.table.column_header_cell("Imagen"),
                                 rx.table.column_header_cell("Estado"),
                                 rx.table.column_header_cell("Título"),
@@ -115,6 +120,6 @@ def blog_admin_page() -> rx.Component:
             ),
             padding_y="2em", max_width="1200px",
         ),
-        min_height="85vh", # Asegura que ocupe al menos el 85% de la altura de la ventana
+        min_height="85vh",
         width="100%"
     )
