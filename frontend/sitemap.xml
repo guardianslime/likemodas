@@ -1,54 +1,54 @@
 <?xml version="1.0" ?>
 <urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://localhost:3000/</loc>
+    <loc>https://likemodas.com/</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/login</loc>
+    <loc>https://likemodas.com/login</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/register</loc>
+    <loc>https://likemodas.com/register</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/verify-email</loc>
+    <loc>https://likemodas.com/verify-email</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/forgot-password</loc>
+    <loc>https://likemodas.com/forgot-password</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/reset-password</loc>
+    <loc>https://likemodas.com/reset-password</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/search-results</loc>
+    <loc>https://likemodas.com/search-results</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/cart</loc>
+    <loc>https://likemodas.com/cart</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/my-purchases</loc>
+    <loc>https://likemodas.com/my-purchases</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/my-account/shipping-info</loc>
+    <loc>https://likemodas.com/my-account/shipping-info</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/blog</loc>
+    <loc>https://likemodas.com/blog</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/admin/users</loc>
+    <loc>https://likemodas.com/admin/users</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/blog/add</loc>
+    <loc>https://likemodas.com/blog/add</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/admin/confirm-payments</loc>
+    <loc>https://likemodas.com/admin/confirm-payments</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/admin/store</loc>
+    <loc>https://likemodas.com/admin/store</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/admin/payment-history</loc>
+    <loc>https://likemodas.com/admin/payment-history</loc>
   </url>
   <url>
-    <loc>http://localhost:3000/contact/entries</loc>
+    <loc>https://likemodas.com/contact/entries</loc>
   </url>
 </urlset>
