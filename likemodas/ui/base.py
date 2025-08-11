@@ -4,8 +4,6 @@ import reflex as rx
 from reflex.style import toggle_color_mode
 from ..state import AppState
 from .nav import public_navbar
-from .skeletons import skeleton_navbar
-# Importamos el nuevo componente principal del sidebar
 from .sidebar import sliding_admin_sidebar
 
 def fixed_color_mode_button() -> rx.Component:
@@ -25,38 +23,36 @@ def fixed_color_mode_button() -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    Estructura de página base simplificada que utiliza el nuevo sidebar deslizable
-    para administradores, eliminando la duplicación de layouts.
+    Estructura de página base que usa una pantalla de carga neutral para
+    evitar el parpadeo de la interfaz incorrecta.
     """
+    # --- PANTALLA DE CARGA NEUTRAL ---
+    loading_screen = rx.center(
+        rx.spinner(size="3"),
+        height="100vh",
+        width="100%",
+        background=rx.color("gray", 2) # Fondo sutil para la carga
+    )
+
     return rx.cond(
         ~AppState.is_hydrated,
-        # --- LAYOUT ESQUELETO ---
-        rx.box(
-            skeleton_navbar(),
-            rx.box(
-                child,
-                padding_top="6rem", padding_x="1em", padding_bottom="1em", width="100%"
-            ),
-            width="100%",
-        ),
-        # --- LAYOUT HIDRATADO ---
+        # Mientras el estado no esté hidratado, muestra la pantalla de carga.
+        loading_screen,
+        # Una vez hidratado, decide qué layout mostrar.
         rx.cond(
             AppState.is_admin,
-            # --- LAYOUT DE ADMIN (AHORA MUY SIMPLE) ---
+            # --- LAYOUT DE ADMIN ---
             rx.box(
-                # Simplemente llamamos al nuevo sidebar deslizable.
-                # ¡No más encabezado ni lógica duplicada!
                 sliding_admin_sidebar(),
-                # El contenido principal de la página
                 rx.box(
                     child,
-                    padding="1em", # Un poco de padding para que no se pegue al borde
+                    padding="1em",
                     width="100%"
                 ),
                 width="100%",
                 min_height="100vh",
             ),
-            # --- LAYOUT PÚBLICO (Sin cambios) ---
+            # --- LAYOUT PÚBLICO ---
             rx.box(
                 public_navbar(),
                 rx.box(child, padding_top="6rem", padding_x="1em", padding_bottom="1em", width="100%"),

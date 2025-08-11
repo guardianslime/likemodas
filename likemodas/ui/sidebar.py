@@ -5,7 +5,9 @@ from reflex.style import toggle_color_mode
 from ..state import AppState
 from .. import navigation
 
-# Las funciones internas como sidebar_item, sidebar_user_item, etc., permanecen igual
+# Las funciones internas como sidebar_item, etc., no necesitan cambios.
+# Las incluyo para que puedas reemplazar el archivo completo.
+
 def sidebar_dark_mode_toggle_item() -> rx.Component:
     return rx.button(
         rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
@@ -42,7 +44,6 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
         underline="none",
         weight="medium",
         width="100%",
-        # Al hacer clic en un item, el sidebar se oculta para mejorar la UX móvil
         on_click=lambda: AppState.set_show_admin_sidebar(False),
     )
 
@@ -80,9 +81,9 @@ def sidebar_logout_item() -> rx.Component:
 
 def sliding_admin_sidebar() -> rx.Component:
     """
-    El nuevo componente principal que contiene el panel deslizable y el botón activador.
+    El componente principal del sidebar con la posición y altura corregidas.
     """
-    SIDEBAR_WIDTH = "16em"  # Definimos el ancho como una variable para consistencia
+    SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
         rx.hstack(
@@ -101,36 +102,37 @@ def sliding_admin_sidebar() -> rx.Component:
         align="start", height="100%", width=SIDEBAR_WIDTH,
     )
 
-    # Lógica del panel deslizable, inspirada en tu panel de filtros
     return rx.box(
         rx.hstack(
             sidebar_panel,
-            # Este es el botón activador
             rx.box(
                 rx.text(
-                    "LIKEMODAS", # Texto vertical
+                    "LIKEMODAS",
                     style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.2em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}
                 ),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer",
                 bg=rx.color("violet", 9),
                 border_radius="0 8px 8px 0",
-                height="150px", # Altura del botón
+                height="150px",
                 display="flex",
                 align_items="center"
             ),
             align_items="center",
             spacing="0",
         ),
+        # --- CORRECCIONES CLAVE DE POSICIÓN ---
         position="fixed",
-        top="30%", # Lo posicionamos un poco más abajo del centro
-        left="0",
+        top="0",                 # Anclarlo a la parte superior
+        left="0",                # Anclarlo a la izquierda
+        height="100vh",          # Ocupar el 100% de la altura de la ventana
+        display="flex",          # Usar flexbox para centrar verticalmente
+        align_items="center",    # Centrar el hstack (panel + botón) verticalmente
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
-            f"translateX(-{SIDEBAR_WIDTH})" # Se oculta basado en su propio ancho
+            f"translateX(-{SIDEBAR_WIDTH})"
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
-        height="auto",
     )
