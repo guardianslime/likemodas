@@ -1,4 +1,4 @@
-# rxconfig.py (VERSIÓN FINAL Y DEFINITIVA)
+# rxconfig.py (VERSIÓN FINAL A PRUEBA DE CONFLICTOS)
 
 import reflex as rx
 import os
@@ -12,8 +12,10 @@ DB_URL = os.getenv(
 )
 
 # --- 2. Lógica Definitiva para CORS ---
-# Leemos nuestra variable de entorno personalizada y no conflictiva.
-raw_cors_str = os.getenv("MY_CORS_URLS", "")
+# Leemos la variable de entorno de Railway en una variable con un nombre DIFERENTE.
+# Esto es CLAVE para evitar que Reflex la lea automáticamente.
+# Buscamos tanto en mayúsculas como en minúsculas por si acaso.
+raw_cors_str = os.getenv("CORS_ALLOWED_ORIGINS", "") or os.getenv("cors_allowed_origins", "")
 
 # Lista base de orígenes permitidos
 allowed_origins = [
@@ -23,14 +25,15 @@ allowed_origins = [
     DEPLOY_URL,
 ]
 
+# Si la variable de entorno tiene contenido, lo procesamos manualmente.
 if raw_cors_str:
     parsed_origins = [origin.strip() for origin in raw_cors_str.split(",")]
     allowed_origins.extend(parsed_origins)
 
+# Aseguramos una lista final limpia y sin duplicados.
 final_cors_list = sorted(list(set(allowed_origins)))
 
 # --- 3. Configuración Final ---
-# El parámetro cors_allowed_origins se vuelve a añadir, ya que ahora es seguro.
 config = rx.Config(
     app_name="likemodas",
     api_url=API_URL,
