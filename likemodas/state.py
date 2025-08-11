@@ -9,6 +9,36 @@ from .models import UserInfo, UserRole, Product, Purchase, PurchaseItem, Purchas
 class AppState(reflex_local_auth.LocalAuthState):
     """Estado central de la aplicación."""
 
+
+    # ▼▼▼ MÉTODO AÑADIDO PARA SOLUCIONAR EL ERROR ▼▼▼
+    def handle_login(self, form_data: dict):
+        """
+        Manejador de login explícito que llama a la lógica de la librería.
+        """
+        return super().handle_login(form_data)
+
+    #--- Propiedades de Usuario ---
+    @rx.var
+    def authenticated_user_info(self) -> Optional[UserInfo]:
+        if self.is_authenticated:
+            with rx.session() as session:
+                return session.exec(select(UserInfo).where(UserInfo.user_id == self.authenticated_user.id)).one_or_none()
+        return None
+
+    @rx.var
+    def is_admin(self) -> bool:
+        return self.authenticated_user_info and self.authenticated_user_info.role == UserRole.ADMIN
+
+    #--- Registro Personalizado ---
+    def handle_registration_custom(self, form_data: dict):
+        super().handle_registration(form_data)
+        if self.new_user_id is not None and self.new_user_id >= 0:
+            with rx.session() as session:
+                role = UserRole.ADMIN if form_data["username"] == "admin" else UserRole.CUSTOMER
+                user_info = UserInfo(email=form_data["email"], role=role, user_id=self.new_user_id)
+                session.add(user_info)
+                session.commit()
+                
     #--- Propiedades de Usuario ---
     @rx.var
     def authenticated_user_info(self) -> Optional[UserInfo]:
@@ -153,3 +183,5 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(user_info)
                 session.commit()
         self.load_all_users()
+
+
