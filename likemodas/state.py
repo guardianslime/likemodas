@@ -1,4 +1,4 @@
-# likemodas/state.py (VERSIÓN COMPLETA Y CORREGIDA)
+# likemodas/state.py (VERSIÓN FINAL CON CORRECCIÓN EN get_post_by_id)
 
 from __future__ import annotations
 import reflex as rx
@@ -844,7 +844,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(post_to_delete)
                 session.commit()
-                self.show_confirm_delete_dialog_id = None # Cierra el diálogo
+                self.show_confirm_delete_dialog_id = None
                 yield rx.toast.success("Publicación eliminada.")
             else:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
@@ -1028,14 +1028,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.redirect("/")
 
         with rx.session() as session:
-            # Consulta para traer TODOS los posts, no solo los activos.
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
-            # Poblamos la nueva variable de estado.
             self.admin_store_posts = [
                 ProductCardData(
                     id=p.id, 
@@ -1054,7 +1052,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Muestra u oculta la barra lateral de administración."""
         self.show_admin_sidebar = not self.show_admin_sidebar
     
-    @rx.var
+    # --- CAMBIO CLAVE: Se elimina el decorador @rx.var ---
     def get_post_by_id(self, post_id: int) -> Optional[BlogPostModel]:
         """Encuentra un post en la lista actual por su ID."""
         if post_id is None:
