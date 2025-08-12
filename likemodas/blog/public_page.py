@@ -8,7 +8,7 @@ from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_galler
 
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""
-    
+
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.box(
@@ -47,14 +47,7 @@ def product_detail_modal() -> rx.Component:
     return rx.dialog.root(
         rx.dialog.content(
             style={"max_width": "1200px", "min_height": "600px"},
-            rx.dialog.close(
-                rx.icon_button(
-                    rx.icon("x"), 
-                    variant="soft", 
-                    color_scheme="gray", 
-                    style={"position": "absolute", "top": "1rem", "right": "1rem"}
-                )
-            ),
+            rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
             rx.cond(
                 AppState.product_in_modal,
                 rx.grid(
