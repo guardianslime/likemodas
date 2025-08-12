@@ -208,6 +208,40 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+            
+
+    # --- NOTIFICACIONES ---
+    notifications: List[NotificationModel] = []
+    
+    @rx.var
+    def unread_count(self) -> int:
+        return sum(1 for n in self.notifications if not n.is_read)
+    
+    @rx.event
+    def load_notifications(self):
+        if not self.authenticated_user_info:
+            self.notifications = []
+            return
+        with rx.session() as session:
+            self.notifications = session.exec(
+                sqlmodel.select(NotificationModel)
+                .where(NotificationModel.userinfo_id == self.authenticated_user_info.id)
+                .order_by(sqlmodel.col(NotificationModel.created_at).desc())
+            ).all()
+    
+    @rx.event
+    def mark_all_as_read(self):
+        if not self.authenticated_user_info:
+            return
+        unread_ids = [n.id for n in self.notifications if not n.is_read]
+        if not unread_ids:
+            return
+        with rx.session() as session:
+            stmt = sqlmodel.update(NotificationModel).where(NotificationModel.id.in_(unread_ids)).values(is_read=True)
+            session.exec(stmt)
+            session.commit()
+        # Vuelve a cargar las notificaciones para actualizar la UI
+        yield self.load_notifications()
 
     # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
