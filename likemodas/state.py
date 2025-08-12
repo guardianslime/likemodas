@@ -27,7 +27,7 @@ from .data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
-# --- MODELOS DE DATOS SEGUROS PARA LA UI (DTOs) ---
+# --- DTOs (Data Transfer Objects) para la UI ---
 class ProductCardData(rx.Base):
     id: int
     title: str
@@ -252,7 +252,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_filter_material_tela(self, material: str): self.filter_material_tela = material
     def set_filter_medida_talla(self, medida: str): self.filter_medida_talla = medida
 
-    # --- FILTROS DINÁMICOS PARA SELECTS ---
     search_tipo_prenda: str = ""
     search_tipo_zapato: str = ""
     search_tipo_mochila: str = ""
@@ -427,6 +426,22 @@ class AppState(reflex_local_auth.LocalAuthState):
     cart: Dict[int, int] = {}
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
+
+    @rx.var
+    def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
+    
+    @rx.var
+    def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
+    
+    @rx.var
+    def cart_details(self) -> List[Tuple[Optional[BlogPostModel], int]]:
+        if not self.cart: return []
+        with rx.session() as session:
+            post_ids = list(self.cart.keys())
+            if not post_ids: return []
+            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()
+            post_map = {p.id: p for p in results}
+            return [(post_map.get(pid), self.cart[pid]) for pid in post_ids]
 
     @rx.event
     def add_to_cart(self, post_id: int):
@@ -606,19 +621,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_as_default(self, address_id: int):
         if not self.authenticated_user_info: return
         with rx.session() as session:
-            # Desmarcar el default actual
             current_default = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id, ShippingAddressModel.is_default == True)).one_or_none()
             if current_default:
                 current_default.is_default = False
                 session.add(current_default)
-            # Marcar el nuevo default
             new_default = session.get(ShippingAddressModel, address_id)
             if new_default and new_default.userinfo_id == self.authenticated_user_info.id:
                 new_default.is_default = True
                 session.add(new_default)
                 session.commit()
                 yield self.load_addresses()
-
+    
     # --- BÚSQUEDA ---
     search_term: str = ""
     search_results: List[ProductCardData] = []
@@ -631,6 +644,37 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.title.ilike(f"%{self.search_term.strip()}%"), BlogPostModel.publish_active == True)).all()
             self.search_results = [ProductCardData.from_orm(p) for p in results]
         return rx.redirect("/search-results")
+        
+    # --- PANEL DE ADMINISTRACIÓN ---
+    pending_purchases: List[AdminPurchaseCardData] = []
+    confirmed_purchases: List[AdminPurchaseCardData] = []
+    new_purchase_notification: bool = False
+    all_users: List[UserInfo] = []
+    admin_store_posts: list[ProductCardData] = []
+    show_admin_sidebar: bool = False
+
+    def set_new_purchase_notification(self, value: bool):
+        self.new_purchase_notification = value
+
+    @rx.event
+    def notify_admin_of_new_purchase(self):
+        self.new_purchase_notification = True
+
+    @rx.event
+    def load_pending_purchases(self):
+        if not self.is_admin: return
+        with rx.session() as session:
+            purchases = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status == PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.asc())).unique().all()
+            self.pending_purchases = [
+                AdminPurchaseCardData(
+                    id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
+                    purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
+                    shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                    shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
+                ) for p in purchases
+            ]
+            yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
+
     
     # --- GESTIÓN DE USUARIOS (ADMIN) ---
     @rx.event
