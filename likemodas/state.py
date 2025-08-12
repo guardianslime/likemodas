@@ -208,40 +208,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-            
-
-    # --- NOTIFICACIONES ---
-    notifications: List[NotificationModel] = []
-    
-    @rx.var
-    def unread_count(self) -> int:
-        return sum(1 for n in self.notifications if not n.is_read)
-    
-    @rx.event
-    def load_notifications(self):
-        if not self.authenticated_user_info:
-            self.notifications = []
-            return
-        with rx.session() as session:
-            self.notifications = session.exec(
-                sqlmodel.select(NotificationModel)
-                .where(NotificationModel.userinfo_id == self.authenticated_user_info.id)
-                .order_by(sqlmodel.col(NotificationModel.created_at).desc())
-            ).all()
-    
-    @rx.event
-    def mark_all_as_read(self):
-        if not self.authenticated_user_info:
-            return
-        unread_ids = [n.id for n in self.notifications if not n.is_read]
-        if not unread_ids:
-            return
-        with rx.session() as session:
-            stmt = sqlmodel.update(NotificationModel).where(NotificationModel.id.in_(unread_ids)).values(is_read=True)
-            session.exec(stmt)
-            session.commit()
-        # Vuelve a cargar las notificaciones para actualizar la UI
-        yield self.load_notifications()
 
     # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
@@ -357,10 +323,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = False
     
     # --- LÓGICA PARA MODALES ---
-    # --- Modal de Detalle de Producto (Vista Pública) ---
     show_detail_modal: bool = False
     product_in_modal: Optional[BlogPostModel] = None
     current_image_index: int = 0
+    is_editing_post: bool = False
+    post_to_edit: Optional[BlogPostModel] = None
+    post_title: str = ""
+    post_content: str = ""
+    price_str: str = ""
 
     @rx.var
     def current_image_url(self) -> str:
@@ -401,13 +371,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not open_state:
             self.show_detail_modal = False
             self.product_in_modal = None
-
-    # --- Modal de Edición de Producto (Vista Admin) ---
-    is_editing_post: bool = False
-    post_to_edit: Optional[BlogPostModel] = None
-    post_title: str = ""
-    post_content: str = ""
-    price_str: str = ""
 
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
@@ -460,10 +423,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     cart: Dict[int, int] = {}
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
-
     @rx.var
     def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
-    
     @rx.var
     def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
     
@@ -579,7 +540,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.info(f"Estado de publicación cambiado.")
                 
     # --- CHECKOUT Y DIRECCIONES ---
-    # --- CHECKOUT Y DIRECCIONES ---
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
     city: str = ""
@@ -588,7 +548,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    # --- FUNCIÓN A AÑADIR ---
     @rx.event
     def handle_checkout(self):
         if not self.is_authenticated or not self.default_shipping_address:
@@ -750,8 +709,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             ]
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
 
-    
-    # --- FUNCIÓN A AÑADIR ---
     @rx.event
     def confirm_payment(self, purchase_id: int):
         if not self.is_admin:
@@ -761,7 +718,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if purchase and purchase.status == PurchaseStatus.PENDING:
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.now(timezone.utc)
-                # Notificar al usuario
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
                     message=f"¡Tu compra #{purchase.id} ha sido confirmada!",
@@ -771,11 +727,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(notification)
                 session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
-                # Recargar la lista de compras pendientes
                 yield self.load_pending_purchases()
             else:
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
-
 
     # --- HISTORIAL DE PAGOS (ADMIN) ---
     search_query_admin_history: str = ""
@@ -864,6 +818,47 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ) for p in results
             ]
 
+    # --- CONTACTO ---
+    form_data: dict = {}
+    did_submit_contact: bool = False
+    contact_entries: list[ContactEntryModel] = []
+    search_query_contact: str = ""
+    
+    def set_search_query_contact(self, query: str):
+        self.search_query_contact = query
+
+    @rx.var
+    def filtered_entries(self) -> list[ContactEntryModel]:
+        if not self.search_query_contact.strip():
+            return self.contact_entries
+        q = self.search_query_contact.lower()
+        return [
+            e for e in self.contact_entries 
+            if q in f"{e.first_name} {e.last_name} {e.email} {e.message}".lower()
+        ]
+    
+    async def handle_contact_submit(self, form_data: dict):
+        self.form_data = form_data
+        with rx.session() as session:
+            user_info = self.authenticated_user_info
+            entry = ContactEntryModel(
+                first_name=form_data.get("first_name"),
+                last_name=form_data.get("last_name"),
+                email=form_data.get("email"),
+                message=form_data.get("message"),
+                userinfo_id=user_info.id if user_info else None
+            )
+            session.add(entry)
+            session.commit()
+        self.did_submit_contact = True
+        yield
+        await asyncio.sleep(4)
+        self.did_submit_contact = False
+        yield
+
+    def load_entries(self):
+        with rx.session() as session:
+            self.contact_entries = session.exec(sqlmodel.select(ContactEntryModel).order_by(ContactEntryModel.id.desc())).all()
     
     # --- GESTIÓN DE USUARIOS (ADMIN) ---
     @rx.event
@@ -933,36 +928,21 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_admin_store(self):
-        """
-        Carga todos los productos (publicados o no) en la variable de estado
-        de la tienda de admin para que el admin pueda ver todo.
-        """
         if not self.is_admin:
             return rx.redirect("/")
 
         with rx.session() as session:
-            # Consulta para traer TODOS los posts, no solo los activos.
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
-            # Poblamos la nueva variable de estado.
             self.admin_store_posts = [
-                ProductCardData(
-                    id=p.id, 
-                    title=p.title, 
-                    price=p.price or 0.0, 
-                    image_urls=p.image_urls or [], 
-                    average_rating=p.average_rating, 
-                    rating_count=p.rating_count
-                ) for p in results
+                ProductCardData.from_orm(p) for p in results
             ]
-
 
     show_admin_sidebar: bool = False
 
     def toggle_admin_sidebar(self):
-        """Muestra u oculta la barra lateral de administración."""
         self.show_admin_sidebar = not self.show_admin_sidebar
