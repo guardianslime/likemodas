@@ -232,7 +232,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        self.token = self.router.page.query_params.get("token", "")
+        self.token = self.router.query_params.get("token", "")
         if not self.token:
             self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
