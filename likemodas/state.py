@@ -252,6 +252,64 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_filter_material_tela(self, material: str): self.filter_material_tela = material
     def set_filter_medida_talla(self, medida: str): self.filter_medida_talla = medida
 
+    # --- FILTROS DINÁMICOS PARA SELECTS ---
+    search_tipo_prenda: str = ""
+    search_tipo_zapato: str = ""
+    search_tipo_mochila: str = ""
+    search_tipo_general: str = ""
+    search_color: str = ""
+    search_talla: str = ""
+    search_numero_calzado: str = ""
+    search_material_tela: str = ""
+    search_medida_talla: str = ""
+
+    def set_search_tipo_prenda(self, query: str): self.search_tipo_prenda = query
+    def set_search_tipo_zapato(self, query: str): self.search_tipo_zapato = query
+    def set_search_tipo_mochila(self, query: str): self.search_tipo_mochila = query
+    def set_search_tipo_general(self, query: str): self.search_tipo_general = query
+    def set_search_color(self, query: str): self.search_color = query
+    def set_search_talla(self, query: str): self.search_talla = query
+    def set_search_numero_calzado(self, query: str): self.search_numero_calzado = query
+    def set_search_material_tela(self, query: str): self.search_material_tela = query
+    def set_search_medida_talla(self, query: str): self.search_medida_talla = query
+
+    @rx.var
+    def filtered_tipos_ropa(self) -> list[str]:
+        if not self.search_tipo_prenda.strip(): return LISTA_TIPOS_ROPA
+        return [o for o in LISTA_TIPOS_ROPA if self.search_tipo_prenda.lower() in o.lower()]
+    @rx.var
+    def filtered_tipos_zapatos(self) -> list[str]:
+        if not self.search_tipo_zapato.strip(): return LISTA_TIPOS_ZAPATOS
+        return [o for o in LISTA_TIPOS_ZAPATOS if self.search_tipo_zapato.lower() in o.lower()]
+    @rx.var
+    def filtered_tipos_mochilas(self) -> list[str]:
+        if not self.search_tipo_mochila.strip(): return LISTA_TIPOS_MOCHILAS
+        return [o for o in LISTA_TIPOS_MOCHILAS if self.search_tipo_mochila.lower() in o.lower()]
+    @rx.var
+    def filtered_colores(self) -> list[str]:
+        if not self.search_color.strip(): return LISTA_COLORES
+        return [o for o in LISTA_COLORES if self.search_color.lower() in o.lower()]
+    @rx.var
+    def filtered_tallas_ropa(self) -> list[str]:
+        if not self.search_talla.strip(): return LISTA_TALLAS_ROPA
+        return [o for o in LISTA_TALLAS_ROPA if self.search_talla.lower() in o.lower()]
+    @rx.var
+    def filtered_numeros_calzado(self) -> list[str]:
+        if not self.search_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
+        return [o for o in LISTA_NUMEROS_CALZADO if self.search_numero_calzado.lower() in o.lower()]
+    @rx.var
+    def filtered_materiales(self) -> list[str]:
+        if not self.search_material_tela.strip(): return LISTA_MATERIALES
+        return [o for o in LISTA_MATERIALES if self.search_material_tela.lower() in o.lower()]
+    @rx.var
+    def filtered_tipos_general(self) -> list[str]:
+        if not self.search_tipo_general.strip(): return LISTA_TIPOS_GENERAL
+        return [o for o in LISTA_TIPOS_GENERAL if self.search_tipo_general.lower() in o.lower()]
+    @rx.var
+    def filtered_medidas_general(self) -> list[str]:
+        if not self.search_medida_talla.strip(): return LISTA_MEDIDAS_GENERAL
+        return [o for o in LISTA_MEDIDAS_GENERAL if self.search_medida_talla.lower() in o.lower()]
+
     # --- PRODUCTOS Y GALERÍA PÚBLICA ---
     posts: list[ProductCardData] = []
     is_loading: bool = True
