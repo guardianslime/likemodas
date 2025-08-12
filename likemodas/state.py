@@ -751,6 +751,48 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
 
     
+    # --- HISTORIAL DE COMPRAS (USUARIO) ---
+    user_purchases: List[UserPurchaseHistoryCardData] = []
+    search_query_user_history: str = ""
+    
+    def set_search_query_user_history(self, query: str):
+        self.search_query_user_history = query
+
+    @rx.var
+    def filtered_user_purchases(self) -> list[UserPurchaseHistoryCardData]:
+        if not self.search_query_user_history.strip():
+            return self.user_purchases
+        q = self.search_query_user_history.lower()
+        return [
+            p for p in self.user_purchases 
+            if q in f"#{p.id}" or any(q in item.lower() for item in p.items_formatted)
+        ]
+
+    @rx.event
+    def load_purchases(self):
+        if not self.authenticated_user_info:
+            self.user_purchases = []
+            return
+        with rx.session() as session:
+            results = session.exec(
+                sqlmodel.select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
+                .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
+                .order_by(PurchaseModel.purchase_date.desc())
+            ).unique().all()
+            self.user_purchases = [
+                UserPurchaseHistoryCardData(
+                    id=p.id, purchase_date_formatted=p.purchase_date_formatted,
+                    status=p.status.value, total_price_cop=p.total_price_cop,
+                    shipping_name=p.shipping_name, shipping_address=p.shipping_address,
+                    shipping_neighborhood=p.shipping_neighborhood, shipping_city=p.shipping_city,
+                    shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
+                ) for p in results
+            ]
+
+    
     # --- GESTIÓN DE USUARIOS (ADMIN) ---
     @rx.event
     def load_all_users(self):
