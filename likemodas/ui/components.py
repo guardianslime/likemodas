@@ -74,6 +74,8 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """Un componente que muestra una galería de productos."""
     return rx.flex(
+        # --- AÑADE ESTA LÍNEA PARA LA PRUEBA ---
+        rx.heading("LA PRUEBA FUNCIONA", size="9", color_scheme="red"),
         rx.foreach(
             posts,
             lambda post: rx.box(
