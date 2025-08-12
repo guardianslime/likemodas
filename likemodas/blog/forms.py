@@ -75,7 +75,7 @@ def blog_post_edit_form() -> rx.Component:
                 value=AppState.post_content,
                 on_change=AppState.set_post_content,
                 placeholder="Describe los detalles, materiales, etc.",
-                rows=8,
+                rows="8", # <--- CORREGIDO A STRING
                 required=True,
             ),
 
