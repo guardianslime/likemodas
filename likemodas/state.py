@@ -359,7 +359,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 sqlmodel.select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .where(BlogPostModel.id == post_id, BlogPostModel.publish_active == True)
-            ).one_or_none()
+            ).unique().one_or_none()
             if db_post:
                 self.product_in_modal = db_post
             else:
