@@ -579,6 +579,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.info(f"Estado de publicación cambiado.")
                 
     # --- CHECKOUT Y DIRECCIONES ---
+    # --- CHECKOUT Y DIRECCIONES ---
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
     city: str = ""
@@ -586,6 +587,46 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_city: str = ""
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
+
+    # --- FUNCIÓN A AÑADIR ---
+    @rx.event
+    def handle_checkout(self):
+        if not self.is_authenticated or not self.default_shipping_address:
+            return rx.toast.error("Por favor, selecciona una dirección predeterminada.")
+        if not self.authenticated_user_info:
+            return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
+        
+        with rx.session() as session:
+            new_purchase = PurchaseModel(
+                userinfo_id=self.authenticated_user_info.id,
+                total_price=self.cart_total, 
+                status=PurchaseStatus.PENDING,
+                shipping_name=self.default_shipping_address.name, 
+                shipping_city=self.default_shipping_address.city,
+                shipping_neighborhood=self.default_shipping_address.neighborhood, 
+                shipping_address=self.default_shipping_address.address,
+                shipping_phone=self.default_shipping_address.phone
+            )
+            session.add(new_purchase)
+            session.commit()
+            session.refresh(new_purchase)
+            
+            post_map = {p.id: p for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(list(self.cart.keys())))).all()}
+            for post_id, quantity in self.cart.items():
+                if post_id in post_map: 
+                    session.add(PurchaseItemModel(
+                        purchase_id=new_purchase.id,
+                        blog_post_id=post_map[post_id].id,
+                        quantity=quantity,
+                        price_at_purchase=post_map[post_id].price
+                    ))
+            session.commit()
+            
+        self.cart.clear()
+        self.default_shipping_address = None
+        yield self.notify_admin_of_new_purchase()
+        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+        return rx.redirect("/my-purchases")
 
     def toggle_form(self): self.show_form = ~self.show_form
     def set_city(self, city: str): self.city = city; self.neighborhood = ""
