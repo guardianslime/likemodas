@@ -1,38 +1,45 @@
-# likemodas/blog/admin_page.py (ACTUALIZADO CON MÁS FUNCIONALIDAD)
+# likemodas/blog/admin_page.py
 
 import reflex as rx
 from ..state import AppState
 from ..models import BlogPostModel
 from .. import navigation
+from .forms import blog_post_edit_form
+
+def edit_post_dialog() -> rx.Component:
+    """El diálogo modal que contiene el formulario de edición."""
+    return rx.alert_dialog.root(
+        open=AppState.is_editing_post,
+        on_open_change=AppState.cancel_editing_post,
+        rx.alert_dialog.content(
+            style={"max_width": "600px"},
+            rx.alert_dialog.title("Editar Publicación"),
+            rx.alert_dialog.description(
+                "Modifica los detalles de tu producto y guárdalos."
+            ),
+            blog_post_edit_form(),
+            rx.flex(
+                rx.alert_dialog.cancel(
+                    rx.button("Cancelar", variant="soft", color_scheme="gray")
+                ),
+                spacing="3",
+                margin_top="1em",
+                justify="end",
+            ),
+        ),
+    )
 
 def post_admin_row(post: BlogPostModel) -> rx.Component:
     """Componente mejorado para una fila de la tabla de administración con imagen."""
     return rx.table.row(
         rx.table.cell(
-            # --- SOLUCIÓN DEFINITIVA ---
-            # Se usa rx.cond para elegir qué componente mostrar:
-            # el avatar con la imagen, o una caja con el ícono.
             rx.cond(
                 post.image_urls & (post.image_urls.length() > 0),
-                # Caso 1: Si hay imagen, se muestra el avatar.
-                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4", radius="full"),
-                # Caso 2: Si no hay imagen, se muestra una caja con el ícono.
-                rx.box(
-                    rx.icon("image_off", size=24),
-                    display="flex",
-                    align_items="center",
-                    justify_content="center",
-                    # Usamos las variables de tamaño del tema para que sea idéntico al avatar
-                    width="var(--avatar-size-4)",
-                    height="var(--avatar-size-4)",
-                    border_radius="100%",
-                    bg=rx.color("gray", 3),
-                    color=rx.color("gray", 8),
-                )
+                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4"),
+                rx.box(rx.icon("image_off", size=24), width="var(--avatar-size-4)", height="var(--avatar-size-4)", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center", border_radius="100%")
             )
         ),
         rx.table.cell(
-            # Switch para habilitar/inhabilitar la publicación
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
@@ -47,14 +54,12 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
         rx.table.cell(post.price_cop),
         rx.table.cell(
             rx.hstack(
-                # Botón Editar
                 rx.button(
                     "Editar", 
-                    on_click=rx.redirect(f"/blog/{post.id}/edit"),
+                    on_click=AppState.start_editing_post(post.id),
                     variant="outline",
                     size="2"
                 ),
-                # Botón Eliminar
                 rx.alert_dialog.root(
                     rx.alert_dialog.trigger(
                         rx.button("Eliminar", color_scheme="red", variant="soft", size="2")
@@ -106,20 +111,13 @@ def blog_admin_page() -> rx.Component:
                         ),
                         variant="surface", width="100%",
                     ),
-                    rx.center(
-                        rx.vstack(
-                            rx.icon("file-search-2", size=48),
-                            rx.heading("Aún no tienes publicaciones"),
-                            rx.button("Crear mi primera publicación", on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE), margin_top="1em"),
-                            spacing="3", align="center",
-                        ),
-                        height="50vh", width="100%",
-                    )
+                    rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
                 ),
+                edit_post_dialog(),
                 spacing="5", width="100%",
             ),
             padding_y="2em", max_width="1200px",
         ),
         min_height="85vh",
         width="100%"
-    )
+    )s
