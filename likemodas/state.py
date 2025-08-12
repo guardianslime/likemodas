@@ -751,6 +751,31 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
 
     
+    # --- FUNCIÓN A AÑADIR ---
+    @rx.event
+    def confirm_payment(self, purchase_id: int):
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if purchase and purchase.status == PurchaseStatus.PENDING:
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                # Notificar al usuario
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Tu compra #{purchase.id} ha sido confirmada!",
+                    url="/my-purchases"
+                )
+                session.add(purchase)
+                session.add(notification)
+                session.commit()
+                yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
+                # Recargar la lista de compras pendientes
+                yield self.load_pending_purchases()
+            else:
+                yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
+
     # --- HISTORIAL DE COMPRAS (USUARIO) ---
     user_purchases: List[UserPurchaseHistoryCardData] = []
     search_query_user_history: str = ""
