@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py
+# likemodas/blog/public_page.py (Versión Corregida)
 
 import reflex as rx
 from ..state import AppState
@@ -45,8 +45,8 @@ def product_detail_modal() -> rx.Component:
         )
 
     return rx.dialog.root(
-        open=AppState.show_detail_modal,
-        on_open_change=AppState.close_product_detail_modal,
+        # --- CORRECCIÓN AQUÍ ---
+        # El componente hijo `rx.dialog.content` ahora va PRIMERO.
         rx.dialog.content(
             style={"max_width": "1200px", "min_height": "600px"},
             rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
@@ -61,6 +61,9 @@ def product_detail_modal() -> rx.Component:
                 skeleton_product_detail_view(),
             ),
         ),
+        # Los argumentos de palabra clave (open, on_open_change) van DESPUÉS.
+        open=AppState.show_detail_modal,
+        on_open_change=AppState.close_product_detail_modal,
     )
 
 def blog_public_page_content() -> rx.Component:
