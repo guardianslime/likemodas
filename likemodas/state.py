@@ -776,6 +776,53 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
 
+
+    # --- HISTORIAL DE PAGOS (ADMIN) ---
+    search_query_admin_history: str = ""
+
+    def set_search_query_admin_history(self, query: str):
+        self.search_query_admin_history = query
+
+    @rx.var
+    def filtered_admin_purchases(self) -> list[AdminPurchaseCardData]:
+        if not self.search_query_admin_history.strip():
+            return self.confirmed_purchases
+        q = self.search_query_admin_history.lower()
+        return [
+            p for p in self.confirmed_purchases
+            if q in f"#{p.id}" or q in p.customer_name.lower() or q in p.customer_email.lower()
+        ]
+
+    @rx.event
+    def load_confirmed_purchases(self):
+        if not self.is_admin:
+            self.confirmed_purchases = []
+            return
+        with rx.session() as session:
+            results = session.exec(
+                sqlmodel.select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
+                .where(PurchaseModel.status != PurchaseStatus.PENDING)
+                .order_by(PurchaseModel.purchase_date.desc())
+            ).unique().all()
+            self.confirmed_purchases = [
+                AdminPurchaseCardData(
+                    id=p.id,
+                    customer_name=p.userinfo.user.username,
+                    customer_email=p.userinfo.email,
+                    purchase_date_formatted=p.purchase_date_formatted,
+                    status=p.status.value,
+                    total_price=p.total_price,
+                    shipping_name=p.shipping_name,
+                    shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                    shipping_phone=p.shipping_phone,
+                    items_formatted=p.items_formatted
+                ) for p in results
+            ]
+
     # --- HISTORIAL DE COMPRAS (USUARIO) ---
     user_purchases: List[UserPurchaseHistoryCardData] = []
     search_query_user_history: str = ""
