@@ -14,7 +14,6 @@ from .utils.formatting import format_to_cop
 
 # --- Funciones de Utilidad ---
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
-    """Formatea una fecha UTC a la zona horaria de Colombia."""
     if not utc_dt:
         return "N/A"
     try:
@@ -97,36 +96,27 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
     
-    # --- CORRECCIÓN: Excluye la referencia circular a userinfo ---
+    # --- CORRECCIÓN ---
     class Config:
         exclude = {"userinfo"}
     
     @property
-    def rating_count(self) -> int:
-        return len(self.comments) if self.comments else 0
+    def rating_count(self) -> int: return len(self.comments) if self.comments else 0
     @property
     def average_rating(self) -> float:
-        if not self.comments:
-            return 0.0
+        if not self.comments: return 0.0
         return sum(c.rating for c in self.comments) / len(self.comments)
     @property
-    def created_at_formatted(self) -> str:
-        return format_utc_to_local(self.created_at)
+    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
     @property
-    def publish_date_formatted(self) -> str:
-        return format_utc_to_local(self.publish_date)
+    def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
     @property
-    def price_cop(self) -> str:
-        return format_to_cop(self.price)
+    def price_cop(self) -> str: return format_to_cop(self.price)
 
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    name: str
-    phone: str
-    city: str
-    neighborhood: str
-    address: str
+    name: str; phone: str; city: str; neighborhood: str; address: str
     is_default: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
 
@@ -147,28 +137,20 @@ class PurchaseModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
-    # --- CORRECCIÓN: Excluye la referencia circular a userinfo ---
+    # --- CORRECCIÓN ---
     class Config:
         exclude = {"userinfo"}
 
     @property
-    def purchase_date_formatted(self) -> str:
-        return format_utc_to_local(self.purchase_date)
+    def purchase_date_formatted(self) -> str: return format_utc_to_local(self.purchase_date)
     @property
-    def confirmed_at_formatted(self) -> str:
-        return format_utc_to_local(self.confirmed_at)
+    def confirmed_at_formatted(self) -> str: return format_utc_to_local(self.confirmed_at)
     @property
-    def total_price_cop(self) -> str:
-        return format_to_cop(self.total_price)
+    def total_price_cop(self) -> str: return format_to_cop(self.total_price)
     @property
     def items_formatted(self) -> list[str]:
-        if not self.items:
-            return []
-        return [
-            f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)"
-            for item in self.items
-            if item.blog_post
-        ]
+        if not self.items: return []
+        return [f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)" for item in self.items if item.blog_post]
 
 class PurchaseItemModel(rx.Model, table=True):
     purchase_id: int = Field(foreign_key="purchasemodel.id")
@@ -179,7 +161,7 @@ class PurchaseItemModel(rx.Model, table=True):
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
 
-    # --- CORRECCIÓN: Excluye la referencia circular a purchase ---
+    # --- CORRECCIÓN ---
     class Config:
         exclude = {"purchase"}
 
@@ -193,8 +175,7 @@ class NotificationModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
     
     @property
-    def created_at_formatted(self) -> str:
-        return format_utc_to_local(self.created_at)
+    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
 class ContactEntryModel(rx.Model, table=True):
     userinfo_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
@@ -207,8 +188,7 @@ class ContactEntryModel(rx.Model, table=True):
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
 
     @property
-    def created_at_formatted(self) -> str:
-        return format_utc_to_local(self.created_at)
+    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
 class CommentModel(rx.Model, table=True):
     content: str
@@ -222,19 +202,16 @@ class CommentModel(rx.Model, table=True):
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
     votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
-    # --- CORRECCIÓN: Excluye la referencia circular a blog_post y userinfo ---
+    # --- CORRECCIÓN ---
     class Config:
         exclude = {"blog_post", "userinfo"}
 
     @property
-    def created_at_formatted(self) -> str:
-        return format_utc_to_local(self.created_at)
+    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
     @property
-    def likes(self) -> int:
-        return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
+    def likes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
     @property
-    def dislikes(self) -> int:
-        return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
+    def dislikes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
 
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))
@@ -244,6 +221,6 @@ class CommentVoteModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
     comment: "CommentModel" = Relationship(back_populates="votes")
 
-    # --- CORRECCIÓN: Excluye las referencias circulares ---
+    # --- CORRECCIÓN ---
     class Config:
         exclude = {"userinfo", "comment"}
