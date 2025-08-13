@@ -1,17 +1,19 @@
-# likemodas/blog/__init__.py (CORREGIDO SEGÚN TU CAPTURA DE PANTALLA)
+# likemodas/blog/__init__.py (CORREGIDO)
 
-# Asumiendo que las funciones de admin (list, detail, edit) están en admin_page.py
-from .admin_page import blog_post_list_content, blog_post_detail_content, blog_post_edit_content
+# Importa cada función desde su archivo de origen correcto
 from .add import blog_post_add_content
+from .detail import blog_post_detail_content
+from .edit import blog_post_edit_content
+from .list import blog_post_list_content
 from .public_page import blog_public_page_content
-from .detail import blog_public_detail_content
+from .detail_page import blog_public_detail_content # Asumiendo que esta función está en detail_page.py
 
-# La lista __all__ exporta los nombres para que puedan ser importados desde "likemodas.blog"
+# __all__ le dice a Python qué funciones están disponibles desde el paquete 'blog'
 __all__ = [
-    'blog_post_list_content',
+    'blog_post_add_content',
     'blog_post_detail_content',
     'blog_post_edit_content',
-    'blog_post_add_content',
+    'blog_post_list_content',
     'blog_public_page_content',
     'blog_public_detail_content',
 ]
