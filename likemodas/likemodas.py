@@ -7,7 +7,7 @@ from .state import AppState
 from .ui.base import base_page
 
 from .auth import pages as auth_pages
-from .pages import search_results, category_page
+from .pages import landing, search_results, category_page
 from .blog import (
     blog_public_page_content, 
     blog_admin_page, 
@@ -26,7 +26,9 @@ app = rx.App(style={"font_family": "Arial, sans-serif"})
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
-    base_page(blog_public_page_content()),
+    # ANTES: base_page(blog_public_page_content()),
+    # AHORA:
+    base_page(landing.landing_content()),
     route="/",
     on_load=AppState.on_load_main_page,
     title="Likemodas | Inicio"

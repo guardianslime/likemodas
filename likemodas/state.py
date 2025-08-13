@@ -948,7 +948,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_main_page(self):
-        """Carga todos los productos y revisa la URL para abrir un modal si es necesario."""
+        """
+        Carga los productos y, si el usuario es admin, lo redirige.
+        Si es público, revisa la URL para abrir el modal.
+        """
+        # ✨ LÍNEA DE SEGURIDAD AÑADIDA ✨
+        # Si un admin intenta cargar esta página, lo enviamos a su panel.
+        if self.is_admin:
+            return rx.redirect("/admin/store")
+
+        # La lógica original para clientes y visitantes se mantiene igual
         yield AppState.on_load
         product_id = self.router.page.params.get("product_id", None)
         if product_id is not None:

@@ -1,27 +1,24 @@
-# likemodas/pages/landing.py (CORREGIDO Y COMPLETO)
+# likemodas/pages/landing.py (VERSIÓN FINAL Y CORRECTA)
 
-import reflex as rx 
-from .. import navigation
-from ..ui.components import product_gallery_component
+import reflex as rx
 from ..state import AppState
 
+# Importamos las dos vistas que queremos mostrar condicionalmente
+from ..admin.store_page import admin_store_page
+from ..blog.public_page import blog_public_page_content
+
 def landing_content() -> rx.Component:
-    """La página de inicio, ahora usa AppState y muestra las publicaciones recientes."""
-    return rx.vstack(
-        rx.heading("Bienvenidos a Likemodas", size="9"),
-        rx.link(
-            rx.button("Conócenos", color_scheme='gray'),
-            href=navigation.routes.ABOUT_US_ROUTE
+    """
+    Página de aterrizaje inteligente que muestra la vista correcta
+    según si el usuario es administrador o no.
+    """
+    return rx.box(
+        rx.cond(
+            AppState.is_admin,
+            # Si es admin, muestra la página de la tienda de administración
+            admin_store_page(),
+            # Si no, muestra la galería pública con sus modales
+            blog_public_page_content()
         ),
-        rx.divider(),
-        rx.heading("Publicaciones Recientes", size="5"),
-        
-        # CAMBIO CLAVE: Se usa AppState y se le pasa una porción de la lista de posts.
-        # Se asume que los primeros 8 son los más recientes.
-        product_gallery_component(posts=AppState.posts[:8]),
-        
-        spacing="5",
-        justify="center",
-        align="center",
-        min_height="85vh",
+        width="100%"
     )
