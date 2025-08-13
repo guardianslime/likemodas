@@ -76,17 +76,25 @@ def product_detail_modal() -> rx.Component:
     )
 
 def blog_public_page_content() -> rx.Component:
-    """Página pública principal que muestra la galería y contiene el modal."""
+    """
+    Página pública principal que muestra la galería de productos.
+    Ya no utiliza el sistema de modales.
+    """
     return rx.center(
         rx.vstack(
-            floating_filter_panel(),
             rx.cond(
-                AppState.is_loading,
-                skeleton_product_gallery(),
-                product_gallery_component(posts=AppState.posts)
+                AppState.is_hydrated,
+                rx.cond(
+                    ~AppState.is_admin,
+                    floating_filter_panel()
+                )
             ),
-            product_detail_modal(),
-            spacing="6", width="100%", padding="2em", align="center"
+            # El componente de la galería ya enlaza correctamente a las páginas de detalle.
+            product_gallery_component(posts=AppState.posts), 
+            spacing="6", 
+            width="100%", 
+            padding="2em", 
+            align="center"
         ),
         width="100%"
     )
