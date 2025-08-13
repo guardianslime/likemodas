@@ -77,8 +77,7 @@ def product_detail_modal() -> rx.Component:
 
 def blog_public_page_content() -> rx.Component:
     """
-    Página pública principal que muestra la galería de productos.
-    Ya no utiliza el sistema de modales.
+    Página pública principal que solo muestra la galería de productos.
     """
     return rx.center(
         rx.vstack(
@@ -89,11 +88,10 @@ def blog_public_page_content() -> rx.Component:
                     floating_filter_panel()
                 )
             ),
-            # El componente de la galería ya enlaza correctamente a las páginas de detalle.
-            product_gallery_component(posts=AppState.posts), 
-            spacing="6", 
-            width="100%", 
-            padding="2em", 
+            product_gallery_component(posts=AppState.posts),
+            spacing="6",
+            width="100%",
+            padding="2em",
             align="center"
         ),
         width="100%"

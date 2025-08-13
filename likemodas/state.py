@@ -1,4 +1,4 @@
-# likemodas/state.py
+# likemodas/state.py (CORREGIDO)
 
 from __future__ import annotations
 import reflex as rx
@@ -30,44 +30,24 @@ from .data.product_options import (
 )
 
 # --- MODELOS DE DATOS SEGUROS PARA LA UI (DTOs) ---
-# Estos modelos son la clave para evitar la RecursionError.
 class CommentData(rx.Base):
-    """DTO seguro para los comentarios."""
-    id: int
-    content: str
-    rating: int
-    created_at_formatted: str
-    author_username: str
-    likes: int
-    dislikes: int
+    id: int; content: str; rating: int; created_at_formatted: str
+    author_username: str; likes: int; dislikes: int
 
 class PostDetailData(rx.Base):
-    """DTO seguro para el detalle completo de un post."""
-    id: int
-    title: str
-    content: str
-    price: float
-    price_cop: str
-    image_urls: list[str]
-    created_at_formatted: str
-    publish_active: bool
+    id: int; title: str; content: str; price: float; price_cop: str
+    image_urls: list[str]; created_at_formatted: str; publish_active: bool
     comments: list[CommentData] = []
 
     @classmethod
     def from_orm(cls, post: BlogPostModel) -> "PostDetailData":
         return cls(
-            id=post.id,
-            title=post.title,
-            content=post.content,
-            price=post.price,
-            price_cop=post.price_cop,
-            image_urls=post.image_urls,
-            created_at_formatted=post.created_at_formatted,
-            publish_active=post.publish_active,
+            id=post.id, title=post.title, content=post.content, price=post.price,
+            price_cop=post.price_cop, image_urls=post.image_urls,
+            created_at_formatted=post.created_at_formatted, publish_active=post.publish_active,
             comments=[
                 CommentData(
-                    id=c.id, content=c.content, rating=c.rating,
-                    created_at_formatted=c.created_at_formatted,
+                    id=c.id, content=c.content, rating=c.rating, created_at_formatted=c.created_at_formatted,
                     author_username=c.userinfo.user.username if c.userinfo and c.userinfo.user else "Anónimo",
                     likes=c.likes, dislikes=c.dislikes
                 )
@@ -76,14 +56,8 @@ class PostDetailData(rx.Base):
         )
 
 class ProductCardData(rx.Base):
-    """DTO para las tarjetas de producto en galerías."""
-    id: int
-    title: str
-    price: float = 0.0
-    image_urls: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
-    price_cop: str
+    id: int; title: str; price: float = 0.0; image_urls: list[str] = []
+    average_rating: float = 0.0; rating_count: int = 0; price_cop: str
 
     @classmethod
     def from_orm(cls, post: BlogPostModel) -> "ProductCardData":

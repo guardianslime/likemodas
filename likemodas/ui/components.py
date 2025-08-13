@@ -1,29 +1,24 @@
-# likemodas/ui/components.py (Versión Final Corregida)
+# likemodas/ui/components.py (CORREGIDO)
 
 import reflex as rx
 import math
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
+from .. import navigation  # Importar navigation
 
 # La función searchable_select no necesita cambios
 def searchable_select(
-    placeholder: str, 
-    options: rx.Var[list[str]], 
-    on_change_select: EventSpec,
-    value_select: rx.Var[str],
-    search_value: rx.Var[str],
-    on_change_search: EventSpec,
-    filter_name: str,
-    is_disabled: rx.Var[bool] = False,
+    placeholder: str, options: rx.Var[list[str]], on_change_select: EventSpec,
+    value_select: rx.Var[str], search_value: rx.Var[str], on_change_search: EventSpec,
+    filter_name: str, is_disabled: rx.Var[bool] = False,
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
     return rx.box(
         rx.button(
-            rx.cond(value_select, value_select, placeholder),
-            rx.icon(tag="chevron-down"),
-            on_click=AppState.toggle_filter_dropdown(filter_name),
-            variant="outline", width="100%", justify_content="space-between",
-            color_scheme="gray", size="2", is_disabled=is_disabled,
+            rx.cond(value_select, value_select, placeholder), rx.icon(tag="chevron-down"),
+            on_click=AppState.toggle_filter_dropdown(filter_name), variant="outline",
+            width="100%", justify_content="space-between", color_scheme="gray",
+            size="2", is_disabled=is_disabled,
         ),
         rx.cond(
             is_open,
@@ -54,6 +49,7 @@ def searchable_select(
 
 
 def _product_card_rating(post: ProductCardData) -> rx.Component:
+    # ... (esta función no cambia)
     average_rating = post.average_rating
     rating_count = post.rating_count
     full_stars = rx.Var.range(math.floor(average_rating))
@@ -72,12 +68,13 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
-    """Un componente que muestra una galería de productos."""
+    """Galería de productos que enlaza a las páginas de detalle."""
     return rx.flex(
         rx.foreach(
             posts,
             lambda post: rx.box(
-                rx.vstack(
+                # ✨ INICIO DE LA CORRECCIÓN: Se envuelve la tarjeta en un rx.link ✨
+                rx.link(
                     rx.vstack(
                         rx.box(
                             rx.cond(
@@ -91,13 +88,14 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.text(post.price_cop, size="6"),
                         _product_card_rating(post),
                         spacing="2", align="start",
-                        # --- LA CORRECCIÓN CLAVE CON LAMBDA ---
-                        on_click=lambda: AppState.open_product_detail_modal(post.id),
-                        cursor="pointer",
                         width="100%",
                     ),
-                    align="stretch", height="100%"
+                    # Enlaza a la página de detalle correcta
+                    href=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}",
+                    width="100%",
+                    _hover={"text_decoration": "none"}
                 ),
+                # ✨ FIN DE LA CORRECCIÓN ✨
                 width="290px", height="420px", bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                 border_radius="8px", box_shadow="md", padding="1em",
