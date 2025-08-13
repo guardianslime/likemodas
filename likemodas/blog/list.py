@@ -2,10 +2,11 @@
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
-from ..models import BlogPostModel
-from ..state import AppState
+from ..state import AppState, ProductCardData
+from .. import navigation
 
-def _gallery_card(post: BlogPostModel) -> rx.Component:
+def _gallery_card(post: ProductCardData) -> rx.Component:
+    """Tarjeta de producto para la galería, ahora sin `post.content`."""
     return rx.link(
         rx.card(
             rx.inset(
@@ -19,9 +20,10 @@ def _gallery_card(post: BlogPostModel) -> rx.Component:
                 )
             ),
             rx.text(post.title, weight="bold", as_="div", size="3", margin_bottom="1"),
-            rx.text(post.content, as_="p", size="2", color_scheme="gray", trim="end", height="4.5em"),
+            # ✨ LÍNEA ELIMINADA: Se quitó rx.text(post.content, ...) que causaba el error.
+            # La galería no necesita mostrar la descripción completa.
         ),
-        href=f"/blog-public/{post.id}",
+        href=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/{post.id}",
         as_child=True, style={"text_decoration": "none"}
     )
 
@@ -33,12 +35,12 @@ def blog_post_list_content() -> rx.Component:
             rx.heading("Mis Publicaciones", size="8", margin_bottom="1em"),
             rx.input(
                 placeholder="Buscar por nombre...",
-                value=AppState.search_query_admin_posts, # Usa una variable de búsqueda específica
+                value=AppState.search_query_admin_posts,
                 on_change=AppState.set_search_query_admin_posts,
                 width="100%", max_width="400px", margin_bottom="1.5em",
             ),
             rx.cond(
-                AppState.filtered_admin_posts, # Propiedad computada en AppState
+                AppState.filtered_admin_posts,
                 rx.grid(
                     rx.foreach(AppState.filtered_admin_posts, _gallery_card),
                     columns="4", spacing="6", width="100%", max_width="1200px",
