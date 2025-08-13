@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (CORREGIDO)
+# likemodas/likemodas.py (CORREGIDO SEGÚN TU CAPTURA DE PANTALLA)
 
 import reflex as rx
 import reflex_local_auth
@@ -10,21 +10,22 @@ from . import models
 
 # --- Módulos de la aplicación ---
 from .auth import pages as auth_pages
-from .pages import search_results, category_page
+from .pages import search_results, category_page # <-- Se corrigió la importación aquí
 from .cart import page as cart_page
 from .purchases import page as purchases_page
 from .admin import page as admin_page
 from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
 
-# ✨ INICIO DE LA CORRECCIÓN: Importaciones explícitas del blog ✨
-from .blog.page import blog_public_page_content
-from .blog.public_detail import blog_public_detail_content
-from .blog.list import blog_post_list_content
-from .blog.detail import blog_post_detail_content
+# ✨ CORRECCIÓN: Importaciones explícitas que coinciden con TUS nombres de archivo ✨
+from .blog.public_page import blog_public_page_content
+from .blog.detail import blog_public_detail_content
+from .blog.admin_page import (
+    blog_post_list_content,
+    blog_post_detail_content,
+    blog_post_edit_content
+)
 from .blog.add import blog_post_add_content
-from .blog.edit import blog_post_edit_content
-# ✨ FIN DE LA CORRECIÓN ✨
 
 
 # --- Configuración de la App ---
@@ -36,7 +37,6 @@ app = rx.App(
 )
 
 # --- Definición de Rutas ---
-
 # Ruta Principal
 app.add_page(base_page(blog_public_page_content()), route="/", on_load=AppState.on_load)
 
@@ -52,9 +52,9 @@ app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-
 
 # Rutas del Blog/Galería (Páginas de Detalle)
 app.add_page(
-    base_page(blog_public_detail_content()), 
-    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[id]", 
-    title="Detalle del Producto", 
+    base_page(blog_public_detail_content()),
+    route=f"{navigation.routes.BLOG_PUBLIC_DETAIL_ROUTE}/[id]",
+    title="Detalle del Producto",
     on_load=AppState.on_load_public_detail
 )
 
