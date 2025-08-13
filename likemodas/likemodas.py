@@ -17,13 +17,11 @@ from .admin import page as admin_page
 from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
 
-# ✨ CORRECCIÓN FINAL: Importaciones explícitas que coinciden con tus nombres de archivo ✨
+# ✨ CORRECCIÓN FINAL: Importaciones que coinciden con tus nombres de archivo ✨
 from .blog.public_page import blog_public_page_content
-from .blog.detail_page import blog_public_detail_content
-from .blog.list import blog_post_list_content
-from .blog.detail import blog_post_detail_content
+from .blog.detail import blog_public_detail_content
+from .blog.admin_page import blog_post_list_content, blog_post_detail_content, blog_post_edit_content
 from .blog.add import blog_post_add_content
-from .blog.edit import blog_post_edit_content
 
 
 # --- Configuración de la App ---
