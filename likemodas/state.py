@@ -49,6 +49,15 @@ class ProductCardData(rx.Base):
     def price_cop(self) -> str:
         return format_to_cop(self.price)
 
+# ✨ NUEVO DTO para el Modal de Detalles del Producto
+class ProductDetailData(rx.Base):
+    id: int
+    title: str
+    content: str
+    price_cop: str
+    image_urls: list[str] = []
+    created_at_formatted: str
+
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
     status: str; total_price: float; shipping_name: str; shipping_full_address: str
@@ -69,7 +78,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     success: bool = False
     error_message: str = ""
     
-    # --- AUTH / SESSION ---
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
         if not self.is_authenticated or self.authenticated_user.id < 0:
@@ -81,7 +89,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
 
-    # --- REGISTRO Y VERIFICACIÓN ---
     def handle_registration_email(self, form_data: dict):
         self.success = False
         self.error_message = ""
@@ -154,7 +161,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "El token de verificación es inválido o ha expirado."
 
-    # --- MANEJO DE CONTRASEÑA ---
     is_success: bool = False
     token: str = ""
     is_token_valid: bool = False
@@ -207,7 +213,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
-    # --- FILTROS DE BÚSQUEDA ---
     min_price: str = ""
     max_price: str = ""
     show_filters: bool = False
@@ -307,7 +312,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.search_medida_talla.strip(): return LISTA_MEDIDAS_GENERAL
         return [o for o in LISTA_MEDIDAS_GENERAL if self.search_medida_talla.lower() in o.lower()]
 
-    # --- PRODUCTOS Y GALERÍA PÚBLICA ---
     posts: list[ProductCardData] = []
     is_loading: bool = True
 
@@ -316,13 +320,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = True
         yield
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).unique().all()
+            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
             self.posts = [ProductCardData.from_orm(p) for p in results]
         self.is_loading = False
     
-    # --- LÓGICA PARA MODALES ---
     show_detail_modal: bool = False
-    product_in_modal: Optional[BlogPostModel] = None
+    # ✨ CORRECCIÓN CRÍTICA: La variable del modal ahora usa el DTO, no el modelo ORM.
+    product_in_modal: Optional[ProductDetailData] = None
     current_image_index: int = 0
     is_editing_post: bool = False
     post_to_edit: Optional[BlogPostModel] = None
@@ -393,7 +397,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield self.cancel_editing_post(False)
                 yield rx.toast.success("Publicación actualizada correctamente.")
 
-    # --- CARRITO DE COMPRAS ---
     cart: Dict[int, int] = {}
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
@@ -428,7 +431,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.cart[post_id] <= 0:
                 del self.cart[post_id]
 
-    # --- GESTIÓN DE FORMULARIO DE AÑADIR PRODUCTO (ADMIN) ---
     title: str = ""
     content: str = ""
     price: str = "" 
@@ -480,7 +482,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("Producto publicado.")
         return rx.redirect("/blog")
         
-    # --- GESTIÓN DE BLOG (ADMIN) ---
     @rx.var
     def my_admin_posts(self) -> list[BlogPostModel]:
         if not self.authenticated_user_info:
@@ -513,7 +514,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.info(f"Estado de publicación cambiado.")
                 
-    # --- CHECKOUT Y DIRECCIONES ---
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
     city: str = ""
@@ -640,7 +640,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield self.load_addresses()
     
-    # --- BÚSQUEDA ---
     search_term: str = ""
     search_results: List[ProductCardData] = []
     def set_search_term(self, term: str): self.search_term = term
@@ -649,11 +648,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     def perform_search(self):
         if not self.search_term.strip(): return
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).options(sqlalchemy.orm.joinedload(BlogPostModel.comments)).where(BlogPostModel.title.ilike(f"%{self.search_term.strip()}%"), BlogPostModel.publish_active == True)).all()
+            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.title.ilike(f"%{self.search_term.strip()}%"), BlogPostModel.publish_active == True)).all()
             self.search_results = [ProductCardData.from_orm(p) for p in results]
         return rx.redirect("/search-results")
         
-    # --- PANEL DE ADMINISTRACIÓN ---
     pending_purchases: List[AdminPurchaseCardData] = []
     confirmed_purchases: List[AdminPurchaseCardData] = []
     new_purchase_notification: bool = False
@@ -705,7 +703,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
 
-    # --- HISTORIAL DE PAGOS (ADMIN) ---
     search_query_admin_history: str = ""
 
     def set_search_query_admin_history(self, query: str):
@@ -751,7 +748,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ) for p in results
             ]
 
-    # --- HISTORIAL DE COMPRAS (USUARIO) ---
     user_purchases: List[UserPurchaseHistoryCardData] = []
     search_query_user_history: str = ""
     
@@ -792,7 +788,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ) for p in results
             ]
 
-    # --- NOTIFICACIONES ---
     notifications: List[NotificationModel] = []
     
     @rx.var
@@ -822,10 +817,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             stmt = sqlmodel.update(NotificationModel).where(NotificationModel.id.in_(unread_ids)).values(is_read=True)
             session.exec(stmt)
             session.commit()
-        # Vuelve a cargar las notificaciones para actualizar la UI
         yield self.load_notifications()
 
-    # --- CONTACTO ---
     form_data: dict = {}
     did_submit_contact: bool = False
     contact_entries: list[ContactEntryModel] = []
@@ -867,7 +860,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             self.contact_entries = session.exec(sqlmodel.select(ContactEntryModel).order_by(ContactEntryModel.id.desc())).all()
     
-    # --- GESTIÓN DE USUARIOS (ADMIN) ---
     @rx.event
     def load_all_users(self):
         if not self.is_admin:
@@ -954,21 +946,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     def toggle_admin_sidebar(self):
         self.show_admin_sidebar = not self.show_admin_sidebar
 
-    # --- NUEVO EVENTO ON_LOAD PARA LA PÁGINA PRINCIPAL ---
     @rx.event
     def on_load_main_page(self):
         """Carga todos los productos y revisa la URL para abrir un modal si es necesario."""
-        # Primero, ejecuta la lógica original para cargar la galería
         yield AppState.on_load
-
-        # Luego, revisa si la URL tiene un ID de producto
-        # Reflex lo poblará automáticamente en self.router.page.params
         product_id = self.router.page.params.get("product_id", None)
         if product_id is not None:
-            # Si hay un ID, llama al evento para abrir el modal
             yield AppState.open_product_detail_modal(int(product_id), redirect=False)
 
-    # --- FUNCIÓN DE ABRIR MODAL (ACTUALIZADA) ---
     @rx.event
     def open_product_detail_modal(self, post_id: int, redirect: bool = True):
         self.product_in_modal = None
@@ -976,25 +961,26 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.current_image_index = 0
         yield
         with rx.session() as session:
-            db_post = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                .where(BlogPostModel.id == post_id, BlogPostModel.publish_active == True)
-            ).unique().one_or_none()
-            if db_post:
-                self.product_in_modal = db_post
-                # Si se necesita, actualiza la URL del navegador sin recargar la página
+            db_post = session.get(BlogPostModel, post_id)
+            if db_post and db_post.publish_active:
+                # ✨ CORRECCIÓN CRÍTICA: Convertir el modelo ORM a un DTO plano.
+                self.product_in_modal = ProductDetailData(
+                    id=db_post.id,
+                    title=db_post.title,
+                    content=db_post.content,
+                    price_cop=db_post.price_cop,
+                    image_urls=db_post.image_urls,
+                    created_at_formatted=db_post.created_at_formatted
+                )
                 if redirect:
                     yield rx.redirect(f"/product/{post_id}")
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
 
-    # --- FUNCIÓN DE CERRAR MODAL (ACTUALIZADA) ---
     @rx.event
     def close_product_detail_modal(self, open_state: bool):
         if not open_state:
             self.show_detail_modal = False
             self.product_in_modal = None
-            # Al cerrar, devolvemos la URL a la página principal
             yield rx.redirect("/")
