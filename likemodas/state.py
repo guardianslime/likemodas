@@ -175,7 +175,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.info_message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        self.token = self.router.page.query_params.get("token", "")
+        # ✨ CORRECCIÓN 1: Usar self.router.url para obtener parámetros de consulta.
+        if not self.router.url:
+            self.info_message, self.is_token_valid = "Enlace no válido. Falta el token.", False
+            return
+        self.token = parse_qs(urlparse(self.router.url).query).get("token", [""])[0]
         if not self.token:
             self.info_message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
@@ -299,7 +303,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.post = None; self.is_loading = True
         yield
         try:
-            pid = int(self.router.page.query_params.get("id", "0"))
+            # ✨ CORRECCIÓN 2: Usar self.router.page.params para rutas dinámicas.
+            pid = int(self.router.page.params.get("id", "0"))
         except (ValueError, TypeError):
             self.is_loading = False
             return
@@ -363,7 +368,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             outfile = rx.get_upload_dir() / file.name
             outfile.write_bytes(upload_data)
             uploaded_filenames.append(file.name)
-        async with self: self.temp_images.extend(uploaded_filenames)
+        # ✨ CORRECCIÓN 3: Eliminar 'async with self'.
+        self.temp_images.extend(uploaded_filenames)
 
     @rx.event
     def remove_image(self, filename: str): self.temp_images.remove(filename)
@@ -582,7 +588,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_edit(self):
         try:
-            pid = int(self.router.page.query_params.get("blog_id", "0"))
+            # ✨ CORRECCIÓN 4: Usar self.router.page.params para rutas dinámicas.
+            pid = int(self.router.page.params.get("blog_id", "0"))
         except (ValueError, TypeError):
             self.post = None; return
         with rx.session() as session:
@@ -689,6 +696,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session: self.contact_entries = session.exec(sqlmodel.select(ContactEntryModel).order_by(ContactEntryModel.id.desc())).all()
     
     # --- GESTIÓN DE USUARIOS (ADMIN) ---
+    all_users: list[UserInfo] = []
     @rx.event
     def load_all_users(self):
         if not self.is_admin:
@@ -790,6 +798,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield AppState.open_product_detail_modal(int(product_id), redirect=False)
 
     # --- FUNCIÓN DE ABRIR MODAL (ACTUALIZADA) ---
+    product_in_modal: Optional[BlogPostModel] = None
+    show_detail_modal: bool = False
+    current_image_index: int = 0
     @rx.event
     def open_product_detail_modal(self, post_id: int, redirect: bool = True):
         # ... (la lógica para buscar el producto en la BD se mantiene igual) ...
