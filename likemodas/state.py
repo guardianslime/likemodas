@@ -979,3 +979,49 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def toggle_admin_sidebar(self):
         self.show_admin_sidebar = not self.show_admin_sidebar
+
+    # --- NUEVO EVENTO ON_LOAD PARA LA PÁGINA PRINCIPAL ---
+    @rx.event
+    def on_load_main_page(self):
+        """Carga todos los productos y revisa la URL para abrir un modal si es necesario."""
+        # Primero, ejecuta la lógica original para cargar la galería
+        yield AppState.on_load
+
+        # Luego, revisa si la URL tiene un ID de producto
+        # Reflex lo poblará automáticamente en self.router.page.params
+        product_id = self.router.page.params.get("product_id", None)
+        if product_id is not None:
+            # Si hay un ID, llama al evento para abrir el modal
+            yield AppState.open_product_detail_modal(int(product_id), redirect=False)
+
+    # --- FUNCIÓN DE ABRIR MODAL (ACTUALIZADA) ---
+    @rx.event
+    def open_product_detail_modal(self, post_id: int, redirect: bool = True):
+        # ... (la lógica para buscar el producto en la BD se mantiene igual) ...
+        self.product_in_modal = None
+        self.show_detail_modal = True
+        self.current_image_index = 0
+        yield
+        with rx.session() as session:
+            db_post = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .where(BlogPostModel.id == post_id, BlogPostModel.publish_active == True)
+            ).unique().one_or_none()
+            if db_post:
+                self.product_in_modal = db_post
+                # Si se necesita, actualiza la URL del navegador sin recargar la página
+                if redirect:
+                    yield rx.redirect(f"/product/{post_id}")
+            else:
+                self.show_detail_modal = False
+                yield rx.toast.error("Producto no encontrado o no disponible.")
+
+    # --- FUNCIÓN DE CERRAR MODAL (ACTUALIZADA) ---
+    @rx.event
+    def close_product_detail_modal(self, open_state: bool):
+        if not open_state:
+            self.show_detail_modal = False
+            self.product_in_modal = None
+            # Al cerrar, devolvemos la URL a la página principal
+            yield rx.redirect("/")

@@ -28,8 +28,18 @@ app = rx.App(style={"font_family": "Arial, sans-serif"})
 app.add_page(
     base_page(blog_public_page_content()),
     route="/",
-    on_load=AppState.on_load,
+    # Usa el nuevo on_load
+    on_load=AppState.on_load_main_page,
     title="Likemodas | Inicio"
+)
+
+# --- NUEVA RUTA DINÁMICA PARA COMPARTIR PRODUCTOS ---
+# Esta ruta renderiza la MISMA página principal, pero el on_load se encargará de abrir el modal
+app.add_page(
+    base_page(blog_public_page_content()),
+    route="/product/[product_id]",
+    on_load=AppState.on_load_main_page,
+    title="Likemodas | Producto"
 )
 
 # --- Rutas de Autenticación ---
@@ -53,17 +63,20 @@ app.add_page(
     route="/blog", 
     title="Mis Publicaciones"
 )
+
 app.add_page(
     base_page(user_management_page()), 
     route="/admin/users", 
     on_load=AppState.load_all_users,
     title="Gestión de Usuarios"
 )
+
 app.add_page(
     base_page(blog_post_add_content()), 
     route=navigation.routes.BLOG_POST_ADD_ROUTE, 
     title="Añadir Producto"
 )
+
 app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Confirmar Pagos", on_load=AppState.load_pending_purchases)
 app.add_page(
     base_page(admin_store_page()), 
@@ -71,5 +84,6 @@ app.add_page(
     on_load=AppState.on_load_admin_store,
     title="Admin | Tienda"
 )
+
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
 app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries, title="Mensajes de Contacto")
