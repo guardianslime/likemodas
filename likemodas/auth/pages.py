@@ -1,5 +1,3 @@
-# likemodas/auth/pages.py (CORREGIDO)
-
 import reflex as rx
 import reflex_local_auth
 from reflex_local_auth.pages.components import input_100w, MIN_WIDTH
@@ -64,8 +62,7 @@ def verification_page_content() -> rx.Component:
     return rx.center(
         rx.vstack(
             rx.heading("Verificando tu cuenta...", size="8"),
-            # ✨ CORRECCIÓN: Se usa info_message en lugar de message
-            rx.text(AppState.info_message, text_align="center"),
+            rx.text(AppState.message, text_align="center"),
             rx.spinner(size="3"),
             spacing="5", padding="2em",
         ),
@@ -82,10 +79,9 @@ def forgot_password_page_content() -> rx.Component:
                     rx.input(placeholder="Email", name="email", type="email", width="100%"),
                     rx.button("Enviar Enlace", type="submit", width="100%"),
                     rx.cond(
-                        AppState.info_message,
+                        AppState.message,
                         rx.callout(
-                            # ✨ CORRECCIÓN: Se usa info_message en lugar de message
-                            AppState.info_message,
+                            AppState.message,
                             icon="info",
                             color_scheme=rx.cond(AppState.is_success, "green", "red"),
                             width="100%"
@@ -111,10 +107,9 @@ def reset_password_page_content() -> rx.Component:
                         password_input(placeholder="Confirmar nueva contraseña", name="confirm_password"),
                         rx.button("Guardar Contraseña", type="submit", width="100%"),
                         rx.cond(
-                            AppState.info_message,
+                            AppState.message,
                             rx.callout(
-                                # ✨ CORRECCIÓN: Se usa info_message en lugar de message
-                                rx.text(AppState.info_message, white_space="pre-wrap"),
+                                rx.text(AppState.message, white_space="pre-wrap"),
                                 icon="triangle_alert", color_scheme="red", width="100%"
                             )
                         ),
@@ -124,8 +119,7 @@ def reset_password_page_content() -> rx.Component:
                 ),
                 rx.vstack(
                     rx.heading("Enlace no válido", size="7"),
-                    # ✨ CORRECCIÓN: Se usa info_message en lugar de message
-                    rx.text(AppState.info_message),
+                    rx.text(AppState.message),
                     rx.link("Solicitar un nuevo enlace", href="/forgot-password"),
                     spacing="4", align="center"
                 )
