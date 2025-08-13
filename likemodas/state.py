@@ -1,5 +1,3 @@
-# likemodas/state.py
-
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -347,30 +345,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def prev_image(self):
         if self.product_in_modal and self.product_in_modal.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.product_in_modal.image_urls)) % len(self.product_in_modal.image_urls)
-
-    @rx.event
-    def open_product_detail_modal(self, post_id: int):
-        self.product_in_modal = None
-        self.show_detail_modal = True
-        self.current_image_index = 0
-        yield
-        with rx.session() as session:
-            db_post = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                .where(BlogPostModel.id == post_id, BlogPostModel.publish_active == True)
-            ).unique().one_or_none()
-            if db_post:
-                self.product_in_modal = db_post
-            else:
-                self.show_detail_modal = False
-                yield rx.toast.error("Producto no encontrado o no disponible.")
-
-    @rx.event
-    def close_product_detail_modal(self, open_state: bool):
-        if not open_state:
-            self.show_detail_modal = False
-            self.product_in_modal = None
 
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
@@ -997,7 +971,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- FUNCIÓN DE ABRIR MODAL (ACTUALIZADA) ---
     @rx.event
     def open_product_detail_modal(self, post_id: int, redirect: bool = True):
-        # ... (la lógica para buscar el producto en la BD se mantiene igual) ...
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0

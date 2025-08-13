@@ -1,4 +1,4 @@
-# likemodas/models.py
+# likemodas/models.py (VERSIÓN CORREGIDA Y FINAL)
 
 from typing import Optional, List
 from datetime import datetime
@@ -45,6 +45,13 @@ class Category(str, enum.Enum):
     OTROS = "otros"
 
 # --- Modelos de Base de Datos ---
+
+# Forward declaration para resolver dependencias circulares en type hints
+if "PurchaseItemModel" not in locals():
+    PurchaseItemModel = "PurchaseItemModel"
+if "CommentModel" not in locals():
+    CommentModel = "CommentModel"
+
 class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
     email: str
@@ -73,7 +80,7 @@ class VerificationToken(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     
     userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
-
+    
     class Config:
         exclude = {"userinfo"}
 
@@ -197,7 +204,7 @@ class ContactEntryModel(rx.Model, table=True):
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
 class CommentModel(rx.Model, table=True):
-    content: str; rating: int 
+    content: str; rating: int
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     userinfo_id: int = Field(foreign_key="userinfo.id")
