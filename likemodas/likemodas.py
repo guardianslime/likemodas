@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/likemodas.py (VERSIÓN FINAL)
 
 import reflex as rx
 import reflex_local_auth
@@ -6,6 +6,7 @@ import reflex_local_auth
 from .state import AppState
 from .ui.base import base_page
 
+from .auth import pages as auth_pages
 # Asegúrate de que 'landing' esté importado desde .pages
 from .pages import landing, search_results, category_page
 from .blog import (
@@ -24,9 +25,10 @@ from . import navigation
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
 
-# --- Ruta principal ---
-# Esta ya estaba correcta, usando el landing inteligente.
+# --- Ruta principal (la galería de productos) ---
 app.add_page(
+    # ANTES: base_page(blog_public_page_content()),
+    # AHORA:
     base_page(landing.landing_content()),
     route="/",
     on_load=AppState.on_load_main_page,
@@ -45,24 +47,22 @@ app.add_page(
     title="Likemodas | Producto"
 )
 
-# --- El resto de tus rutas no necesitan cambios ---
-
-# Rutas de Autenticación
+# --- Rutas de Autenticación ---
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
 app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE, title="Registrarse")
 app.add_page(base_page(auth_pages.verification_page_content()), route="/verify-email", on_load=AppState.verify_token, title="Verificar Email")
 app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgot-password", title="Recuperar Contraseña")
 app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-password", on_load=AppState.on_load_check_token, title="Restablecer Contraseña")
 
-# Rutas de Búsqueda
+# --- Rutas de Búsqueda ---
 app.add_page(base_page(search_results.search_results_content()), route="/search-results", title="Resultados de Búsqueda")
 
-# Rutas de Cuenta, Carrito y Compras
+# --- Rutas de Cuenta, Carrito y Compras ---
 app.add_page(base_page(cart_page.cart_page_content()), route="/cart", title="Mi Carrito", on_load=[AppState.on_load, AppState.load_default_shipping_info])
 app.add_page(base_page(purchases_page.purchase_history_content()), route="/my-purchases", title="Mis Compras", on_load=AppState.load_purchases)
 app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
 
-# Rutas de Administración
+# --- Rutas de Administración ---
 app.add_page(
     base_page(blog_admin_page()), 
     route="/blog", 
