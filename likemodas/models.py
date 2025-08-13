@@ -74,6 +74,9 @@ class VerificationToken(rx.Model, table=True):
     
     userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
 
+    class Config:
+        exclude = {"userinfo"}
+
 class PasswordResetToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
     user_id: int = Field(foreign_key="localuser.id")
@@ -82,8 +85,7 @@ class PasswordResetToken(rx.Model, table=True):
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    title: str
-    content: str
+    title: str; content: str
     price: float = 0.0
     attributes: dict = Field(default={}, sa_column=Column(JSON))
     image_urls: List[str] = Field(default_factory=list, sa_column=Column(JSON))
@@ -96,7 +98,6 @@ class BlogPostModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
     
-    # --- CORRECCIÓN ---
     class Config:
         exclude = {"userinfo"}
     
@@ -122,22 +123,22 @@ class ShippingAddressModel(rx.Model, table=True):
 
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
 
+    class Config:
+        exclude = {"userinfo"}
+
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     purchase_date: datetime = Field(default_factory=get_utc_now, nullable=False)
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
-    shipping_name: Optional[str] = None
-    shipping_city: Optional[str] = None
-    shipping_neighborhood: Optional[str] = None
-    shipping_address: Optional[str] = None
+    shipping_name: Optional[str] = None; shipping_city: Optional[str] = None
+    shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
-    # --- CORRECCIÓN ---
     class Config:
         exclude = {"userinfo"}
 
@@ -161,7 +162,6 @@ class PurchaseItemModel(rx.Model, table=True):
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
 
-    # --- CORRECCIÓN ---
     class Config:
         exclude = {"purchase"}
 
@@ -173,6 +173,9 @@ class NotificationModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
     
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
+    
+    class Config:
+        exclude = {"userinfo"}
     
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
@@ -187,12 +190,14 @@ class ContactEntryModel(rx.Model, table=True):
 
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
 
+    class Config:
+        exclude = {"userinfo"}
+
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
 class CommentModel(rx.Model, table=True):
-    content: str
-    rating: int 
+    content: str; rating: int 
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -202,7 +207,6 @@ class CommentModel(rx.Model, table=True):
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
     votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
-    # --- CORRECCIÓN ---
     class Config:
         exclude = {"blog_post", "userinfo"}
 
@@ -221,6 +225,5 @@ class CommentVoteModel(rx.Model, table=True):
     userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
     comment: "CommentModel" = Relationship(back_populates="votes")
 
-    # --- CORRECCIÓN ---
     class Config:
         exclude = {"userinfo", "comment"}
