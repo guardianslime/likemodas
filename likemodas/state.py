@@ -1013,7 +1013,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ✨ NUEVA PROPIEDAD COMPUTADA
     @rx.var
     def base_app_url(self) -> str:
-        """Devuelve la URL base de la aplicación para construir enlaces."""
-        # ANTES: return rx.get_config().api_url
-        # AHORA:
-        return get_config().api_url
+        """
+        Devuelve la URL PÚBLICA de la aplicación para construir enlaces.
+        Usa 'deploy_url' de la configuración.
+        """
+        # Usamos deploy_url para los enlaces que ven los usuarios,
+        # no api_url que es para la conexión interna.
+        return get_config().deploy_url
