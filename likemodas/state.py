@@ -11,6 +11,8 @@ import re
 import asyncio
 # ✨ 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN AQUÍ ✨
 from reflex.config import get_config
+# ✨ 1. AÑADE ESTAS LÍNEAS AQUÍ ✨
+from urllib.parse import urlparse, parse_qs
 
 from . import navigation
 from .models import (
@@ -952,18 +954,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     def on_load_main_page(self):
         """
         Carga los productos y, si hay un parámetro ?product=ID en la URL,
-        abre el modal correspondiente.
+        abre el modal correspondiente usando el método moderno.
         """
         if self.is_admin:
             return rx.redirect("/admin/store")
 
         yield AppState.on_load
-        
-        # ✨ LÍNEA CORREGIDA AQUÍ ✨
-        # ANTES: product_id = self.router.query_params.get("product", None)
-        # AHORA:
-        product_id = self.router.page.query_params.get("product", None)
-        
+
+        # Obtener la URL completa desde el router
+        full_url = self.router.url
+        product_id = None
+
+        if full_url and "?" in full_url:
+            # Descomponer la URL para analizar sus partes
+            parsed_url = urlparse(full_url)
+            # Extraer los parámetros de la consulta en un diccionario
+            query_params = parse_qs(parsed_url.query)
+
+            # 'parse_qs' devuelve valores como listas, ej: {'product': ['1']}
+            product_id_list = query_params.get("product")
+            if product_id_list:
+                product_id = product_id_list[0]
+
         if product_id is not None:
             yield AppState.open_product_detail_modal(int(product_id))
 
