@@ -959,11 +959,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         yield AppState.on_load
         
-        # ✨ CAMBIO CLAVE: Leemos 'query_params' en lugar de 'page.params'
-        product_id = self.router.query_params.get("product", None)
+        # ✨ LÍNEA CORREGIDA AQUÍ ✨
+        # ANTES: product_id = self.router.query_params.get("product", None)
+        # AHORA:
+        product_id = self.router.page.query_params.get("product", None)
         
         if product_id is not None:
-            # Llamamos al evento para abrir el modal
             yield AppState.open_product_detail_modal(int(product_id))
 
     @rx.event
