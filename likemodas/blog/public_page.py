@@ -35,15 +35,35 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.spacer(),
-            rx.button(
-                "Añadir al Carrito",
-                on_click=AppState.add_to_cart(AppState.product_in_modal.id),
-                width="100%", size="3", margin_top="1.5em",
+            
+            # ✨ NUEVO GRUPO DE BOTONES ✨
+            rx.hstack(
+                rx.button(
+                    "Añadir al Carrito",
+                    on_click=AppState.add_to_cart(AppState.product_in_modal.id),
+                    size="3",
+                    width="100%",
+                ),
+                rx.icon_button(
+                    rx.icon(tag="share-2"),
+                    on_click=[
+                        # Construye y copia la URL con el parámetro de consulta
+                        rx.set_clipboard(
+                            AppState.base_app_url + "/?product=" + AppState.product_in_modal.id.to_string()
+                        ),
+                        rx.toast.success("¡Enlace para compartir copiado!")
+                    ],
+                    size="3",
+                    variant="outline",
+                ),
+                spacing="3",
+                width="100%",
+                margin_top="1.5em",
             ),
             align="start",
             height="100%",
         )
-
+    
     return rx.dialog.root(
         rx.dialog.content(
             # --- CORRECCIÓN DEFINITIVA AQUÍ ---

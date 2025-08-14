@@ -9,6 +9,8 @@ import secrets
 import bcrypt
 import re
 import asyncio
+# ✨ 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN AQUÍ ✨
+from reflex.config import get_config
 
 from . import navigation
 from .models import (
@@ -949,22 +951,23 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_main_page(self):
         """
-        Carga los productos y, si el usuario es admin, lo redirige.
-        Si es público, revisa la URL para abrir el modal.
+        Carga los productos y, si hay un parámetro ?product=ID en la URL,
+        abre el modal correspondiente.
         """
-        # ✨ LÍNEA DE SEGURIDAD AÑADIDA ✨
-        # Si un admin intenta cargar esta página, lo enviamos a su panel.
         if self.is_admin:
             return rx.redirect("/admin/store")
 
-        # La lógica original para clientes y visitantes se mantiene igual
         yield AppState.on_load
-        product_id = self.router.page.params.get("product_id", None)
+        
+        # ✨ CAMBIO CLAVE: Leemos 'query_params' en lugar de 'page.params'
+        product_id = self.router.query_params.get("product", None)
+        
         if product_id is not None:
-            yield AppState.open_product_detail_modal(int(product_id), redirect=False)
+            # Llamamos al evento para abrir el modal
+            yield AppState.open_product_detail_modal(int(product_id))
 
     @rx.event
-    def open_product_detail_modal(self, post_id: int, redirect: bool = True):
+    def open_product_detail_modal(self, post_id: int):
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0
@@ -972,7 +975,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id)
             if db_post and db_post.publish_active:
-                # ✨ CORRECCIÓN CRÍTICA: Convertir el modelo ORM a un DTO plano.
                 self.product_in_modal = ProductDetailData(
                     id=db_post.id,
                     title=db_post.title,
@@ -981,15 +983,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                     image_urls=db_post.image_urls,
                     created_at_formatted=db_post.created_at_formatted
                 )
-                if redirect:
-                    yield rx.redirect(f"/product/{post_id}")
+                # ✨ ELIMINADO: Ya no necesitamos redirigir la URL
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
 
+
+    # Este método también se simplifica
     @rx.event
     def close_product_detail_modal(self, open_state: bool):
         if not open_state:
             self.show_detail_modal = False
             self.product_in_modal = None
-            yield rx.redirect("/")
+            # ✨ ELIMINADO: Ya no necesitamos redirigir a "/", la URL base no cambia
+    
+    # ✨ NUEVA PROPIEDAD COMPUTADA
+    @rx.var
+    def base_app_url(self) -> str:
+        """Devuelve la URL base de la aplicación para construir enlaces."""
+        # ANTES: return rx.get_config().api_url
+        # AHORA:
+        return get_config().api_url

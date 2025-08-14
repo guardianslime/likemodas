@@ -35,17 +35,6 @@ app.add_page(
     title="Likemodas | Inicio"
 )
 
-# --- Ruta dinámica para compartir productos ---
-# ✨ ESTE ES EL CAMBIO CLAVE ✨
-# Ahora esta ruta también usa 'landing.landing_content()'.
-app.add_page(
-    # ANTES: base_page(blog_public_page_content()),
-    # AHORA:
-    base_page(landing.landing_content()),
-    route="/product/[product_id]",
-    on_load=AppState.on_load_main_page,
-    title="Likemodas | Producto"
-)
 
 # --- Rutas de Autenticación ---
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
