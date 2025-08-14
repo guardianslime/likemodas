@@ -33,6 +33,8 @@ config = rx.Config(
     
     db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
     
+    disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
+
     theme=rx.theme(
         appearance="dark",
         has_background=True,
