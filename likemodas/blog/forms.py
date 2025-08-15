@@ -1,4 +1,4 @@
-# likemodas/blog/forms.py (VERSIÓN FINAL CON LLAMADAS A EVENTOS CORREGIDAS)
+# likemodas/blog/forms.py (VERSIÓN CON CAMPOS DE TEXTO CENTRADOS Y AMPLIADOS)
 
 import reflex as rx
 from ..state import AppState
@@ -15,7 +15,6 @@ def blog_post_add_form() -> rx.Component:
                     rx.upload(
                         rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes")),
                         id="blog_upload", multiple=True, max_files=5,
-                        # ✨ Llama al manejador específico para AÑADIR
                         on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                         border="2px dashed #ccc", padding="2em", width="100%"
                     ),
@@ -26,9 +25,8 @@ def blog_post_add_form() -> rx.Component:
                                 AppState.temp_images,
                                 lambda img: rx.box(
                                     rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover"),
-                                    rx.icon_button(rx.icon("trash-2"), 
-                                        # ✨ Llama al manejador específico para AÑADIR
-                                        on_click=AppState.remove_temp_image(img), 
+                                    rx.icon_button(rx.icon("trash-2"),
+                                        on_click=AppState.remove_temp_image(img),
                                         size="1", color_scheme="red", variant="soft",
                                         style={"position": "absolute", "top": "4px", "right": "4px"}
                                     ),
@@ -70,7 +68,6 @@ def blog_post_edit_form() -> rx.Component:
                         rx.image(src=rx.get_upload_url(img_url), width="100px", height="100px", object_fit="cover", border_radius="md"),
                         rx.icon_button(
                             rx.icon("trash-2", size=16),
-                            # ✨ Llama al manejador específico para EDITAR
                             on_click=AppState.remove_edited_image(img_url),
                             color_scheme="red", variant="soft", size="1",
                             style={"position": "absolute", "top": "4px", "right": "4px"}
@@ -83,20 +80,31 @@ def blog_post_edit_form() -> rx.Component:
             rx.upload(
                 rx.vstack(rx.icon("upload", size=24), rx.text("Añadir nuevas imágenes", size="2")),
                 id="edit_upload", multiple=True, max_files=5,
-                # ✨ Llama al manejador específico para EDITAR
                 on_drop=AppState.handle_edit_upload(rx.upload_files("edit_upload")),
                 border="2px dashed #ccc", padding="1em", width="100%"
             ),
-            
-            rx.text("Título del Producto", as_="div", size="2", margin_top="1em", weight="bold"),
-            rx.input(name="title", value=AppState.post_title, on_change=AppState.set_post_title, required=True),
-            
-            rx.text("Descripción", as_="div", size="2", margin_bottom="2px", weight="bold"),
-            rx.text_area(name="content", value=AppState.post_content, on_change=AppState.set_post_content, rows="8", required=True),
 
-            rx.text("Precio (COP)", as_="div", size="2", margin_bottom="2px", weight="bold"),
-            rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price, type="number", required=True),
-            
+            # ✨ Contenedor para el Título
+            rx.vstack(
+                rx.text("Título del Producto", as_="div", size="2", margin_top="1em", weight="bold"),
+                rx.input(name="title", value=AppState.post_title, on_change=AppState.set_post_title, required=True, width="100%", style={"text_align": "center"}),
+                width="100%"
+            ),
+
+            # ✨ Contenedor para la Descripción
+            rx.vstack(
+                rx.text("Descripción", as_="div", size="2", margin_bottom="2px", weight="bold"),
+                rx.text_area(name="content", value=AppState.post_content, on_change=AppState.set_post_content, rows="8", required=True, width="100%", style={"text-align": "center"}),
+                width="100%"
+            ),
+
+            # ✨ Contenedor para el Precio
+            rx.vstack(
+                rx.text("Precio (COP)", as_="div", size="2", margin_bottom="2px", weight="bold"),
+                rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price, type="number", required=True, width="100%", style={"text-align": "center"}),
+                width="100%"
+            ),
+
             rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3"),
             spacing="4", width="100%"
         ),
