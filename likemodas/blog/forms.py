@@ -77,7 +77,7 @@ def blog_post_edit_form() -> rx.Component:
                 placeholder="Describe los detalles, materiales, etc.",
                 # --- ✨ CORRECCIÓN AQUÍ ---
                 # El valor de 'rows' debe ser un string, no un número.
-                [cite_start]rows="8", # [cite: 147]
+                rows="8", # [cite: 147]
                 required=True,
             ),
 
