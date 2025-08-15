@@ -361,20 +361,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
     def set_price(self, price: str): self.price_str = price
-    
+
     @rx.event
     def start_editing_post(self, post_id: int):
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id)
-            if db_post and db_post.userinfo_id == self.authenticated_user_info.id:
+            if db_post and (db_post.userinfo_id == self.authenticated_user_info.id or self.is_admin):
                 self.post_to_edit = db_post
                 self.post_title = db_post.title
                 self.post_content = db_post.content
                 self.price_str = str(db_post.price or 0.0)
-                # ✨ CARGAMOS LAS IMÁGENES ACTUALES AL ESTADO
-                self.images_to_edit = db_post.image_urls.copy() if db_post.image_urls else []     
+                # ✨ CARGAMOS LAS IMÁGENES EXISTENTES EN NUESTRA ÚNICA LISTA
+                self.post_images_in_form = db_post.image_urls.copy() if db_post.image_urls else []
                 self.is_editing_post = True
             else:
                 yield rx.toast.error("No se encontró la publicación o no tienes permisos.")
@@ -387,14 +387,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.post_title = ""
             self.post_content = ""
             self.price_str = ""
-            # ✨ LIMPIAMOS LAS VARIABLES DE IMÁGENES
-            self.images_to_edit = []
-            self.new_temp_images = []
+            # ✨ LIMPIAMOS LA LISTA ÚNICA
+            self.post_images_in_form = []
 
     @rx.event
     def save_edited_post(self, form_data: dict):
         if not self.is_admin or not self.post_to_edit:
             return rx.toast.error("No se pudo guardar la publicación.")
+        
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post_to_edit.id)
             if post_to_update:
@@ -405,40 +405,59 @@ class AppState(reflex_local_auth.LocalAuthState):
                     post_to_update.price = float(price_val) if price_val else 0.0
                 except (ValueError, TypeError):
                     return rx.toast.error("El precio debe ser un número válido.")
-                # ✨ LÓGICA PARA ACTUALIZAR IMÁGENES
-                # Combina las imágenes existentes que no se eliminaron con las nuevas.
-                post_to_update.image_urls = self.images_to_edit + self.new_temp_images
+
+                # ✨ LÓGICA SIMPLIFICADA: Guardamos el estado actual de la lista de imágenes
+                post_to_update.image_urls = self.post_images_in_form
                 
                 session.add(post_to_update)
                 session.commit()
-                yield self.cancel_editing_post(False) # Cierra y resetea el modal
-                # Actualiza la lista de posts en la vista de admin para reflejar los cambios
-                yield self.on_load_admin_store() 
+                yield self.cancel_editing_post(False)
+                # Recargamos ambas vistas de admin para que los cambios se vean en todos lados
+                yield self.load_all_my_posts()
+                yield self.on_load_admin_store()
                 yield rx.toast.success("Publicación actualizada correctamente.")
 
-         # --- ✨ NUEVOS MANEJADORES PARA IMÁGENES DE EDICIÓN ---
-    @rx.event
-    def remove_edited_image(self, img_url: str):
-        """Elimina una de las imágenes ya existentes del producto."""
-        if img_url in self.images_to_edit:
-            self.images_to_edit.remove(img_url)
+    # --- Lógica de subida de imágenes (unificada) ---
+    temp_images: list[str] = [] # Para el formulario de 'añadir'
 
     @rx.event
-    async def handle_edit_upload(self, files: list[rx.UploadFile]):
-        """Maneja la subida de nuevas imágenes en el formulario de edición."""
+    async def handle_upload(self, files: list[rx.UploadFile], is_editing: bool = False):
+        """Manejador de subida de archivos que funciona para 'añadir' y 'editar'."""
+        uploaded_filenames = []
         for file in files:
             upload_data = await file.read()
-            outfile = rx.get_upload_dir() / file.name
+            # Aseguramos un nombre de archivo único para evitar colisiones
+            unique_filename = f"{secrets.token_hex(8)}-{file.name}"
+            outfile = rx.get_upload_dir() / unique_filename
             outfile.write_bytes(upload_data)
-            self.new_temp_images.append(file.name)
+            uploaded_filenames.append(unique_filename)
+        
+        if is_editing:
+            # Si estamos editando, añadimos a la lista del formulario de edición
+            self.post_images_in_form.extend(uploaded_filenames)
+        else:
+            # Si estamos creando, añadimos a la lista temporal de creación
+            self.temp_images.extend(uploaded_filenames)
 
     @rx.event
-    def remove_new_temp_image(self, filename: str):
-        """Elimina una de las imágenes recién subidas antes de guardar."""
-        if filename in self.new_temp_images:
-            self.new_temp_images.remove(filename)
+    def remove_image(self, filename: str, is_editing: bool = False):
+        """Elimina una imagen de la lista correspondiente."""
+        if is_editing:
+            if filename in self.post_images_in_form:
+                self.post_images_in_form.remove(filename)
+        else:
+            if filename in self.temp_images:
+                self.temp_images.remove(filename)
+
+    def _clear_add_form(self):
+        self.title = ""
+        self.content = ""
+        self.price = ""
+        self.category = ""
+        self.temp_images = []
 
     cart: Dict[int, int] = {}
+    
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
     @rx.var

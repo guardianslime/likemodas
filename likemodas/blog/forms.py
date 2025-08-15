@@ -1,4 +1,4 @@
-# likemodas/blog/forms.py (CORREGIDO)
+# likemodas/blog/forms.py (VERSIÓN FINAL Y FUNCIONAL)
 
 import reflex as rx
 from ..state import AppState
@@ -6,7 +6,7 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos, usando AppState."""
+    """Formulario para añadir productos (usa is_editing=False)."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
@@ -15,7 +15,8 @@ def blog_post_add_form() -> rx.Component:
                     rx.upload(
                         rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes")),
                         id="blog_upload", multiple=True, max_files=5,
-                        on_drop=AppState.handle_upload(rx.upload_files("blog_upload")),
+                        # ✨ Llama al manejador unificado
+                        on_drop=AppState.handle_upload(rx.upload_files("blog_upload"), is_editing=False),
                         border="2px dashed #ccc", padding="2em", width="100%"
                     ),
                     rx.cond(
@@ -24,22 +25,23 @@ def blog_post_add_form() -> rx.Component:
                             rx.foreach(
                                 AppState.temp_images,
                                 lambda img: rx.box(
-                                    rx.image(src=rx.get_upload_url(img), width="100px", height="100px"),
-                                    rx.icon(tag="trash", on_click=AppState.remove_image(img)),
+                                    rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover"),
+                                    rx.icon_button(rx.icon("trash-2"), 
+                                        # ✨ Llama al manejador unificado
+                                        on_click=AppState.remove_image(img, is_editing=False), 
+                                        size="1", color_scheme="red", variant="soft",
+                                        style={"position": "absolute", "top": "4px", "right": "4px"}
+                                    ),
+                                    position="relative"
                                 ),
                             ),
-                            columns="3", spacing="2",
+                            columns="4", spacing="2",
                         )
                     ),
                 ),
                 rx.vstack(
                     rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
-                    rx.select(
-                        AppState.categories,
-                        placeholder="Selecciona una categoría...",
-                        name="category",
-                        required=True, size="3",
-                    ),
+                    rx.select(AppState.categories, placeholder="Selecciona una categoría...", name="category", required=True, size="3"),
                     rx.input(placeholder="Precio (ej: 55000)", type="number", name="price", required=True, size="3"),
                     rx.text_area(placeholder="Descripción...", name="content", required=True, size="2", style={"height": "200px"}),
                     spacing="4", align_items="stretch"
@@ -57,42 +59,47 @@ def blog_post_add_form() -> rx.Component:
     )
 
 def blog_post_edit_form() -> rx.Component:
-    """El formulario para editar una publicación. Se usará dentro del diálogo modal."""
+    """El formulario para editar una publicación (usa is_editing=True)."""
     return rx.form(
         rx.vstack(
-            rx.text("Título del Producto", as_="div", size="2", margin_bottom="2px", weight="bold"),
-            rx.input(
-                name="title",
-                value=AppState.post_title,
-                on_change=AppState.set_post_title,
-                placeholder="Ej: Camisa de Lino",
-                required=True,
+            rx.text("Imágenes del Producto", as_="div", size="2", weight="bold"),
+            # ✨ UI SIMPLIFICADA: Muestra todas las imágenes (existentes y nuevas) de una sola lista
+            rx.grid(
+                rx.foreach(
+                    AppState.post_images_in_form,
+                    lambda img_url: rx.box(
+                        rx.image(src=rx.get_upload_url(img_url), width="100px", height="100px", object_fit="cover", border_radius="md"),
+                        rx.icon_button(
+                            rx.icon("trash-2", size=16),
+                            # ✨ Llama al manejador unificado
+                            on_click=AppState.remove_image(img_url, is_editing=True),
+                            color_scheme="red", variant="soft", size="1",
+                            style={"position": "absolute", "top": "4px", "right": "4px"}
+                        ),
+                        position="relative",
+                    )
+                ),
+                columns="4", spacing="2", width="100%", margin_bottom="1em"
+            ),
+            rx.upload(
+                rx.vstack(rx.icon("upload", size=24), rx.text("Añadir nuevas imágenes", size="2")),
+                id="edit_upload", multiple=True, max_files=5,
+                # ✨ Llama al manejador unificado
+                on_drop=AppState.handle_upload(rx.upload_files("edit_upload"), is_editing=True),
+                border="2px dashed #ccc", padding="1em", width="100%"
             ),
             
+            rx.text("Título del Producto", as_="div", size="2", margin_top="1em", weight="bold"),
+            rx.input(name="title", value=AppState.post_title, on_change=AppState.set_post_title, required=True),
+            
             rx.text("Descripción", as_="div", size="2", margin_bottom="2px", weight="bold"),
-            rx.text_area(
-                name="content",
-                value=AppState.post_content,
-                on_change=AppState.set_post_content,
-                placeholder="Describe los detalles, materiales, etc.",
-                # --- ✨ CORRECCIÓN AQUÍ ---
-                # El valor de 'rows' debe ser un string, no un número.
-                rows="8", # [cite: 147]
-                required=True,
-            ),
+            rx.text_area(name="content", value=AppState.post_content, on_change=AppState.set_post_content, rows="8", required=True),
 
             rx.text("Precio (COP)", as_="div", size="2", margin_bottom="2px", weight="bold"),
-            rx.input(
-                name="price",
-                value=AppState.price_str,
-                on_change=AppState.set_price,
-                placeholder="Ej: 80000",
-                type="number",
-                required=True,
-            ),
+            rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price, type="number", required=True),
+            
             rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3"),
-            spacing="4",
-            width="100%"
+            spacing="4", width="100%"
         ),
         on_submit=AppState.save_edited_post,
         width="100%",

@@ -1,11 +1,12 @@
-# likemodas/admin/store_page.py
+# likemodas/admin/store_page.py (CORREGIDO)
 
 import reflex as rx
-# --- RUTAS CORREGIDAS PARA LA NUEVA UBICACIÓN ---
 from ..auth.admin_auth import require_admin
 from ..state import AppState
-# Importa desde el archivo hermano, no de una subcarpeta.
 from .store_components import admin_store_gallery_component
+
+# --- ✨ 1. IMPORTAMOS EL DIÁLOGO MODAL QUE YA FUNCIONA EN /blog ---
+from ..blog.admin_page import edit_post_dialog
 
 @require_admin
 def admin_store_page() -> rx.Component:
@@ -22,6 +23,12 @@ def admin_store_page() -> rx.Component:
                 padding="4em"
             )
         ),
+        
+        # --- ✨ 2. AÑADIMOS EL COMPONENTE DEL MODAL A LA PÁGINA ---
+        # Ahora, cuando el botón cambie el estado `is_editing_post`,
+        # este componente reaccionará y se mostrará.
+        edit_post_dialog(),
+        
         spacing="5",
         padding="2em",
         width="100%",
