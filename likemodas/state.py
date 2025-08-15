@@ -338,9 +338,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     post_content: str = ""
     price_str: str = ""
 
-    # ✨ NUEVAS VARIABLES PARA GESTIONAR IMÁGENES EN EDICIÓN
-    images_to_edit: list[str] = []
-    new_temp_images: list[str] = []
+    # ✨ NUEVAS VARIABLE PARA GESTIONAR IMÁGENES EN EDICIÓN
+    post_images_in_form: list[str] = []
 
     @rx.var
     def current_image_url(self) -> str:
