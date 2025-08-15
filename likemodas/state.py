@@ -416,37 +416,41 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield self.on_load_admin_store()
                 yield rx.toast.success("Publicación actualizada correctamente.")
 
-    # --- Lógica de subida de imágenes (unificada) ---
+    # --- Lógica de subida de imágenes (CORREGIDA CON MANEJADORES SEPARADOS) ---
     temp_images: list[str] = [] # Para el formulario de 'añadir'
 
     @rx.event
-    async def handle_upload(self, files: list[rx.UploadFile], is_editing: bool = False):
-        """Manejador de subida de archivos que funciona para 'añadir' y 'editar'."""
-        uploaded_filenames = []
+    async def handle_add_upload(self, files: list[rx.UploadFile]):
+        """Manejador de subida solo para el formulario de AÑADIR publicación."""
         for file in files:
             upload_data = await file.read()
-            # Aseguramos un nombre de archivo único para evitar colisiones
             unique_filename = f"{secrets.token_hex(8)}-{file.name}"
             outfile = rx.get_upload_dir() / unique_filename
             outfile.write_bytes(upload_data)
-            uploaded_filenames.append(unique_filename)
-        
-        if is_editing:
-            # Si estamos editando, añadimos a la lista del formulario de edición
-            self.post_images_in_form.extend(uploaded_filenames)
-        else:
-            # Si estamos creando, añadimos a la lista temporal de creación
-            self.temp_images.extend(uploaded_filenames)
+            self.temp_images.append(unique_filename)
 
     @rx.event
-    def remove_image(self, filename: str, is_editing: bool = False):
-        """Elimina una imagen de la lista correspondiente."""
-        if is_editing:
-            if filename in self.post_images_in_form:
-                self.post_images_in_form.remove(filename)
-        else:
-            if filename in self.temp_images:
-                self.temp_images.remove(filename)
+    def remove_temp_image(self, filename: str):
+        """Elimina una imagen de la lista temporal del formulario de AÑADIR."""
+        if filename in self.temp_images:
+            self.temp_images.remove(filename)
+
+    @rx.event
+    async def handle_edit_upload(self, files: list[rx.UploadFile]):
+        """Manejador de subida solo para el formulario de EDITAR publicación."""
+        for file in files:
+            upload_data = await file.read()
+            unique_filename = f"{secrets.token_hex(8)}-{file.name}"
+            outfile = rx.get_upload_dir() / unique_filename
+            outfile.write_bytes(upload_data)
+            self.post_images_in_form.append(unique_filename)
+
+    @rx.event
+    def remove_edited_image(self, filename: str):
+        """Elimina una imagen de la lista del formulario de EDITAR."""
+        if filename in self.post_images_in_form:
+            self.post_images_in_form.remove(filename)
+
 
     def _clear_add_form(self):
         self.title = ""

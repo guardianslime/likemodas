@@ -1,4 +1,4 @@
-# likemodas/blog/forms.py (VERSIÓN FINAL Y FUNCIONAL)
+# likemodas/blog/forms.py (VERSIÓN FINAL CON LLAMADAS A EVENTOS CORREGIDAS)
 
 import reflex as rx
 from ..state import AppState
@@ -6,7 +6,7 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos (usa is_editing=False)."""
+    """Formulario para añadir productos."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
@@ -15,8 +15,8 @@ def blog_post_add_form() -> rx.Component:
                     rx.upload(
                         rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes")),
                         id="blog_upload", multiple=True, max_files=5,
-                        # ✨ Llama al manejador unificado
-                        on_drop=AppState.handle_upload(rx.upload_files("blog_upload"), is_editing=False),
+                        # ✨ Llama al manejador específico para AÑADIR
+                        on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                         border="2px dashed #ccc", padding="2em", width="100%"
                     ),
                     rx.cond(
@@ -27,8 +27,8 @@ def blog_post_add_form() -> rx.Component:
                                 lambda img: rx.box(
                                     rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover"),
                                     rx.icon_button(rx.icon("trash-2"), 
-                                        # ✨ Llama al manejador unificado
-                                        on_click=AppState.remove_image(img, is_editing=False), 
+                                        # ✨ Llama al manejador específico para AÑADIR
+                                        on_click=AppState.remove_temp_image(img), 
                                         size="1", color_scheme="red", variant="soft",
                                         style={"position": "absolute", "top": "4px", "right": "4px"}
                                     ),
@@ -59,11 +59,10 @@ def blog_post_add_form() -> rx.Component:
     )
 
 def blog_post_edit_form() -> rx.Component:
-    """El formulario para editar una publicación (usa is_editing=True)."""
+    """El formulario para editar una publicación."""
     return rx.form(
         rx.vstack(
             rx.text("Imágenes del Producto", as_="div", size="2", weight="bold"),
-            # ✨ UI SIMPLIFICADA: Muestra todas las imágenes (existentes y nuevas) de una sola lista
             rx.grid(
                 rx.foreach(
                     AppState.post_images_in_form,
@@ -71,8 +70,8 @@ def blog_post_edit_form() -> rx.Component:
                         rx.image(src=rx.get_upload_url(img_url), width="100px", height="100px", object_fit="cover", border_radius="md"),
                         rx.icon_button(
                             rx.icon("trash-2", size=16),
-                            # ✨ Llama al manejador unificado
-                            on_click=AppState.remove_image(img_url, is_editing=True),
+                            # ✨ Llama al manejador específico para EDITAR
+                            on_click=AppState.remove_edited_image(img_url),
                             color_scheme="red", variant="soft", size="1",
                             style={"position": "absolute", "top": "4px", "right": "4px"}
                         ),
@@ -84,8 +83,8 @@ def blog_post_edit_form() -> rx.Component:
             rx.upload(
                 rx.vstack(rx.icon("upload", size=24), rx.text("Añadir nuevas imágenes", size="2")),
                 id="edit_upload", multiple=True, max_files=5,
-                # ✨ Llama al manejador unificado
-                on_drop=AppState.handle_upload(rx.upload_files("edit_upload"), is_editing=True),
+                # ✨ Llama al manejador específico para EDITAR
+                on_drop=AppState.handle_edit_upload(rx.upload_files("edit_upload")),
                 border="2px dashed #ccc", padding="1em", width="100%"
             ),
             
