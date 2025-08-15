@@ -1,37 +1,37 @@
-# likemodas/admin/store_components.py
+# likemodas/admin/store_components.py (CORREGIDO)
 
 import reflex as rx
-# --- RUTA CORREGIDA PARA LA NUEVA UBICACIÓN ---
-# Desde 'admin', subimos un nivel a 'likemodas' (..) y accedemos a 'state'.
 from ..state import AppState, ProductCardData
 
 def admin_product_card(post: ProductCardData) -> rx.Component:
     """
-    Tarjeta de producto para la vista de admin. Enlaza a la página de edición.
+    Tarjeta de producto para la vista de admin. Ahora abre el modal de edición
+    directamente desde el estado.
     """
     return rx.box(
         rx.vstack(
-            rx.link(
-                rx.vstack(
-                    rx.box(
-                        rx.cond(
-                            post.image_urls & (post.image_urls.length() > 0),
-                            rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="260px", object_fit="cover"),
-                            rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
-                        ),
-                        width="260px", height="260px"
+            # El link se elimina ya que la edición es a través de un modal
+            rx.vstack(
+                rx.box(
+                    rx.cond(
+                        post.image_urls & (post.image_urls.length() > 0),
+                        rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="260px", object_fit="cover"),
+                        rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                     ),
-                    rx.text(post.title, weight="bold", size="6"),
-                    rx.text(post.price_cop, size="6"),
-                    rx.box(height="21px"),
-                    spacing="2", align="start"
+                    width="260px", height="260px"
                 ),
-                href=f"/blog/{post.id}/edit"
+                rx.text(post.title, weight="bold", size="6"),
+                rx.text(post.price_cop, size="6"),
+                rx.box(height="21px"), # Espaciador para mantener la altura
+                spacing="2", align="start"
             ),
             rx.spacer(),
             rx.button(
                 "Editar / Ver Detalles",
-                on_click=rx.redirect(f"/blog/{post.id}/edit"),
+                # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
+                # Se llama al manejador de estado que abre el modal,
+                # pasando el ID del producto.
+                on_click=AppState.start_editing_post(post.id),
                 width="100%",
                 variant="outline"
             ),
@@ -41,7 +41,6 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
         border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
         border_radius="8px", box_shadow="md", padding="1em",
     )
-
 
 def admin_store_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """

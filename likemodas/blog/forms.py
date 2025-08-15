@@ -1,4 +1,4 @@
-# likemodas/blog/forms.py
+# likemodas/blog/forms.py (CORREGIDO Y MEJORADO)
 
 import reflex as rx
 from ..state import AppState
@@ -25,7 +25,8 @@ def blog_post_add_form() -> rx.Component:
                                 AppState.temp_images,
                                 lambda img: rx.box(
                                     rx.image(src=rx.get_upload_url(img), width="100px", height="100px"),
-                                    rx.icon(tag="trash", on_click=AppState.remove_image(img)),
+                                    rx.icon(tag="trash", on_click=AppState.remove_image(img), cursor="pointer", style={"position": "absolute", "top": "5px", "right": "5px", "color": "white", "background": "rgba(0,0,0,0.5)", "border_radius": "50%"}),
+                                    position="relative"
                                 ),
                             ),
                             columns="3", spacing="2",
@@ -57,40 +58,72 @@ def blog_post_add_form() -> rx.Component:
     )
 
 def blog_post_edit_form() -> rx.Component:
-    """El formulario para editar una publicación. Se usará dentro del diálogo modal."""
+    """El formulario para editar una publicación, ahora con gestión de imágenes."""
     return rx.form(
         rx.vstack(
-            rx.text("Título del Producto", as_="div", size="2", margin_bottom="2px", weight="bold"),
+            # --- ✨ SECCIÓN DE GESTIÓN DE IMÁGENES ---
+            rx.text("Imágenes Actuales", as_="div", size="2", weight="bold"),
+            rx.grid(
+                rx.foreach(
+                    AppState.images_to_edit,
+                    lambda img_url: rx.box(
+                        rx.image(src=rx.get_upload_url(img_url), width="100px", height="100px", object_fit="cover"),
+                        rx.icon_button(
+                            rx.icon("trash-2", size=16),
+                            on_click=AppState.remove_edited_image(img_url),
+                            color_scheme="red",
+                            variant="soft",
+                            size="1",
+                            style={"position": "absolute", "top": "4px", "right": "4px"}
+                        ),
+                        position="relative",
+                        border="1px solid #ddd",
+                        border_radius="md"
+                    )
+                ),
+                columns="4", spacing="2", width="100%", margin_bottom="1em"
+            ),
+            rx.upload(
+                rx.vstack(rx.icon("upload", size=24), rx.text("Añadir nuevas imágenes", size="2")),
+                id="edit_upload", multiple=True, max_files=5,
+                on_drop=AppState.handle_edit_upload(rx.upload_files("edit_upload")),
+                border="2px dashed #ccc", padding="1em", width="100%"
+            ),
+            rx.cond(
+                AppState.new_temp_images,
+                rx.grid(
+                    rx.foreach(
+                        AppState.new_temp_images,
+                        lambda img: rx.box(
+                            rx.image(src=rx.get_upload_url(img), width="100px", height="100px"),
+                            rx.icon(tag="trash", on_click=AppState.remove_new_temp_image(img), cursor="pointer"),
+                        ),
+                    ),
+                    columns="4", spacing="2",
+                )
+            ),
+            # --- FIN DE SECCIÓN DE IMÁGENES ---
+
+            rx.text("Título del Producto", as_="div", size="2", margin_top="1em", weight="bold"),
             rx.input(
-                name="title",
-                value=AppState.post_title,
-                on_change=AppState.set_post_title,
-                placeholder="Ej: Camisa de Lino",
-                required=True,
+                name="title", value=AppState.post_title,
+                on_change=AppState.set_post_title, required=True,
             ),
             
             rx.text("Descripción", as_="div", size="2", margin_bottom="2px", weight="bold"),
             rx.text_area(
-                name="content",
-                value=AppState.post_content,
+                name="content", value=AppState.post_content,
                 on_change=AppState.set_post_content,
-                placeholder="Describe los detalles, materiales, etc.",
-                rows="8", # <--- CORREGIDO A STRING
-                required=True,
+                rows=8, required=True,
             ),
 
             rx.text("Precio (COP)", as_="div", size="2", margin_bottom="2px", weight="bold"),
             rx.input(
-                name="price",
-                value=AppState.price_str,
-                on_change=AppState.set_price,
-                placeholder="Ej: 80000",
-                type="number",
-                required=True,
+                name="price", value=AppState.price_str,
+                on_change=AppState.set_price, type="number", required=True,
             ),
             rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3"),
-            spacing="4",
-            width="100%"
+            spacing="4", width="100%"
         ),
         on_submit=AppState.save_edited_post,
         width="100%",

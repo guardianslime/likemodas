@@ -338,6 +338,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     post_content: str = ""
     price_str: str = ""
 
+    # ✨ NUEVAS VARIABLES PARA GESTIONAR IMÁGENES EN EDICIÓN
+    images_to_edit: list[str] = []
+    new_temp_images: list[str] = []
+
     @rx.var
     def current_image_url(self) -> str:
         if self.product_in_modal and self.product_in_modal.image_urls:
@@ -369,6 +373,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.post_title = db_post.title
                 self.post_content = db_post.content
                 self.price_str = str(db_post.price or 0.0)
+                # ✨ CARGAMOS LAS IMÁGENES ACTUALES AL ESTADO
+                self.images_to_edit = db_post.image_urls.copy() if db_post.image_urls else []     
                 self.is_editing_post = True
             else:
                 yield rx.toast.error("No se encontró la publicación o no tienes permisos.")
@@ -381,6 +387,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.post_title = ""
             self.post_content = ""
             self.price_str = ""
+            # ✨ LIMPIAMOS LAS VARIABLES DE IMÁGENES
+            self.images_to_edit = []
+            self.new_temp_images = []
 
     @rx.event
     def save_edited_post(self, form_data: dict):
@@ -396,10 +405,38 @@ class AppState(reflex_local_auth.LocalAuthState):
                     post_to_update.price = float(price_val) if price_val else 0.0
                 except (ValueError, TypeError):
                     return rx.toast.error("El precio debe ser un número válido.")
+                # ✨ LÓGICA PARA ACTUALIZAR IMÁGENES
+                # Combina las imágenes existentes que no se eliminaron con las nuevas.
+                post_to_update.image_urls = self.images_to_edit + self.new_temp_images
+                
                 session.add(post_to_update)
                 session.commit()
-                yield self.cancel_editing_post(False)
+                yield self.cancel_editing_post(False) # Cierra y resetea el modal
+                # Actualiza la lista de posts en la vista de admin para reflejar los cambios
+                yield self.on_load_admin_store() 
                 yield rx.toast.success("Publicación actualizada correctamente.")
+
+         # --- ✨ NUEVOS MANEJADORES PARA IMÁGENES DE EDICIÓN ---
+    @rx.event
+    def remove_edited_image(self, img_url: str):
+        """Elimina una de las imágenes ya existentes del producto."""
+        if img_url in self.images_to_edit:
+            self.images_to_edit.remove(img_url)
+
+    @rx.event
+    async def handle_edit_upload(self, files: list[rx.UploadFile]):
+        """Maneja la subida de nuevas imágenes en el formulario de edición."""
+        for file in files:
+            upload_data = await file.read()
+            outfile = rx.get_upload_dir() / file.name
+            outfile.write_bytes(upload_data)
+            self.new_temp_images.append(file.name)
+
+    @rx.event
+    def remove_new_temp_image(self, filename: str):
+        """Elimina una de las imágenes recién subidas antes de guardar."""
+        if filename in self.new_temp_images:
+            self.new_temp_images.remove(filename)
 
     cart: Dict[int, int] = {}
     @rx.var
