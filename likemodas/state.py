@@ -2,6 +2,7 @@ from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
+from sqlmodel import select
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,10 @@ import asyncio
 from reflex.config import get_config
 # ✨ 1. AÑADE ESTAS LÍNEAS AQUÍ ✨
 from urllib.parse import urlparse, parse_qs
+
+from .base_state import State
+from .models import Product, ProductImage
+
 
 from . import navigation
 from .models import (
@@ -28,6 +33,98 @@ from .data.product_options import (
     LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL,
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
+
+class AdminStoreState(State):
+    """Estado para la página de administración de la tienda."""
+    products: List[Product] = []
+    show_add_modal: bool = False
+    show_edit_modal: bool = False
+    new_product_name: str = ""
+    new_product_description: str = ""
+    new_product_price: float = 0.0
+    
+    # Variable para almacenar el producto que se está editando
+    product_to_edit: Optional[Product] = None
+    
+    # Manejador de subida de archivos
+    img_upload_ref = "upload_images"
+
+    @rx.cached_var
+    def get_image_upload_url(self) -> str:
+        """Devuelve la URL para la subida de imágenes."""
+        return "http://localhost:8000/upload"
+
+    def load_products(self):
+        """Carga todos los productos de la base de datos."""
+        with rx.session() as session:
+            self.products = session.exec(
+                select(Product).options(
+                    # Carga las imágenes relacionadas para evitar consultas N+1
+                    selectinload(Product.images) 
+                )
+            ).all()
+
+    # --- Lógica para el Modal de Edición ---
+
+    def set_product_to_edit(self, product: Product):
+        """Prepara el producto para ser editado y muestra el modal."""
+        self.product_to_edit = product
+        self.show_edit_modal = True
+
+    def close_edit_modal(self):
+        """Cierra el modal de edición y limpia la selección."""
+        self.show_edit_modal = False
+        self.product_to_edit = None
+
+    async def handle_image_replace(self):
+        """Maneja la subida y reemplazo de imágenes para un producto existente."""
+        if not self.product_to_edit:
+            return
+
+        with rx.session() as session:
+            # 1. Obtenemos el producto de la sesión actual para poder modificarlo
+            product_in_db = session.get(Product, self.product_to_edit.id)
+            if not product_in_db:
+                return  # Producto no encontrado
+
+            # 2. Eliminamos las imágenes antiguas de la base de datos
+            for image in product_in_db.images:
+                session.delete(image)
+            
+            # 3. Subimos los nuevos archivos
+            upload_files = await self.get_upload_files(ref=self.img_upload_ref)
+            
+            # 4. Creamos los nuevos registros de imágenes y los asociamos
+            for file in upload_files:
+                new_image = ProductImage(
+                    product_id=product_in_db.id, 
+                    img=f"/{file['key']}" # Guardamos la ruta relativa
+                )
+                product_in_db.images.append(new_image)
+            
+            session.add(product_in_db)
+            session.commit()
+
+        # 5. Cerramos el modal y recargamos la lista de productos para ver los cambios
+        self.close_edit_modal()
+        self.load_products()
+
+    def update_product(self):
+        """Actualiza los datos del producto en la base de datos."""
+        if not self.product_to_edit:
+            return
+        
+        with rx.session() as session:
+            product_in_db = session.get(Product, self.product_to_edit.id)
+            if product_in_db:
+                product_in_db.name = self.product_to_edit.name
+                product_in_db.description = self.product_to_edit.description
+                product_in_db.price = self.product_to_edit.price
+                session.add(product_in_db)
+                session.commit()
+        
+        self.close_edit_modal()
+        self.load_products()
 
 # --- DTOs (Data Transfer Objects) para la UI ---
 class ProductCardData(rx.Base):
@@ -1020,3 +1117,4 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Usamos deploy_url para los enlaces que ven los usuarios,
         # no api_url que es para la conexión interna.
         return get_config().deploy_url
+    
