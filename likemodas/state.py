@@ -37,23 +37,19 @@ class ProductCardData(rx.Base):
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
+
+    # --- ✨ AÑADIMOS LA CONFIGURACIÓN REQUERIDA ---
+    class Config:
+        orm_mode = True
     
     @classmethod
     def from_orm(cls, orm_obj: BlogPostModel) -> "ProductCardData":
-        return cls(
-            id=orm_obj.id,
-            title=orm_obj.title,
-            price=orm_obj.price or 0.0,
-            image_urls=orm_obj.image_urls or [],
-            average_rating=orm_obj.average_rating,
-            rating_count=orm_obj.rating_count,
-        )
+        return cls.from_orm(orm_obj) # Pydantic v1 usa from_orm así
     
     @property
     def price_cop(self) -> str:
         return format_to_cop(self.price)
-
-# ✨ DTO CORREGIDO para el Modal de Detalles del Producto
+    
 class ProductDetailData(rx.Base):
     id: int
     title: str
@@ -61,9 +57,17 @@ class ProductDetailData(rx.Base):
     price_cop: str
     image_urls: list[str] = []
     created_at_formatted: str
-    # --- AÑADIMOS LOS CAMPOS FALTANTES ---
     average_rating: float = 0.0
     rating_count: int = 0
+
+    # --- ✨ AÑADIMOS LA CONFIGURACIÓN REQUERIDA ---
+    class Config:
+        orm_mode = True
+    
+    @classmethod
+    def from_orm(cls, orm_obj: BlogPostModel) -> "ProductDetailData":
+        """Crea una instancia del DTO desde el objeto del modelo de la BD."""
+        return cls.from_orm(orm_obj) # Pydantic v1 usa from_orm así
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
