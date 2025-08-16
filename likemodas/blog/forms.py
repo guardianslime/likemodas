@@ -6,12 +6,14 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con las proporciones exactas de la captura."""
+    """Formulario para añadir productos con el diseño de dos columnas corregido."""
     return rx.form(
         rx.vstack(
-            rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
+            rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
+            
+            # --- ✅ ESTRUCTURA DE DOS COLUMNAS CORREGIDA ---
             rx.grid(
-                # Columna Izquierda: Carga de Imágenes (con su altura natural)
+                # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -38,7 +40,9 @@ def blog_post_add_form() -> rx.Component:
                             columns="4", spacing="2", margin_top="1em"
                         )
                     ),
+                    spacing="2",
                 ),
+
                 # Columna Derecha: Campos de Texto
                 rx.vstack(
                     rx.vstack(
@@ -58,28 +62,30 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     rx.vstack(
                         rx.text("Descripción", as_="div", size="2", weight="bold"),
-                        # --- ✅ CAMBIO CLAVE: Altura fija y grande para la descripción ---
                         rx.text_area(
                             placeholder="Detalles del producto...",
                             name="content",
                             required=True,
                             size="2",
-                            style={"height": "300px"}, # Se aumenta la altura considerablemente
+                            style={"height": "250px"},
                         ),
                         align_items="start", width="100%"
                     ),
                     spacing="4",
                 ),
-                
-                # --- ✅ CAMBIO CLAVE: Se alinean las columnas arriba y se iguala su ancho ---
-                align_items="start",
-                grid_template_columns={"initial": "1fr", "md": "1fr 1fr"},
+
+                # --- Propiedades clave para el layout de 2 columnas ---
+                columns="2",  # Define que siempre habrá 2 columnas
                 spacing="6",
                 width="100%",
+                align_items="start", # Alinea ambas columnas en la parte superior
             ),
+            
             rx.hstack(
                 rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
-                spacing="4", width="100%", justify="end", margin_top="2em"
+                width="100%", 
+                justify="end", 
+                margin_top="2em"
             ),
             spacing="5",
             max_width="960px",
