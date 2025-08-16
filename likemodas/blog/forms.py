@@ -6,20 +6,22 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con campos estirados y proporcionales."""
+    """Formulario para añadir productos con las proporciones de la captura."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
+            # --- ✅ CAMBIO CLAVE AQUÍ ---
+            # Se ajusta la cuadrícula para que las columnas no se estiren verticalmente
+            # y se define una proporción de ancho que favorece a la columna derecha.
             rx.grid(
                 # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
-                    # ✅ El área de upload ahora ocupa el 100% de la altura disponible
                     rx.upload(
                         rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes (máx 5)")),
                         id="blog_upload", multiple=True, max_files=5,
                         on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
-                        border="2px dashed #ccc", padding="2em", width="100%", height="100%",
+                        border="2px dashed #ccc", padding="2em", width="100%"
                     ),
                     rx.cond(
                         AppState.temp_images,
@@ -39,8 +41,6 @@ def blog_post_add_form() -> rx.Component:
                             columns="4", spacing="2", margin_top="1em"
                         )
                     ),
-                    align_items="stretch", # Alinea el contenido para estirarse
-                    height="100%",
                 ),
                 # Columna Derecha: Campos de Texto
                 rx.vstack(
@@ -59,25 +59,23 @@ def blog_post_add_form() -> rx.Component:
                         rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
                         align_items="start", width="100%"
                     ),
-                    # ✅ El contenedor de la descripción ahora es flexible para crecer
                     rx.vstack(
                         rx.text("Descripción", as_="div", size="2", weight="bold"),
-                        # ✅ El campo de texto ahora ocupa el 100% de su contenedor flexible
+                        # ✅ Se define una altura fija y más grande para la descripción.
                         rx.text_area(
-                            placeholder="Detalles del producto...", 
-                            name="content", 
-                            required=True, 
-                            size="2", 
-                            width="100%",
-                            height="100%",
+                            placeholder="Detalles del producto...",
+                            name="content",
+                            required=True,
+                            size="2",
+                            style={"height": "250px"}, # Altura aumentada
                         ),
-                        align_items="stretch", width="100%", flex_grow="1",
+                        align_items="start", width="100%"
                     ),
-                    spacing="4", align_items="stretch", height="100%",
+                    spacing="4",
                 ),
-                # --- ✅ CAMBIO CLAVE: Forzamos a que las columnas tengan la misma altura ---
-                align_items="stretch",
-                columns={"initial": "1", "md": "2"},
+                # Se define la proporción de las columnas y se alinean arriba
+                grid_template_columns={"initial": "1fr", "md": "1fr 1.2fr"},
+                align_items="start",
                 spacing="6",
                 width="100%",
             ),
