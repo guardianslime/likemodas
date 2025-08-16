@@ -70,9 +70,11 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
+                # La corrección está en el acceso a 'user.username'
                 rx.avatar(fallback=comment.userinfo.user.username[0].upper(), size="2"),
                 rx.text(comment.userinfo.user.username, weight="bold"),
                 rx.spacer(),
+                # Pasamos '1' como conteo para que solo muestre las estrellas
                 star_rating_display(comment.rating, 1),
                 width="100%",
             ),
@@ -81,10 +83,11 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 rx.cond(
                     comment.was_updated,
-                    rx.text(f"  (editado: {comment.updated_at_formatted})", size="2", color_scheme="gray")
+                    rx.text(f" (editado: {comment.updated_at_formatted})", size="2", color_scheme="gray")
                 ),
                 width="100%",
-                justify="end"
+                justify="end",
+                spacing="1" # Añadido para mejor espaciado
             ),
             align_items="start",
             spacing="2"
