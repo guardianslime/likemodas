@@ -1079,33 +1079,33 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_rating = rating
 
     @rx.event
-def submit_review(self, form_data: dict):
-    if not self.is_authenticated or not self.product_in_modal:
-        return rx.toast.error("Debes iniciar sesión para opinar.")
-    if self.review_rating == 0:
-        return rx.toast.error("Debes seleccionar una valoración (de 1 a 5 estrellas).")
+    def submit_review(self, form_data: dict):
+        if not self.is_authenticated or not self.product_in_modal:
+            return rx.toast.error("Debes iniciar sesión para opinar.")
+        if self.review_rating == 0:
+            return rx.toast.error("Debes seleccionar una valoración (de 1 a 5 estrellas).")
 
-    content = form_data.get("review_content", "")
+        content = form_data.get("review_content", "")
 
-    with rx.session() as session:
-        existing_review = session.get(CommentModel, self.my_review_for_product.id) if self.my_review_for_product else None
+        with rx.session() as session:
+            existing_review = session.get(CommentModel, self.my_review_for_product.id) if self.my_review_for_product else None
 
-        if existing_review:
-            existing_review.rating = self.review_rating
-            existing_review.content = content
-            session.add(existing_review)
-            yield rx.toast.success("¡Opinión actualizada!")
-        else:
-            new_review = CommentModel(
-                userinfo_id=self.authenticated_user_info.id,
-                blog_post_id=self.product_in_modal.id,
-                rating=self.review_rating,
-                content=content,
-            )
-            session.add(new_review)
-            yield rx.toast.success("¡Gracias por tu opinión!")
-        
-        session.commit()
+            if existing_review:
+                existing_review.rating = self.review_rating
+                existing_review.content = content
+                session.add(existing_review)
+                yield rx.toast.success("¡Opinión actualizada!")
+            else:
+                new_review = CommentModel(
+                    userinfo_id=self.authenticated_user_info.id,
+                    blog_post_id=self.product_in_modal.id,
+                    rating=self.review_rating,
+                    content=content,
+                )
+                session.add(new_review)
+                yield rx.toast.success("¡Gracias por tu opinión!")
+            
+            session.commit()
     
     # Esta es la línea corregida
     yield AppState.open_product_detail_modal(self.product_in_modal.id)
