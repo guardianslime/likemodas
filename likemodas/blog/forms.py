@@ -6,7 +6,7 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con la estética y centrado corregidos."""
+    """Formulario para añadir productos con diseño responsivo y centrado."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
@@ -64,7 +64,11 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     spacing="4", align_items="stretch"
                 ),
-                grid_template_columns="1.2fr 1fr", spacing="6", width="100%"
+                # --- ✅ CAMBIO CLAVE PARA EL DISEÑO RESPONSIVO ---
+                # El formulario ahora será de 1 columna en pantallas pequeñas y 2 en medianas/grandes.
+                columns={"initial": "1", "md": "2"},
+                spacing="6",
+                width="100%"
             ),
             # Fila del Botón
             rx.hstack(
@@ -72,8 +76,6 @@ def blog_post_add_form() -> rx.Component:
                 spacing="4", width="100%", justify="end", margin_top="2em"
             ),
             spacing="5",
-            # --- ✅ CAMBIO CLAVE AQUÍ ---
-            # Se eliminó 'width="100%"' para permitir que el componente se centre.
             max_width="960px",
         ),
         on_submit=AppState.submit_and_publish,
