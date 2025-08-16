@@ -623,7 +623,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
 
-    def toggle_form(self): self.show_form = ~self.show_form
+    def toggle_form(self):
+        # --- ✨ CORRECCIÓN 1 AQUÍ ---
+        # Usamos 'not' para la negación lógica en lugar de '~' (que es bit a bit).
+        self.show_form = not self.show_form
     def set_city(self, city: str): self.city = city; self.neighborhood = ""
     def set_neighborhood(self, hood: str): self.neighborhood = hood
     def set_search_city(self, query: str): self.search_city = query
@@ -761,8 +764,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(notification)
                 session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
+                
+                # --- ✨ CORRECCIÓN 2 AQUÍ ---
+                # Se debe usar 'yield' al llamar a otro manejador de eventos.
                 yield self.load_pending_purchases()
             else:
+                yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
+
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
 
     search_query_admin_history: str = ""
