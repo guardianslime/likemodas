@@ -12,6 +12,11 @@ from reflex_local_auth.user import LocalUser
 from .utils.timing import get_utc_now
 from .utils.formatting import format_to_cop
 
+
+# --- Adelanta la declaración de CommentModel ---
+if "CommentModel" not in locals():
+    CommentModel = "CommentModel"
+
 # --- Funciones de Utilidad ---
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     if not utc_dt:
@@ -108,16 +113,23 @@ class BlogPostModel(rx.Model, table=True):
     class Config:
         exclude = {"userinfo"}
     
+    # --- ✨ AÑADE ESTAS PROPIEDADES COMPUTADAS ---
     @property
-    def rating_count(self) -> int: return len(self.comments) if self.comments else 0
+    def rating_count(self) -> int:
+        return len(self.comments) if self.comments else 0
+
     @property
     def average_rating(self) -> float:
-        if not self.comments: return 0.0
+        if not self.comments:
+            return 0.0
         return sum(c.rating for c in self.comments) / len(self.comments)
+    
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
+
     @property
     def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
+
     @property
     def price_cop(self) -> str: return format_to_cop(self.price)
 
@@ -219,8 +231,19 @@ class CommentModel(rx.Model, table=True):
 
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
+
+    @property
+    def updated_at_formatted(self) -> str:
+        return format_utc_to_local(self.updated_at)
+    
+    @property
+    def was_updated(self) -> bool:
+        # Comprueba si fue actualizado comparando las fechas (con un margen de segundos)
+        return (self.updated_at - self.created_at).total_seconds() > 5
+
     @property
     def likes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
+
     @property
     def dislikes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
 

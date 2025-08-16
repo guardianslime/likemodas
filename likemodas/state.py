@@ -18,7 +18,7 @@ from . import navigation
 from .models import (
     UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
     PurchaseModel, PurchaseStatus, PurchaseItemModel, NotificationModel, Category,
-    CommentModel, PasswordResetToken, LocalUser, ContactEntryModel
+    PasswordResetToken, LocalUser, ContactEntryModel, CommentModel 
 )
 from .services.email_service import send_verification_email, send_password_reset_email
 from .utils.formatting import format_to_cop
@@ -1038,24 +1038,118 @@ class AppState(reflex_local_auth.LocalAuthState):
         if product_id is not None:
             yield AppState.open_product_detail_modal(int(product_id))
 
+    # --- ✨ LÓGICA PARA OPINIONES Y VALORACIONES ---
+
+    # Almacena los comentarios del producto que está en el modal
+    product_comments: list[CommentModel] = []
+    
+    # Almacena la opinión del usuario actual para el producto actual (si existe)
+    my_review_for_product: Optional[CommentModel] = None
+
+    # Estado del formulario de opinión
+    review_rating: int = 0
+    review_content: str = ""
+
+    @rx.var
+    def can_review_product(self) -> bool:
+        """
+        Determina si el usuario actual puede dejar una opinión.
+        Debe estar autenticado y haber comprado el producto.
+        """
+        if not self.is_authenticated or not self.product_in_modal:
+            return False
+        with rx.session() as session:
+            # Comprueba si existe una compra confirmada por este usuario para este producto
+            purchase_item = session.exec(
+                sqlmodel.select(PurchaseItemModel)
+                .join(PurchaseModel)
+                .where(
+                    PurchaseModel.userinfo_id == self.authenticated_user_info.id,
+                    PurchaseItemModel.blog_post_id == self.product_in_modal.id,
+                    PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED])
+                )
+            ).first()
+            return purchase_item is not None
+
+    def set_review_rating(self, rating: int):
+        """Actualiza la valoración en el estado del formulario."""
+        self.review_rating = rating
+
+    @rx.event
+    def submit_review(self, form_data: dict):
+        """Manejador para crear o actualizar una opinión."""
+        if not self.is_authenticated or not self.product_in_modal:
+            return rx.toast.error("Debes iniciar sesión para opinar.")
+        if self.review_rating == 0:
+            return rx.toast.error("Debes seleccionar una valoración (de 1 a 5 estrellas).")
+
+        content = form_data.get("review_content", "")
+
+        with rx.session() as session:
+            # Re-obtenemos la opinión existente dentro de la sesión
+            existing_review = session.get(CommentModel, self.my_review_for_product.id) if self.my_review_for_product else None
+
+            if existing_review:
+                # --- Actualizar opinión existente ---
+                existing_review.rating = self.review_rating
+                existing_review.content = content
+                session.add(existing_review)
+                yield rx.toast.success("¡Opinión actualizada!")
+            else:
+                # --- Crear nueva opinión ---
+                new_review = CommentModel(
+                    userinfo_id=self.authenticated_user_info.id,
+                    blog_post_id=self.product_in_modal.id,
+                    rating=self.review_rating,
+                    content=content,
+                )
+                session.add(new_review)
+                yield rx.toast.success("¡Gracias por tu opinión!")
+            
+            session.commit()
+        
+        # Recargamos el modal para mostrar la opinión nueva/actualizada
+        yield self.open_product_detail_modal(self.product_in_modal.id)
+
+    # --- ✨ ACTUALIZA EL MANEJADOR `open_product_detail_modal` ---
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0
+        
+        # Limpiamos el estado de opiniones anteriores
+        self.product_comments = []
+        self.my_review_for_product = None
+        self.review_rating = 0
+        self.review_content = ""
         yield
+
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id)
             if db_post and db_post.publish_active:
-                self.product_in_modal = ProductDetailData(
-                    id=db_post.id,
-                    title=db_post.title,
-                    content=db_post.content,
-                    price_cop=db_post.price_cop,
-                    image_urls=db_post.image_urls,
-                    created_at_formatted=db_post.created_at_formatted
-                )
-                # ✨ ELIMINADO: Ya no necesitamos redirigir la URL
+                self.product_in_modal = ProductDetailData.from_orm(db_post)
+
+                # --- Cargamos los comentarios para este producto ---
+                self.product_comments = session.exec(
+                    sqlmodel.select(CommentModel)
+                    .where(CommentModel.blog_post_id == post_id)
+                    .order_by(CommentModel.created_at.desc())
+                ).all()
+
+                # --- Verificamos si el usuario actual ya ha dejado una opinión ---
+                if self.is_authenticated:
+                    my_review = session.exec(
+                        sqlmodel.select(CommentModel).where(
+                            CommentModel.blog_post_id == post_id,
+                            CommentModel.userinfo_id == self.authenticated_user_info.id
+                        )
+                    ).first()
+                    if my_review:
+                        self.my_review_for_product = my_review
+                        self.review_rating = my_review.rating
+                        self.review_content = my_review.content
+
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
