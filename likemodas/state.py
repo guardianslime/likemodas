@@ -42,10 +42,6 @@ class ProductCardData(rx.Base):
     class Config:
         orm_mode = True
     
-    @classmethod
-    def from_orm(cls, orm_obj: BlogPostModel) -> "ProductCardData":
-        return cls.from_orm(orm_obj) # Pydantic v1 usa from_orm así
-    
     @property
     def price_cop(self) -> str:
         return format_to_cop(self.price)
@@ -64,10 +60,6 @@ class ProductDetailData(rx.Base):
     class Config:
         orm_mode = True
     
-    @classmethod
-    def from_orm(cls, orm_obj: BlogPostModel) -> "ProductDetailData":
-        """Crea una instancia del DTO desde el objeto del modelo de la BD."""
-        return cls.from_orm(orm_obj) # Pydantic v1 usa from_orm así
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
