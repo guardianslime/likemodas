@@ -1107,8 +1107,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.commit()
         
-        # ✨ CORRECCIÓN APLICADA AQUÍ ✨
-        yield self.open_product_detail_modal(self.product_in_modal.id)
+        yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
