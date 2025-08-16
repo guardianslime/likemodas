@@ -327,14 +327,26 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = True
         yield
 
-        # Obtiene la categoría desde los parámetros de la URL
-        category = self.router.query_params.get("category")
+        # --- INICIO DE LA CORRECCIÓN ---
+        category = None
+        full_url = self.router.url  # Obtiene la URL completa, ej: "https://.../?category=ropa"
+
+        if full_url and "?" in full_url:
+            # Analiza la URL para extraer los parámetros de consulta
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+            
+            # Extrae el valor de 'category'. parse_qs devuelve una lista.
+            category_list = query_params.get("category")
+            if category_list:
+                category = category_list[0]
+        # --- FIN DE LA CORRECCIÓN ---
 
         with rx.session() as session:
             # Construye la consulta base
             query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
             
-            # Si se especificó una categoría, añade el filtro a la consulta
+            # Si se encontró una categoría, añade el filtro a la consulta
             if category and category in [c.value for c in Category]:
                 query = query.where(BlogPostModel.category == category)
             
