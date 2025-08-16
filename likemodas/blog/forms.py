@@ -6,14 +6,15 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos."""
+    """Formulario para añadir productos con etiquetas."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
                 rx.vstack(
+                    rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
-                        rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes")),
+                        rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes (máx 5)")),
                         id="blog_upload", multiple=True, max_files=5,
                         on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                         border="2px dashed #ccc", padding="2em", width="100%"
@@ -33,15 +34,32 @@ def blog_post_add_form() -> rx.Component:
                                     position="relative"
                                 ),
                             ),
-                            columns="4", spacing="2",
+                            columns="4", spacing="2", margin_top="1em"
                         )
                     ),
+                    align_items="start"
                 ),
                 rx.vstack(
-                    rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
-                    rx.select(AppState.categories, placeholder="Selecciona una categoría...", name="category", required=True, size="3"),
-                    rx.input(placeholder="Precio (ej: 55000)", type="number", name="price", required=True, size="3"),
-                    rx.text_area(placeholder="Descripción...", name="content", required=True, size="2", style={"height": "200px"}),
+                    rx.vstack(
+                        rx.text("Título del Producto", as_="div", size="2", weight="bold"),
+                        rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
+                        align_items="start", width="100%"
+                    ),
+                    rx.vstack(
+                        rx.text("Categoría", as_="div", size="2", weight="bold"),
+                        rx.select(AppState.categories, placeholder="Selecciona una categoría...", name="category", required=True, size="3"),
+                        align_items="start", width="100%"
+                    ),
+                    rx.vstack(
+                        rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
+                        rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
+                        align_items="start", width="100%"
+                    ),
+                    rx.vstack(
+                        rx.text("Descripción", as_="div", size="2", weight="bold"),
+                        rx.text_area(placeholder="Detalles del producto...", name="content", required=True, size="2", style={"height": "160px"}),
+                        align_items="start", width="100%"
+                    ),
                     spacing="4", align_items="stretch"
                 ),
                 grid_template_columns="1.2fr 1fr", spacing="6", width="100%"
@@ -50,7 +68,8 @@ def blog_post_add_form() -> rx.Component:
                 rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                 spacing="4", width="100%", justify="end", margin_top="2em"
             ),
-            spacing="5", width="100%", max_width="1600px", padding="2em",
+            spacing="5", width="100%", max_width="960px", padding="2em",
+            border="1px solid #ededed", border_radius="md"
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,

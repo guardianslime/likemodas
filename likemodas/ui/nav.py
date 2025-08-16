@@ -3,6 +3,7 @@
 import reflex as rx
 from .. import navigation
 from ..state import AppState
+from ..models import Category
 
 def notification_icon() -> rx.Component:
     """Componente para el icono y menú de notificaciones."""
@@ -46,10 +47,33 @@ def notification_icon() -> rx.Component:
 
 def public_navbar() -> rx.Component:
     """
-    La barra de navegación pública definitiva, optimizada para evitar 'layout shift'.
+    La barra de navegación pública definitiva, con menú de hamburguesa.
     """
     icon_color = rx.color_mode_cond("black", "white")
     
+    hamburger_menu = rx.menu.root(
+        rx.menu.trigger(
+            rx.icon("menu", size=28, cursor="pointer", color=icon_color)
+        ),
+        rx.menu.content(
+            # --- CAMBIO CLAVE AQUÍ: El redirect ahora recarga la página de inicio ---
+            rx.menu.item("Inicio", on_click=lambda: rx.redirect("/")),
+            rx.menu.sub(
+                rx.menu.sub_trigger("Categorías"),
+                rx.menu.sub_content(
+                    # --- Los enlaces ahora apuntan a la raíz con un parámetro de consulta ---
+                    rx.menu.item("Ropa", on_click=lambda: rx.redirect(f"/?category={Category.ROPA.value}")),
+                    rx.menu.item("Calzado", on_click=lambda: rx.redirect(f"/?category={Category.CALZADO.value}")),
+                    rx.menu.item("Mochilas", on_click=lambda: rx.redirect(f"/?category={Category.MOCHILAS.value}")),
+                    rx.menu.item("Ver Todo", on_click=lambda: rx.redirect("/")),
+                ),
+            ),
+            rx.menu.separator(),
+            rx.menu.item("Mi Cuenta", on_click=lambda: rx.redirect("/my-account/shipping-info")),
+            rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases")),
+        ),
+    )
+
     authenticated_icons = rx.hstack(
         notification_icon(),
         rx.link(
@@ -83,6 +107,7 @@ def public_navbar() -> rx.Component:
     return rx.box(
         rx.grid(
             rx.hstack(
+                hamburger_menu,
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),

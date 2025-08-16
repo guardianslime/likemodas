@@ -320,11 +320,28 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load(self):
+        """
+        Carga los productos. Si hay un parámetro de categoría en la URL,
+        filtra los resultados para mostrar solo esa categoría.
+        """
         self.is_loading = True
         yield
+
+        # Obtiene la categoría desde los parámetros de la URL
+        category = self.router.query_params.get("category")
+
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
+            # Construye la consulta base
+            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            
+            # Si se especificó una categoría, añade el filtro a la consulta
+            if category and category in [c.value for c in Category]:
+                query = query.where(BlogPostModel.category == category)
+            
+            # Ejecuta la consulta final
+            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
             self.posts = [ProductCardData.from_orm(p) for p in results]
+        
         self.is_loading = False
     
     show_detail_modal: bool = False
