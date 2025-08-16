@@ -7,7 +7,7 @@ from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
     """
-    Formulario para añadir productos con campos de texto anchos y alineados.
+    Formulario para añadir productos con campos anchos y alineados correctamente.
     """
     return rx.form(
         rx.vstack(
@@ -44,44 +44,38 @@ def blog_post_add_form() -> rx.Component:
                     spacing="2",
                 ),
 
+                # --- ✅ CAMBIO CLAVE: Estructura de la columna derecha simplificada ---
                 # Columna Derecha: Campos de Texto y Botón
                 rx.vstack(
-                    rx.vstack(
-                        rx.text("Título del Producto", as_="div", size="2", weight="bold"),
-                        rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
-                        align_items="start", width="100%"
+                    # Los elementos ahora son hijos directos del vstack de la columna
+                    rx.text("Título del Producto", as_="div", size="2", weight="bold"),
+                    rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
+
+                    rx.text("Categoría", as_="div", size="2", weight="bold"),
+                    rx.select(AppState.categories, placeholder="Selecciona una categoría...", name="category", required=True, size="3"),
+
+                    rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
+                    rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
+
+                    rx.text("Descripción", as_="div", size="2", weight="bold"),
+                    rx.text_area(
+                        placeholder="Detalles del producto...",
+                        name="content",
+                        required=True,
+                        size="2",
+                        style={"height": "300px"},
                     ),
-                    rx.vstack(
-                        rx.text("Categoría", as_="div", size="2", weight="bold"),
-                        rx.select(AppState.categories, placeholder="Selecciona una categoría...", name="category", required=True, size="3"),
-                        align_items="start", width="100%"
-                    ),
-                    rx.vstack(
-                        rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
-                        rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
-                        align_items="start", width="100%"
-                    ),
-                    rx.vstack(
-                        rx.text("Descripción", as_="div", size="2", weight="bold"),
-                        rx.text_area(
-                            placeholder="Detalles del producto...",
-                            name="content",
-                            required=True,
-                            size="2",
-                            style={"height": "300px"},
-                        ),
-                        align_items="start", width="100%"
-                    ),
+                    
+                    # El botón se mantiene al final
                     rx.hstack(
                         rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                         width="100%", 
-                        justify="end", 
-                        margin_top="1em"
+                        justify="end",
                     ),
-                    spacing="4",
-                    # --- ✅ CAMBIO CLAVE AQUÍ ---
-                    # Se añade 'align_items' para estirar todos los campos horizontalmente.
-                    align_items="stretch",
+                    
+                    spacing="3", # Espaciado ajustado para la nueva estructura
+                    align_items="stretch", # ESTA ES LA PROPIEDAD CLAVE que ahora funcionará
+                    width="100%",
                 ),
 
                 # Propiedades de la cuadrícula
@@ -98,7 +92,6 @@ def blog_post_add_form() -> rx.Component:
         width="100%",
         max_width="1024px",
     )
-
 
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar una publicación."""
