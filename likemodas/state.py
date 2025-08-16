@@ -1114,8 +1114,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.commit()
         
-        # --- ✨ CORRECCIÓN AQUÍ (DE NUEVO) ---
-        # Esta es la línea que causa el error. Debe tener 'yield'.
+        # --- ✨ LA LÍNEA CRÍTICA Y CORRECTA ---
+        # Asegúrate de que esta sea la última línea y tenga 'yield'.
         yield self.open_product_detail_modal(self.product_in_modal.id)
 
     @rx.event
