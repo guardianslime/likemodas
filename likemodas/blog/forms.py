@@ -8,21 +8,50 @@ from ..ui.components import searchable_select
 from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES, LISTA_NUMEROS_CALZADO
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con características dinámicas."""
+    """Formulario para añadir productos con características dinámicas y con buscador."""
     
-    # --- NUEVO: Componente para las características de Ropa ---
+    # --- AHORA USA EL COMPONENTE searchable_select ---
     caracteristicas_ropa = rx.grid(
-        rx.select(LISTA_COLORES, placeholder="Color...", size="2", on_change=AppState.set_attr_color),
-        rx.select(LISTA_TALLAS_ROPA, placeholder="Talla...", size="2", on_change=AppState.set_attr_talla_ropa),
-        rx.select(LISTA_MATERIALES, placeholder="Material...", size="2", on_change=AppState.set_attr_material),
+        searchable_select(
+            placeholder="Color...", options=AppState.filtered_attr_colores,
+            on_change_select=AppState.set_attr_color, value_select=AppState.attr_color,
+            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+            filter_name="attr_color_filter",
+        ),
+        searchable_select(
+            placeholder="Talla...", options=AppState.filtered_attr_tallas_ropa,
+            on_change_select=AppState.set_attr_talla_ropa, value_select=AppState.attr_talla_ropa,
+            search_value=AppState.search_attr_talla_ropa, on_change_search=AppState.set_search_attr_talla_ropa,
+            filter_name="attr_talla_filter",
+        ),
+        searchable_select(
+            placeholder="Material...", options=AppState.filtered_attr_materiales,
+            on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
+            search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
+            filter_name="attr_material_filter",
+        ),
         columns="3", spacing="3", width="100%",
     )
 
-    # --- NUEVO: Componente para las características de Calzado ---
     caracteristicas_calzado = rx.grid(
-        rx.select(LISTA_COLORES, placeholder="Color...", size="2", on_change=AppState.set_attr_color),
-        rx.select(LISTA_NUMEROS_CALZADO, placeholder="Número...", size="2", on_change=AppState.set_attr_numero_calzado),
-        rx.select(LISTA_MATERIALES, placeholder="Material...", size="2", on_change=AppState.set_attr_material),
+        searchable_select(
+            placeholder="Color...", options=AppState.filtered_attr_colores,
+            on_change_select=AppState.set_attr_color, value_select=AppState.attr_color,
+            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+            filter_name="attr_color_filter",
+        ),
+        searchable_select(
+            placeholder="Número...", options=AppState.filtered_attr_numeros_calzado,
+            on_change_select=AppState.set_attr_numero_calzado, value_select=AppState.attr_numero_calzado,
+            search_value=AppState.search_attr_numero_calzado, on_change_search=AppState.set_search_attr_numero_calzado,
+            filter_name="attr_numero_filter",
+        ),
+        searchable_select(
+            placeholder="Material...", options=AppState.filtered_attr_materiales,
+            on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
+            search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
+            filter_name="attr_material_filter",
+        ),
         columns="3", spacing="3", width="100%",
     )
 
@@ -30,7 +59,7 @@ def blog_post_add_form() -> rx.Component:
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
             rx.grid(
-                # Columna Izquierda: Carga de Imágenes
+                # Columna Izquierda
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -59,45 +88,35 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     spacing="2",
                 ),
-                # Columna Derecha: Campos de Texto
+                # Columna Derecha
                 rx.vstack(
                     rx.text("Título del Producto", as_="div", size="2", weight="bold"),
                     rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
 
                     rx.text("Categoría", as_="div", size="2", weight="bold"),
-                    # La categoría ahora usa on_change para actualizar la UI
                     rx.select(
                         AppState.categories,
-                        placeholder="Selecciona una categoría...",
-                        name="category",
-                        required=True,
-                        size="3",
-                        on_change=AppState.set_category, # Importante para la reactividad
+                        placeholder="Selecciona una categoría...", name="category",
+                        required=True, size="3", on_change=AppState.set_category,
                     ),
 
                     rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
                     rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
 
-                    # --- NUEVO: Sección de Características Dinámicas ---
                     rx.cond(
                         AppState.category != "",
                         rx.vstack(
                             rx.text("Características del Producto", as_="div", size="2", weight="bold"),
                             rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
                             rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
-                            # Puedes añadir más condiciones para otras categorías aquí
-                            align_items="stretch",
-                            width="100%",
+                            align_items="stretch", width="100%",
                         )
                     ),
 
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(
-                        placeholder="Detalles del producto...",
-                        name="content",
-                        required=True,
-                        size="2",
-                        style={"height": "150px"}, # Altura ajustada
+                        placeholder="Detalles del producto...", name="content",
+                        required=True, size="2", style={"height": "150px"},
                     ),
                     rx.hstack(
                         rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),

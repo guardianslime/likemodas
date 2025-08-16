@@ -276,6 +276,40 @@ class AppState(reflex_local_auth.LocalAuthState):
         self._clear_add_form()
         yield rx.toast.success("Producto publicado.")
         return rx.redirect("/blog")
+    
+    # --- NUEVO: Variables para la BÚSQUEDA en características ---
+    search_attr_color: str = ""
+    search_attr_talla_ropa: str = ""
+    search_attr_material: str = ""
+    search_attr_numero_calzado: str = ""
+
+    # --- NUEVO: Event handlers para la BÚSQUEDA ---
+    def set_search_attr_color(self, query: str): self.search_attr_color = query
+    def set_search_attr_talla_ropa(self, query: str): self.search_attr_talla_ropa = query
+    def set_search_attr_material(self, query: str): self.search_attr_material = query
+    def set_search_attr_numero_calzado(self, query: str): self.search_attr_numero_calzado = query
+    
+    # --- NUEVO: Listas filtradas para los buscadores ---
+    @rx.var
+    def filtered_attr_colores(self) -> list[str]:
+        if not self.search_attr_color.strip(): return LISTA_COLORES
+        return [o for o in LISTA_COLORES if self.search_attr_color.lower() in o.lower()]
+
+    @rx.var
+    def filtered_attr_tallas_ropa(self) -> list[str]:
+        if not self.search_attr_talla_ropa.strip(): return LISTA_TALLAS_ROPA
+        return [o for o in LISTA_TALLAS_ROPA if self.search_attr_talla_ropa.lower() in o.lower()]
+
+    @rx.var
+    def filtered_attr_materiales(self) -> list[str]:
+        if not self.search_attr_material.strip(): return LISTA_MATERIALES
+        return [o for o in LISTA_MATERIALES if self.search_attr_material.lower() in o.lower()]
+
+    @rx.var
+    def filtered_attr_numeros_calzado(self) -> list[str]:
+        if not self.search_attr_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
+        return [o for o in LISTA_NUMEROS_CALZADO if self.search_attr_numero_calzado.lower() in o.lower()]
+
 
     min_price: str = ""
     max_price: str = ""
