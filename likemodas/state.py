@@ -1093,7 +1093,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         content = form_data.get("review_content", "")
 
         with rx.session() as session:
-            # Re-obtenemos la opinión existente dentro de la sesión
             existing_review = session.get(CommentModel, self.my_review_for_product.id) if self.my_review_for_product else None
 
             if existing_review:
@@ -1115,7 +1114,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.commit()
         
-        # Recargamos el modal para mostrar la opinión nueva/actualizada
+        # --- ✨ CORRECCIÓN AQUÍ ---
+        # Se debe usar 'yield' al llamar a otro manejador de eventos.
         yield self.open_product_detail_modal(self.product_in_modal.id)
 
     @rx.event
