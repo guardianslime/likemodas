@@ -1114,7 +1114,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Recargamos el modal para mostrar la opinión nueva/actualizada
         yield self.open_product_detail_modal(self.product_in_modal.id)
 
-    # --- ✨ MANEJADOR `open_product_detail_modal` ACTUALIZADO ---
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         self.product_in_modal = None
@@ -1133,7 +1132,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 sqlmodel.select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .where(BlogPostModel.id == post_id)
-            ).one_or_none()
+            # --- ✨ CORRECCIÓN AQUÍ ---
+            # Se añade .unique() antes de .one_or_none() para evitar el error.
+            ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
                 # Usamos el método `from_orm` para asegurar que todos los datos se carguen
