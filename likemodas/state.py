@@ -1131,17 +1131,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
 
         with rx.session() as session:
-            # Usamos joinedload para cargar eficientemente los comentarios relacionados
+            # --- ✨ CORRECCIÓN AQUÍ ---
+            # Modificamos la consulta para que cargue todas las relaciones necesarias
+            # en un solo viaje a la base de datos.
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.userinfo)
+                    .joinedload(UserInfo.user)
+                )
                 .where(BlogPostModel.id == post_id)
-            # --- ✨ CORRECCIÓN AQUÍ ---
-            # Se añade .unique() antes de .one_or_none() para evitar el error.
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                # Usamos el método `from_orm` para asegurar que todos los datos se carguen
                 self.product_in_modal = ProductDetailData.from_orm(db_post)
 
                 self.product_comments = sorted(
