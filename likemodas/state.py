@@ -764,8 +764,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(notification)
                 session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
-                # ✨ CORRECCIÓN APLICADA AQUÍ ✨
-                yield self.load_pending_purchases()
+                
+                # Esta es la línea corregida
+                yield AppState.load_pending_purchases
             else:
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
 
