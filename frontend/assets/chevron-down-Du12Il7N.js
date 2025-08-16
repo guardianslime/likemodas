@@ -1,0 +1,1 @@
+import{b as e}from"./createLucideIcon-l7w0UkOx.js";const t=[[`path`,{d:`m6 9 6 6 6-6`,key:`qrunsl`}]],n=e(`chevron-down`,t);export{n as b};
