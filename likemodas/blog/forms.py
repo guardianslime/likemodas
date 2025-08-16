@@ -6,11 +6,15 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con etiquetas."""
+    """Formulario para añadir productos con la estética ajustada."""
     return rx.form(
+        # --- CAMBIO PRINCIPAL AQUÍ ---
+        # Se eliminó el borde, radio y padding del Vstack principal
+        # para que el formulario se integre con el fondo de la página.
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
+                # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -39,6 +43,7 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     align_items="start"
                 ),
+                # Columna Derecha: Campos de Texto
                 rx.vstack(
                     rx.vstack(
                         rx.text("Título del Producto", as_="div", size="2", weight="bold"),
@@ -64,12 +69,14 @@ def blog_post_add_form() -> rx.Component:
                 ),
                 grid_template_columns="1.2fr 1fr", spacing="6", width="100%"
             ),
+            # Fila del Botón
             rx.hstack(
                 rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                 spacing="4", width="100%", justify="end", margin_top="2em"
             ),
-            spacing="5", width="100%", max_width="960px", padding="2em",
-            border="1px solid #ededed", border_radius="md"
+            spacing="5", 
+            width="100%", 
+            max_width="960px", # Mantenemos un ancho máximo para pantallas grandes
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
