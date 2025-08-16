@@ -6,15 +6,12 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con las proporciones de la captura."""
+    """Formulario para añadir productos con las proporciones exactas de la captura."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
-            # --- ✅ CAMBIO CLAVE AQUÍ ---
-            # Se ajusta la cuadrícula para que las columnas no se estiren verticalmente
-            # y se define una proporción de ancho que favorece a la columna derecha.
             rx.grid(
-                # Columna Izquierda: Carga de Imágenes
+                # Columna Izquierda: Carga de Imágenes (con su altura natural)
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -61,21 +58,22 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     rx.vstack(
                         rx.text("Descripción", as_="div", size="2", weight="bold"),
-                        # ✅ Se define una altura fija y más grande para la descripción.
+                        # --- ✅ CAMBIO CLAVE: Altura fija y grande para la descripción ---
                         rx.text_area(
                             placeholder="Detalles del producto...",
                             name="content",
                             required=True,
                             size="2",
-                            style={"height": "250px"}, # Altura aumentada
+                            style={"height": "300px"}, # Se aumenta la altura considerablemente
                         ),
                         align_items="start", width="100%"
                     ),
                     spacing="4",
                 ),
-                # Se define la proporción de las columnas y se alinean arriba
-                grid_template_columns={"initial": "1fr", "md": "1fr 1.2fr"},
+                
+                # --- ✅ CAMBIO CLAVE: Se alinean las columnas arriba y se iguala su ancho ---
                 align_items="start",
+                grid_template_columns={"initial": "1fr", "md": "1fr 1fr"},
                 spacing="6",
                 width="100%",
             ),
