@@ -6,13 +6,18 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con el layout de dos columnas garantizado."""
+    """
+    Formulario para añadir productos con el layout de dos columnas
+    (Upload a la izquierda, campos a la derecha).
+    """
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
             
+            # La cuadrícula que define las dos columnas
             rx.grid(
-                # Columna Izquierda: Carga de Imágenes
+                # --- Columna Izquierda ---
+                # Contiene únicamente el área para subir imágenes.
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -42,7 +47,8 @@ def blog_post_add_form() -> rx.Component:
                     spacing="2",
                 ),
 
-                # Columna Derecha: Campos de Texto y Botón
+                # --- Columna Derecha ---
+                # Contiene todos los campos de texto y el botón al final.
                 rx.vstack(
                     rx.vstack(
                         rx.text("Título del Producto", as_="div", size="2", weight="bold"),
@@ -66,12 +72,10 @@ def blog_post_add_form() -> rx.Component:
                             name="content",
                             required=True,
                             size="2",
-                            style={"height": "300px"}, # Altura grande para que la columna sea alta
+                            style={"height": "300px"},
                         ),
                         align_items="start", width="100%"
                     ),
-                    
-                    # El botón se mantiene al final de esta columna
                     rx.hstack(
                         rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                         width="100%", 
@@ -81,17 +85,14 @@ def blog_post_add_form() -> rx.Component:
                     spacing="4",
                 ),
 
-                # --- ✅ CAMBIOS CLAVE PARA ASEGURAR EL LAYOUT ---
-                # 1. Se usa la sintaxis más explícita para crear 2 columnas de igual ancho.
-                #    En pantallas pequeñas, será 1 columna.
-                grid_template_columns={"initial": "1fr", "md": "repeat(2, 1fr)"},
-                # 2. Se alinean ambas columnas en la parte superior.
-                align_items="start",
+                # Propiedades de la cuadrícula
+                columns="2", # Se define que habrá 2 columnas
                 spacing="6",
                 width="100%",
+                align_items="start", # Se alinean ambas columnas en la parte superior
             ),
             spacing="5",
-            max_width="1024px", # Aumentamos un poco el ancho máximo para dar más espacio
+            max_width="1024px",
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
