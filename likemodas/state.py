@@ -215,6 +215,67 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+            
+    # --- NUEVO: Variables para las características del producto ---
+    attr_color: str = ""
+    attr_talla_ropa: str = ""
+    attr_material: str = ""
+    attr_numero_calzado: str = ""
+
+    # --- NUEVO: Event handlers para actualizar las características ---
+    def set_attr_color(self, value: str): self.attr_color = value
+    def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
+    def set_attr_material(self, value: str): self.attr_material = value
+    def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
+
+    def _clear_add_form(self):
+        self.title = ""
+        self.content = ""
+        self.price = ""
+        self.category = ""
+        self.temp_images = []
+        # --- NUEVO: Limpiar los atributos ---
+        self.attr_color = ""
+        self.attr_talla_ropa = ""
+        self.attr_material = ""
+        self.attr_numero_calzado = ""
+
+    @rx.event
+    def submit_and_publish(self, form_data: dict):
+        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
+            return rx.toast.error("Título, precio y categoría son obligatorios.")
+        
+        # --- NUEVO: Recopilar los atributos seleccionados ---
+        attributes = {}
+        category = form_data.get("category")
+        if category == Category.ROPA.value:
+            if self.attr_color: attributes["Color"] = self.attr_color
+            if self.attr_talla_ropa: attributes["Talla"] = self.attr_talla_ropa
+            if self.attr_material: attributes["Material"] = self.attr_material
+        elif category == Category.CALZADO.value:
+            if self.attr_color: attributes["Color"] = self.attr_color
+            if self.attr_numero_calzado: attributes["Número"] = self.attr_numero_calzado
+            if self.attr_material: attributes["Material"] = self.attr_material
+        
+        with rx.session() as session:
+            new_post = BlogPostModel(
+                userinfo_id=self.authenticated_user_info.id,
+                title=form_data["title"],
+                content=form_data.get("content", ""),
+                price=float(form_data.get("price", 0.0)),
+                category=category,
+                image_urls=self.temp_images,
+                attributes=attributes,  # Se guardan los atributos en el campo JSON
+                publish_active=True,
+                publish_date=datetime.now(timezone.utc),
+            )
+            session.add(new_post)
+            session.commit()
+            session.refresh(new_post)
+        self._clear_add_form()
+        yield rx.toast.success("Producto publicado.")
+        return rx.redirect("/blog")
 
     min_price: str = ""
     max_price: str = ""

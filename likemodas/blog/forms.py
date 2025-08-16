@@ -4,15 +4,31 @@ import reflex as rx
 from ..state import AppState
 from ..models import Category
 from ..ui.components import searchable_select
+# --- NUEVO: Importar las listas de opciones ---
+from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES, LISTA_NUMEROS_CALZADO
 
 def blog_post_add_form() -> rx.Component:
-    """
-    Formulario para añadir productos con campos anchos y alineados correctamente.
-    """
+    """Formulario para añadir productos con características dinámicas."""
+    
+    # --- NUEVO: Componente para las características de Ropa ---
+    caracteristicas_ropa = rx.grid(
+        rx.select(LISTA_COLORES, placeholder="Color...", size="2", on_change=AppState.set_attr_color),
+        rx.select(LISTA_TALLAS_ROPA, placeholder="Talla...", size="2", on_change=AppState.set_attr_talla_ropa),
+        rx.select(LISTA_MATERIALES, placeholder="Material...", size="2", on_change=AppState.set_attr_material),
+        columns="3", spacing="3", width="100%",
+    )
+
+    # --- NUEVO: Componente para las características de Calzado ---
+    caracteristicas_calzado = rx.grid(
+        rx.select(LISTA_COLORES, placeholder="Color...", size="2", on_change=AppState.set_attr_color),
+        rx.select(LISTA_NUMEROS_CALZADO, placeholder="Número...", size="2", on_change=AppState.set_attr_numero_calzado),
+        rx.select(LISTA_MATERIALES, placeholder="Material...", size="2", on_change=AppState.set_attr_material),
+        columns="3", spacing="3", width="100%",
+    )
+
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
-            
             rx.grid(
                 # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
@@ -43,19 +59,37 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     spacing="2",
                 ),
-
-                # --- ✅ CAMBIO CLAVE: Estructura de la columna derecha simplificada ---
-                # Columna Derecha: Campos de Texto y Botón
+                # Columna Derecha: Campos de Texto
                 rx.vstack(
-                    # Los elementos ahora son hijos directos del vstack de la columna
                     rx.text("Título del Producto", as_="div", size="2", weight="bold"),
                     rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
 
                     rx.text("Categoría", as_="div", size="2", weight="bold"),
-                    rx.select(AppState.categories, placeholder="Selecciona una categoría...", name="category", required=True, size="3"),
+                    # La categoría ahora usa on_change para actualizar la UI
+                    rx.select(
+                        AppState.categories,
+                        placeholder="Selecciona una categoría...",
+                        name="category",
+                        required=True,
+                        size="3",
+                        on_change=AppState.set_category, # Importante para la reactividad
+                    ),
 
                     rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
                     rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
+
+                    # --- NUEVO: Sección de Características Dinámicas ---
+                    rx.cond(
+                        AppState.category != "",
+                        rx.vstack(
+                            rx.text("Características del Producto", as_="div", size="2", weight="bold"),
+                            rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
+                            rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
+                            # Puedes añadir más condiciones para otras categorías aquí
+                            align_items="stretch",
+                            width="100%",
+                        )
+                    ),
 
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(
@@ -63,22 +97,17 @@ def blog_post_add_form() -> rx.Component:
                         name="content",
                         required=True,
                         size="2",
-                        style={"height": "300px"},
+                        style={"height": "150px"}, # Altura ajustada
                     ),
-                    
-                    # El botón se mantiene al final
                     rx.hstack(
                         rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                         width="100%", 
                         justify="end",
                     ),
-                    
-                    spacing="3", # Espaciado ajustado para la nueva estructura
-                    align_items="stretch", # ESTA ES LA PROPIEDAD CLAVE que ahora funcionará
+                    spacing="3",
+                    align_items="stretch",
                     width="100%",
                 ),
-
-                # Propiedades de la cuadrícula
                 columns="2",
                 spacing="6",
                 width="100%",
