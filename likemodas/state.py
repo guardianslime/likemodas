@@ -1114,8 +1114,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.commit()
         
-        # --- ✨ CORRECCIÓN AQUÍ ---
-        # Se debe usar 'yield' al llamar a otro manejador de eventos.
+        # --- ✨ CORRECCIÓN AQUÍ (DE NUEVO) ---
+        # Esta es la línea que causa el error. Debe tener 'yield'.
         yield self.open_product_detail_modal(self.product_in_modal.id)
 
     @rx.event
