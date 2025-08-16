@@ -6,11 +6,8 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con la estética ajustada."""
+    """Formulario para añadir productos con la estética y centrado corregidos."""
     return rx.form(
-        # --- CAMBIO PRINCIPAL AQUÍ ---
-        # Se eliminó el borde, radio y padding del Vstack principal
-        # para que el formulario se integre con el fondo de la página.
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
@@ -74,9 +71,10 @@ def blog_post_add_form() -> rx.Component:
                 rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                 spacing="4", width="100%", justify="end", margin_top="2em"
             ),
-            spacing="5", 
-            width="100%", 
-            max_width="960px", # Mantenemos un ancho máximo para pantallas grandes
+            spacing="5",
+            # --- ✅ CAMBIO CLAVE AQUÍ ---
+            # Se eliminó 'width="100%"' para permitir que el componente se centre.
+            max_width="960px",
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
