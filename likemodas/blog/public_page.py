@@ -36,13 +36,16 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.spacer(),
             
-            # ✨ NUEVO GRUPO DE BOTONES ✨
+            # Grupo de botones
             rx.hstack(
                 rx.button(
                     "Añadir al Carrito",
                     on_click=AppState.add_to_cart(AppState.product_in_modal.id),
                     size="3",
-                    width="100%",
+                    # --- ✨ CAMBIO CLAVE AQUÍ ---
+                    # Se reemplaza width="100%" por flex_grow="1" para que
+                    # ocupe el espacio disponible sin empujar a los otros elementos.
+                    flex_grow="1",
                 ),
                 rx.icon_button(
                     rx.icon(tag="share-2"),
@@ -66,8 +69,6 @@ def product_detail_modal() -> rx.Component:
     
     return rx.dialog.root(
         rx.dialog.content(
-            # --- CORRECCIÓN DEFINITIVA AQUÍ ---
-            # Los componentes hijos van primero
             rx.dialog.close(
                 rx.icon_button(
                     rx.icon("x"), 
@@ -88,7 +89,6 @@ def product_detail_modal() -> rx.Component:
                 ),
                 skeleton_product_detail_view(),
             ),
-            # El argumento de palabra clave `style` va al final
             style={"max_width": "1200px", "min_height": "600px"},
         ),
         open=AppState.show_detail_modal,
