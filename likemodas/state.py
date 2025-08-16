@@ -764,13 +764,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(notification)
                 session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
-                
-                # --- ✨ CORRECCIÓN 2 AQUÍ ---
-                # Se debe usar 'yield' al llamar a otro manejador de eventos.
+                # ✨ CORRECCIÓN APLICADA AQUÍ ✨
                 yield self.load_pending_purchases()
             else:
-                yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
-
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
 
     search_query_admin_history: str = ""
@@ -1084,7 +1080,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def submit_review(self, form_data: dict):
-        """Manejador para crear o actualizar una opinión."""
         if not self.is_authenticated or not self.product_in_modal:
             return rx.toast.error("Debes iniciar sesión para opinar.")
         if self.review_rating == 0:
@@ -1096,13 +1091,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             existing_review = session.get(CommentModel, self.my_review_for_product.id) if self.my_review_for_product else None
 
             if existing_review:
-                # --- Actualizar opinión existente ---
                 existing_review.rating = self.review_rating
                 existing_review.content = content
                 session.add(existing_review)
                 yield rx.toast.success("¡Opinión actualizada!")
             else:
-                # --- Crear nueva opinión ---
                 new_review = CommentModel(
                     userinfo_id=self.authenticated_user_info.id,
                     blog_post_id=self.product_in_modal.id,
@@ -1114,8 +1107,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.commit()
         
-        # --- ✨ LA LÍNEA CRÍTICA Y CORRECTA ---
-        # Asegúrate de que esta sea la última línea y tenga 'yield'.
+        # ✨ CORRECCIÓN APLICADA AQUÍ ✨
         yield self.open_product_detail_modal(self.product_in_modal.id)
 
     @rx.event
