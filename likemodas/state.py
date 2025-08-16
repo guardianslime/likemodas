@@ -53,7 +53,7 @@ class ProductCardData(rx.Base):
     def price_cop(self) -> str:
         return format_to_cop(self.price)
 
-# ✨ NUEVO DTO para el Modal de Detalles del Producto
+# ✨ DTO CORREGIDO para el Modal de Detalles del Producto
 class ProductDetailData(rx.Base):
     id: int
     title: str
@@ -61,6 +61,9 @@ class ProductDetailData(rx.Base):
     price_cop: str
     image_urls: list[str] = []
     created_at_formatted: str
+    # --- AÑADIMOS LOS CAMPOS FALTANTES ---
+    average_rating: float = 0.0
+    rating_count: int = 0
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
@@ -1111,14 +1114,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Recargamos el modal para mostrar la opinión nueva/actualizada
         yield self.open_product_detail_modal(self.product_in_modal.id)
 
-    # --- ✨ ACTUALIZA EL MANEJADOR `open_product_detail_modal` ---
+    # --- ✨ MANEJADOR `open_product_detail_modal` ACTUALIZADO ---
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0
         
-        # Limpiamos el estado de opiniones anteriores
         self.product_comments = []
         self.my_review_for_product = None
         self.review_rating = 0
@@ -1126,30 +1128,32 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
 
         with rx.session() as session:
-            db_post = session.get(BlogPostModel, post_id)
+            # Usamos joinedload para cargar eficientemente los comentarios relacionados
+            db_post = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .where(BlogPostModel.id == post_id)
+            ).one_or_none()
+
             if db_post and db_post.publish_active:
+                # Usamos el método `from_orm` para asegurar que todos los datos se carguen
                 self.product_in_modal = ProductDetailData.from_orm(db_post)
 
-                # --- Cargamos los comentarios para este producto ---
-                self.product_comments = session.exec(
-                    sqlmodel.select(CommentModel)
-                    .where(CommentModel.blog_post_id == post_id)
-                    .order_by(CommentModel.created_at.desc())
-                ).all()
+                self.product_comments = sorted(
+                    db_post.comments, 
+                    key=lambda c: c.created_at, 
+                    reverse=True
+                )
 
-                # --- Verificamos si el usuario actual ya ha dejado una opinión ---
                 if self.is_authenticated:
-                    my_review = session.exec(
-                        sqlmodel.select(CommentModel).where(
-                            CommentModel.blog_post_id == post_id,
-                            CommentModel.userinfo_id == self.authenticated_user_info.id
-                        )
-                    ).first()
+                    my_review = next(
+                        (c for c in db_post.comments if c.userinfo_id == self.authenticated_user_info.id),
+                        None,
+                    )
                     if my_review:
                         self.my_review_for_product = my_review
                         self.review_rating = my_review.rating
                         self.review_content = my_review.content
-
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
