@@ -1078,8 +1078,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Actualiza la valoración en el estado del formulario."""
         self.review_rating = rating
 
+    # ✅ ASEGÚRATE DE QUE LA FUNCIÓN ESTÉ INDENTADA A ESTE NIVEL
     @rx.event
     def submit_review(self, form_data: dict):
+        # Y QUE TODO SU CONTENIDO TAMBIÉN ESTÉ INDENTADO
         if not self.is_authenticated or not self.product_in_modal:
             return rx.toast.error("Debes iniciar sesión para opinar.")
         if self.review_rating == 0:
@@ -1107,8 +1109,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.commit()
     
-    # Esta es la línea corregida
-    yield AppState.open_product_detail_modal(self.product_in_modal.id)
+        yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
