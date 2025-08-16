@@ -6,12 +6,10 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con el diseño de dos columnas corregido."""
+    """Formulario para añadir productos con campos de texto estirados y alineados."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
-            
-            # --- ✅ ESTRUCTURA DE DOS COLUMNAS CORREGIDA ---
             rx.grid(
                 # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
@@ -40,10 +38,9 @@ def blog_post_add_form() -> rx.Component:
                             columns="4", spacing="2", margin_top="1em"
                         )
                     ),
-                    spacing="2",
                 ),
 
-                # Columna Derecha: Campos de Texto
+                # Columna Derecha: Campos de Texto Y BOTÓN
                 rx.vstack(
                     rx.vstack(
                         rx.text("Título del Producto", as_="div", size="2", weight="bold"),
@@ -71,22 +68,25 @@ def blog_post_add_form() -> rx.Component:
                         ),
                         align_items="start", width="100%"
                     ),
+                    
+                    # --- ✅ CAMBIO CLAVE: El botón ahora está DENTRO de la columna derecha ---
+                    rx.hstack(
+                        rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
+                        width="100%", 
+                        justify="end", 
+                        margin_top="1em" # Se ajusta el margen superior
+                    ),
                     spacing="4",
                 ),
 
-                # --- Propiedades clave para el layout de 2 columnas ---
-                columns="2",  # Define que siempre habrá 2 columnas
+                align_items="start",
+                grid_template_columns={"initial": "1fr", "md": "1fr 1fr"},
                 spacing="6",
                 width="100%",
-                align_items="start", # Alinea ambas columnas en la parte superior
             ),
             
-            rx.hstack(
-                rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
-                width="100%", 
-                justify="end", 
-                margin_top="2em"
-            ),
+            # El Hstack del botón se ha movido de aquí hacia arriba
+            
             spacing="5",
             max_width="960px",
         ),
