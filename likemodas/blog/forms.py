@@ -7,17 +7,14 @@ from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
     """
-    Formulario para añadir productos con el layout de dos columnas
-    (Upload a la izquierda, campos a la derecha).
+    Formulario para añadir productos con campos de texto anchos y alineados.
     """
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
             
-            # La cuadrícula que define las dos columnas
             rx.grid(
-                # --- Columna Izquierda ---
-                # Contiene únicamente el área para subir imágenes.
+                # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -47,8 +44,7 @@ def blog_post_add_form() -> rx.Component:
                     spacing="2",
                 ),
 
-                # --- Columna Derecha ---
-                # Contiene todos los campos de texto y el botón al final.
+                # Columna Derecha: Campos de Texto y Botón
                 rx.vstack(
                     rx.vstack(
                         rx.text("Título del Producto", as_="div", size="2", weight="bold"),
@@ -83,13 +79,16 @@ def blog_post_add_form() -> rx.Component:
                         margin_top="1em"
                     ),
                     spacing="4",
+                    # --- ✅ CAMBIO CLAVE AQUÍ ---
+                    # Se añade 'align_items' para estirar todos los campos horizontalmente.
+                    align_items="stretch",
                 ),
 
                 # Propiedades de la cuadrícula
-                columns="2", # Se define que habrá 2 columnas
+                columns="2",
                 spacing="6",
                 width="100%",
-                align_items="start", # Se alinean ambas columnas en la parte superior
+                align_items="start",
             ),
             spacing="5",
             max_width="1024px",
