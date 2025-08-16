@@ -6,19 +6,20 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con la proporción y centrado definitivos."""
-    # --- ✅ CAMBIO CLAVE AQUÍ: Aplicamos el tamaño al formulario ---
+    """Formulario para añadir productos con campos estirados y proporcionales."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
+                # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
+                    # ✅ El área de upload ahora ocupa el 100% de la altura disponible
                     rx.upload(
                         rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes (máx 5)")),
                         id="blog_upload", multiple=True, max_files=5,
                         on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
-                        border="2px dashed #ccc", padding="2em", width="100%"
+                        border="2px dashed #ccc", padding="2em", width="100%", height="100%",
                     ),
                     rx.cond(
                         AppState.temp_images,
@@ -38,8 +39,10 @@ def blog_post_add_form() -> rx.Component:
                             columns="4", spacing="2", margin_top="1em"
                         )
                     ),
-                    align_items="start"
+                    align_items="stretch", # Alinea el contenido para estirarse
+                    height="100%",
                 ),
+                # Columna Derecha: Campos de Texto
                 rx.vstack(
                     rx.vstack(
                         rx.text("Título del Producto", as_="div", size="2", weight="bold"),
@@ -56,29 +59,41 @@ def blog_post_add_form() -> rx.Component:
                         rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
                         align_items="start", width="100%"
                     ),
+                    # ✅ El contenedor de la descripción ahora es flexible para crecer
                     rx.vstack(
                         rx.text("Descripción", as_="div", size="2", weight="bold"),
-                        rx.text_area(placeholder="Detalles del producto...", name="content", required=True, size="2", style={"height": "160px"}),
-                        align_items="start", width="100%"
+                        # ✅ El campo de texto ahora ocupa el 100% de su contenedor flexible
+                        rx.text_area(
+                            placeholder="Detalles del producto...", 
+                            name="content", 
+                            required=True, 
+                            size="2", 
+                            width="100%",
+                            height="100%",
+                        ),
+                        align_items="stretch", width="100%", flex_grow="1",
                     ),
-                    spacing="4", align_items="stretch"
+                    spacing="4", align_items="stretch", height="100%",
                 ),
+                # --- ✅ CAMBIO CLAVE: Forzamos a que las columnas tengan la misma altura ---
+                align_items="stretch",
                 columns={"initial": "1", "md": "2"},
                 spacing="6",
-                width="100%"
+                width="100%",
             ),
             rx.hstack(
                 rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                 spacing="4", width="100%", justify="end", margin_top="2em"
             ),
             spacing="5",
+            max_width="960px",
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
-        # --- ✅ Y AQUÍ ---
         width="100%",
-        max_width="960px", # Le damos un ancho máximo para que no se estire demasiado
+        max_width="960px",
     )
+
 
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar una publicación."""
