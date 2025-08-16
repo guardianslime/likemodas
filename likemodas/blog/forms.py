@@ -6,12 +6,12 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con diseño responsivo y centrado."""
+    """Formulario para añadir productos con la proporción y centrado definitivos."""
+    # --- ✅ CAMBIO CLAVE AQUÍ: Aplicamos el tamaño al formulario ---
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1em"),
             rx.grid(
-                # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -40,7 +40,6 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     align_items="start"
                 ),
-                # Columna Derecha: Campos de Texto
                 rx.vstack(
                     rx.vstack(
                         rx.text("Título del Producto", as_="div", size="2", weight="bold"),
@@ -64,22 +63,21 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     spacing="4", align_items="stretch"
                 ),
-                # --- ✅ CAMBIO CLAVE PARA EL DISEÑO RESPONSIVO ---
-                # El formulario ahora será de 1 columna en pantallas pequeñas y 2 en medianas/grandes.
                 columns={"initial": "1", "md": "2"},
                 spacing="6",
                 width="100%"
             ),
-            # Fila del Botón
             rx.hstack(
                 rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                 spacing="4", width="100%", justify="end", margin_top="2em"
             ),
             spacing="5",
-            max_width="960px",
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
+        # --- ✅ Y AQUÍ ---
+        width="100%",
+        max_width="960px", # Le damos un ancho máximo para que no se estire demasiado
     )
 
 def blog_post_edit_form() -> rx.Component:
