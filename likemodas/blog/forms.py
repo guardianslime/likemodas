@@ -6,10 +6,11 @@ from ..models import Category
 from ..ui.components import searchable_select
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con campos de texto estirados y alineados."""
+    """Formulario para añadir productos con el layout de dos columnas garantizado."""
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
+            
             rx.grid(
                 # Columna Izquierda: Carga de Imágenes
                 rx.vstack(
@@ -38,9 +39,10 @@ def blog_post_add_form() -> rx.Component:
                             columns="4", spacing="2", margin_top="1em"
                         )
                     ),
+                    spacing="2",
                 ),
 
-                # Columna Derecha: Campos de Texto Y BOTÓN
+                # Columna Derecha: Campos de Texto y Botón
                 rx.vstack(
                     rx.vstack(
                         rx.text("Título del Producto", as_="div", size="2", weight="bold"),
@@ -64,36 +66,37 @@ def blog_post_add_form() -> rx.Component:
                             name="content",
                             required=True,
                             size="2",
-                            style={"height": "250px"},
+                            style={"height": "300px"}, # Altura grande para que la columna sea alta
                         ),
                         align_items="start", width="100%"
                     ),
                     
-                    # --- ✅ CAMBIO CLAVE: El botón ahora está DENTRO de la columna derecha ---
+                    # El botón se mantiene al final de esta columna
                     rx.hstack(
                         rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
                         width="100%", 
                         justify="end", 
-                        margin_top="1em" # Se ajusta el margen superior
+                        margin_top="1em"
                     ),
                     spacing="4",
                 ),
 
+                # --- ✅ CAMBIOS CLAVE PARA ASEGURAR EL LAYOUT ---
+                # 1. Se usa la sintaxis más explícita para crear 2 columnas de igual ancho.
+                #    En pantallas pequeñas, será 1 columna.
+                grid_template_columns={"initial": "1fr", "md": "repeat(2, 1fr)"},
+                # 2. Se alinean ambas columnas en la parte superior.
                 align_items="start",
-                grid_template_columns={"initial": "1fr", "md": "1fr 1fr"},
                 spacing="6",
                 width="100%",
             ),
-            
-            # El Hstack del botón se ha movido de aquí hacia arriba
-            
             spacing="5",
-            max_width="960px",
+            max_width="1024px", # Aumentamos un poco el ancho máximo para dar más espacio
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
         width="100%",
-        max_width="960px",
+        max_width="1024px",
     )
 
 
