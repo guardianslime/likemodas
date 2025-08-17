@@ -36,6 +36,17 @@ def floating_filter_panel() -> rx.Component:
             on_change_search=AppState.set_search_talla,
             filter_name="ropa_talla_filter",
         ),
+        multi_select_component(
+            placeholder="Añadir tela...", 
+            options=AppState.filtered_materiales,
+            selected_items=AppState.filter_materiales_tela, 
+            add_handler=AppState.add_filter_value,
+            remove_handler=AppState.remove_filter_value, 
+            prop_name="filter_materiales_tela",
+            search_value=AppState.search_material_tela, 
+            on_change_search=AppState.set_search_material_tela,
+            filter_name="ropa_material_filter",
+        ),
         spacing="2", 
         align_items="start", 
         width="100%"
@@ -66,6 +77,17 @@ def floating_filter_panel() -> rx.Component:
             on_change_search=AppState.set_search_numero_calzado,
             filter_name="calzado_numero_filter",
         ),
+        multi_select_component(
+            placeholder="Añadir material...", 
+            options=AppState.filtered_materiales,
+            selected_items=AppState.filter_materiales_tela, 
+            add_handler=AppState.add_filter_value,
+            remove_handler=AppState.remove_filter_value, 
+            prop_name="filter_materiales_tela",
+            search_value=AppState.search_material_tela, 
+            on_change_search=AppState.set_search_material_tela,
+            filter_name="calzado_material_filter",
+        ),
         spacing="2", 
         align_items="start", 
         width="100%"
@@ -84,6 +106,18 @@ def floating_filter_panel() -> rx.Component:
             search_value=AppState.search_tipo_mochila, 
             on_change_search=AppState.set_search_tipo_mochila,
             filter_name="mochila_tipo_filter",
+        ),
+        # Puedes añadir un filtro de tamaño para mochilas si lo necesitas
+        multi_select_component(
+            placeholder="Añadir material...", 
+            options=AppState.filtered_materiales,
+            selected_items=AppState.filter_materiales_tela, 
+            add_handler=AppState.add_filter_value,
+            remove_handler=AppState.remove_filter_value, 
+            prop_name="filter_materiales_tela",
+            search_value=AppState.search_material_tela, 
+            on_change_search=AppState.set_search_material_tela,
+            filter_name="mochila_material_filter",
         ),
         spacing="2", 
         align_items="start", 
@@ -115,6 +149,18 @@ def floating_filter_panel() -> rx.Component:
             on_change_search=AppState.set_search_material_tela,
             filter_name="general_material_filter",
         ),
+        # --- ✨ AQUÍ ESTÁ EL FILTRO GENERAL QUE FALTABA ---
+        multi_select_component(
+            placeholder="Añadir talla/medida...",
+            options=AppState.filtered_medidas_general,
+            selected_items=AppState.filter_tallas,
+            add_handler=AppState.add_filter_value,
+            remove_handler=AppState.remove_filter_value,
+            prop_name="filter_tallas",
+            search_value=AppState.search_talla,
+            on_change_search=AppState.set_search_talla,
+            filter_name="general_talla_filter",
+        ),
         spacing="2", 
         align_items="stretch", 
         width="100%"
@@ -133,7 +179,7 @@ def floating_filter_panel() -> rx.Component:
                     justify="between", 
                     align_items="center", 
                     width="100%",
-                    flex_shrink=0, # Evita que el encabezado se encoja
+                    flex_shrink=0,
                 ),
                 rx.divider(),
                 
@@ -163,7 +209,7 @@ def floating_filter_panel() -> rx.Component:
                                     rx.cond(
                                         AppState.current_category == Category.MOCHILAS.value,
                                         filtros_mochilas,
-                                        rx.fragment() # No muestra nada para otras categorías
+                                        rx.fragment()
                                     )
                                 )
                             ),
@@ -171,14 +217,12 @@ def floating_filter_panel() -> rx.Component:
                             filtros_generales
                         ),
                         spacing="4",
-                        padding_right="1.5em", # Espacio para la barra de scroll
+                        padding_right="1.5em",
                         width="100%",
                     ),
                     type="auto", 
                     scrollbars="vertical",
                 ),
-
-                # Estilos del contenedor principal de la columna de filtros
                 spacing="4",
                 padding="1em",
                 height="100%",
@@ -197,7 +241,6 @@ def floating_filter_panel() -> rx.Component:
                 display="flex", 
                 align_items="center"
             ),
-            
             align_items="start", 
             spacing="0",
             height="100%",
