@@ -504,35 +504,34 @@ class AppState(reflex_local_auth.LocalAuthState):
     def on_load(self):
         """
         Carga los productos. Si hay un parámetro de categoría en la URL,
-        filtra los resultados para mostrar solo esa categoría.
+        actualiza el estado y filtra los resultados.
         """
         self.is_loading = True
         yield
 
-        # --- INICIO DE LA CORRECCIÓN ---
         category = None
-        full_url = self.router.url  # Obtiene la URL completa, ej: "https://.../?category=ropa"
+        full_url = self.router.url
 
         if full_url and "?" in full_url:
-            # Analiza la URL para extraer los parámetros de consulta
             parsed_url = urlparse(full_url)
             query_params = parse_qs(parsed_url.query)
             
-            # Extrae el valor de 'category'. parse_qs devuelve una lista.
             category_list = query_params.get("category")
             if category_list:
                 category = category_list[0]
-        # --- FIN DE LA CORRECCIÓN ---
+                
+        # --- ✨ LA LÍNEA CLAVE QUE FALTA ---
+        # Aquí actualizamos el estado con la categoría de la URL.
+        # Si no hay categoría, se establece como "todos".
+        self.current_category = category if category else "todos"
 
         with rx.session() as session:
-            # Construye la consulta base
             query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
             
-            # Si se encontró una categoría, añade el filtro a la consulta
-            if category and category in [c.value for c in Category]:
-                query = query.where(BlogPostModel.category == category)
+            # Ahora usamos la variable de estado para filtrar, asegurando consistencia.
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
             
-            # Ejecuta la consulta final
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
             self.posts = [ProductCardData.from_orm(p) for p in results]
         
