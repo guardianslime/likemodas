@@ -66,8 +66,9 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                     size="2"
                 ),
                 rx.alert_dialog.root(
-                    rx.alert_dialog.trigger(
-                        rx.button("Eliminar", color_scheme="red", variant="soft", size="2")
+                    rx.alert_dialog.action(
+                        # highlight-next-line
+                        rx.button("Sí, Eliminar", on_click=AppState.delete_post(post.id))
                     ),
                     rx.alert_dialog.content(
                         rx.alert_dialog.title("Confirmar Eliminación"),
