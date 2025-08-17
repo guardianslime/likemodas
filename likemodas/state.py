@@ -9,9 +9,7 @@ import secrets
 import bcrypt
 import re
 import asyncio
-# ✨ 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN AQUÍ ✨
 from reflex.config import get_config
-# ✨ 1. AÑADE ESTAS LÍNEAS AQUÍ ✨
 from urllib.parse import urlparse, parse_qs
 
 from . import navigation
@@ -30,11 +28,14 @@ from .data.product_options import (
 )
 
 # --- DTOs (Data Transfer Objects) para la UI ---
+
+# highlight-start
+# 1. SE CORRIGE LA CLASE ProductCardData PARA ELIMINAR LA @property
 class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
-    price_cop: str = "" # <--- CAMBIO CLAVE AQUÍ
+    price_cop: str = "" 
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
@@ -42,10 +43,7 @@ class ProductCardData(rx.Base):
 
     class Config:
         orm_mode = True
-    
-    @property
-    def price_cop(self) -> str:
-        return format_to_cop(self.price)
+# highlight-end
     
 class ProductDetailData(rx.Base):
     id: int
@@ -57,7 +55,6 @@ class ProductDetailData(rx.Base):
     average_rating: float = 0.0
     rating_count: int = 0
 
-    # --- ✨ AÑADIMOS LA CONFIGURACIÓN REQUERIDA ---
     class Config:
         orm_mode = True
     
@@ -79,6 +76,7 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
+    # ... (Todo el código desde success: bool = False hasta antes de on_load_admin_store se mantiene igual) ...
     success: bool = False
     error_message: str = ""
     
@@ -217,7 +215,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             
-    # --- ✨ 2. AÑADE ESTAS DOS NUEVAS PROPIEDADES COMPUTADAS ---
+    # ... (Todo el código desde @rx.var def material_label hasta unban_user se mantiene igual) ...
     @rx.var
     def material_label(self) -> str:
         """Devuelve la etiqueta correcta ('Tela' o 'Material') para el formulario."""
@@ -234,38 +232,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             return MATERIALES_CALZADO
         if self.category == Category.MOCHILAS.value:
             return MATERIALES_MOCHILAS
-        return [] # Devuelve una lista vacía si no hay categoría
+        return []
             
-    # --- NUEVO: Variables para las características del producto ---
-    # --- ✅ 1. MODIFICAR ATRIBUTOS DEL FORMULARIO DE 'str' a 'list[str]' ---
-    # ANTES: attr_talla_ropa: str = ""
     attr_tallas_ropa: list[str] = []
-    # ANTES: attr_numero_calzado: str = ""
     attr_numeros_calzado: list[str] = []
-    # ANTES: attr_tamano_mochila: str = ""
     attr_tamanos_mochila: list[str] = []
-    # Mantenemos el color y material como selección única en el formulario de creación para simplicidad
     attr_color: str = ""
     attr_material: str = ""
 
-    # --- NUEVO: Event handlers para actualizar las características ---
     def set_attr_color(self, value: str): self.attr_color = value
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
     def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
-
-    def _clear_add_form(self):
-        self.title = ""
-        self.content = ""
-        self.price = ""
-        self.category = ""
-        self.temp_images = []
-        # --- NUEVO: Limpiar los atributos ---
-        self.attr_color = ""
-        self.attr_talla_ropa = ""
-        self.attr_material = ""
-        self.attr_numero_calzado = ""
-        self.attr_tamano_mochila = ""
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
@@ -273,7 +251,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
         
-        # --- NUEVO: Recopilar los atributos seleccionados ---
         attributes = {}
         category = form_data.get("category")
         if category == Category.ROPA.value:
@@ -299,7 +276,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 category=category,
                 image_urls=self.temp_images,
-                attributes=attributes,  # Se guardan los atributos en el campo JSON
+                attributes=attributes,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
             )
@@ -312,20 +289,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
-        """
-        Una propiedad computada que devuelve la lista de productos
-        filtrada según las selecciones del panel.
-        """
-        # Empezamos con todos los productos de la categoría actual
         posts_to_filter = self.posts
-
-        # 1. Filtrar por precio
         if self.min_price:
             try:
                 min_p = float(self.min_price)
                 posts_to_filter = [p for p in posts_to_filter if p.price >= min_p]
             except ValueError:
-                pass # Ignorar si el valor no es un número
+                pass
         if self.max_price:
             try:
                 max_p = float(self.max_price)
@@ -333,14 +303,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             except ValueError:
                 pass
 
-        # 2. Filtrar por color (selección múltiple)
         if self.filter_colors:
             posts_to_filter = [
                 p for p in posts_to_filter 
                 if p.attributes.get("Color") in self.filter_colors
             ]
             
-        # 3. Filtrar por material/tela (selección múltiple)
         if self.filter_materiales_tela:
             posts_to_filter = [
                 p for p in posts_to_filter 
@@ -348,34 +316,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                    (p.attributes.get("Tela") in self.filter_materiales_tela)
             ]
 
-        # 4. Filtrar por talla/medida (selección múltiple y complejo)
         if self.filter_tallas:
             posts_to_filter = [
                 p for p in posts_to_filter
-                # El 'any' comprueba si CUALQUIERA de las tallas del producto
-                # está en la lista de tallas que el usuario seleccionó.
                 if any(
                     size in self.filter_tallas 
                     for size in p.attributes.get("Talla", [])
                 )
             ]
-
         return posts_to_filter
     
-    # --- NUEVO: Variables para la BÚSQUEDA en características ---
     search_attr_color: str = ""
     search_attr_talla_ropa: str = ""
     search_attr_material: str = ""
     search_attr_numero_calzado: str = ""
     search_attr_tamano_mochila: str = ""
 
-    # --- NUEVO: Event handlers para la BÚSQUEDA ---
     def set_search_attr_color(self, query: str): self.search_attr_color = query
     def set_search_attr_talla_ropa(self, query: str): self.search_attr_talla_ropa = query
     def set_search_attr_material(self, query: str): self.search_attr_material = query
     def set_search_attr_numero_calzado(self, query: str): self.search_attr_numero_calzado = query
     
-    # --- NUEVO: Listas filtradas para los buscadores ---
     @rx.var
     def filtered_attr_colores(self) -> list[str]:
         if not self.search_attr_color.strip(): return LISTA_COLORES
@@ -388,16 +349,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def filtered_attr_materiales(self) -> list[str]:
-        """
-        Filtra la lista de materiales DISPONIBLES según el texto de búsqueda.
-        """
-        # ANTES: if not self.search_attr_material.strip(): return LISTA_MATERIALES
-        # AHORA: Usa la nueva propiedad dinámica 'available_materials'
         if not self.search_attr_material.strip():
             return self.available_materials
-
-        # ANTES: return [o for o in LISTA_MATERIALES if self.search_attr_material.lower() in o.lower()]
-        # AHORA: También usa 'available_materials' como fuente
         return [
             o for o in self.available_materials 
             if self.search_attr_material.lower() in o.lower()
@@ -414,45 +367,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     show_filters: bool = False
     current_category: str = ""
     open_filter_name: str = ""
-    # ANTES: filter_color: str = ""
     filter_colors: list[str] = []
-    # ANTES: filter_talla: str = ""
     filter_tallas: list[str] = []
-    # ANTES: filter_tipo_prenda: str = ""
     filter_tipos_prenda: list[str] = []
-    # ... (Haz lo mismo para todos los filtros que quieres que sean múltiples)
     filter_tipos_zapato: list[str] = []
     filter_numeros_calzado: list[str] = []
     filter_tipos_mochila: list[str] = []
     filter_materiales_tela: list[str] = []
 
-    # --- ✅ 3. NUEVOS EVENT HANDLERS GENÉRICOS ---
     def add_attribute_value(self, attribute_name: str, value: str):
-        """Añade un valor a una lista de atributos en el formulario de creación."""
         current_list = getattr(self, attribute_name)
         if value not in current_list:
             current_list.append(value)
             setattr(self, attribute_name, current_list)
 
     def remove_attribute_value(self, attribute_name: str, value: str):
-        """Elimina un valor de una lista de atributos en el formulario."""
         current_list = getattr(self, attribute_name)
         if value in current_list:
             current_list.remove(value)
             setattr(self, attribute_name, current_list)
 
     def add_filter_value(self, filter_name: str, value: str):
-        """Añade un valor a una lista de filtros, con un límite de 5."""
         current_list = getattr(self, filter_name)
         if value not in current_list:
             if len(current_list) >= 5:
-                # Notifica al usuario que no puede agregar más.
                 return rx.toast.info("Puedes seleccionar un máximo de 5 filtros por característica.")
             current_list.append(value)
             setattr(self, filter_name, current_list)
 
     def remove_filter_value(self, filter_name: str, value: str):
-        """Elimina un valor de una lista de filtros."""
         current_list = getattr(self, filter_name)
         if value in current_list:
             current_list.remove(value)
@@ -462,31 +405,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     def clear_all_filters(self):
         self.min_price = ""
         self.max_price = ""
-        self.filter_color = ""
-        self.filter_talla = ""
-        self.filter_tipo_prenda = ""
-        self.filter_tipo_zapato = ""
-        self.filter_tipo_mochila = ""
-        self.filter_tipo_general = ""
-        self.filter_material_tela = ""
-        self.filter_medida_talla = ""
+        self.filter_colors = []
+        self.filter_tallas = []
+        self.filter_tipos_prenda = []
+        self.filter_tipos_zapato = []
+        self.filter_numeros_calzado = []
+        self.filter_tipos_mochila = []
+        self.filter_materiales_tela = []
 
     def toggle_filter_dropdown(self, name: str): self.open_filter_name = "" if self.open_filter_name == name else name
-    def clear_filter(self, filter_name: str): setattr(self, filter_name, "")
     def set_min_price(self, price: str): self.min_price = price
     def set_max_price(self, price: str): self.max_price = price
-    def set_filter_color(self, color: str): self.filter_color = color
-    def set_filter_talla(self, talla: str): self.filter_talla = talla
-    def set_filter_tipo_prenda(self, prenda: str): self.filter_tipo_prenda = prenda
-    def set_filter_tipo_zapato(self, zapato: str): self.filter_tipo_zapato = zapato
-    def set_filter_numero_calzado(self, numero: str): self.filter_numero_calzado = numero
-    def set_filter_tipo_mochila(self, mochila: str): self.filter_tipo_mochila = mochila
-    def set_filter_tipo_general(self, general: str): self.filter_tipo_general = general
-    def set_filter_material_tela(self, material: str): self.filter_material_tela = material
-    def set_filter_medida_talla(self, medida: str): self.filter_medida_talla = medida
     def set_attr_tamano_mochila(self, value: str): self.attr_tamano_mochila = value
     def set_search_attr_tamano_mochila(self, query: str): self.search_attr_tamano_mochila = query
-
 
     search_tipo_prenda: str = ""
     search_tipo_zapato: str = ""
@@ -548,50 +479,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     def filtered_attr_tamanos_mochila(self) -> list[str]:
         if not self.search_attr_tamano_mochila.strip(): return LISTA_TAMANOS_MOCHILAS
         return [o for o in LISTA_TAMANOS_MOCHILAS if self.search_attr_tamano_mochila.lower() in o.lower()]
-    
 
     posts: list[ProductCardData] = []
     is_loading: bool = True
-
-    @rx.event
-    def on_load(self):
-        """
-        Carga los productos. Si hay un parámetro de categoría en la URL,
-        actualiza el estado y filtra los resultados.
-        """
-        self.is_loading = True
-        yield
-
-        category = None
-        full_url = self.router.url
-
-        if full_url and "?" in full_url:
-            parsed_url = urlparse(full_url)
-            query_params = parse_qs(parsed_url.query)
-            
-            category_list = query_params.get("category")
-            if category_list:
-                category = category_list[0]
-                
-        # --- ✨ LA LÍNEA CLAVE QUE FALTA ---
-        # Aquí actualizamos el estado con la categoría de la URL.
-        # Si no hay categoría, se establece como "todos".
-        self.current_category = category if category else "todos"
-
-        with rx.session() as session:
-            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
-            
-            # Ahora usamos la variable de estado para filtrar, asegurando consistencia.
-            if self.current_category and self.current_category != "todos":
-                query = query.where(BlogPostModel.category == self.current_category)
-            
-            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-            self.posts = [ProductCardData.from_orm(p) for p in results]
-        
-        self.is_loading = False
     
     show_detail_modal: bool = False
-    # ✨ CORRECCIÓN CRÍTICA: La variable del modal ahora usa el DTO, no el modelo ORM.
     product_in_modal: Optional[ProductDetailData] = None
     current_image_index: int = 0
     is_editing_post: bool = False
@@ -600,7 +492,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     post_content: str = ""
     price_str: str = ""
 
-    # ✨ NUEVAS VARIABLE PARA GESTIONAR IMÁGENES EN EDICIÓN
     post_images_in_form: list[str] = []
 
     @rx.var
@@ -634,7 +525,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.post_title = db_post.title
                 self.post_content = db_post.content
                 self.price_str = str(db_post.price or 0.0)
-                # ✨ CARGAMOS LAS IMÁGENES EXISTENTES EN NUESTRA ÚNICA LISTA
                 self.post_images_in_form = db_post.image_urls.copy() if db_post.image_urls else []
                 self.is_editing_post = True
             else:
@@ -648,7 +538,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.post_title = ""
             self.post_content = ""
             self.price_str = ""
-            # ✨ LIMPIAMOS LA LISTA ÚNICA
             self.post_images_in_form = []
 
     @rx.event
@@ -667,23 +556,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 except (ValueError, TypeError):
                     return rx.toast.error("El precio debe ser un número válido.")
 
-                # ✨ LÓGICA SIMPLIFICADA: Guardamos el estado actual de la lista de imágenes
                 post_to_update.image_urls = self.post_images_in_form
                 
                 session.add(post_to_update)
                 session.commit()
                 yield self.cancel_editing_post(False)
-                # Recargamos ambas vistas de admin para que los cambios se vean en todos lados
                 yield self.load_all_my_posts()
                 yield self.on_load_admin_store()
                 yield rx.toast.success("Publicación actualizada correctamente.")
 
-    # --- Lógica de subida de imágenes (CORREGIDA CON MANEJADORES SEPARADOS) ---
-    temp_images: list[str] = [] # Para el formulario de 'añadir'
+    temp_images: list[str] = []
 
     @rx.event
     async def handle_add_upload(self, files: list[rx.UploadFile]):
-        """Manejador de subida solo para el formulario de AÑADIR publicación."""
         for file in files:
             upload_data = await file.read()
             unique_filename = f"{secrets.token_hex(8)}-{file.name}"
@@ -693,13 +578,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_temp_image(self, filename: str):
-        """Elimina una imagen de la lista temporal del formulario de AÑADIR."""
         if filename in self.temp_images:
             self.temp_images.remove(filename)
 
     @rx.event
     async def handle_edit_upload(self, files: list[rx.UploadFile]):
-        """Manejador de subida solo para el formulario de EDITAR publicación."""
         for file in files:
             upload_data = await file.read()
             unique_filename = f"{secrets.token_hex(8)}-{file.name}"
@@ -709,17 +592,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_edited_image(self, filename: str):
-        """Elimina una imagen de la lista del formulario de EDITAR."""
         if filename in self.post_images_in_form:
             self.post_images_in_form.remove(filename)
-
-
-    def _clear_add_form(self):
-        self.title = ""
-        self.content = ""
-        self.price = ""
-        self.category = ""
-        self.temp_images = []
 
     cart: Dict[int, int] = {}
     
@@ -760,7 +634,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     content: str = ""
     price: str = "" 
     category: str = ""
-    temp_images: list[str] = []
 
     @rx.var
     def categories(self) -> list[str]: return [c.value for c in Category]
@@ -769,123 +642,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_price_from_input(self, value: str): self.price = value
     def set_category(self, value: str): self.category = value
 
-    @rx.event
-    async def handle_upload(self, files: list[rx.UploadFile]):
-        uploaded_filenames = []
-        for file in files:
-            upload_data = await file.read()
-            outfile = rx.get_upload_dir() / file.name
-            outfile.write_bytes(upload_data)
-            uploaded_filenames.append(file.name)
-        self.temp_images.extend(uploaded_filenames)
-
-    @rx.event
-    def remove_image(self, filename: str): self.temp_images.remove(filename)
-    def _clear_add_form(self): self.title = ""; self.content = ""; self.price = ""; self.category = ""; self.temp_images = []
-
-    @rx.event
-    def submit_and_publish(self, form_data: dict):
-        """
-        Valida, recopila todos los atributos (incluyendo selecciones múltiples)
-        y guarda el nuevo producto en la base de datos.
-        """
-        if not self.is_admin:
-            return rx.toast.error("Acción no permitida.")
+    def _clear_add_form(self): 
+        self.title = ""
+        self.content = ""
+        self.price = ""
+        self.category = ""
+        self.temp_images = []
+        self.attr_color = ""
+        self.attr_tallas_ropa = []
+        self.attr_material = ""
+        self.attr_numeros_calzado = []
+        self.attr_tamanos_mochila = []
         
-        if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
-            return rx.toast.error("Título, precio y categoría son obligatorios.")
-        
-        # --- 1. Recopilación dinámica de atributos ---
-        # Inicializamos un diccionario vacío para guardar las características.
-        attributes = {}
-        category = form_data.get("category")
-
-        if category == Category.ROPA.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            # Comprobamos la lista de tallas. Si no está vacía, la guardamos.
-            if self.attr_tallas_ropa:
-                attributes["Talla"] = self.attr_tallas_ropa
-            if self.attr_material:
-                # Usamos la etiqueta "Tela" específicamente para la categoría Ropa.
-                attributes["Tela"] = self.attr_material
-
-        elif category == Category.CALZADO.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            # Comprobamos la lista de números. Si no está vacía, la guardamos.
-            if self.attr_numeros_calzado:
-                attributes["Número"] = self.attr_numeros_calzado
-            if self.attr_material:
-                attributes["Material"] = self.attr_material
-        
-        elif category == Category.MOCHILAS.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            # Comprobamos la lista de tamaños. Si no está vacía, la guardamos.
-            if self.attr_tamanos_mochila:
-                attributes["Tamaño"] = self.attr_tamanos_mochila
-            if self.attr_material:
-                attributes["Material"] = self.attr_material
-        
-        with rx.session() as session:
-            new_post = BlogPostModel(
-                userinfo_id=self.authenticated_user_info.id,
-                title=form_data["title"],
-                content=form_data.get("content", ""),
-                price=float(form_data.get("price", 0.0)),
-                category=category,
-                image_urls=self.temp_images,
-                
-                # --- 2. Guardar el diccionario de atributos en la BD ---
-                # El campo 'attributes' de tu modelo es de tipo JSON y puede
-                # guardar perfectamente nuestro diccionario.
-                attributes=attributes,
-                
-                publish_active=True,
-                publish_date=datetime.now(timezone.utc),
-            )
-            session.add(new_post)
-            session.commit()
-            session.refresh(new_post)
-            
-        # Limpiamos el formulario, incluyendo las nuevas listas de atributos.
-        self._clear_add_form()
-        yield rx.toast.success("Producto publicado exitosamente.")
-        return rx.redirect("/blog")
-        
-    @rx.var
-    def my_admin_posts(self) -> list[BlogPostModel]:
-        if not self.authenticated_user_info:
-            return []
-        with rx.session() as session:
-            return session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.userinfo_id == self.authenticated_user_info.id).order_by(BlogPostModel.created_at.desc())).all()
-
-    @rx.event
-    def delete_post(self, post_id: int):
-        if not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
-        with rx.session() as session:
-            post_to_delete = session.get(BlogPostModel, post_id)
-            if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
-                session.delete(post_to_delete)
-                session.commit()
-                yield rx.toast.success("Publicación eliminada.")
-            else:
-                yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
-
-    @rx.event
-    def toggle_publish_status(self, post_id: int):
-        if not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
-        with rx.session() as session:
-            post_to_update = session.get(BlogPostModel, post_id)
-            if post_to_update and post_to_update.userinfo_id == self.authenticated_user_info.id:
-                post_to_update.publish_active = not post_to_update.publish_active
-                session.add(post_to_update)
-                session.commit()
-                yield rx.toast.info(f"Estado de publicación cambiado.")
-                
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
     city: str = ""
@@ -934,8 +702,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/my-purchases")
 
     def toggle_form(self):
-        # --- ✨ CORRECCIÓN 1 AQUÍ ---
-        # Usamos 'not' para la negación lógica en lugar de '~' (que es bit a bit).
         self.show_form = not self.show_form
     def set_city(self, city: str): self.city = city; self.neighborhood = ""
     def set_neighborhood(self, hood: str): self.neighborhood = hood
@@ -1024,14 +790,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.search_term.strip(): return
         with rx.session() as session:
             results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.title.ilike(f"%{self.search_term.strip()}%"), BlogPostModel.publish_active == True)).all()
-            self.search_results = [ProductCardData.from_orm(p) for p in results]
+            
+            # CORRECCIÓN AQUÍ TAMBIÉN
+            posts_data = []
+            for p in results:
+                posts_data.append(
+                    ProductCardData(
+                        id=p.id, title=p.title, price=p.price, price_cop=format_to_cop(p.price),
+                        image_urls=p.image_urls, average_rating=p.average_rating,
+                        rating_count=p.rating_count, attributes=p.attributes
+                    )
+                )
+            self.search_results = posts_data
+
         return rx.redirect("/search-results")
         
     pending_purchases: List[AdminPurchaseCardData] = []
     confirmed_purchases: List[AdminPurchaseCardData] = []
     new_purchase_notification: bool = False
     all_users: List[UserInfo] = []
-    admin_store_posts: list[ProductCardData] = []
     show_admin_sidebar: bool = False
 
     def set_new_purchase_notification(self, value: bool):
@@ -1075,7 +852,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
                 
-                # Esta es la línea corregida
                 yield AppState.load_pending_purchases
             else:
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
@@ -1237,6 +1013,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             self.contact_entries = session.exec(sqlmodel.select(ContactEntryModel).order_by(ContactEntryModel.id.desc())).all()
     
+    all_users: List[UserInfo] = []
     @rx.event
     def load_all_users(self):
         if not self.is_admin:
@@ -1301,100 +1078,28 @@ class AppState(reflex_local_auth.LocalAuthState):
         return self.load_all_users()
     
     admin_store_posts: list[ProductCardData] = []
-
-    @rx.event
-    def on_load_admin_store(self):
-        if not self.is_admin:
-            return rx.redirect("/")
-
-        with rx.session() as session:
-            results = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                .order_by(BlogPostModel.created_at.desc())
-            ).unique().all()
-            
-            # --- ✨ LÓGICA CORREGIDA PARA PRE-FORMATEAR EL PRECIO ---
-            posts_data = []
-            for p in results:
-                posts_data.append(
-                    ProductCardData(
-                        id=p.id,
-                        title=p.title,
-                        price=p.price,
-                        price_cop=format_to_cop(p.price), # Se formatea el precio aquí
-                        image_urls=p.image_urls,
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count,
-                        attributes=p.attributes
-                    )
-                )
-            self.admin_store_posts = posts_data
-            # --- FIN DE LA LÓGICA CORREGIDA ---
+    
+    show_admin_sidebar: bool = False
 
     def toggle_admin_sidebar(self):
         self.show_admin_sidebar = not self.show_admin_sidebar
 
-    @rx.event
-    def on_load_main_page(self):
-        """
-        Carga los productos y, si hay un parámetro ?product=ID en la URL,
-        abre el modal correspondiente usando el método moderno.
-        """
-        if self.is_admin:
-            return rx.redirect("/admin/store")
+    # --- ✨ LÓGICA PARA OPINIONES Y VALORACIONES ---
+    product_comments: list[CommentModel] = []
+    my_review_for_product: Optional[CommentModel] = None
+    review_rating: int = 0
+    review_content: str = ""
 
-        # Inicia la carga de productos de la galería principal
-        self.is_loading = True
-        yield
-
-        category = self.router.query_params.get("category")
-        self.current_category = category if category else "todos"
-
-        with rx.session() as session:
-            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
-            
-            if self.current_category and self.current_category != "todos":
-                query = query.where(BlogPostModel.category == self.current_category)
-            
-            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-            
-            # --- ✨ LÓGICA CORREGIDA PARA PRE-FORMATEAR EL PRECIO ---
-            posts_data = []
-            for p in results:
-                posts_data.append(
-                    ProductCardData(
-                        id=p.id,
-                        title=p.title,
-                        price=p.price,
-                        price_cop=format_to_cop(p.price), # Se formatea el precio aquí
-                        image_urls=p.image_urls,
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count,
-                        attributes=p.attributes
-                    )
-                )
-            self.posts = posts_data
-            # --- FIN DE LA LÓGICA CORREGIDA ---
-
-        self.is_loading = False
-        yield
-
-        # Lógica para abrir el modal si viene un ID en la URL
-        product_id = self.router.query_params.get("product")
-        if product_id is not None:
-            yield AppState.open_product_detail_modal(int(product_id))
+    @rx.var
+    def is_editing_review(self) -> bool:
+        """Comprueba si el usuario está editando una opinión existente."""
+        return self.my_review_for_product is not None
 
     @rx.var
     def can_review_product(self) -> bool:
-        """
-        Determina si el usuario actual puede dejar una opinión.
-        Debe estar autenticado y haber comprado el producto.
-        """
         if not self.is_authenticated or not self.product_in_modal:
             return False
         with rx.session() as session:
-            # Comprueba si existe una compra confirmada por este usuario para este producto
             purchase_item = session.exec(
                 sqlmodel.select(PurchaseItemModel)
                 .join(PurchaseModel)
@@ -1407,13 +1112,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             return purchase_item is not None
 
     def set_review_rating(self, rating: int):
-        """Actualiza la valoración en el estado del formulario."""
         self.review_rating = rating
 
-    # ✅ ASEGÚRATE DE QUE LA FUNCIÓN ESTÉ INDENTADA A ESTE NIVEL
     @rx.event
     def submit_review(self, form_data: dict):
-        # Y QUE TODO SU CONTENIDO TAMBIÉN ESTÉ INDENTADO
         if not self.is_authenticated or not self.product_in_modal:
             return rx.toast.error("Debes iniciar sesión para opinar.")
         if self.review_rating == 0:
@@ -1456,9 +1158,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
 
         with rx.session() as session:
-            # --- ✨ CORRECCIÓN AQUÍ ---
-            # Modificamos la consulta para que cargue todas las relaciones necesarias
-            # en un solo viaje a la base de datos.
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
@@ -1491,22 +1190,76 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
 
-
-    # Este método también se simplifica
     @rx.event
     def close_product_detail_modal(self, open_state: bool):
         if not open_state:
             self.show_detail_modal = False
             self.product_in_modal = None
-            # ✨ ELIMINADO: Ya no necesitamos redirigir a "/", la URL base no cambia
     
-    # ✨ NUEVA PROPIEDAD COMPUTADA
     @rx.var
     def base_app_url(self) -> str:
-        """
-        Devuelve la URL PÚBLICA de la aplicación para construir enlaces.
-        Usa 'deploy_url' de la configuración.
-        """
-        # Usamos deploy_url para los enlaces que ven los usuarios,
-        # no api_url que es para la conexión interna.
         return get_config().deploy_url
+    
+    show_admin_sidebar: bool = False
+
+    def toggle_admin_sidebar(self):
+        self.show_admin_sidebar = not self.show_admin_sidebar
+
+    @rx.event
+    def on_load_main_page(self):
+        if self.is_admin:
+            return rx.redirect("/admin/store")
+        yield AppState.on_load
+        full_url = self.router.url
+        product_id = None
+        if full_url and "?" in full_url:
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+            product_id_list = query_params.get("product")
+            if product_id_list:
+                product_id = product_id_list[0]
+        if product_id is not None:
+            yield AppState.open_product_detail_modal(int(product_id))
+
+    @rx.event
+    def on_load_admin_store(self):
+        if not self.is_admin:
+            return rx.redirect("/")
+        with rx.session() as session:
+            results = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                .order_by(BlogPostModel.created_at.desc())
+            ).unique().all()
+            self.admin_store_posts = [
+                ProductCardData.from_orm(p) for p in results
+            ]
+    @rx.event
+    def on_load(self):
+        """
+        Carga los productos. Si hay un parámetro de categoría en la URL,
+        actualiza el estado y filtra los resultados.
+        """
+        self.is_loading = True
+        yield
+        category = None
+        full_url = self.router.url
+        if full_url and "?" in full_url:
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+            
+            category_list = query_params.get("category")
+            if category_list:
+                category = category_list[0]
+                
+        self.current_category = category if category else "todos"
+        with rx.session() as session:
+            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
+            
+            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+            self.posts = [ProductCardData.from_orm(p) for p in results]
+        
+        self.is_loading = False
