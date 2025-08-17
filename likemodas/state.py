@@ -25,7 +25,7 @@ from .utils.formatting import format_to_cop
 from .utils.validators import validate_password
 from .data.colombia_locations import load_colombia_data
 from .data.product_options import (
-    LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TAMANOS_MOCHILAS, LISTA_TIPOS_GENERAL,
+    MATERIALES_ROPA, MATERIALES_CALZADO, MATERIALES_MOCHILAS, LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TAMANOS_MOCHILAS, LISTA_TIPOS_GENERAL,
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
@@ -216,6 +216,25 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             
+    # --- ✨ 2. AÑADE ESTAS DOS NUEVAS PROPIEDADES COMPUTADAS ---
+    @rx.var
+    def material_label(self) -> str:
+        """Devuelve la etiqueta correcta ('Tela' o 'Material') para el formulario."""
+        if self.category == Category.ROPA.value:
+            return "Tela"
+        return "Material"
+
+    @rx.var
+    def available_materials(self) -> list[str]:
+        """Devuelve la lista de materiales correcta según la categoría seleccionada."""
+        if self.category == Category.ROPA.value:
+            return MATERIALES_ROPA
+        if self.category == Category.CALZADO.value:
+            return MATERIALES_CALZADO
+        if self.category == Category.MOCHILAS.value:
+            return MATERIALES_MOCHILAS
+        return [] # Devuelve una lista vacía si no hay categoría
+            
     # --- NUEVO: Variables para las características del producto ---
     attr_color: str = ""
     attr_talla_ropa: str = ""
@@ -311,8 +330,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def filtered_attr_materiales(self) -> list[str]:
-        if not self.search_attr_material.strip(): return LISTA_MATERIALES
-        return [o for o in LISTA_MATERIALES if self.search_attr_material.lower() in o.lower()]
+        """
+        Filtra la lista de materiales DISPONIBLES según el texto de búsqueda.
+        """
+        # ANTES: if not self.search_attr_material.strip(): return LISTA_MATERIALES
+        # AHORA: Usa la nueva propiedad dinámica 'available_materials'
+        if not self.search_attr_material.strip():
+            return self.available_materials
+
+        # ANTES: return [o for o in LISTA_MATERIALES if self.search_attr_material.lower() in o.lower()]
+        # AHORA: También usa 'available_materials' como fuente
+        return [
+            o for o in self.available_materials 
+            if self.search_attr_material.lower() in o.lower()
+        ]
 
     @rx.var
     def filtered_attr_numeros_calzado(self) -> list[str]:

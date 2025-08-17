@@ -1,5 +1,23 @@
 # likemodas/data/product_options.py
 
+MATERIALES_ROPA = sorted([
+    "Algodón", "Denim", "Gabardina", "Lana", "Licra", "Lino", 
+    "Pana", "Poliéster", "Seda", "Sintético", "Viscosa"
+])
+
+MATERIALES_CALZADO = sorted([
+    "Charol", "Cuero", "Cuero Sintético", "Gamuza", "Lona", "Malla", "Sintético"
+])
+
+MATERIALES_MOCHILAS = sorted([
+    "Cuero", "Cuero Sintético", "Lona", "Nylon", "Poliéster"
+])
+
+# Lista unificada para los filtros generales de la tienda pública
+LISTA_MATERIALES_GENERAL = sorted(list(set(
+    MATERIALES_ROPA + MATERIALES_CALZADO + MATERIALES_MOCHILAS
+)))
+
 # Listas de Tipos (existentes)
 LISTA_TIPOS_ROPA = [
     "Abrigo", "Blusa", "Body", "Buzo", "Camisa", "Camiseta", "Cárdigan", "Chaleco", 

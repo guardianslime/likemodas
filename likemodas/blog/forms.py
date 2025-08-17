@@ -13,6 +13,20 @@ from ..data.product_options import (
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     
+    # --- ✅ DEFINIMOS EL COMPONENTE DE MATERIAL/TELA UNA SOLA VEZ ---
+    # Este componente ahora es inteligente gracias a los cambios en AppState.
+    material_selector = searchable_select(
+        # Usa la etiqueta dinámica del estado.
+        placeholder=AppState.material_label + "...",
+        # Las opciones ya se actualizan solas gracias a la modificación del Paso 2.
+        options=AppState.filtered_attr_materiales,
+        on_change_select=AppState.set_attr_material, 
+        value_select=AppState.attr_material,
+        search_value=AppState.search_attr_material, 
+        on_change_search=AppState.set_search_attr_material,
+        filter_name="attr_material_filter",
+    )
+
     caracteristicas_ropa = rx.grid(
         searchable_select(
             placeholder="Color...", options=AppState.filtered_attr_colores,
@@ -33,6 +47,7 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
             filter_name="attr_material_filter",
         ),
+        material_selector,
         columns="3", spacing="3", width="100%",
     )
 
@@ -55,6 +70,7 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
             filter_name="attr_material_filter",
         ),
+        material_selector,
         columns="3", spacing="3", width="100%",
     )
 
@@ -78,6 +94,7 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
             filter_name="attr_material_filter",
         ),
+        material_selector,
         columns="3", spacing="3", width="100%",
     )
 
