@@ -110,15 +110,16 @@ def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
     selected_items: rx.Var[list[str]],
-    on_add: rx.event.EventSpec,
-    on_remove: rx.event.EventSpec,
+    # --- CAMBIO 1: Pedimos los handlers y el nombre de la propiedad por separado ---
+    add_handler: rx.event.EventHandler,
+    remove_handler: rx.event.EventHandler,
+    prop_name: str,
     search_value: rx.Var[str],
     on_change_search: rx.event.EventSpec,
     filter_name: str,
 ) -> rx.Component:
     """Un componente para seleccionar múltiples opciones con un buscador."""
     return rx.vstack(
-        # Área para mostrar las etiquetas seleccionadas
         rx.flex(
             rx.foreach(
                 selected_items,
@@ -128,33 +129,26 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        on_click=lambda: on_remove(item),
+                        # --- CAMBIO 2: Construimos el evento aquí dentro ---
+                        # Esto es más explícito y evita el error.
+                        on_click=remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
-                    variant="soft",
-                    color_scheme="gray",
-                    size="2",
+                    variant="soft", color_scheme="gray", size="2",
                 ),
             ),
-            wrap="wrap",
-            spacing="2",
-            min_height="36px", # Altura mínima para que no salte la interfaz
-            padding="0.5em",
-            border="1px solid",
-            border_color=rx.color("gray", 7),
-            border_radius="md",
+            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
+            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
         ),
-        # El selector para añadir nuevos elementos
         searchable_select(
             placeholder=placeholder,
             options=options,
-            on_change_select=on_add,
-            value_select="", # Nunca muestra un valor, solo añade
+            # --- CAMBIO 3: Usamos un lambda para construir el evento de añadir ---
+            on_change_select=lambda val: add_handler(prop_name, val),
+            value_select="",
             search_value=search_value,
             on_change_search=on_change_search,
             filter_name=filter_name,
         ),
-        spacing="2",
-        align_items="stretch",
-        width="100%",
+        spacing="2", align_items="stretch", width="100%",
     )

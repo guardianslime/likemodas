@@ -1,165 +1,151 @@
-# likemodas/ui/filter_panel.py
+# likemodas/ui/filter_panel.py (VERSIÓN CORREGIDA CON FILTROS POR CATEGORÍA)
 
 import reflex as rx
-from reflex.event import EventSpec
-# Se importa el estado unificado y final
 from ..state import AppState
 from ..models import Category
-from ..ui.components import searchable_select
-from ..data.product_options import (
-    LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL
-)
+from ..ui.components import multi_select_component
 
 def floating_filter_panel() -> rx.Component:
     """
-    El panel de filtros flotante, ahora actualizado para usar AppState.
+    Panel de filtros con selección múltiple y lógica condicional
+    para mostrar filtros específicos por categoría.
     """
     return rx.box(
         rx.hstack(
             rx.vstack(
+                # Encabezado del panel (Limpiar Filtros)
                 rx.hstack(
                     rx.heading("Filtros", size="6"),
                     rx.spacer(),
-                    rx.button(
-                        "Limpiar",
-                        # Se usa AppState en lugar de SessionState
-                        on_click=AppState.clear_all_filters,
-                        size="1",
-                        variant="soft",
-                        color_scheme="gray"
-                    ),
-                    justify="between",
-                    align_items="center",
-                    width="100%"
+                    rx.button("Limpiar", on_click=AppState.clear_all_filters, size="1", variant="soft", color_scheme="gray"),
+                    justify="between", align_items="center", width="100%"
                 ),
                 rx.divider(),
                 
+                # Filtro de Precio (siempre visible)
                 rx.vstack(
                     rx.text("Precio", weight="bold"),
-                    rx.hstack(
-                        # Todas las referencias ahora apuntan a AppState
-                        rx.input(placeholder="Mínimo", value=AppState.min_price, on_change=AppState.set_min_price, type="number"),
-                        rx.cond(AppState.min_price != "", 
-                            rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("min_price"), size="1", variant="ghost")
-                        ),
-                        align_items="center", width="100%", spacing="2"
-                    ),
-                    rx.hstack(
-                        rx.input(placeholder="Máximo", value=AppState.max_price, on_change=AppState.set_max_price, type="number"),
-                        rx.cond(AppState.max_price != "",
-                            rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("max_price"), size="1", variant="ghost")
-                        ),
-                        align_items="center", width="100%", spacing="2"
-                    ),
+                    rx.input(placeholder="Mínimo", value=AppState.min_price, on_change=AppState.set_min_price, type="number"),
+                    rx.input(placeholder="Máximo", value=AppState.max_price, on_change=AppState.set_max_price, type="number"),
                     spacing="2", align_items="start", width="100%"
                 ),
 
+                # --- ✨ LÓGICA CONDICIONAL RESTAURADA ---
+                # Muestra filtros específicos solo si se ha seleccionado una categoría.
                 rx.cond(
                     (AppState.current_category != "") & (AppState.current_category != "todos"),
                     rx.fragment(
+                        # --- FILTROS PARA ROPA ---
                         rx.cond(
                             AppState.current_category == Category.ROPA.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Ropa", weight="bold"),
-                                rx.hstack(
-                                    searchable_select(placeholder="Por tipo...", options=AppState.filtered_tipos_ropa, on_change_select=AppState.set_filter_tipo_prenda, value_select=AppState.filter_tipo_prenda, search_value=AppState.search_tipo_prenda, on_change_search=AppState.set_search_tipo_prenda, filter_name="ropa_tipo"),
-                                    rx.cond(AppState.filter_tipo_prenda != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_tipo_prenda"), size="1", variant="ghost"))
+                                multi_select_component(
+                                    placeholder="Añadir tipo...",
+                                    options=AppState.filtered_tipos_ropa,
+                                    selected_items=AppState.filter_tipos_prenda,
+                                    add_handler=AppState.add_filter_value,
+                                    remove_handler=AppState.remove_filter_value,
+                                    prop_name="filter_tipos_prenda",
+                                    search_value=AppState.search_tipo_prenda,
+                                    on_change_search=AppState.set_search_tipo_prenda,
+                                    filter_name="ropa_tipo_filter",
                                 ),
-                                rx.hstack(
-                                    searchable_select(placeholder="Por color...", options=AppState.filtered_colores, on_change_select=AppState.set_filter_color, value_select=AppState.filter_color, search_value=AppState.search_color, on_change_search=AppState.set_search_color, filter_name="ropa_color"),
-                                    rx.cond(AppState.filter_color != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_color"), size="1", variant="ghost"))
-                                ),
-                                rx.hstack(
-                                    searchable_select(placeholder="Por talla...", options=AppState.filtered_tallas_ropa, on_change_select=AppState.set_filter_talla, value_select=AppState.filter_talla, search_value=AppState.search_talla, on_change_search=AppState.set_search_talla, filter_name="ropa_talla"),
-                                    rx.cond(AppState.filter_talla != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_talla"), size="1", variant="ghost"))
+                                multi_select_component(
+                                    placeholder="Añadir talla...",
+                                    options=AppState.filtered_tallas_ropa,
+                                    selected_items=AppState.filter_tallas,
+                                    add_handler=AppState.add_filter_value,
+                                    remove_handler=AppState.remove_filter_value,
+                                    prop_name="filter_tallas",
+                                    search_value=AppState.search_talla,
+                                    on_change_search=AppState.set_search_talla,
+                                    filter_name="ropa_talla_filter",
                                 ),
                                 spacing="2", align_items="start", width="100%"
                             )
                         ),
+                        
+                        # --- FILTROS PARA CALZADO ---
                         rx.cond(
                             AppState.current_category == Category.CALZADO.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Calzado", weight="bold"),
-                                rx.hstack(
-                                    searchable_select(placeholder="Por tipo...", options=AppState.filtered_tipos_zapatos, on_change_select=AppState.set_filter_tipo_zapato, value_select=AppState.filter_tipo_zapato, search_value=AppState.search_tipo_zapato, on_change_search=AppState.set_search_tipo_zapato, filter_name="calzado_tipo"),
-                                    rx.cond(AppState.filter_tipo_zapato != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_tipo_zapato"), size="1", variant="ghost"))
+                                multi_select_component(
+                                    placeholder="Añadir tipo...",
+                                    options=AppState.filtered_tipos_zapatos,
+                                    selected_items=AppState.filter_tipos_zapato,
+                                    add_handler=AppState.add_filter_value,
+                                    remove_handler=AppState.remove_filter_value,
+                                    prop_name="filter_tipos_zapato",
+                                    search_value=AppState.search_tipo_zapato,
+                                    on_change_search=AppState.set_search_tipo_zapato,
+                                    filter_name="calzado_tipo_filter",
                                 ),
-                                rx.hstack(
-                                    searchable_select(placeholder="Por color...", options=AppState.filtered_colores, on_change_select=AppState.set_filter_color, value_select=AppState.filter_color, search_value=AppState.search_color, on_change_search=AppState.set_search_color, filter_name="calzado_color"),
-                                    rx.cond(AppState.filter_color != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_color"), size="1", variant="ghost"))
-                                ),
-                                rx.hstack(
-                                    searchable_select(placeholder="Por número...", options=AppState.filtered_numeros_calzado, on_change_select=AppState.set_filter_numero_calzado, value_select=AppState.filter_numero_calzado, search_value=AppState.search_numero_calzado, on_change_search=AppState.set_search_numero_calzado, filter_name="calzado_numero"),
-                                    rx.cond(AppState.filter_numero_calzado != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_numero_calzado"), size="1", variant="ghost"))
+                                multi_select_component(
+                                    placeholder="Añadir número...",
+                                    options=AppState.filtered_numeros_calzado,
+                                    selected_items=AppState.filter_numeros_calzado,
+                                    add_handler=AppState.add_filter_value,
+                                    remove_handler=AppState.remove_filter_value,
+                                    prop_name="filter_numeros_calzado",
+                                    search_value=AppState.search_numero_calzado,
+                                    on_change_search=AppState.set_search_numero_calzado,
+                                    filter_name="calzado_numero_filter",
                                 ),
                                 spacing="2", align_items="start", width="100%"
                             )
                         ),
+                        
+                        # --- FILTROS PARA MOCHILAS ---
                         rx.cond(
                             AppState.current_category == Category.MOCHILAS.value,
                             rx.vstack(
                                 rx.divider(), rx.text("Filtros de Mochilas", weight="bold"),
-                                rx.hstack(
-                                    searchable_select(placeholder="Por tipo...", options=AppState.filtered_tipos_mochilas, on_change_select=AppState.set_filter_tipo_mochila, value_select=AppState.filter_tipo_mochila, search_value=AppState.search_tipo_mochila, on_change_search=AppState.set_search_tipo_mochila, filter_name="mochila_tipo"),
-                                    rx.cond(AppState.filter_tipo_mochila != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_tipo_mochila"), size="1", variant="ghost"))
+                                multi_select_component(
+                                    placeholder="Añadir tipo...",
+                                    options=AppState.filtered_tipos_mochilas,
+                                    selected_items=AppState.filter_tipos_mochila,
+                                    add_handler=AppState.add_filter_value,
+                                    remove_handler=AppState.remove_filter_value,
+                                    prop_name="filter_tipos_mochila",
+                                    search_value=AppState.search_tipo_mochila,
+                                    on_change_search=AppState.set_search_tipo_mochila,
+                                    filter_name="mochila_tipo_filter",
                                 ),
                                 spacing="2", align_items="start", width="100%"
                             )
                         ),
                     ),
-                    # Este fragmento es para la categoría "todos" o sin categoría
+                    # --- FILTROS GENERALES (CUANDO NO HAY CATEGORÍA SELECCIONADA) ---
                     rx.fragment(
-                        rx.vstack(
-                            rx.divider(),
-                            rx.text("Filtros Generales", weight="bold"),
-                            rx.hstack(
-                                searchable_select(placeholder="Por tipo...", options=AppState.filtered_tipos_general, on_change_select=AppState.set_filter_tipo_general, value_select=AppState.filter_tipo_general, search_value=AppState.search_tipo_general, on_change_search=AppState.set_search_tipo_general, filter_name="general_tipo"),
-                                rx.cond(AppState.filter_tipo_general != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_tipo_general"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Por material o tela...", options=AppState.filtered_materiales, on_change_select=AppState.set_filter_material_tela, value_select=AppState.filter_material_tela, search_value=AppState.search_material_tela, on_change_search=AppState.set_search_material_tela, filter_name="general_material"),
-                                rx.cond(AppState.filter_material_tela != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_material_tela"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Por talla o medidas...", options=AppState.filtered_medidas_general, on_change_select=AppState.set_filter_medida_talla, value_select=AppState.filter_medida_talla, search_value=AppState.search_medida_talla, on_change_search=AppState.set_search_medida_talla, filter_name="general_medida"),
-                                rx.cond(AppState.filter_medida_talla != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_medida_talla"), size="1", variant="ghost"))
-                            ),
-                            rx.hstack(
-                                searchable_select(placeholder="Por color...", options=AppState.filtered_colores, on_change_select=AppState.set_filter_color, value_select=AppState.filter_color, search_value=AppState.search_color, on_change_search=AppState.set_search_color, filter_name="general_color"),
-                                rx.cond(AppState.filter_color != "", rx.icon_button(rx.icon("x", size=16), on_click=AppState.clear_filter("filter_color"), size="1", variant="ghost"))
-                            ),
-                            spacing="2", align_items="start", width="100%"
-                        )
+                        rx.divider(),
+                        rx.text("Filtros Generales", weight="bold"),
+                        multi_select_component(
+                            placeholder="Añadir color...",
+                            options=AppState.filtered_colores,
+                            selected_items=AppState.filter_colors,
+                            add_handler=AppState.add_filter_value,
+                            remove_handler=AppState.remove_filter_value,
+                            prop_name="filter_colors",
+                            search_value=AppState.search_color,
+                            on_change_search=AppState.set_search_color,
+                            filter_name="general_color_filter",
+                        ),
                     )
                 ),
                 spacing="4", padding="1.5em", bg=rx.color("gray", 2),
                 height="100%", width="280px",
             ),
+            # Botón para mostrar/ocultar
             rx.box(
-                rx.text(
-                    "Filtros",
-                    style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.09em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}
-                ),
-                on_click=AppState.toggle_filters,
-                cursor="pointer",
-                bg=rx.color("violet", 9),
-                border_radius="0 8px 8px 0",
-                height="120px",
-                display="flex",
-                align_items="center"
+                rx.text("Filtros", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.09em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}),
+                on_click=AppState.toggle_filters, cursor="pointer", bg=rx.color("violet", 9),
+                border_radius="0 8px 8px 0", height="120px", display="flex", align_items="center"
             ),
-            align_items="center",
-            spacing="0"
+            align_items="center", spacing="0"
         ),
-        position="fixed",
-        top="50%",
-        left="0",
-        transform=rx.cond(
-            AppState.show_filters,
-            "translateY(-50%)",
-            "translate(-280px, -50%)"
-        ),
-        transition="transform 0.3s ease-in-out",
-        z_index=1000,
-        height="auto",
+        position="fixed", top="50%", left="0",
+        transform=rx.cond(AppState.show_filters, "translateY(-50%)", "translate(-280px, -50%)"),
+        transition="transform 0.3s ease-in-out", z_index=1000, height="auto",
     )
