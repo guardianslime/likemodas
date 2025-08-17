@@ -25,7 +25,7 @@ from .utils.formatting import format_to_cop
 from .utils.validators import validate_password
 from .data.colombia_locations import load_colombia_data
 from .data.product_options import (
-    LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TIPOS_GENERAL,
+    LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TAMANOS_MOCHILAS, LISTA_TIPOS_GENERAL,
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
@@ -239,6 +239,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.attr_talla_ropa = ""
         self.attr_material = ""
         self.attr_numero_calzado = ""
+        self.attr_tamano_mochila = ""
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
@@ -253,9 +254,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.attr_color: attributes["Color"] = self.attr_color
             if self.attr_talla_ropa: attributes["Talla"] = self.attr_talla_ropa
             if self.attr_material: attributes["Material"] = self.attr_material
+
         elif category == Category.CALZADO.value:
             if self.attr_color: attributes["Color"] = self.attr_color
             if self.attr_numero_calzado: attributes["Número"] = self.attr_numero_calzado
+            if self.attr_material: attributes["Material"] = self.attr_material
+        
+        elif category == Category.MOCHILAS.value:
+            if self.attr_color: attributes["Color"] = self.attr_color
+            if self.attr_tamano_mochila: attributes["Tamaño"] = self.attr_tamano_mochila
             if self.attr_material: attributes["Material"] = self.attr_material
         
         with rx.session() as session:
@@ -352,6 +359,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_filter_tipo_general(self, general: str): self.filter_tipo_general = general
     def set_filter_material_tela(self, material: str): self.filter_material_tela = material
     def set_filter_medida_talla(self, medida: str): self.filter_medida_talla = medida
+    def set_attr_tamano_mochila(self, value: str): self.attr_tamano_mochila = value
+    def set_search_attr_tamano_mochila(self, query: str): self.search_attr_tamano_mochila = query
+
 
     search_tipo_prenda: str = ""
     search_tipo_zapato: str = ""
@@ -409,6 +419,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     def filtered_medidas_general(self) -> list[str]:
         if not self.search_medida_talla.strip(): return LISTA_MEDIDAS_GENERAL
         return [o for o in LISTA_MEDIDAS_GENERAL if self.search_medida_talla.lower() in o.lower()]
+    @rx.var
+    def filtered_attr_tamanos_mochila(self) -> list[str]:
+        if not self.search_attr_tamano_mochila.strip(): return LISTA_TAMANOS_MOCHILAS
+        return [o for o in LISTA_TAMANOS_MOCHILAS if self.search_attr_tamano_mochila.lower() in o.lower()]
+    
 
     posts: list[ProductCardData] = []
     is_loading: bool = True

@@ -1,16 +1,18 @@
-# likemodas/blog/forms.py (VERSIÓN CON CAMPOS DE TEXTO CENTRADOS Y AMPLIADOS)
+# likemodas/blog/forms.py
 
 import reflex as rx
 from ..state import AppState
 from ..models import Category
 from ..ui.components import searchable_select
-# --- NUEVO: Importar las listas de opciones ---
-from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES, LISTA_NUMEROS_CALZADO
+# Se importan las listas nuevas y actualizadas
+from ..data.product_options import (
+    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES, 
+    LISTA_NUMEROS_CALZADO, LISTA_TAMANOS_MOCHILAS
+)
 
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     
-    # --- AHORA USA EL COMPONENTE searchable_select ---
     caracteristicas_ropa = rx.grid(
         searchable_select(
             placeholder="Color...", options=AppState.filtered_attr_colores,
@@ -25,7 +27,8 @@ def blog_post_add_form() -> rx.Component:
             filter_name="attr_talla_filter",
         ),
         searchable_select(
-            placeholder="Material...", options=AppState.filtered_attr_materiales,
+            # --- ✅ CAMBIO DE ETIQUETA AQUÍ ---
+            placeholder="Tela...", options=AppState.filtered_attr_materiales,
             on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
             search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
             filter_name="attr_material_filter",
@@ -55,11 +58,34 @@ def blog_post_add_form() -> rx.Component:
         columns="3", spacing="3", width="100%",
     )
 
+    # --- ✅ NUEVO COMPONENTE PARA CARACTERÍSTICAS DE MOCHILAS ---
+    caracteristicas_mochilas = rx.grid(
+        searchable_select(
+            placeholder="Color...", options=AppState.filtered_attr_colores,
+            on_change_select=AppState.set_attr_color, value_select=AppState.attr_color,
+            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+            filter_name="attr_color_filter",
+        ),
+        searchable_select(
+            placeholder="Tamaño...", options=AppState.filtered_attr_tamanos_mochila,
+            on_change_select=AppState.set_attr_tamano_mochila, value_select=AppState.attr_tamano_mochila,
+            search_value=AppState.search_attr_tamano_mochila, on_change_search=AppState.set_search_attr_tamano_mochila,
+            filter_name="attr_tamano_mochila_filter",
+        ),
+        searchable_select(
+            placeholder="Material...", options=AppState.filtered_attr_materiales,
+            on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
+            search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
+            filter_name="attr_material_filter",
+        ),
+        columns="3", spacing="3", width="100%",
+    )
+
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
             rx.grid(
-                # Columna Izquierda
+                # Columna Izquierda ...
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -88,7 +114,7 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     spacing="2",
                 ),
-                # Columna Derecha
+                # Columna Derecha ...
                 rx.vstack(
                     rx.text("Título del Producto", as_="div", size="2", weight="bold"),
                     rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
@@ -109,6 +135,8 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Características del Producto", as_="div", size="2", weight="bold"),
                             rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
                             rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
+                            # --- ✅ AÑADIR CONDICIÓN PARA MOCHILAS ---
+                            rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
                             align_items="stretch", width="100%",
                         )
                     ),

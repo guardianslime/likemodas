@@ -22,20 +22,26 @@ LISTA_TIPOS_GENERAL = sorted(list(set(
     LISTA_TIPOS_ROPA + LISTA_TIPOS_ZAPATOS + LISTA_TIPOS_MOCHILAS
 )))
 
-# --- ✨ NUEVAS LISTAS DE OPCIONES AÑADIDAS ---
+# --- LISTAS DE CARACTERÍSTICAS ACTUALIZADAS Y AMPLIADAS ---
 
 LISTA_COLORES = sorted([
     "Amarillo", "Azul", "Beige", "Blanco", "Café", "Dorado", "Gris", "Morado",
-    "Naranja", "Negro", "Plateado", "Rojo", "Rosa", "Verde", "Vino"
+    "Naranja", "Negro", "Plateado", "Rojo", "Rosa", "Verde", "Vino", "Multicolor"
 ])
 
 LISTA_TALLAS_ROPA = ["XS", "S", "M", "L", "XL", "XXL", "Talla Única"]
 
-LISTA_NUMEROS_CALZADO = [str(i) for i in range(34, 45)] # Genera tallas del 34 al 44
+LISTA_NUMEROS_CALZADO = [str(i) for i in range(34, 45)]
 
+# --- ✅ LISTA DE MATERIALES AMPLIADA ---
 LISTA_MATERIALES = sorted([
-    "Algodón", "Cuero", "Denim", "Lana", "Lino", "Poliéster", "Seda", "Sintético", "Lona"
+    "Algodón", "Cuero", "Cuero Sintético", "Denim", "Lana", "Lino", "Lona", 
+    "Licra", "Malla", "Nylon", "Pana", "Poliéster", "Seda", "Sintético", "Viscosa"
 ])
 
-# Lista combinada para el filtro general de "Talla o medidas"
-LISTA_MEDIDAS_GENERAL = sorted(list(set(LISTA_TALLAS_ROPA + LISTA_NUMEROS_CALZADO)))
+# --- ✅ NUEVA LISTA PARA TAMAÑO DE MOCHILAS ---
+LISTA_TAMANOS_MOCHILAS = ["Pequeña", "Mediana", "Grande", "Extra Grande"]
+
+# --- ✅ LISTA GENERAL DE MEDIDAS ACTUALIZADA ---
+# Se añaden los tamaños de mochilas para que aparezcan en los filtros generales
+LISTA_MEDIDAS_GENERAL = sorted(list(set(LISTA_TALLAS_ROPA + LISTA_NUMEROS_CALZADO + LISTA_TAMANOS_MOCHILAS)))
