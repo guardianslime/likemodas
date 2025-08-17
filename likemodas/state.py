@@ -690,6 +690,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield self.notify_admin_of_new_purchase()
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
+    
 
     def toggle_form(self):
         self.show_form = not self.show_form
@@ -1002,6 +1003,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             self.contact_entries = session.exec(sqlmodel.select(ContactEntryModel).order_by(ContactEntryModel.id.desc())).all()
     
+    @rx.event
+    def toggle_publish_status(self, post_id: int):
+        """Cambia el estado de publicación de un post y recarga la lista."""
+        if not self.authenticated_user_info:
+            return rx.toast.error("Acción no permitida.")
+        
+        with rx.session() as session:
+            post_to_update = session.get(BlogPostModel, post_id)
+            if post_to_update and post_to_update.userinfo_id == self.authenticated_user_info.id:
+                post_to_update.publish_active = not post_to_update.publish_active
+                session.add(post_to_update)
+                session.commit()
+                yield rx.toast.info(f"Estado de publicación cambiado.")
+                # Vuelve a cargar la lista para que la UI se actualice
+                yield self.load_my_admin_posts()
+            else:
+                yield rx.toast.error("No se pudo actualizar la publicación.")
+
     all_users: List[UserInfo] = []
     @rx.event
     def load_all_users(self):
