@@ -92,9 +92,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             width="260px", height="260px"
                         ),
                         rx.text(post.title, weight="bold", size="6"),
-                        # Esta línea ya estaba, pero ahora se mostrará correctamente
-                        rx.text(post.price_cop, size="6"),
+                        # highlight-start
                         _product_card_rating(post),
+                        rx.text(post.price_cop, size="6"),
+                        # highlight-end
                         spacing="2", 
                         align="start",
                         width="100%",
