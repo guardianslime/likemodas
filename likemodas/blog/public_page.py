@@ -208,7 +208,10 @@ def blog_public_page_content() -> rx.Component:
             rx.cond(
                 AppState.is_loading,
                 skeleton_product_gallery(),
-                product_gallery_component(posts=AppState.posts)
+                # --- ✨ CAMBIO CLAVE AQUÍ ---
+                # ANTES: product_gallery_component(posts=AppState.posts)
+                # AHORA:
+                product_gallery_component(posts=AppState.displayed_posts)
             ),
             product_detail_modal(),
             spacing="6", width="100%", padding="2em", align="center"

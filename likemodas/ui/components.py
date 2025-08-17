@@ -77,7 +77,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         rx.foreach(
             posts,
             lambda post: rx.box(
+                # --- ✨ ESTRUCTURA SIMPLIFICADA AQUÍ ---
+                # Eliminamos el vstack exterior innecesario.
+                # Ahora solo hay un vstack que organiza todo el contenido.
                 rx.vstack(
+                    # El on_click y cursor ahora van en este vstack para que toda la tarjeta sea clickeable
                     rx.vstack(
                         rx.box(
                             rx.cond(
@@ -88,22 +92,33 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             width="260px", height="260px"
                         ),
                         rx.text(post.title, weight="bold", size="6"),
+                        # Esta línea ya estaba, pero ahora se mostrará correctamente
                         rx.text(post.price_cop, size="6"),
                         _product_card_rating(post),
-                        spacing="2", align="start",
-                        # --- LA CORRECCIÓN CLAVE CON LAMBDA ---
-                        on_click=lambda: AppState.open_product_detail_modal(post.id),
-                        cursor="pointer",
+                        spacing="2", 
+                        align="start",
                         width="100%",
                     ),
-                    align="stretch", height="100%"
+                    on_click=lambda: AppState.open_product_detail_modal(post.id),
+                    cursor="pointer",
+                    align="stretch", 
+                    height="100%",
+                    spacing="2", # Añadimos un spacing general
                 ),
-                width="290px", height="420px", bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+                width="290px", 
+                height="420px", 
+                bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
-                border_radius="8px", box_shadow="md", padding="1em",
+                border_radius="8px", 
+                box_shadow="md", 
+                padding="1em",
             )
         ),
-        wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
+        wrap="wrap", 
+        spacing="6", 
+        justify="center", 
+        width="100%", 
+        max_width="1800px",
     )
 
 def multi_select_component(

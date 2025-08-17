@@ -309,6 +309,58 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("Producto publicado.")
         return rx.redirect("/blog")
     
+    @rx.var
+    def displayed_posts(self) -> list[ProductCardData]:
+        """
+        Una propiedad computada que devuelve la lista de productos
+        filtrada según las selecciones del panel.
+        """
+        # Empezamos con todos los productos de la categoría actual
+        posts_to_filter = self.posts
+
+        # 1. Filtrar por precio
+        if self.min_price:
+            try:
+                min_p = float(self.min_price)
+                posts_to_filter = [p for p in posts_to_filter if p.price >= min_p]
+            except ValueError:
+                pass # Ignorar si el valor no es un número
+        if self.max_price:
+            try:
+                max_p = float(self.max_price)
+                posts_to_filter = [p for p in posts_to_filter if p.price <= max_p]
+            except ValueError:
+                pass
+
+        # 2. Filtrar por color (selección múltiple)
+        if self.filter_colors:
+            posts_to_filter = [
+                p for p in posts_to_filter 
+                if p.attributes.get("Color") in self.filter_colors
+            ]
+            
+        # 3. Filtrar por material/tela (selección múltiple)
+        if self.filter_materiales_tela:
+            posts_to_filter = [
+                p for p in posts_to_filter 
+                if (p.attributes.get("Material") in self.filter_materiales_tela) or 
+                   (p.attributes.get("Tela") in self.filter_materiales_tela)
+            ]
+
+        # 4. Filtrar por talla/medida (selección múltiple y complejo)
+        if self.filter_tallas:
+            posts_to_filter = [
+                p for p in posts_to_filter
+                # El 'any' comprueba si CUALQUIERA de las tallas del producto
+                # está en la lista de tallas que el usuario seleccionó.
+                if any(
+                    size in self.filter_tallas 
+                    for size in p.attributes.get("Talla", [])
+                )
+            ]
+
+        return posts_to_filter
+    
     # --- NUEVO: Variables para la BÚSQUEDA en características ---
     search_attr_color: str = ""
     search_attr_talla_ropa: str = ""
