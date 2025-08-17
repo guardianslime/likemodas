@@ -37,8 +37,12 @@ class ProductCardData(rx.Base):
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
+    
+    # --- ✨ LÍNEA AÑADIDA ---
+    # Añadimos el campo 'attributes' para que la información
+    # se copie desde el modelo de la base de datos.
+    attributes: dict = {}
 
-    # --- ✨ AÑADIMOS LA CONFIGURACIÓN REQUERIDA ---
     class Config:
         orm_mode = True
     
