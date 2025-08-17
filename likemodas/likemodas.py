@@ -55,7 +55,9 @@ app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navi
 app.add_page(
     base_page(blog_admin_page()), 
     route="/blog", 
-    title="Mis Publicaciones"
+    title="Mis Publicaciones",
+    # highlight-next-line
+    on_load=AppState.load_my_admin_posts  # <--- AÑADE ESTA LÍNEA
 )
 app.add_page(
     base_page(user_management_page()), 

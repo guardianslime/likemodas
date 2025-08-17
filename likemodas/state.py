@@ -29,8 +29,7 @@ from .data.product_options import (
 
 # --- DTOs (Data Transfer Objects) para la UI ---
 
-# highlight-start
-# 1. SE CORRIGE LA CLASE ProductCardData PARA ELIMINAR LA @property
+# 1. CLASE ProductCardData CORREGIDA (sin @property)
 class ProductCardData(rx.Base):
     id: int
     title: str
@@ -43,7 +42,6 @@ class ProductCardData(rx.Base):
 
     class Config:
         orm_mode = True
-# highlight-end
     
 class ProductDetailData(rx.Base):
     id: int
@@ -57,7 +55,6 @@ class ProductDetailData(rx.Base):
 
     class Config:
         orm_mode = True
-    
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
@@ -76,7 +73,6 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
-    # ... (Todo el código desde success: bool = False hasta antes de on_load_admin_store se mantiene igual) ...
     success: bool = False
     error_message: str = ""
     
@@ -215,17 +211,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             
-    # ... (Todo el código desde @rx.var def material_label hasta unban_user se mantiene igual) ...
     @rx.var
     def material_label(self) -> str:
-        """Devuelve la etiqueta correcta ('Tela' o 'Material') para el formulario."""
         if self.category == Category.ROPA.value:
             return "Tela"
         return "Material"
 
     @rx.var
     def available_materials(self) -> list[str]:
-        """Devuelve la lista de materiales correcta según la categoría seleccionada."""
         if self.category == Category.ROPA.value:
             return MATERIALES_ROPA
         if self.category == Category.CALZADO.value:
@@ -241,9 +234,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     attr_material: str = ""
 
     def set_attr_color(self, value: str): self.attr_color = value
-    def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
-    def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
@@ -255,17 +246,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         category = form_data.get("category")
         if category == Category.ROPA.value:
             if self.attr_color: attributes["Color"] = self.attr_color
-            if self.attr_talla_ropa: attributes["Talla"] = self.attr_talla_ropa
-            if self.attr_material: attributes["Material"] = self.attr_material
+            if self.attr_tallas_ropa: attributes["Talla"] = self.attr_tallas_ropa
+            if self.attr_material: attributes["Tela"] = self.attr_material
 
         elif category == Category.CALZADO.value:
             if self.attr_color: attributes["Color"] = self.attr_color
-            if self.attr_numero_calzado: attributes["Número"] = self.attr_numero_calzado
+            if self.attr_numeros_calzado: attributes["Número"] = self.attr_numeros_calzado
             if self.attr_material: attributes["Material"] = self.attr_material
         
         elif category == Category.MOCHILAS.value:
             if self.attr_color: attributes["Color"] = self.attr_color
-            if self.attr_tamano_mochila: attributes["Tamaño"] = self.attr_tamano_mochila
+            if self.attr_tamanos_mochila: attributes["Tamaño"] = self.attr_tamanos_mochila
             if self.attr_material: attributes["Material"] = self.attr_material
         
         with rx.session() as session:
@@ -284,7 +275,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_post)
         self._clear_add_form()
-        yield rx.toast.success("Producto publicado.")
+        yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
     
     @rx.var
@@ -321,7 +312,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 p for p in posts_to_filter
                 if any(
                     size in self.filter_tallas 
-                    for size in p.attributes.get("Talla", [])
+                    for size in p.attributes.get("Talla", []) + p.attributes.get("Número", []) + p.attributes.get("Tamaño", [])
                 )
             ]
         return posts_to_filter
@@ -360,7 +351,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def filtered_attr_numeros_calzado(self) -> list[str]:
         if not self.search_attr_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
         return [o for o in LISTA_NUMEROS_CALZADO if self.search_attr_numero_calzado.lower() in o.lower()]
-
 
     min_price: str = ""
     max_price: str = ""
@@ -561,7 +551,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(post_to_update)
                 session.commit()
                 yield self.cancel_editing_post(False)
-                yield self.load_all_my_posts()
+                yield self.load_my_admin_posts()
                 yield self.on_load_admin_store()
                 yield rx.toast.success("Publicación actualizada correctamente.")
 
@@ -791,7 +781,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.title.ilike(f"%{self.search_term.strip()}%"), BlogPostModel.publish_active == True)).all()
             
-            # CORRECCIÓN AQUÍ TAMBIÉN
             posts_data = []
             for p in results:
                 posts_data.append(
@@ -1090,6 +1079,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     review_rating: int = 0
     review_content: str = ""
 
+    # 2. SE AÑADE LA PROPIEDAD CALCULADA `is_editing_review`
     @rx.var
     def is_editing_review(self) -> bool:
         """Comprueba si el usuario está editando una opinión existente."""
@@ -1169,7 +1159,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                self.product_in_modal = ProductDetailData.from_orm(db_post)
+                # Aquí también usamos el pre-formateo para consistencia
+                detail_data = ProductDetailData.from_orm(db_post)
+                detail_data.price_cop = format_to_cop(db_post.price)
+                self.product_in_modal = detail_data
 
                 self.product_comments = sorted(
                     db_post.comments, 
@@ -1200,27 +1193,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     def base_app_url(self) -> str:
         return get_config().deploy_url
     
-    show_admin_sidebar: bool = False
-
-    def toggle_admin_sidebar(self):
-        self.show_admin_sidebar = not self.show_admin_sidebar
-
-    @rx.event
-    def on_load_main_page(self):
-        if self.is_admin:
-            return rx.redirect("/admin/store")
-        yield AppState.on_load
-        full_url = self.router.url
-        product_id = None
-        if full_url and "?" in full_url:
-            parsed_url = urlparse(full_url)
-            query_params = parse_qs(parsed_url.query)
-            product_id_list = query_params.get("product")
-            if product_id_list:
-                product_id = product_id_list[0]
-        if product_id is not None:
-            yield AppState.open_product_detail_modal(int(product_id))
-
+    # highlight-start
+    # 3. SE CORRIGE on_load_admin_store
     @rx.event
     def on_load_admin_store(self):
         if not self.is_admin:
@@ -1231,28 +1205,38 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
-            self.admin_store_posts = [
-                ProductCardData.from_orm(p) for p in results
-            ]
+            
+            posts_data = []
+            for p in results:
+                posts_data.append(
+                    ProductCardData(
+                        id=p.id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=format_to_cop(p.price),
+                        image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        attributes=p.attributes
+                    )
+                )
+            self.admin_store_posts = posts_data
+
+    # 4. SE CORRIGE on_load y on_load_main_page (fusionados y corregidos)
     @rx.event
-    def on_load(self):
+    def on_load_main_page(self):
         """
-        Carga los productos. Si hay un parámetro de categoría en la URL,
-        actualiza el estado y filtra los resultados.
+        Carga los productos para la página principal y maneja el modal.
         """
+        if self.is_admin:
+            return rx.redirect("/admin/store")
+
         self.is_loading = True
         yield
-        category = None
-        full_url = self.router.url
-        if full_url and "?" in full_url:
-            parsed_url = urlparse(full_url)
-            query_params = parse_qs(parsed_url.query)
-            
-            category_list = query_params.get("category")
-            if category_list:
-                category = category_list[0]
-                
+
+        category = self.router.query_params.get("category")
         self.current_category = category if category else "todos"
+
         with rx.session() as session:
             query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
             
@@ -1260,6 +1244,50 @@ class AppState(reflex_local_auth.LocalAuthState):
                 query = query.where(BlogPostModel.category == self.current_category)
             
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-            self.posts = [ProductCardData.from_orm(p) for p in results]
+            
+            posts_data = []
+            for p in results:
+                posts_data.append(
+                    ProductCardData(
+                        id=p.id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=format_to_cop(p.price),
+                        image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        attributes=p.attributes
+                    )
+                )
+            self.posts = posts_data
         
         self.is_loading = False
+        yield
+
+        product_id = self.router.query_params.get("product")
+        if product_id is not None:
+            yield AppState.open_product_detail_modal(int(product_id))
+
+    # 5. SE ELIMINA LA PROPIEDAD CALCULADA my_admin_posts
+    # y se reemplaza con una variable simple y un manejador de eventos.
+    my_admin_posts: list[BlogPostModel] = []
+
+    @rx.event
+    def load_my_admin_posts(self):
+        """Carga las publicaciones del usuario admin actual en la variable de estado."""
+        if not self.authenticated_user_info:
+            self.my_admin_posts = []
+            return
+        with rx.session() as session:
+            self.my_admin_posts = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
+                .order_by(BlogPostModel.created_at.desc())
+            ).all()
+
+    # Se eliminan las funciones on_load y submit_and_publish duplicadas y antiguas.
+    # El resto de funciones como handle_upload, remove_image, etc. que estaban duplicadas se eliminan.
+    # La función _clear_add_form que estaba duplicada se corrige para incluir las nuevas listas.
+    
+    # La función on_load original se elimina ya que su lógica se fusionó en on_load_main_page
+    # La función @rx.var my_admin_posts original se elimina y se reemplaza con el nuevo patrón.
