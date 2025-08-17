@@ -13,12 +13,9 @@ from ..data.product_options import (
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     
-    # --- ✅ DEFINIMOS EL COMPONENTE DE MATERIAL/TELA UNA SOLA VEZ ---
-    # Este componente ahora es inteligente gracias a los cambios en AppState.
+    # --- El componente dinámico de material/tela está perfecto aquí ---
     material_selector = searchable_select(
-        # Usa la etiqueta dinámica del estado.
         placeholder=AppState.material_label + "...",
-        # Las opciones ya se actualizan solas gracias a la modificación del Paso 2.
         options=AppState.filtered_attr_materiales,
         on_change_select=AppState.set_attr_material, 
         value_select=AppState.attr_material,
@@ -40,13 +37,7 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_talla_ropa, on_change_search=AppState.set_search_attr_talla_ropa,
             filter_name="attr_talla_filter",
         ),
-        searchable_select(
-            # --- ✅ CAMBIO DE ETIQUETA AQUÍ ---
-            placeholder="Tela...", options=AppState.filtered_attr_materiales,
-            on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
-            search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
-            filter_name="attr_material_filter",
-        ),
+        # --- ✨ CORRECCIÓN: Se deja SOLO el selector dinámico ---
         material_selector,
         columns="3", spacing="3", width="100%",
     )
@@ -64,17 +55,11 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_numero_calzado, on_change_search=AppState.set_search_attr_numero_calzado,
             filter_name="attr_numero_filter",
         ),
-        searchable_select(
-            placeholder="Material...", options=AppState.filtered_attr_materiales,
-            on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
-            search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
-            filter_name="attr_material_filter",
-        ),
+        # --- ✨ CORRECCIÓN: Se deja SOLO el selector dinámico ---
         material_selector,
         columns="3", spacing="3", width="100%",
     )
 
-    # --- ✅ NUEVO COMPONENTE PARA CARACTERÍSTICAS DE MOCHILAS ---
     caracteristicas_mochilas = rx.grid(
         searchable_select(
             placeholder="Color...", options=AppState.filtered_attr_colores,
@@ -88,21 +73,18 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_tamano_mochila, on_change_search=AppState.set_search_attr_tamano_mochila,
             filter_name="attr_tamano_mochila_filter",
         ),
-        searchable_select(
-            placeholder="Material...", options=AppState.filtered_attr_materiales,
-            on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
-            search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
-            filter_name="attr_material_filter",
-        ),
+        # --- ✨ CORRECCIÓN: Se deja SOLO el selector dinámico ---
         material_selector,
         columns="3", spacing="3", width="100%",
     )
 
+    # El resto de la función (el return rx.form(...)) no necesita cambios.
+    # Simplemente asegúrate de que use las variables de características corregidas de arriba.
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
             rx.grid(
-                # Columna Izquierda ...
+                # Columna Izquierda (Imágenes)
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.upload(
@@ -131,7 +113,7 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     spacing="2",
                 ),
-                # Columna Derecha ...
+                # Columna Derecha (Datos del producto)
                 rx.vstack(
                     rx.text("Título del Producto", as_="div", size="2", weight="bold"),
                     rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
@@ -152,7 +134,6 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Características del Producto", as_="div", size="2", weight="bold"),
                             rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
                             rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
-                            # --- ✅ AÑADIR CONDICIÓN PARA MOCHILAS ---
                             rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
                             align_items="stretch", width="100%",
                         )
