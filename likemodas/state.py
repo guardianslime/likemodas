@@ -221,6 +221,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     attr_talla_ropa: str = ""
     attr_material: str = ""
     attr_numero_calzado: str = ""
+    attr_tamano_mochila: str = ""
 
     # --- NUEVO: Event handlers para actualizar las características ---
     def set_attr_color(self, value: str): self.attr_color = value
