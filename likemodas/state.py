@@ -290,6 +290,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_attr_talla_ropa: str = ""
     search_attr_material: str = ""
     search_attr_numero_calzado: str = ""
+    search_attr_tamano_mochila: str = ""
 
     # --- NUEVO: Event handlers para la BÚSQUEDA ---
     def set_search_attr_color(self, query: str): self.search_attr_color = query
