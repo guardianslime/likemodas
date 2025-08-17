@@ -77,11 +77,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         rx.foreach(
             posts,
             lambda post: rx.box(
-                # --- ✨ ESTRUCTURA SIMPLIFICADA AQUÍ ---
-                # Eliminamos el vstack exterior innecesario.
-                # Ahora solo hay un vstack que organiza todo el contenido.
+                # ANTES: Había un vstack anidado dentro de otro vstack.
+                # AHORA: Usamos un solo vstack para organizar todo.
                 rx.vstack(
-                    # El on_click y cursor ahora van en este vstack para que toda la tarjeta sea clickeable
+                    # El vstack principal ahora es clickeable.
+                    # 1. Contenido de la tarjeta (imagen, texto, etc.)
                     rx.vstack(
                         rx.box(
                             rx.cond(
@@ -92,10 +92,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             width="260px", height="260px"
                         ),
                         rx.text(post.title, weight="bold", size="6"),
-                        # highlight-start
+                        
+                        # 2. El orden correcto: estrellas y LUEGO el precio.
                         _product_card_rating(post),
                         rx.text(post.price_cop, size="6"),
-                        # highlight-end
+                        
                         spacing="2", 
                         align="start",
                         width="100%",
@@ -104,10 +105,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     cursor="pointer",
                     align="stretch", 
                     height="100%",
-                    spacing="2", # Añadimos un spacing general
+                    spacing="2",
                 ),
                 width="290px", 
-                height="420px", 
+                height="420px",  # Se mantiene la altura fija
                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                 border_radius="8px", 
