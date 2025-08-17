@@ -13,7 +13,6 @@ from ..data.product_options import (
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     
-    # --- El componente dinámico de material/tela está perfecto aquí ---
     material_selector = searchable_select(
         placeholder=AppState.material_label + "...",
         options=AppState.filtered_attr_materiales,
@@ -25,65 +24,67 @@ def blog_post_add_form() -> rx.Component:
     )
 
     caracteristicas_ropa = rx.grid(
-        searchable_select(
+        searchable_select( # El selector de color no cambia
             placeholder="Color...", options=AppState.filtered_attr_colores,
             on_change_select=AppState.set_attr_color, value_select=AppState.attr_color,
             search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
             filter_name="attr_color_filter",
         ),
+        
+        # --- ✨ CORRECCIÓN AQUÍ ---
         multi_select_component(
             placeholder="Añadir talla...",
             options=AppState.filtered_attr_tallas_ropa,
             selected_items=AppState.attr_tallas_ropa,
-            on_add=AppState.add_attribute_value("attr_tallas_ropa"),
-            on_remove=AppState.remove_attribute_value("attr_tallas_ropa"),
+            # Usamos los nuevos argumentos
+            add_handler=AppState.add_attribute_value,
+            remove_handler=AppState.remove_attribute_value,
+            prop_name="attr_tallas_ropa",
             search_value=AppState.search_attr_talla_ropa,
             on_change_search=AppState.set_search_attr_talla_ropa,
             filter_name="attr_talla_filter",
         ),
-        material_selector, # El de material no cambia
+        material_selector,
         columns="3", spacing="3", width="100%",
     )
 
     caracteristicas_calzado = rx.grid(
-        searchable_select(
-            placeholder="Color...", options=AppState.filtered_attr_colores,
-            on_change_select=AppState.set_attr_color, value_select=AppState.attr_color,
-            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
-            filter_name="attr_color_filter",
-        ),
+        searchable_select(placeholder="Color...", options=AppState.filtered_attr_colores, on_change_select=AppState.set_attr_color, value_select=AppState.attr_color, search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color, filter_name="attr_color_filter"),
+        
+        # --- ✨ CORRECCIÓN AQUÍ ---
         multi_select_component(
             placeholder="Añadir número...",
             options=AppState.filtered_attr_numeros_calzado,
             selected_items=AppState.attr_numeros_calzado,
-            on_add=AppState.add_attribute_value("attr_numeros_calzado"),
-            on_remove=AppState.remove_attribute_value("attr_numeros_calzado"),
+            # Usamos los nuevos argumentos
+            add_handler=AppState.add_attribute_value,
+            remove_handler=AppState.remove_attribute_value,
+            prop_name="attr_numeros_calzado",
             search_value=AppState.search_attr_numero_calzado,
             on_change_search=AppState.set_search_attr_numero_calzado,
             filter_name="attr_numero_filter",
         ),
-        material_selector, # El de material no cambia
+        material_selector,
         columns="3", spacing="3", width="100%",
     )
 
     caracteristicas_mochilas = rx.grid(
-        searchable_select(
-            placeholder="Color...", options=AppState.filtered_attr_colores,
-            on_change_select=AppState.set_attr_color, value_select=AppState.attr_color,
-            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
-            filter_name="attr_color_filter",
-        ),
+        searchable_select(placeholder="Color...", options=AppState.filtered_attr_colores, on_change_select=AppState.set_attr_color, value_select=AppState.attr_color, search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color, filter_name="attr_color_filter"),
+
+        # --- ✨ CORRECCIÓN AQUÍ ---
         multi_select_component(
             placeholder="Añadir tamaño...",
             options=AppState.filtered_attr_tamanos_mochila,
             selected_items=AppState.attr_tamanos_mochila,
-            on_add=AppState.add_attribute_value("attr_tamanos_mochila"),
-            on_remove=AppState.remove_attribute_value("attr_tamanos_mochila"),
+            # Usamos los nuevos argumentos
+            add_handler=AppState.add_attribute_value,
+            remove_handler=AppState.remove_attribute_value,
+            prop_name="attr_tamanos_mochila",
             search_value=AppState.search_attr_tamano_mochila,
             on_change_search=AppState.set_search_attr_tamano_mochila,
             filter_name="attr_tamano_mochila_filter",
         ),
-        material_selector, # El de material no cambia
+        material_selector,
         columns="3", spacing="3", width="100%",
     )
 
