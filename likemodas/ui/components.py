@@ -77,11 +77,9 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         rx.foreach(
             posts,
             lambda post: rx.box(
-                # ANTES: Había un vstack anidado dentro de otro vstack.
-                # AHORA: Usamos un solo vstack para organizar todo.
+                # Usamos un solo vstack para organizar todo el contenido de la tarjeta.
                 rx.vstack(
-                    # El vstack principal ahora es clickeable.
-                    # 1. Contenido de la tarjeta (imagen, texto, etc.)
+                    # Este vstack contiene la información del producto en la parte superior.
                     rx.vstack(
                         rx.box(
                             rx.cond(
@@ -93,14 +91,22 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         ),
                         rx.text(post.title, weight="bold", size="6"),
                         
-                        # 2. El orden correcto: estrellas y LUEGO el precio.
+                        # highlight-start
+                        # ORDEN CORRECTO: Las estrellas primero.
                         _product_card_rating(post),
+                        # Y LUEGO el precio, que ahora será visible.
                         rx.text(post.price_cop, size="6"),
-                        
+                        # highlight-end
+
                         spacing="2", 
                         align="start",
                         width="100%",
                     ),
+                    
+                    # rx.spacer() crea un espacio flexible que empuja el contenido hacia arriba.
+                    rx.spacer(),
+
+                    # El evento on_click se aplica a toda la tarjeta.
                     on_click=lambda: AppState.open_product_detail_modal(post.id),
                     cursor="pointer",
                     align="stretch", 
@@ -108,7 +114,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     spacing="2",
                 ),
                 width="290px", 
-                height="420px",  # Se mantiene la altura fija
+                # highlight-next-line
+                height="450px", # Altura aumentada para asegurar que todo el contenido quepa.
                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                 border_radius="8px", 
@@ -122,6 +129,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         width="100%", 
         max_width="1800px",
     )
+
 
 def multi_select_component(
     placeholder: str,
