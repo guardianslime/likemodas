@@ -34,13 +34,10 @@ class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
+    price_cop: str = "" # <--- CAMBIO CLAVE AQUÍ
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
-    
-    # --- ✨ LÍNEA AÑADIDA ---
-    # Añadimos el campo 'attributes' para que la información
-    # se copie desde el modelo de la base de datos.
     attributes: dict = {}
 
     class Config:
@@ -1317,11 +1314,23 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
-            self.admin_store_posts = [
-                ProductCardData.from_orm(p) for p in results
-            ]
-
-    show_admin_sidebar: bool = False
+            # --- ✨ LÓGICA CORREGIDA PARA PRE-FORMATEAR EL PRECIO ---
+            posts_data = []
+            for p in results:
+                posts_data.append(
+                    ProductCardData(
+                        id=p.id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=format_to_cop(p.price), # Se formatea el precio aquí
+                        image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        attributes=p.attributes
+                    )
+                )
+            self.admin_store_posts = posts_data
+            # --- FIN DE LA LÓGICA CORREGIDA ---
 
     def toggle_admin_sidebar(self):
         self.show_admin_sidebar = not self.show_admin_sidebar
@@ -1335,37 +1344,46 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.is_admin:
             return rx.redirect("/admin/store")
 
-        yield AppState.on_load
+        # Inicia la carga de productos de la galería principal
+        self.is_loading = True
+        yield
 
-        # Obtener la URL completa desde el router
-        full_url = self.router.url
-        product_id = None
+        category = self.router.query_params.get("category")
+        self.current_category = category if category else "todos"
 
-        if full_url and "?" in full_url:
-            # Descomponer la URL para analizar sus partes
-            parsed_url = urlparse(full_url)
-            # Extraer los parámetros de la consulta en un diccionario
-            query_params = parse_qs(parsed_url.query)
+        with rx.session() as session:
+            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
+            
+            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+            
+            # --- ✨ LÓGICA CORREGIDA PARA PRE-FORMATEAR EL PRECIO ---
+            posts_data = []
+            for p in results:
+                posts_data.append(
+                    ProductCardData(
+                        id=p.id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=format_to_cop(p.price), # Se formatea el precio aquí
+                        image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        attributes=p.attributes
+                    )
+                )
+            self.posts = posts_data
+            # --- FIN DE LA LÓGICA CORREGIDA ---
 
-            # 'parse_qs' devuelve valores como listas, ej: {'product': ['1']}
-            product_id_list = query_params.get("product")
-            if product_id_list:
-                product_id = product_id_list[0]
+        self.is_loading = False
+        yield
 
+        # Lógica para abrir el modal si viene un ID en la URL
+        product_id = self.router.query_params.get("product")
         if product_id is not None:
             yield AppState.open_product_detail_modal(int(product_id))
-
-    # --- ✨ LÓGICA PARA OPINIONES Y VALORACIONES ---
-
-    # Almacena los comentarios del producto que está en el modal
-    product_comments: list[CommentModel] = []
-    
-    # Almacena la opinión del usuario actual para el producto actual (si existe)
-    my_review_for_product: Optional[CommentModel] = None
-
-    # Estado del formulario de opinión
-    review_rating: int = 0
-    review_content: str = ""
 
     @rx.var
     def can_review_product(self) -> bool:
