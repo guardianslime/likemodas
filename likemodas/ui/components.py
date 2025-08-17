@@ -105,3 +105,56 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         ),
         wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
     )
+
+def multi_select_component(
+    placeholder: str,
+    options: rx.Var[list[str]],
+    selected_items: rx.Var[list[str]],
+    on_add: rx.event.EventSpec,
+    on_remove: rx.event.EventSpec,
+    search_value: rx.Var[str],
+    on_change_search: rx.event.EventSpec,
+    filter_name: str,
+) -> rx.Component:
+    """Un componente para seleccionar múltiples opciones con un buscador."""
+    return rx.vstack(
+        # Área para mostrar las etiquetas seleccionadas
+        rx.flex(
+            rx.foreach(
+                selected_items,
+                lambda item: rx.badge(
+                    item,
+                    rx.icon(
+                        "x",
+                        size=12,
+                        cursor="pointer",
+                        on_click=lambda: on_remove(item),
+                        margin_left="0.25em"
+                    ),
+                    variant="soft",
+                    color_scheme="gray",
+                    size="2",
+                ),
+            ),
+            wrap="wrap",
+            spacing="2",
+            min_height="36px", # Altura mínima para que no salte la interfaz
+            padding="0.5em",
+            border="1px solid",
+            border_color=rx.color("gray", 7),
+            border_radius="md",
+        ),
+        # El selector para añadir nuevos elementos
+        searchable_select(
+            placeholder=placeholder,
+            options=options,
+            on_change_select=on_add,
+            value_select="", # Nunca muestra un valor, solo añade
+            search_value=search_value,
+            on_change_search=on_change_search,
+            filter_name=filter_name,
+        ),
+        spacing="2",
+        align_items="stretch",
+        width="100%",
+    )

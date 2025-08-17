@@ -3,7 +3,7 @@
 import reflex as rx
 from ..state import AppState
 from ..models import Category
-from ..ui.components import searchable_select
+from ..ui.components import multi_select_component, searchable_select
 # Se importan las listas nuevas y actualizadas
 from ..data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES, 
@@ -31,14 +31,17 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
             filter_name="attr_color_filter",
         ),
-        searchable_select(
-            placeholder="Talla...", options=AppState.filtered_attr_tallas_ropa,
-            on_change_select=AppState.set_attr_talla_ropa, value_select=AppState.attr_talla_ropa,
-            search_value=AppState.search_attr_talla_ropa, on_change_search=AppState.set_search_attr_talla_ropa,
+        multi_select_component(
+            placeholder="Añadir talla...",
+            options=AppState.filtered_attr_tallas_ropa,
+            selected_items=AppState.attr_tallas_ropa,
+            on_add=AppState.add_attribute_value("attr_tallas_ropa"),
+            on_remove=AppState.remove_attribute_value("attr_tallas_ropa"),
+            search_value=AppState.search_attr_talla_ropa,
+            on_change_search=AppState.set_search_attr_talla_ropa,
             filter_name="attr_talla_filter",
         ),
-        # --- ✨ CORRECCIÓN: Se deja SOLO el selector dinámico ---
-        material_selector,
+        material_selector, # El de material no cambia
         columns="3", spacing="3", width="100%",
     )
 
@@ -49,14 +52,17 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
             filter_name="attr_color_filter",
         ),
-        searchable_select(
-            placeholder="Número...", options=AppState.filtered_attr_numeros_calzado,
-            on_change_select=AppState.set_attr_numero_calzado, value_select=AppState.attr_numero_calzado,
-            search_value=AppState.search_attr_numero_calzado, on_change_search=AppState.set_search_attr_numero_calzado,
+        multi_select_component(
+            placeholder="Añadir número...",
+            options=AppState.filtered_attr_numeros_calzado,
+            selected_items=AppState.attr_numeros_calzado,
+            on_add=AppState.add_attribute_value("attr_numeros_calzado"),
+            on_remove=AppState.remove_attribute_value("attr_numeros_calzado"),
+            search_value=AppState.search_attr_numero_calzado,
+            on_change_search=AppState.set_search_attr_numero_calzado,
             filter_name="attr_numero_filter",
         ),
-        # --- ✨ CORRECCIÓN: Se deja SOLO el selector dinámico ---
-        material_selector,
+        material_selector, # El de material no cambia
         columns="3", spacing="3", width="100%",
     )
 
@@ -67,14 +73,17 @@ def blog_post_add_form() -> rx.Component:
             search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
             filter_name="attr_color_filter",
         ),
-        searchable_select(
-            placeholder="Tamaño...", options=AppState.filtered_attr_tamanos_mochila,
-            on_change_select=AppState.set_attr_tamano_mochila, value_select=AppState.attr_tamano_mochila,
-            search_value=AppState.search_attr_tamano_mochila, on_change_search=AppState.set_search_attr_tamano_mochila,
+        multi_select_component(
+            placeholder="Añadir tamaño...",
+            options=AppState.filtered_attr_tamanos_mochila,
+            selected_items=AppState.attr_tamanos_mochila,
+            on_add=AppState.add_attribute_value("attr_tamanos_mochila"),
+            on_remove=AppState.remove_attribute_value("attr_tamanos_mochila"),
+            search_value=AppState.search_attr_tamano_mochila,
+            on_change_search=AppState.set_search_attr_tamano_mochila,
             filter_name="attr_tamano_mochila_filter",
         ),
-        # --- ✨ CORRECCIÓN: Se deja SOLO el selector dinámico ---
-        material_selector,
+        material_selector, # El de material no cambia
         columns="3", spacing="3", width="100%",
     )
 

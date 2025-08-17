@@ -236,11 +236,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         return [] # Devuelve una lista vacía si no hay categoría
             
     # --- NUEVO: Variables para las características del producto ---
+    # --- ✅ 1. MODIFICAR ATRIBUTOS DEL FORMULARIO DE 'str' a 'list[str]' ---
+    # ANTES: attr_talla_ropa: str = ""
+    attr_tallas_ropa: list[str] = []
+    # ANTES: attr_numero_calzado: str = ""
+    attr_numeros_calzado: list[str] = []
+    # ANTES: attr_tamano_mochila: str = ""
+    attr_tamanos_mochila: list[str] = []
+    # Mantenemos el color y material como selección única en el formulario de creación para simplicidad
     attr_color: str = ""
-    attr_talla_ropa: str = ""
     attr_material: str = ""
-    attr_numero_calzado: str = ""
-    attr_tamano_mochila: str = ""
 
     # --- NUEVO: Event handlers para actualizar las características ---
     def set_attr_color(self, value: str): self.attr_color = value
@@ -356,15 +361,49 @@ class AppState(reflex_local_auth.LocalAuthState):
     show_filters: bool = False
     current_category: str = ""
     open_filter_name: str = ""
-    filter_color: str = ""
-    filter_talla: str = ""
-    filter_tipo_prenda: str = ""
-    filter_tipo_zapato: str = ""
-    filter_numero_calzado: str = ""
-    filter_tipo_mochila: str = ""
-    filter_tipo_general: str = ""
-    filter_material_tela: str = ""
-    filter_medida_talla: str = ""
+    # ANTES: filter_color: str = ""
+    filter_colors: list[str] = []
+    # ANTES: filter_talla: str = ""
+    filter_tallas: list[str] = []
+    # ANTES: filter_tipo_prenda: str = ""
+    filter_tipos_prenda: list[str] = []
+    # ... (Haz lo mismo para todos los filtros que quieres que sean múltiples)
+    filter_tipos_zapato: list[str] = []
+    filter_numeros_calzado: list[str] = []
+    filter_tipos_mochila: list[str] = []
+    filter_materiales_tela: list[str] = []
+
+    # --- ✅ 3. NUEVOS EVENT HANDLERS GENÉRICOS ---
+    def add_attribute_value(self, attribute_name: str, value: str):
+        """Añade un valor a una lista de atributos en el formulario de creación."""
+        current_list = getattr(self, attribute_name)
+        if value not in current_list:
+            current_list.append(value)
+            setattr(self, attribute_name, current_list)
+
+    def remove_attribute_value(self, attribute_name: str, value: str):
+        """Elimina un valor de una lista de atributos en el formulario."""
+        current_list = getattr(self, attribute_name)
+        if value in current_list:
+            current_list.remove(value)
+            setattr(self, attribute_name, current_list)
+
+    def add_filter_value(self, filter_name: str, value: str):
+        """Añade un valor a una lista de filtros, con un límite de 5."""
+        current_list = getattr(self, filter_name)
+        if value not in current_list:
+            if len(current_list) >= 5:
+                # Notifica al usuario que no puede agregar más.
+                return rx.toast.info("Puedes seleccionar un máximo de 5 filtros por característica.")
+            current_list.append(value)
+            setattr(self, filter_name, current_list)
+
+    def remove_filter_value(self, filter_name: str, value: str):
+        """Elimina un valor de una lista de filtros."""
+        current_list = getattr(self, filter_name)
+        if value in current_list:
+            current_list.remove(value)
+            setattr(self, filter_name, current_list)
 
     def toggle_filters(self): self.show_filters = not self.show_filters
     def clear_all_filters(self):
@@ -694,9 +733,48 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        """
+        Valida, recopila todos los atributos (incluyendo selecciones múltiples)
+        y guarda el nuevo producto en la base de datos.
+        """
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
+        
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
+        
+        # --- 1. Recopilación dinámica de atributos ---
+        # Inicializamos un diccionario vacío para guardar las características.
+        attributes = {}
+        category = form_data.get("category")
+
+        if category == Category.ROPA.value:
+            if self.attr_color:
+                attributes["Color"] = self.attr_color
+            # Comprobamos la lista de tallas. Si no está vacía, la guardamos.
+            if self.attr_tallas_ropa:
+                attributes["Talla"] = self.attr_tallas_ropa
+            if self.attr_material:
+                # Usamos la etiqueta "Tela" específicamente para la categoría Ropa.
+                attributes["Tela"] = self.attr_material
+
+        elif category == Category.CALZADO.value:
+            if self.attr_color:
+                attributes["Color"] = self.attr_color
+            # Comprobamos la lista de números. Si no está vacía, la guardamos.
+            if self.attr_numeros_calzado:
+                attributes["Número"] = self.attr_numeros_calzado
+            if self.attr_material:
+                attributes["Material"] = self.attr_material
+        
+        elif category == Category.MOCHILAS.value:
+            if self.attr_color:
+                attributes["Color"] = self.attr_color
+            # Comprobamos la lista de tamaños. Si no está vacía, la guardamos.
+            if self.attr_tamanos_mochila:
+                attributes["Tamaño"] = self.attr_tamanos_mochila
+            if self.attr_material:
+                attributes["Material"] = self.attr_material
         
         with rx.session() as session:
             new_post = BlogPostModel(
@@ -704,16 +782,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                 title=form_data["title"],
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
-                category=form_data["category"],
+                category=category,
                 image_urls=self.temp_images,
+                
+                # --- 2. Guardar el diccionario de atributos en la BD ---
+                # El campo 'attributes' de tu modelo es de tipo JSON y puede
+                # guardar perfectamente nuestro diccionario.
+                attributes=attributes,
+                
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
             )
             session.add(new_post)
             session.commit()
             session.refresh(new_post)
+            
+        # Limpiamos el formulario, incluyendo las nuevas listas de atributos.
         self._clear_add_form()
-        yield rx.toast.success("Producto publicado.")
+        yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
         
     @rx.var
