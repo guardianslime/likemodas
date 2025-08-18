@@ -1,4 +1,4 @@
-# likemodas/ui/components.py (Versión Final Corregida)
+# likemodas/ui/components.py (Versión Corregida y con Diagnóstico)
 
 import reflex as rx
 import math
@@ -70,6 +70,7 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
         ),
         rx.box(height="21px")
     )
+
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
     Componente que muestra una galería de productos con una estructura simplificada.
@@ -93,7 +94,15 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.vstack(
                         rx.text(post.title, weight="bold", size="6"),
                         _product_card_rating(post),
-                        rx.text(post.price_cop, size="6"), # El precio está aquí
+                        
+                        # --- MODIFICACIÓN DE DIAGNÓSTICO ---
+                        # Se añade un fondo de color para forzar la visibilidad.
+                        rx.text(
+                            post.price_cop, 
+                            size="6", 
+                            bg="purple" # <--- PRUEBA TEMPORAL
+                        ), 
+                        
                         spacing="2",
                         align_items="start",
                         width="100%"
@@ -132,7 +141,6 @@ def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
     selected_items: rx.Var[list[str]],
-    # --- CAMBIO 1: Pedimos los handlers y el nombre de la propiedad por separado ---
     add_handler: rx.event.EventHandler,
     remove_handler: rx.event.EventHandler,
     prop_name: str,
@@ -151,8 +159,6 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        # --- CAMBIO 2: Construimos el evento aquí dentro ---
-                        # Esto es más explícito y evita el error.
                         on_click=remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
@@ -165,7 +171,6 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            # --- CAMBIO 3: Usamos un lambda para construir el evento de añadir ---
             on_change_select=lambda val: add_handler(prop_name, val),
             value_select="",
             search_value=search_value,
