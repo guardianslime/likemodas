@@ -1,6 +1,6 @@
-# likemodas/models.py (Versión Corregida con relationship_attributes)
+# likemodas/models.py (Versión Final Corregida)
 
-from typing import Optional, List
+from typing import Optional, List, ClassVar # <--- 1. IMPORTA ClassVar
 from datetime import datetime
 import enum
 import pytz
@@ -73,9 +73,8 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
-    # --- INICIO DE LA CORRECCIÓN ---
-    # Todas las relaciones se mueven a este diccionario
-    relationship_attributes = {
+    # 2. ANOTA EL DICCIONARIO CON ClassVar[dict]
+    relationship_attributes: ClassVar[dict] = {
         "user": Relationship(),
         "posts": Relationship(back_populates="userinfo"),
         "verification_tokens": Relationship(back_populates="userinfo"),
@@ -87,7 +86,6 @@ class UserInfo(rx.Model, table=True):
         "comment_votes": Relationship(back_populates="userinfo"),
         "saved_posts": Relationship(back_populates="saved_by_users", link_model=SavedPostLink),
     }
-    # --- FIN DE LA CORRECCIÓN ---
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
@@ -95,7 +93,7 @@ class VerificationToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "userinfo": Relationship(back_populates="verification_tokens")
     }
     
@@ -120,24 +118,23 @@ class BlogPostModel(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
     
-    # --- INICIO DE LA CORRECCIÓN ---
-    # Todas las relaciones se mueven a este diccionario
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "userinfo": Relationship(back_populates="posts"),
         "comments": Relationship(back_populates="blog_post"),
         "saved_by_users": Relationship(back_populates="saved_posts", link_model=SavedPostLink),
     }
-    # --- FIN DE LA CORRECCIÓN ---
     
     class Config:
         exclude = {"userinfo"}
     
     @property
     def rating_count(self) -> int:
-        return len(self.comments) if self.comments else 0
+        # Tuve que añadir una comprobación para evitar un error si comments es None
+        return len(self.comments) if self.comments is not None else 0
 
     @property
     def average_rating(self) -> float:
+        # Tuve que añadir una comprobación para evitar un error si comments es None
         if not self.comments:
             return 0.0
         return sum(c.rating for c in self.comments) / len(self.comments)
@@ -158,7 +155,7 @@ class ShippingAddressModel(rx.Model, table=True):
     is_default: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
 
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "userinfo": Relationship(back_populates="shipping_addresses")
     }
 
@@ -175,7 +172,7 @@ class PurchaseModel(rx.Model, table=True):
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "userinfo": Relationship(back_populates="purchases"),
         "items": Relationship(back_populates="purchase"),
     }
@@ -200,7 +197,7 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
     
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "purchase": Relationship(back_populates="items"),
         "blog_post": Relationship(),
     }
@@ -215,7 +212,7 @@ class NotificationModel(rx.Model, table=True):
     url: Optional[str] = None
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
     
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "userinfo": Relationship(back_populates="notifications")
     }
     
@@ -233,7 +230,7 @@ class ContactEntryModel(rx.Model, table=True):
     message: str
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
 
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "userinfo": Relationship(back_populates="contact_entries")
     }
 
@@ -250,7 +247,7 @@ class CommentModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "userinfo": Relationship(back_populates="comments"),
         "blog_post": Relationship(back_populates="comments"),
         "votes": Relationship(back_populates="comment"),
@@ -271,17 +268,21 @@ class CommentModel(rx.Model, table=True):
         return (self.updated_at - self.created_at).total_seconds() > 5
 
     @property
-    def likes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
+    def likes(self) -> int: 
+        # Tuve que añadir una comprobación para evitar un error si votes es None
+        return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE) if self.votes is not None else 0
 
     @property
-    def dislikes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
+    def dislikes(self) -> int: 
+        # Tuve que añadir una comprobación para evitar un error si votes es None
+        return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE) if self.votes is not None else 0
 
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")
     comment_id: int = Field(foreign_key="commentmodel.id")
     
-    relationship_attributes = {
+    relationship_attributes: ClassVar[dict] = {
         "userinfo": Relationship(back_populates="comment_votes"),
         "comment": Relationship(back_populates="votes"),
     }
