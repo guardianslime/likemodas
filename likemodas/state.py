@@ -1514,7 +1514,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         Devuelve un nuevo manejador de eventos configurado con el post_id.
         """
         @rx.event
-        def _handle_event(self):
+        def handle_event(self):
             self.product_in_modal = None
             self.show_detail_modal = True
             self.current_image_index = 0
@@ -1557,7 +1557,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     self.show_detail_modal = False
                     yield rx.toast.error("Producto no encontrado o no disponible.")
         
-        return _handle_event
+        return handle_event
     
     # --- AÑADIR: Evento para cargar la página de guardados ---
     @rx.event
