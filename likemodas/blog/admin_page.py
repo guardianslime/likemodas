@@ -60,7 +60,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
             rx.hstack(
                 rx.button(
                     "Editar", 
-                    on_click=AppState.start_editing_post(post.id),
+                    on_click=lambda: AppState.start_editing_post(post.id), # <--- CORREGIDO
                     variant="outline",
                     size="2"
                 ),
