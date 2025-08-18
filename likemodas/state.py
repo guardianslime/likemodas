@@ -61,6 +61,8 @@ class ProductDetailData(rx.Base):
     created_at_formatted: str
     average_rating: float = 0.0
     rating_count: int = 0
+    seller_name: str = ""  # <--- AÑADIR ESTA LÍNEA
+    seller_id: int = 0     # <--- AÑADIR ESTA LÍNEA
 
     # --- ✨ AÑADIMOS LA CONFIGURACIÓN REQUERIDA ---
     class Config:
@@ -1336,6 +1338,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
+                # --- INICIO DE LA MODIFICACIÓN ---
+                # Filtramos para que solo muestre los posts del usuario logueado
+                .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
+                # --- FIN DE LA MODIFICACIÓN ---
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
@@ -1474,7 +1480,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                self.product_in_modal = ProductDetailData.from_orm(db_post)
+                self.product_in_modal = ProductDetailData.from_orm(
+                    db_post,
+                    update={
+                        "seller_name": db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "Vendedor Anónimo",
+                        "seller_id": db_post.userinfo.id if db_post.userinfo else 0,
+                    }
+                )
 
                 self.product_comments = sorted(
                     db_post.comments, 
@@ -1514,3 +1526,50 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Usamos deploy_url para los enlaces que ven los usuarios,
         # no api_url que es para la conexión interna.
         return get_config().deploy_url
+    
+    # --- AÑADIR: Variables para la página del vendedor ---
+    seller_page_info: Optional[UserInfo] = None
+    seller_page_posts: list[ProductCardData] = []
+
+    @rx.event
+    def on_load_seller_page(self):
+        """Carga la información y los productos para la página de un vendedor."""
+        self.is_loading = True
+        # Limpiamos los datos anteriores
+        self.seller_page_info = None
+        self.seller_page_posts = []
+        yield
+
+        # Obtenemos el ID del vendedor desde los parámetros de la URL
+        seller_id_str = self.router.page.params.get("seller_id", "0")
+        try:
+            seller_id = int(seller_id_str)
+        except (ValueError, TypeError):
+            seller_id = 0
+
+        if seller_id > 0:
+            with rx.session() as session:
+                # Buscamos la información del vendedor
+                seller_info = session.exec(
+                    sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
+                    .where(UserInfo.id == seller_id)
+                ).one_or_none()
+                self.seller_page_info = seller_info
+
+                if seller_info:
+                    # Buscamos los productos de ese vendedor
+                    posts = session.exec(
+                        sqlmodel.select(BlogPostModel)
+                        .where(
+                            BlogPostModel.userinfo_id == seller_id,
+                            BlogPostModel.publish_active == True
+                        )
+                        .order_by(BlogPostModel.created_at.desc())
+                    ).all()
+                    # Usamos el mismo bucle que para la página principal
+                    temp_posts = []
+                    for p in posts:
+                        temp_posts.append(ProductCardData.from_orm(p, update={"price_cop": p.price_cop}))
+                    self.seller_page_posts = temp_posts
+
+        self.is_loading = False

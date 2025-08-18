@@ -8,7 +8,8 @@ from .ui.base import base_page
 
 from .auth import pages as auth_pages
 # Asegúrate de que 'landing' esté importado desde .pages
-from .pages import landing, search_results, category_page
+from .pages import landing, search_results, category_page, seller_page # <-- Añade seller_page
+
 from .blog import (
     blog_public_page_content, 
     blog_admin_page, 
@@ -33,6 +34,14 @@ app.add_page(
     route="/",
     on_load=AppState.on_load_main_page,
     title="Likemodas | Inicio"
+)
+
+# AÑADE ESTA RUTA (puede ser después de las de búsqueda)
+app.add_page(
+    base_page(seller_page.seller_page_content()), 
+    route="/seller/[seller_id]", 
+    on_load=AppState.on_load_seller_page,
+    title="Publicaciones del Vendedor"
 )
 
 

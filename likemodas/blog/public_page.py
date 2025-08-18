@@ -130,6 +130,25 @@ def product_detail_modal() -> rx.Component:
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
 
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
+            
+            # --- INICIO DE LA MODIFICACIÓN ---
+            # Añade este bloque antes del rx.spacer()
+            rx.text(
+                "Publicado por: ",
+                rx.link(
+                    AppState.product_in_modal.seller_name,
+                    # El enlace apunta a la nueva página del vendedor
+                    href=f"/seller/{AppState.product_in_modal.seller_id}",
+                    color_scheme="violet",
+                    font_weight="bold",
+                ),
+                size="3",
+                color_scheme="gray",
+                margin_top="1.5em",
+                text_align="left",
+                width="100%"
+            ),
+
             rx.spacer(),
             
             # Grupo de botones
