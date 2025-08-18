@@ -67,8 +67,8 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                 ),
                 rx.alert_dialog.root(
                     rx.alert_dialog.action(
-                        # highlight-next-line
-                        rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))
+                        # Eliminamos la lambda para que Reflex genere el EventSpec correctamente
+                        rx.button("Sí, Eliminar", on_click=AppState.delete_post(post.id))
                     ),
                     rx.alert_dialog.content(
                         rx.alert_dialog.title("Confirmar Eliminación"),
