@@ -102,7 +102,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         spacing="2",
                         width="100%",
                         # Hacemos que esta sección superior sea la que abre el modal
-                        on_click=AppState.open_product_detail_modal(post.id),
+                        on_click=lambda: AppState.open_product_detail_modal(post.id),
                         cursor="pointer",
                     ),
 
