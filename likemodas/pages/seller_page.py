@@ -11,20 +11,15 @@ def seller_page_content() -> rx.Component:
     return rx.center(
         rx.vstack(
             # --- INICIO DE LA CORRECCIÓN ---
-            # Comprobamos de forma segura que 'seller_page_info' y su atributo 'user' existan.
-            rx.cond(
-                (AppState.seller_page_info) & (AppState.seller_page_info.user),
-                rx.heading(
-                    "Publicaciones de ",
-                    rx.text(
-                        AppState.seller_page_info.user.username,
-                        as_="span",
-                        color_scheme="violet",
-                    ),
-                    size="8"
+            # Ahora usamos la nueva propiedad computada que es segura
+            rx.heading(
+                "Publicaciones de ",
+                rx.text(
+                    AppState.seller_page_username,
+                    as_="span",
+                    color_scheme="violet",
                 ),
-                # Si no existen (como durante la compilación), muestra un texto de carga.
-                rx.heading("Cargando vendedor...", size="8")
+                size="8"
             ),
             # --- FIN DE LA CORRECCIÓN ---
             rx.divider(margin_y="1.5em"),
