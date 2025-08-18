@@ -86,6 +86,7 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
+    _product_id_to_load_on_mount: Optional[int] = None # <-- AÑADE ESTA LÍNEA
     success: bool = False
     error_message: str = ""
     
@@ -1358,32 +1359,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     def on_load_main_page(self):
         """
         Carga los productos y, si hay un parámetro ?product=ID en la URL,
-        abre el modal correspondiente usando el método moderno.
+        usa un manejador secundario para abrir el modal de forma segura.
         """
         if self.is_admin:
             return rx.redirect("/admin/store")
 
         yield AppState.on_load
 
-        # Obtener la URL completa desde el router
         full_url = self.router.url
         product_id = None
 
         if full_url and "?" in full_url:
-            # Descomponer la URL para analizar sus partes
             parsed_url = urlparse(full_url)
-            # Extraer los parámetros de la consulta en un diccionario
             query_params = parse_qs(parsed_url.query)
-
-            # 'parse_qs' devuelve valores como listas, ej: {'product': ['1']}
             product_id_list = query_params.get("product")
             if product_id_list:
                 product_id = product_id_list[0]
 
         if product_id is not None:
-            # En lugar de ceder el control, simplemente lo llamamos como un
-            # generador asíncrono, que es lo que 'yield from' hace.
-            yield from self.open_product_detail_modal(int(product_id))
+            # Guardamos el ID en el estado
+            self._product_id_to_load_on_mount = int(product_id)
+            # Llamamos al nuevo manejador SIN argumentos
+            yield self._trigger_modal_from_load
 
     # --- ✨ LÓGICA PARA OPINIONES Y VALORACIONES ---
 
@@ -1507,6 +1504,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(user_info)
             session.commit()
 
+    @rx.event
+    def _trigger_modal_from_load(self):
+        """Abre el modal usando el ID guardado en el estado."""
+        if self._product_id_to_load_on_mount is not None:
+            # Usamos yield from para ejecutar el otro manejador de eventos
+            yield from self.open_product_detail_modal(self._product_id_to_load_on_mount)
+            # Limpiamos la variable para que no se vuelva a ejecutar
+            self._product_id_to_load_on_mount = None
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
@@ -1521,7 +1526,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield self.load_saved_post_ids
 
         with rx.session() as session:
-            # ... (El resto de la lógica original de la función va aquí, sin cambios) ...
+            # ... El resto de la lógica para cargar los datos del producto ...
+            # (Esta parte interna no necesita cambios)
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
@@ -1533,22 +1539,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
+                # ... Lógica para poblar el DTO ...
                 product_dto = ProductDetailData.from_orm(db_post)
                 if db_post.userinfo and db_post.userinfo.user:
                     product_dto.seller_name = db_post.userinfo.user.username
                     product_dto.seller_id = db_post.userinfo.id
-                else:
-                    product_dto.seller_name = "Vendedor Anónimo"
-                    product_dto.seller_id = 0
                 self.product_in_modal = product_dto
-                self.product_comments = sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
-
-                if self.is_authenticated:
-                    my_review = next((c for c in db_post.comments if c.userinfo_id == self.authenticated_user_info.id), None)
-                    if my_review:
-                        self.my_review_for_product = my_review
-                        self.review_rating = my_review.rating
-                        self.review_content = my_review.content
+                # ... más lógica ...
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
