@@ -1541,13 +1541,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     def on_load_seller_page(self):
         """Carga la información y los productos para la página de un vendedor."""
         self.is_loading = True
-        # Limpiamos los datos anteriores
         self.seller_page_info = None
         self.seller_page_posts = []
         yield
 
-        # Obtenemos el ID del vendedor desde los parámetros de la URL
-        seller_id_str = self.router.page.params.get("seller_id", "0")
+        # --- CORRECCIÓN 1: Usamos self.router.params en lugar de self.router.page.params ---
+        seller_id_str = self.router.params.get("seller_id", "0")
         try:
             seller_id = int(seller_id_str)
         except (ValueError, TypeError):
@@ -1555,7 +1554,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         if seller_id > 0:
             with rx.session() as session:
-                # Buscamos la información del vendedor
                 seller_info = session.exec(
                     sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
                     .where(UserInfo.id == seller_id)
@@ -1563,7 +1561,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.seller_page_info = seller_info
 
                 if seller_info:
-                    # Buscamos los productos de ese vendedor
                     posts = session.exec(
                         sqlmodel.select(BlogPostModel)
                         .where(
@@ -1572,10 +1569,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                         .order_by(BlogPostModel.created_at.desc())
                     ).all()
-                    # Usamos el mismo bucle que para la página principal
+                    
                     temp_posts = []
                     for p in posts:
-                        temp_posts.append(ProductCardData.from_orm(p, update={"price_cop": p.price_cop}))
+                        # --- CORRECCIÓN 2: Construimos el DTO en dos pasos ---
+                        product_dto = ProductCardData.from_orm(p)
+                        product_dto.price_cop = p.price_cop
+                        temp_posts.append(product_dto)
+                        
                     self.seller_page_posts = temp_posts
 
         self.is_loading = False
