@@ -11,8 +11,7 @@ def seller_page_content() -> rx.Component:
     return rx.center(
         rx.vstack(
             # --- INICIO DE LA CORRECCIÓN ---
-            # En lugar de asumir que seller_page_info existe, lo comprobamos con rx.cond.
-            # Además, verificamos que el atributo 'user' dentro de 'seller_page_info' no sea nulo.
+            # Comprobamos de forma segura que 'seller_page_info' y su atributo 'user' existan.
             rx.cond(
                 (AppState.seller_page_info) & (AppState.seller_page_info.user),
                 rx.heading(
@@ -24,7 +23,7 @@ def seller_page_content() -> rx.Component:
                     ),
                     size="8"
                 ),
-                # Muestra un texto de carga mientras se obtienen los datos.
+                # Si no existen (como durante la compilación), muestra un texto de carga.
                 rx.heading("Cargando vendedor...", size="8")
             ),
             # --- FIN DE LA CORRECCIÓN ---
