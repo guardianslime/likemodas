@@ -47,7 +47,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
-                    # highlight-next-line
+                    # Corregido para ignorar el argumento de forma segura
                     on_change=lambda _: AppState.toggle_publish_status(post.id),
                 ),
                 rx.text(rx.cond(post.publish_active, "Visible", "Oculto")),
@@ -66,9 +66,8 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                     size="2"
                 ),
                 rx.alert_dialog.root(
-                    rx.alert_dialog.action(
-                        # Eliminamos la lambda para que Reflex genere el EventSpec correctamente
-                        rx.button("Sí, Eliminar", on_click=AppState.delete_post(post.id))
+                    rx.alert_dialog.trigger(
+                        rx.button("Eliminar", color_scheme="red", variant="soft", size="2")
                     ),
                     rx.alert_dialog.content(
                         rx.alert_dialog.title("Confirmar Eliminación"),
@@ -76,7 +75,8 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                         rx.flex(
                             rx.alert_dialog.cancel(rx.button("Cancelar")),
                             rx.alert_dialog.action(
-                                rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))
+                                # La línea crítica ha sido corregida (sin lambda)
+                                rx.button("Sí, Eliminar", on_click=AppState.delete_post(post.id))
                             ),
                             spacing="3", margin_top="1em", justify="end",
                         ),
