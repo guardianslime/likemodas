@@ -73,55 +73,57 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    Componente que muestra una galería de productos con una estructura simplificada.
+    Componente que muestra una galería de productos.
     """
     return rx.flex(
         rx.foreach(
             posts,
             lambda post: rx.box(
+                # El vstack principal de la tarjeta ahora tendrá on_click
                 rx.vstack(
-                    # 1. Caja de la imagen (centrada)
-                    rx.box(
-                        rx.cond(
-                            post.image_urls & (post.image_urls.length() > 0),
-                            rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="260px", object_fit="cover"),
-                            rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
-                        ),
-                        width="260px", height="260px"
-                    ),
-                    
-                    # 2. Contenido de texto (alineado a la izquierda)
                     rx.vstack(
-                        rx.text(post.title, weight="bold", size="6"),
-                        _product_card_rating(post),
-                        
-                        # --- MODIFICACIÓN DE DIAGNÓSTICO ---
-                        # Se añade un fondo de color para forzar la visibilidad.
-                        rx.text(
-                            post.price_cop, 
-                            size="6", 
-                            bg="purple" # <--- PRUEBA TEMPORAL
-                        ), 
-                        
+                        # Este vstack envuelve la parte superior clickeable que abre el modal
+                        rx.box(
+                            rx.cond(
+                                post.image_urls & (post.image_urls.length() > 0),
+                                rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="260px", object_fit="cover"),
+                                rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
+                            ),
+                            width="260px", height="260px"
+                        ),
+                        rx.vstack(
+                            rx.text(post.title, weight="bold", size="6"),
+                            _product_card_rating(post),
+                            rx.text(post.price_cop, size="6"),
+                            spacing="2",
+                            align_items="start",
+                            width="100%"
+                        ),
                         spacing="2",
-                        align_items="start",
-                        width="100%"
+                        width="100%",
+                        # Hacemos que esta sección superior sea la que abre el modal
+                        on_click=AppState.open_product_detail_modal(post.id),
+                        cursor="pointer",
                     ),
 
-                    # 3. El espaciador empuja todo el contenido hacia arriba
                     rx.spacer(),
-                    
-                    # Propiedades del vstack principal
-                    spacing="2",
-                    height="100%",
-                    width="100%"
+
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    # Añadimos el botón en la parte inferior de la tarjeta
+                    rx.button(
+                        "Añadir al Carrito",
+                        width="100%",
+                        # El on_click tiene dos acciones: añadir al carrito y detener la propagación
+                        # para que no se abra el modal.
+                        on_click=[
+                            AppState.add_to_cart(post.id),
+                            lambda e: e.stop_propagation()
+                        ],
+                    ),
+                    # --- FIN DE LA MODIFICACIÓN ---
                 ),
-                
-                # Propiedades de la caja (tarjeta)
-                on_click=lambda: AppState.open_product_detail_modal(post.id),
-                cursor="pointer",
                 width="290px", 
-                height="450px",
+                height="450px", # La altura se mantiene bien
                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                 border_radius="8px", 

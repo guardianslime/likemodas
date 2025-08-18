@@ -28,11 +28,18 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
         return local_dt.strftime('%d-%m-%Y %I:%M %p')
     except Exception:
         return utc_dt.strftime('%Y-%m-%d %H:%M')
+    
+# --- AÑADE ESTA NUEVA CLASE (TABLA) ---
+# Esta es una tabla de asociación para la relación muchos a muchos.
+class SavedPostLink(rx.Model, table=True):
+    userinfo_id: int = Field(foreign_key="userinfo.id", primary_key=True)
+    blogpostmodel_id: int = Field(foreign_key="blogpostmodel.id", primary_key=True)
 
 # --- Enumeraciones ---
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
+    saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
 
 class PurchaseStatus(str, enum.Enum):
     PENDING = "pending_confirmation"
@@ -109,6 +116,7 @@ class BlogPostModel(rx.Model, table=True):
     
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
+    saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     
     class Config:
         exclude = {"userinfo"}
