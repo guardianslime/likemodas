@@ -163,6 +163,19 @@ def product_detail_modal() -> rx.Component:
                     # ocupe el espacio disponible sin empujar a los otros elementos.
                     flex_grow="1",
                 ),
+                # --- INICIO DE LA MODIFICACIÓN ---
+                # Añadimos el botón de Guardar/Quitar
+                rx.icon_button(
+                    rx.cond(
+                        AppState.is_current_post_saved,
+                        rx.icon(tag="bookmark-minus"),
+                        rx.icon(tag="bookmark-plus")
+                    ),
+                    on_click=AppState.toggle_save_post,
+                    size="3",
+                    variant="outline",
+                ),
+                
                 rx.icon_button(
                     rx.icon(tag="share-2"),
                     on_click=[

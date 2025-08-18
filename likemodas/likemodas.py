@@ -22,6 +22,7 @@ from .admin.store_page import admin_store_page
 from .admin.users_page import user_management_page
 from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
+from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTACIÓN
 from . import navigation
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
@@ -59,6 +60,7 @@ app.add_page(base_page(search_results.search_results_content()), route="/search-
 app.add_page(base_page(cart_page.cart_page_content()), route="/cart", title="Mi Carrito", on_load=[AppState.on_load, AppState.load_default_shipping_info])
 app.add_page(base_page(purchases_page.purchase_history_content()), route="/my-purchases", title="Mis Compras", on_load=AppState.load_purchases)
 app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
+app.add_page(base_page(saved_posts_module.saved_posts_content()), route="/my-account/saved-posts", title="Publicaciones Guardadas", on_load=AppState.on_load_saved_posts_page)
 
 # --- Rutas de Administración ---
 app.add_page(

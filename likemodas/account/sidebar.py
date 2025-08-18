@@ -4,7 +4,6 @@ import reflex as rx
 from .. import navigation
 
 def account_sidebar() -> rx.Component:
-    """El menú lateral para la página Mi Cuenta del usuario."""
     return rx.vstack(
         rx.heading("Mi Cuenta", size="6", margin_bottom="1em"),
         rx.link(
@@ -16,6 +15,13 @@ def account_sidebar() -> rx.Component:
         rx.link(
             rx.text("Información para envíos"),
             href=navigation.routes.SHIPPING_INFO_ROUTE,
+            width="100%",
+            padding="0.5em",
+        ),
+        # --- AÑADE ESTE ENLACE NUEVO ---
+        rx.link(
+            rx.text("Publicaciones Guardadas"),
+            href="/my-account/saved-posts",
             width="100%",
             padding="0.5em",
         ),

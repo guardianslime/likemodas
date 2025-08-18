@@ -1453,6 +1453,59 @@ class AppState(reflex_local_auth.LocalAuthState):
     
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
+    # --- AÑADIR: Variables para publicaciones guardadas ---
+    saved_post_ids: set[int] = set()
+    saved_posts_gallery: list[ProductCardData] = []
+
+    @rx.var
+    def is_current_post_saved(self) -> bool:
+        """Comprueba si el producto en el modal está guardado por el usuario actual."""
+        if not self.product_in_modal or not self.is_authenticated:
+            return False
+        return self.product_in_modal.id in self.saved_post_ids
+
+    @rx.event
+    def load_saved_post_ids(self):
+        """Carga los IDs de las publicaciones guardadas por el usuario actual."""
+        if not self.authenticated_user_info:
+            self.saved_post_ids = set()
+            return
+        
+        with rx.session() as session:
+            # Recargamos el user_info para acceder a la nueva relación 'saved_posts'
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info:
+                self.saved_post_ids = {post.id for post in user_info.saved_posts}
+
+    @rx.event
+    def toggle_save_post(self):
+        """Guarda o elimina una publicación de la lista de guardados del usuario."""
+        if not self.authenticated_user_info or not self.product_in_modal:
+            return rx.toast.error("Debes iniciar sesión para guardar publicaciones.")
+
+        post_id = self.product_in_modal.id
+        with rx.session() as session:
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            post_to_toggle = session.get(BlogPostModel, post_id)
+
+            if not user_info or not post_to_toggle:
+                return rx.toast.error("Error al procesar la solicitud.")
+
+            if post_id in self.saved_post_ids:
+                # Si ya está guardado, lo eliminamos
+                user_info.saved_posts.remove(post_to_toggle)
+                self.saved_post_ids.remove(post_id)
+                yield rx.toast.info("Publicación eliminada de tus guardados.")
+            else:
+                # Si no está guardado, lo añadimos
+                user_info.saved_posts.append(post_to_toggle)
+                self.saved_post_ids.add(post_id)
+                yield rx.toast.success("¡Publicación guardada!")
+            
+            session.add(user_info)
+            session.commit()
+
+
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         self.product_in_modal = None
@@ -1463,7 +1516,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.my_review_for_product = None
         self.review_rating = 0
         self.review_content = ""
-        yield
+        yield self.load_saved_post_ids # <-- AÑADE ESTO para actualizar el estado del botón
 
         with rx.session() as session:
             # --- ✨ CORRECCIÓN AQUÍ ---
@@ -1512,7 +1565,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
-
+    
+    # --- AÑADIR: Evento para cargar la página de guardados ---
+    @rx.event
+    def on_load_saved_posts_page(self):
+        """Carga la galería de publicaciones guardadas por el usuario."""
+        if not self.authenticated_user_info:
+            self.saved_posts_gallery = []
+            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+        
+        with rx.session() as session:
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info:
+                # Creamos los DTOs para la galería
+                temp_posts = []
+                # Accedemos a los posts a través de la relación y los ordenamos
+                sorted_posts = sorted(user_info.saved_posts, key=lambda p: p.created_at, reverse=True)
+                for p in sorted_posts:
+                    product_dto = ProductCardData.from_orm(p)
+                    product_dto.price_cop = p.price_cop
+                    temp_posts.append(product_dto)
+                self.saved_posts_gallery = temp_posts
 
     # Este método también se simplifica
     @rx.event
