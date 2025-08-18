@@ -1539,22 +1539,35 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_seller_page(self):
-        """Carga la información del vendedor usando un parámetro de consulta (ej: /vendedor?id=42)."""
+        """Carga la información del vendedor analizando la URL completa."""
         self.is_loading = True
         self.seller_page_info = None
         self.seller_page_posts = []
         yield
 
-        # --- CAMBIO CLAVE AQUÍ ---
-        # Leemos el parámetro "id" de la URL, igual que en la página de verificación.
-        seller_id_str = self.router.query_params.get("id", "0")
+        seller_id_str = "0"
+        try:
+            # 1. Obtenemos la URL completa, ej: "/vendedor?id=42"
+            full_url = self.router.url
+            if full_url and "?" in full_url:
+                # 2. Analizamos la URL para aislar los parámetros de consulta
+                parsed_url = urlparse(full_url)
+                query_dict = parse_qs(parsed_url.query)
+                
+                # 3. Extraemos el valor de "id" de forma segura
+                # parse_qs devuelve una lista, ej: {'id': ['42']}
+                id_list = query_dict.get("id")
+                if id_list:
+                    seller_id_str = id_list[0]
+        except Exception:
+            pass # Si algo falla, usamos el valor por defecto
 
         try:
             seller_id_int = int(seller_id_str)
         except (ValueError, TypeError):
             seller_id_int = 0
 
-        # El resto de la lógica para cargar los datos del vendedor no cambia.
+        # El resto de la lógica para cargar los datos es la misma y funcionará correctamente
         if seller_id_int > 0:
             with rx.session() as session:
                 seller_info = session.exec(
