@@ -33,10 +33,12 @@ from .data.product_options import (
 class ProductCardData(rx.Base):
     id: int
     title: str
-    price: float = 0.0
+    price: float = 0.0  # Mantenemos el precio original para cálculos
+    price_cop: str = "" # AÑADIMOS: Un campo de texto simple para el precio formateado
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
+    attributes: dict = {}
     
     # --- ✨ LÍNEA AÑADIDA ---
     # Añadimos el campo 'attributes' para que la información
@@ -584,12 +586,32 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
             
-            # Ahora usamos la variable de estado para filtrar, asegurando consistencia.
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
             
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-            self.posts = [ProductCardData.from_orm(p) for p in results]
+
+            # --- INICIO DE LA CORRECCIÓN CLAVE ---
+            # Reemplaza la línea "self.posts = [ProductCardData.from_orm(p) for p in results]"
+            # con este bucle manual:
+            
+            temp_posts = []
+            for p in results:
+                temp_posts.append(
+                    ProductCardData(
+                        id=p.id,
+                        title=p.title,
+                        price=p.price,
+                        # Llamamos a la propiedad del MODELO y guardamos el resultado
+                        price_cop=p.price_cop, 
+                        image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        attributes=p.attributes,
+                    )
+                )
+            self.posts = temp_posts
+            # --- FIN DE LA CORRECCIÓN CLAVE ---
         
         self.is_loading = False
     
