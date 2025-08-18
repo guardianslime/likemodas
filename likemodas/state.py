@@ -1480,13 +1480,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                self.product_in_modal = ProductDetailData.from_orm(
-                    db_post,
-                    update={
-                        "seller_name": db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "Vendedor Anónimo",
-                        "seller_id": db_post.userinfo.id if db_post.userinfo else 0,
-                    }
-                )
+                # 1. Primero, crea el objeto base desde el modelo de la base de datos.
+                product_dto = ProductDetailData.from_orm(db_post)
+
+                # 2. Luego, añade o actualiza los campos adicionales manualmente.
+                if db_post.userinfo and db_post.userinfo.user:
+                    product_dto.seller_name = db_post.userinfo.user.username
+                    product_dto.seller_id = db_post.userinfo.id
+                else:
+                    product_dto.seller_name = "Vendedor Anónimo"
+                    product_dto.seller_id = 0
+
+                # 3. Finalmente, asigna el objeto completo al estado.
+                self.product_in_modal = product_dto
 
                 self.product_comments = sorted(
                     db_post.comments, 
