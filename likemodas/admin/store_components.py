@@ -31,7 +31,7 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                 # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
                 # Se llama al manejador de estado que abre el modal,
                 # pasando el ID del producto.
-                on_click=lambda: AppState.start_editing_post(post.id),
+                on_click=AppState.start_editing_post(post.id),
                 width="100%",
                 variant="outline"
             ),

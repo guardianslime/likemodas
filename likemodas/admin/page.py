@@ -38,7 +38,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData, is_history: bool = Fals
             ),
             rx.cond(
                 ~is_history,
-                rx.button("Confirmar Pago", on_click=lambda: AppState.confirm_payment(purchase.id), width="100%", margin_top="1em")
+                rx.button("Confirmar Pago", on_click=AppState.confirm_payment(purchase.id), width="100%", margin_top="1em")
             ),
             spacing="4", width="100%",
         ), width="100%",

@@ -9,6 +9,8 @@ from .forms import blog_post_edit_form
 def edit_post_dialog() -> rx.Component:
     """El diálogo modal que contiene el formulario de edición."""
     return rx.alert_dialog.root(
+        # --- CORRECCIÓN AQUÍ ---
+        # 1. El hijo `rx.alert_dialog.content` va primero.
         rx.alert_dialog.content(
             rx.alert_dialog.title("Editar Publicación"),
             rx.alert_dialog.description(
@@ -23,8 +25,10 @@ def edit_post_dialog() -> rx.Component:
                 margin_top="1em",
                 justify="end",
             ),
+            # El argumento de palabra clave `style` va al final, dentro de content.
             style={"max_width": "600px"},
         ),
+        # 2. Los argumentos de palabra clave `open` y `on_open_change` van después.
         open=AppState.is_editing_post,
         on_open_change=AppState.cancel_editing_post,
     )
@@ -56,8 +60,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
             rx.hstack(
                 rx.button(
                     "Editar", 
-                    # --- ESTA ES LA LÍNEA CRÍTICA CORREGIDA ---
-                    on_click=lambda: AppState.start_editing_post(post.id),
+                    on_click=lambda: AppState.start_editing_post(post.id), # <--- CORREGIDO
                     variant="outline",
                     size="2"
                 ),

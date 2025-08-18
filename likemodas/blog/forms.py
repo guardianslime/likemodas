@@ -111,10 +111,10 @@ def blog_post_add_form() -> rx.Component:
                                 lambda img: rx.box(
                                     rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover"),
                                     rx.icon_button(rx.icon("trash-2"),
-                                    on_click=lambda: AppState.remove_temp_image(img),
-                                    size="1", color_scheme="red", variant="soft",
-                                    style={"position": "absolute", "top": "4px", "right": "4px"}
-                                ),
+                                        on_click=AppState.remove_temp_image(img),
+                                        size="1", color_scheme="red", variant="soft",
+                                        style={"position": "absolute", "top": "4px", "right": "4px"}
+                                    ),
                                     position="relative"
                                 ),
                             ),
@@ -188,11 +188,11 @@ def blog_post_edit_form() -> rx.Component:
                     lambda img_url: rx.box(
                         rx.image(src=rx.get_upload_url(img_url), width="100px", height="100px", object_fit="cover", border_radius="md"),
                         rx.icon_button(
-                        rx.icon("trash-2", size=16),
-                        on_click=lambda: AppState.remove_edited_image(img_url),
-                        color_scheme="red", variant="soft", size="1",
-                        style={"position": "absolute", "top": "4px", "right": "4px"}
-                    ),
+                            rx.icon("trash-2", size=16),
+                            on_click=AppState.remove_edited_image(img_url),
+                            color_scheme="red", variant="soft", size="1",
+                            style={"position": "absolute", "top": "4px", "right": "4px"}
+                        ),
                         position="relative",
                     )
                 ),

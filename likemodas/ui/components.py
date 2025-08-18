@@ -5,6 +5,7 @@ import math
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
+# La función searchable_select no necesita cambios
 def searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
@@ -20,8 +21,7 @@ def searchable_select(
         rx.button(
             rx.cond(value_select, value_select, placeholder),
             rx.icon(tag="chevron-down"),
-            # --- CORRECCIÓN 1 ---
-            on_click=lambda: AppState.toggle_filter_dropdown(filter_name),
+            on_click=AppState.toggle_filter_dropdown(filter_name),
             variant="outline", width="100%", justify_content="space-between",
             color_scheme="gray", size="2", is_disabled=is_disabled,
         ),
@@ -35,11 +35,7 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
-                                # --- CORRECCIÓN 2 ---
-                                on_click=[
-                                    lambda: on_change_select(option), 
-                                    lambda: AppState.toggle_filter_dropdown(filter_name)
-                                ],
+                                on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
                         ),
@@ -76,12 +72,17 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
+    """
+    Componente que muestra una galería de productos.
+    """
     return rx.flex(
         rx.foreach(
             posts,
             lambda post: rx.box(
+                # El vstack principal de la tarjeta ahora tendrá on_click
                 rx.vstack(
                     rx.vstack(
+                        # Este vstack envuelve la parte superior clickeable que abre el modal
                         rx.box(
                             rx.cond(
                                 post.image_urls & (post.image_urls.length() > 0),
@@ -100,22 +101,29 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         ),
                         spacing="2",
                         width="100%",
-                        # --- CORRECCIÓN 3 (La que ya habíamos hecho) ---
+                        # Hacemos que esta sección superior sea la que abre el modal
                         on_click=lambda: AppState.open_product_detail_modal(post.id),
                         cursor="pointer",
                     ),
+
                     rx.spacer(),
+
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    # Añadimos el botón en la parte inferior de la tarjeta
                     rx.button(
                         "Añadir al Carrito",
                         width="100%",
+                        # --- INICIO DE LA CORRECCIÓN ---
+                        # Reemplaza la lambda por el manejador de eventos de Reflex
                         on_click=[
                             AppState.add_to_cart(post.id),
                             rx.stop_propagation 
                         ],
                     ),
+                    # --- FIN DE LA MODIFICACIÓN ---
                 ),
                 width="290px", 
-                height="450px",
+                height="450px", # La altura se mantiene bien
                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                 border_radius="8px", 
@@ -142,6 +150,7 @@ def multi_select_component(
     on_change_search: rx.event.EventSpec,
     filter_name: str,
 ) -> rx.Component:
+    """Un componente para seleccionar múltiples opciones con un buscador."""
     return rx.vstack(
         rx.flex(
             rx.foreach(
@@ -152,8 +161,7 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        # --- CORRECCIÓN 4 ---
-                        on_click=lambda: remove_handler(prop_name, item),
+                        on_click=remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
