@@ -1538,25 +1538,25 @@ class AppState(reflex_local_auth.LocalAuthState):
     seller_page_posts: list[ProductCardData] = []
 
     @rx.event
-    def on_load_seller_page(self):
+    def on_load_seller_page(self, seller_id: str): # <--- AHORA RECIBE EL ID
         """Carga la información y los productos para la página de un vendedor."""
         self.is_loading = True
         self.seller_page_info = None
         self.seller_page_posts = []
         yield
 
-        # --- CORRECCIÓN 1: Usamos self.router.params en lugar de self.router.page.params ---
-        seller_id_str = self.router.params.get("seller_id", "0")
+        # Ya no necesitamos leer del router, usamos el argumento directamente.
         try:
-            seller_id = int(seller_id_str)
+            seller_id_int = int(seller_id)
         except (ValueError, TypeError):
-            seller_id = 0
+            seller_id_int = 0
 
-        if seller_id > 0:
+        if seller_id_int > 0:
             with rx.session() as session:
+                # El resto de la función usa "seller_id_int" y no necesita cambios.
                 seller_info = session.exec(
                     sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
-                    .where(UserInfo.id == seller_id)
+                    .where(UserInfo.id == seller_id_int)
                 ).one_or_none()
                 self.seller_page_info = seller_info
 
@@ -1564,7 +1564,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     posts = session.exec(
                         sqlmodel.select(BlogPostModel)
                         .where(
-                            BlogPostModel.userinfo_id == seller_id,
+                            BlogPostModel.userinfo_id == seller_id_int,
                             BlogPostModel.publish_active == True
                         )
                         .order_by(BlogPostModel.created_at.desc())
@@ -1572,7 +1572,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     
                     temp_posts = []
                     for p in posts:
-                        # --- CORRECCIÓN 2: Construimos el DTO en dos pasos ---
                         product_dto = ProductCardData.from_orm(p)
                         product_dto.price_cop = p.price_cop
                         temp_posts.append(product_dto)
