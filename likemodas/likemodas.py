@@ -51,7 +51,6 @@ app.add_page(
     base_page(cart_page.cart_page_content()),
     route="/cart",
     title="Mi Carrito",
-    on_load=AppState.load_default_shipping_info # <--- LÍNEA CORREGIDA
 )
 app.add_page(base_page(purchases_page.purchase_history_content()), route="/my-purchases", title="Mis Compras", on_load=AppState.load_purchases)
 app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)

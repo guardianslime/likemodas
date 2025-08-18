@@ -1304,6 +1304,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
+    @rx.var
+    def my_admin_posts(self) -> list[BlogPostModel]:
+        """
+        Una propiedad computada que devuelve las publicaciones del admin actual.
+        """
+        if not self.authenticated_user_info:
+            return []
+        with rx.session() as session:
+            return session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
+                .order_by(BlogPostModel.created_at.desc())
+            ).all()
+
     # Se eliminan las funciones on_load y submit_and_publish duplicadas y antiguas.
     # El resto de funciones como handle_upload, remove_image, etc. que estaban duplicadas se eliminan.
     # La función _clear_add_form que estaba duplicada se corrige para incluir las nuevas listas.
