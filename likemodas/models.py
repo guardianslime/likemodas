@@ -277,6 +277,21 @@ class CommentModel(rx.Model, table=True):
         # Tuve que añadir una comprobación para evitar un error si votes es None
         return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE) if self.votes is not None else 0
 
+    @property
+    def author_username(self) -> str:
+        """Devuelve el nombre de usuario del autor del comentario de forma segura."""
+        if self.userinfo and self.userinfo.user:
+            return self.userinfo.user.username
+        return "Anónimo"
+
+    @property
+    def author_initial(self) -> str:
+        """Devuelve la inicial del autor del comentario de forma segura."""
+        username = self.author_username
+        if username and username != "Anónimo":
+            return username[0].upper()
+        return "A"
+
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")
