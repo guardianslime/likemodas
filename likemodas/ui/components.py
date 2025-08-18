@@ -113,11 +113,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.button(
                         "Añadir al Carrito",
                         width="100%",
-                        # El on_click tiene dos acciones: añadir al carrito y detener la propagación
-                        # para que no se abra el modal.
+                        # --- INICIO DE LA CORRECCIÓN ---
+                        # Reemplaza la lambda por el manejador de eventos de Reflex
                         on_click=[
                             AppState.add_to_cart(post.id),
-                            lambda e: e.stop_propagation()
+                            rx.stop_propagation 
                         ],
                     ),
                     # --- FIN DE LA MODIFICACIÓN ---
