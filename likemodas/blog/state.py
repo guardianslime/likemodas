@@ -31,23 +31,6 @@ class BlogAdminState(AppState):
             ).all()
             return posts
 
-    @rx.event
-    def delete_post(self, post_id: int):
-        """Elimina una publicación y recarga la lista de publicaciones."""
-        if not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
-        
-        with rx.session() as session:
-            post_to_delete = session.get(BlogPostModel, post_id)
-            if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
-                session.delete(post_to_delete)
-                session.commit()
-                yield rx.toast.success("Publicación eliminada.")
-                # highlight-next-line
-                yield self.load_my_admin_posts() # Asegúrate de que esta línea esté aquí
-            else:
-                yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
-
     async def delete_post(self, post_id: int):
         """
         Manejador de evento para eliminar una publicación de forma segura.

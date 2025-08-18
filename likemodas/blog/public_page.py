@@ -32,8 +32,7 @@ def review_submission_form() -> rx.Component:
         AppState.can_review_product,
         rx.form(
             rx.vstack(
-                # highlight-next-line
-                rx.heading(rx.cond(AppState.is_editing_review, "Actualiza tu opinión", "Deja tu opinión"), size="5"),
+                rx.heading(rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), size="5"),
                 rx.text("Tu valoración:"),
                 rx.hstack(
                     rx.foreach(
@@ -54,8 +53,7 @@ def review_submission_form() -> rx.Component:
                     on_change=AppState.set_review_content,
                     width="100%",
                 ),
-                # highlight-next-line
-                rx.button(rx.cond(AppState.is_editing_review, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%"),
+                rx.button(rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%"),
                 spacing="3",
                 padding="1.5em",
                 border="1px solid",
