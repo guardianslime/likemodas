@@ -1,3 +1,5 @@
+# likemodas/blog/admin_page.py (Versión Final Corregida)
+
 import reflex as rx
 from ..state import AppState
 from ..models import BlogPostModel
@@ -7,6 +9,8 @@ from .forms import blog_post_edit_form
 def edit_post_dialog() -> rx.Component:
     """El diálogo modal que contiene el formulario de edición."""
     return rx.alert_dialog.root(
+        # --- CORRECCIÓN AQUÍ ---
+        # 1. El hijo `rx.alert_dialog.content` va primero.
         rx.alert_dialog.content(
             rx.alert_dialog.title("Editar Publicación"),
             rx.alert_dialog.description(
@@ -21,8 +25,10 @@ def edit_post_dialog() -> rx.Component:
                 margin_top="1em",
                 justify="end",
             ),
+            # El argumento de palabra clave `style` va al final, dentro de content.
             style={"max_width": "600px"},
         ),
+        # 2. Los argumentos de palabra clave `open` y `on_open_change` van después.
         open=AppState.is_editing_post,
         on_open_change=AppState.cancel_editing_post,
     )
@@ -41,6 +47,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
+                    # Corregido para ignorar el argumento de forma segura
                     on_change=lambda _: AppState.toggle_publish_status(post.id),
                 ),
                 rx.text(rx.cond(post.publish_active, "Visible", "Oculto")),
@@ -68,6 +75,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                         rx.flex(
                             rx.alert_dialog.cancel(rx.button("Cancelar")),
                             rx.alert_dialog.action(
+                                # La línea crítica ha sido corregida (sin lambda)
                                 rx.button("Sí, Eliminar", on_click=AppState.delete_post(post.id))
                             ),
                             spacing="3", margin_top="1em", justify="end",
