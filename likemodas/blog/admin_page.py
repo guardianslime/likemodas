@@ -46,10 +46,10 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
         rx.table.cell(
             rx.hstack(
                 rx.switch(
-                    is_checked=post.publish_active,
-                    # Corregido para ignorar el argumento de forma segura
-                    on_change=lambda _: AppState.toggle_publish_status(post.id),
-                ),
+                is_checked=post.publish_active,
+                # highlight-next-line
+                on_change=lambda _: AppState.toggle_publish_status(post.id),
+            ),
                 rx.text(rx.cond(post.publish_active, "Visible", "Oculto")),
                 spacing="2",
                 align="center",
@@ -75,8 +75,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                         rx.flex(
                             rx.alert_dialog.cancel(rx.button("Cancelar")),
                             rx.alert_dialog.action(
-                                # La línea crítica ha sido corregida (sin lambda)
-                                rx.button("Sí, Eliminar", on_click=AppState.delete_post(post.id))
+                                rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))
                             ),
                             spacing="3", margin_top="1em", justify="end",
                         ),
