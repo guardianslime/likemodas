@@ -1381,9 +1381,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 product_id = product_id_list[0]
 
         if product_id is not None:
-            # Ahora llamamos al método usando 'self' y funciona porque 
-            # devuelve un manejador de eventos válido que 'yield' puede procesar.
-            yield self.open_product_detail_modal(int(product_id))
+            # En lugar de ceder el control, simplemente lo llamamos como un
+            # generador asíncrono, que es lo que 'yield from' hace.
+            yield from self.open_product_detail_modal(int(product_id))
 
     # --- ✨ LÓGICA PARA OPINIONES Y VALORACIONES ---
 
@@ -1508,56 +1508,51 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
 
 
+    @rx.event
     def open_product_detail_modal(self, post_id: int):
-        """
-        Generador de manejadores (Handler Factory).
-        Devuelve un nuevo manejador de eventos configurado con el post_id.
-        """
-        @rx.event
-        def handle_event(self):
-            self.product_in_modal = None
-            self.show_detail_modal = True
-            self.current_image_index = 0
-            
-            self.product_comments = []
-            self.my_review_for_product = None
-            self.review_rating = 0
-            self.review_content = ""
-            yield self.load_saved_post_ids
-
-            with rx.session() as session:
-                db_post = session.exec(
-                    sqlmodel.select(BlogPostModel)
-                    .options(
-                        sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                        .joinedload(CommentModel.userinfo)
-                        .joinedload(UserInfo.user)
-                    )
-                    .where(BlogPostModel.id == post_id)
-                ).unique().one_or_none()
-
-                if db_post and db_post.publish_active:
-                    product_dto = ProductDetailData.from_orm(db_post)
-                    if db_post.userinfo and db_post.userinfo.user:
-                        product_dto.seller_name = db_post.userinfo.user.username
-                        product_dto.seller_id = db_post.userinfo.id
-                    else:
-                        product_dto.seller_name = "Vendedor Anónimo"
-                        product_dto.seller_id = 0
-                    self.product_in_modal = product_dto
-                    self.product_comments = sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
-
-                    if self.is_authenticated:
-                        my_review = next((c for c in db_post.comments if c.userinfo_id == self.authenticated_user_info.id), None)
-                        if my_review:
-                            self.my_review_for_product = my_review
-                            self.review_rating = my_review.rating
-                            self.review_content = my_review.content
-                else:
-                    self.show_detail_modal = False
-                    yield rx.toast.error("Producto no encontrado o no disponible.")
+        self.product_in_modal = None
+        self.show_detail_modal = True
+        self.current_image_index = 0
         
-        return handle_event
+        self.product_comments = []
+        self.my_review_for_product = None
+        self.review_rating = 0
+        self.review_content = ""
+        yield self.load_saved_post_ids
+
+        with rx.session() as session:
+            # ... (El resto de la lógica original de la función va aquí, sin cambios) ...
+            db_post = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.userinfo)
+                    .joinedload(UserInfo.user)
+                )
+                .where(BlogPostModel.id == post_id)
+            ).unique().one_or_none()
+
+            if db_post and db_post.publish_active:
+                product_dto = ProductDetailData.from_orm(db_post)
+                if db_post.userinfo and db_post.userinfo.user:
+                    product_dto.seller_name = db_post.userinfo.user.username
+                    product_dto.seller_id = db_post.userinfo.id
+                else:
+                    product_dto.seller_name = "Vendedor Anónimo"
+                    product_dto.seller_id = 0
+                self.product_in_modal = product_dto
+                self.product_comments = sorted(db_post.comments, key=lambda c: c.created_at, reverse=True)
+
+                if self.is_authenticated:
+                    my_review = next((c for c in db_post.comments if c.userinfo_id == self.authenticated_user_info.id), None)
+                    if my_review:
+                        self.my_review_for_product = my_review
+                        self.review_rating = my_review.rating
+                        self.review_content = my_review.content
+            else:
+                self.show_detail_modal = False
+                yield rx.toast.error("Producto no encontrado o no disponible.")
+
     
     # --- AÑADIR: Evento para cargar la página de guardados ---
     @rx.event
