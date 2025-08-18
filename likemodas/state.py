@@ -1380,7 +1380,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             # Guardamos el ID en el estado
             self._product_id_to_load_on_mount = int(product_id)
             # Llamamos al nuevo manejador SIN argumentos
-            yield self._trigger_modal_from_load
+            yield self.trigger_modal_from_load # <--- Llamada corregida
 
     # --- ✨ LÓGICA PARA OPINIONES Y VALORACIONES ---
 
@@ -1505,7 +1505,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
 
     @rx.event
-    def _trigger_modal_from_load(self):
+    def trigger_modal_from_load(self):
         """Abre el modal usando el ID guardado en el estado."""
         if self._product_id_to_load_on_mount is not None:
             # Usamos yield from para ejecutar el otro manejador de eventos
