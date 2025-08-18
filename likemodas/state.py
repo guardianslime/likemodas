@@ -1287,18 +1287,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         if product_id is not None:
             yield AppState.open_product_detail_modal(int(product_id))
 
-    # 5. SE ELIMINA LA PROPIEDAD CALCULADA my_admin_posts
-    # y se reemplaza con una variable simple y un manejador de eventos.
-    my_admin_posts: list[BlogPostModel] = []
 
     @rx.event
     def load_my_admin_posts(self):
-        """Carga las publicaciones del usuario admin actual en la variable de estado."""
+        """
+        Una propiedad computada que devuelve las publicaciones del admin actual.
+        """
         if not self.authenticated_user_info:
-            self.my_admin_posts = []
-            return
+            return []
         with rx.session() as session:
-            self.my_admin_posts = session.exec(
+            return session.exec(
                 sqlmodel.select(BlogPostModel)
                 .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(BlogPostModel.created_at.desc())
