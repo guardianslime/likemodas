@@ -39,7 +39,6 @@ class SavedPostLink(rx.Model, table=True):
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
-    saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
 
 class PurchaseStatus(str, enum.Enum):
     PENDING = "pending_confirmation"
@@ -84,6 +83,7 @@ class UserInfo(rx.Model, table=True):
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
     comments: List["CommentModel"] = Relationship(back_populates="userinfo")
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
+    saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
