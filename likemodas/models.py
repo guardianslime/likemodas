@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN CORREGIDA Y FINAL)
+# likemodas/models.py (Versión Corregida con relationship_attributes)
 
 from typing import Optional, List
 from datetime import datetime
@@ -28,9 +28,8 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
         return local_dt.strftime('%d-%m-%Y %I:%M %p')
     except Exception:
         return utc_dt.strftime('%Y-%m-%d %H:%M')
-    
-# --- AÑADE ESTA NUEVA CLASE (TABLA) ---
-# Esta es una tabla de asociación para la relación muchos a muchos.
+
+# --- Tabla de Asociación para Publicaciones Guardadas ---
 class SavedPostLink(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id", primary_key=True)
     blogpostmodel_id: int = Field(foreign_key="blogpostmodel.id", primary_key=True)
@@ -74,16 +73,21 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
-    user: Optional["LocalUser"] = Relationship()
-    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
-    verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
-    shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
-    contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
-    purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
-    notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
-    comments: List["CommentModel"] = Relationship(back_populates="userinfo")
-    comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
-    saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
+    # --- INICIO DE LA CORRECCIÓN ---
+    # Todas las relaciones se mueven a este diccionario
+    relationship_attributes = {
+        "user": Relationship(),
+        "posts": Relationship(back_populates="userinfo"),
+        "verification_tokens": Relationship(back_populates="userinfo"),
+        "shipping_addresses": Relationship(back_populates="userinfo"),
+        "contact_entries": Relationship(back_populates="userinfo"),
+        "purchases": Relationship(back_populates="userinfo"),
+        "notifications": Relationship(back_populates="userinfo"),
+        "comments": Relationship(back_populates="userinfo"),
+        "comment_votes": Relationship(back_populates="userinfo"),
+        "saved_posts": Relationship(back_populates="saved_by_users", link_model=SavedPostLink),
+    }
+    # --- FIN DE LA CORRECCIÓN ---
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
@@ -91,7 +95,9 @@ class VerificationToken(rx.Model, table=True):
     expires_at: datetime
     created_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     
-    userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
+    relationship_attributes = {
+        "userinfo": Relationship(back_populates="verification_tokens")
+    }
     
     class Config:
         exclude = {"userinfo"}
@@ -114,14 +120,18 @@ class BlogPostModel(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
     
-    userinfo: "UserInfo" = Relationship(back_populates="posts")
-    comments: List["CommentModel"] = Relationship(back_populates="blog_post")
-    saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
+    # --- INICIO DE LA CORRECCIÓN ---
+    # Todas las relaciones se mueven a este diccionario
+    relationship_attributes = {
+        "userinfo": Relationship(back_populates="posts"),
+        "comments": Relationship(back_populates="blog_post"),
+        "saved_by_users": Relationship(back_populates="saved_posts", link_model=SavedPostLink),
+    }
+    # --- FIN DE LA CORRECCIÓN ---
     
     class Config:
         exclude = {"userinfo"}
     
-    # --- ✨ AÑADE ESTAS PROPIEDADES COMPUTADAS ---
     @property
     def rating_count(self) -> int:
         return len(self.comments) if self.comments else 0
@@ -148,7 +158,9 @@ class ShippingAddressModel(rx.Model, table=True):
     is_default: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
 
-    userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
+    relationship_attributes = {
+        "userinfo": Relationship(back_populates="shipping_addresses")
+    }
 
     class Config:
         exclude = {"userinfo"}
@@ -163,8 +175,10 @@ class PurchaseModel(rx.Model, table=True):
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     
-    userinfo: "UserInfo" = Relationship(back_populates="purchases")
-    items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
+    relationship_attributes = {
+        "userinfo": Relationship(back_populates="purchases"),
+        "items": Relationship(back_populates="purchase"),
+    }
 
     class Config:
         exclude = {"userinfo"}
@@ -186,8 +200,10 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
     
-    purchase: "PurchaseModel" = Relationship(back_populates="items")
-    blog_post: "BlogPostModel" = Relationship()
+    relationship_attributes = {
+        "purchase": Relationship(back_populates="items"),
+        "blog_post": Relationship(),
+    }
 
     class Config:
         exclude = {"purchase"}
@@ -199,7 +215,9 @@ class NotificationModel(rx.Model, table=True):
     url: Optional[str] = None
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
     
-    userinfo: "UserInfo" = Relationship(back_populates="notifications")
+    relationship_attributes = {
+        "userinfo": Relationship(back_populates="notifications")
+    }
     
     class Config:
         exclude = {"userinfo"}
@@ -215,7 +233,9 @@ class ContactEntryModel(rx.Model, table=True):
     message: str
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
 
-    userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
+    relationship_attributes = {
+        "userinfo": Relationship(back_populates="contact_entries")
+    }
 
     class Config:
         exclude = {"userinfo"}
@@ -230,9 +250,11 @@ class CommentModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     
-    userinfo: "UserInfo" = Relationship(back_populates="comments")
-    blog_post: "BlogPostModel" = Relationship(back_populates="comments")
-    votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
+    relationship_attributes = {
+        "userinfo": Relationship(back_populates="comments"),
+        "blog_post": Relationship(back_populates="comments"),
+        "votes": Relationship(back_populates="comment"),
+    }
 
     class Config:
         exclude = {"blog_post", "userinfo"}
@@ -246,7 +268,6 @@ class CommentModel(rx.Model, table=True):
     
     @property
     def was_updated(self) -> bool:
-        # Comprueba si fue actualizado comparando las fechas (con un margen de segundos)
         return (self.updated_at - self.created_at).total_seconds() > 5
 
     @property
@@ -260,8 +281,10 @@ class CommentVoteModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     comment_id: int = Field(foreign_key="commentmodel.id")
     
-    userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
-    comment: "CommentModel" = Relationship(back_populates="votes")
+    relationship_attributes = {
+        "userinfo": Relationship(back_populates="comment_votes"),
+        "comment": Relationship(back_populates="votes"),
+    }
 
     class Config:
         exclude = {"userinfo", "comment"}
