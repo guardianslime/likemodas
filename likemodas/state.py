@@ -1538,22 +1538,32 @@ class AppState(reflex_local_auth.LocalAuthState):
     seller_page_posts: list[ProductCardData] = []
 
     @rx.event
-    def on_load_seller_page(self, seller_id: str): # <--- AHORA RECIBE EL ID
+    def on_load_seller_page(self): # <-- 1. Revertimos la firma, ya no recibe argumentos
         """Carga la información y los productos para la página de un vendedor."""
         self.is_loading = True
         self.seller_page_info = None
         self.seller_page_posts = []
         yield
 
-        # Ya no necesitamos leer del router, usamos el argumento directamente.
+        # 2. Extraemos el ID directamente de la URL
+        seller_id_str = "0"
         try:
-            seller_id_int = int(seller_id)
+            # self.router.url nos da la ruta, ej: "/seller/42"
+            url_parts = self.router.url.strip("/").split("/")
+            if len(url_parts) == 2 and url_parts[0] == 'seller':
+                seller_id_str = url_parts[1]
+        except Exception:
+            # Si hay algún error en la URL, se usará el valor por defecto "0"
+            pass
+
+        try:
+            seller_id_int = int(seller_id_str)
         except (ValueError, TypeError):
             seller_id_int = 0
 
+        # El resto de la función ya es correcto y no necesita cambios
         if seller_id_int > 0:
             with rx.session() as session:
-                # El resto de la función usa "seller_id_int" y no necesita cambios.
                 seller_info = session.exec(
                     sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
                     .where(UserInfo.id == seller_id_int)
