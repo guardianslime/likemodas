@@ -137,8 +137,9 @@ def product_detail_modal() -> rx.Component:
                 "Publicado por: ",
                 rx.link(
                     AppState.product_in_modal.seller_name,
-                    # El enlace apunta a la nueva página del vendedor
-                    href=f"/seller/{AppState.product_in_modal.seller_id}",
+                    # --- CAMBIO CLAVE AQUÍ ---
+                    # El enlace ahora usa el formato de parámetro de consulta.
+                    href=f"/vendedor?id={AppState.product_in_modal.seller_id}",
                     color_scheme="violet",
                     font_weight="bold",
                 ),

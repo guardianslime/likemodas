@@ -39,7 +39,7 @@ app.add_page(
 # AÑADE ESTA RUTA (puede ser después de las de búsqueda)
 app.add_page(
     base_page(seller_page.seller_page_content()), 
-    route="/seller/[seller_id]", 
+    route="/vendedor",  # <-- Ruta fija, sin corchetes
     on_load=AppState.on_load_seller_page,
     title="Publicaciones del Vendedor"
 )
