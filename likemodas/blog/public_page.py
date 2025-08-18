@@ -70,12 +70,11 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                # --- INICIO DE LA CORRECCIÓN ---
-                # Usamos las nuevas propiedades seguras del modelo
-                rx.avatar(fallback=comment.author_initial, size="2"),
-                rx.text(comment.author_username, weight="bold"),
-                # --- FIN DE LA CORRECCIÓN ---
+                # La corrección está en el acceso a 'user.username'
+                rx.avatar(fallback=comment.userinfo.user.username[0].upper(), size="2"),
+                rx.text(comment.userinfo.user.username, weight="bold"),
                 rx.spacer(),
+                # Pasamos '1' como conteo para que solo muestre las estrellas
                 star_rating_display(comment.rating, 1),
                 width="100%",
             ),
@@ -176,7 +175,7 @@ def product_detail_modal() -> rx.Component:
                     size="3",
                     variant="outline",
                 ),
-
+                
                 rx.icon_button(
                     rx.icon(tag="share-2"),
                     on_click=[

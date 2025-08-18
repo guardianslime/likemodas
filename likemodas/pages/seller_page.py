@@ -4,24 +4,26 @@ import reflex as rx
 from ..state import AppState
 from ..ui.components import product_gallery_component
 from ..ui.skeletons import skeleton_product_gallery
+# --- 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN ---
 from ..blog.public_page import product_detail_modal
 
 def seller_page_content() -> rx.Component:
     """Página pública que muestra todos los productos de un vendedor específico."""
     return rx.center(
         rx.vstack(
-            # --- INICIO DE LA CORRECCIÓN ---
-            # Ahora usamos la nueva propiedad computada que es segura
-            rx.heading(
-                "Publicaciones de ",
-                rx.text(
-                    AppState.seller_page_username,
-                    as_="span",
-                    color_scheme="violet",
+            rx.cond(
+                AppState.seller_page_info,
+                rx.heading(
+                    "Publicaciones de ",
+                    rx.text(
+                        AppState.seller_page_info.user.username,
+                        as_="span",
+                        color_scheme="violet",
+                    ),
+                    size="8"
                 ),
-                size="8"
+                rx.heading("Cargando vendedor...", size="8")
             ),
-            # --- FIN DE LA CORRECCIÓN ---
             rx.divider(margin_y="1.5em"),
             rx.cond(
                 AppState.is_loading,
@@ -36,6 +38,7 @@ def seller_page_content() -> rx.Component:
                 )
             ),
             
+            # --- 2. AÑADE EL COMPONENTE DEL MODAL AQUÍ ---
             product_detail_modal(),
 
             spacing="6", width="100%", padding="2em", align="center"
