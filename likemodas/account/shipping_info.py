@@ -84,10 +84,10 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             rx.text(f"Tel: {address.phone}"),
             rx.divider(),
             rx.hstack(
-                rx.button("Eliminar", on_click=AppState.delete_address(address.id), variant="soft", color_scheme="red", size="2"),
+                rx.button("Eliminar", on_click=lambda: AppState.delete_address(address.id), variant="soft", color_scheme="red", size="2"),
                 rx.button(
                     "Hacer Predeterminada",
-                    on_click=AppState.set_as_default(address.id),
+                    on_click=lambda: AppState.set_as_default(address.id),
                     is_disabled=address.is_default,
                     variant="outline", size="2"
                 ),

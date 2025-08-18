@@ -49,9 +49,9 @@ def cart_item_row(item: rx.Var) -> rx.Component:
         rx.table.cell(rx.text(post.title)),
         rx.table.cell(
             rx.hstack(
-                rx.button("-", on_click=AppState.remove_from_cart(post.id), size="1"),
+                rx.button("-", on_click=lambda: AppState.remove_from_cart(post.id), size="1"),
                 rx.text(quantity),
-                rx.button("+", on_click=AppState.add_to_cart(post.id), size="1"),
+                rx.button("+", on_click=lambda: AppState.add_to_cart(post.id), size="1"),
                 align="center", spacing="3"
             )
         ),
