@@ -104,17 +104,19 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
             
-            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-            # Aquí iteramos sobre las actualizaciones del comentario y las mostramos.
-            rx.foreach(
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Solo intentamos mostrar las actualizaciones si la lista existe.
+            rx.cond(
                 comment.updates,
-                render_update_item
+                rx.foreach(
+                    comment.updates,
+                    render_update_item
+                )
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
-                # Ya no necesitamos mostrar "editado", pues las ediciones son entradas nuevas.
                 width="100%",
                 justify="end",
                 spacing="1"
