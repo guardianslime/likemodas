@@ -1422,7 +1422,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ✅ ASEGÚRATE DE QUE LA FUNCIÓN ESTÉ INDENTADA A ESTE NIVEL
     @rx.event
     def submit_review(self, form_data: dict):
-        # Y QUE TODO SU CONTENIDO TAMBIÉN ESTÉ INDENTADO
         if not self.is_authenticated or not self.product_in_modal:
             return rx.toast.error("Debes iniciar sesión para opinar.")
         if self.review_rating == 0:
@@ -1431,25 +1430,37 @@ class AppState(reflex_local_auth.LocalAuthState):
         content = form_data.get("review_content", "")
 
         with rx.session() as session:
+            # Buscamos la información del usuario actual para hacer la copia
+            user_info = self.authenticated_user_info
+            if not user_info or not user_info.user:
+                return rx.toast.error("No se pudo identificar al usuario.")
+
             existing_review = session.get(CommentModel, self.my_review_for_product.id) if self.my_review_for_product else None
 
             if existing_review:
+                # Al actualizar, solo cambiamos el contenido y la valoración. El autor no cambia.
                 existing_review.rating = self.review_rating
                 existing_review.content = content
                 session.add(existing_review)
                 yield rx.toast.success("¡Opinión actualizada!")
             else:
+                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+                # Al crear una nueva opinión, guardamos los datos del autor permanentemente
                 new_review = CommentModel(
-                    userinfo_id=self.authenticated_user_info.id,
+                    userinfo_id=user_info.id,
                     blog_post_id=self.product_in_modal.id,
                     rating=self.review_rating,
                     content=content,
+                    # Guardamos una copia del nombre y la inicial
+                    author_username=user_info.user.username,
+                    author_initial=user_info.user.username[0].upper(),
                 )
+                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                 session.add(new_review)
                 yield rx.toast.success("¡Gracias por tu opinión!")
             
             session.commit()
-    
+
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
     # --- AÑADIR: Variables para publicaciones guardadas ---

@@ -225,6 +225,11 @@ class ContactEntryModel(rx.Model, table=True):
 
 class CommentModel(rx.Model, table=True):
     content: str; rating: int
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # Añadimos campos para guardar una copia permanente del autor
+    author_username: str
+    author_initial: str
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -235,9 +240,7 @@ class CommentModel(rx.Model, table=True):
     votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
     class Config:
-        # Quitamos "userinfo" para que sus datos sí se envíen a la UI.
-        exclude = {"blog_post"}
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+        exclude = {"blog_post", "userinfo"}
 
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
@@ -250,26 +253,6 @@ class CommentModel(rx.Model, table=True):
     def was_updated(self) -> bool:
         return (self.updated_at - self.created_at).total_seconds() > 5
 
-    # --- ✨ INICIO DE LA CORRECCIÓN: PROPIEDADES AÑADIDAS ✨ ---
-    @property
-    def author_username(self) -> str:
-        """
-        Devuelve de forma segura el nombre de usuario del autor del comentario.
-        """
-        if self.userinfo and self.userinfo.user:
-            return self.userinfo.user.username
-        return "Usuario Anónimo"
-
-    @property
-    def author_initial(self) -> str:
-        """
-        Devuelve de forma segura la inicial del nombre de usuario para el avatar.
-        """
-        username = self.author_username
-        if username and username != "Usuario Anónimo":
-            return username[0].upper()
-        return "U"
-    # --- ✨ FIN DE LA CORRECCIÓN ---
 
     @property
     def likes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
