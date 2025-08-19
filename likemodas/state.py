@@ -1515,17 +1515,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
-        # 1. Limpiamos el estado del modal como antes.
+        # 1. Limpieza de estado (esto está correcto).
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0
-        
         self.product_comments = []
         self.my_review_for_product = None
         self.review_rating = 0
         self.review_content = ""
 
-        # 2. Inmediatamente entramos al bloque 'with' para cargar los datos principales.
+        # 2. Carga de datos desde la BD (esto está correcto).
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -1538,21 +1537,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                # Poblamos el DTO con la información del producto.
                 product_dto = ProductDetailData.from_orm(db_post)
                 if db_post.userinfo and db_post.userinfo.user:
                     product_dto.seller_name = db_post.userinfo.user.username
                     product_dto.seller_id = db_post.userinfo.id
                 self.product_in_modal = product_dto
 
-                # Aquí también cargamos los comentarios.
                 self.product_comments = sorted(
                     db_post.comments, 
                     key=lambda c: c.created_at, 
                     reverse=True
                 ) if db_post.comments else []
 
-                # Y verificamos si el usuario ya ha dejado una opinión.
                 if self.authenticated_user_info:
                     for comment in self.product_comments:
                         if comment.userinfo_id == self.authenticated_user_info.id:
@@ -1563,11 +1559,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
-                return # Detenemos la ejecución si no se encontró el post.
+                return
 
-        # 3. Solo después de que toda la información del producto se haya cargado 
-        # y el contexto de la sesión se haya cerrado, llamamos al siguiente evento.
-        yield self.load_saved_post_ids
+        # 3. --- ✨ AQUÍ ESTÁ LA CORRECCIÓN FINAL ✨ ---
+        # ANTES (INCORRECTO): yield self.load_saved_post_ids
+        # AHORA (CORRECTO): Usamos la referencia de la clase AppState.
+        yield AppState.load_saved_post_ids
 
     
     # --- AÑADIR: Evento para cargar la página de guardados ---
