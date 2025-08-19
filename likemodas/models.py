@@ -232,9 +232,8 @@ class CommentModel(rx.Model, table=True):
     
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
-    votes: List["CommentVoteModel"] = Relationship(back_populates="votes")
+    votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     class Config:
         # Quitamos "userinfo" para que sus datos sí se envíen a la UI.
         exclude = {"blog_post"}
@@ -251,18 +250,26 @@ class CommentModel(rx.Model, table=True):
     def was_updated(self) -> bool:
         return (self.updated_at - self.created_at).total_seconds() > 5
 
+    # --- ✨ INICIO DE LA CORRECCIÓN: PROPIEDADES AÑADIDAS ✨ ---
     @property
     def author_username(self) -> str:
+        """
+        Devuelve de forma segura el nombre de usuario del autor del comentario.
+        """
         if self.userinfo and self.userinfo.user:
             return self.userinfo.user.username
         return "Usuario Anónimo"
 
     @property
     def author_initial(self) -> str:
+        """
+        Devuelve de forma segura la inicial del nombre de usuario para el avatar.
+        """
         username = self.author_username
         if username and username != "Usuario Anónimo":
             return username[0].upper()
         return "U"
+    # --- ✨ FIN DE LA CORRECCIÓN ---
 
     @property
     def likes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
