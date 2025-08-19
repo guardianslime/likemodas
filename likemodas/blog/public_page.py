@@ -13,7 +13,8 @@ def render_update_item(comment: CommentModel) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                rx.icon("edit-3", size=16, margin_right="0.5em"),
+                # --- ✨ AQUÍ ESTÁ LA CORRECCIÓN ✨ ---
+                rx.icon("pencil", size=16, margin_right="0.5em"), 
                 rx.text("Actualización:", weight="bold"),
                 star_rating_display(comment.rating, 1), # Muestra la nueva valoración
                 rx.spacer(),
