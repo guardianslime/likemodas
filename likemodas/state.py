@@ -94,8 +94,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     def authenticated_user_info(self) -> UserInfo | None:
         if not self.is_authenticated or self.authenticated_user.id < 0:
             return None
+        
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
         with rx.session() as session:
-            return session.exec(sqlmodel.select(UserInfo).where(UserInfo.user_id == self.authenticated_user.id)).one_or_none()
+            # Usamos .options() con joinedload para cargar el 'user' relacionado
+            # en la misma consulta.
+            query = (
+                sqlmodel.select(UserInfo)
+                .options(sqlalchemy.orm.joinedload(UserInfo.user))
+                .where(UserInfo.user_id == self.authenticated_user.id)
+            )
+            return session.exec(query).one_or_none()
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     @rx.var
     def is_admin(self) -> bool:
