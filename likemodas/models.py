@@ -225,11 +225,10 @@ class ContactEntryModel(rx.Model, table=True):
 
 class CommentModel(rx.Model, table=True):
     content: str; rating: int
-    # --- ✨ INICIO DE LA MODIFICACIÓN TEMPORAL ✨ ---
-    # Hacemos los campos opcionales para generar la migración
-    author_username: Optional[str] = Field(default=None, nullable=True)
-    author_initial: Optional[str] = Field(default=None, nullable=True)
-    # --- ✨ FIN DE LA MODIFICACIÓN TEMPORAL ✨ ---
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # Añadimos campos para guardar una copia permanente del autor
+    author_username: str
+    author_initial: str
     # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
