@@ -1444,16 +1444,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not user_info or not user_info.user:
                 return rx.toast.error("No se pudo identificar al usuario.")
 
-            # --- ✨ INICIO DE LA NUEVA LÓGICA ✨ ---
             if self.my_review_for_product:
-                # Si ya existe una opinión, creamos una ACTUALIZACIÓN.
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                # 1. Obtenemos una instancia "viva" del comentario desde la sesión actual.
+                live_comment = session.get(CommentModel, self.my_review_for_product.id)
+                if not live_comment:
+                    return rx.toast.error("No se encontró la opinión a actualizar.")
                 
-                # Buscamos el comentario original (el que no tiene padre).
-                original_comment = self.my_review_for_product
+                # 2. Ahora trabajamos con la instancia "viva" y conectada.
+                original_comment = live_comment
                 while original_comment.parent:
                     original_comment = original_comment.parent
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
-                # Creamos la nueva entrada como una actualización.
+                # El resto de la lógica para crear la actualización es la misma.
                 new_update = CommentModel(
                     userinfo_id=user_info.id,
                     blog_post_id=self.product_in_modal.id,
@@ -1461,12 +1465,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                     content=content,
                     author_username=user_info.user.username,
                     author_initial=user_info.user.username[0].upper(),
-                    parent_comment_id=original_comment.id  # Vinculamos al original.
+                    parent_comment_id=original_comment.id
                 )
                 session.add(new_update)
                 yield rx.toast.success("¡Opinión actualizada!")
             else:
-                # Si es la primera opinión, la creamos como un comentario raíz.
+                # La lógica para crear una opinión nueva no cambia y es correcta.
                 new_review = CommentModel(
                     userinfo_id=user_info.id,
                     blog_post_id=self.product_in_modal.id,
@@ -1477,7 +1481,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 session.add(new_review)
                 yield rx.toast.success("¡Gracias por tu opinión!")
-            # --- ✨ FIN DE LA NUEVA LÓGICA ✨ ---
             
             session.commit()
 
