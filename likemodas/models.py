@@ -234,6 +234,18 @@ class CommentModel(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
+
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # Columna para vincular una actualización a su comentario original.
+    parent_comment_id: Optional[int] = Field(default=None, foreign_key="commentmodel.id")
+    
+    # Relaciones para navegar entre el original y sus actualizaciones.
+    parent: Optional["CommentModel"] = Relationship(
+        back_populates="updates",
+        sa_relationship_kwargs=dict(remote_side="CommentModel.id") # Clave para relaciones a sí mismo.
+    )
+    updates: List["CommentModel"] = Relationship(back_populates="parent")
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
