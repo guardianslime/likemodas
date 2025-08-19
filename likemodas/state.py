@@ -1559,15 +1559,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_content = ""
 
         with rx.session() as session:
+            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+            # Modificamos la consulta para que cargue explícitamente las actualizaciones anidadas.
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
+                    # Carga los comentarios, sus autores y sus actualizaciones anidadas
                     sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.userinfo)
+                    .joinedload(UserInfo.user),
+                    
+                    # Carga también el historial (updates) para cada comentario y los autores de esas actualizaciones
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
+                    .joinedload(CommentModel.updates)
                     .joinedload(CommentModel.userinfo)
                     .joinedload(UserInfo.user)
                 )
                 .where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
+            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
             if db_post and db_post.publish_active:
                 product_dto = ProductDetailData.from_orm(db_post)
@@ -1576,9 +1586,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     product_dto.seller_id = db_post.userinfo.id
                 self.product_in_modal = product_dto
 
-                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-                # Filtramos para quedarnos solo con los comentarios originales (sin padre).
-                # La relación `updates` se encargará del resto en la UI.
+                # Esta lógica ahora funcionará porque `comment.updates` ya vendrá cargado.
                 original_comments = [
                     c for c in db_post.comments if c.parent_comment_id is None
                 ]
@@ -1587,10 +1595,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     key=lambda c: c.created_at, 
                     reverse=True
                 ) if original_comments else []
-                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
                 if self.authenticated_user_info:
-                     # Esta lógica busca la opinión MÁS RECIENTE del usuario para el formulario.
                     user_comments = sorted(
                         [c for c in db_post.comments if c.userinfo_id == self.authenticated_user_info.id],
                         key=lambda c: c.created_at,
