@@ -246,14 +246,35 @@ class CommentModel(rx.Model, table=True):
     
     @property
     def was_updated(self) -> bool:
-        # Comprueba si fue actualizado comparando las fechas (con un margen de segundos)
         return (self.updated_at - self.created_at).total_seconds() > 5
+
+    # --- ✨ INICIO DE LA CORRECCIÓN: PROPIEDADES AÑADIDAS ✨ ---
+    @property
+    def author_username(self) -> str:
+        """
+        Devuelve de forma segura el nombre de usuario del autor del comentario.
+        """
+        if self.userinfo and self.userinfo.user:
+            return self.userinfo.user.username
+        return "Usuario Anónimo"
+
+    @property
+    def author_initial(self) -> str:
+        """
+        Devuelve de forma segura la inicial del nombre de usuario para el avatar.
+        """
+        username = self.author_username
+        if username and username != "Usuario Anónimo":
+            return username[0].upper()
+        return "U"
+    # --- ✨ FIN DE LA CORRECCIÓN ---
 
     @property
     def likes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
 
     @property
     def dislikes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
+
 
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))

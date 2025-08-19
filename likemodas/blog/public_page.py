@@ -70,8 +70,8 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                # --- INICIO DE LA CORRECCIÓN ---
-                # Usamos las nuevas propiedades seguras del modelo
+                # --- CORRECCIÓN ---
+                # Ahora estas propiedades existen en el modelo y son seguras de usar
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
                 # --- FIN DE LA CORRECCIÓN ---
@@ -88,7 +88,7 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
                 ),
                 width="100%",
                 justify="end",
-                spacing="1" # Añadido para mejor espaciado
+                spacing="1"
             ),
             align_items="start",
             spacing="2"
