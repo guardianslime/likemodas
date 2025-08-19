@@ -1440,37 +1440,48 @@ class AppState(reflex_local_auth.LocalAuthState):
         content = form_data.get("review_content", "")
 
         with rx.session() as session:
-            # Buscamos la información del usuario actual para hacer la copia
             user_info = self.authenticated_user_info
             if not user_info or not user_info.user:
                 return rx.toast.error("No se pudo identificar al usuario.")
 
-            existing_review = session.get(CommentModel, self.my_review_for_product.id) if self.my_review_for_product else None
+            # --- ✨ INICIO DE LA NUEVA LÓGICA ✨ ---
+            if self.my_review_for_product:
+                # Si ya existe una opinión, creamos una ACTUALIZACIÓN.
+                
+                # Buscamos el comentario original (el que no tiene padre).
+                original_comment = self.my_review_for_product
+                while original_comment.parent:
+                    original_comment = original_comment.parent
 
-            if existing_review:
-                # Al actualizar, solo cambiamos el contenido y la valoración. El autor no cambia.
-                existing_review.rating = self.review_rating
-                existing_review.content = content
-                session.add(existing_review)
+                # Creamos la nueva entrada como una actualización.
+                new_update = CommentModel(
+                    userinfo_id=user_info.id,
+                    blog_post_id=self.product_in_modal.id,
+                    rating=self.review_rating,
+                    content=content,
+                    author_username=user_info.user.username,
+                    author_initial=user_info.user.username[0].upper(),
+                    parent_comment_id=original_comment.id  # Vinculamos al original.
+                )
+                session.add(new_update)
                 yield rx.toast.success("¡Opinión actualizada!")
             else:
-                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-                # Al crear una nueva opinión, guardamos los datos del autor permanentemente
+                # Si es la primera opinión, la creamos como un comentario raíz.
                 new_review = CommentModel(
                     userinfo_id=user_info.id,
                     blog_post_id=self.product_in_modal.id,
                     rating=self.review_rating,
                     content=content,
-                    # Guardamos una copia del nombre y la inicial
                     author_username=user_info.user.username,
                     author_initial=user_info.user.username[0].upper(),
                 )
-                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                 session.add(new_review)
                 yield rx.toast.success("¡Gracias por tu opinión!")
+            # --- ✨ FIN DE LA NUEVA LÓGICA ✨ ---
             
             session.commit()
 
+        # Recargamos el modal para mostrar todos los cambios.
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
     # --- AÑADIR: Variables para publicaciones guardadas ---
@@ -1536,7 +1547,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
-        # 1. Limpieza de estado (esto está correcto).
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0
@@ -1545,7 +1555,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_rating = 0
         self.review_content = ""
 
-        # 2. Carga de datos desde la BD (esto está correcto).
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -1564,27 +1573,36 @@ class AppState(reflex_local_auth.LocalAuthState):
                     product_dto.seller_id = db_post.userinfo.id
                 self.product_in_modal = product_dto
 
+                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+                # Filtramos para quedarnos solo con los comentarios originales (sin padre).
+                # La relación `updates` se encargará del resto en la UI.
+                original_comments = [
+                    c for c in db_post.comments if c.parent_comment_id is None
+                ]
                 self.product_comments = sorted(
-                    db_post.comments, 
+                    original_comments, 
                     key=lambda c: c.created_at, 
                     reverse=True
-                ) if db_post.comments else []
+                ) if original_comments else []
+                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
                 if self.authenticated_user_info:
-                    for comment in self.product_comments:
-                        if comment.userinfo_id == self.authenticated_user_info.id:
-                            self.my_review_for_product = comment
-                            self.review_rating = comment.rating
-                            self.review_content = comment.content
-                            break
+                     # Esta lógica busca la opinión MÁS RECIENTE del usuario para el formulario.
+                    user_comments = sorted(
+                        [c for c in db_post.comments if c.userinfo_id == self.authenticated_user_info.id],
+                        key=lambda c: c.created_at,
+                        reverse=True
+                    )
+                    if user_comments:
+                        latest_review = user_comments[0]
+                        self.my_review_for_product = latest_review
+                        self.review_rating = latest_review.rating
+                        self.review_content = latest_review.content
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
                 return
 
-        # 3. --- ✨ AQUÍ ESTÁ LA CORRECCIÓN FINAL ✨ ---
-        # ANTES (INCORRECTO): yield self.load_saved_post_ids
-        # AHORA (CORRECTO): Usamos la referencia de la clase AppState.
         yield AppState.load_saved_post_ids
 
     

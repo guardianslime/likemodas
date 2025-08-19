@@ -8,6 +8,30 @@ from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 from ..models import CommentModel
 
+def render_update_item(comment: CommentModel) -> rx.Component:
+    """Componente para mostrar una actualización de un comentario."""
+    return rx.box(
+        rx.vstack(
+            rx.hstack(
+                rx.icon("edit-3", size=16, margin_right="0.5em"),
+                rx.text("Actualización:", weight="bold"),
+                star_rating_display(comment.rating, 1), # Muestra la nueva valoración
+                rx.spacer(),
+                rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
+                width="100%"
+            ),
+            rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),
+            align_items="start",
+            spacing="1"
+        ),
+        padding="0.75em",
+        border="1px dashed",
+        border_color=rx.color("gray", 6),
+        border_radius="md",
+        margin_top="1em",
+        margin_left="2.5em" # Indentación para mostrar jerarquía
+    )
+
 # --- ✨ Componente para mostrar estrellas de valoración ---
 def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Component:
     full_stars = rx.Var.range(math.floor(rating))
@@ -69,23 +93,27 @@ def review_submission_form() -> rx.Component:
 def render_comment_item(comment: CommentModel) -> rx.Component:
     return rx.box(
         rx.vstack(
+            # El comentario original se muestra como antes
             rx.hstack(
-                # --- CORRECCIÓN ---
-                # Ahora estas propiedades existen en el modelo y son seguras de usar
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
-                # --- FIN DE LA CORRECCIÓN ---
                 rx.spacer(),
                 star_rating_display(comment.rating, 1),
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
+            
+            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+            # Aquí iteramos sobre las actualizaciones del comentario y las mostramos.
+            rx.foreach(
+                comment.updates,
+                render_update_item
+            ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
-                rx.cond(
-                    comment.was_updated,
-                    rx.text(f" (editado: {comment.updated_at_formatted})", size="2", color_scheme="gray")
-                ),
+                # Ya no necesitamos mostrar "editado", pues las ediciones son entradas nuevas.
                 width="100%",
                 justify="end",
                 spacing="1"
