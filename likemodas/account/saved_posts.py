@@ -6,6 +6,8 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..ui.components import product_gallery_component
 from ..ui.skeletons import skeleton_product_gallery
+# --- AÑADE ESTA LÍNEA DE IMPORTACIÓN ---
+from ..blog.public_page import product_detail_modal
 
 @reflex_local_auth.require_login
 def saved_posts_content() -> rx.Component:
@@ -25,6 +27,10 @@ def saved_posts_content() -> rx.Component:
                 )
             )
         ),
+        
+        # --- AÑADE ESTA LÍNEA PARA INCLUIR EL MODAL ---
+        product_detail_modal(),
+
         align_items="start", 
         width="100%",
     )
