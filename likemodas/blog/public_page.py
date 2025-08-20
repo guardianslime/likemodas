@@ -197,24 +197,50 @@ def product_detail_modal() -> rx.Component:
         )
 
     def _modal_info_section() -> rx.Component:
+        # --- Pequeña función de ayuda para mostrar listas (como las tallas) de forma bonita ---
+        def format_attribute_value(value: rx.Var) -> rx.Var[str]:
+            return rx.cond(
+                rx.is_list(value),
+                value.join(", "), # Une los elementos de la lista con una coma
+                value.to_string() # Muestra el valor normal si no es una lista
+            )
+
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             
-            # --- ✨ AÑADIMOS LA VALORACIÓN PROMEDIO AQUÍ ---
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
 
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             
-            # --- INICIO DE LA MODIFICACIÓN ---
-            # Añade este bloque antes del rx.spacer()
+            # --- ✨ INICIO DE LA SECCIÓN DE CARACTERÍSTICAS ✨ ---
+            rx.cond(
+                AppState.product_in_modal.attributes, # Solo se muestra si hay atributos
+                rx.vstack(
+                    rx.divider(margin_y="1em"),
+                    rx.heading("Características", size="4"),
+                    rx.foreach(
+                        AppState.product_in_modal.attributes.items(),
+                        lambda item: rx.hstack(
+                            rx.text(item[0], ":", weight="bold"),
+                            rx.text(format_attribute_value(item[1])),
+                            spacing="2",
+                            align="center"
+                        )
+                    ),
+                    align_items="start",
+                    width="100%",
+                    spacing="2",
+                    margin_top="1em",
+                )
+            ),
+            # --- ✨ FIN DE LA SECCIÓN DE CARACTERÍSTICAS ✨ ---
+
             rx.text(
                 "Publicado por: ",
                 rx.link(
                     AppState.product_in_modal.seller_name,
-                    # --- CAMBIO CLAVE AQUÍ ---
-                    # El enlace ahora usa el formato de parámetro de consulta.
                     href=f"/vendedor?id={AppState.product_in_modal.seller_id}",
                     color_scheme="violet",
                     font_weight="bold",
@@ -234,13 +260,8 @@ def product_detail_modal() -> rx.Component:
                     "Añadir al Carrito",
                     on_click=AppState.add_to_cart(AppState.product_in_modal.id),
                     size="3",
-                    # --- ✨ CAMBIO CLAVE AQUÍ ---
-                    # Se reemplaza width="100%" por flex_grow="1" para que
-                    # ocupe el espacio disponible sin empujar a los otros elementos.
                     flex_grow="1",
                 ),
-                # --- INICIO DE LA MODIFICACIÓN ---
-                # Añadimos el botón de Guardar/Quitar
                 rx.icon_button(
                     rx.cond(
                         AppState.is_current_post_saved,
@@ -251,11 +272,9 @@ def product_detail_modal() -> rx.Component:
                     size="3",
                     variant="outline",
                 ),
-
                 rx.icon_button(
                     rx.icon(tag="share-2"),
                     on_click=[
-                        # Construye y copia la URL con el parámetro de consulta
                         rx.set_clipboard(
                             AppState.base_app_url + "/?product=" + AppState.product_in_modal.id.to_string()
                         ),
@@ -286,7 +305,7 @@ def product_detail_modal() -> rx.Component:
                         columns={"initial": "1", "md": "2"},
                         spacing="6", align_items="start", width="100%",
                     ),
-                    # --- ✨ SECCIÓN DE OPINIONES Y FORMULARIO ---
+                    # --- SECCIÓN DE OPINIONES Y FORMULARIO ---
                     rx.divider(margin_y="1.5em"),
                     review_submission_form(),
                     rx.cond(

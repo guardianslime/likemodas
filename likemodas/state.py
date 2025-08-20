@@ -61,10 +61,12 @@ class ProductDetailData(rx.Base):
     created_at_formatted: str
     average_rating: float = 0.0
     rating_count: int = 0
-    seller_name: str = ""  # <--- AÑADIR ESTA LÍNEA
-    seller_id: int = 0     # <--- AÑADIR ESTA LÍNEA
+    seller_name: str = ""
+    seller_id: int = 0
+    
+    # --- ✨ AÑADE ESTA LÍNEA AQUÍ ✨ ---
+    attributes: dict = {}
 
-    # --- ✨ AÑADIMOS LA CONFIGURACIÓN REQUERIDA ---
     class Config:
         orm_mode = True
     
