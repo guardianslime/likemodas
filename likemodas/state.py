@@ -93,7 +93,7 @@ class CommentData(rx.Base):
     updates: List["CommentData"] = [] # Puede contener otras fotocopias de comentarios
 
 # Es necesario para que la referencia a sí mismo ("CommentData") funcione.
-CommentData.model_rebuild()
+
 
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
