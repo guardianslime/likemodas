@@ -1428,6 +1428,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_review_rating(self, rating: int):
         """Actualiza la valoración en el estado del formulario."""
         self.review_rating = rating
+    
+    # --- ✨ INICIO DE LA MODIFICACIÓN 1 ✨ ---
+    # Diccionario para rastrear qué comentarios están expandidos.
+    # La clave será el ID del comentario, el valor será True (expandido) o False (colapsado).
+    expanded_comments: dict[int, bool] = {}
+
+    def toggle_comment_updates(self, comment_id: int):
+        """Expande o colapsa el historial de un comentario específico."""
+        # Obtiene el estado actual (si no existe, es False) y lo invierte.
+        self.expanded_comments[comment_id] = not self.expanded_comments.get(comment_id, False)
+    # --- ✨ FIN DE LA MODIFICACIÓN 1 ✨ ---
 
     # ✅ ASEGÚRATE DE QUE LA FUNCIÓN ESTÉ INDENTADA A ESTE NIVEL
     @rx.event

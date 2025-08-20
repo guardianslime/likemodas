@@ -92,9 +92,13 @@ def review_submission_form() -> rx.Component:
 
 # --- ✨ Componente para mostrar un comentario individual ---
 def render_comment_item(comment: CommentModel) -> rx.Component:
+    """Renderiza un comentario principal con un botón para ver su historial."""
+    # Contamos cuántas actualizaciones hay para mostrarlo en el botón.
+    update_count = rx.cond(comment.updates, comment.updates.length(), 0)
+
     return rx.box(
         rx.vstack(
-            # El comentario original se muestra como antes
+            # --- Sección del comentario original (sin cambios) ---
             rx.hstack(
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
@@ -104,22 +108,44 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
             
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # Solo intentamos mostrar las actualizaciones si la lista existe.
+            # --- ✨ INICIO DE LA MODIFICACIÓN 2 ✨ ---
+            # Mostramos el botón solo si hay actualizaciones.
             rx.cond(
                 comment.updates,
+                rx.button(
+                    rx.cond(
+                        AppState.expanded_comments.get(comment.id, False),
+                        "Ocultar historial",
+                        rx.text(
+                            "Ver historial (",
+                            rx.text(update_count, as_="span"),
+                            " actualizaciones)"
+                        )
+                    ),
+                    on_click=AppState.toggle_comment_updates(comment.id),
+                    variant="soft",
+                    size="1",
+                    margin_top="0.5em"
+                )
+            ),
+
+            # Mostramos el historial solo si el comentario está expandido en el estado.
+            rx.cond(
+                AppState.expanded_comments.get(comment.id, False),
                 rx.foreach(
                     comment.updates,
                     render_update_item
                 )
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            # --- ✨ FIN DE LA MODIFICACIÓN 2 ✨ ---
 
+            # --- Sección de la fecha (sin cambios) ---
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%",
                 justify="end",
-                spacing="1"
+                spacing="1",
+                margin_top="1em"
             ),
             align_items="start",
             spacing="2"

@@ -124,13 +124,36 @@ class BlogPostModel(rx.Model, table=True):
     # --- ✨ AÑADE ESTAS PROPIEDADES COMPUTADAS ---
     @property
     def rating_count(self) -> int:
-        return len(self.comments) if self.comments else 0
+        """Calcula el número de usuarios ÚNICOS que han dejado una opinión."""
+        if not self.comments:
+            return 0
+        # Crea un conjunto (set) de los IDs de usuario para contar solo los únicos.
+        return len({c.userinfo_id for c in self.comments})
 
     @property
     def average_rating(self) -> float:
+        """
+        Calcula el puntaje promedio tomando solo la opinión MÁS RECIENTE de cada usuario.
+        """
         if not self.comments:
             return 0.0
-        return sum(c.rating for c in self.comments) / len(self.comments)
+
+        # 1. Agrupamos los comentarios por usuario y nos quedamos con el más reciente.
+        user_latest_reviews: dict[int, CommentModel] = {}
+        for comment in self.comments:
+            user_id = comment.userinfo_id
+            # Si no hemos visto a este usuario, o si este comentario es más nuevo que el guardado...
+            if user_id not in user_latest_reviews or comment.created_at > user_latest_reviews[user_id].created_at:
+                # ...lo guardamos como su opinión más reciente.
+                user_latest_reviews[user_id] = comment
+        
+        # 2. Extraemos solo las valoraciones de esas opiniones más recientes.
+        latest_ratings = [review.rating for review in user_latest_reviews.values()]
+        
+        # 3. Calculamos el promedio de esas valoraciones.
+        if not latest_ratings:
+            return 0.0
+        return sum(latest_ratings) / len(latest_ratings)
     
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
