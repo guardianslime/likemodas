@@ -171,13 +171,6 @@ def product_detail_modal() -> rx.Component:
         )
 
     def _modal_info_section() -> rx.Component:
-        def format_attribute_value(value: rx.Var) -> rx.Var[str]:
-            return rx.cond(
-                value.instance_of(list),
-                value.join(", "),
-                value.to_string()
-            )
-
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
@@ -193,7 +186,16 @@ def product_detail_modal() -> rx.Component:
                         AppState.product_attributes_list,
                         lambda item: rx.hstack(
                             rx.text(item.key, ":", weight="bold"),
-                            rx.text(format_attribute_value(item.value)),
+                            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                            # Movemos la lógica de formato directamente aquí.
+                            rx.text(
+                                rx.cond(
+                                    item.value.instance_of(list),
+                                    item.value.join(", "),
+                                    item.value.to_string(),
+                                )
+                            ),
+                            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                             spacing="2",
                             align="center"
                         )
