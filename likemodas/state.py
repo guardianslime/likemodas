@@ -84,6 +84,11 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_name: str; shipping_address: str; shipping_neighborhood: str
     shipping_city: str; shipping_phone: str; items_formatted: list[str]
 
+class AttributeData(rx.Base):
+    """Un DTO para pasar un par clave-valor de atributo a la UI."""
+    key: str
+    value: list | str
+
 class CommentData(rx.Base):
     """Un DTO simple para representar los datos de un comentario para la UI."""
     id: int
@@ -1443,10 +1448,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         
     # --- ✨ AÑADE ESTA FUNCIÓN DENTRO DE AppState ✨ ---
     @rx.var
-    def product_attributes_list(self) -> list[tuple]:
-        """Convierte el diccionario de atributos del producto en una lista simple para rx.foreach."""
+    def product_attributes_list(self) -> list[AttributeData]:
+        """Convierte el diccionario de atributos en una lista de DTOs para rx.foreach."""
         if self.product_in_modal and self.product_in_modal.attributes:
-            return list(self.product_in_modal.attributes.items())
+            # Creamos una lista de nuestro nuevo DTO
+            return [
+                AttributeData(key=k, value=v) 
+                for k, v in self.product_in_modal.attributes.items()
+            ]
         return []
 
     def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
