@@ -1630,6 +1630,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
+        # --- 1. Limpieza de estado (sin cambios) ---
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0
@@ -1640,6 +1641,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_review_form = False
 
         with rx.session() as session:
+            # --- 2. Carga de datos de la publicación (sin cambios) ---
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
@@ -1653,36 +1655,59 @@ class AppState(reflex_local_auth.LocalAuthState):
                     product_dto.seller_name = db_post.userinfo.user.username
                     product_dto.seller_id = db_post.userinfo.id
                 self.product_in_modal = product_dto
-
-                # --- LÓGICA DE CONVERSIÓN A DTO ---
-                all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
                 
+                # Carga y conversión de todos los comentarios a DTOs (sin cambios)
+                all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
                 original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
                 self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
 
+                # --- ✨ INICIO DE LA NUEVA LÓGICA DE CRÉDITOS ✨ ---
                 if self.is_authenticated:
                     user_info = self.authenticated_user_info
-                    # ... (Lógica para encontrar my_review_for_product y decidir si se muestra el formulario)
-                    user_comments = sorted(
-                        [c for c in db_post.comments if c.userinfo_id == user_info.id],
-                        key=lambda c: c.created_at,
-                        reverse=True
-                    )
-                    if user_comments:
-                        latest_review_model = user_comments[0]
-                        self.my_review_for_product = self._convert_comment_to_dto(latest_review_model)
-                        self.review_rating = latest_review_model.rating
-                        self.review_content = latest_review_model.content
-                        
-                        original_comment = latest_review_model
-                        while original_comment.parent:
-                            original_comment = original_comment.parent
-                        
-                        if len(original_comment.updates) < 2:
+
+                    # a. Contar cuántas veces se ha comprado el producto.
+                    purchase_count = session.exec(
+                        sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
+                        .join(PurchaseModel)
+                        .where(
+                            PurchaseModel.userinfo_id == user_info.id,
+                            PurchaseItemModel.blog_post_id == post_id,
+                            PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED])
+                        )
+                    ).one()
+
+                    if purchase_count > 0:
+                        # b. Encontrar el ÚNICO hilo de comentarios del usuario para este producto.
+                        user_original_comment = next(
+                            (c for c in db_post.comments if c.userinfo_id == user_info.id and c.parent_comment_id is None),
+                            None
+                        )
+
+                        if not user_original_comment:
+                            # c. Si no hay comentario original, tiene derecho a crear el primero.
                             self.show_review_form = True
-                    else:
-                        if self._find_unclaimed_purchase(session):
-                            self.show_review_form = True
+                            self.my_review_for_product = None
+                            self.review_rating = 0
+                            self.review_content = ""
+                        else:
+                            # d. Si ya existe un hilo, calculamos los créditos.
+                            total_allowed_updates = purchase_count * 2
+                            current_updates_count = len(user_original_comment.updates)
+
+                            if current_updates_count < total_allowed_updates:
+                                # e. Si le quedan créditos, mostramos el formulario para actualizar.
+                                self.show_review_form = True
+                                # Buscamos la última entrada (original o actualización) para pre-rellenar el formulario
+                                latest_entry_in_thread = sorted(
+                                    [user_original_comment] + user_original_comment.updates,
+                                    key=lambda c: c.created_at,
+                                    reverse=True
+                                )[0]
+                                self.my_review_for_product = self._convert_comment_to_dto(latest_entry_in_thread)
+                                self.review_rating = latest_entry_in_thread.rating
+                                self.review_content = latest_entry_in_thread.content
+                # --- ✨ FIN DE LA NUEVA LÓGICA DE CRÉDITOS ✨ ---
+
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
