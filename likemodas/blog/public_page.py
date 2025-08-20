@@ -53,8 +53,15 @@ def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Compone
 
 # --- ✨ Componente para el formulario de envío de opinión ---
 def review_submission_form() -> rx.Component:
+    """
+    Muestra el formulario para enviar/actualizar una opinión, o un mensaje
+    informativo si el usuario ha alcanzado el límite de actualizaciones.
+    """
     return rx.cond(
-        AppState.can_review_product,
+        # Condición principal: muestra el formulario si el estado lo permite.
+        AppState.show_review_form,
+        
+        # SI LA CONDICIÓN ES VERDADERA (Muestra el formulario)
         rx.form(
             rx.vstack(
                 rx.heading(rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), size="5"),
@@ -87,6 +94,17 @@ def review_submission_form() -> rx.Component:
                 width="100%",
             ),
             on_submit=AppState.submit_review,
+        ),
+        
+        # SI LA CONDICIÓN ES FALSA (Oculta el formulario y muestra un mensaje)
+        rx.cond(
+            AppState.is_authenticated, # Muestra el mensaje solo a usuarios logueados
+            rx.callout(
+                "Has alcanzado el límite de actualizaciones para esta compra. Para dejar una nueva opinión, debes adquirir el producto nuevamente.",
+                icon="info",
+                margin_top="1.5em",
+                width="100%"
+            )
         )
     )
 

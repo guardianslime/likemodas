@@ -1403,6 +1403,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Estado del formulario de opinión
     review_rating: int = 0
     review_content: str = ""
+    show_review_form: bool = False # <--- AÑADE ESTA LÍNEA
 
     @rx.var
     def can_review_product(self) -> bool:
@@ -1446,29 +1447,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.is_authenticated or not self.product_in_modal:
             return rx.toast.error("Debes iniciar sesión para opinar.")
         if self.review_rating == 0:
-            return rx.toast.error("Debes seleccionar una valoración (de 1 a 5 estrellas).")
+            return rx.toast.error("Debes seleccionar una valoración.")
 
         content = form_data.get("review_content", "")
-
         with rx.session() as session:
             user_info = self.authenticated_user_info
             if not user_info or not user_info.user:
                 return rx.toast.error("No se pudo identificar al usuario.")
 
             if self.my_review_for_product:
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                # 1. Obtenemos una instancia "viva" del comentario desde la sesión actual.
-                live_comment = session.get(CommentModel, self.my_review_for_product.id)
-                if not live_comment:
-                    return rx.toast.error("No se encontró la opinión a actualizar.")
-                
-                # 2. Ahora trabajamos con la instancia "viva" y conectada.
-                original_comment = live_comment
+                # --- LÓGICA DE ACTUALIZACIÓN ---
+                original_comment = session.get(CommentModel, self.my_review_for_product.id)
                 while original_comment.parent:
                     original_comment = original_comment.parent
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                
+                # Verificamos el límite de 2 actualizaciones
+                if len(original_comment.updates) >= 2:
+                    return rx.toast.error("Ya has alcanzado el límite de 2 actualizaciones para esta compra.")
 
-                # El resto de la lógica para crear la actualización es la misma.
                 new_update = CommentModel(
                     userinfo_id=user_info.id,
                     blog_post_id=self.product_in_modal.id,
@@ -1476,12 +1472,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                     content=content,
                     author_username=user_info.user.username,
                     author_initial=user_info.user.username[0].upper(),
-                    parent_comment_id=original_comment.id
+                    parent_comment_id=original_comment.id,
+                    # La actualización hereda el vínculo de la compra original.
+                    purchase_item_id=original_comment.purchase_item_id 
                 )
                 session.add(new_update)
                 yield rx.toast.success("¡Opinión actualizada!")
             else:
-                # La lógica para crear una opinión nueva no cambia y es correcta.
+                # --- LÓGICA DE NUEVO COMENTARIO ---
+                # Buscamos una compra "sin reclamar" para este producto.
+                unclaimed_purchase_item = self._find_unclaimed_purchase(session)
+                if not unclaimed_purchase_item:
+                    return rx.toast.error("Debes comprar este producto para poder dejar una opinión.")
+
                 new_review = CommentModel(
                     userinfo_id=user_info.id,
                     blog_post_id=self.product_in_modal.id,
@@ -1489,14 +1492,42 @@ class AppState(reflex_local_auth.LocalAuthState):
                     content=content,
                     author_username=user_info.user.username,
                     author_initial=user_info.user.username[0].upper(),
+                    # Vinculamos este nuevo comentario a la compra que lo desbloqueó.
+                    purchase_item_id=unclaimed_purchase_item.id
                 )
                 session.add(new_review)
                 yield rx.toast.success("¡Gracias por tu opinión!")
             
             session.commit()
-
-        # Recargamos el modal para mostrar todos los cambios.
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
+
+    # --- AÑADE ESTA NUEVA FUNCIÓN PRIVADA DENTRO DE AppState ---
+    def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
+        """Encuentra un item de compra del usuario para el producto actual que aún no tenga un comentario asociado."""
+        if not self.authenticated_user_info or not self.product_in_modal:
+            return None
+        
+        # 1. Obtener todas las compras confirmadas de este producto por el usuario
+        purchase_items = session.exec(
+            sqlmodel.select(PurchaseItemModel)
+            .join(PurchaseModel)
+            .where(
+                PurchaseModel.userinfo_id == self.authenticated_user_info.id,
+                PurchaseItemModel.blog_post_id == self.product_in_modal.id,
+                PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED])
+            )
+        ).all()
+
+        # 2. Obtener los IDs de las compras que ya tienen un comentario
+        claimed_purchase_ids = {
+            c.purchase_item_id for c in self.product_comments if c.purchase_item_id
+        }
+
+        # 3. Devolver la primera compra que aún no ha sido "reclamada" por un comentario
+        for item in purchase_items:
+            if item.id not in claimed_purchase_ids:
+                return item
+        return None
 
     # --- AÑADIR: Variables para publicaciones guardadas ---
     saved_post_ids: set[int] = set()
@@ -1568,6 +1599,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.my_review_for_product = None
         self.review_rating = 0
         self.review_content = ""
+        self.show_review_form = False # Reseteamos por defecto
 
         with rx.session() as session:
             # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
@@ -1597,31 +1629,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                     product_dto.seller_id = db_post.userinfo.id
                 self.product_in_modal = product_dto
 
-                # Esta lógica ahora funcionará porque `comment.updates` ya vendrá cargado.
-                original_comments = [
-                    c for c in db_post.comments if c.parent_comment_id is None
-                ]
-                self.product_comments = sorted(
-                    original_comments, 
-                    key=lambda c: c.created_at, 
-                    reverse=True
-                ) if original_comments else []
-
-                if self.authenticated_user_info:
+                if self.is_authenticated:
                     user_comments = sorted(
                         [c for c in db_post.comments if c.userinfo_id == self.authenticated_user_info.id],
                         key=lambda c: c.created_at,
                         reverse=True
                     )
                     if user_comments:
+                        # El usuario ya tiene comentarios. ¿Puede actualizar?
                         latest_review = user_comments[0]
                         self.my_review_for_product = latest_review
                         self.review_rating = latest_review.rating
                         self.review_content = latest_review.content
-            else:
-                self.show_detail_modal = False
-                yield rx.toast.error("Producto no encontrado o no disponible.")
-                return
+                        
+                        original_comment = latest_review
+                        while original_comment.parent:
+                            original_comment = original_comment.parent
+                        
+                        if len(original_comment.updates) < 2:
+                            self.show_review_form = True
+                    else:
+                        # El usuario no tiene comentarios. ¿Tiene una compra disponible?
+                        if self._find_unclaimed_purchase(session):
+                            self.show_review_form = True
 
         yield AppState.load_saved_post_ids
 
