@@ -212,6 +212,11 @@ class PurchaseItemModel(rx.Model, table=True):
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
 
+    # --- ✨ INICIO DE LA MODIFICACIÓN 2 ✨ ---
+    # Añadimos la relación inversa para poder navegar desde la compra a los comentarios.
+    comments: List["CommentModel"] = Relationship()
+    # --- ✨ FIN DE LA MODIFICACIÓN 2 ✨ ---
+
     class Config:
         exclude = {"purchase"}
 
@@ -261,6 +266,11 @@ class CommentModel(rx.Model, table=True):
     # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
     # Columna para vincular una actualización a su comentario original.
     parent_comment_id: Optional[int] = Field(default=None, foreign_key="commentmodel.id")
+
+    # --- ✨ INICIO DE LA MODIFICACIÓN 1 ✨ ---
+    # Vincula este comentario al item específico de la compra que lo desbloqueó.
+    purchase_item_id: Optional[int] = Field(default=None, foreign_key="purchaseitemmodel.id")
+    # --- ✨ FIN DE LA MODIFICACIÓN 1 ✨ ---
     
     # Relaciones para navegar entre el original y sus actualizaciones.
     parent: Optional["CommentModel"] = Relationship(
