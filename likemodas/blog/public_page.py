@@ -191,13 +191,11 @@ def product_detail_modal() -> rx.Component:
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
-                    # --- ✨ LA CORRECCIÓN FINAL ✨ ---
-                    # Iteramos sobre las llaves del diccionario y buscamos el valor dentro.
                     rx.foreach(
                         AppState.product_in_modal.attributes,
                         lambda key: rx.hstack(
                             rx.text(key, ":", weight="bold"),
-                            rx.text(format_attribute_value(AppState.product_in_modal.attributes[key])),
+                            rx.text(format_attribute_value(AppState.product_in_modal.attributes.get(key))),
                             spacing="2",
                             align="center"
                         )
