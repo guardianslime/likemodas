@@ -102,8 +102,9 @@ class UserInfo(rx.Model, table=True):
             "saved_posts",
         }
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
 class VerificationToken(rx.Model, table=True):
-    
+
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
@@ -270,39 +271,30 @@ class ContactEntryModel(rx.Model, table=True):
 
 class CommentModel(rx.Model, table=True):
     content: str; rating: int
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-    # Añadimos campos para guardar una copia permanente del autor
     author_username: str
     author_initial: str
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
-
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-    # Columna para vincular una actualización a su comentario original.
     parent_comment_id: Optional[int] = Field(default=None, foreign_key="commentmodel.id")
-
-    # --- ✨ INICIO DE LA MODIFICACIÓN 1 ✨ ---
-    # Vincula este comentario al item específico de la compra que lo desbloqueó.
     purchase_item_id: Optional[int] = Field(default=None, foreign_key="purchaseitemmodel.id")
-    # --- ✨ FIN DE LA MODIFICACIÓN 1 ✨ ---
     
-    # Relaciones para navegar entre el original y sus actualizaciones.
     parent: Optional["CommentModel"] = Relationship(
         back_populates="updates",
-        sa_relationship_kwargs=dict(remote_side="CommentModel.id") # Clave para relaciones a sí mismo.
+        sa_relationship_kwargs=dict(remote_side="CommentModel.id")
     )
     updates: List["CommentModel"] = Relationship(back_populates="parent")
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
     votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Añadimos las relaciones de auto-referencia y los votos a la lista de exclusión.
     class Config:
-        exclude = {"blog_post", "userinfo"}
+        exclude = {"blog_post", "userinfo", "parent", "updates", "votes"}
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
@@ -314,7 +306,6 @@ class CommentModel(rx.Model, table=True):
     @property
     def was_updated(self) -> bool:
         return (self.updated_at - self.created_at).total_seconds() > 5
-
 
     @property
     def likes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
