@@ -87,7 +87,7 @@ class UserPurchaseHistoryCardData(rx.Base):
 class AttributeData(rx.Base):
     """Un DTO para pasar un par clave-valor de atributo a la UI."""
     key: str
-    value: list | str
+    value: str # ¡El valor ahora es SIEMPRE un string!
 
 class CommentData(rx.Base):
     """Un DTO simple para representar los datos de un comentario para la UI."""
@@ -1449,13 +1449,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ AÑADE ESTA FUNCIÓN DENTRO DE AppState ✨ ---
     @rx.var
     def product_attributes_list(self) -> list[AttributeData]:
-        """Convierte el diccionario de atributos en una lista de DTOs para rx.foreach."""
+        """
+        Convierte el diccionario de atributos en una lista de DTOs,
+        asegurando que el valor sea siempre un string.
+        """
         if self.product_in_modal and self.product_in_modal.attributes:
-            # Creamos una lista de nuestro nuevo DTO
-            return [
-                AttributeData(key=k, value=v) 
-                for k, v in self.product_in_modal.attributes.items()
-            ]
+            processed_attributes = []
+            for k, v in self.product_in_modal.attributes.items():
+                # Convertimos la lista a un string aquí, en el backend
+                if isinstance(v, list):
+                    value_str = ", ".join(v)
+                else:
+                    value_str = str(v)
+                processed_attributes.append(AttributeData(key=k, value=value_str))
+            return processed_attributes
         return []
 
     def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:

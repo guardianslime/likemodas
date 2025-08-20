@@ -2,7 +2,7 @@
 
 import reflex as rx
 import math
-from ..state import AppState, CommentData
+from ..state import AppState, CommentData, AttributeData
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
@@ -12,7 +12,7 @@ def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                rx.icon("pencil", size=16, margin_right="0.5em"),
+                rx.icon("pencil", size=16, margin_right="0.5em"), 
                 rx.text("Actualización:", weight="bold"),
                 star_rating_display(comment.rating, 1),
                 rx.spacer(),
@@ -186,16 +186,8 @@ def product_detail_modal() -> rx.Component:
                         AppState.product_attributes_list,
                         lambda item: rx.hstack(
                             rx.text(item.key, ":", weight="bold"),
-                            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                            # Movemos la lógica de formato directamente aquí.
-                            rx.text(
-                                rx.cond(
-                                    item.value.instance_of(list),
-                                    item.value.join(", "),
-                                    item.value.to_string(),
-                                )
-                            ),
-                            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                            # La lógica de formato ya no es necesaria aquí
+                            rx.text(item.value),
                             spacing="2",
                             align="center"
                         )
