@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/blog/public_page.py (VERSIÓN FINAL)
 
 import reflex as rx
 import math
@@ -12,7 +12,7 @@ def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                rx.icon("pencil", size=16, margin_right="0.5em"), 
+                rx.icon("pencil", size=16, margin_right="0.5em"),
                 rx.text("Actualización:", weight="bold"),
                 star_rating_display(comment.rating, 1),
                 rx.spacer(),
@@ -189,13 +189,11 @@ def product_detail_modal() -> rx.Component:
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
-                    # --- ✨ LA CORRECCIÓN FINAL ✨ ---
-                    # Usamos la nueva variable computada que es una lista simple y segura.
                     rx.foreach(
                         AppState.product_attributes_list,
                         lambda item: rx.hstack(
-                            rx.text(item[0], ":", weight="bold"),
-                            rx.text(format_attribute_value(item[1])),
+                            rx.text(item.key, ":", weight="bold"),
+                            rx.text(format_attribute_value(item.value)),
                             spacing="2",
                             align="center"
                         )
