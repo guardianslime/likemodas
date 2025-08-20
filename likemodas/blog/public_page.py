@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (VERSIÓN FINAL CON SISTEMA DE OPINIONES)
+# likemodas/blog/public_page.py (VERSIÓN FINAL)
 
 import reflex as rx
 import math
@@ -13,10 +13,9 @@ def render_update_item(comment: CommentModel) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                # --- ✨ AQUÍ ESTÁ LA CORRECCIÓN ✨ ---
                 rx.icon("pencil", size=16, margin_right="0.5em"), 
                 rx.text("Actualización:", weight="bold"),
-                star_rating_display(comment.rating, 1), # Muestra la nueva valoración
+                star_rating_display(comment.rating, 1),
                 rx.spacer(),
                 rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%"
@@ -30,11 +29,11 @@ def render_update_item(comment: CommentModel) -> rx.Component:
         border_color=rx.color("gray", 6),
         border_radius="md",
         margin_top="1em",
-        margin_left="2.5em" # Indentación para mostrar jerarquía
+        margin_left="2.5em"
     )
 
-# --- ✨ Componente para mostrar estrellas de valoración ---
 def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Component:
+    """Componente para mostrar estrellas de valoración."""
     full_stars = rx.Var.range(math.floor(rating))
     has_half_star = (rating - math.floor(rating)) >= 0.5
     empty_stars = rx.Var.range(5 - math.ceil(rating))
@@ -51,17 +50,10 @@ def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Compone
         rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
     )
 
-# --- ✨ Componente para el formulario de envío de opinión ---
 def review_submission_form() -> rx.Component:
-    """
-    Muestra el formulario para enviar/actualizar una opinión, o un mensaje
-    informativo si el usuario ha alcanzado el límite de actualizaciones.
-    """
+    """Muestra el formulario para opinar o un mensaje de límite alcanzado."""
     return rx.cond(
-        # Condición principal: muestra el formulario si el estado lo permite.
         AppState.show_review_form,
-        
-        # SI LA CONDICIÓN ES VERDADERA (Muestra el formulario)
         rx.form(
             rx.vstack(
                 rx.heading(rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), size="5"),
@@ -95,10 +87,8 @@ def review_submission_form() -> rx.Component:
             ),
             on_submit=AppState.submit_review,
         ),
-        
-        # SI LA CONDICIÓN ES FALSA (Oculta el formulario y muestra un mensaje)
         rx.cond(
-            AppState.is_authenticated, # Muestra el mensaje solo a usuarios logueados
+            AppState.is_authenticated,
             rx.callout(
                 "Has alcanzado el límite de actualizaciones para esta compra. Para dejar una nueva opinión, debes adquirir el producto nuevamente.",
                 icon="info",
@@ -108,15 +98,12 @@ def review_submission_form() -> rx.Component:
         )
     )
 
-# --- ✨ Componente para mostrar un comentario individual ---
-def render_comment_item(comment: CommentModel) -> rx.Component:
+def render_comment_item(comment: rx.Var) -> rx.Component:
     """Renderiza un comentario principal con un botón para ver su historial."""
-    # Contamos cuántas actualizaciones hay para mostrarlo en el botón.
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
 
     return rx.box(
         rx.vstack(
-            # --- Sección del comentario original (sin cambios) ---
             rx.hstack(
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
@@ -125,20 +112,13 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
-            
-            # --- ✨ INICIO DE LA MODIFICACIÓN 2 ✨ ---
-            # Mostramos el botón solo si hay actualizaciones.
             rx.cond(
                 comment.updates,
                 rx.button(
                     rx.cond(
                         AppState.expanded_comments.get(comment.id, False),
                         "Ocultar historial",
-                        rx.text(
-                            "Ver historial (",
-                            rx.text(update_count, as_="span"),
-                            " actualizaciones)"
-                        )
+                        rx.text("Ver historial (", rx.text(update_count, as_="span"), " actualizaciones)")
                     ),
                     on_click=AppState.toggle_comment_updates(comment.id),
                     variant="soft",
@@ -146,8 +126,6 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
                     margin_top="0.5em"
                 )
             ),
-
-            # Mostramos el historial solo si el comentario está expandido en el estado.
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
                 rx.foreach(
@@ -155,9 +133,6 @@ def render_comment_item(comment: CommentModel) -> rx.Component:
                     render_update_item
                 )
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN 2 ✨ ---
-
-            # --- Sección de la fecha (sin cambios) ---
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%",
@@ -197,32 +172,26 @@ def product_detail_modal() -> rx.Component:
         )
 
     def _modal_info_section() -> rx.Component:
-    
         def format_attribute_value(value: rx.Var) -> rx.Var[str]:
-            """Formatea el valor de un atributo para mostrarlo en la UI."""
             return rx.cond(
-                # --- ✨ ESTA ES LA LÍNEA CORREGIDA ✨ ---
                 value.instance_of(list),
-                value.join(", "), # Une los elementos de la lista con una coma
-                value.to_string() # Muestra el valor normal si no es una lista
+                value.join(", "),
+                value.to_string()
             )
 
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
-
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-            
             rx.cond(
                 AppState.product_in_modal.attributes,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
                     rx.foreach(
-                        AppState.product_in_modal.attributes.items(),
+                        AppState.product_attributes_list, # <-- ✨ USAMOS LA NUEVA VARIABLE SEGURA
                         lambda item: rx.hstack(
                             rx.text(item[0], ":", weight="bold"),
                             rx.text(format_attribute_value(item[1])),
@@ -236,7 +205,6 @@ def product_detail_modal() -> rx.Component:
                     margin_top="1em",
                 )
             ),
-
             rx.text(
                 "Publicado por: ",
                 rx.link(
@@ -251,22 +219,11 @@ def product_detail_modal() -> rx.Component:
                 text_align="left",
                 width="100%"
             ),
-
             rx.spacer(),
-            
             rx.hstack(
-                rx.button(
-                    "Añadir al Carrito",
-                    on_click=AppState.add_to_cart(AppState.product_in_modal.id),
-                    size="3",
-                    flex_grow="1",
-                ),
+                rx.button("Añadir al Carrito", on_click=AppState.add_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1"),
                 rx.icon_button(
-                    rx.cond(
-                        AppState.is_current_post_saved,
-                        rx.icon(tag="bookmark-minus"),
-                        rx.icon(tag="bookmark-plus")
-                    ),
+                    rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
                     on_click=AppState.toggle_save_post,
                     size="3",
                     variant="outline",
@@ -274,9 +231,7 @@ def product_detail_modal() -> rx.Component:
                 rx.icon_button(
                     rx.icon(tag="share-2"),
                     on_click=[
-                        rx.set_clipboard(
-                            AppState.base_app_url + "/?product=" + AppState.product_in_modal.id.to_string()
-                        ),
+                        rx.set_clipboard(AppState.base_app_url + "/?product=" + AppState.product_in_modal.id.to_string()),
                         rx.toast.success("¡Enlace para compartir copiado!")
                     ],
                     size="3",
@@ -292,9 +247,7 @@ def product_detail_modal() -> rx.Component:
     
     return rx.dialog.root(
         rx.dialog.content(
-            rx.dialog.close(
-                rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})
-            ),
+            rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
             rx.cond(
                 AppState.product_in_modal,
                 rx.vstack(
@@ -304,7 +257,6 @@ def product_detail_modal() -> rx.Component:
                         columns={"initial": "1", "md": "2"},
                         spacing="6", align_items="start", width="100%",
                     ),
-                    # --- SECCIÓN DE OPINIONES Y FORMULARIO ---
                     rx.divider(margin_y="1.5em"),
                     review_submission_form(),
                     rx.cond(
@@ -314,7 +266,7 @@ def product_detail_modal() -> rx.Component:
                             rx.foreach(AppState.product_comments, render_comment_item),
                             spacing="1",
                             width="100%",
-                            max_height="400px", # Para que sea desplazable si hay muchas opiniones
+                            max_height="400px",
                             overflow_y="auto"
                         )
                     )
@@ -335,9 +287,6 @@ def blog_public_page_content() -> rx.Component:
             rx.cond(
                 AppState.is_loading,
                 skeleton_product_gallery(),
-                # --- ✨ CAMBIO CLAVE AQUÍ ---
-                # ANTES: product_gallery_component(posts=AppState.posts)
-                # AHORA:
                 product_gallery_component(posts=AppState.displayed_posts)
             ),
             product_detail_modal(),
