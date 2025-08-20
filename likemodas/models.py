@@ -85,7 +85,25 @@ class UserInfo(rx.Model, table=True):
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
 
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Añadimos esta configuración para evitar que el serializador entre en bucles infinitos
+    # al intentar cargar todas las relaciones de un usuario.
+    class Config:
+        exclude = {
+            "user",
+            "posts",
+            "verification_tokens",
+            "shipping_addresses",
+            "contact_entries",
+            "purchases",
+            "notifications",
+            "comments",
+            "comment_votes",
+            "saved_posts",
+        }
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 class VerificationToken(rx.Model, table=True):
+    
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
