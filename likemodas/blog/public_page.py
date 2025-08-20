@@ -197,10 +197,12 @@ def product_detail_modal() -> rx.Component:
         )
 
     def _modal_info_section() -> rx.Component:
-        # --- Pequeña función de ayuda para mostrar listas (como las tallas) de forma bonita ---
+    
         def format_attribute_value(value: rx.Var) -> rx.Var[str]:
+            """Formatea el valor de un atributo para mostrarlo en la UI."""
             return rx.cond(
-                rx.is_list(value),
+                # --- ✨ ESTA ES LA LÍNEA CORREGIDA ✨ ---
+                value.instance_of(list),
                 value.join(", "), # Une los elementos de la lista con una coma
                 value.to_string() # Muestra el valor normal si no es una lista
             )
@@ -214,9 +216,8 @@ def product_detail_modal() -> rx.Component:
 
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             
-            # --- ✨ INICIO DE LA SECCIÓN DE CARACTERÍSTICAS ✨ ---
             rx.cond(
-                AppState.product_in_modal.attributes, # Solo se muestra si hay atributos
+                AppState.product_in_modal.attributes,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
@@ -235,7 +236,6 @@ def product_detail_modal() -> rx.Component:
                     margin_top="1em",
                 )
             ),
-            # --- ✨ FIN DE LA SECCIÓN DE CARACTERÍSTICAS ✨ ---
 
             rx.text(
                 "Publicado por: ",
@@ -254,7 +254,6 @@ def product_detail_modal() -> rx.Component:
 
             rx.spacer(),
             
-            # Grupo de botones
             rx.hstack(
                 rx.button(
                     "Añadir al Carrito",
