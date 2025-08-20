@@ -1440,6 +1440,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             ).first()
             return purchase_item is not None
+        
+    # --- ✨ AÑADE ESTA FUNCIÓN DENTRO DE AppState ✨ ---
+    @rx.var
+    def product_attributes_list(self) -> list[tuple]:
+        """Convierte el diccionario de atributos del producto en una lista simple para rx.foreach."""
+        if self.product_in_modal and self.product_in_modal.attributes:
+            return list(self.product_in_modal.attributes.items())
+        return []
 
     def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
         """

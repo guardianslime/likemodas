@@ -2,12 +2,11 @@
 
 import reflex as rx
 import math
-from ..state import AppState, CommentData # Importamos el DTO
+from ..state import AppState, CommentData
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 
-# El tipo de dato ahora es el DTO, no el modelo de la BD
 def render_update_item(comment: CommentData) -> rx.Component:
     """Componente para mostrar una actualización de un comentario."""
     return rx.box(
@@ -98,7 +97,6 @@ def review_submission_form() -> rx.Component:
         )
     )
 
-# El tipo de dato ahora es el DTO, no el modelo de la BD
 def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal con un botón para ver su historial."""
     update_count = rx.cond(comment.updates, len(comment.updates), 0)
@@ -191,11 +189,13 @@ def product_detail_modal() -> rx.Component:
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
+                    # --- ✨ LA CORRECCIÓN FINAL ✨ ---
+                    # Usamos la nueva variable computada que es una lista simple y segura.
                     rx.foreach(
-                        AppState.product_in_modal.attributes,
-                        lambda key: rx.hstack(
-                            rx.text(key, ":", weight="bold"),
-                            rx.text(format_attribute_value(AppState.product_in_modal.attributes.get(key))),
+                        AppState.product_attributes_list,
+                        lambda item: rx.hstack(
+                            rx.text(item[0], ":", weight="bold"),
+                            rx.text(format_attribute_value(item[1])),
                             spacing="2",
                             align="center"
                         )
