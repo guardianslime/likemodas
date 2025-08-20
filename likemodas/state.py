@@ -82,6 +82,19 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_name: str; shipping_address: str; shipping_neighborhood: str
     shipping_city: str; shipping_phone: str; items_formatted: list[str]
 
+class CommentData(rx.Base):
+    """Un DTO simple para representar los datos de un comentario para la UI."""
+    id: int
+    content: str
+    rating: int
+    author_username: str
+    author_initial: str
+    created_at_formatted: str
+    updates: List["CommentData"] = [] # Puede contener otras fotocopias de comentarios
+
+# Es necesario para que la referencia a sí mismo ("CommentData") funcione.
+CommentData.model_rebuild()
+
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -1395,10 +1408,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ LÓGICA PARA OPINIONES Y VALORACIONES ---
 
     # Almacena los comentarios del producto que está en el modal
-    product_comments: list[CommentModel] = []
+    product_comments: list[CommentData] = []
     
     # Almacena la opinión del usuario actual para el producto actual (si existe)
-    my_review_for_product: Optional[CommentModel] = None
+    my_review_for_product: Optional[CommentData] = None
 
     # Estado del formulario de opinión
     review_rating: int = 0
@@ -1444,6 +1457,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ✅ ASEGÚRATE DE QUE LA FUNCIÓN ESTÉ INDENTADA A ESTE NIVEL
     @rx.event
     def submit_review(self, form_data: dict):
+        """
+        Gestiona el envío de una nueva opinión o la actualización de una existente,
+        aplicando el límite de 2 actualizaciones por compra.
+        """
         if not self.is_authenticated or not self.product_in_modal:
             return rx.toast.error("Debes iniciar sesión para opinar.")
         if self.review_rating == 0:
@@ -1457,7 +1474,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if self.my_review_for_product:
                 # --- LÓGICA DE ACTUALIZACIÓN ---
+                # Usamos el ID del DTO para obtener el objeto "vivo" de la BD
                 original_comment = session.get(CommentModel, self.my_review_for_product.id)
+
+                # --- ✨ MEJORA DE ROBUSTEZ AÑADIDA ✨ ---
+                # Verificamos que el comentario realmente exista antes de continuar.
+                if not original_comment:
+                    return rx.toast.error("El comentario que intentas actualizar ya no existe.")
+
+                # Buscamos el comentario raíz (el original sin padre)
                 while original_comment.parent:
                     original_comment = original_comment.parent
                 
@@ -1590,6 +1615,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             # Limpiamos la variable para que no se vuelva a ejecutar
             self._product_id_to_load_on_mount = None
 
+    # --- AÑADE ESTA FUNCIÓN DE AYUDA DENTRO DE LA CLASE AppState ---
+    def _convert_comment_to_dto(self, comment_model: CommentModel) -> CommentData:
+        """Convierte recursivamente un CommentModel de la BD a un DTO CommentData."""
+        return CommentData(
+            id=comment_model.id,
+            content=comment_model.content,
+            rating=comment_model.rating,
+            author_username=comment_model.author_username,
+            author_initial=comment_model.author_initial,
+            created_at_formatted=comment_model.created_at_formatted,
+            updates=[self._convert_comment_to_dto(update) for update in sorted(comment_model.updates, key=lambda u: u.created_at)]
+        )
+
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         self.product_in_modal = None
@@ -1599,28 +1637,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.my_review_for_product = None
         self.review_rating = 0
         self.review_content = ""
-        self.show_review_form = False # Reseteamos por defecto
+        self.show_review_form = False
 
         with rx.session() as session:
-            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-            # Modificamos la consulta para que cargue explícitamente las actualizaciones anidadas.
             db_post = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .options(
-                    # Carga los comentarios, sus autores y sus actualizaciones anidadas
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                    .joinedload(CommentModel.userinfo)
-                    .joinedload(UserInfo.user),
-                    
-                    # Carga también el historial (updates) para cada comentario y los autores de esas actualizaciones
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments)
-                    .joinedload(CommentModel.updates)
-                    .joinedload(CommentModel.userinfo)
-                    .joinedload(UserInfo.user)
-                )
-                .where(BlogPostModel.id == post_id)
+                sqlmodel.select(BlogPostModel).options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates).joinedload(CommentModel.userinfo).joinedload(UserInfo.user)
+                ).where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
-            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
             if db_post and db_post.publish_active:
                 product_dto = ProductDetailData.from_orm(db_post)
@@ -1629,29 +1654,39 @@ class AppState(reflex_local_auth.LocalAuthState):
                     product_dto.seller_id = db_post.userinfo.id
                 self.product_in_modal = product_dto
 
+                # --- LÓGICA DE CONVERSIÓN A DTO ---
+                all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
+                
+                original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
+                self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
+
                 if self.is_authenticated:
+                    user_info = self.authenticated_user_info
+                    # ... (Lógica para encontrar my_review_for_product y decidir si se muestra el formulario)
                     user_comments = sorted(
-                        [c for c in db_post.comments if c.userinfo_id == self.authenticated_user_info.id],
+                        [c for c in db_post.comments if c.userinfo_id == user_info.id],
                         key=lambda c: c.created_at,
                         reverse=True
                     )
                     if user_comments:
-                        # El usuario ya tiene comentarios. ¿Puede actualizar?
-                        latest_review = user_comments[0]
-                        self.my_review_for_product = latest_review
-                        self.review_rating = latest_review.rating
-                        self.review_content = latest_review.content
+                        latest_review_model = user_comments[0]
+                        self.my_review_for_product = self._convert_comment_to_dto(latest_review_model)
+                        self.review_rating = latest_review_model.rating
+                        self.review_content = latest_review_model.content
                         
-                        original_comment = latest_review
+                        original_comment = latest_review_model
                         while original_comment.parent:
                             original_comment = original_comment.parent
                         
                         if len(original_comment.updates) < 2:
                             self.show_review_form = True
                     else:
-                        # El usuario no tiene comentarios. ¿Tiene una compra disponible?
                         if self._find_unclaimed_purchase(session):
                             self.show_review_form = True
+            else:
+                self.show_detail_modal = False
+                yield rx.toast.error("Producto no encontrado o no disponible.")
+                return
 
         yield AppState.load_saved_post_ids
 
