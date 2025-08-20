@@ -1,4 +1,4 @@
-# likemodas/models.py (VERSIÓN CORREGIDA Y FINAL)
+# likemodas/models.py (VERSIÓN COMPLETA Y BLINDADA)
 
 from typing import Optional, List
 from datetime import datetime
@@ -12,10 +12,11 @@ from reflex_local_auth.user import LocalUser
 from .utils.timing import get_utc_now
 from .utils.formatting import format_to_cop
 
-
-# --- Adelanta la declaración de CommentModel ---
+# --- Adelanta la declaración de modelos ---
 if "CommentModel" not in locals():
     CommentModel = "CommentModel"
+if "PurchaseItemModel" not in locals():
+    PurchaseItemModel = "PurchaseItemModel"
 
 # --- Funciones de Utilidad ---
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
@@ -29,8 +30,6 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     except Exception:
         return utc_dt.strftime('%Y-%m-%d %H:%M')
     
-# --- AÑADE ESTA NUEVA CLASE (TABLA) ---
-# Esta es una tabla de asociación para la relación muchos a muchos.
 class SavedPostLink(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id", primary_key=True)
     blogpostmodel_id: int = Field(foreign_key="blogpostmodel.id", primary_key=True)
@@ -39,16 +38,13 @@ class SavedPostLink(rx.Model, table=True):
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
-
 class PurchaseStatus(str, enum.Enum):
     PENDING = "pending_confirmation"
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
-
 class VoteType(str, enum.Enum):
     LIKE = "like"
     DISLIKE = "dislike"
-
 class Category(str, enum.Enum):
     ROPA = "ropa"
     CALZADO = "calzado"
@@ -56,12 +52,6 @@ class Category(str, enum.Enum):
     OTROS = "otros"
 
 # --- Modelos de Base de Datos ---
-
-# Forward declaration para resolver dependencias circulares en type hints
-if "PurchaseItemModel" not in locals():
-    PurchaseItemModel = "PurchaseItemModel"
-if "CommentModel" not in locals():
-    CommentModel = "CommentModel"
 
 class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
@@ -85,26 +75,10 @@ class UserInfo(rx.Model, table=True):
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
 
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Añadimos esta configuración para evitar que el serializador entre en bucles infinitos
-    # al intentar cargar todas las relaciones de un usuario.
     class Config:
-        exclude = {
-            "user",
-            "posts",
-            "verification_tokens",
-            "shipping_addresses",
-            "contact_entries",
-            "purchases",
-            "notifications",
-            "comments",
-            "comment_votes",
-            "saved_posts",
-        }
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+        exclude = {"user", "posts", "verification_tokens", "shipping_addresses", "contact_entries", "purchases", "notifications", "comments", "comment_votes", "saved_posts"}
 
 class VerificationToken(rx.Model, table=True):
-
     token: str = Field(unique=True, index=True)
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
@@ -138,48 +112,29 @@ class BlogPostModel(rx.Model, table=True):
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     
     class Config:
-        exclude = {"userinfo"}
+        exclude = {"userinfo", "comments", "saved_by_users"}
     
-    # --- ✨ AÑADE ESTAS PROPIEDADES COMPUTADAS ---
     @property
     def rating_count(self) -> int:
-        """Calcula el número de usuarios ÚNICOS que han dejado una opinión."""
-        if not self.comments:
-            return 0
-        # Crea un conjunto (set) de los IDs de usuario para contar solo los únicos.
+        if not self.comments: return 0
         return len({c.userinfo_id for c in self.comments})
 
     @property
     def average_rating(self) -> float:
-        """
-        Calcula el puntaje promedio tomando solo la opinión MÁS RECIENTE de cada usuario.
-        """
-        if not self.comments:
-            return 0.0
-
-        # 1. Agrupamos los comentarios por usuario y nos quedamos con el más reciente.
+        if not self.comments: return 0.0
         user_latest_reviews: dict[int, CommentModel] = {}
         for comment in self.comments:
             user_id = comment.userinfo_id
-            # Si no hemos visto a este usuario, o si este comentario es más nuevo que el guardado...
             if user_id not in user_latest_reviews or comment.created_at > user_latest_reviews[user_id].created_at:
-                # ...lo guardamos como su opinión más reciente.
                 user_latest_reviews[user_id] = comment
-        
-        # 2. Extraemos solo las valoraciones de esas opiniones más recientes.
         latest_ratings = [review.rating for review in user_latest_reviews.values()]
-        
-        # 3. Calculamos el promedio de esas valoraciones.
-        if not latest_ratings:
-            return 0.0
+        if not latest_ratings: return 0.0
         return sum(latest_ratings) / len(latest_ratings)
     
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
-
     @property
     def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
-
     @property
     def price_cop(self) -> str: return format_to_cop(self.price)
 
@@ -209,7 +164,7 @@ class PurchaseModel(rx.Model, table=True):
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
     class Config:
-        exclude = {"userinfo"}
+        exclude = {"userinfo", "items"}
 
     @property
     def purchase_date_formatted(self) -> str: return format_utc_to_local(self.purchase_date)
@@ -232,11 +187,8 @@ class PurchaseItemModel(rx.Model, table=True):
     blog_post: "BlogPostModel" = Relationship()
     comments: List["CommentModel"] = Relationship()
 
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Le decimos al serializador que ignore estas relaciones para evitar bucles.
     class Config:
         exclude = {"purchase", "blog_post", "comments"}
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
@@ -280,39 +232,25 @@ class CommentModel(rx.Model, table=True):
     parent_comment_id: Optional[int] = Field(default=None, foreign_key="commentmodel.id")
     purchase_item_id: Optional[int] = Field(default=None, foreign_key="purchaseitemmodel.id")
     
-    parent: Optional["CommentModel"] = Relationship(
-        back_populates="updates",
-        sa_relationship_kwargs=dict(remote_side="CommentModel.id")
-    )
+    parent: Optional["CommentModel"] = Relationship(back_populates="updates", sa_relationship_kwargs=dict(remote_side="CommentModel.id"))
     updates: List["CommentModel"] = Relationship(back_populates="parent")
-    
     userinfo: "UserInfo" = Relationship(back_populates="comments")
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
     votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Añadimos las relaciones de auto-referencia y los votos a la lista de exclusión.
     class Config:
         exclude = {"blog_post", "userinfo", "parent", "updates", "votes"}
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
-
     @property
-    def updated_at_formatted(self) -> str:
-        return format_utc_to_local(self.updated_at)
-    
+    def updated_at_formatted(self) -> str: return format_utc_to_local(self.updated_at)
     @property
-    def was_updated(self) -> bool:
-        return (self.updated_at - self.created_at).total_seconds() > 5
-
+    def was_updated(self) -> bool: return (self.updated_at - self.created_at).total_seconds() > 5
     @property
     def likes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.LIKE)
-
     @property
     def dislikes(self) -> int: return sum(1 for vote in self.votes if vote.vote_type == VoteType.DISLIKE)
-
 
 class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))
