@@ -1424,6 +1424,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     review_rating: int = 0
     review_content: str = ""
     show_review_form: bool = False # <--- AÑADE ESTA LÍNEA
+    review_limit_reached: bool = False # <-- ✨ AÑADE ESTA LÍNEA
 
     @rx.var
     def can_review_product(self) -> bool:
@@ -1695,7 +1696,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
-        # --- 1. Limpieza de estado (sin cambios) ---
+        # --- 1. Limpieza de estado (añade el reseteo de la nueva variable) ---
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0
@@ -1704,33 +1705,33 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_rating = 0
         self.review_content = ""
         self.show_review_form = False
+        self.review_limit_reached = False # <-- ✨ AÑADE ESTA LÍNEA
 
         with rx.session() as session:
-            # --- 2. Carga de datos de la publicación (sin cambios) ---
+            # ... (el resto del código de carga de datos no cambia) ...
             db_post = session.exec(
-                sqlmodel.select(BlogPostModel).options(
+            sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates).joinedload(CommentModel.userinfo).joinedload(UserInfo.user)
                 ).where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
+                # ... (la creación del product_dto y la carga de comentarios no cambia) ...
                 product_dto = ProductDetailData.from_orm(db_post)
                 if db_post.userinfo and db_post.userinfo.user:
                     product_dto.seller_name = db_post.userinfo.user.username
                     product_dto.seller_id = db_post.userinfo.id
                 self.product_in_modal = product_dto
                 
-                # Carga y conversión de todos los comentarios a DTOs (sin cambios)
                 all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
                 original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
                 self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
 
-                # --- ✨ INICIO DE LA NUEVA LÓGICA DE CRÉDITOS ✨ ---
+                # --- ✨ INICIO DE LA LÓGICA CORREGIDA ✨ ---
                 if self.is_authenticated:
                     user_info = self.authenticated_user_info
 
-                    # a. Contar cuántas veces se ha comprado el producto.
                     purchase_count = session.exec(
                         sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
                         .join(PurchaseModel)
@@ -1742,27 +1743,21 @@ class AppState(reflex_local_auth.LocalAuthState):
                     ).one()
 
                     if purchase_count > 0:
-                        # b. Encontrar el ÚNICO hilo de comentarios del usuario para este producto.
                         user_original_comment = next(
                             (c for c in db_post.comments if c.userinfo_id == user_info.id and c.parent_comment_id is None),
                             None
                         )
 
                         if not user_original_comment:
-                            # c. Si no hay comentario original, tiene derecho a crear el primero.
                             self.show_review_form = True
-                            self.my_review_for_product = None
-                            self.review_rating = 0
-                            self.review_content = ""
                         else:
-                            # d. Si ya existe un hilo, calculamos los créditos.
-                            total_allowed_updates = purchase_count * 2
+                            # Se cambió la lógica aquí para ser más precisa.
+                            # Asumimos 1 actualización por compra. Si compra 2 veces, tiene 2 actualizaciones.
+                            total_allowed_updates = purchase_count 
                             current_updates_count = len(user_original_comment.updates)
 
                             if current_updates_count < total_allowed_updates:
-                                # e. Si le quedan créditos, mostramos el formulario para actualizar.
                                 self.show_review_form = True
-                                # Buscamos la última entrada (original o actualización) para pre-rellenar el formulario
                                 latest_entry_in_thread = sorted(
                                     [user_original_comment] + user_original_comment.updates,
                                     key=lambda c: c.created_at,
@@ -1771,8 +1766,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 self.my_review_for_product = self._convert_comment_to_dto(latest_entry_in_thread)
                                 self.review_rating = latest_entry_in_thread.rating
                                 self.review_content = latest_entry_in_thread.content
-                # --- ✨ FIN DE LA NUEVA LÓGICA DE CRÉDITOS ✨ ---
-
+                            else:
+                                # Si no le quedan créditos, marcamos el límite como alcanzado
+                                self.review_limit_reached = True # <-- ✨ ESTA ES LA LÓGICA NUEVA
+                # --- ✨ FIN DE LA LÓGICA CORREGIDA ✨ ---
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")

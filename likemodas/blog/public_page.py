@@ -50,8 +50,12 @@ def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Compone
     )
 
 def review_submission_form() -> rx.Component:
-    """Muestra el formulario para opinar o un mensaje de límite alcanzado."""
+    """
+    Muestra el formulario para opinar, el mensaje de límite alcanzado, 
+    o nada, según el estado del usuario.
+    """
     return rx.cond(
+        # Condición 1: Si el formulario debe mostrarse, lo renderiza.
         AppState.show_review_form,
         rx.form(
             rx.vstack(
@@ -86,14 +90,19 @@ def review_submission_form() -> rx.Component:
             ),
             on_submit=AppState.submit_review,
         ),
+        
+        # Condición 2: Si el formulario NO se muestra, comprueba si es por el límite.
         rx.cond(
-            AppState.is_authenticated,
+            AppState.review_limit_reached,
+            # Si el límite fue alcanzado, muestra el mensaje.
             rx.callout(
                 "Has alcanzado el límite de actualizaciones para esta compra. Para dejar una nueva opinión, debes adquirir el producto nuevamente.",
                 icon="info",
                 margin_top="1.5em",
                 width="100%"
-            )
+            ),
+            # Si no se cumple ninguna de las anteriores (el usuario no ha comprado), no muestra nada.
+            rx.fragment()
         )
     )
 
