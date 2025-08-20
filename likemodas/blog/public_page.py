@@ -1,14 +1,14 @@
-# likemodas/blog/public_page.py (VERSIÓN FINAL)
+# likemodas/blog/public_page.py (VERSIÓN FINAL Y CORREGIDA)
 
 import reflex as rx
 import math
-from ..state import AppState
+from ..state import AppState, CommentData # Importamos el DTO
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
-from ..models import CommentModel
 
-def render_update_item(comment: CommentModel) -> rx.Component:
+# El tipo de dato ahora es el DTO, no el modelo de la BD
+def render_update_item(comment: CommentData) -> rx.Component:
     """Componente para mostrar una actualización de un comentario."""
     return rx.box(
         rx.vstack(
@@ -98,9 +98,10 @@ def review_submission_form() -> rx.Component:
         )
     )
 
-def render_comment_item(comment: rx.Var) -> rx.Component:
+# El tipo de dato ahora es el DTO, no el modelo de la BD
+def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal con un botón para ver su historial."""
-    update_count = rx.cond(comment.updates, comment.updates.length(), 0)
+    update_count = rx.cond(comment.updates, len(comment.updates), 0)
 
     return rx.box(
         rx.vstack(
@@ -190,11 +191,13 @@ def product_detail_modal() -> rx.Component:
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
+                    # --- ✨ LA CORRECCIÓN FINAL ✨ ---
+                    # Iteramos sobre las llaves del diccionario y buscamos el valor dentro.
                     rx.foreach(
-                        AppState.product_attributes_list, # <-- ✨ USAMOS LA NUEVA VARIABLE SEGURA
-                        lambda item: rx.hstack(
-                            rx.text(item[0], ":", weight="bold"),
-                            rx.text(format_attribute_value(item[1])),
+                        AppState.product_in_modal.attributes,
+                        lambda key: rx.hstack(
+                            rx.text(key, ":", weight="bold"),
+                            rx.text(format_attribute_value(AppState.product_in_modal.attributes[key])),
                             spacing="2",
                             align="center"
                         )

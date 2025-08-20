@@ -1441,6 +1441,45 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).first()
             return purchase_item is not None
 
+    def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
+        """
+        Encuentra un item de compra del usuario para el producto actual que aún no tenga 
+        un comentario original asociado.
+        """
+        if not self.authenticated_user_info or not self.product_in_modal:
+            return None
+        
+        # 1. Obtener todas las compras confirmadas de este producto por el usuario.
+        purchase_items = session.exec(
+            sqlmodel.select(PurchaseItemModel)
+            .join(PurchaseModel)
+            .where(
+                PurchaseModel.userinfo_id == self.authenticated_user_info.id,
+                PurchaseItemModel.blog_post_id == self.product_in_modal.id,
+                PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED])
+            )
+        ).all()
+
+        # 2. Obtener los IDs de las compras que ya tienen un comentario ORIGINAL asociado.
+        claimed_purchase_ids = set(
+            session.exec(
+                sqlmodel.select(CommentModel.purchase_item_id)
+                .where(
+                    CommentModel.userinfo_id == self.authenticated_user_info.id,
+                    CommentModel.blog_post_id == self.product_in_modal.id,
+                    CommentModel.parent_comment_id == None, # Solo hilos de comentarios originales
+                    CommentModel.purchase_item_id != None
+                )
+            ).all()
+        )
+
+        # 3. Devolver la primera compra que aún no ha sido "reclamada" por un comentario.
+        for item in purchase_items:
+            if item.id not in claimed_purchase_ids:
+                return item
+        
+        return None
+
     def set_review_rating(self, rating: int):
         """Actualiza la valoración en el estado del formulario."""
         self.review_rating = rating
