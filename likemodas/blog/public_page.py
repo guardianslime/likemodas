@@ -99,7 +99,8 @@ def review_submission_form() -> rx.Component:
 
 def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal con un botón para ver su historial."""
-    update_count = rx.cond(comment.updates, len(comment.updates), 0)
+    # --- ✨ LA CORRECCIÓN ESTÁ AQUÍ ✨ ---
+    update_count = rx.cond(comment.updates, comment.updates.length(), 0)
 
     return rx.box(
         rx.vstack(
@@ -186,7 +187,6 @@ def product_detail_modal() -> rx.Component:
                         AppState.product_attributes_list,
                         lambda item: rx.hstack(
                             rx.text(item.key, ":", weight="bold"),
-                            # La lógica de formato ya no es necesaria aquí
                             rx.text(item.value),
                             spacing="2",
                             align="center"
