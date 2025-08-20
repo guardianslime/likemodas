@@ -211,14 +211,13 @@ class PurchaseItemModel(rx.Model, table=True):
     
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
-
-    # --- ✨ INICIO DE LA MODIFICACIÓN 2 ✨ ---
-    # Añadimos la relación inversa para poder navegar desde la compra a los comentarios.
     comments: List["CommentModel"] = Relationship()
-    # --- ✨ FIN DE LA MODIFICACIÓN 2 ✨ ---
 
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Le decimos al serializador que ignore estas relaciones para evitar bucles.
     class Config:
-        exclude = {"purchase"}
+        exclude = {"purchase", "blog_post", "comments"}
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
