@@ -1,9 +1,8 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL)
-
+# likemodas/invoice/page.py (VERSIÓN CORREGIDA)
 import reflex as rx
-from ..state import AppState
-# Ya no necesitamos importar format_to_cop aquí
+from .state import InvoiceState # <-- Importamos el nuevo estado
 
+# Estilos (sin cambios)
 invoice_style = {
     "font_family": "Arial, sans-serif", "padding": "2em", "max_width": "800px", "margin": "auto",
     "border": "1px solid #ddd", "box_shadow": "0 0 10px rgba(0, 0, 0, 0.1)",
@@ -14,17 +13,17 @@ invoice_style = {
 }
 
 def invoice_page_content() -> rx.Component:
-    """Página que renderiza una factura lista para imprimir."""
+    """Página que renderiza una factura usando su propio estado."""
     return rx.box(
         rx.cond(
-            AppState.invoice_data,
+            InvoiceState.invoice_data,
             rx.vstack(
                 rx.hstack(
                     rx.image(src="/logo.png", width="120px", height="auto"),
                     rx.spacer(),
                     rx.vstack(
                         rx.heading("FACTURA", size="8"),
-                        rx.text("#", AppState.invoice_data.id),
+                        rx.text("#", InvoiceState.invoice_data.id),
                         align_items="end",
                     ),
                     width="100%", align_items="start", margin_bottom="2em",
@@ -37,9 +36,9 @@ def invoice_page_content() -> rx.Component:
                     ),
                     rx.vstack(
                         rx.heading("Comprador", size="4"),
-                        rx.text(AppState.invoice_data.customer_name, weight="bold"),
-                        rx.text(AppState.invoice_data.shipping_full_address),
-                        rx.text(AppState.invoice_data.customer_email),
+                        rx.text(InvoiceState.invoice_data.customer_name, weight="bold"),
+                        rx.text(InvoiceState.invoice_data.shipping_full_address),
+                        rx.text(InvoiceState.invoice_data.customer_email),
                         align_items="start", spacing="1",
                     ),
                     columns="2", spacing="6", width="100%", margin_bottom="2em",
@@ -55,12 +54,10 @@ def invoice_page_content() -> rx.Component:
                     ),
                     rx.table.body(
                         rx.foreach(
-                            AppState.invoice_data.items,
-                            # --- ⬇️ ESTA ES LA CORRECCIÓN FINAL Y DEFINITIVA ⬇️ ---
+                            InvoiceState.invoice_data.items,
                             lambda item: rx.table.row(
                                 rx.table.cell(item.name),
                                 rx.table.cell(item.quantity, text_align="center"),
-                                # Ahora usamos las propiedades computadas del estado
                                 rx.table.cell(item.price_cop, text_align="right"),
                                 rx.table.cell(item.total_cop, text_align="right"),
                             )
@@ -69,8 +66,8 @@ def invoice_page_content() -> rx.Component:
                     variant="striped", width="100%",
                 ),
                 rx.vstack(
-                    rx.hstack(rx.text("Subtotal:", weight="bold"), rx.spacer(), rx.text(AppState.invoice_data.subtotal_cop)),
-                    rx.hstack(rx.heading("Total:", size="5"), rx.spacer(), rx.heading(AppState.invoice_data.total_price_cop, size="5")),
+                    rx.hstack(rx.text("Subtotal:", weight="bold"), rx.spacer(), rx.text(InvoiceState.invoice_data.subtotal_cop)),
+                    rx.hstack(rx.heading("Total:", size="5"), rx.spacer(), rx.heading(InvoiceState.invoice_data.total_price_cop, size="5")),
                     align_items="end", width="100%", margin_top="2em", max_width="300px",
                 ),
                 rx.button(

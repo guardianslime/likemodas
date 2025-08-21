@@ -7,7 +7,8 @@ from .state import AppState
 from .ui.base import base_page
 
 from .auth import pages as auth_pages
-from .invoice import page as invoice_page # <-- AÑADE ESTA IMPORTACIÓN
+from .invoice import page as invoice_page
+from .invoice.state import InvoiceState # <-- AÑADE ESTA IMPORTACIÓN
 # Asegúrate de que 'landing' esté importado desde .pages
 from .pages import landing, search_results, category_page, seller_page # <-- Añade seller_page
 
@@ -93,6 +94,6 @@ app.add_page(base_page(contact_page.contact_entries_list_content()), route=navig
 app.add_page(
     invoice_page.invoice_page_content(),
     route="/invoice",
-    on_load=AppState.on_load_invoice_page,
+    on_load=InvoiceState.on_load_invoice_page, # <-- CAMBIA AppState POR InvoiceState
     title="Factura"
 )
