@@ -36,7 +36,7 @@ from . import navigation
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
 
-@app._api.get("/api/invoice/{purchase_id}")
+
 # --- ✨ LÍNEA MODIFICADA ---
 # ANTES: def get_invoice(purchase_id: int, auth_session: AuthSession = rx.Depends(reflex_local_auth.auth_session)):
 def get_invoice(purchase_id: int, auth_session: LocalAuthSession = rx.Depends(reflex_local_auth.auth_session)): # <-- AHORA
@@ -139,3 +139,6 @@ app.add_page(
 )
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
 app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries, title="Mensajes de Contacto")
+
+# --- ✨ 2. REGISTRA LA RUTA DE LA API MANUALMENTE AL FINAL ✨ ---
+app.add_api_route("/api/invoice/{purchase_id}", get_invoice, methods=["GET"])
