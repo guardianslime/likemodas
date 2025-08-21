@@ -1,4 +1,4 @@
-# likemodas/admin/page.py (VERSIÓN CORREGIDA Y ROBUSTA)
+# likemodas/admin/page.py (VERSIÓN CORREGIDA)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
@@ -7,7 +7,6 @@ from ..state import AppState, AdminPurchaseCardData
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     """
     Muestra los detalles de una compra PENDIENTE en el panel de admin.
-    Este componente SIEMPRE incluye el botón de confirmar.
     """
     return rx.card(
         rx.vstack(
@@ -39,17 +38,14 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
                 spacing="1", align_items="start", width="100%",
             ),
-            # El botón siempre está presente en esta versión del componente
             rx.button("Confirmar Pago", on_click=AppState.confirm_payment(purchase.id), width="100%", margin_top="1em"),
             spacing="4", width="100%",
         ), width="100%",
     )
 
-# --- ✨ 1. NUEVO COMPONENTE CREADO PARA EL HISTORIAL ✨ ---
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
     """
     Muestra los detalles de una compra YA CONFIRMADA en el historial.
-    Este componente NUNCA incluye el botón de confirmar.
     """
     return rx.card(
         rx.vstack(
@@ -86,7 +82,6 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 href=f"/invoice?id={purchase.id}",
                 target="_blank",
             ),
-            # NO hay botón de confirmar en esta versión del componente
             spacing="4", width="100%",
         ), width="100%",
     )
@@ -99,7 +94,6 @@ def admin_confirm_content() -> rx.Component:
             rx.heading("Confirmar Pagos Pendientes", size="8"),
             rx.cond(
                 AppState.pending_purchases,
-                # Esta página sigue usando el componente original con el botón
                 rx.foreach(AppState.pending_purchases, purchase_card_admin),
                 rx.center(rx.text("No hay compras pendientes por confirmar."), padding_y="2em")
             ),
@@ -121,7 +115,6 @@ def payment_history_content() -> rx.Component:
             ),
             rx.cond(
                 AppState.filtered_admin_purchases,
-                # --- ✨ 2. AHORA USA EL NUEVO COMPONENTE SIN BOTÓN ✨ ---
                 rx.foreach(AppState.filtered_admin_purchases, purchase_card_history),
                 rx.center(rx.text("No se encontró historial para la búsqueda."), padding_y="2em")
             ),
