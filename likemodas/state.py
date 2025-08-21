@@ -295,7 +295,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ANTES: attr_tamano_mochila: str = ""
     attr_tamanos_mochila: list[str] = []
     # Mantenemos el color y material como selección única en el formulario de creación para simplicidad
-    attr_color: str = ""
+    attr_colores: list[str] = []
     attr_material: str = ""
     # --- ✨ LÍNEAS NUEVAS ---
     # Variable para guardar el tipo seleccionado en el formulario
@@ -304,7 +304,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_attr_tipo: str = ""
 
     # --- NUEVO: Event handlers para actualizar las características ---
-    def set_attr_color(self, value: str): self.attr_color = value
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
     def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
@@ -319,7 +318,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.category = ""
         self.temp_images = []
         # --- NUEVO: Limpiar los atributos ---
-        self.attr_color = ""
+        self.attr_colores = [] # <-- AHORA
         self.attr_talla_ropa = ""
         self.attr_material = ""
         self.attr_numero_calzado = ""
@@ -335,20 +334,23 @@ class AppState(reflex_local_auth.LocalAuthState):
         attributes = {}
         category = form_data.get("category")
         if category == Category.ROPA.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo # <-- AÑADIR
-            if self.attr_color: attributes["Color"] = self.attr_color
+            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
+            # --- MODIFICAR LÍNEA ---
+            if self.attr_colores: attributes["Color"] = self.attr_colores # <-- AHORA
             if self.attr_tallas_ropa: attributes["Talla"] = self.attr_tallas_ropa
             if self.attr_material: attributes["Tela"] = self.attr_material
 
         elif category == Category.CALZADO.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo # <-- AÑADIR
-            if self.attr_color: attributes["Color"] = self.attr_color
+            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
+            # --- MODIFICAR LÍNEA ---
+            if self.attr_colores: attributes["Color"] = self.attr_colores # <-- AHORA
             if self.attr_numeros_calzado: attributes["Número"] = self.attr_numeros_calzado
             if self.attr_material: attributes["Material"] = self.attr_material
         
         elif category == Category.MOCHILAS.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo # <-- AÑADIR
-            if self.attr_color: attributes["Color"] = self.attr_color
+            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
+            # --- MODIFICAR LÍNEA ---
+            if self.attr_colores: attributes["Color"] = self.attr_colores # <-- AHORA
             if self.attr_tamanos_mochila: attributes["Tamaño"] = self.attr_tamanos_mochila
             if self.attr_material: attributes["Material"] = self.attr_material
         

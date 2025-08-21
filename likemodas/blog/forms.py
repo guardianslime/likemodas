@@ -13,6 +13,9 @@ from ..data.product_options import (
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
 
+    # --- ✨ INICIO DE LA MODIFICACIÓN COMPLETA ✨ ---
+
+    # Selector de Tipo (reutilizable)
     tipo_selector = searchable_select(
         placeholder="Tipo...",
         options=AppState.filtered_attr_tipos,
@@ -23,6 +26,7 @@ def blog_post_add_form() -> rx.Component:
         filter_name="attr_tipo_filter",
     )
     
+    # Selector de Material (reutilizable)
     material_selector = searchable_select(
         placeholder=AppState.material_label + "...",
         options=AppState.filtered_attr_materiales,
@@ -33,76 +37,97 @@ def blog_post_add_form() -> rx.Component:
         filter_name="attr_material_filter",
     )
 
-    caracteristicas_ropa = rx.grid(
-        tipo_selector, # <-- AÑADIDO
-        searchable_select( # El selector de color no cambia
-            placeholder="Color...", options=AppState.filtered_attr_colores,
-            on_change_select=AppState.set_attr_color, value_select=AppState.attr_color,
-            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
-            filter_name="attr_color_filter",
-        ),
-        
-        # --- ✨ CORRECCIÓN AQUÍ ---
-        multi_select_component(
-            placeholder="Añadir talla...",
-            options=AppState.filtered_attr_tallas_ropa,
-            selected_items=AppState.attr_tallas_ropa,
-            # Usamos los nuevos argumentos
-            add_handler=AppState.add_attribute_value,
-            remove_handler=AppState.remove_attribute_value,
-            prop_name="attr_tallas_ropa",
-            search_value=AppState.search_attr_talla_ropa,
-            on_change_search=AppState.set_search_attr_talla_ropa,
-            filter_name="attr_talla_filter",
-        ),
-        material_selector,
-        columns="3", spacing="3", width="100%",
+    # NUEVO: Selector múltiple de Color (reutilizable)
+    color_selector_multiple = multi_select_component(
+        placeholder="Añadir color...",
+        options=AppState.filtered_attr_colores,
+        selected_items=AppState.attr_colores,
+        add_handler=AppState.add_attribute_value,
+        remove_handler=AppState.remove_attribute_value,
+        prop_name="attr_colores",
+        search_value=AppState.search_attr_color,
+        on_change_search=AppState.set_search_attr_color,
+        filter_name="attr_color_filter",
     )
 
-    caracteristicas_calzado = rx.grid(
-        tipo_selector, # <-- AÑADIDO
-        searchable_select(placeholder="Color...", options=AppState.filtered_attr_colores, on_change_select=AppState.set_attr_color, value_select=AppState.attr_color, search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color, filter_name="attr_color_filter"),
-        
-        # --- ✨ CORRECCIÓN AQUÍ ---
-        multi_select_component(
-            placeholder="Añadir número...",
-            options=AppState.filtered_attr_numeros_calzado,
-            selected_items=AppState.attr_numeros_calzado,
-            # Usamos los nuevos argumentos
-            add_handler=AppState.add_attribute_value,
-            remove_handler=AppState.remove_attribute_value,
-            prop_name="attr_numeros_calzado",
-            search_value=AppState.search_attr_numero_calzado,
-            on_change_search=AppState.set_search_attr_numero_calzado,
-            filter_name="attr_numero_filter",
+    # Layout para ROPA
+    caracteristicas_ropa = rx.vstack(
+        rx.grid( # Fila superior
+            color_selector_multiple,
+            multi_select_component(
+                placeholder="Añadir talla...",
+                options=AppState.filtered_attr_tallas_ropa,
+                selected_items=AppState.attr_tallas_ropa,
+                add_handler=AppState.add_attribute_value,
+                remove_handler=AppState.remove_attribute_value,
+                prop_name="attr_tallas_ropa",
+                search_value=AppState.search_attr_talla_ropa,
+                on_change_search=AppState.set_search_attr_talla_ropa,
+                filter_name="attr_talla_filter",
+            ),
+            columns="2", spacing="3", width="100%",
         ),
-        material_selector,
-        columns="3", spacing="3", width="100%",
+        rx.grid( # Fila inferior
+            tipo_selector,
+            material_selector,
+            columns="2", spacing="3", width="100%",
+        ),
+        spacing="3", width="100%",
     )
 
-    caracteristicas_mochilas = rx.grid(
-        tipo_selector, # <-- AÑADIDO
-        searchable_select(placeholder="Color...", options=AppState.filtered_attr_colores, on_change_select=AppState.set_attr_color, value_select=AppState.attr_color, search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color, filter_name="attr_color_filter"),
-
-        # --- ✨ CORRECCIÓN AQUÍ ---
-        multi_select_component(
-            placeholder="Añadir tamaño...",
-            options=AppState.filtered_attr_tamanos_mochila,
-            selected_items=AppState.attr_tamanos_mochila,
-            # Usamos los nuevos argumentos
-            add_handler=AppState.add_attribute_value,
-            remove_handler=AppState.remove_attribute_value,
-            prop_name="attr_tamanos_mochila",
-            search_value=AppState.search_attr_tamano_mochila,
-            on_change_search=AppState.set_search_attr_tamano_mochila,
-            filter_name="attr_tamano_mochila_filter",
+    # Layout para CALZADO
+    caracteristicas_calzado = rx.vstack(
+        rx.grid( # Fila superior
+            color_selector_multiple,
+            multi_select_component(
+                placeholder="Añadir número...",
+                options=AppState.filtered_attr_numeros_calzado,
+                selected_items=AppState.attr_numeros_calzado,
+                add_handler=AppState.add_attribute_value,
+                remove_handler=AppState.remove_attribute_value,
+                prop_name="attr_numeros_calzado",
+                search_value=AppState.search_attr_numero_calzado,
+                on_change_search=AppState.set_search_attr_numero_calzado,
+                filter_name="attr_numero_filter",
+            ),
+            columns="2", spacing="3", width="100%",
         ),
-        material_selector,
-        columns="3", spacing="3", width="100%",
+        rx.grid( # Fila inferior
+            tipo_selector,
+            material_selector,
+            columns="2", spacing="3", width="100%",
+        ),
+        spacing="3", width="100%",
     )
 
-    # El resto de la función (el return rx.form(...)) no necesita cambios.
-    # Simplemente asegúrate de que use las variables de características corregidas de arriba.
+    # Layout para MOCHILAS
+    caracteristicas_mochilas = rx.vstack(
+        rx.grid( # Fila superior
+            color_selector_multiple,
+            multi_select_component(
+                placeholder="Añadir tamaño...",
+                options=AppState.filtered_attr_tamanos_mochila,
+                selected_items=AppState.attr_tamanos_mochila,
+                add_handler=AppState.add_attribute_value,
+                remove_handler=AppState.remove_attribute_value,
+                prop_name="attr_tamanos_mochila",
+                search_value=AppState.search_attr_tamano_mochila,
+                on_change_search=AppState.set_search_attr_tamano_mochila,
+                filter_name="attr_tamano_mochila_filter",
+            ),
+            columns="2", spacing="3", width="100%",
+        ),
+        rx.grid( # Fila inferior
+            tipo_selector,
+            material_selector,
+            columns="2", spacing="3", width="100%",
+        ),
+        spacing="3", width="100%",
+    )
+
+    # --- ✨ FIN DE LA MODIFICACIÓN COMPLETA ✨ ---
+    
+    # El return no cambia, ya que solo utiliza las variables que acabamos de redefinir.
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
@@ -152,16 +177,15 @@ def blog_post_add_form() -> rx.Component:
                     rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
 
                     rx.cond(
-                AppState.category != "",
-                rx.vstack(
-                    rx.text("Características del Producto", as_="div", size="2", weight="bold"),
-                    # Esta sección ahora usará las variables actualizadas con el selector de tipo
-                    rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
-                    rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
-                    rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
-                    align_items="stretch", width="100%",
-                )
-            ),
+                        AppState.category != "",
+                        rx.vstack(
+                            rx.text("Características del Producto", as_="div", size="2", weight="bold"),
+                            rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
+                            rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
+                            rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
+                            align_items="stretch", width="100%",
+                        )
+                    ),
 
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(
