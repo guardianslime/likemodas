@@ -56,11 +56,11 @@ def invoice_page_content() -> rx.Component:
                     rx.table.body(
                         rx.foreach(
                             AppState.invoice_data.items,
+                            # --- ⬇️ ESTA ES LA CORRECCIÓN FINAL Y DEFINITIVA ⬇️ ---
                             lambda item: rx.table.row(
                                 rx.table.cell(item.name),
                                 rx.table.cell(item.quantity, text_align="center"),
-                                # --- ⬇️ CÓDIGO CORREGIDO Y FINAL ⬇️ ---
-                                # Usamos las propiedades computadas, no la función
+                                # Ahora usamos las propiedades computadas del estado
                                 rx.table.cell(item.price_cop, text_align="right"),
                                 rx.table.cell(item.total_cop, text_align="right"),
                             )
