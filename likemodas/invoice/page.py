@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (CORREGIDO)
+# likemodas/invoice/page.py (VERSIÓN CORREGIDA FINAL)
 
 import reflex as rx
 from ..state import AppState
@@ -16,10 +16,10 @@ invoice_style = {
     "color": "black",
     "@media print": {
         "body": {
-            "-webkit-print-color-adjust": "exact", # Mantiene los colores de fondo al imprimir
+            "-webkit-print-color-adjust": "exact",
         },
         ".no-print": {
-            "display": "none !important", # Oculta elementos marcados con esta clase
+            "display": "none !important",
         },
         "box_shadow": "none",
         "border": "none",
@@ -29,13 +29,9 @@ invoice_style = {
 def invoice_page_content() -> rx.Component:
     """Página que renderiza una factura lista para imprimir."""
     return rx.box(
-        # --- ⬇️ CORRECCIÓN CLAVE AQUÍ ⬇️ ---
-        # 1. Se quita el símbolo '~' de AppState.invoice_data.
-        # 2. Se invierte el orden de los componentes: primero va el que se muestra
-        #    si la condición es VERDADERA (si invoice_data TIENE datos).
         rx.cond(
             AppState.invoice_data,
-            # Se muestra si AppState.invoice_data TIENE DATOS (verdadero)
+            # Contenido que se muestra si la factura tiene datos
             rx.vstack(
                 # --- Encabezado ---
                 rx.hstack(
@@ -43,7 +39,10 @@ def invoice_page_content() -> rx.Component:
                     rx.spacer(),
                     rx.vstack(
                         rx.heading("FACTURA", size="8"),
-                        rx.text(f"#{AppState.invoice_data.id.to_string()}"),
+                        # --- ⬇️ CORRECCIÓN APLICADA AQUÍ ⬇️ ---
+                        # Se pasa el texto y la variable como argumentos separados.
+                        # Reflex se encarga de unirlos correctamente.
+                        rx.text("#", AppState.invoice_data.id),
                         align_items="end",
                     ),
                     width="100%",
@@ -126,7 +125,7 @@ def invoice_page_content() -> rx.Component:
                 ),
                 align="center",
             ),
-            # Se muestra si AppState.invoice_data es None (falso)
+            # Pantalla de carga mientras se obtienen los datos
             rx.center(rx.spinner(size="3"), rx.text("Cargando factura..."), height="90vh"),
         ),
         style=invoice_style,
