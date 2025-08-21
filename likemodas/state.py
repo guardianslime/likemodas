@@ -14,6 +14,8 @@ from reflex.config import get_config
 # ✨ 1. AÑADE ESTAS LÍNEAS AQUÍ ✨
 from urllib.parse import urlparse, parse_qs
 
+from likemodas.invoice.state import InvoiceData, InvoiceItemData
+
 from . import navigation
 from .models import (
     UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
@@ -243,7 +245,55 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             
+    
+    @rx.var
+    def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
+        """
+        Busca los datos de una compra y los devuelve como un DTO.
+        Este método es llamado por otros estados.
+        """
+        if not self.is_authenticated:
+            # No podemos lanzar toasts desde aquí, pero devolvemos None si no hay permisos.
+            return None
 
+        with rx.session() as session:
+            purchase = session.exec(
+                sqlmodel.select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
+                .where(PurchaseModel.id == purchase_id)
+            ).one_or_none()
+
+            if not purchase:
+                return None
+
+            # Verificación de permisos
+            if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
+                return None
+
+            invoice_items = [
+                InvoiceItemData(
+                    name=item.blog_post.title,
+                    quantity=item.quantity,
+                    price=item.price_at_purchase
+                )
+                for item in purchase.items if item.blog_post
+            ]
+
+            return InvoiceData(
+                id=purchase.id,
+                purchase_date_formatted=purchase.purchase_date_formatted,
+                status=purchase.status.value,
+                items=invoice_items,
+                customer_name=purchase.shipping_name,
+                customer_email=purchase.userinfo.email if purchase.userinfo else "N/A",
+                shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}",
+                shipping_phone=purchase.shipping_phone,
+                subtotal_cop=format_to_cop(purchase.total_price),
+                total_price_cop=purchase.total_price_cop,
+            )
             
     # --- ✨ 2. AÑADE ESTAS DOS NUEVAS PROPIEDADES COMPUTADAS ---
 
