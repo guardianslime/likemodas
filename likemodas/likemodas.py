@@ -36,7 +36,7 @@ from . import navigation
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
 
-@app.api.get("/api/invoice/{purchase_id}")
+@app._api.get("/api/invoice/{purchase_id}")
 # --- ✨ LÍNEA MODIFICADA ---
 # ANTES: def get_invoice(purchase_id: int, auth_session: AuthSession = rx.Depends(reflex_local_auth.auth_session)):
 def get_invoice(purchase_id: int, auth_session: LocalAuthSession = rx.Depends(reflex_local_auth.auth_session)): # <-- AHORA
