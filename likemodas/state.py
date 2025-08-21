@@ -29,20 +29,14 @@ from .data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
-# --- DTOs (Data Transfer Objects) para la UI ---
 class ProductCardData(rx.Base):
     id: int
     title: str
-    price: float = 0.0  # Mantenemos el precio original para cálculos
-    price_cop: str = "" # AÑADIMOS: Un campo de texto simple para el precio formateado
+    price: float = 0.0
+    price_cop: str = "" 
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
-    attributes: dict = {}
-    
-    # --- ✨ LÍNEA AÑADIDA ---
-    # Añadimos el campo 'attributes' para que la información
-    # se copie desde el modelo de la base de datos.
     attributes: dict = {}
 
     class Config:
@@ -63,13 +57,10 @@ class ProductDetailData(rx.Base):
     rating_count: int = 0
     seller_name: str = ""
     seller_id: int = 0
-    
-    # --- ✨ AÑADE ESTA LÍNEA AQUÍ ✨ ---
     attributes: dict = {}
 
     class Config:
         orm_mode = True
-    
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
@@ -85,30 +76,26 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_city: str; shipping_phone: str; items_formatted: list[str]
 
 class AttributeData(rx.Base):
-    """Un DTO para pasar un par clave-valor de atributo a la UI."""
     key: str
-    value: str # ¡El valor ahora es SIEMPRE un string!
+    value: str
 
 class CommentData(rx.Base):
-    """Un DTO simple para representar los datos de un comentario para la UI."""
     id: int
     content: str
     rating: int
     author_username: str
     author_initial: str
     created_at_formatted: str
-    updates: List["CommentData"] = [] # Puede contener otras fotocopias de comentarios
+    updates: List["CommentData"] = []
 
-# Es necesario para que la referencia a sí mismo ("CommentData") funcione.
+# --- ⬇️ CORRECCIÓN IMPORTANTE AQUÍ ⬇️ ---
 
-# --- ⬇️ 1. AÑADE ESTA NUEVA CLASE ⬇️ ---
 class InvoiceItemData(rx.Base):
     """Un modelo específico para cada línea de artículo en la factura."""
     name: str
     quantity: int
     price: float
 
-    # --- ⬇️ AÑADE ESTAS DOS FUNCIONES AQUÍ ⬇️ ---
     @rx.var
     def price_cop(self) -> str:
         """Propiedad computada para formatear el precio unitario."""
@@ -124,17 +111,11 @@ class InvoiceData(rx.Base):
     id: int
     purchase_date_formatted: str
     status: str
-    # --- ⬇️ 2. ACTUALIZA ESTA LÍNEA ⬇️ ---
-    # Antes: items: list[dict]
-    items: list[InvoiceItemData] # Ahora es una lista de nuestro nuevo modelo
-
-    # Datos del Comprador
+    items: list[InvoiceItemData]
     customer_name: str
     customer_email: str
     shipping_full_address: str
     shipping_phone: str
-    
-    # Datos Financieros
     subtotal_cop: str
     total_price_cop: str
 

@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL Y CORRECTA)
+# likemodas/invoice/page.py (VERSIÓN FINAL)
 
 import reflex as rx
 from ..state import AppState
@@ -59,8 +59,8 @@ def invoice_page_content() -> rx.Component:
                             lambda item: rx.table.row(
                                 rx.table.cell(item.name),
                                 rx.table.cell(item.quantity, text_align="center"),
-                                # --- ⬇️ CAMBIO IMPORTANTE ⬇️ ---
-                                # Usamos las propiedades computadas del estado
+                                # --- ⬇️ CÓDIGO CORREGIDO Y FINAL ⬇️ ---
+                                # Usamos las propiedades computadas, no la función
                                 rx.table.cell(item.price_cop, text_align="right"),
                                 rx.table.cell(item.total_cop, text_align="right"),
                             )
