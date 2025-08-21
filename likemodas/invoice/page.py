@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py
+# likemodas/invoice/page.py (CORREGIDO)
 
 import reflex as rx
 from ..state import AppState
@@ -29,9 +29,13 @@ invoice_style = {
 def invoice_page_content() -> rx.Component:
     """Página que renderiza una factura lista para imprimir."""
     return rx.box(
+        # --- ⬇️ CORRECCIÓN CLAVE AQUÍ ⬇️ ---
+        # 1. Se quita el símbolo '~' de AppState.invoice_data.
+        # 2. Se invierte el orden de los componentes: primero va el que se muestra
+        #    si la condición es VERDADERA (si invoice_data TIENE datos).
         rx.cond(
-            ~AppState.invoice_data,
-            rx.center(rx.spinner(size="3"), rx.text("Cargando factura..."), height="90vh"),
+            AppState.invoice_data,
+            # Se muestra si AppState.invoice_data TIENE DATOS (verdadero)
             rx.vstack(
                 # --- Encabezado ---
                 rx.hstack(
@@ -121,7 +125,9 @@ def invoice_page_content() -> rx.Component:
                     margin_top="3em",
                 ),
                 align="center",
-            )
+            ),
+            # Se muestra si AppState.invoice_data es None (falso)
+            rx.center(rx.spinner(size="3"), rx.text("Cargando factura..."), height="90vh"),
         ),
         style=invoice_style,
     )
