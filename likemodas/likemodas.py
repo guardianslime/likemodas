@@ -3,6 +3,13 @@
 import reflex as rx
 import reflex_local_auth
 
+# --- ✨ AÑADE ESTAS LÍNEAS ---
+from fastapi.responses import StreamingResponse
+from reflex_local_auth.auth_session import AuthSession
+from .services.invoice_service import generate_invoice_pdf
+from .models import PurchaseModel, UserRole
+import io
+
 from .state import AppState
 from .ui.base import base_page
 
@@ -24,6 +31,44 @@ from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTACIÓN
 from . import navigation
+
+@rx.api.get("/api/invoice/{purchase_id}")
+def get_invoice(purchase_id: int, auth_session: AuthSession = rx.Depends(reflex_local_auth.auth_session)):
+    """
+    Endpoint para generar y descargar una factura en PDF de forma segura.
+    """
+    if not auth_session.user:
+        return {"error": "No autenticado"}, 401
+
+    with rx.session() as session:
+        # Obtenemos la compra con todas sus relaciones cargadas
+        purchase = session.exec(
+            rx.select(PurchaseModel)
+            .options(
+                rx.subqueryload(PurchaseModel.items).subqueryload("blog_post"),
+                rx.subqueryload(PurchaseModel.userinfo)
+            )
+            .where(PurchaseModel.id == purchase_id)
+        ).one_or_none()
+
+        if not purchase:
+            return {"error": "Factura no encontrada"}, 404
+
+        # Comprobación de seguridad: solo el dueño o un admin pueden descargarla
+        user_info = purchase.userinfo
+        if user_info.user_id != auth_session.user.id and user_info.role != UserRole.ADMIN:
+            return {"error": "No autorizado"}, 403
+        
+        # Generamos el PDF
+        pdf_bytes = generate_invoice_pdf(purchase)
+
+        # Preparamos la respuesta para la descarga
+        filename = f"Factura-Likemodas-{purchase.id}.pdf"
+        headers = {
+            "Content-Disposition": f"attachment; filename=\"{filename}\""
+        }
+        
+        return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
 

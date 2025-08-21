@@ -82,7 +82,11 @@ class AdminPurchaseCardData(rx.Base):
 class UserPurchaseHistoryCardData(rx.Base):
     id: int; purchase_date_formatted: str; status: str; total_price_cop: str
     shipping_name: str; shipping_address: str; shipping_neighborhood: str
-    shipping_city: str; shipping_phone: str; items_formatted: list[str]
+    shipping_city: str; shipping_phone: str
+    # --- ✨ LÍNEA MODIFICADA ---
+    # Convertimos `items_formatted` en una lista de diccionarios para más estructura
+    items: list[dict] = []
+
 
 class AttributeData(rx.Base):
     """Un DTO para pasar un par clave-valor de atributo a la UI."""
@@ -1264,15 +1268,35 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
             ).unique().all()
-            self.user_purchases = [
-                UserPurchaseHistoryCardData(
-                    id=p.id, purchase_date_formatted=p.purchase_date_formatted,
-                    status=p.status.value, total_price_cop=p.total_price_cop,
-                    shipping_name=p.shipping_name, shipping_address=p.shipping_address,
-                    shipping_neighborhood=p.shipping_neighborhood, shipping_city=p.shipping_city,
-                    shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
-                ) for p in results
-            ]
+            
+            # --- ✨ INICIO DE LA LÓGICA CORREGIDA ✨ ---
+            self.user_purchases = []
+            for p in results:
+                # Se crea una lista de diccionarios con los detalles de cada item
+                items_data = [
+                    {
+                        "quantity": item.quantity,
+                        "title": item.blog_post.title if item.blog_post else "Producto no disponible",
+                        "price_cop": format_to_cop(item.price_at_purchase),
+                        "subtotal_cop": format_to_cop(item.quantity * item.price_at_purchase)
+                    } for item in p.items
+                ]
+                
+                # Se crea el objeto DTO con la nueva estructura de `items`
+                self.user_purchases.append(
+                    UserPurchaseHistoryCardData(
+                        id=p.id, 
+                        purchase_date_formatted=p.purchase_date_formatted,
+                        status=p.status.value, 
+                        total_price_cop=p.total_price_cop,
+                        shipping_name=p.shipping_name, 
+                        shipping_address=p.shipping_address,
+                        shipping_neighborhood=p.shipping_neighborhood, 
+                        shipping_city=p.shipping_city,
+                        shipping_phone=p.shipping_phone, 
+                        items=items_data  # <-- Se usa la nueva lista estructurada
+                    )
+                )
 
     notifications: List[NotificationModel] = []
     
