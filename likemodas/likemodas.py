@@ -5,7 +5,9 @@ import reflex_local_auth
 
 # --- ✨ AÑADE ESTAS LÍNEAS ---
 from fastapi.responses import StreamingResponse
-from reflex_local_auth.auth_session import AuthSession
+# --- ✨ LÍNEA MODIFICADA ---
+# ANTES: from reflex_local_auth.auth_session import AuthSession
+from reflex_local_auth.auth_session import LocalAuthSession # <-- AHORA
 from .services.invoice_service import generate_invoice_pdf
 from .models import PurchaseModel, UserRole
 import io
@@ -33,7 +35,9 @@ from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTA
 from . import navigation
 
 @rx.api.get("/api/invoice/{purchase_id}")
-def get_invoice(purchase_id: int, auth_session: AuthSession = rx.Depends(reflex_local_auth.auth_session)):
+# --- ✨ LÍNEA MODIFICADA ---
+# ANTES: def get_invoice(purchase_id: int, auth_session: AuthSession = rx.Depends(reflex_local_auth.auth_session)):
+def get_invoice(purchase_id: int, auth_session: LocalAuthSession = rx.Depends(reflex_local_auth.auth_session)): # <-- AHORA
     """
     Endpoint para generar y descargar una factura en PDF de forma segura.
     """
