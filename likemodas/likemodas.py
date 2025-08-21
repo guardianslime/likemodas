@@ -5,6 +5,8 @@ import reflex_local_auth
 
 # --- ✨ AÑADE ESTAS LÍNEAS ---
 from fastapi.responses import StreamingResponse
+# --- ✨ 1. AÑADE `Depends` A ESTA IMPORTACIÓN ✨ ---
+from fastapi import Depends
 # --- ✨ LÍNEA MODIFICADA ---
 # ANTES: from reflex_local_auth.auth_session import AuthSession
 from reflex_local_auth.auth_session import LocalAuthSession # <-- AHORA
@@ -39,7 +41,7 @@ app = rx.App(style={"font_family": "Arial, sans-serif"})
 
 # --- ✨ LÍNEA MODIFICADA ---
 # ANTES: def get_invoice(purchase_id: int, auth_session: AuthSession = rx.Depends(reflex_local_auth.auth_session)):
-def get_invoice(purchase_id: int, auth_session: LocalAuthSession = rx.Depends(reflex_local_auth.auth_session)): # <-- AHORA
+def get_invoice(purchase_id: int, auth_session: LocalAuthSession = Depends(reflex_local_auth.auth_session)):
     """
     Endpoint para generar y descargar una factura en PDF de forma segura.
     """
