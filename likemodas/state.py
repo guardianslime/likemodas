@@ -101,13 +101,22 @@ class CommentData(rx.Base):
 
 # Es necesario para que la referencia a sí mismo ("CommentData") funcione.
 
+# --- ⬇️ 1. AÑADE ESTA NUEVA CLASE ⬇️ ---
+class InvoiceItemData(rx.Base):
+    """Un modelo específico para cada línea de artículo en la factura."""
+    name: str
+    quantity: int
+    price: float # Usamos float para cálculos internos
+
 class InvoiceData(rx.Base):
     """DTO para contener toda la información necesaria para una factura."""
     id: int
     purchase_date_formatted: str
     status: str
-    items: list[dict] # A list of dicts: {'name': str, 'quantity': int, 'price': float}
-    
+    # --- ⬇️ 2. ACTUALIZA ESTA LÍNEA ⬇️ ---
+    # Antes: items: list[dict]
+    items: list[InvoiceItemData] # Ahora es una lista de nuestro nuevo modelo
+
     # Datos del Comprador
     customer_name: str
     customer_email: str
@@ -223,6 +232,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     is_success: bool = False
     token: str = ""
     is_token_valid: bool = False
+
     def handle_forgot_password(self, form_data: dict):
         email = form_data.get("email", "")
         if not email:
@@ -272,15 +282,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             
-            
-    invoice_data: Optional[InvoiceData] = None         
+
+    invoice_data: Optional[InvoiceData] = None  
+
     @rx.event
     def on_load_invoice_page(self):
         """
         Carga los datos de una compra específica para la factura,
         y luego invoca el diálogo de impresión del navegador.
         """
-        self.invoice_data = None # Reset previous data
+        self.invoice_data = None
         purchase_id_str = self.router.query_params.get("id", "0")
         try:
             purchase_id = int(purchase_id_str)
@@ -302,22 +313,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not purchase:
                 return rx.toast.error(f"No se encontró la compra #{purchase_id}.")
 
-            # Comprobar permisos: o eres admin o eres el dueño de la compra
             if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
                 return rx.toast.error("Acceso denegado a esta factura.")
 
-            # Calcular subtotal (en este caso, es igual al total)
-            # Si tuvieras impuestos o envío, los cálculos irían aquí.
             subtotal = purchase.total_price
+
+            # --- ⬇️ CORRECCIÓN CLAVE AQUÍ ⬇️ ---
+            # Ahora creamos una lista de objetos InvoiceItemData en lugar de diccionarios.
+            invoice_items = [
+                InvoiceItemData(
+                    name=item.blog_post.title, 
+                    quantity=item.quantity, 
+                    price=item.price_at_purchase
+                )
+                for item in purchase.items if item.blog_post
+            ]
 
             self.invoice_data = InvoiceData(
                 id=purchase.id,
                 purchase_date_formatted=purchase.purchase_date_formatted,
                 status=purchase.status.value,
-                items=[
-                    {"name": item.blog_post.title, "quantity": item.quantity, "price": item.price_at_purchase}
-                    for item in purchase.items if item.blog_post
-                ],
+                items=invoice_items, # Usamos la nueva lista de objetos
                 customer_name=purchase.shipping_name,
                 customer_email=purchase.userinfo.email if purchase.userinfo else "N/A",
                 shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}",
@@ -326,7 +342,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 total_price_cop=purchase.total_price_cop,
             )
         
-        # El paso clave: espera a que el estado se actualice y luego llama a window.print()
         yield
         return rx.call_script("window.print()")
             
