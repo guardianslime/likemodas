@@ -106,7 +106,18 @@ class InvoiceItemData(rx.Base):
     """Un modelo específico para cada línea de artículo en la factura."""
     name: str
     quantity: int
-    price: float # Usamos float para cálculos internos
+    price: float
+
+    # --- ⬇️ AÑADE ESTAS DOS FUNCIONES AQUÍ ⬇️ ---
+    @rx.var
+    def price_cop(self) -> str:
+        """Propiedad computada para formatear el precio unitario."""
+        return format_to_cop(self.price)
+
+    @rx.var
+    def total_cop(self) -> str:
+        """Propiedad computada para formatear el precio total del artículo."""
+        return format_to_cop(self.price * self.quantity)
 
 class InvoiceData(rx.Base):
     """DTO para contener toda la información necesaria para una factura."""

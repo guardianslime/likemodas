@@ -1,16 +1,15 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL Y ROBUSTA)
+# likemodas/invoice/page.py (VERSIÓN FINAL Y CORRECTA)
 
 import reflex as rx
 from ..state import AppState
-from ..utils.formatting import format_to_cop
+# Ya no necesitamos importar format_to_cop aquí
 
 invoice_style = {
     "font_family": "Arial, sans-serif", "padding": "2em", "max_width": "800px", "margin": "auto",
     "border": "1px solid #ddd", "box_shadow": "0 0 10px rgba(0, 0, 0, 0.1)",
     "bg": "white", "color": "black",
     "@media print": {
-        ".no-print": {"display": "none !important"},
-        "box_shadow": "none", "border": "none",
+        ".no-print": {"display": "none !important"}, "box_shadow": "none", "border": "none",
     },
 }
 
@@ -57,13 +56,13 @@ def invoice_page_content() -> rx.Component:
                     rx.table.body(
                         rx.foreach(
                             AppState.invoice_data.items,
-                            # --- ⬇️ CORRECCIÓN FINAL AQUÍ ⬇️ ---
-                            # Usamos notación de punto (item.name), que es 100% compatible
                             lambda item: rx.table.row(
                                 rx.table.cell(item.name),
                                 rx.table.cell(item.quantity, text_align="center"),
-                                rx.table.cell(format_to_cop(item.price), text_align="right"),
-                                rx.table.cell(format_to_cop(item.price * item.quantity), text_align="right"),
+                                # --- ⬇️ CAMBIO IMPORTANTE ⬇️ ---
+                                # Usamos las propiedades computadas del estado
+                                rx.table.cell(item.price_cop, text_align="right"),
+                                rx.table.cell(item.total_cop, text_align="right"),
                             )
                         )
                     ),
