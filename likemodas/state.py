@@ -96,12 +96,12 @@ class InvoiceItemData(rx.Base):
     quantity: int
     price: float
 
-    @rx.var
+    @property  # <-- CORREGIDO
     def price_cop(self) -> str:
         """Propiedad computada para formatear el precio unitario."""
         return format_to_cop(self.price)
 
-    @rx.var
+    @property  # <-- CORREGIDO
     def total_cop(self) -> str:
         """Propiedad computada para formatear el precio total del artículo."""
         return format_to_cop(self.price * self.quantity)
