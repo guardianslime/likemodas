@@ -81,6 +81,11 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
                 spacing="1", align_items="start", width="100%",
             ),
+            rx.link(
+                rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="1em"),
+                href=f"/invoice?id={purchase.id}",
+                target="_blank",
+            ),
             # NO hay botón de confirmar en esta versión del componente
             spacing="4", width="100%",
         ), width="100%",

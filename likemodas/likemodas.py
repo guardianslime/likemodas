@@ -7,6 +7,7 @@ from .state import AppState
 from .ui.base import base_page
 
 from .auth import pages as auth_pages
+from .invoice import page as invoice_page # <-- AÑADE ESTA IMPORTACIÓN
 # Asegúrate de que 'landing' esté importado desde .pages
 from .pages import landing, search_results, category_page, seller_page # <-- Añade seller_page
 
@@ -88,3 +89,10 @@ app.add_page(
 )
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
 app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries, title="Mensajes de Contacto")
+
+app.add_page(
+    invoice_page.invoice_page_content(),
+    route="/invoice",
+    on_load=AppState.on_load_invoice_page,
+    title="Factura"
+)

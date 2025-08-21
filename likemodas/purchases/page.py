@@ -41,10 +41,19 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 spacing="1", align_items="start", width="100%",
             ),
+            rx.link(
+                rx.button("Imprimir Factura", variant="outline", width="100%", margin_top="1em"),
+                href=f"/invoice?id={purchase.id}",
+                is_external=False, # Abre en la misma app, pero en otra pestaña
+                target="_blank", # Abre en una nueva pestaña
+            ),
+            # --- FIN DE LA ADICIÓN ---
+
             spacing="4", width="100%"
         ),
         width="100%", padding="1.5em",
     )
+
 
 @reflex_local_auth.require_login
 def purchase_history_content() -> rx.Component:
