@@ -34,7 +34,9 @@ from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTACIÓN
 from . import navigation
 
-@rx.api.get("/api/invoice/{purchase_id}")
+app = rx.App(style={"font_family": "Arial, sans-serif"})
+
+@app.api.get("/api/invoice/{purchase_id}")
 # --- ✨ LÍNEA MODIFICADA ---
 # ANTES: def get_invoice(purchase_id: int, auth_session: AuthSession = rx.Depends(reflex_local_auth.auth_session)):
 def get_invoice(purchase_id: int, auth_session: LocalAuthSession = rx.Depends(reflex_local_auth.auth_session)): # <-- AHORA
@@ -74,7 +76,7 @@ def get_invoice(purchase_id: int, auth_session: LocalAuthSession = rx.Depends(re
         
         return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
 
-app = rx.App(style={"font_family": "Arial, sans-serif"})
+
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
