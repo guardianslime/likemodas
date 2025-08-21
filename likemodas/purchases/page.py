@@ -54,7 +54,7 @@ def purchase_invoice_card(purchase: UserPurchaseHistoryCardData) -> rx.Component
                 ),
                 rx.table.body(
                     rx.foreach(
-                        purchase.items,
+                        purchase.items, # <-- Se accede directamente a la lista `items` de la variable
                         lambda item: rx.table.row(
                             rx.table.cell(item["title"]),
                             rx.table.cell(item["quantity"]),
