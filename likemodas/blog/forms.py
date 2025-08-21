@@ -12,6 +12,16 @@ from ..data.product_options import (
 
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
+
+    tipo_selector = searchable_select(
+        placeholder="Tipo...",
+        options=AppState.filtered_attr_tipos,
+        on_change_select=AppState.set_attr_tipo, 
+        value_select=AppState.attr_tipo,
+        search_value=AppState.search_attr_tipo, 
+        on_change_search=AppState.set_search_attr_tipo,
+        filter_name="attr_tipo_filter",
+    )
     
     material_selector = searchable_select(
         placeholder=AppState.material_label + "...",
@@ -24,6 +34,7 @@ def blog_post_add_form() -> rx.Component:
     )
 
     caracteristicas_ropa = rx.grid(
+        tipo_selector, # <-- AÑADIDO
         searchable_select( # El selector de color no cambia
             placeholder="Color...", options=AppState.filtered_attr_colores,
             on_change_select=AppState.set_attr_color, value_select=AppState.attr_color,
@@ -49,6 +60,7 @@ def blog_post_add_form() -> rx.Component:
     )
 
     caracteristicas_calzado = rx.grid(
+        tipo_selector, # <-- AÑADIDO
         searchable_select(placeholder="Color...", options=AppState.filtered_attr_colores, on_change_select=AppState.set_attr_color, value_select=AppState.attr_color, search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color, filter_name="attr_color_filter"),
         
         # --- ✨ CORRECCIÓN AQUÍ ---
@@ -69,6 +81,7 @@ def blog_post_add_form() -> rx.Component:
     )
 
     caracteristicas_mochilas = rx.grid(
+        tipo_selector, # <-- AÑADIDO
         searchable_select(placeholder="Color...", options=AppState.filtered_attr_colores, on_change_select=AppState.set_attr_color, value_select=AppState.attr_color, search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color, filter_name="attr_color_filter"),
 
         # --- ✨ CORRECCIÓN AQUÍ ---
@@ -139,15 +152,16 @@ def blog_post_add_form() -> rx.Component:
                     rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
 
                     rx.cond(
-                        AppState.category != "",
-                        rx.vstack(
-                            rx.text("Características del Producto", as_="div", size="2", weight="bold"),
-                            rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
-                            rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
-                            rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
-                            align_items="stretch", width="100%",
-                        )
-                    ),
+                AppState.category != "",
+                rx.vstack(
+                    rx.text("Características del Producto", as_="div", size="2", weight="bold"),
+                    # Esta sección ahora usará las variables actualizadas con el selector de tipo
+                    rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
+                    rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
+                    rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
+                    align_items="stretch", width="100%",
+                )
+            ),
 
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(

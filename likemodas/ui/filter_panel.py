@@ -14,13 +14,14 @@ def floating_filter_panel() -> rx.Component:
     filtros_ropa = rx.vstack(
         rx.divider(), 
         rx.text("Filtros de Ropa", weight="bold"),
+        # --- AÑADE ESTE COMPONENTE ---
         multi_select_component(
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_ropa,
-            selected_items=AppState.filter_tipos_prenda, 
+            selected_items=AppState.filter_tipos_general, 
             add_handler=AppState.add_filter_value,
             remove_handler=AppState.remove_filter_value, 
-            prop_name="filter_tipos_prenda",
+            prop_name="filter_tipos_general",
             search_value=AppState.search_tipo_prenda, 
             on_change_search=AppState.set_search_tipo_prenda,
             filter_name="ropa_tipo_filter",
@@ -55,13 +56,14 @@ def floating_filter_panel() -> rx.Component:
     filtros_calzado = rx.vstack(
         rx.divider(), 
         rx.text("Filtros de Calzado", weight="bold"),
+        # --- AÑADE ESTE COMPONENTE ---
         multi_select_component(
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_zapatos,
-            selected_items=AppState.filter_tipos_zapato, 
+            selected_items=AppState.filter_tipos_general, 
             add_handler=AppState.add_filter_value,
             remove_handler=AppState.remove_filter_value, 
-            prop_name="filter_tipos_zapato",
+            prop_name="filter_tipos_general",
             search_value=AppState.search_tipo_zapato, 
             on_change_search=AppState.set_search_tipo_zapato,
             filter_name="calzado_tipo_filter",
@@ -96,13 +98,14 @@ def floating_filter_panel() -> rx.Component:
     filtros_mochilas = rx.vstack(
         rx.divider(), 
         rx.text("Filtros de Mochilas", weight="bold"),
+        # --- AÑADE ESTE COMPONENTE ---
         multi_select_component(
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_mochilas,
-            selected_items=AppState.filter_tipos_mochila, 
+            selected_items=AppState.filter_tipos_general, 
             add_handler=AppState.add_filter_value,
             remove_handler=AppState.remove_filter_value, 
-            prop_name="filter_tipos_mochila",
+            prop_name="filter_tipos_general",
             search_value=AppState.search_tipo_mochila, 
             on_change_search=AppState.set_search_tipo_mochila,
             filter_name="mochila_tipo_filter",
@@ -127,16 +130,17 @@ def floating_filter_panel() -> rx.Component:
     filtros_generales = rx.vstack(
         rx.divider(), 
         rx.text("Filtros Generales", weight="bold"),
+        # --- AÑADE ESTE COMPONENTE ---
         multi_select_component(
-            placeholder="Añadir color...", 
-            options=AppState.filtered_colores,
-            selected_items=AppState.filter_colors, 
+            placeholder="Añadir tipo...",
+            options=AppState.filtered_tipos_general,
+            selected_items=AppState.filter_tipos_general,
             add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
-            prop_name="filter_colors",
-            search_value=AppState.search_color, 
-            on_change_search=AppState.set_search_color,
-            filter_name="general_color_filter",
+            remove_handler=AppState.remove_filter_value,
+            prop_name="filter_tipos_general",
+            search_value=AppState.search_tipo_general,
+            on_change_search=AppState.set_search_tipo_general,
+            filter_name="general_tipo_filter",
         ),
         multi_select_component(
             placeholder="Añadir material...", 

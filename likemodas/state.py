@@ -256,6 +256,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             
     # --- ✨ 2. AÑADE ESTAS DOS NUEVAS PROPIEDADES COMPUTADAS ---
+
+    @rx.var
+    def available_types(self) -> list[str]:
+        """Devuelve la lista de tipos correcta según la categoría seleccionada."""
+        if self.category == Category.ROPA.value:
+            return LISTA_TIPOS_ROPA
+        if self.category == Category.CALZADO.value:
+            return LISTA_TIPOS_ZAPATOS
+        if self.category == Category.MOCHILAS.value:
+            return LISTA_TIPOS_MOCHILAS
+        return []
+
     @rx.var
     def material_label(self) -> str:
         """Devuelve la etiqueta correcta ('Tela' o 'Material') para el formulario."""
@@ -285,12 +297,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Mantenemos el color y material como selección única en el formulario de creación para simplicidad
     attr_color: str = ""
     attr_material: str = ""
+    # --- ✨ LÍNEAS NUEVAS ---
+    # Variable para guardar el tipo seleccionado en el formulario
+    attr_tipo: str = ""
+    # Variable para la búsqueda dentro del selector de tipo
+    search_attr_tipo: str = ""
 
     # --- NUEVO: Event handlers para actualizar las características ---
     def set_attr_color(self, value: str): self.attr_color = value
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
     def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
+    def set_attr_tipo(self, value: str):
+        """Actualiza el tipo seleccionado en el estado del formulario."""
+        self.attr_tipo = value
 
     def _clear_add_form(self):
         self.title = ""
@@ -315,18 +335,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         attributes = {}
         category = form_data.get("category")
         if category == Category.ROPA.value:
+            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo # <-- AÑADIR
             if self.attr_color: attributes["Color"] = self.attr_color
-            if self.attr_talla_ropa: attributes["Talla"] = self.attr_talla_ropa
-            if self.attr_material: attributes["Material"] = self.attr_material
+            if self.attr_tallas_ropa: attributes["Talla"] = self.attr_tallas_ropa
+            if self.attr_material: attributes["Tela"] = self.attr_material
 
         elif category == Category.CALZADO.value:
+            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo # <-- AÑADIR
             if self.attr_color: attributes["Color"] = self.attr_color
-            if self.attr_numero_calzado: attributes["Número"] = self.attr_numero_calzado
+            if self.attr_numeros_calzado: attributes["Número"] = self.attr_numeros_calzado
             if self.attr_material: attributes["Material"] = self.attr_material
         
         elif category == Category.MOCHILAS.value:
+            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo # <-- AÑADIR
             if self.attr_color: attributes["Color"] = self.attr_color
-            if self.attr_tamano_mochila: attributes["Tamaño"] = self.attr_tamano_mochila
+            if self.attr_tamanos_mochila: attributes["Tamaño"] = self.attr_tamanos_mochila
             if self.attr_material: attributes["Material"] = self.attr_material
         
         with rx.session() as session:
@@ -398,6 +421,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             ]
 
+            if self.filter_tipos_general:
+                posts_to_filter = [
+                    p for p in posts_to_filter
+                    if p.attributes.get("Tipo") in self.filter_tipos_general
+                ]
+
         return posts_to_filter
     
     # --- NUEVO: Variables para la BÚSQUEDA en características ---
@@ -412,7 +441,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_attr_talla_ropa(self, query: str): self.search_attr_talla_ropa = query
     def set_search_attr_material(self, query: str): self.search_attr_material = query
     def set_search_attr_numero_calzado(self, query: str): self.search_attr_numero_calzado = query
-    
+    def set_search_attr_tipo(self, query: str):
+        """Actualiza el texto de búsqueda para el selector de tipo."""
+        self.search_attr_tipo = query
+
     # --- NUEVO: Listas filtradas para los buscadores ---
     @rx.var
     def filtered_attr_colores(self) -> list[str]:
@@ -446,6 +478,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.search_attr_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
         return [o for o in LISTA_NUMEROS_CALZADO if self.search_attr_numero_calzado.lower() in o.lower()]
 
+    @rx.var
+    def filtered_attr_tipos(self) -> list[str]:
+        """Filtra la lista de tipos disponibles según el texto de búsqueda en el formulario."""
+        if not self.search_attr_tipo.strip():
+            return self.available_types
+        return [
+            o for o in self.available_types 
+            if self.search_attr_tipo.lower() in o.lower()
+        ]
 
     min_price: str = ""
     max_price: str = ""
@@ -463,6 +504,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_numeros_calzado: list[str] = []
     filter_tipos_mochila: list[str] = []
     filter_materiales_tela: list[str] = []
+    filter_tipos_general: list[str] = [] # <-- ✨ AÑADE ESTA LÍNEA
 
     # --- ✅ 3. NUEVOS EVENT HANDLERS GENÉRICOS ---
     def add_attribute_value(self, attribute_name: str, value: str):
@@ -535,6 +577,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_numero_calzado: str = ""
     search_material_tela: str = ""
     search_medida_talla: str = ""
+    search_tipo_general: str = "" # <-- ✨ AÑADE ESTA LÍNEA
 
     def set_search_tipo_prenda(self, query: str): self.search_tipo_prenda = query
     def set_search_tipo_zapato(self, query: str): self.search_tipo_zapato = query
@@ -545,6 +588,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_numero_calzado(self, query: str): self.search_numero_calzado = query
     def set_search_material_tela(self, query: str): self.search_material_tela = query
     def set_search_medida_talla(self, query: str): self.search_medida_talla = query
+    def set_search_tipo_general(self, query: str): self.search_tipo_general = query # <-- ✨ AÑADE ESTA LÍNEA
+
+    @rx.var
+    def filtered_tipos_general(self) -> list[str]: # <-- ✨ AÑADE ESTA FUNCIÓN COMPLETA
+        if not self.search_tipo_general.strip(): return LISTA_TIPOS_GENERAL
+        return [o for o in LISTA_TIPOS_GENERAL if self.search_tipo_general.lower() in o.lower()]
 
     @rx.var
     def filtered_tipos_ropa(self) -> list[str]:
