@@ -3,17 +3,6 @@
 import reflex as rx
 import reflex_local_auth
 
-# --- ✨ AÑADE ESTAS LÍNEAS ---
-from fastapi.responses import StreamingResponse
-# --- ✨ 1. AÑADE `Depends` A ESTA IMPORTACIÓN ✨ ---
-from fastapi import Depends
-# --- ✨ LÍNEA MODIFICADA ---
-# ANTES: from reflex_local_auth.auth_session import AuthSession
-from reflex_local_auth.auth_session import LocalAuthSession # <-- AHORA
-from .services.invoice_service import generate_invoice_pdf
-from .models import PurchaseModel, UserRole
-import io
-
 from .state import AppState
 from .ui.base import base_page
 
@@ -37,48 +26,6 @@ from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTA
 from . import navigation
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
-
-
-# --- ✨ LÍNEA MODIFICADA ---
-# ANTES: def get_invoice(purchase_id: int, auth_session: AuthSession = rx.Depends(reflex_local_auth.auth_session)):
-def get_invoice(purchase_id: int, auth_session: LocalAuthSession = Depends(reflex_local_auth.auth_session)):
-    """
-    Endpoint para generar y descargar una factura en PDF de forma segura.
-    """
-    if not auth_session.user:
-        return {"error": "No autenticado"}, 401
-
-    with rx.session() as session:
-        # Obtenemos la compra con todas sus relaciones cargadas
-        purchase = session.exec(
-            rx.select(PurchaseModel)
-            .options(
-                rx.subqueryload(PurchaseModel.items).subqueryload("blog_post"),
-                rx.subqueryload(PurchaseModel.userinfo)
-            )
-            .where(PurchaseModel.id == purchase_id)
-        ).one_or_none()
-
-        if not purchase:
-            return {"error": "Factura no encontrada"}, 404
-
-        # Comprobación de seguridad: solo el dueño o un admin pueden descargarla
-        user_info = purchase.userinfo
-        if user_info.user_id != auth_session.user.id and user_info.role != UserRole.ADMIN:
-            return {"error": "No autorizado"}, 403
-        
-        # Generamos el PDF
-        pdf_bytes = generate_invoice_pdf(purchase)
-
-        # Preparamos la respuesta para la descarga
-        filename = f"Factura-Likemodas-{purchase.id}.pdf"
-        headers = {
-            "Content-Disposition": f"attachment; filename=\"{filename}\""
-        }
-        
-        return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers=headers)
-
-
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
@@ -141,6 +88,3 @@ app.add_page(
 )
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
 app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries, title="Mensajes de Contacto")
-
-# --- ✨ 2. REGISTRA LA RUTA DE LA API MANUALMENTE AL FINAL ✨ ---
-app.add_api_route("/api/invoice/{purchase_id}", get_invoice, methods=["GET"])
