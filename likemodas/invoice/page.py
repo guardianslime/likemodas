@@ -1,6 +1,6 @@
-# likemodas/invoice/page.py (VERSIÓN CORREGIDA)
+# likemodas/invoice/page.py (VERSIÓN FINAL CON ESTILOS CORREGIDOS)
 import reflex as rx
-from .state import InvoiceState # <-- Importamos el nuevo estado
+from .state import InvoiceState
 
 # Estilos (sin cambios)
 invoice_style = {
@@ -54,7 +54,7 @@ def invoice_page_content() -> rx.Component:
                     ),
                     rx.table.body(
                         rx.foreach(
-                            InvoiceState.invoice_items, # <-- LÍNEA CORREGIDA Y SEGURA
+                            InvoiceState.invoice_items,
                             lambda item: rx.table.row(
                                 rx.table.cell(item.name),
                                 rx.table.cell(item.quantity, text_align="center"),
@@ -63,7 +63,9 @@ def invoice_page_content() -> rx.Component:
                             )
                         )
                     ),
-                    variant="surface", width="100%", # <-- CORRECCIÓN FINAL AQUÍ
+                    variant="surface",
+                    width="100%",
+                    style={"color": "black"}, # <-- ESTA ES LA CORRECCIÓN CLAVE
                 ),
                 rx.vstack(
                     rx.hstack(rx.text("Subtotal:", weight="bold"), rx.spacer(), rx.text(InvoiceState.invoice_data.subtotal_cop)),
