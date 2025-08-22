@@ -91,8 +91,11 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_neighborhood: str
     shipping_city: str
     shipping_phone: str
-    # AHORA USAMOS LA NUEVA CLASE
-    items: list[PurchaseHistoryItemData]
+    # --- CAMBIO CLAVE AQUÍ ---
+    # En lugar de una lista de objetos complejos, ahora será una lista de diccionarios.
+    # Esto es más simple para que tu versión de Reflex lo pueda procesar.
+    items: list[dict]
+
 
 
 class AttributeData(rx.Base):
@@ -1371,6 +1374,10 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def load_purchases(self):
+        """
+        Carga el historial de compras y transforma los artículos en una
+        lista de diccionarios simples para evitar el error de renderizado.
+        """
         if not self.authenticated_user_info:
             self.user_purchases = []
             return
@@ -1386,21 +1393,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             temp_purchases = []
             for p in results:
-                # Creamos la lista de artículos para esta compra
-                purchase_items = []
+                # --- INICIO DE LA LÓGICA MODIFICADA ---
+                # Ahora creamos una lista de diccionarios en lugar de objetos DTO
+                purchase_items_as_dicts = []
                 for item in p.items:
                     if item.blog_post:
-                        purchase_items.append(
-                            PurchaseHistoryItemData(
-                                id=item.blog_post.id,
-                                title=item.blog_post.title,
-                                image_url=(item.blog_post.image_urls[0] if item.blog_post.image_urls else ""),
-                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                quantity=item.quantity
-                            )
-                        )
+                        purchase_items_as_dicts.append({
+                            "id": item.blog_post.id,
+                            "title": item.blog_post.title,
+                            "image_url": (item.blog_post.image_urls[0] if item.blog_post.image_urls else ""),
+                            "price_at_purchase_cop": format_to_cop(item.price_at_purchase),
+                            "quantity": item.quantity
+                        })
+                # --- FIN DE LA LÓGICA MODIFICADA ---
 
-                # Creamos la tarjeta de la compra principal
                 temp_purchases.append(
                     UserPurchaseHistoryCardData(
                         id=p.id,
@@ -1412,7 +1418,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_neighborhood=p.shipping_neighborhood,
                         shipping_city=p.shipping_city,
                         shipping_phone=p.shipping_phone,
-                        items=purchase_items
+                        # Pasamos la lista de diccionarios
+                        items=purchase_items_as_dicts
                     )
                 )
             self.user_purchases = temp_purchases
