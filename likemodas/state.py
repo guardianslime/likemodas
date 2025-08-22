@@ -305,7 +305,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
                 .where(PurchaseModel.id == purchase_id)
-            ).one_or_none()
+            ).unique().one_or_none() # <--- CORRECCIÓN APLICADA AQUÍ
 
             if not purchase:
                 return None
@@ -322,7 +322,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 for item in purchase.items if item.blog_post
             ]
 
-            # Usamos 'return' directamente porque es un event handler que devuelve un valor
             return InvoiceData(
                 id=purchase.id,
                 purchase_date_formatted=purchase.purchase_date_formatted,
