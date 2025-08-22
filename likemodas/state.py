@@ -71,11 +71,29 @@ class AdminPurchaseCardData(rx.Base):
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
+
+# NUEVA CLASE para cada artículo en el historial
+class PurchaseHistoryItemData(rx.Base):
+    id: int
+    title: str
+    image_url: str
+    price_at_purchase_cop: str
+    quantity: int
         
+# CLASE ACTUALIZADA para la tarjeta de compra principal
 class UserPurchaseHistoryCardData(rx.Base):
-    id: int; purchase_date_formatted: str; status: str; total_price_cop: str
-    shipping_name: str; shipping_address: str; shipping_neighborhood: str
-    shipping_city: str; shipping_phone: str; items_formatted: list[str]
+    id: int
+    purchase_date_formatted: str
+    status: str
+    total_price_cop: str
+    shipping_name: str
+    shipping_address: str
+    shipping_neighborhood: str
+    shipping_city: str
+    shipping_phone: str
+    # AHORA USAMOS LA NUEVA CLASE
+    items: list[PurchaseHistoryItemData]
+
 
 class AttributeData(rx.Base):
     key: str
@@ -1365,15 +1383,39 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
             ).unique().all()
-            self.user_purchases = [
-                UserPurchaseHistoryCardData(
-                    id=p.id, purchase_date_formatted=p.purchase_date_formatted,
-                    status=p.status.value, total_price_cop=p.total_price_cop,
-                    shipping_name=p.shipping_name, shipping_address=p.shipping_address,
-                    shipping_neighborhood=p.shipping_neighborhood, shipping_city=p.shipping_city,
-                    shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
-                ) for p in results
-            ]
+
+            temp_purchases = []
+            for p in results:
+                # Creamos la lista de artículos para esta compra
+                purchase_items = []
+                for item in p.items:
+                    if item.blog_post:
+                        purchase_items.append(
+                            PurchaseHistoryItemData(
+                                id=item.blog_post.id,
+                                title=item.blog_post.title,
+                                image_url=(item.blog_post.image_urls[0] if item.blog_post.image_urls else ""),
+                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                                quantity=item.quantity
+                            )
+                        )
+
+                # Creamos la tarjeta de la compra principal
+                temp_purchases.append(
+                    UserPurchaseHistoryCardData(
+                        id=p.id,
+                        purchase_date_formatted=p.purchase_date_formatted,
+                        status=p.status.value,
+                        total_price_cop=p.total_price_cop,
+                        shipping_name=p.shipping_name,
+                        shipping_address=p.shipping_address,
+                        shipping_neighborhood=p.shipping_neighborhood,
+                        shipping_city=p.shipping_city,
+                        shipping_phone=p.shipping_phone,
+                        items=purchase_items
+                    )
+                )
+            self.user_purchases = temp_purchases
 
     notifications: List[NotificationModel] = []
     
