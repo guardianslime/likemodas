@@ -8,7 +8,9 @@ from ..blog.public_page import product_detail_modal
 
 def purchase_item_card(item: PurchaseHistoryItemData) -> rx.Component:
     """
-    Una tarjeta visual para un solo artículo comprado. (Esta función no cambia)
+    Una tarjeta visual para un solo artículo comprado. 
+    Al hacer clic, abre el modal con los detalles del producto.
+    (Esta función no cambia y ya es correcta).
     """
     return rx.box(
         rx.vstack(
@@ -63,8 +65,9 @@ def purchase_item_card(item: PurchaseHistoryItemData) -> rx.Component:
         transition="all 0.2s ease-in-out",
     )
 
-# --- NUEVO COMPONENTE AUXILIAR ---
-# Esta función toma la lista de artículos y la renderiza, aislando el foreach.
+# <--- CAMBIO CLAVE #1: CREACIÓN DEL COMPONENTE AUXILIAR ---
+# Creamos una función separada que se encarga de renderizar la galería de artículos.
+# Esto es exactamente como funciona tu `product_gallery_component`.
 def purchase_items_gallery(items: rx.Var[list[PurchaseHistoryItemData]]) -> rx.Component:
     """Renderiza la galería de miniaturas de los artículos comprados."""
     return rx.vstack(
@@ -79,12 +82,9 @@ def purchase_items_gallery(items: rx.Var[list[PurchaseHistoryItemData]]) -> rx.C
         width="100%",
     )
 
-
 @reflex_local_auth.require_login
 def purchase_history_content() -> rx.Component:
-    """
-    Página del historial de compras del usuario, con miniaturas y modales.
-    """
+    """Página del historial de compras del usuario, con miniaturas y modales."""
     page_content = rx.center(
         rx.vstack(
             rx.heading("Mi Historial de Compras", size="7"),
@@ -102,7 +102,7 @@ def purchase_history_content() -> rx.Component:
                     AppState.filtered_user_purchases, 
                     lambda purchase: rx.card(
                         rx.vstack(
-                            # Encabezado (sin cambios)
+                            # Encabezado, Envío, etc. (sin cambios)
                             rx.hstack(
                                 rx.vstack(
                                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -115,8 +115,6 @@ def purchase_history_content() -> rx.Component:
                                 width="100%",
                             ),
                             rx.divider(),
-                            
-                            # Detalles de envío (sin cambios)
                             rx.vstack(
                                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -126,12 +124,12 @@ def purchase_history_content() -> rx.Component:
                             ),
                             rx.divider(),
                             
-                            # --- CAMBIO CLAVE AQUÍ ---
-                            # En lugar de poner el rx.flex y rx.foreach aquí, llamamos a nuestro nuevo componente auxiliar.
+                            # <--- CAMBIO CLAVE #2: LLAMADA AL COMPONENTE AUXILIAR ---
+                            # En lugar del `foreach` anidado, ahora llamamos a nuestra nueva función.
                             purchase_items_gallery(items=purchase.items),
                             
                             rx.divider(),
-                            # Total de la compra (sin cambios)
+                            # Total de la compra
                             rx.hstack(
                                 rx.spacer(),
                                 rx.heading("Total de la Compra:", size="5", weight="medium"),
@@ -141,7 +139,7 @@ def purchase_history_content() -> rx.Component:
                                 padding_top="0.5em",
                             ),
                             
-                            # Botón de factura (sin cambios)
+                            # Botón de factura
                             rx.cond(
                                 purchase.status != PurchaseStatus.PENDING.value,
                                 rx.link(
