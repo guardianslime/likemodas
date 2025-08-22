@@ -1,18 +1,19 @@
-# likemodas/purchases/page.py (VERSIÓN FINAL CON GALERÍA)
+# likemodas/purchases/page.py (VERSIÓN FINAL CON SOLUCIÓN AL ERROR DE COMPILACIÓN)
 
 import reflex as rx
 import reflex_local_auth
 
-# --- ✨ INICIO DE LA MODIFICACIÓN: IMPORTACIONES ✨ ---
 from ..state import AppState, UserPurchaseHistoryCardData, PurchaseItemCardData
 from ..account.layout import account_layout
 from ..models import PurchaseStatus
-# Importamos el modal que ya existe para reutilizarlo
 from ..blog.public_page import product_detail_modal
-# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
+# --- ✨ 1. CREACIÓN DE UN SUB-COMPONENTE PARA LA GALERÍA DE ARTÍCULOS ✨ ---
+# Este componente encapsula el `rx.foreach` que estaba causando el error.
+# Al ser un componente independiente, Reflex puede resolver los tipos de datos correctamente.
 
 def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
-    """Componente para mostrar la miniatura de un artículo comprado."""
+    """Componente para mostrar la miniatura de un artículo comprado individual."""
     return rx.box(
         rx.vstack(
             rx.box(
@@ -24,7 +25,6 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
                     object_fit="cover",
                     border_radius="md",
                 ),
-                # Este evento abre el modal con los detalles del producto
                 on_click=AppState.open_product_detail_modal(item.id),
                 cursor="pointer",
                 position="relative",
@@ -44,9 +44,31 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
         width="110px",
     )
 
+def purchase_items_gallery(items: rx.Var[list[PurchaseItemCardData]]) -> rx.Component:
+    """El nuevo componente que renderiza la galería de artículos para una compra."""
+    return rx.vstack(
+        rx.text("Artículos Comprados:", weight="medium", size="4"),
+        rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
+        rx.scroll_area(
+            rx.hstack(
+                # Este `rx.foreach` ahora está en un contexto aislado y funciona correctamente.
+                rx.foreach(
+                    items,
+                    purchase_item_thumbnail
+                ),
+                spacing="4",
+                padding_y="0.5em",
+            ),
+            type="auto",
+            scrollbars="horizontal",
+            width="100%",
+        ),
+        spacing="2", align_items="start", width="100%",
+    )
+
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
-    """Componente para mostrar el detalle de una compra en el historial del usuario."""
+    """Componente principal que muestra una compra. Ahora es más simple."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -58,7 +80,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
-                    # El total se mostrará al final
                     align_items="end",
                 ),
                 justify="between",
@@ -74,36 +95,21 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- ✨ INICIO DE LA MODIFICACIÓN: GALERÍA DE ARTÍCULOS ✨ ---
-            rx.vstack(
-                rx.text("Artículos Comprados:", weight="medium", size="4"),
-                rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
-                rx.scroll_area(
-                    rx.hstack(
-                        # Usamos rx.foreach para iterar sobre los artículos y mostrar su miniatura
-                        rx.foreach(
-                            purchase.items,
-                            purchase_item_thumbnail
-                        ),
-                        spacing="4",
-                        padding_y="0.5em",
-                    ),
-                    type="auto",
-                    scrollbars="horizontal",
-                    width="100%",
-                ),
-                rx.hstack(
-                    rx.spacer(),
-                    rx.heading("Total Compra:", size="5", weight="medium"),
-                    rx.heading(purchase.total_price_cop, size="6"),
-                    align="center",
-                    spacing="3",
-                    margin_top="1em",
-                ),
-                spacing="2", align_items="start", width="100%",
+            # --- ✨ 2. USO DEL NUEVO SUB-COMPONENTE ✨ ---
+            # En lugar de tener el `rx.foreach` aquí, simplemente llamamos al
+            # nuevo componente `purchase_items_gallery`, pasándole los artículos.
+            purchase_items_gallery(items=purchase.items),
+            
+            # Mostramos el total de la compra al final.
+            rx.hstack(
+                rx.spacer(),
+                rx.heading("Total Compra:", size="5", weight="medium"),
+                rx.heading(purchase.total_price_cop, size="6"),
+                align="center",
+                spacing="3",
+                margin_top="1em",
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-
+            
             rx.cond(
                 purchase.status != PurchaseStatus.PENDING.value,
                 rx.link(
@@ -121,7 +127,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
 
 @reflex_local_auth.require_login
 def purchase_history_content() -> rx.Component:
-    """Página del historial de compras del usuario."""
+    """Página del historial de compras del usuario. (Sin cambios en esta función)"""
     page_content = rx.center(
         rx.vstack(
             rx.heading("Mi Historial de Compras", size="7"),
@@ -139,10 +145,10 @@ def purchase_history_content() -> rx.Component:
                     padding_y="2em",
                 )
             ),
-            # --- ✨ AÑADIMOS EL MODAL A LA PÁGINA PARA QUE ESTÉ DISPONIBLE ✨ ---
             product_detail_modal(),
             spacing="6", width="100%", max_width="960px", align="center"
         ),
         width="100%"
     )
     return account_layout(page_content)
+
