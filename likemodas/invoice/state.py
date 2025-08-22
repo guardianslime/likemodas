@@ -26,8 +26,18 @@ class InvoiceState(rx.State):
         """
         self.is_loading = True
         self.invoice_data = None
+        
+        # --- CORRECCIÓN DE LA ADVERTENCIA (DeprecationWarning) ---
+        purchase_id_str = "0"
+        try:
+            full_url = self.router.url
+            if "?" in full_url:
+                query_string = full_url.split("?")[1]
+                params = dict(param.split("=") for param in query_string.split("&"))
+                purchase_id_str = params.get("id", "0")
+        except Exception:
+            pass # Si el parseo falla, se usa el valor por defecto "0"
 
-        purchase_id_str = self.router.page.params.get("id", "0")
         try:
             purchase_id = int(purchase_id_str)
             if purchase_id <= 0:
@@ -39,12 +49,15 @@ class InvoiceState(rx.State):
             self.is_loading = False
             return
 
-        # Pedimos al AppState que nos dé los datos de la factura
-        invoice_result = await self.get_state(AppState).get_invoice_data(purchase_id)
+        # --- CORRECCIÓN DEL ERROR (AttributeError) ---
+        # 1. Obtenemos el AppState con 'await' primero.
+        app_state = await self.get_state(AppState)
+        # 2. Ahora sí, llamamos al método sobre el estado ya obtenido.
+        invoice_result = app_state.get_invoice_data(purchase_id)
 
         if invoice_result:
             self.invoice_data = invoice_result
         else:
             yield rx.toast.error("Factura no encontrada o no tienes permisos para verla.")
-
+        
         self.is_loading = False

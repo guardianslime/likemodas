@@ -202,13 +202,25 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.error_message = f"Error inesperado: {e}"
 
     message: str = ""
+
     @rx.event
     def verify_token(self):
-        token = self.router.page.params.get("token", "")
+        # --- CORRECCIÓN AQUÍ ---
+        token = ""
+        try:
+            full_url = self.router.url
+            if "?" in full_url:
+                query_string = full_url.split("?")[1]
+                params = dict(param.split("=") for param in query_string.split("&"))
+                token = params.get("token", "")
+        except Exception:
+            pass
+        # --- FIN DE LA CORRECCIÓN ---
+
         if not token:
             self.message = "Error: No se proporcionó un token de verificación."
             return
-        
+
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(VerificationToken).where(VerificationToken.token == token)).one_or_none()
             if db_token and db_token.expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc):
