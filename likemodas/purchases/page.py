@@ -1,9 +1,10 @@
-# likemodas/purchases/page.py (CORREGIDO)
+# likemodas/purchases/page.py (VERSIÓN CORREGIDA)
 
 import reflex as rx
 import reflex_local_auth
 from ..state import AppState, UserPurchaseHistoryCardData
 from ..account.layout import account_layout
+from ..models import PurchaseStatus # Importamos el Enum para mayor claridad
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """Componente para mostrar el detalle de una compra en el historial del usuario."""
@@ -17,8 +18,8 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 rx.spacer(),
                 rx.vstack(
-                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"), 
-                    rx.heading(purchase.total_price_cop, size="6"), 
+                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
+                    rx.heading(purchase.total_price_cop, size="6"),
                     align_items="end",
                 ),
                 justify="between",
@@ -41,13 +42,19 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 spacing="1", align_items="start", width="100%",
             ),
-            rx.link(
-                rx.button("Imprimir Factura", variant="outline", width="100%", margin_top="1em"),
-                href=f"/invoice?id={purchase.id}",
-                is_external=False, # Abre en la misma app, pero en otra pestaña
-                target="_blank", # Abre en una nueva pestaña
+            
+            # --- 👇 ESTA ES LA CORRECCIÓN CLAVE 👇 ---
+            # Solo muestra el botón si el estado NO es 'pending_confirmation'
+            rx.cond(
+                purchase.status != PurchaseStatus.PENDING.value,
+                rx.link(
+                    rx.button("Imprimir Factura", variant="outline", width="100%", margin_top="1em"),
+                    href=f"/invoice?id={purchase.id}",
+                    is_external=False, 
+                    target="_blank",
+                ),
             ),
-            # --- FIN DE LA ADICIÓN ---
+            # --- FIN DE LA CORRECCIÓN ---
 
             spacing="4", width="100%"
         ),
@@ -64,7 +71,7 @@ def purchase_history_content() -> rx.Component:
             rx.input(
                 placeholder="Buscar por ID o producto...",
                 value=AppState.search_query_user_history,
-                on_change=AppState.set_search_query_user_history, # Necesitarás este método en AppState
+                on_change=AppState.set_search_query_user_history,
                 width="100%", max_width="400px", margin_y="1.5em",
             ),
             rx.cond(
