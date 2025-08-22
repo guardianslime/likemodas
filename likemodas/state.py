@@ -95,9 +95,11 @@ class InvoiceItemData(rx.Base):
     """Un modelo específico para cada línea de artículo en la factura."""
     name: str
     quantity: int
-# --- CORRECCIÓN: Añadimos los campos de texto pre-formateados ---
     price_cop: str
-    total_cop: str
+    # --- CAMPOS ACTUALIZADOS ---
+    subtotal_cop: str # Antes se llamaba total_cop
+    iva_cop: str
+    total_con_iva_cop: str
 
     @property
     def price_cop(self) -> str:
@@ -295,7 +297,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
         """
-        Busca los datos de una compra, calcula IVA y subtotales, y los devuelve como un DTO.
+        Busca los datos de una compra, calcula IVA y subtotales por item y totales,
+        y los devuelve como un DTO.
         """
         if not self.is_authenticated:
             return None
@@ -316,9 +319,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
                 return None
 
-            # --- NUEVA LÓGICA DE CÁLCULO ---
-            # Asumimos que total_price es el valor final CON IVA.
-            # Puedes cambiar el 0.19 si tu IVA es diferente.
             IVA_RATE = 0.19
             total_amount = purchase.total_price
             subtotal_amount = total_amount / (1 + IVA_RATE)
@@ -327,13 +327,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             invoice_items = []
             for item in purchase.items:
                 if item.blog_post:
-                    item_total = item.price_at_purchase * item.quantity
+                    # --- NUEVA LÓGICA DE CÁLCULO POR ARTÍCULO ---
+                    item_subtotal = item.price_at_purchase * item.quantity
+                    item_iva = item_subtotal * IVA_RATE
+                    item_total_con_iva = item_subtotal + item_iva
                     invoice_items.append(
                         InvoiceItemData(
                             name=item.blog_post.title,
                             quantity=item.quantity,
                             price_cop=format_to_cop(item.price_at_purchase),
-                            total_cop=format_to_cop(item_total)
+                            subtotal_cop=format_to_cop(item_subtotal),
+                            iva_cop=format_to_cop(item_iva),
+                            total_con_iva_cop=format_to_cop(item_total_con_iva)
                         )
                     )
 

@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL Y FUNCIONAL)
+# likemodas/invoice/page.py (VERSIÓN FINAL CON DESGLOSE COMPLETO)
 import reflex as rx
 from .state import InvoiceState
 
@@ -46,55 +46,65 @@ def invoice_page_content() -> rx.Component:
                 rx.table.root(
                     rx.table.header(
                         rx.table.row(
+                            # --- NUEVOS ENCABEZADOS DE TABLA ---
                             rx.table.column_header_cell("Artículo", style={"color": "black"}),
                             rx.table.column_header_cell("Cantidad", text_align="center", style={"color": "black"}),
                             rx.table.column_header_cell("Precio Unitario", text_align="right", style={"color": "black"}),
                             rx.table.column_header_cell("Subtotal", text_align="right", style={"color": "black"}),
+                            rx.table.column_header_cell("IVA (19%)", text_align="right", style={"color": "black"}),
+                            rx.table.column_header_cell("Total", text_align="right", style={"color": "black"}),
                         )
                     ),
                     rx.table.body(
                         rx.foreach(
                             InvoiceState.invoice_items,
                             lambda item: rx.table.row(
+                                # --- NUEVAS CELDAS CON TODOS LOS DATOS ---
                                 rx.table.cell(item.name, style={"color": "black"}),
                                 rx.table.cell(item.quantity, text_align="center", style={"color": "black"}),
                                 rx.table.cell(item.price_cop, text_align="right", style={"color": "black"}),
-                                rx.table.cell(item.total_cop, text_align="right", style={"color": "black"}),
+                                rx.table.cell(item.subtotal_cop, text_align="right", style={"color": "black"}),
+                                rx.table.cell(item.iva_cop, text_align="right", style={"color": "black"}),
+                                rx.table.cell(item.total_con_iva_cop, text_align="right", style={"color": "black"}),
                             )
                         )
                     ),
                     variant="surface",
                     width="100%",
                 ),
-                # --- CORRECCIÓN: Resumen fuera de la tabla y alineado a la derecha ---
+                # --- RESUMEN FINAL ALINEADO A LA DERECHA ---
                 rx.hstack(
                     rx.spacer(),
                     rx.vstack(
                         rx.hstack(
                             rx.text("Subtotal:", weight="bold", width="120px", text_align="right"),
-                            rx.text(InvoiceState.invoice_data.subtotal_cop, width="100px", text_align="right"),
+                            rx.text(InvoiceState.invoice_data.subtotal_cop, width="120px", text_align="right"),
                             justify="between", width="100%"
                         ),
                         rx.hstack(
                             rx.text("IVA (19%):", weight="bold", width="120px", text_align="right"),
-                            rx.text(InvoiceState.invoice_data.iva_cop, width="100px", text_align="right"),
+                            rx.text(InvoiceState.invoice_data.iva_cop, width="120px", text_align="right"),
                             justify="between", width="100%"
                         ),
                         rx.hstack(
                             rx.heading("Total:", size="5", width="120px", text_align="right"),
-                            rx.heading(InvoiceState.invoice_data.total_price_cop, size="5", width="100px", text_align="right"),
+                            rx.heading(InvoiceState.invoice_data.total_price_cop, size="5", width="120px", text_align="right"),
                             justify="between", width="100%"
                         ),
                         spacing="2",
                         margin_top="1.5em",
+                        padding="1em",
+                        border="1px solid #ddd",
+                        border_radius="md",
                     ),
                     width="100%",
+                    justify="end",
                 ),
                 rx.button(
                     "Imprimir Factura", on_click=rx.call_script("window.print()"),
                     class_name="no-print", margin_top="3em",
                 ),
-                align="center",
+                align="stretch", # Cambiado para que el total se alinee correctamente
                 spacing="5",
             ),
             rx.center(rx.spinner(size="3"), rx.text("Cargando factura..."), height="90vh"),
