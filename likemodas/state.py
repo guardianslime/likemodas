@@ -1,3 +1,5 @@
+# likemodas/state.py (CORREGIDO Y ACTUALIZADO)
+
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -9,9 +11,7 @@ import secrets
 import bcrypt
 import re
 import asyncio
-# ✨ 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN AQUÍ ✨
 from reflex.config import get_config
-# ✨ 1. AÑADE ESTAS LÍNEAS AQUÍ ✨
 from urllib.parse import urlparse, parse_qs
 
 
@@ -20,7 +20,7 @@ from . import navigation
 from .models import (
     UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
     PurchaseModel, PurchaseStatus, PurchaseItemModel, NotificationModel, Category,
-    PasswordResetToken, LocalUser, ContactEntryModel, CommentModel 
+    PasswordResetToken, LocalUser, ContactEntryModel, CommentModel
 )
 from .services.email_service import send_verification_email, send_password_reset_email
 from .utils.formatting import format_to_cop
@@ -35,7 +35,7 @@ class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
-    price_cop: str = "" 
+    price_cop: str = ""
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
@@ -71,11 +71,23 @@ class AdminPurchaseCardData(rx.Base):
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
-        
+
+# --- ✨ INICIO DE LA MODIFICACIÓN: NUEVOS DTOs PARA COMPRAS ✨ ---
+class PurchaseItemCardData(rx.Base):
+    """DTO para mostrar la miniatura de un artículo en el historial de compras."""
+    id: int  # ID del BlogPostModel
+    title: str
+    image_url: str  # Solo la primera imagen para la miniatura
+    price_at_purchase_cop: str
+
 class UserPurchaseHistoryCardData(rx.Base):
+    """DTO actualizado para el historial de compras del usuario."""
     id: int; purchase_date_formatted: str; status: str; total_price_cop: str
     shipping_name: str; shipping_address: str; shipping_neighborhood: str
-    shipping_city: str; shipping_phone: str; items_formatted: list[str]
+    shipping_city: str; shipping_phone: str
+    # ANTES: items_formatted: list[str]
+    items: list[PurchaseItemCardData] # AHORA: Usamos el nuevo DTO
+# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
 class AttributeData(rx.Base):
     key: str
@@ -239,7 +251,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                     return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "El token de verificación es inválido o ha expirado."
-
     is_success: bool = False
     token: str = ""
     is_token_valid: bool = False
@@ -1348,9 +1359,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         q = self.search_query_user_history.lower()
         return [
             p for p in self.user_purchases 
-            if q in f"#{p.id}" or any(q in item.lower() for item in p.items_formatted)
+            if q in f"#{p.id}" or any(q in item.title.lower() for item in p.items)
         ]
 
+    # --- ✨ INICIO DE LA MODIFICACIÓN: LÓGICA DE CARGA DE COMPRAS ✨ ---
     @rx.event
     def load_purchases(self):
         if not self.authenticated_user_info:
@@ -1365,15 +1377,40 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .where(PurchaseModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(PurchaseModel.purchase_date.desc())
             ).unique().all()
-            self.user_purchases = [
-                UserPurchaseHistoryCardData(
-                    id=p.id, purchase_date_formatted=p.purchase_date_formatted,
-                    status=p.status.value, total_price_cop=p.total_price_cop,
-                    shipping_name=p.shipping_name, shipping_address=p.shipping_address,
-                    shipping_neighborhood=p.shipping_neighborhood, shipping_city=p.shipping_city,
-                    shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
-                ) for p in results
-            ]
+            
+            temp_purchases = []
+            for p in results:
+                # Convertimos cada artículo comprado al nuevo DTO
+                purchase_items_data = []
+                if p.items:
+                    for item in p.items:
+                        if item.blog_post:
+                            purchase_items_data.append(
+                                PurchaseItemCardData(
+                                    id=item.blog_post.id,
+                                    title=item.blog_post.title,
+                                    image_url=item.blog_post.image_urls[0] if item.blog_post.image_urls else "",
+                                    price_at_purchase_cop=format_to_cop(item.price_at_purchase)
+                                )
+                            )
+                
+                # Creamos el DTO principal de la compra con la lista de artículos
+                temp_purchases.append(
+                    UserPurchaseHistoryCardData(
+                        id=p.id, 
+                        purchase_date_formatted=p.purchase_date_formatted,
+                        status=p.status.value, 
+                        total_price_cop=p.total_price_cop,
+                        shipping_name=p.shipping_name, 
+                        shipping_address=p.shipping_address,
+                        shipping_neighborhood=p.shipping_neighborhood, 
+                        shipping_city=p.shipping_city,
+                        shipping_phone=p.shipping_phone, 
+                        items=purchase_items_data
+                    )
+                )
+            self.user_purchases = temp_purchases
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
     notifications: List[NotificationModel] = []
     
@@ -1824,6 +1861,32 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(user_info)
             session.commit()
 
+    # --- ✨ INICIO DE LA CORRECCIÓN: saved_posts no cargaba en navegación directa ✨ ---
+    @rx.event
+    def on_load_saved_posts_page(self):
+        """Carga la galería de publicaciones guardadas por el usuario."""
+        self.is_loading = True  # <-- FIX: Activar estado de carga
+        yield
+        
+        if not self.authenticated_user_info:
+            self.saved_posts_gallery = []
+            self.is_loading = False # <-- FIX: Desactivar en caso de redirección
+            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+        
+        with rx.session() as session:
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info:
+                temp_posts = []
+                sorted_posts = sorted(user_info.saved_posts, key=lambda p: p.created_at, reverse=True)
+                for p in sorted_posts:
+                    product_dto = ProductCardData.from_orm(p)
+                    product_dto.price_cop = p.price_cop
+                    temp_posts.append(product_dto)
+                self.saved_posts_gallery = temp_posts
+        
+        self.is_loading = False # <-- FIX: Desactivar estado de carga al finalizar
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
     @rx.event
     def trigger_modal_from_load(self):
         """Abre el modal usando el ID guardado en el estado."""
@@ -1930,27 +1993,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.load_saved_post_ids
 
     
-    # --- AÑADIR: Evento para cargar la página de guardados ---
-    @rx.event
-    def on_load_saved_posts_page(self):
-        """Carga la galería de publicaciones guardadas por el usuario."""
-        if not self.authenticated_user_info:
-            self.saved_posts_gallery = []
-            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-        
-        with rx.session() as session:
-            user_info = session.get(UserInfo, self.authenticated_user_info.id)
-            if user_info:
-                # Creamos los DTOs para la galería
-                temp_posts = []
-                # Accedemos a los posts a través de la relación y los ordenamos
-                sorted_posts = sorted(user_info.saved_posts, key=lambda p: p.created_at, reverse=True)
-                for p in sorted_posts:
-                    product_dto = ProductCardData.from_orm(p)
-                    product_dto.price_cop = p.price_cop
-                    temp_posts.append(product_dto)
-                self.saved_posts_gallery = temp_posts
-
     # Este método también se simplifica
     @rx.event
     def close_product_detail_modal(self, open_state: bool):

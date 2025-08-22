@@ -1,10 +1,49 @@
-# likemodas/purchases/page.py (VERSIÓN CORREGIDA)
+# likemodas/purchases/page.py (VERSIÓN FINAL CON GALERÍA)
 
 import reflex as rx
 import reflex_local_auth
-from ..state import AppState, UserPurchaseHistoryCardData
+
+# --- ✨ INICIO DE LA MODIFICACIÓN: IMPORTACIONES ✨ ---
+from ..state import AppState, UserPurchaseHistoryCardData, PurchaseItemCardData
 from ..account.layout import account_layout
-from ..models import PurchaseStatus # Importamos el Enum para mayor claridad
+from ..models import PurchaseStatus
+# Importamos el modal que ya existe para reutilizarlo
+from ..blog.public_page import product_detail_modal
+# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
+def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
+    """Componente para mostrar la miniatura de un artículo comprado."""
+    return rx.box(
+        rx.vstack(
+            rx.box(
+                rx.image(
+                    src=rx.get_upload_url(item.image_url),
+                    alt=item.title,
+                    width="100px",
+                    height="100px",
+                    object_fit="cover",
+                    border_radius="md",
+                ),
+                # Este evento abre el modal con los detalles del producto
+                on_click=AppState.open_product_detail_modal(item.id),
+                cursor="pointer",
+                position="relative",
+                _hover={"transform": "scale(1.05)"},
+                transition="transform 0.2s",
+            ),
+            rx.text(
+                item.price_at_purchase_cop,
+                size="2",
+                weight="medium",
+                text_align="center",
+                margin_top="0.25em"
+            ),
+            spacing="1",
+            align="center",
+        ),
+        width="110px",
+    )
+
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """Componente para mostrar el detalle de una compra en el historial del usuario."""
@@ -19,7 +58,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
-                    rx.heading(purchase.total_price_cop, size="6"),
+                    # El total se mostrará al final
                     align_items="end",
                 ),
                 justify="between",
@@ -34,17 +73,37 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
+            
+            # --- ✨ INICIO DE LA MODIFICACIÓN: GALERÍA DE ARTÍCULOS ✨ ---
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
-                rx.foreach(
-                    purchase.items_formatted,
-                    lambda item_str: rx.text(item_str, size="3")
+                rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
+                rx.scroll_area(
+                    rx.hstack(
+                        # Usamos rx.foreach para iterar sobre los artículos y mostrar su miniatura
+                        rx.foreach(
+                            purchase.items,
+                            purchase_item_thumbnail
+                        ),
+                        spacing="4",
+                        padding_y="0.5em",
+                    ),
+                    type="auto",
+                    scrollbars="horizontal",
+                    width="100%",
                 ),
-                spacing="1", align_items="start", width="100%",
+                rx.hstack(
+                    rx.spacer(),
+                    rx.heading("Total Compra:", size="5", weight="medium"),
+                    rx.heading(purchase.total_price_cop, size="6"),
+                    align="center",
+                    spacing="3",
+                    margin_top="1em",
+                ),
+                spacing="2", align_items="start", width="100%",
             ),
-            
-            # --- 👇 ESTA ES LA CORRECCIÓN CLAVE 👇 ---
-            # Solo muestra el botón si el estado NO es 'pending_confirmation'
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
             rx.cond(
                 purchase.status != PurchaseStatus.PENDING.value,
                 rx.link(
@@ -54,8 +113,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     target="_blank",
                 ),
             ),
-            # --- FIN DE LA CORRECCIÓN ---
-
             spacing="4", width="100%"
         ),
         width="100%", padding="1.5em",
@@ -82,6 +139,8 @@ def purchase_history_content() -> rx.Component:
                     padding_y="2em",
                 )
             ),
+            # --- ✨ AÑADIMOS EL MODAL A LA PÁGINA PARA QUE ESTÉ DISPONIBLE ✨ ---
+            product_detail_modal(),
             spacing="6", width="100%", max_width="960px", align="center"
         ),
         width="100%"
