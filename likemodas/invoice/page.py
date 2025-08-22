@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL)
+# likemodas/invoice/page.py (VERSIÓN FINAL CON FECHA A LA IZQUIERDA)
 import reflex as rx
 from .state import InvoiceState
 
@@ -27,21 +27,16 @@ def invoice_page_content() -> rx.Component:
                     ),
                     width="100%", align_items="start", margin_bottom="1em",
                 ),
-                
-                # --- ✨ CAMBIO FINAL AÑADIDO AQUÍ 👇 ---
                 rx.hstack(
-                    rx.spacer(),
                     rx.text(
                         "Fecha de Emisión: ",
                         rx.text.strong(InvoiceState.invoice_data.purchase_date_formatted),
+                        font_size="0.9em",
                     ),
+                    rx.spacer(),
                     width="100%",
-                    justify="end",
                     margin_bottom="2em",
-                    font_size="0.9em",
                 ),
-                # --- FIN DEL CAMBIO ---
-
                 rx.grid(
                     rx.vstack(
                         rx.heading("Remitente", size="4"), rx.text("Likemodas Store"),
