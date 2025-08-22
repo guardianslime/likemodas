@@ -1,4 +1,4 @@
-# likemodas/purchases/page.py (VERSIÓN CORREGIDA Y MEJORADA)
+# likemodas/purchases/page.py (VERSIÓN CON COMPONENTE AUXILIAR)
 import reflex as rx
 import reflex_local_auth
 from ..state import AppState, UserPurchaseHistoryCardData, PurchaseHistoryItemData
@@ -8,12 +8,10 @@ from ..blog.public_page import product_detail_modal
 
 def purchase_item_card(item: PurchaseHistoryItemData) -> rx.Component:
     """
-    Una tarjeta visual para un solo artículo comprado.
-    Al hacer clic, abre el modal con los detalles del producto.
+    Una tarjeta visual para un solo artículo comprado. (Esta función no cambia)
     """
     return rx.box(
         rx.vstack(
-            # Contenedor de la imagen
             rx.box(
                 rx.cond(
                     item.image_url != "",
@@ -23,7 +21,6 @@ def purchase_item_card(item: PurchaseHistoryItemData) -> rx.Component:
                         height="130px", 
                         object_fit="cover"
                     ),
-                    # Fallback si no hay imagen
                     rx.box(
                         rx.icon("image_off", size=32), 
                         width="100%", 
@@ -39,13 +36,11 @@ def purchase_item_card(item: PurchaseHistoryItemData) -> rx.Component:
                 border_radius="md",
                 overflow="hidden"
             ),
-            # Información del producto
             rx.vstack(
                 rx.text(item.title, weight="bold", size="3", no_of_lines=1, title=item.title),
                 rx.text(f"Cantidad: {item.quantity}", size="2"),
                 rx.text(
                     "Precio pagado: ",
-                    # Muestra el precio que se pagó en el momento de la compra
                     rx.text.strong(item.price_at_purchase_cop),
                     size="2"
                 ),
@@ -57,17 +52,33 @@ def purchase_item_card(item: PurchaseHistoryItemData) -> rx.Component:
             spacing="2",
             align_items="stretch"
         ),
-        # Evento para abrir el modal del producto
         on_click=lambda: AppState.open_product_detail_modal(item.id),
         cursor="pointer",
         padding="0.5em",
         border_radius="lg",
         border="1px solid",
         border_color=rx.color("gray", 6),
-        width="180px", # Ancho fijo para las tarjetas
+        width="180px",
         _hover={"box_shadow": "0 0 10px rgba(128, 128, 128, 0.5)", "transform": "scale(1.03)"},
         transition="all 0.2s ease-in-out",
     )
+
+# --- NUEVO COMPONENTE AUXILIAR ---
+# Esta función toma la lista de artículos y la renderiza, aislando el foreach.
+def purchase_items_gallery(items: rx.Var[list[PurchaseHistoryItemData]]) -> rx.Component:
+    """Renderiza la galería de miniaturas de los artículos comprados."""
+    return rx.vstack(
+        rx.text("Artículos Comprados:", weight="medium", size="4"),
+        rx.flex(
+            rx.foreach(items, purchase_item_card),
+            spacing="4",
+            wrap="wrap",
+            padding_y="0.5em",
+        ),
+        align_items="start",
+        width="100%",
+    )
+
 
 @reflex_local_auth.require_login
 def purchase_history_content() -> rx.Component:
@@ -85,14 +96,13 @@ def purchase_history_content() -> rx.Component:
                 width="100%", max_width="400px", margin_y="1.5em",
             ),
             
-            # Itera sobre cada compra filtrada del usuario
             rx.cond(
                 AppState.filtered_user_purchases,
                 rx.foreach(
                     AppState.filtered_user_purchases, 
                     lambda purchase: rx.card(
                         rx.vstack(
-                            # Encabezado de la tarjeta de compra
+                            # Encabezado (sin cambios)
                             rx.hstack(
                                 rx.vstack(
                                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -106,7 +116,7 @@ def purchase_history_content() -> rx.Component:
                             ),
                             rx.divider(),
                             
-                            # Detalles de envío
+                            # Detalles de envío (sin cambios)
                             rx.vstack(
                                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -116,22 +126,12 @@ def purchase_history_content() -> rx.Component:
                             ),
                             rx.divider(),
                             
-                            # Galería de artículos comprados (miniaturas)
-                            rx.vstack(
-                                rx.text("Artículos Comprados:", weight="medium", size="4"),
-                                # Flexbox para mostrar las miniaturas de izquierda a derecha
-                                rx.flex(
-                                    rx.foreach(purchase.items, purchase_item_card),
-                                    spacing="4",
-                                    wrap="wrap", # Permite que los items pasen a la siguiente línea
-                                    padding_y="0.5em",
-                                ),
-                                align_items="start",
-                                width="100%",
-                            ),
+                            # --- CAMBIO CLAVE AQUÍ ---
+                            # En lugar de poner el rx.flex y rx.foreach aquí, llamamos a nuestro nuevo componente auxiliar.
+                            purchase_items_gallery(items=purchase.items),
+                            
                             rx.divider(),
-
-                            # Total de la compra, ubicado en la parte inferior
+                            # Total de la compra (sin cambios)
                             rx.hstack(
                                 rx.spacer(),
                                 rx.heading("Total de la Compra:", size="5", weight="medium"),
@@ -141,7 +141,7 @@ def purchase_history_content() -> rx.Component:
                                 padding_top="0.5em",
                             ),
                             
-                            # Botón condicional para imprimir la factura
+                            # Botón de factura (sin cambios)
                             rx.cond(
                                 purchase.status != PurchaseStatus.PENDING.value,
                                 rx.link(
@@ -156,14 +156,12 @@ def purchase_history_content() -> rx.Component:
                         width="100%", padding="1.5em",
                     )
                 ),
-                # Mensaje si no se encuentran compras
                 rx.center(
                     rx.text("No se encontraron compras para tu búsqueda."),
                     padding_y="2em",
                 )
             ),
             
-            # Se añade el componente del modal a la página para que pueda ser invocado
             product_detail_modal(),
             
             spacing="6", width="100%", max_width="960px", align="center"
