@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL CON DESGLOSE COMPLETO)
+# likemodas/invoice/page.py (VERSIÓN FINAL)
 import reflex as rx
 from .state import InvoiceState
 
@@ -25,8 +25,23 @@ def invoice_page_content() -> rx.Component:
                         rx.text("#", InvoiceState.invoice_data.id),
                         align_items="end",
                     ),
-                    width="100%", align_items="start", margin_bottom="2em",
+                    width="100%", align_items="start", margin_bottom="1em",
                 ),
+                
+                # --- ✨ CAMBIO FINAL AÑADIDO AQUÍ 👇 ---
+                rx.hstack(
+                    rx.spacer(),
+                    rx.text(
+                        "Fecha de Emisión: ",
+                        rx.text.strong(InvoiceState.invoice_data.purchase_date_formatted),
+                    ),
+                    width="100%",
+                    justify="end",
+                    margin_bottom="2em",
+                    font_size="0.9em",
+                ),
+                # --- FIN DEL CAMBIO ---
+
                 rx.grid(
                     rx.vstack(
                         rx.heading("Remitente", size="4"), rx.text("Likemodas Store"),
@@ -46,7 +61,6 @@ def invoice_page_content() -> rx.Component:
                 rx.table.root(
                     rx.table.header(
                         rx.table.row(
-                            # --- NUEVOS ENCABEZADOS DE TABLA ---
                             rx.table.column_header_cell("Artículo", style={"color": "black"}),
                             rx.table.column_header_cell("Cantidad", text_align="center", style={"color": "black"}),
                             rx.table.column_header_cell("Precio Unitario", text_align="right", style={"color": "black"}),
@@ -59,7 +73,6 @@ def invoice_page_content() -> rx.Component:
                         rx.foreach(
                             InvoiceState.invoice_items,
                             lambda item: rx.table.row(
-                                # --- NUEVAS CELDAS CON TODOS LOS DATOS ---
                                 rx.table.cell(item.name, style={"color": "black"}),
                                 rx.table.cell(item.quantity, text_align="center", style={"color": "black"}),
                                 rx.table.cell(item.price_cop, text_align="right", style={"color": "black"}),
@@ -72,7 +85,6 @@ def invoice_page_content() -> rx.Component:
                     variant="surface",
                     width="100%",
                 ),
-                # --- RESUMEN FINAL ALINEADO A LA DERECHA ---
                 rx.hstack(
                     rx.spacer(),
                     rx.vstack(
@@ -104,7 +116,7 @@ def invoice_page_content() -> rx.Component:
                     "Imprimir Factura", on_click=rx.call_script("window.print()"),
                     class_name="no-print", margin_top="3em",
                 ),
-                align="stretch", # Cambiado para que el total se alinee correctamente
+                align="stretch",
                 spacing="5",
             ),
             rx.center(rx.spinner(size="3"), rx.text("Cargando factura..."), height="90vh"),
