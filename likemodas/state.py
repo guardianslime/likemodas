@@ -72,12 +72,11 @@ class AdminPurchaseCardData(rx.Base):
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
 
-# --- ✨ INICIO DE LA MODIFICACIÓN: NUEVOS DTOs PARA COMPRAS ✨ ---
 class PurchaseItemCardData(rx.Base):
     """DTO para mostrar la miniatura de un artículo en el historial de compras."""
-    id: int  # ID del BlogPostModel
+    id: int
     title: str
-    image_url: str  # Solo la primera imagen para la miniatura
+    image_url: str
     price_at_purchase_cop: str
 
 class UserPurchaseHistoryCardData(rx.Base):
@@ -85,9 +84,7 @@ class UserPurchaseHistoryCardData(rx.Base):
     id: int; purchase_date_formatted: str; status: str; total_price_cop: str
     shipping_name: str; shipping_address: str; shipping_neighborhood: str
     shipping_city: str; shipping_phone: str
-    # ANTES: items_formatted: list[str]
-    items: list[PurchaseItemCardData] # AHORA: Usamos el nuevo DTO
-# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+    items: list[PurchaseItemCardData]
 
 class AttributeData(rx.Base):
     key: str
@@ -102,25 +99,21 @@ class CommentData(rx.Base):
     created_at_formatted: str
     updates: List["CommentData"] = []
 
-# PEGA LAS CLASES AQUÍ
 class InvoiceItemData(rx.Base):
     """Un modelo específico para cada línea de artículo en la factura."""
     name: str
     quantity: int
     price_cop: str
-    # --- CAMPOS ACTUALIZADOS ---
-    subtotal_cop: str # Antes se llamaba total_cop
+    subtotal_cop: str
     iva_cop: str
     total_con_iva_cop: str
 
     @property
     def price_cop(self) -> str:
-        """Propiedad computada para formatear el precio unitario."""
         return format_to_cop(self.price)
 
     @property
     def total_cop(self) -> str:
-        """Propiedad computada para formatear el precio total del artículo."""
         return format_to_cop(self.price * self.quantity)
 
 class InvoiceData(rx.Base):
@@ -133,7 +126,6 @@ class InvoiceData(rx.Base):
     customer_email: str
     shipping_full_address: str
     shipping_phone: str
-    # --- CORRECCIÓN: Añadimos el campo para el IVA ---
     subtotal_cop: str
     iva_cop: str
     total_price_cop: str
@@ -143,7 +135,7 @@ class InvoiceData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
-    _product_id_to_load_on_mount: Optional[int] = None # <-- AÑADE ESTA LÍNEA
+    _product_id_to_load_on_mount: Optional[int] = None
     success: bool = False
     error_message: str = ""
     
@@ -152,17 +144,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.is_authenticated or self.authenticated_user.id < 0:
             return None
         
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
         with rx.session() as session:
-            # Usamos .options() con joinedload para cargar el 'user' relacionado
-            # en la misma consulta.
             query = (
                 sqlmodel.select(UserInfo)
                 .options(sqlalchemy.orm.joinedload(UserInfo.user))
                 .where(UserInfo.user_id == self.authenticated_user.id)
             )
             return session.exec(query).one_or_none()
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     @rx.var
     def is_admin(self) -> bool:
@@ -223,7 +211,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def verify_token(self):
-        # --- CORRECCIÓN AQUÍ ---
         token = ""
         try:
             full_url = self.router.url
@@ -233,7 +220,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 token = params.get("token", "")
         except Exception:
             pass
-        # --- FIN DE LA CORRECCIÓN ---
 
         if not token:
             self.message = "Error: No se proporcionó un token de verificación."
@@ -251,6 +237,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                     return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "El token de verificación es inválido o ha expirado."
+
     is_success: bool = False
     token: str = ""
     is_token_valid: bool = False
@@ -307,10 +294,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
-        """
-        Busca los datos de una compra, calcula IVA y subtotales por item y totales,
-        y los devuelve como un DTO.
-        """
         if not self.is_authenticated:
             return None
 
@@ -338,7 +321,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             invoice_items = []
             for item in purchase.items:
                 if item.blog_post:
-                    # --- NUEVA LÓGICA DE CÁLCULO POR ARTÍCULO ---
                     item_subtotal = item.price_at_purchase * item.quantity
                     item_iva = item_subtotal * IVA_RATE
                     item_total_con_iva = item_subtotal + item_iva
@@ -367,11 +349,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 total_price_cop=format_to_cop(total_amount),
             )
             
-    # --- ✨ 2. AÑADE ESTAS DOS NUEVAS PROPIEDADES COMPUTADAS ---
-
     @rx.var
     def available_types(self) -> list[str]:
-        """Devuelve la lista de tipos correcta según la categoría seleccionada."""
         if self.category == Category.ROPA.value:
             return LISTA_TIPOS_ROPA
         if self.category == Category.CALZADO.value:
@@ -382,45 +361,32 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def material_label(self) -> str:
-        """Devuelve la etiqueta correcta ('Tela' o 'Material') para el formulario."""
         if self.category == Category.ROPA.value:
             return "Tela"
         return "Material"
 
     @rx.var
     def available_materials(self) -> list[str]:
-        """Devuelve la lista de materiales correcta según la categoría seleccionada."""
         if self.category == Category.ROPA.value:
             return MATERIALES_ROPA
         if self.category == Category.CALZADO.value:
             return MATERIALES_CALZADO
         if self.category == Category.MOCHILAS.value:
             return MATERIALES_MOCHILAS
-        return [] # Devuelve una lista vacía si no hay categoría
+        return []
             
-    # --- NUEVO: Variables para las características del producto ---
-    # --- ✅ 1. MODIFICAR ATRIBUTOS DEL FORMULARIO DE 'str' a 'list[str]' ---
-    # ANTES: attr_talla_ropa: str = ""
     attr_tallas_ropa: list[str] = []
-    # ANTES: attr_numero_calzado: str = ""
     attr_numeros_calzado: list[str] = []
-    # ANTES: attr_tamano_mochila: str = ""
     attr_tamanos_mochila: list[str] = []
-    # Mantenemos el color y material como selección única en el formulario de creación para simplicidad
     attr_colores: list[str] = []
     attr_material: str = ""
-    # --- ✨ LÍNEAS NUEVAS ---
-    # Variable para guardar el tipo seleccionado en el formulario
     attr_tipo: str = ""
-    # Variable para la búsqueda dentro del selector de tipo
     search_attr_tipo: str = ""
 
-    # --- NUEVO: Event handlers para actualizar las características ---
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
     def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
     def set_attr_tipo(self, value: str):
-        """Actualiza el tipo seleccionado en el estado del formulario."""
         self.attr_tipo = value
 
     def _clear_add_form(self):
@@ -429,8 +395,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.price = ""
         self.category = ""
         self.temp_images = []
-        # --- NUEVO: Limpiar los atributos ---
-        self.attr_colores = [] # <-- AHORA
+        self.attr_colores = []
         self.attr_talla_ropa = ""
         self.attr_material = ""
         self.attr_numero_calzado = ""
@@ -442,27 +407,23 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
         
-        # --- NUEVO: Recopilar los atributos seleccionados ---
         attributes = {}
         category = form_data.get("category")
         if category == Category.ROPA.value:
             if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            # --- MODIFICAR LÍNEA ---
-            if self.attr_colores: attributes["Color"] = self.attr_colores # <-- AHORA
+            if self.attr_colores: attributes["Color"] = self.attr_colores
             if self.attr_tallas_ropa: attributes["Talla"] = self.attr_tallas_ropa
             if self.attr_material: attributes["Tela"] = self.attr_material
 
         elif category == Category.CALZADO.value:
             if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            # --- MODIFICAR LÍNEA ---
-            if self.attr_colores: attributes["Color"] = self.attr_colores # <-- AHORA
+            if self.attr_colores: attributes["Color"] = self.attr_colores
             if self.attr_numeros_calzado: attributes["Número"] = self.attr_numeros_calzado
             if self.attr_material: attributes["Material"] = self.attr_material
         
         elif category == Category.MOCHILAS.value:
             if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            # --- MODIFICAR LÍNEA ---
-            if self.attr_colores: attributes["Color"] = self.attr_colores # <-- AHORA
+            if self.attr_colores: attributes["Color"] = self.attr_colores
             if self.attr_tamanos_mochila: attributes["Tamaño"] = self.attr_tamanos_mochila
             if self.attr_material: attributes["Material"] = self.attr_material
         
@@ -474,7 +435,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 category=category,
                 image_urls=self.temp_images,
-                attributes=attributes,  # Se guardan los atributos en el campo JSON
+                attributes=attributes,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
             )
@@ -487,20 +448,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
-        """
-        Una propiedad computada que devuelve la lista de productos
-        filtrada según las selecciones del panel.
-        """
-        # Empezamos con todos los productos de la categoría actual
         posts_to_filter = self.posts
 
-        # 1. Filtrar por precio
         if self.min_price:
             try:
                 min_p = float(self.min_price)
                 posts_to_filter = [p for p in posts_to_filter if p.price >= min_p]
             except ValueError:
-                pass # Ignorar si el valor no es un número
+                pass
         if self.max_price:
             try:
                 max_p = float(self.max_price)
@@ -508,14 +463,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             except ValueError:
                 pass
 
-        # 2. Filtrar por color (selección múltiple)
         if self.filter_colors:
             posts_to_filter = [
                 p for p in posts_to_filter 
                 if p.attributes.get("Color") in self.filter_colors
             ]
             
-        # 3. Filtrar por material/tela (selección múltiple)
         if self.filter_materiales_tela:
             posts_to_filter = [
                 p for p in posts_to_filter 
@@ -523,12 +476,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                    (p.attributes.get("Tela") in self.filter_materiales_tela)
             ]
 
-        # 4. Filtrar por talla/medida (selección múltiple y complejo)
         if self.filter_tallas:
             posts_to_filter = [
                 p for p in posts_to_filter
-                # El 'any' comprueba si CUALQUIERA de las tallas del producto
-                # está en la lista de tallas que el usuario seleccionó.
                 if any(
                     size in self.filter_tallas 
                     for size in p.attributes.get("Talla", [])
@@ -543,23 +493,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         return posts_to_filter
     
-    # --- NUEVO: Variables para la BÚSQUEDA en características ---
     search_attr_color: str = ""
     search_attr_talla_ropa: str = ""
     search_attr_material: str = ""
     search_attr_numero_calzado: str = ""
     search_attr_tamano_mochila: str = ""
 
-    # --- NUEVO: Event handlers para la BÚSQUEDA ---
     def set_search_attr_color(self, query: str): self.search_attr_color = query
     def set_search_attr_talla_ropa(self, query: str): self.search_attr_talla_ropa = query
     def set_search_attr_material(self, query: str): self.search_attr_material = query
     def set_search_attr_numero_calzado(self, query: str): self.search_attr_numero_calzado = query
     def set_search_attr_tipo(self, query: str):
-        """Actualiza el texto de búsqueda para el selector de tipo."""
         self.search_attr_tipo = query
 
-    # --- NUEVO: Listas filtradas para los buscadores ---
     @rx.var
     def filtered_attr_colores(self) -> list[str]:
         if not self.search_attr_color.strip(): return LISTA_COLORES
@@ -572,16 +518,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def filtered_attr_materiales(self) -> list[str]:
-        """
-        Filtra la lista de materiales DISPONIBLES según el texto de búsqueda.
-        """
-        # ANTES: if not self.search_attr_material.strip(): return LISTA_MATERIALES
-        # AHORA: Usa la nueva propiedad dinámica 'available_materials'
         if not self.search_attr_material.strip():
             return self.available_materials
-
-        # ANTES: return [o for o in LISTA_MATERIALES if self.search_attr_material.lower() in o.lower()]
-        # AHORA: También usa 'available_materials' como fuente
         return [
             o for o in self.available_materials 
             if self.search_attr_material.lower() in o.lower()
@@ -594,7 +532,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def filtered_attr_tipos(self) -> list[str]:
-        """Filtra la lista de tipos disponibles según el texto de búsqueda en el formulario."""
         if not self.search_attr_tipo.strip():
             return self.available_types
         return [
@@ -607,46 +544,36 @@ class AppState(reflex_local_auth.LocalAuthState):
     show_filters: bool = False
     current_category: str = ""
     open_filter_name: str = ""
-    # ANTES: filter_color: str = ""
     filter_colors: list[str] = []
-    # ANTES: filter_talla: str = ""
     filter_tallas: list[str] = []
-    # ANTES: filter_tipo_prenda: str = ""
     filter_tipos_prenda: list[str] = []
-    # ... (Haz lo mismo para todos los filtros que quieres que sean múltiples)
     filter_tipos_zapato: list[str] = []
     filter_numeros_calzado: list[str] = []
     filter_tipos_mochila: list[str] = []
     filter_materiales_tela: list[str] = []
-    filter_tipos_general: list[str] = [] # <-- ✨ AÑADE ESTA LÍNEA
+    filter_tipos_general: list[str] = []
 
-    # --- ✅ 3. NUEVOS EVENT HANDLERS GENÉRICOS ---
     def add_attribute_value(self, attribute_name: str, value: str):
-        """Añade un valor a una lista de atributos en el formulario de creación."""
         current_list = getattr(self, attribute_name)
         if value not in current_list:
             current_list.append(value)
             setattr(self, attribute_name, current_list)
 
     def remove_attribute_value(self, attribute_name: str, value: str):
-        """Elimina un valor de una lista de atributos en el formulario."""
         current_list = getattr(self, attribute_name)
         if value in current_list:
             current_list.remove(value)
             setattr(self, attribute_name, current_list)
 
     def add_filter_value(self, filter_name: str, value: str):
-        """Añade un valor a una lista de filtros, con un límite de 5."""
         current_list = getattr(self, filter_name)
         if value not in current_list:
             if len(current_list) >= 5:
-                # Notifica al usuario que no puede agregar más.
                 return rx.toast.info("Puedes seleccionar un máximo de 5 filtros por característica.")
             current_list.append(value)
             setattr(self, filter_name, current_list)
 
     def remove_filter_value(self, filter_name: str, value: str):
-        """Elimina un valor de una lista de filtros."""
         current_list = getattr(self, filter_name)
         if value in current_list:
             current_list.remove(value)
@@ -691,7 +618,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_numero_calzado: str = ""
     search_material_tela: str = ""
     search_medida_talla: str = ""
-    search_tipo_general: str = "" # <-- ✨ AÑADE ESTA LÍNEA
+    search_tipo_general: str = ""
 
     def set_search_tipo_prenda(self, query: str): self.search_tipo_prenda = query
     def set_search_tipo_zapato(self, query: str): self.search_tipo_zapato = query
@@ -702,10 +629,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_numero_calzado(self, query: str): self.search_numero_calzado = query
     def set_search_material_tela(self, query: str): self.search_material_tela = query
     def set_search_medida_talla(self, query: str): self.search_medida_talla = query
-    def set_search_tipo_general(self, query: str): self.search_tipo_general = query # <-- ✨ AÑADE ESTA LÍNEA
+    def set_search_tipo_general(self, query: str): self.search_tipo_general = query
 
     @rx.var
-    def filtered_tipos_general(self) -> list[str]: # <-- ✨ AÑADE ESTA FUNCIÓN COMPLETA
+    def filtered_tipos_general(self) -> list[str]:
         if not self.search_tipo_general.strip(): return LISTA_TIPOS_GENERAL
         return [o for o in LISTA_TIPOS_GENERAL if self.search_tipo_general.lower() in o.lower()]
 
@@ -756,10 +683,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load(self):
-        """
-        Carga los productos. Si hay un parámetro de categoría en la URL,
-        actualiza el estado y filtra los resultados.
-        """
         self.is_loading = True
         yield
 
@@ -774,9 +697,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if category_list:
                 category = category_list[0]
                 
-        # --- ✨ LA LÍNEA CLAVE QUE FALTA ---
-        # Aquí actualizamos el estado con la categoría de la URL.
-        # Si no hay categoría, se establece como "todos".
         self.current_category = category if category else "todos"
 
         with rx.session() as session:
@@ -786,10 +706,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 query = query.where(BlogPostModel.category == self.current_category)
             
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-
-            # --- INICIO DE LA CORRECCIÓN CLAVE ---
-            # Reemplaza la línea "self.posts = [ProductCardData.from_orm(p) for p in results]"
-            # con este bucle manual:
             
             temp_posts = []
             for p in results:
@@ -798,7 +714,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         id=p.id,
                         title=p.title,
                         price=p.price,
-                        # Llamamos a la propiedad del MODELO y guardamos el resultado
                         price_cop=p.price_cop, 
                         image_urls=p.image_urls,
                         average_rating=p.average_rating,
@@ -807,12 +722,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
             self.posts = temp_posts
-            # --- FIN DE LA CORRECCIÓN CLAVE ---
         
         self.is_loading = False
     
     show_detail_modal: bool = False
-    # ✨ CORRECCIÓN CRÍTICA: La variable del modal ahora usa el DTO, no el modelo ORM.
     product_in_modal: Optional[ProductDetailData] = None
     current_image_index: int = 0
     is_editing_post: bool = False
@@ -821,7 +734,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     post_content: str = ""
     price_str: str = ""
 
-    # ✨ NUEVAS VARIABLE PARA GESTIONAR IMÁGENES EN EDICIÓN
     post_images_in_form: list[str] = []
 
     @rx.var
@@ -855,7 +767,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.post_title = db_post.title
                 self.post_content = db_post.content
                 self.price_str = str(db_post.price or 0.0)
-                # ✨ CARGAMOS LAS IMÁGENES EXISTENTES EN NUESTRA ÚNICA LISTA
                 self.post_images_in_form = db_post.image_urls.copy() if db_post.image_urls else []
                 self.is_editing_post = True
             else:
@@ -869,7 +780,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.post_title = ""
             self.post_content = ""
             self.price_str = ""
-            # ✨ LIMPIAMOS LA LISTA ÚNICA
             self.post_images_in_form = []
 
     @rx.event
@@ -888,23 +798,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 except (ValueError, TypeError):
                     return rx.toast.error("El precio debe ser un número válido.")
 
-                # ✨ LÓGICA SIMPLIFICADA: Guardamos el estado actual de la lista de imágenes
                 post_to_update.image_urls = self.post_images_in_form
                 
                 session.add(post_to_update)
                 session.commit()
                 yield self.cancel_editing_post(False)
-                # Recargamos ambas vistas de admin para que los cambios se vean en todos lados
                 yield self.load_all_my_posts()
                 yield self.on_load_admin_store()
                 yield rx.toast.success("Publicación actualizada correctamente.")
 
-    # --- Lógica de subida de imágenes (CORREGIDA CON MANEJADORES SEPARADOS) ---
-    temp_images: list[str] = [] # Para el formulario de 'añadir'
+    temp_images: list[str] = []
 
     @rx.event
     async def handle_add_upload(self, files: list[rx.UploadFile]):
-        """Manejador de subida solo para el formulario de AÑADIR publicación."""
         for file in files:
             upload_data = await file.read()
             unique_filename = f"{secrets.token_hex(8)}-{file.name}"
@@ -914,13 +820,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_temp_image(self, filename: str):
-        """Elimina una imagen de la lista temporal del formulario de AÑADIR."""
         if filename in self.temp_images:
             self.temp_images.remove(filename)
 
     @rx.event
     async def handle_edit_upload(self, files: list[rx.UploadFile]):
-        """Manejador de subida solo para el formulario de EDITAR publicación."""
         for file in files:
             upload_data = await file.read()
             unique_filename = f"{secrets.token_hex(8)}-{file.name}"
@@ -930,7 +834,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_edited_image(self, filename: str):
-        """Elimina una imagen de la lista del formulario de EDITAR."""
         if filename in self.post_images_in_form:
             self.post_images_in_form.remove(filename)
 
@@ -1006,35 +909,26 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        """
-        Valida, recopila todos los atributos (incluyendo selecciones múltiples)
-        y guarda el nuevo producto en la base de datos.
-        """
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
         
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
         
-        # --- 1. Recopilación dinámica de atributos ---
-        # Inicializamos un diccionario vacío para guardar las características.
         attributes = {}
         category = form_data.get("category")
 
         if category == Category.ROPA.value:
             if self.attr_color:
                 attributes["Color"] = self.attr_color
-            # Comprobamos la lista de tallas. Si no está vacía, la guardamos.
             if self.attr_tallas_ropa:
                 attributes["Talla"] = self.attr_tallas_ropa
             if self.attr_material:
-                # Usamos la etiqueta "Tela" específicamente para la categoría Ropa.
                 attributes["Tela"] = self.attr_material
 
         elif category == Category.CALZADO.value:
             if self.attr_color:
                 attributes["Color"] = self.attr_color
-            # Comprobamos la lista de números. Si no está vacía, la guardamos.
             if self.attr_numeros_calzado:
                 attributes["Número"] = self.attr_numeros_calzado
             if self.attr_material:
@@ -1043,7 +937,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         elif category == Category.MOCHILAS.value:
             if self.attr_color:
                 attributes["Color"] = self.attr_color
-            # Comprobamos la lista de tamaños. Si no está vacía, la guardamos.
             if self.attr_tamanos_mochila:
                 attributes["Tamaño"] = self.attr_tamanos_mochila
             if self.attr_material:
@@ -1057,12 +950,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 category=category,
                 image_urls=self.temp_images,
-                
-                # --- 2. Guardar el diccionario de atributos en la BD ---
-                # El campo 'attributes' de tu modelo es de tipo JSON y puede
-                # guardar perfectamente nuestro diccionario.
                 attributes=attributes,
-                
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
             )
@@ -1070,7 +958,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_post)
             
-        # Limpiamos el formulario, incluyendo las nuevas listas de atributos.
         self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
@@ -1155,8 +1042,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/my-purchases")
 
     def toggle_form(self):
-        # --- ✨ CORRECCIÓN 1 AQUÍ ---
-        # Usamos 'not' para la negación lógica en lugar de '~' (que es bit a bit).
         self.show_form = not self.show_form
     def set_city(self, city: str): self.city = city; self.neighborhood = ""
     def set_neighborhood(self, hood: str): self.neighborhood = hood
@@ -1296,7 +1181,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
                 
-                # Esta es la línea corregida
                 yield AppState.load_pending_purchases
             else:
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
@@ -1352,17 +1236,37 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_query_user_history(self, query: str):
         self.search_query_user_history = query
 
+    # --- ✨ INICIO DE LA CORRECCIÓN DEL ERROR DE COMPILACIÓN ✨ ---
     @rx.var
     def filtered_user_purchases(self) -> list[UserPurchaseHistoryCardData]:
+        """
+        Filtra las compras del usuario. Esta versión usa un bucle explícito
+        para evitar errores de compilación en Reflex.
+        """
         if not self.search_query_user_history.strip():
             return self.user_purchases
+        
         q = self.search_query_user_history.lower()
-        return [
-            p for p in self.user_purchases 
-            if q in f"#{p.id}" or any(q in item.title.lower() for item in p.items)
-        ]
+        
+        filtered_list = []
+        for p in self.user_purchases:
+            # Comprueba si la búsqueda coincide con el ID de la compra
+            id_match = q in f"#{p.id}"
+            
+            # Comprueba si la búsqueda coincide con el título de alguno de los artículos
+            item_match = False
+            if p.items:
+                for item in p.items:
+                    if q in item.title.lower():
+                        item_match = True
+                        break  # Si se encuentra una coincidencia, no es necesario seguir buscando en esta compra
+            
+            if id_match or item_match:
+                filtered_list.append(p)
+                
+        return filtered_list
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
-    # --- ✨ INICIO DE LA MODIFICACIÓN: LÓGICA DE CARGA DE COMPRAS ✨ ---
     @rx.event
     def load_purchases(self):
         if not self.authenticated_user_info:
@@ -1380,7 +1284,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_purchases = []
             for p in results:
-                # Convertimos cada artículo comprado al nuevo DTO
                 purchase_items_data = []
                 if p.items:
                     for item in p.items:
@@ -1394,7 +1297,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 )
                             )
                 
-                # Creamos el DTO principal de la compra con la lista de artículos
                 temp_purchases.append(
                     UserPurchaseHistoryCardData(
                         id=p.id, 
@@ -1410,7 +1312,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
             self.user_purchases = temp_purchases
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
     notifications: List[NotificationModel] = []
     
@@ -1558,10 +1459,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
-                # --- INICIO DE LA MODIFICACIÓN ---
-                # Filtramos para que solo muestre los posts del usuario logueado
                 .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
-                # --- FIN DE LA MODIFICACIÓN ---
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
@@ -1576,10 +1474,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_main_page(self):
-        """
-        Carga los productos y, si hay un parámetro ?product=ID en la URL,
-        usa un manejador secundario para abrir el modal de forma segura.
-        """
         if self.is_admin:
             return rx.redirect("/admin/store")
 
@@ -1596,35 +1490,21 @@ class AppState(reflex_local_auth.LocalAuthState):
                 product_id = product_id_list[0]
 
         if product_id is not None:
-            # Guardamos el ID en el estado
             self._product_id_to_load_on_mount = int(product_id)
-            # Llamamos al nuevo manejador SIN argumentos
-            yield self.trigger_modal_from_load # <--- Llamada corregida
+            yield self.trigger_modal_from_load
 
-    # --- ✨ LÓGICA PARA OPINIONES Y VALORACIONES ---
-
-    # Almacena los comentarios del producto que está en el modal
     product_comments: list[CommentData] = []
-    
-    # Almacena la opinión del usuario actual para el producto actual (si existe)
     my_review_for_product: Optional[CommentData] = None
-
-    # Estado del formulario de opinión
     review_rating: int = 0
     review_content: str = ""
-    show_review_form: bool = False # <--- AÑADE ESTA LÍNEA
-    review_limit_reached: bool = False # <-- ✨ AÑADE ESTA LÍNEA
+    show_review_form: bool = False
+    review_limit_reached: bool = False
 
     @rx.var
     def can_review_product(self) -> bool:
-        """
-        Determina si el usuario actual puede dejar una opinión.
-        Debe estar autenticado y haber comprado el producto.
-        """
         if not self.is_authenticated or not self.product_in_modal:
             return False
         with rx.session() as session:
-            # Comprueba si existe una compra confirmada por este usuario para este producto
             purchase_item = session.exec(
                 sqlmodel.select(PurchaseItemModel)
                 .join(PurchaseModel)
@@ -1636,17 +1516,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).first()
             return purchase_item is not None
         
-    # --- ✨ AÑADE ESTA FUNCIÓN DENTRO DE AppState ✨ ---
     @rx.var
     def product_attributes_list(self) -> list[AttributeData]:
-        """
-        Convierte el diccionario de atributos en una lista de DTOs,
-        asegurando que el valor sea siempre un string.
-        """
         if self.product_in_modal and self.product_in_modal.attributes:
             processed_attributes = []
             for k, v in self.product_in_modal.attributes.items():
-                # Convertimos la lista a un string aquí, en el backend
                 if isinstance(v, list):
                     value_str = ", ".join(v)
                 else:
@@ -1656,14 +1530,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         return []
 
     def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
-        """
-        Encuentra un item de compra del usuario para el producto actual que aún no tenga 
-        un comentario original asociado.
-        """
         if not self.authenticated_user_info or not self.product_in_modal:
             return None
         
-        # 1. Obtener todas las compras confirmadas de este producto por el usuario.
         purchase_items = session.exec(
             sqlmodel.select(PurchaseItemModel)
             .join(PurchaseModel)
@@ -1674,20 +1543,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
         ).all()
 
-        # 2. Obtener los IDs de las compras que ya tienen un comentario ORIGINAL asociado.
         claimed_purchase_ids = set(
             session.exec(
                 sqlmodel.select(CommentModel.purchase_item_id)
                 .where(
                     CommentModel.userinfo_id == self.authenticated_user_info.id,
                     CommentModel.blog_post_id == self.product_in_modal.id,
-                    CommentModel.parent_comment_id == None, # Solo hilos de comentarios originales
+                    CommentModel.parent_comment_id == None,
                     CommentModel.purchase_item_id != None
                 )
             ).all()
         )
 
-        # 3. Devolver la primera compra que aún no ha sido "reclamada" por un comentario.
         for item in purchase_items:
             if item.id not in claimed_purchase_ids:
                 return item
@@ -1695,27 +1562,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         return None
 
     def set_review_rating(self, rating: int):
-        """Actualiza la valoración en el estado del formulario."""
         self.review_rating = rating
     
-    # --- ✨ INICIO DE LA MODIFICACIÓN 1 ✨ ---
-    # Diccionario para rastrear qué comentarios están expandidos.
-    # La clave será el ID del comentario, el valor será True (expandido) o False (colapsado).
     expanded_comments: dict[int, bool] = {}
 
     def toggle_comment_updates(self, comment_id: int):
-        """Expande o colapsa el historial de un comentario específico."""
-        # Obtiene el estado actual (si no existe, es False) y lo invierte.
         self.expanded_comments[comment_id] = not self.expanded_comments.get(comment_id, False)
-    # --- ✨ FIN DE LA MODIFICACIÓN 1 ✨ ---
 
-    # ✅ ASEGÚRATE DE QUE LA FUNCIÓN ESTÉ INDENTADA A ESTE NIVEL
     @rx.event
     def submit_review(self, form_data: dict):
-        """
-        Gestiona el envío de una nueva opinión o la actualización de una existente,
-        aplicando el límite de 2 actualizaciones por compra.
-        """
         if not self.is_authenticated or not self.product_in_modal:
             return rx.toast.error("Debes iniciar sesión para opinar.")
         if self.review_rating == 0:
@@ -1728,20 +1583,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.toast.error("No se pudo identificar al usuario.")
 
             if self.my_review_for_product:
-                # --- LÓGICA DE ACTUALIZACIÓN ---
-                # Usamos el ID del DTO para obtener el objeto "vivo" de la BD
                 original_comment = session.get(CommentModel, self.my_review_for_product.id)
 
-                # --- ✨ MEJORA DE ROBUSTEZ AÑADIDA ✨ ---
-                # Verificamos que el comentario realmente exista antes de continuar.
                 if not original_comment:
                     return rx.toast.error("El comentario que intentas actualizar ya no existe.")
 
-                # Buscamos el comentario raíz (el original sin padre)
                 while original_comment.parent:
                     original_comment = original_comment.parent
                 
-                # Verificamos el límite de 2 actualizaciones
                 if len(original_comment.updates) >= 2:
                     return rx.toast.error("Ya has alcanzado el límite de 2 actualizaciones para esta compra.")
 
@@ -1753,14 +1602,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     author_username=user_info.user.username,
                     author_initial=user_info.user.username[0].upper(),
                     parent_comment_id=original_comment.id,
-                    # La actualización hereda el vínculo de la compra original.
                     purchase_item_id=original_comment.purchase_item_id 
                 )
                 session.add(new_update)
                 yield rx.toast.success("¡Opinión actualizada!")
             else:
-                # --- LÓGICA DE NUEVO COMENTARIO ---
-                # Buscamos una compra "sin reclamar" para este producto.
                 unclaimed_purchase_item = self._find_unclaimed_purchase(session)
                 if not unclaimed_purchase_item:
                     return rx.toast.error("Debes comprar este producto para poder dejar una opinión.")
@@ -1772,7 +1618,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     content=content,
                     author_username=user_info.user.username,
                     author_initial=user_info.user.username[0].upper(),
-                    # Vinculamos este nuevo comentario a la compra que lo desbloqueó.
                     purchase_item_id=unclaimed_purchase_item.id
                 )
                 session.add(new_review)
@@ -1781,13 +1626,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
-    # --- AÑADE ESTA NUEVA FUNCIÓN PRIVADA DENTRO DE AppState ---
     def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
-        """Encuentra un item de compra del usuario para el producto actual que aún no tenga un comentario asociado."""
         if not self.authenticated_user_info or not self.product_in_modal:
             return None
         
-        # 1. Obtener todas las compras confirmadas de este producto por el usuario
         purchase_items = session.exec(
             sqlmodel.select(PurchaseItemModel)
             .join(PurchaseModel)
@@ -1798,44 +1640,37 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
         ).all()
 
-        # 2. Obtener los IDs de las compras que ya tienen un comentario
         claimed_purchase_ids = {
             c.purchase_item_id for c in self.product_comments if c.purchase_item_id
         }
 
-        # 3. Devolver la primera compra que aún no ha sido "reclamada" por un comentario
         for item in purchase_items:
             if item.id not in claimed_purchase_ids:
                 return item
         return None
 
-    # --- AÑADIR: Variables para publicaciones guardadas ---
     saved_post_ids: set[int] = set()
     saved_posts_gallery: list[ProductCardData] = []
 
     @rx.var
     def is_current_post_saved(self) -> bool:
-        """Comprueba si el producto en el modal está guardado por el usuario actual."""
         if not self.product_in_modal or not self.is_authenticated:
             return False
         return self.product_in_modal.id in self.saved_post_ids
 
     @rx.event
     def load_saved_post_ids(self):
-        """Carga los IDs de las publicaciones guardadas por el usuario actual."""
         if not self.authenticated_user_info:
             self.saved_post_ids = set()
             return
         
         with rx.session() as session:
-            # Recargamos el user_info para acceder a la nueva relación 'saved_posts'
             user_info = session.get(UserInfo, self.authenticated_user_info.id)
             if user_info:
                 self.saved_post_ids = {post.id for post in user_info.saved_posts}
 
     @rx.event
     def toggle_save_post(self):
-        """Guarda o elimina una publicación de la lista de guardados del usuario."""
         if not self.authenticated_user_info or not self.product_in_modal:
             return rx.toast.error("Debes iniciar sesión para guardar publicaciones.")
 
@@ -1848,12 +1683,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.toast.error("Error al procesar la solicitud.")
 
             if post_id in self.saved_post_ids:
-                # Si ya está guardado, lo eliminamos
                 user_info.saved_posts.remove(post_to_toggle)
                 self.saved_post_ids.remove(post_id)
                 yield rx.toast.info("Publicación eliminada de tus guardados.")
             else:
-                # Si no está guardado, lo añadimos
                 user_info.saved_posts.append(post_to_toggle)
                 self.saved_post_ids.add(post_id)
                 yield rx.toast.success("¡Publicación guardada!")
@@ -1861,16 +1694,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(user_info)
             session.commit()
 
-    # --- ✨ INICIO DE LA CORRECCIÓN: saved_posts no cargaba en navegación directa ✨ ---
     @rx.event
     def on_load_saved_posts_page(self):
-        """Carga la galería de publicaciones guardadas por el usuario."""
-        self.is_loading = True  # <-- FIX: Activar estado de carga
+        self.is_loading = True
         yield
         
         if not self.authenticated_user_info:
             self.saved_posts_gallery = []
-            self.is_loading = False # <-- FIX: Desactivar en caso de redirección
+            self.is_loading = False
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         
         with rx.session() as session:
@@ -1884,21 +1715,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                     temp_posts.append(product_dto)
                 self.saved_posts_gallery = temp_posts
         
-        self.is_loading = False # <-- FIX: Desactivar estado de carga al finalizar
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+        self.is_loading = False
 
     @rx.event
     def trigger_modal_from_load(self):
-        """Abre el modal usando el ID guardado en el estado."""
         if self._product_id_to_load_on_mount is not None:
-            # Usamos yield from para ejecutar el otro manejador de eventos
             yield from self.open_product_detail_modal(self._product_id_to_load_on_mount)
-            # Limpiamos la variable para que no se vuelva a ejecutar
             self._product_id_to_load_on_mount = None
 
-    # --- AÑADE ESTA FUNCIÓN DE AYUDA DENTRO DE LA CLASE AppState ---
     def _convert_comment_to_dto(self, comment_model: CommentModel) -> CommentData:
-        """Convierte recursivamente un CommentModel de la BD a un DTO CommentData."""
         return CommentData(
             id=comment_model.id,
             content=comment_model.content,
@@ -1911,7 +1736,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
-        # --- 1. Limpieza de estado (añade el reseteo de la nueva variable) ---
         self.product_in_modal = None
         self.show_detail_modal = True
         self.current_image_index = 0
@@ -1920,10 +1744,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_rating = 0
         self.review_content = ""
         self.show_review_form = False
-        self.review_limit_reached = False # <-- ✨ AÑADE ESTA LÍNEA
+        self.review_limit_reached = False
 
         with rx.session() as session:
-            # ... (el resto del código de carga de datos no cambia) ...
             db_post = session.exec(
             sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
@@ -1932,7 +1755,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                # ... (la creación del product_dto y la carga de comentarios no cambia) ...
                 product_dto = ProductDetailData.from_orm(db_post)
                 if db_post.userinfo and db_post.userinfo.user:
                     product_dto.seller_name = db_post.userinfo.user.username
@@ -1943,7 +1765,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
                 self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
 
-                # --- ✨ INICIO DE LA LÓGICA CORREGIDA ✨ ---
                 if self.is_authenticated:
                     user_info = self.authenticated_user_info
 
@@ -1966,8 +1787,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         if not user_original_comment:
                             self.show_review_form = True
                         else:
-                            # Se cambió la lógica aquí para ser más precisa.
-                            # Asumimos 1 actualización por compra. Si compra 2 veces, tiene 2 actualizaciones.
                             total_allowed_updates = purchase_count 
                             current_updates_count = len(user_original_comment.updates)
 
@@ -1982,9 +1801,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 self.review_rating = latest_entry_in_thread.rating
                                 self.review_content = latest_entry_in_thread.content
                             else:
-                                # Si no le quedan créditos, marcamos el límite como alcanzado
-                                self.review_limit_reached = True # <-- ✨ ESTA ES LA LÓGICA NUEVA
-                # --- ✨ FIN DE LA LÓGICA CORREGIDA ✨ ---
+                                self.review_limit_reached = True
             else:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
@@ -1993,32 +1810,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.load_saved_post_ids
 
     
-    # Este método también se simplifica
     @rx.event
     def close_product_detail_modal(self, open_state: bool):
         if not open_state:
             self.show_detail_modal = False
             self.product_in_modal = None
-            # ✨ ELIMINADO: Ya no necesitamos redirigir a "/", la URL base no cambia
     
-    # ✨ NUEVA PROPIEDAD COMPUTADA
     @rx.var
     def base_app_url(self) -> str:
-        """
-        Devuelve la URL PÚBLICA de la aplicación para construir enlaces.
-        Usa 'deploy_url' de la configuración.
-        """
-        # Usamos deploy_url para los enlaces que ven los usuarios,
-        # no api_url que es para la conexión interna.
         return get_config().deploy_url
     
-    # --- AÑADIR: Variables para la página del vendedor ---
     seller_page_info: Optional[UserInfo] = None
     seller_page_posts: list[ProductCardData] = []
 
     @rx.event
     def on_load_seller_page(self):
-        """Carga la información del vendedor analizando la URL completa."""
         self.is_loading = True
         self.seller_page_info = None
         self.seller_page_posts = []
@@ -2026,27 +1832,22 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         seller_id_str = "0"
         try:
-            # 1. Obtenemos la URL completa, ej: "/vendedor?id=42"
             full_url = self.router.url
             if full_url and "?" in full_url:
-                # 2. Analizamos la URL para aislar los parámetros de consulta
                 parsed_url = urlparse(full_url)
                 query_dict = parse_qs(parsed_url.query)
                 
-                # 3. Extraemos el valor de "id" de forma segura
-                # parse_qs devuelve una lista, ej: {'id': ['42']}
                 id_list = query_dict.get("id")
                 if id_list:
                     seller_id_str = id_list[0]
         except Exception:
-            pass # Si algo falla, usamos el valor por defecto
+            pass
 
         try:
             seller_id_int = int(seller_id_str)
         except (ValueError, TypeError):
             seller_id_int = 0
 
-        # El resto de la lógica para cargar los datos es la misma y funcionará correctamente
         if seller_id_int > 0:
             with rx.session() as session:
                 seller_info = session.exec(
