@@ -14,7 +14,7 @@ from reflex.config import get_config
 # ✨ 1. AÑADE ESTAS LÍNEAS AQUÍ ✨
 from urllib.parse import urlparse, parse_qs
 
-from likemodas.invoice.state import InvoiceData, InvoiceItemData
+
 
 from . import navigation
 from .models import (
@@ -89,6 +89,36 @@ class CommentData(rx.Base):
     author_initial: str
     created_at_formatted: str
     updates: List["CommentData"] = []
+
+# PEGA LAS CLASES AQUÍ
+class InvoiceItemData(rx.Base):
+    """Un modelo específico para cada línea de artículo en la factura."""
+    name: str
+    quantity: int
+    price: float
+
+    @property
+    def price_cop(self) -> str:
+        """Propiedad computada para formatear el precio unitario."""
+        return format_to_cop(self.price)
+
+    @property
+    def total_cop(self) -> str:
+        """Propiedad computada para formatear el precio total del artículo."""
+        return format_to_cop(self.price * self.quantity)
+
+class InvoiceData(rx.Base):
+    """DTO para contener toda la información necesaria para una factura."""
+    id: int
+    purchase_date_formatted: str
+    status: str
+    items: list[InvoiceItemData]
+    customer_name: str
+    customer_email: str
+    shipping_full_address: str
+    shipping_phone: str
+    subtotal_cop: str
+    total_price_cop: str
 
 
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
