@@ -1,8 +1,7 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL CON AJUSTES ESTÉTICOS)
+# likemodas/invoice/page.py (VERSIÓN FINAL CON DISEÑO PROFESIONAL)
 import reflex as rx
 from .state import InvoiceState
 
-# Estilos (sin cambios)
 invoice_style = {
     "font_family": "Arial, sans-serif", "padding": "2em", "max_width": "800px", "margin": "auto",
     "border": "1px solid #ddd", "box_shadow": "0 0 10px rgba(0, 0, 0, 0.1)",
@@ -22,7 +21,6 @@ def invoice_page_content() -> rx.Component:
                     rx.image(src="/logo.png", width="120px", height="auto"),
                     rx.spacer(),
                     rx.vstack(
-                        # --- CORRECCIÓN 1: Tamaño del encabezado reducido ---
                         rx.heading("FACTURA", size="6", weight="bold"),
                         rx.text("#", InvoiceState.invoice_data.id),
                         align_items="end",
@@ -32,7 +30,6 @@ def invoice_page_content() -> rx.Component:
                 rx.grid(
                     rx.vstack(
                         rx.heading("Remitente", size="4"), rx.text("Likemodas Store"),
-                        # --- CORRECCIÓN 2: Dirección actualizada ---
                         rx.text("Calle 17 #5-40 Los Sauces, Popayán, Cauca"),
                         rx.text("soporte@likemodas.com"),
                         align_items="start", spacing="1",
@@ -49,18 +46,16 @@ def invoice_page_content() -> rx.Component:
                 rx.table.root(
                     rx.table.header(
                         rx.table.row(
-                            # --- CORRECCIÓN 3: Color de texto forzado en negro para los encabezados ---
                             rx.table.column_header_cell("Artículo", style={"color": "black"}),
                             rx.table.column_header_cell("Cantidad", text_align="center", style={"color": "black"}),
                             rx.table.column_header_cell("Precio Unitario", text_align="right", style={"color": "black"}),
-                            rx.table.column_header_cell("Total", text_align="right", style={"color": "black"}),
+                            rx.table.column_header_cell("Subtotal", text_align="right", style={"color": "black"}),
                         )
                     ),
                     rx.table.body(
                         rx.foreach(
                             InvoiceState.invoice_items,
                             lambda item: rx.table.row(
-                                # --- CORRECCIÓN 4: Color de texto forzado en negro para las celdas de datos ---
                                 rx.table.cell(item.name, style={"color": "black"}),
                                 rx.table.cell(item.quantity, text_align="center", style={"color": "black"}),
                                 rx.table.cell(item.price_cop, text_align="right", style={"color": "black"}),
@@ -68,23 +63,30 @@ def invoice_page_content() -> rx.Component:
                             )
                         )
                     ),
+                    # --- NUEVO: Footer de la tabla con el desglose ---
+                    rx.table.footer(
+                        rx.table.row(
+                            rx.table.cell("Subtotal", col_span=3, text_align="right", style={"color": "black", "font-weight": "bold"}),
+                            rx.table.cell(InvoiceState.invoice_data.subtotal_cop, text_align="right", style={"color": "black"})
+                        ),
+                        rx.table.row(
+                            rx.table.cell("IVA (19%)", col_span=3, text_align="right", style={"color": "black", "font-weight": "bold"}),
+                            rx.table.cell(InvoiceState.invoice_data.iva_cop, text_align="right", style={"color": "black"})
+                        ),
+                        rx.table.row(
+                            rx.table.cell("Total", col_span=3, text_align="right", style={"color": "black", "font-weight": "bold", "font-size": "1.2em"}),
+                            rx.table.cell(InvoiceState.invoice_data.total_price_cop, text_align="right", style={"color": "black", "font-weight": "bold", "font-size": "1.2em"})
+                        )
+                    ),
                     variant="surface",
                     width="100%",
-                ),
-                rx.vstack(
-                    # --- CORRECCIÓN 5: Se eliminó la línea del subtotal ---
-                    rx.hstack(
-                        rx.heading("Total:", size="5"), 
-                        rx.spacer(), 
-                        rx.heading(InvoiceState.invoice_data.total_price_cop, size="5")
-                    ),
-                    align_items="end", width="100%", margin_top="2em", max_width="300px",
                 ),
                 rx.button(
                     "Imprimir Factura", on_click=rx.call_script("window.print()"),
                     class_name="no-print", margin_top="3em",
                 ),
                 align="center",
+                spacing="5", # Añadido espacio
             ),
             rx.center(rx.spinner(size="3"), rx.text("Cargando factura..."), height="90vh"),
         ),

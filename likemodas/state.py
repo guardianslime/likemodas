@@ -95,7 +95,9 @@ class InvoiceItemData(rx.Base):
     """Un modelo específico para cada línea de artículo en la factura."""
     name: str
     quantity: int
-    price: float
+# --- CORRECCIÓN: Añadimos los campos de texto pre-formateados ---
+    price_cop: str
+    total_cop: str
 
     @property
     def price_cop(self) -> str:
@@ -117,7 +119,9 @@ class InvoiceData(rx.Base):
     customer_email: str
     shipping_full_address: str
     shipping_phone: str
+    # --- CORRECCIÓN: Añadimos el campo para el IVA ---
     subtotal_cop: str
+    iva_cop: str
     total_price_cop: str
 
 
@@ -291,8 +295,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
         """
-        Busca los datos de una compra y los devuelve como un DTO.
-        Este método es llamado por otros estados.
+        Busca los datos de una compra, calcula IVA y subtotales, y los devuelve como un DTO.
         """
         if not self.is_authenticated:
             return None
@@ -305,7 +308,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
                 .where(PurchaseModel.id == purchase_id)
-            ).unique().one_or_none() # <--- CORRECCIÓN APLICADA AQUÍ
+            ).unique().one_or_none()
 
             if not purchase:
                 return None
@@ -313,14 +316,26 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
                 return None
 
-            invoice_items = [
-                InvoiceItemData(
-                    name=item.blog_post.title,
-                    quantity=item.quantity,
-                    price=item.price_at_purchase
-                )
-                for item in purchase.items if item.blog_post
-            ]
+            # --- NUEVA LÓGICA DE CÁLCULO ---
+            # Asumimos que total_price es el valor final CON IVA.
+            # Puedes cambiar el 0.19 si tu IVA es diferente.
+            IVA_RATE = 0.19
+            total_amount = purchase.total_price
+            subtotal_amount = total_amount / (1 + IVA_RATE)
+            iva_amount = total_amount - subtotal_amount
+
+            invoice_items = []
+            for item in purchase.items:
+                if item.blog_post:
+                    item_total = item.price_at_purchase * item.quantity
+                    invoice_items.append(
+                        InvoiceItemData(
+                            name=item.blog_post.title,
+                            quantity=item.quantity,
+                            price_cop=format_to_cop(item.price_at_purchase),
+                            total_cop=format_to_cop(item_total)
+                        )
+                    )
 
             return InvoiceData(
                 id=purchase.id,
@@ -331,8 +346,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 customer_email=purchase.userinfo.email if purchase.userinfo else "N/A",
                 shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}",
                 shipping_phone=purchase.shipping_phone,
-                subtotal_cop=format_to_cop(purchase.total_price),
-                total_price_cop=purchase.total_price_cop,
+                subtotal_cop=format_to_cop(subtotal_amount),
+                iva_cop=format_to_cop(iva_amount),
+                total_price_cop=format_to_cop(total_amount),
             )
             
     # --- ✨ 2. AÑADE ESTAS DOS NUEVAS PROPIEDADES COMPUTADAS ---
