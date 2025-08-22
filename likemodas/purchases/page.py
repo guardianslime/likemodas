@@ -66,7 +66,7 @@ def purchase_history_content() -> rx.Component:
                     AppState.filtered_user_purchases, 
                     lambda purchase: rx.card(
                         rx.vstack(
-                            # Encabezado de la compra (Fecha, ID, Status, Total)
+                            # Encabezado de la compra
                             rx.hstack(
                                 rx.vstack(
                                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
