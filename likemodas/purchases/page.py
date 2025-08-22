@@ -71,6 +71,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """Componente principal que muestra una compra. Ahora es más simple."""
     return rx.card(
         rx.vstack(
+            # ... (la sección con el ID de compra y los detalles de envío no cambia) ...
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -95,12 +96,12 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- ✨ 2. USO DEL NUEVO SUB-COMPONENTE ✨ ---
-            # En lugar de tener el `rx.foreach` aquí, simplemente llamamos al
-            # nuevo componente `purchase_items_gallery`, pasándole los artículos.
-            purchase_items_gallery(items=purchase.items),
+            # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: LLAMADA MODIFICADA ✨ ---
+            # En lugar de pasar `purchase.items`, usamos el nuevo mapa del estado
+            # para obtener los artículos de forma indirecta, lo que evita el error del compilador.
+            purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
+            # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
             
-            # Mostramos el total de la compra al final.
             rx.hstack(
                 rx.spacer(),
                 rx.heading("Total Compra:", size="5", weight="medium"),

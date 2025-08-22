@@ -1239,33 +1239,26 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO DE LA CORRECCIÓN DEL ERROR DE COMPILACIÓN ✨ ---
     @rx.var
     def filtered_user_purchases(self) -> list[UserPurchaseHistoryCardData]:
-        """
-        Filtra las compras del usuario. Esta versión usa un bucle explícito
-        para evitar errores de compilación en Reflex.
-        """
+        """Filtra las compras del usuario."""
         if not self.search_query_user_history.strip():
             return self.user_purchases
-        
         q = self.search_query_user_history.lower()
-        
-        filtered_list = []
-        for p in self.user_purchases:
-            # Comprueba si la búsqueda coincide con el ID de la compra
-            id_match = q in f"#{p.id}"
-            
-            # Comprueba si la búsqueda coincide con el título de alguno de los artículos
-            item_match = False
-            if p.items:
-                for item in p.items:
-                    if q in item.title.lower():
-                        item_match = True
-                        break  # Si se encuentra una coincidencia, no es necesario seguir buscando en esta compra
-            
-            if id_match or item_match:
-                filtered_list.append(p)
-                
-        return filtered_list
+        # Restauramos esta lógica más eficiente, ya que no era la causa del error.
+        return [
+            p for p in self.user_purchases
+            if q in f"#{p.id}" or any(q in item.title.lower() for item in p.items)
+        ]
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
+    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
+    @rx.var
+    def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
+        """
+        Crea un diccionario que mapea el ID de una compra a su lista de artículos.
+        Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
+        """
+        return {p.id: p.items for p in self.user_purchases}
+    # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
 
     @rx.event
     def load_purchases(self):
