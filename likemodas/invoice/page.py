@@ -63,7 +63,7 @@ def invoice_page_content() -> rx.Component:
                             )
                         )
                     ),
-                    variant="striped", width="100%",
+                    variant="surface", width="100%", # <-- CORRECCIÓN FINAL AQUÍ
                 ),
                 rx.vstack(
                     rx.hstack(rx.text("Subtotal:", weight="bold"), rx.spacer(), rx.text(InvoiceState.invoice_data.subtotal_cop)),
