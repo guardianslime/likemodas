@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL Y DEFINITIVA)
+# likemodas/invoice/page.py (VERSIÓN FINAL Y FUNCIONAL)
 import reflex as rx
 from .state import InvoiceState
 
@@ -63,22 +63,31 @@ def invoice_page_content() -> rx.Component:
                             )
                         )
                     ),
-                    # --- CORRECCIÓN FINAL AQUÍ ---
-                    rx.table.tfoot(
-                        rx.table.row(
-                            rx.table.cell("Subtotal", col_span=3, text_align="right", style={"color": "black", "font-weight": "bold"}),
-                            rx.table.cell(InvoiceState.invoice_data.subtotal_cop, text_align="right", style={"color": "black"})
-                        ),
-                        rx.table.row(
-                            rx.table.cell("IVA (19%)", col_span=3, text_align="right", style={"color": "black", "font-weight": "bold"}),
-                            rx.table.cell(InvoiceState.invoice_data.iva_cop, text_align="right", style={"color": "black"})
-                        ),
-                        rx.table.row(
-                            rx.table.cell("Total", col_span=3, text_align="right", style={"color": "black", "font-weight": "bold", "font-size": "1.2em"}),
-                            rx.table.cell(InvoiceState.invoice_data.total_price_cop, text_align="right", style={"color": "black", "font-weight": "bold", "font-size": "1.2em"})
-                        )
-                    ),
                     variant="surface",
+                    width="100%",
+                ),
+                # --- CORRECCIÓN: Resumen fuera de la tabla y alineado a la derecha ---
+                rx.hstack(
+                    rx.spacer(),
+                    rx.vstack(
+                        rx.hstack(
+                            rx.text("Subtotal:", weight="bold", width="120px", text_align="right"),
+                            rx.text(InvoiceState.invoice_data.subtotal_cop, width="100px", text_align="right"),
+                            justify="between", width="100%"
+                        ),
+                        rx.hstack(
+                            rx.text("IVA (19%):", weight="bold", width="120px", text_align="right"),
+                            rx.text(InvoiceState.invoice_data.iva_cop, width="100px", text_align="right"),
+                            justify="between", width="100%"
+                        ),
+                        rx.hstack(
+                            rx.heading("Total:", size="5", width="120px", text_align="right"),
+                            rx.heading(InvoiceState.invoice_data.total_price_cop, size="5", width="100px", text_align="right"),
+                            justify="between", width="100%"
+                        ),
+                        spacing="2",
+                        margin_top="1.5em",
+                    ),
                     width="100%",
                 ),
                 rx.button(
