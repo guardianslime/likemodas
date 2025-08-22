@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL CON DISEÑO PROFESIONAL)
+# likemodas/invoice/page.py (VERSIÓN FINAL Y DEFINITIVA)
 import reflex as rx
 from .state import InvoiceState
 
@@ -63,8 +63,8 @@ def invoice_page_content() -> rx.Component:
                             )
                         )
                     ),
-                    # --- NUEVO: Footer de la tabla con el desglose ---
-                    rx.table.footer(
+                    # --- CORRECCIÓN FINAL AQUÍ ---
+                    rx.table.tfoot(
                         rx.table.row(
                             rx.table.cell("Subtotal", col_span=3, text_align="right", style={"color": "black", "font-weight": "bold"}),
                             rx.table.cell(InvoiceState.invoice_data.subtotal_cop, text_align="right", style={"color": "black"})
@@ -86,7 +86,7 @@ def invoice_page_content() -> rx.Component:
                     class_name="no-print", margin_top="3em",
                 ),
                 align="center",
-                spacing="5", # Añadido espacio
+                spacing="5",
             ),
             rx.center(rx.spinner(size="3"), rx.text("Cargando factura..."), height="90vh"),
         ),
