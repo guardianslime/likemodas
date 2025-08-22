@@ -1,4 +1,4 @@
-# likemodas/purchases/page.py (VERSIÓN FINAL Y VISUAL)
+# likemodas/purchases/page.py (VERSIÓN FINAL CORREGIDA)
 import reflex as rx
 import reflex_local_auth
 from ..state import AppState, UserPurchaseHistoryCardData, PurchaseHistoryItemData
@@ -46,63 +46,6 @@ def purchase_item_card(item: PurchaseHistoryItemData) -> rx.Component:
         _hover={"box_shadow": "0 0 10px rgba(128, 128, 128, 0.5)"}
     )
 
-def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
-    """Componente principal para una compra, ahora con una galería de artículos."""
-    return rx.card(
-        rx.vstack(
-            # Encabezado de la compra (Fecha, ID, Status, Total)
-            rx.hstack(
-                rx.vstack(
-                    rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
-                    rx.text(f"ID de Compra: #{purchase.id}", size="2", color_scheme="gray"),
-                    align_items="start",
-                ),
-                rx.spacer(),
-                rx.vstack(
-                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
-                    rx.heading(purchase.total_price_cop, size="6"),
-                    align_items="end",
-                ),
-                justify="between",
-                width="100%",
-            ),
-            rx.divider(),
-            # Detalles de envío (sin cambios)
-            rx.vstack(
-                rx.text("Detalles de Envío:", weight="medium", size="4"),
-                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
-                rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
-                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
-                spacing="1", align_items="start", width="100%",
-            ),
-            rx.divider(),
-            # Nueva galería de artículos comprados
-            rx.vstack(
-                rx.text("Artículos Comprados:", weight="medium", size="4"),
-                rx.flex(
-                    rx.foreach(purchase.items, purchase_item_card),
-                    spacing="4",
-                    wrap="wrap",
-                    padding_y="0.5em",
-                ),
-                align_items="start",
-                width="100%",
-            ),
-            # Botón condicional de imprimir factura
-            rx.cond(
-                purchase.status != PurchaseStatus.PENDING.value,
-                rx.link(
-                    rx.button("Imprimir Factura", variant="outline", width="100%", margin_top="1em"),
-                    href=f"/invoice?id={purchase.id}",
-                    is_external=False,
-                    target="_blank",
-                ),
-            ),
-            spacing="4", width="100%"
-        ),
-        width="100%", padding="1.5em",
-    )
-
 @reflex_local_auth.require_login
 def purchase_history_content() -> rx.Component:
     """Página del historial de compras del usuario, ahora con modal."""
@@ -115,9 +58,67 @@ def purchase_history_content() -> rx.Component:
                 on_change=AppState.set_search_query_user_history,
                 width="100%", max_width="400px", margin_y="1.5em",
             ),
+            
+            # --- CORRECCIÓN PRINCIPAL APLICADA AQUÍ ---
             rx.cond(
                 AppState.filtered_user_purchases,
-                rx.foreach(AppState.filtered_user_purchases, purchase_detail_card),
+                rx.foreach(
+                    AppState.filtered_user_purchases, 
+                    lambda purchase: rx.card(
+                        rx.vstack(
+                            # Encabezado de la compra (Fecha, ID, Status, Total)
+                            rx.hstack(
+                                rx.vstack(
+                                    rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
+                                    rx.text(f"ID de Compra: #{purchase.id}", size="2", color_scheme="gray"),
+                                    align_items="start",
+                                ),
+                                rx.spacer(),
+                                rx.vstack(
+                                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
+                                    rx.heading(purchase.total_price_cop, size="6"),
+                                    align_items="end",
+                                ),
+                                justify="between",
+                                width="100%",
+                            ),
+                            rx.divider(),
+                            # Detalles de envío
+                            rx.vstack(
+                                rx.text("Detalles de Envío:", weight="medium", size="4"),
+                                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
+                                rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"),
+                                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
+                                spacing="1", align_items="start", width="100%",
+                            ),
+                            rx.divider(),
+                            # Galería de artículos comprados (renderizada directamente aquí)
+                            rx.vstack(
+                                rx.text("Artículos Comprados:", weight="medium", size="4"),
+                                rx.flex(
+                                    rx.foreach(purchase.items, purchase_item_card),
+                                    spacing="4",
+                                    wrap="wrap",
+                                    padding_y="0.5em",
+                                ),
+                                align_items="start",
+                                width="100%",
+                            ),
+                            # Botón condicional de imprimir factura
+                            rx.cond(
+                                purchase.status != PurchaseStatus.PENDING.value,
+                                rx.link(
+                                    rx.button("Imprimir Factura", variant="outline", width="100%", margin_top="1em"),
+                                    href=f"/invoice?id={purchase.id}",
+                                    is_external=False,
+                                    target="_blank",
+                                ),
+                            ),
+                            spacing="4", width="100%"
+                        ),
+                        width="100%", padding="1.5em",
+                    )
+                ),
                 rx.center(
                     rx.text("No se encontraron compras para tu búsqueda."),
                     padding_y="2em",
