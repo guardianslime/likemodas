@@ -276,14 +276,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             
     
-    @rx.var
+    @rx.event
     def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
         """
         Busca los datos de una compra y los devuelve como un DTO.
         Este método es llamado por otros estados.
         """
         if not self.is_authenticated:
-            # No podemos lanzar toasts desde aquí, pero devolvemos None si no hay permisos.
             return None
 
         with rx.session() as session:
@@ -299,7 +298,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not purchase:
                 return None
 
-            # Verificación de permisos
             if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
                 return None
 
@@ -312,6 +310,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 for item in purchase.items if item.blog_post
             ]
 
+            # Usamos 'return' directamente porque es un event handler que devuelve un valor
             return InvoiceData(
                 id=purchase.id,
                 purchase_date_formatted=purchase.purchase_date_formatted,
