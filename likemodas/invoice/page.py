@@ -54,7 +54,7 @@ def invoice_page_content() -> rx.Component:
                     ),
                     rx.table.body(
                         rx.foreach(
-                            InvoiceState.invoice_data.items,
+                            InvoiceState.invoice_items, # <-- LÍNEA CORREGIDA Y SEGURA
                             lambda item: rx.table.row(
                                 rx.table.cell(item.name),
                                 rx.table.cell(item.quantity, text_align="center"),

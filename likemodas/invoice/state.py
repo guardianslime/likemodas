@@ -1,20 +1,23 @@
-# likemodas/invoice/state.py (VERSIÓN FINAL Y CORRECTA)
+# likemodas/invoice/state.py (VERSIÓN FINAL A PRUEBA DE ERRORES)
 from __future__ import annotations
 import reflex as rx
-import sqlmodel
-import sqlalchemy
-from typing import Optional
+from typing import Optional, List
 
 # Importamos todo lo necesario desde el estado principal
 from ..state import AppState, InvoiceData, InvoiceItemData
-from ..models import PurchaseModel, UserInfo, PurchaseItemModel, BlogPostModel
-from ..utils.formatting import format_to_cop
-
 
 class InvoiceState(rx.State):
     """Un estado INDEPENDIENTE y aislado para la factura."""
     is_loading: bool = True
     invoice_data: Optional[InvoiceData] = None
+
+    # --- 👇 ESTA ES LA NUEVA VARIABLE CLAVE 👇 ---
+    @rx.var
+    def invoice_items(self) -> List[InvoiceItemData]:
+        """Devuelve la lista de ítems de forma segura para rx.foreach."""
+        if not self.invoice_data:
+            return []
+        return self.invoice_data.items
 
     @rx.event
     async def on_load_invoice_page(self):
