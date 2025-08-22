@@ -27,7 +27,7 @@ class InvoiceState(rx.State):
         self.is_loading = True
         self.invoice_data = None
 
-        purchase_id_str = self.router.query_params.get("id", "0")
+        purchase_id_str = self.router.page.params.get("id", "0")
         try:
             purchase_id = int(purchase_id_str)
             if purchase_id <= 0:
