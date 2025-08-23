@@ -1,4 +1,4 @@
-# likemodas/account/shipping_info.py (VERSIÓN FINAL)
+# likemodas/account/shipping_info.py (VERSIÓN FINAL Y COMPATIBLE)
 
 import reflex as rx
 import reflex_local_auth
@@ -6,36 +6,69 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
-# ELIMINA la siguiente línea, ya no existe:
-# from ..ui.location_button import location_button
+
+# --- ✨ 1. DEFINIMOS EL SCRIPT GLOBAL ✨ ---
+# Este script define nuestra función, que buscará los callbacks en el objeto 'window'.
+GET_LOCATION_SCRIPT = """
+function getLocation() {
+    if (!window.onLocationSuccess || !window.onLocationError) {
+        console.error("Reflex callbacks no están definidos. El evento on_click debe definirlos.");
+        return;
+    }
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                // Llama al callback de éxito que definimos dinámicamente.
+                window.onLocationSuccess(position.coords.latitude, position.coords.longitude);
+            },
+            (error) => {
+                // Llama al callback de error.
+                window.onLocationError();
+            }
+        );
+    } else {
+        alert("La geolocalización no es soportada por este navegador.");
+    }
+}
+"""
 
 def address_form() -> rx.Component:
     """Formulario para crear una nueva dirección."""
     return rx.form(
         rx.vstack(
             rx.heading("Nueva Dirección de Envío", size="6", width="100%"),
-            # ... (el rx.grid con los inputs de texto no cambia)
+            # --- ✨ 2. INYECTAMOS EL SCRIPT EN LA PÁGINA ✨ ---
+            # Esto asegura que la función `getLocation` exista.
+            rx.script(GET_LOCATION_SCRIPT),
+
+            # ... (tu rx.grid con los inputs de texto no cambia)
+            rx.grid(
+                 # ... (tus inputs)
+                 grid_column="span 2",
+            ),
             
             rx.box(height="1em"),
-            rx.text(
-                "Opcional: Para mayor precisión en la entrega, añade tu ubicación exacta.", 
-                size="2", 
-                color_scheme="gray",
-                text_align="center",
-                width="100%"
-            ),
+            rx.text("Opcional: Para mayor precisión...", size="2", color_scheme="gray", text_align="center", width="100%"),
 
-            # --- ✨ INICIO DEL CAMBIO FINAL ✨ ---
-            # Reemplazamos el componente `location_button` por un `rx.button` normal.
+            # --- ✨ 3. CREAMOS EL BOTÓN CON UNA CADENA DE EVENTOS ✨ ---
             rx.button(
                 rx.icon(tag="map-pin", margin_right="0.5em"),
                 "Añadir mi ubicación con mapa",
-                # El on_click ahora llama a nuestro nuevo handler en AppState.
-                on_click=AppState.request_location_script,
+                on_click=[
+                    # Evento 1: Crea la función de callback de ÉXITO en la ventana global.
+                    # El f-string permite que Reflex convierta el EventHandler en una función JS.
+                    rx.call_script(f"window.onLocationSuccess = (lat, lon) => {{ {AppState.set_location_coordinates}(lat, lon) }}"),
+                    
+                    # Evento 2: Crea la función de callback de ERROR.
+                    rx.call_script("window.onLocationError = () => { alert('No se pudo obtener la ubicación. Por favor, asegúrese de haber concedido los permisos.') }"),
+                    
+                    # Evento 3: AHORA SÍ, llama a la función principal.
+                    rx.call_script("getLocation()"),
+                ],
                 variant="outline",
                 width="100%",
             ),
-            # --- ✨ FIN DEL CAMBIO FINAL ✨ ---
+            # --- ✨ FIN DE LA LÓGICA ✨ ---
 
             rx.hstack(
                 rx.button("Cancelar", on_click=AppState.toggle_form, color_scheme="gray"),
@@ -48,6 +81,7 @@ def address_form() -> rx.Component:
         reset_on_submit=True,
     )
 
+# ... (El resto del archivo, como address_card y shipping_info_content, no necesita cambios)
 def address_card(address: ShippingAddressModel) -> rx.Component:
     """Componente para mostrar una dirección guardada."""
     return rx.box(
@@ -61,27 +95,21 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             rx.text(f"{address.address}, {address.neighborhood}"),
             rx.text(f"{address.city}"),
             rx.text(f"Tel: {address.phone}"),
-
-            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-            # Muestra un badge y un enlace si la ubicación fue guardada.
             rx.cond(
                 address.latitude,
                 rx.link(
                     rx.badge(
-                        rx.icon(tag="check-check", size=14), # <-- ✨ SOLUCIÓN FINAL ✨
+                        rx.icon(tag="check-check", size=14),
                         "Ubicación guardada. Ver en mapa.",
                         color_scheme="blue",
                         variant="soft",
                         padding_x="0.75em",
                         margin_top="0.5em",
                     ),
-                    # Enlace a Google Maps con las coordenadas.
                     href=f"https://www.google.com/maps?q={address.latitude},{address.longitude}",
                     is_external=True,
                 )
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-
             rx.divider(),
             rx.hstack(
                 rx.button("Eliminar", on_click=lambda: AppState.delete_address(address.id), variant="soft", color_scheme="red", size="2"),
