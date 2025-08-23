@@ -724,7 +724,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             category_list = query_params.get("category")
             if category_list:
                 category = category_list[0]
-                
+            
         self.current_category = category if category else "todos"
 
         with rx.session() as session:
@@ -742,11 +742,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         id=p.id,
                         title=p.title,
                         price=p.price,
-                        # ... (otros campos)
+                        price_cop=p.price_cop, 
+                        image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         attributes=p.attributes,
-                        # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
                         shipping_cost=p.shipping_cost,
                         free_shipping_threshold=p.free_shipping_threshold,
                     )
@@ -1133,7 +1133,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls,
+                        image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         attributes=p.attributes,
@@ -1489,7 +1489,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls,
+                        image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         attributes=p.attributes,
@@ -1748,7 +1748,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                             title=p.title,
                             price=p.price,
                             price_cop=p.price_cop,
-                            image_urls=p.image_urls,
+                            image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
                             average_rating=p.average_rating,
                             rating_count=p.rating_count,
                             attributes=p.attributes,
@@ -1916,7 +1916,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 title=p.title,
                                 price=p.price,
                                 price_cop=p.price_cop,
-                                image_urls=p.image_urls,
+                                image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
                                 average_rating=p.average_rating,
                                 rating_count=p.rating_count,
                                 attributes=p.attributes,
