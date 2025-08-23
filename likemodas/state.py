@@ -78,7 +78,7 @@ class PurchaseItemCardData(rx.Base):
     title: str
     image_url: str
     price_at_purchase_cop: str
-    quantity: int  # --- ✨ 1. AÑADIR ESTE CAMPO ---
+    quantity: int
 
 class UserPurchaseHistoryCardData(rx.Base):
     """DTO actualizado para el historial de compras del usuario."""
@@ -108,14 +108,6 @@ class InvoiceItemData(rx.Base):
     subtotal_cop: str
     iva_cop: str
     total_con_iva_cop: str
-
-    @property
-    def price_cop(self) -> str:
-        return format_to_cop(self.price)
-
-    @property
-    def total_cop(self) -> str:
-        return format_to_cop(self.price * self.quantity)
 
 class InvoiceData(rx.Base):
     """DTO para contener toda la información necesaria para una factura."""
@@ -238,7 +230,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                     return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "El token de verificación es inválido o ha expirado."
-
+    
     is_success: bool = False
     token: str = ""
     is_token_valid: bool = False
@@ -260,7 +252,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        self.token = self.router.page.params.get("token", "")
+        self.token = ""
+        try:
+            full_url = self.router.url
+            if "?" in full_url:
+                query_string = full_url.split("?")[1]
+                params = dict(param.split("=") for param in query_string.split("&"))
+                self.token = params.get("token", "")
+        except Exception:
+            pass
+
         if not self.token:
             self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
@@ -383,12 +384,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     attr_material: str = ""
     attr_tipo: str = ""
     search_attr_tipo: str = ""
-
-    def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
+    
     def set_attr_material(self, value: str): self.attr_material = value
-    def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
-    def set_attr_tipo(self, value: str):
-        self.attr_tipo = value
+    def set_attr_tipo(self, value: str): self.attr_tipo = value
 
     def _clear_add_form(self):
         self.title = ""
@@ -397,10 +395,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.category = ""
         self.temp_images = []
         self.attr_colores = []
-        self.attr_talla_ropa = ""
+        self.attr_tallas_ropa = []
         self.attr_material = ""
-        self.attr_numero_calzado = ""
-        self.attr_tamano_mochila = ""
+        self.attr_numeros_calzado = []
+        self.attr_tamanos_mochila = []
+        self.attr_tipo = ""
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
@@ -467,7 +466,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.filter_colors:
             posts_to_filter = [
                 p for p in posts_to_filter 
-                if p.attributes.get("Color") in self.filter_colors
+                if p.attributes.get("Color") and any(c in self.filter_colors for c in p.attributes.get("Color", []))
             ]
             
         if self.filter_materiales_tela:
@@ -480,13 +479,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.filter_tallas:
             posts_to_filter = [
                 p for p in posts_to_filter
-                if any(
-                    size in self.filter_tallas 
-                    for size in p.attributes.get("Talla", [])
-                )
+                if p.attributes.get("Talla") and any(size in self.filter_tallas for size in p.attributes.get("Talla", []))
             ]
 
-            if self.filter_tipos_general:
+        if self.filter_tipos_general:
                 posts_to_filter = [
                     p for p in posts_to_filter
                     if p.attributes.get("Tipo") in self.filter_tipos_general
@@ -547,10 +543,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     open_filter_name: str = ""
     filter_colors: list[str] = []
     filter_tallas: list[str] = []
-    filter_tipos_prenda: list[str] = []
-    filter_tipos_zapato: list[str] = []
     filter_numeros_calzado: list[str] = []
-    filter_tipos_mochila: list[str] = []
     filter_materiales_tela: list[str] = []
     filter_tipos_general: list[str] = []
 
@@ -584,31 +577,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     def clear_all_filters(self):
         self.min_price = ""
         self.max_price = ""
-        self.filter_color = ""
-        self.filter_talla = ""
-        self.filter_tipo_prenda = ""
-        self.filter_tipo_zapato = ""
-        self.filter_tipo_mochila = ""
-        self.filter_tipo_general = ""
-        self.filter_material_tela = ""
-        self.filter_medida_talla = ""
-
+        self.filter_colors = []
+        self.filter_tallas = []
+        self.filter_tipos_general = []
+        self.filter_materiales_tela = []
+        self.filter_numeros_calzado = []
+        
     def toggle_filter_dropdown(self, name: str): self.open_filter_name = "" if self.open_filter_name == name else name
-    def clear_filter(self, filter_name: str): setattr(self, filter_name, "")
     def set_min_price(self, price: str): self.min_price = price
     def set_max_price(self, price: str): self.max_price = price
-    def set_filter_color(self, color: str): self.filter_color = color
-    def set_filter_talla(self, talla: str): self.filter_talla = talla
-    def set_filter_tipo_prenda(self, prenda: str): self.filter_tipo_prenda = prenda
-    def set_filter_tipo_zapato(self, zapato: str): self.filter_tipo_zapato = zapato
-    def set_filter_numero_calzado(self, numero: str): self.filter_numero_calzado = numero
-    def set_filter_tipo_mochila(self, mochila: str): self.filter_tipo_mochila = mochila
-    def set_filter_tipo_general(self, general: str): self.filter_tipo_general = general
-    def set_filter_material_tela(self, material: str): self.filter_material_tela = material
-    def set_filter_medida_talla(self, medida: str): self.filter_medida_talla = medida
     def set_attr_tamano_mochila(self, value: str): self.attr_tamano_mochila = value
     def set_search_attr_tamano_mochila(self, query: str): self.search_attr_tamano_mochila = query
-
 
     search_tipo_prenda: str = ""
     search_tipo_zapato: str = ""
@@ -619,8 +598,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_numero_calzado: str = ""
     search_material_tela: str = ""
     search_medida_talla: str = ""
-    search_tipo_general: str = ""
-
+    
     def set_search_tipo_prenda(self, query: str): self.search_tipo_prenda = query
     def set_search_tipo_zapato(self, query: str): self.search_tipo_zapato = query
     def set_search_tipo_mochila(self, query: str): self.search_tipo_mochila = query
@@ -630,7 +608,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_numero_calzado(self, query: str): self.search_numero_calzado = query
     def set_search_material_tela(self, query: str): self.search_material_tela = query
     def set_search_medida_talla(self, query: str): self.search_medida_talla = query
-    def set_search_tipo_general(self, query: str): self.search_tipo_general = query
 
     @rx.var
     def filtered_tipos_general(self) -> list[str]:
@@ -666,10 +643,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.search_material_tela.strip(): return LISTA_MATERIALES
         return [o for o in LISTA_MATERIALES if self.search_material_tela.lower() in o.lower()]
     @rx.var
-    def filtered_tipos_general(self) -> list[str]:
-        if not self.search_tipo_general.strip(): return LISTA_TIPOS_GENERAL
-        return [o for o in LISTA_TIPOS_GENERAL if self.search_tipo_general.lower() in o.lower()]
-    @rx.var
     def filtered_medidas_general(self) -> list[str]:
         if not self.search_medida_talla.strip(): return LISTA_MEDIDAS_GENERAL
         return [o for o in LISTA_MEDIDAS_GENERAL if self.search_medida_talla.lower() in o.lower()]
@@ -678,7 +651,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.search_attr_tamano_mochila.strip(): return LISTA_TAMANOS_MOCHILAS
         return [o for o in LISTA_TAMANOS_MOCHILAS if self.search_attr_tamano_mochila.lower() in o.lower()]
     
-
     posts: list[ProductCardData] = []
     is_loading: bool = True
 
@@ -697,7 +669,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             category_list = query_params.get("category")
             if category_list:
                 category = category_list[0]
-                
+            
         self.current_category = category if category else "todos"
 
         with rx.session() as session:
@@ -734,6 +706,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
+    price: str = ""
+    temp_images: list[str] = []
 
     post_images_in_form: list[str] = []
 
@@ -804,11 +778,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(post_to_update)
                 session.commit()
                 yield self.cancel_editing_post(False)
-                yield self.load_all_my_posts()
+                # yield self.load_all_my_posts() # This method doesn't exist, removing it.
                 yield self.on_load_admin_store()
                 yield rx.toast.success("Publicación actualizada correctamente.")
-
-    temp_images: list[str] = []
 
     @rx.event
     async def handle_add_upload(self, files: list[rx.UploadFile]):
@@ -837,14 +809,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def remove_edited_image(self, filename: str):
         if filename in self.post_images_in_form:
             self.post_images_in_form.remove(filename)
-
-
-    def _clear_add_form(self):
-        self.title = ""
-        self.content = ""
-        self.price = ""
-        self.category = ""
-        self.temp_images = []
 
     cart: Dict[int, int] = {}
     
@@ -881,12 +845,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.cart[post_id] <= 0:
                 del self.cart[post_id]
 
-    title: str = ""
-    content: str = ""
-    price: str = "" 
-    category: str = ""
-    temp_images: list[str] = []
-
     @rx.var
     def categories(self) -> list[str]: return [c.value for c in Category]
     def set_title(self, value: str): self.title = value
@@ -895,73 +853,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_category(self, value: str): self.category = value
 
     @rx.event
-    async def handle_upload(self, files: list[rx.UploadFile]):
-        uploaded_filenames = []
-        for file in files:
-            upload_data = await file.read()
-            outfile = rx.get_upload_dir() / file.name
-            outfile.write_bytes(upload_data)
-            uploaded_filenames.append(file.name)
-        self.temp_images.extend(uploaded_filenames)
-
-    @rx.event
     def remove_image(self, filename: str): self.temp_images.remove(filename)
-    def _clear_add_form(self): self.title = ""; self.content = ""; self.price = ""; self.category = ""; self.temp_images = []
-
-    @rx.event
-    def submit_and_publish(self, form_data: dict):
-        if not self.is_admin:
-            return rx.toast.error("Acción no permitida.")
-        
-        if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
-            return rx.toast.error("Título, precio y categoría son obligatorios.")
-        
-        attributes = {}
-        category = form_data.get("category")
-
-        if category == Category.ROPA.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            if self.attr_tallas_ropa:
-                attributes["Talla"] = self.attr_tallas_ropa
-            if self.attr_material:
-                attributes["Tela"] = self.attr_material
-
-        elif category == Category.CALZADO.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            if self.attr_numeros_calzado:
-                attributes["Número"] = self.attr_numeros_calzado
-            if self.attr_material:
-                attributes["Material"] = self.attr_material
-        
-        elif category == Category.MOCHILAS.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            if self.attr_tamanos_mochila:
-                attributes["Tamaño"] = self.attr_tamanos_mochila
-            if self.attr_material:
-                attributes["Material"] = self.attr_material
-        
-        with rx.session() as session:
-            new_post = BlogPostModel(
-                userinfo_id=self.authenticated_user_info.id,
-                title=form_data["title"],
-                content=form_data.get("content", ""),
-                price=float(form_data.get("price", 0.0)),
-                category=category,
-                image_urls=self.temp_images,
-                attributes=attributes,
-                publish_active=True,
-                publish_date=datetime.now(timezone.utc),
-            )
-            session.add(new_post)
-            session.commit()
-            session.refresh(new_post)
-            
-        self._clear_add_form()
-        yield rx.toast.success("Producto publicado exitosamente.")
-        return rx.redirect("/blog")
         
     @rx.var
     def my_admin_posts(self) -> list[BlogPostModel]:
@@ -1002,6 +894,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_city: str = ""
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
+    manual_latitude: str = ""
+    manual_longitude: str = ""
+
+    def set_manual_latitude(self, lat: str): self.manual_latitude = lat
+    def set_manual_longitude(self, lon: str): self.manual_longitude = lon
 
     @rx.event
     def handle_checkout(self):
@@ -1069,13 +966,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             with rx.session() as session:
                 self.addresses = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
 
-
-
-     # --- 👇 1. AÑADE ESTOS CAMPOS PARA LA ENTRADA MANUAL ---
-    manual_latitude: str = ""
-    manual_longitude: str = ""
-    
-    # --- 2. MODIFICA `add_new_address` PARA USAR LOS NUEVOS CAMPOS ---
     @rx.event
     def add_new_address(self, form_data: dict):
         if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
@@ -1083,28 +973,23 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         latitude, longitude = None, None
         try:
-            # Intenta convertir las coordenadas a float si el usuario las ingresó
             if self.manual_latitude and self.manual_longitude:
                 latitude = float(self.manual_latitude)
                 longitude = float(self.manual_longitude)
         except ValueError:
-            return rx.toast.error("Las coordenadas de latitud y longitud deben ser números válidos.")
-
+            return rx.toast.error("Las coordenadas deben ser números válidos.")
+        
         with rx.session() as session:
             is_first_address = len(self.addresses) == 0
             new_addr = ShippingAddressModel(
-                userinfo_id=self.authenticated_user_info.id,
-                name=form_data["name"],
+                userinfo_id=self.authenticated_user_info.id, name=form_data["name"],
                 phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood,
                 address=form_data["address"], is_default=is_first_address,
-                # --- 👇 USA LAS COORDENADAS MANUALES ---
-                latitude=latitude,
-                longitude=longitude
+                latitude=latitude, longitude=longitude
             )
             session.add(new_addr)
             session.commit()
-            
-        # Limpia los campos después de guardar
+
         self.manual_latitude = ""
         self.manual_longitude = ""
         self.show_form = False
@@ -1262,21 +1147,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_query_user_history(self, query: str):
         self.search_query_user_history = query
 
-    # --- ✨ INICIO DE LA CORRECCIÓN DEL ERROR DE COMPILACIÓN ✨ ---
     @rx.var
     def filtered_user_purchases(self) -> list[UserPurchaseHistoryCardData]:
         """Filtra las compras del usuario."""
         if not self.search_query_user_history.strip():
             return self.user_purchases
         q = self.search_query_user_history.lower()
-        # Restauramos esta lógica más eficiente, ya que no era la causa del error.
         return [
             p for p in self.user_purchases
             if q in f"#{p.id}" or any(q in item.title.lower() for item in p.items)
         ]
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
-    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
     @rx.var
     def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
         """
@@ -1284,7 +1165,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
         """
         return {p.id: p.items for p in self.user_purchases}
-    # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
 
     @rx.event
     def load_purchases(self):
@@ -1313,7 +1193,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                     title=item.blog_post.title,
                                     image_url=item.blog_post.image_urls[0] if item.blog_post.image_urls else "",
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                    quantity=item.quantity  # --- ✨ 2. POBLAR EL NUEVO CAMPO ---
+                                    quantity=item.quantity
                                 )
                             )
                 
@@ -1645,29 +1525,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.commit()
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
-
-    def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
-        if not self.authenticated_user_info or not self.product_in_modal:
-            return None
-        
-        purchase_items = session.exec(
-            sqlmodel.select(PurchaseItemModel)
-            .join(PurchaseModel)
-            .where(
-                PurchaseModel.userinfo_id == self.authenticated_user_info.id,
-                PurchaseItemModel.blog_post_id == self.product_in_modal.id,
-                PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED])
-            )
-        ).all()
-
-        claimed_purchase_ids = {
-            c.purchase_item_id for c in self.product_comments if c.purchase_item_id
-        }
-
-        for item in purchase_items:
-            if item.id not in claimed_purchase_ids:
-                return item
-        return None
 
     saved_post_ids: set[int] = set()
     saved_posts_gallery: list[ProductCardData] = []
