@@ -1106,35 +1106,26 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def add_new_address(self, form_data: dict):
-        if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
+        # --- 👇 AÑADE ESTA VERIFICACIÓN DE SEGURIDAD AQUÍ ---
+        if not self.authenticated_user_info:
+            return rx.toast.error("Tu sesión ha expirado. Por favor, inicia sesión de nuevo.")
+
+        if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]): # [cite: 674]
             return rx.toast.error("Por favor, completa todos los campos requeridos.")
         
         with rx.session() as session:
-            is_first_address = len(self.addresses) == 0
+            is_first_address = len(self.addresses) == 0 # [cite: 674]
             new_addr = ShippingAddressModel(
-                userinfo_id=self.authenticated_user_info.id,
+                userinfo_id=self.authenticated_user_info.id, # ✅ AHORA ES SEGURO
                 name=form_data["name"],
-                phone=form_data["phone"],
-                city=self.city,
-                neighborhood=self.neighborhood,
-                address=form_data["address"],
-                is_default=is_first_address,
-                # --- ✨ INICIO DE LA MODIFICACIÓN (Parte 3/3) ✨ ---
-                # Guardamos las coordenadas si fueron capturadas.
-                latitude=self.latitude if self.latitude != 0.0 else None,
-                longitude=self.longitude if self.longitude != 0.0 else None,
-                # --- ✨ FIN DE LA MODIFICACIÓN (Parte 3/3) ✨ ---
+                phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood, # 
+                address=form_data["address"], is_default=is_first_address # 
             )
-            session.add(new_addr)
-            session.commit()
-        
-        self.show_form = False
-        # Reseteamos las coordenadas después de guardar.
-        self.latitude = 0.0
-        self.longitude = 0.0
-        
-        yield self.load_addresses()
-        return rx.toast.success("Nueva dirección guardada.")
+            session.add(new_addr) # 
+            session.commit() # 
+        self.show_form = False # 
+        yield self.load_addresses() # 
+        return rx.toast.success("Nueva dirección guardada.") # 
 
     @rx.event
     def load_default_shipping_info(self):
