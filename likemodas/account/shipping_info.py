@@ -74,7 +74,7 @@ def address_form() -> rx.Component:
                         search_value=AppState.search_neighborhood,
                         on_change_search=AppState.set_search_neighborhood,
                         filter_name="shipping_neighborhood_filter",
-                        is_disabled=~AppState.neighborhoods,
+                        is_disabled=(AppState.neighborhoods.length() == 0), # ✅ CORRECTO
                     ),
                     spacing="1", align_items="start",
                 ),
@@ -181,7 +181,7 @@ def shipping_info_content() -> rx.Component:
             rx.text("Aquí puedes gestionar tus direcciones de envío.", margin_bottom="1.5em"),
             rx.foreach(AppState.addresses, address_card),
             rx.cond(
-                ~AppState.show_form,
+                (AppState.show_form == False), # ✅ CORRECTO
                 rx.button("Crear Nueva Dirección", on_click=AppState.toggle_form, margin_top="2em"),
             ),
             rx.cond(AppState.show_form, address_form()),
