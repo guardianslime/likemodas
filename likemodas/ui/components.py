@@ -2,6 +2,8 @@
 
 import reflex as rx
 import math
+
+from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
@@ -95,6 +97,37 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             rx.text(post.title, weight="bold", size="6"),
                             _product_card_rating(post),
                             rx.text(post.price_cop, size="6"),
+                            spacing="2",
+                            align_items="start",
+                            width="100%"
+                        ),
+                        rx.vstack(
+                            rx.text(post.title, weight="bold", size="6"),
+                            _product_card_rating(post),
+                            rx.text(post.price_cop, size="6"),
+
+                            # --- 👇 AÑADE ESTE BLOQUE 👇 ---
+                            rx.vstack(
+                                rx.cond(
+                                    post.shipping_cost == 0.0,
+                                    rx.badge("Envío Gratis", color_scheme="green", variant="soft"),
+                                    rx.cond(
+                                        post.shipping_cost > 0,
+                                        rx.text(f"Envío: {format_to_cop(post.shipping_cost)}", size="2"),
+                                        rx.text("Envío a convenir", size="2", color_scheme="gray")
+                                    )
+                                ),
+                                rx.cond(
+                                    post.seller_free_shipping_threshold > 0,
+                                    rx.badge(f"Moda Completa: Envío gratis por {post.seller_free_shipping_threshold}+ items", color_scheme="violet", variant="soft", size="1"),
+                                ),
+                                spacing="2",
+                                align_items="start",
+                                margin_top="0.5em",
+                                min_height="50px", # Para mantener la alineación de los botones
+                            ),
+                            # --- FIN DEL BLOQUE ---
+
                             spacing="2",
                             align_items="start",
                             width="100%"

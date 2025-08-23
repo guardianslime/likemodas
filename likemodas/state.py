@@ -42,7 +42,7 @@ class ProductCardData(rx.Base):
     attributes: dict = {}
     # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     shipping_cost: Optional[float] = None
-    free_shipping_threshold: Optional[int] = None
+    seller_free_shipping_threshold: Optional[int] = None
 
     class Config:
         orm_mode = True
@@ -63,6 +63,9 @@ class ProductDetailData(rx.Base):
     seller_name: str = ""
     seller_id: int = 0
     attributes: dict = {}
+    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
+    shipping_cost: Optional[float] = None
+    seller_free_shipping_threshold: Optional[int] = None
 
     class Config:
         orm_mode = True
@@ -728,11 +731,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.current_category = category if category else "todos"
 
         with rx.session() as session:
-            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
-            
-            if self.current_category and self.current_category != "todos":
-                query = query.where(BlogPostModel.category == self.current_category)
-            
+        # --- 👇 MODIFICA LA CONSULTA PARA INCLUIR .options(...) 👇 ---
+            query = (
+                sqlmodel.select(BlogPostModel)
+                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)) # Carga eficiente del vendedor
+                .where(BlogPostModel.publish_active == True)
+            )
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
             
             temp_posts = []
@@ -748,11 +752,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
-                        free_shipping_threshold=p.free_shipping_threshold,
+                        seller_free_shipping_threshold=p.userinfo.free_shipping_threshold if p.userinfo else None,
                     )
                 )
             self.posts = temp_posts
-        
         self.is_loading = False
     
     show_detail_modal: bool = False

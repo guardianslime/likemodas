@@ -2,6 +2,8 @@
 
 import reflex as rx
 import math
+
+from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, CommentData, AttributeData
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
@@ -186,6 +188,31 @@ def product_detail_modal() -> rx.Component:
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
+
+            # --- 👇 INICIO DEL BLOQUE CORREGIDO Y AÑADIDO 👇 ---
+            rx.hstack(
+                rx.cond(
+                    AppState.product_in_modal.shipping_cost == 0.0,
+                    rx.badge("Envío Gratis", color_scheme="green", variant="solid", size="2"),
+                    rx.cond(
+                        AppState.product_in_modal.shipping_cost > 0,
+                        rx.text(f"Costo de Envío: {format_to_cop(AppState.product_in_modal.shipping_cost)}", size="3", weight="medium"),
+                        rx.text("Envío a convenir con el vendedor", size="3", color_scheme="gray")
+                    )
+                ),
+                rx.cond(
+                    AppState.product_in_modal.seller_free_shipping_threshold > 0,
+                    rx.tooltip(
+                        rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
+                        content=f"El envío es gratis al comprar {AppState.product_in_modal.seller_free_shipping_threshold} o más productos de este vendedor."
+                    ),
+                ),
+                spacing="4",
+                align="center",
+                margin_y="1em",
+            ),
+            # --- FIN DEL BLOQUE ---
+
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.cond(
                 AppState.product_in_modal.attributes,
