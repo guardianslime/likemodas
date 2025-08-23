@@ -908,60 +908,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def remove_image(self, filename: str): self.temp_images.remove(filename)
     def _clear_add_form(self): self.title = ""; self.content = ""; self.price = ""; self.category = ""; self.temp_images = []
 
-    @rx.event
-    def submit_and_publish(self, form_data: dict):
-        if not self.is_admin:
-            return rx.toast.error("Acción no permitida.")
-        
-        if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
-            return rx.toast.error("Título, precio y categoría son obligatorios.")
-        
-        attributes = {}
-        category = form_data.get("category")
-
-        if category == Category.ROPA.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            if self.attr_tallas_ropa:
-                attributes["Talla"] = self.attr_tallas_ropa
-            if self.attr_material:
-                attributes["Tela"] = self.attr_material
-
-        elif category == Category.CALZADO.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            if self.attr_numeros_calzado:
-                attributes["Número"] = self.attr_numeros_calzado
-            if self.attr_material:
-                attributes["Material"] = self.attr_material
-        
-        elif category == Category.MOCHILAS.value:
-            if self.attr_color:
-                attributes["Color"] = self.attr_color
-            if self.attr_tamanos_mochila:
-                attributes["Tamaño"] = self.attr_tamanos_mochila
-            if self.attr_material:
-                attributes["Material"] = self.attr_material
-        
-        with rx.session() as session:
-            new_post = BlogPostModel(
-                userinfo_id=self.authenticated_user_info.id,
-                title=form_data["title"],
-                content=form_data.get("content", ""),
-                price=float(form_data.get("price", 0.0)),
-                category=category,
-                image_urls=self.temp_images,
-                attributes=attributes,
-                publish_active=True,
-                publish_date=datetime.now(timezone.utc),
-            )
-            session.add(new_post)
-            session.commit()
-            session.refresh(new_post)
-            
-        self._clear_add_form()
-        yield rx.toast.success("Producto publicado exitosamente.")
-        return rx.redirect("/blog")
+    
         
     @rx.var
     def my_admin_posts(self) -> list[BlogPostModel]:
