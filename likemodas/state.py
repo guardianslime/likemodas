@@ -551,7 +551,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
     def set_search_query_admin_history(self, query: str): self.search_query_admin_history = query
-    def toggle_admin_sidebar(self): self.show_admin_sidebar = not self.show_admin_sidebar
 
     @rx.event
     def notify_admin_of_new_purchase(self): self.new_purchase_notification = True
@@ -1054,7 +1053,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             return processed_attributes
         return []
 
-    # --- on_load RESTAURADO ---
     @rx.event
     def on_load(self):
         self.is_loading = True
@@ -1097,3 +1095,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.posts = temp_posts
         
         self.is_loading = False
+
+    # --- ✅ FUNCIÓN AÑADIDA QUE FALTABA ---
+    @rx.var
+    def my_admin_posts(self) -> list[BlogPostModel]:
+        if not self.authenticated_user_info:
+            return []
+        with rx.session() as session:
+            return session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.userinfo_id == self.authenticated_user_info.id).order_by(BlogPostModel.created_at.desc())).all()
