@@ -1055,7 +1055,29 @@ class AppState(reflex_local_auth.LocalAuthState):
             "No se pudo obtener la ubicación. Por favor, asegúrate de haber concedido los permisos en tu navegador."
         )
     
-
+    @rx.event
+    def request_location_script(self): # <--- ✨ CORRECCIÓN: SIN TIPO DE RETORNO
+        """
+        Este manejador de eventos no hace nada en el backend,
+        simplemente construye y devuelve un script para que el frontend lo ejecute.
+        """
+        return rx.call_script(f"""
+            if (navigator.geolocation) {{
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {{
+                        {self.set_location_coordinates.js_event_handler_name}(
+                            position.coords.latitude, 
+                            position.coords.longitude
+                        );
+                    }},
+                    (error) => {{
+                        alert("No se pudo obtener la ubicación. Por favor, asegúrese de haber concedido los permisos.");
+                    }}
+                );
+            }} else {{
+                alert("La geolocalización no es soportada por este navegador.");
+            }}
+        """)
 
     # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
