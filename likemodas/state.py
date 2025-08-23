@@ -78,6 +78,7 @@ class PurchaseItemCardData(rx.Base):
     title: str
     image_url: str
     price_at_purchase_cop: str
+    quantity: int  # --- ✨ 1. AÑADIR ESTE CAMPO ---
 
 class UserPurchaseHistoryCardData(rx.Base):
     """DTO actualizado para el historial de compras del usuario."""
@@ -1286,7 +1287,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                                     id=item.blog_post.id,
                                     title=item.blog_post.title,
                                     image_url=item.blog_post.image_urls[0] if item.blog_post.image_urls else "",
-                                    price_at_purchase_cop=format_to_cop(item.price_at_purchase)
+                                    price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                                    quantity=item.quantity  # --- ✨ 2. POBLAR EL NUEVO CAMPO ---
                                 )
                             )
                 
