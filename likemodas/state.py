@@ -551,7 +551,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
     def set_search_query_admin_history(self, query: str): self.search_query_admin_history = query
-    def toggle_admin_sidebar(self): self.show_admin_sidebar = not self.show_admin_sidebar
 
     @rx.event
     def notify_admin_of_new_purchase(self): self.new_purchase_notification = True
@@ -1037,12 +1036,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         return [o for o in self.available_materials if self.search_attr_material.lower() in o.lower()]
     @rx.var
     def filtered_attr_numeros_calzado(self) -> list[str]:
-        if not self.search_attr_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
-        return [o for o in LISTA_NUMEROS_CALZADO if self.search_attr_numero_calzado.lower() in o.lower()]
+        if not self.search_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
+        return [o for o in LISTA_NUMEROS_CALZADO if self.search_numero_calzado.lower() in o.lower()]
     @rx.var
     def filtered_attr_tipos(self) -> list[str]:
         if not self.search_attr_tipo.strip(): return self.available_types
         return [o for o in self.available_types if self.search_attr_tipo.lower() in o.lower()]
+        
     @rx.var
     def product_attributes_list(self) -> list[AttributeData]:
         if self.product_in_modal and self.product_in_modal.attributes:
@@ -1052,3 +1052,47 @@ class AppState(reflex_local_auth.LocalAuthState):
                 processed_attributes.append(AttributeData(key=k, value=value_str))
             return processed_attributes
         return []
+
+    # --- ✅ FUNCIÓN on_load RESTAURADA ---
+    @rx.event
+    def on_load(self):
+        self.is_loading = True
+        yield
+
+        category = None
+        full_url = self.router.url
+
+        if full_url and "?" in full_url:
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+            
+            category_list = query_params.get("category")
+            if category_list:
+                category = category_list[0]
+            
+        self.current_category = category if category else "todos"
+
+        with rx.session() as session:
+            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
+            
+            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+            
+            temp_posts = []
+            for p in results:
+                temp_posts.append(
+                    ProductCardData(
+                        id=p.id,
+                        title=p.title,
+                        price=p.price,
+                        image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        attributes=p.attributes,
+                    )
+                )
+            self.posts = temp_posts
+        
+        self.is_loading = False
