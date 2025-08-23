@@ -1,5 +1,6 @@
 import reflex as rx
 import folium
+from .. import navigation # --- ¡ESTA ES LA LÍNEA QUE FALTABA! ---
 
 class MapPageState(rx.State):
     """Estado para manejar la página del mapa interactivo."""
