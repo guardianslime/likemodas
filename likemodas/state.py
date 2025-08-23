@@ -1,4 +1,4 @@
-# likemodas/state.py (VERSIÓN FINAL CORREGIDA)
+# likemodas/state.py (VERSIÓN FINAL Y COMPLETA)
 
 from __future__ import annotations
 import reflex as rx
@@ -31,13 +31,8 @@ from .data.product_options import (
 
 # --- DTOs (Data Transfer Objects) ---
 class ProductCardData(rx.Base):
-    id: int
-    title: str
-    price: float = 0.0
-    image_urls: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
-    attributes: dict = {}
+    id: int; title: str; price: float = 0.0; image_urls: list[str] = []
+    average_rating: float = 0.0; rating_count: int = 0; attributes: dict = {}
     class Config: orm_mode = True
     @property
     def price_cop(self) -> str: return format_to_cop(self.price)
@@ -46,8 +41,7 @@ class ProductDetailData(rx.Base):
     id: int; title: str; content: str; price_cop: str
     image_urls: list[str] = []; created_at_formatted: str
     average_rating: float = 0.0; rating_count: int = 0
-    seller_name: str = ""; seller_id: int = 0
-    attributes: dict = {}
+    seller_name: str = ""; seller_id: int = 0; attributes: dict = {}
     class Config: orm_mode = True
 
 class AdminPurchaseCardData(rx.Base):
@@ -63,8 +57,7 @@ class PurchaseItemCardData(rx.Base):
 class UserPurchaseHistoryCardData(rx.Base):
     id: int; purchase_date_formatted: str; status: str; total_price_cop: str
     shipping_name: str; shipping_address: str; shipping_neighborhood: str
-    shipping_city: str; shipping_phone: str
-    items: list[PurchaseItemCardData]
+    shipping_city: str; shipping_phone: str; items: list[PurchaseItemCardData]
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -865,6 +858,22 @@ class AppState(reflex_local_auth.LocalAuthState):
     show_detail_modal: bool = False
     product_in_modal: Optional[ProductDetailData] = None
     current_image_index: int = 0
+
+    @rx.var
+    def current_image_url(self) -> str:
+        if self.product_in_modal and self.product_in_modal.image_urls:
+            if not self.product_in_modal.image_urls: return ""
+            safe_index = self.current_image_index % len(self.product_in_modal.image_urls)
+            return self.product_in_modal.image_urls[safe_index]
+        return ""
+
+    def next_image(self):
+        if self.product_in_modal and self.product_in_modal.image_urls:
+            self.current_image_index = (self.current_image_index + 1) % len(self.product_in_modal.image_urls)
+
+    def prev_image(self):
+        if self.product_in_modal and self.product_in_modal.image_urls:
+            self.current_image_index = (self.current_image_index - 1 + len(self.product_in_modal.image_urls)) % len(self.product_in_modal.image_urls)
 
     @rx.event
     def trigger_modal_from_load(self):
