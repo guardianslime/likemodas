@@ -408,6 +408,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
         
+        # --- 👇 LÓGICA PARA PROCESAR LOS NUEVOS CAMPOS 👇 ---
+        try:
+            shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
+            free_shipping_threshold = int(self.free_shipping_threshold_str) if self.free_shipping_threshold_str else None
+        except ValueError:
+            return rx.toast.error("El costo de envío y el umbral deben ser números válidos.")
+        
         attributes = {}
         category = form_data.get("category")
         if category == Category.ROPA.value:
@@ -434,11 +441,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 title=form_data["title"],
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
-                category=category,
+                category=form_data.get("category"),
                 image_urls=self.temp_images,
                 attributes=attributes,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
+                # --- 👇 AÑADE ESTOS DOS CAMPOS AL CREAR EL OBJETO 👇 ---
+                shipping_cost=shipping_cost,
+                free_shipping_threshold=free_shipping_threshold,
             )
             session.add(new_post)
             session.commit()
@@ -845,6 +855,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.price = ""
         self.category = ""
         self.temp_images = []
+        # ... (otras variables que ya limpiabas)
+        
+        # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
+        self.shipping_cost_str = ""
+        self.free_shipping_threshold_str = ""
 
     cart: Dict[int, int] = {}
     
@@ -908,7 +923,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     def remove_image(self, filename: str): self.temp_images.remove(filename)
     def _clear_add_form(self): self.title = ""; self.content = ""; self.price = ""; self.category = ""; self.temp_images = []
 
-    
+    # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
+    shipping_cost_str: str = ""
+    free_shipping_threshold_str: str = ""
+
+    # --- 👇 AÑADE ESTAS VARIABLES PARA LOS FILTROS 👇 ---
+    filter_free_shipping: bool = False
+    filter_complete_fashion: bool = False
         
     @rx.var
     def my_admin_posts(self) -> list[BlogPostModel]:

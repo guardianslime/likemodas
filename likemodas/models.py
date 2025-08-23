@@ -107,6 +107,10 @@ class BlogPostModel(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
     
+    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
+    shipping_cost: Optional[float] = Field(default=None)
+    free_shipping_threshold: Optional[int] = Field(default=None) # Para "Moda Completa"
+
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
