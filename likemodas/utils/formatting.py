@@ -1,19 +1,22 @@
-import locale
+# likemodas/utils/formatting.py
+
 from typing import Optional
 
-# Configura el localismo para Colombia. Idealmente, esto se hace una vez al inicio de la app.
-try:
-    locale.setlocale(locale.LC_ALL, 'es_CO.UTF-8')
-except locale.Error:
-    try:
-        locale.setlocale(locale.LC_ALL, 'Spanish_Colombia')
-    except locale.Error:
-        print("Advertencia: No se pudo establecer el localismo a es_CO.UTF-8. El formato de moneda puede ser incorrecto.")
-
 def format_to_cop(price: Optional[float]) -> str:
-    """Formatea un número flotante a una cadena de moneda COP, manejando valores nulos."""
-    if price is None:
-        return "$ 0"  # Devuelve un valor por defecto si el precio es nulo
+    """
+    Formatea un número a moneda COP ($ 55.000) sin depender del locale del sistema.
+    """
+    if price is None or price < 1:
+        return "$ 0"
     
-    # Esta línea ahora es segura porque 'price' es un número real, no un rx.Var
-    return locale.currency(price, grouping=True, symbol=True).split(',')[0]
+    # 1. Formatea el número con comas como separador de miles y sin decimales.
+    #    Ejemplo: 55000 -> "55,000"
+    formatted_number = f"{price:,.0f}"
+    
+    # 2. Reemplaza la coma por un punto para el estándar colombiano.
+    #    Ejemplo: "55,000" -> "55.000"
+    colombian_format = formatted_number.replace(',', '.')
+    
+    # 3. Añade el símbolo de peso y un espacio.
+    #    Ejemplo: "55.000" -> "$ 55.000"
+    return f"$ {colombian_format}"
