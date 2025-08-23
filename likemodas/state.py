@@ -551,6 +551,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
     def set_search_query_admin_history(self, query: str): self.search_query_admin_history = query
+    def toggle_admin_sidebar(self): self.show_admin_sidebar = not self.show_admin_sidebar
 
     @rx.event
     def notify_admin_of_new_purchase(self): self.new_purchase_notification = True
@@ -1036,8 +1037,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         return [o for o in self.available_materials if self.search_attr_material.lower() in o.lower()]
     @rx.var
     def filtered_attr_numeros_calzado(self) -> list[str]:
-        if not self.search_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
-        return [o for o in LISTA_NUMEROS_CALZADO if self.search_numero_calzado.lower() in o.lower()]
+        if not self.search_attr_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
+        return [o for o in LISTA_NUMEROS_CALZADO if self.search_attr_numero_calzado.lower() in o.lower()]
     @rx.var
     def filtered_attr_tipos(self) -> list[str]:
         if not self.search_attr_tipo.strip(): return self.available_types
@@ -1053,7 +1054,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return processed_attributes
         return []
 
-    # --- ✅ FUNCIÓN on_load RESTAURADA ---
+    # --- on_load RESTAURADO ---
     @rx.event
     def on_load(self):
         self.is_loading = True
