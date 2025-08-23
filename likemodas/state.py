@@ -40,6 +40,9 @@ class ProductCardData(rx.Base):
     average_rating: float = 0.0
     rating_count: int = 0
     attributes: dict = {}
+    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
+    shipping_cost: Optional[float] = None
+    free_shipping_threshold: Optional[int] = None
 
     class Config:
         orm_mode = True
@@ -739,11 +742,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                         id=p.id,
                         title=p.title,
                         price=p.price,
-                        price_cop=p.price_cop, 
-                        image_urls=p.image_urls,
+                        # ... (otros campos)
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         attributes=p.attributes,
+                        # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
+                        shipping_cost=p.shipping_cost,
+                        free_shipping_threshold=p.free_shipping_threshold,
                     )
                 )
             self.posts = temp_posts
@@ -1112,8 +1117,32 @@ class AppState(reflex_local_auth.LocalAuthState):
     def perform_search(self):
         if not self.search_term.strip(): return
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.title.ilike(f"%{self.search_term.strip()}%"), BlogPostModel.publish_active == True)).all()
-            self.search_results = [ProductCardData.from_orm(p) for p in results]
+            results = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(
+                    BlogPostModel.title.ilike(f"%{self.search_term.strip()}%"), 
+                    BlogPostModel.publish_active == True
+                )
+            ).all()
+            
+            temp_results = []
+            for p in results:
+                temp_results.append(
+                    ProductCardData(
+                        id=p.id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=p.price_cop,
+                        image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        attributes=p.attributes,
+                        shipping_cost=p.shipping_cost,
+                        free_shipping_threshold=p.free_shipping_threshold,
+                    )
+                )
+            self.search_results = temp_results
+            
         return rx.redirect("/search-results")
         
     pending_purchases: List[AdminPurchaseCardData] = []
@@ -1452,9 +1481,23 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
-            self.admin_store_posts = [
-                ProductCardData.from_orm(p) for p in results
-            ]
+            temp_posts = []
+            for p in results:
+                temp_posts.append(
+                    ProductCardData(
+                        id=p.id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=p.price_cop,
+                        image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        attributes=p.attributes,
+                        shipping_cost=p.shipping_cost,
+                        free_shipping_threshold=p.free_shipping_threshold,
+                    )
+                )
+            self.admin_store_posts = temp_posts
 
     show_admin_sidebar: bool = False
 
@@ -1699,9 +1742,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                 temp_posts = []
                 sorted_posts = sorted(user_info.saved_posts, key=lambda p: p.created_at, reverse=True)
                 for p in sorted_posts:
-                    product_dto = ProductCardData.from_orm(p)
-                    product_dto.price_cop = p.price_cop
-                    temp_posts.append(product_dto)
+                    temp_posts.append(
+                        ProductCardData(
+                            id=p.id,
+                            title=p.title,
+                            price=p.price,
+                            price_cop=p.price_cop,
+                            image_urls=p.image_urls,
+                            average_rating=p.average_rating,
+                            rating_count=p.rating_count,
+                            attributes=p.attributes,
+                            shipping_cost=p.shipping_cost,
+                            free_shipping_threshold=p.free_shipping_threshold,
+                        )
+                    )
                 self.saved_posts_gallery = temp_posts
         
         self.is_loading = False
@@ -1818,14 +1872,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.seller_page_info = None
         self.seller_page_posts = []
         yield
-
+        
         seller_id_str = "0"
         try:
             full_url = self.router.url
             if full_url and "?" in full_url:
                 parsed_url = urlparse(full_url)
                 query_dict = parse_qs(parsed_url.query)
-                
                 id_list = query_dict.get("id")
                 if id_list:
                     seller_id_str = id_list[0]
@@ -1857,10 +1910,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                     
                     temp_posts = []
                     for p in posts:
-                        product_dto = ProductCardData.from_orm(p)
-                        product_dto.price_cop = p.price_cop
-                        temp_posts.append(product_dto)
-                        
+                        temp_posts.append(
+                            ProductCardData(
+                                id=p.id,
+                                title=p.title,
+                                price=p.price,
+                                price_cop=p.price_cop,
+                                image_urls=p.image_urls,
+                                average_rating=p.average_rating,
+                                rating_count=p.rating_count,
+                                attributes=p.attributes,
+                                shipping_cost=p.shipping_cost,
+                                free_shipping_threshold=p.free_shipping_threshold,
+                            )
+                        )
                     self.seller_page_posts = temp_posts
 
         self.is_loading = False
