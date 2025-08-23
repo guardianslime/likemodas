@@ -31,13 +31,24 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
                 _hover={"transform": "scale(1.05)"},
                 transition="transform 0.2s",
             ),
-            rx.text(
-                item.price_at_purchase_cop,
-                size="2",
-                weight="medium",
-                text_align="center",
+            # --- ✨ INICIO DE LA MODIFICACIÓN VISUAL ✨ ---
+            rx.vstack(
+                rx.text(
+                    f"{item.quantity}x",  # Muestra la cantidad, ej: "2x"
+                    size="3",
+                    weight="bold",
+                    color_scheme="violet",
+                ),
+                rx.text(
+                    item.price_at_purchase_cop, # Muestra el precio unitario
+                    size="2",
+                    weight="medium",
+                ),
+                spacing="0",
+                align_items="center",
                 margin_top="0.25em"
             ),
+            # --- ✨ FIN DE LA MODIFICACIÓN VISUAL ✨ ---
             spacing="1",
             align="center",
         ),
