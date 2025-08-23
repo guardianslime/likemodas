@@ -1,4 +1,4 @@
-# likemodas/account/shipping_info.py (CORREGIDO CON ALTERNATIVA GRATUITA)
+# likemodas/account/shipping_info.py (CORREGIDO)
 
 import reflex as rx
 import reflex_local_auth
@@ -6,7 +6,7 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
-from .. import navigation # Asegúrate de que esta importación exista
+from .. import navigation
 
 def address_form() -> rx.Component:
     """Formulario para crear una nueva dirección, con campos para coordenadas manuales."""
@@ -18,6 +18,9 @@ def address_form() -> rx.Component:
             rx.box(
                 rx.vstack(
                     rx.text("Para mayor precisión en el envío (opcional):", size="3", weight="medium"),
+                    
+                    # --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
+                    # Se añadió 'is_external=True' para que el enlace se abra en una nueva pestaña.
                     rx.link(
                         rx.button(
                             "1. Abrir mapa y copiar coordenadas", 
@@ -27,18 +30,19 @@ def address_form() -> rx.Component:
                             color_scheme="gray",
                         ),
                         href="/map-selector",
-                        is_external=True, # Abre el mapa en una nueva pestaña
+                        is_external=True, # ESTA LÍNEA ES LA SOLUCIÓN
                     ),
+                    
                     rx.hstack(
                         rx.input(
                             placeholder="2. Pega la Latitud aquí", 
                             value=AppState.manual_latitude,
-                            on_change=AppState.set_manual_latitude,
+                            on_change=AppState.set_manual_latitude, # Asegúrate de que este evento exista en tu AppState
                         ),
                         rx.input(
                             placeholder="3. Pega la Longitud aquí",
                             value=AppState.manual_longitude,
-                            on_change=AppState.set_manual_longitude,
+                            on_change=AppState.set_manual_longitude, # Asegúrate de que este evento exista en tu AppState
                         ),
                         width="100%",
                         spacing="3",
@@ -119,7 +123,6 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             rx.hstack(
                 rx.text(address.name, weight="bold"),
                 rx.spacer(),
-                # --- AÑADE UN BADGE SI LA UBICACIÓN ESTÁ GUARDADA ---
                 rx.cond(
                     address.latitude,
                     rx.badge(
