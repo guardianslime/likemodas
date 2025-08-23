@@ -1069,19 +1069,44 @@ class AppState(reflex_local_auth.LocalAuthState):
             with rx.session() as session:
                 self.addresses = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
 
+
+
+     # --- 👇 1. AÑADE ESTOS CAMPOS PARA LA ENTRADA MANUAL ---
+    manual_latitude: str = ""
+    manual_longitude: str = ""
+    
+    # --- 2. MODIFICA `add_new_address` PARA USAR LOS NUEVOS CAMPOS ---
     @rx.event
     def add_new_address(self, form_data: dict):
         if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
             return rx.toast.error("Por favor, completa todos los campos requeridos.")
+        
+        latitude, longitude = None, None
+        try:
+            # Intenta convertir las coordenadas a float si el usuario las ingresó
+            if self.manual_latitude and self.manual_longitude:
+                latitude = float(self.manual_latitude)
+                longitude = float(self.manual_longitude)
+        except ValueError:
+            return rx.toast.error("Las coordenadas de latitud y longitud deben ser números válidos.")
+
         with rx.session() as session:
             is_first_address = len(self.addresses) == 0
             new_addr = ShippingAddressModel(
-                userinfo_id=self.authenticated_user_info.id, name=form_data["name"],
+                userinfo_id=self.authenticated_user_info.id,
+                name=form_data["name"],
                 phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood,
-                address=form_data["address"], is_default=is_first_address
+                address=form_data["address"], is_default=is_first_address,
+                # --- 👇 USA LAS COORDENADAS MANUALES ---
+                latitude=latitude,
+                longitude=longitude
             )
             session.add(new_addr)
             session.commit()
+            
+        # Limpia los campos después de guardar
+        self.manual_latitude = ""
+        self.manual_longitude = ""
         self.show_form = False
         yield self.load_addresses()
         return rx.toast.success("Nueva dirección guardada.")
