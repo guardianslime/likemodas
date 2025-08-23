@@ -26,8 +26,6 @@ from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTACIÓN
 from . import navigation
-# --- 👇 1. IMPORTA LA NUEVA PÁGINA Y SU ESTADO ---
-from .map_page import map_content, MapPageState
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
 
@@ -98,12 +96,4 @@ app.add_page(
     route="/invoice",
     on_load=InvoiceState.on_load_invoice_page, # <-- CAMBIA AppState POR InvoiceState
     title="Factura"
-)
-
-# --- 👇 2. AÑADE ESTA NUEVA RUTA AL FINAL ---
-app.add_page(
-    base_page(map_content()),
-    route="/map-selector",
-    on_load=MapPageState.on_load_map,
-    title="Seleccionar Ubicación"
 )

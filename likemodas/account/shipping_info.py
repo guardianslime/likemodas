@@ -6,59 +6,12 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
-from .. import navigation
 
 def address_form() -> rx.Component:
-    """Formulario para crear una nueva dirección, con campos para coordenadas manuales."""
+    """Formulario para crear una nueva dirección."""
     return rx.form(
         rx.vstack(
             rx.heading("Nueva Dirección de Envío", size="6", width="100%"),
-            
-            # --- SECCIÓN PARA OBTENER COORDENADAS (ALTERNATIVA GRATUITA) ---
-            rx.box(
-                rx.vstack(
-                    rx.text("Para mayor precisión en el envío (opcional):", size="3", weight="medium"),
-                    
-                    # --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
-                    # Se añadió 'is_external=True' para que el enlace se abra en una nueva pestaña.
-                    rx.link(
-                        rx.button(
-                            "1. Abrir mapa y copiar coordenadas", 
-                            rx.icon("map", margin_left="0.5em"), 
-                            width="100%",
-                            variant="outline",
-                            color_scheme="gray",
-                        ),
-                        href="/map-selector",
-                        is_external=True, # ESTA LÍNEA ES LA SOLUCIÓN
-                    ),
-                    
-                    rx.hstack(
-                        rx.input(
-                            placeholder="2. Pega la Latitud aquí", 
-                            value=AppState.manual_latitude,
-                            on_change=AppState.set_manual_latitude, # Asegúrate de que este evento exista en tu AppState
-                        ),
-                        rx.input(
-                            placeholder="3. Pega la Longitud aquí",
-                            value=AppState.manual_longitude,
-                            on_change=AppState.set_manual_longitude, # Asegúrate de que este evento exista en tu AppState
-                        ),
-                        width="100%",
-                        spacing="3",
-                    ),
-                    spacing="2",
-                    width="100%",
-                ),
-                width="100%",
-                border="1px solid",
-                border_color=rx.color("gray", 6),
-                padding="1em",
-                border_radius="md",
-                margin_y="1em",
-            ),
-            
-            # --- RESTO DEL FORMULARIO DE DIRECCIÓN ---
             rx.grid(
                 rx.vstack(
                     rx.text("Nombre Completo*"),
@@ -123,15 +76,8 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             rx.hstack(
                 rx.text(address.name, weight="bold"),
                 rx.spacer(),
-                rx.cond(
-                    address.latitude,
-                    rx.badge(
-                        rx.hstack(rx.icon("map-pin", size=12), rx.text("Ubicación Guardada")),
-                        color_scheme="blue", variant="soft"
-                    ),
-                ),
                 rx.cond(address.is_default, rx.badge("Predeterminada", color_scheme="green")),
-                width="100%", spacing="2"
+                width="100%"
             ),
             rx.text(f"{address.address}, {address.neighborhood}"),
             rx.text(f"{address.city}"),
@@ -149,11 +95,7 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             ),
             align_items="start", spacing="2"
         ),
-        border="1px solid", 
-        border_color=rx.color("gray", 6), 
-        border_radius="md", 
-        padding="1em", 
-        width="100%"
+        border="1px solid #ededed", border_radius="md", padding="1em", width="100%"
     )
 
 @reflex_local_auth.require_login

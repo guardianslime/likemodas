@@ -145,9 +145,6 @@ class ShippingAddressModel(rx.Model, table=True):
     is_default: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
 
-    latitude: Optional[float] = Field(default=None)
-    longitude: Optional[float] = Field(default=None)
-
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
 
     class Config:
