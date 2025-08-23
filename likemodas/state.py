@@ -1,4 +1,4 @@
-# likemodas/state.py (VERSIÓN FINAL Y VERIFICADA)
+# likemodas/state.py (VERSIÓN FINAL, COMPLETA Y VERIFICADA)
 
 from __future__ import annotations
 import reflex as rx
@@ -551,6 +551,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
     def set_search_query_admin_history(self, query: str): self.search_query_admin_history = query
+    def toggle_admin_sidebar(self): self.show_admin_sidebar = not self.show_admin_sidebar
 
     @rx.event
     def notify_admin_of_new_purchase(self): self.new_purchase_notification = True
@@ -1042,17 +1043,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     def filtered_attr_tipos(self) -> list[str]:
         if not self.search_attr_tipo.strip(): return self.available_types
         return [o for o in self.available_types if self.search_attr_tipo.lower() in o.lower()]
-        
-    # --- ✅ FUNCIÓN AÑADIDA QUE FALTABA ---
     @rx.var
     def product_attributes_list(self) -> list[AttributeData]:
         if self.product_in_modal and self.product_in_modal.attributes:
             processed_attributes = []
             for k, v in self.product_in_modal.attributes.items():
-                if isinstance(v, list):
-                    value_str = ", ".join(v)
-                else:
-                    value_str = str(v)
+                value_str = ", ".join(v) if isinstance(v, list) else str(v)
                 processed_attributes.append(AttributeData(key=k, value=value_str))
             return processed_attributes
         return []
