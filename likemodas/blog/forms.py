@@ -176,6 +176,37 @@ def blog_post_add_form() -> rx.Component:
                     rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
                     rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
 
+                    # --- 👇 AÑADE TODO ESTE BLOQUE 👇 ---
+                    rx.grid(
+                        rx.vstack(
+                            rx.text("Costo del Envío (COP)", as_="div", size="2", weight="bold"),
+                            rx.input(
+                                placeholder="Ej: 8000. Escribe 0 para Envío Gratis",
+                                type="number",
+                                value=AppState.shipping_cost_str,
+                                on_change=AppState.set_shipping_cost_str, # Necesitarás crear este simple setter en AppState
+                                size="3",
+                            ),
+                            rx.text("Déjalo en blanco si el costo lo asume el comprador.", size="1", color_scheme="gray"),
+                            align_items="stretch",
+                        ),
+                        rx.vstack(
+                            rx.text("Moda Completa (Opcional)", as_="div", size="2", weight="bold"),
+                            rx.input(
+                                placeholder="Ej: 3",
+                                type="number",
+                                value=AppState.free_shipping_threshold_str,
+                                on_change=AppState.set_free_shipping_threshold_str, # Y este también
+                                size="3",
+                            ),
+                            rx.text("Envío gratis al comprar esta cantidad de items.", size="1", color_scheme="gray"),
+                            align_items="stretch",
+                        ),
+                        columns="2",
+                        spacing="4",
+                        width="100%",
+                    ),
+
                     rx.cond(
                         AppState.category != "",
                         rx.vstack(

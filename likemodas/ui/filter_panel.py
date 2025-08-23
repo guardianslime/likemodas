@@ -200,6 +200,35 @@ def floating_filter_panel() -> rx.Component:
                             width="100%"
                         ),
 
+                        # --- 👇 AÑADE ESTE NUEVO BLOQUE DE FILTROS 👇 ---
+                        rx.vstack(
+                            rx.divider(),
+                            rx.hstack(
+                                rx.text("Envío Gratis", size="3"),
+                                rx.spacer(),
+                                rx.switch(
+                                    is_checked=AppState.filter_free_shipping,
+                                    on_change=AppState.set_filter_free_shipping, # Crea este setter
+                                ),
+                                width="100%",
+                                justify="between",
+                                align="center",
+                            ),
+                            rx.hstack(
+                                rx.text("Moda Completa", size="3"),
+                                rx.spacer(),
+                                rx.switch(
+                                    is_checked=AppState.filter_complete_fashion,
+                                    on_change=AppState.set_filter_complete_fashion, # Crea este setter
+                                ),
+                                width="100%",
+                                justify="between",
+                                align="center",
+                            ),
+                            spacing="3",
+                            width="100%",
+                        ),
+
                         # Lógica condicional para mostrar filtros
                         rx.cond(
                             (AppState.current_category != "") & (AppState.current_category != "todos"),

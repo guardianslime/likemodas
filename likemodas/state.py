@@ -502,6 +502,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                     if p.attributes.get("Tipo") in self.filter_tipos_general
                 ]
 
+        # --- 👇 AÑADE ESTA LÓGICA DE FILTRADO 👇 ---
+        if self.filter_free_shipping:
+            posts_to_filter = [
+                p for p in posts_to_filter 
+                if p.shipping_cost == 0.0
+            ]
+
+        if self.filter_complete_fashion:
+            posts_to_filter = [
+                p for p in posts_to_filter 
+                if p.free_shipping_threshold is not None and p.free_shipping_threshold > 0
+            ]
+        # --- FIN DE LA MODIFICACIÓN ---
+
         return posts_to_filter
     
     search_attr_color: str = ""
@@ -1325,6 +1339,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             if q in f"{e.first_name} {e.last_name} {e.email} {e.message}".lower()
         ]
     
+    def set_shipping_cost_str(self, cost: str):
+        self.shipping_cost_str = cost
+
+    def set_free_shipping_threshold_str(self, threshold: str):
+        self.free_shipping_threshold_str = threshold
+    
+    def set_filter_free_shipping(self, value: bool):
+        self.filter_free_shipping = value
+
+    def set_filter_complete_fashion(self, value: bool):
+        self.filter_complete_fashion = value
+
     async def handle_contact_submit(self, form_data: dict):
         self.form_data = form_data
         with rx.session() as session:
