@@ -1047,6 +1047,15 @@ class AppState(reflex_local_auth.LocalAuthState):
     latitude: float = 0.0
     longitude: float = 0.0
 
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    @rx.event
+    def on_location_error(self):
+        """Muestra una alerta si no se pudo obtener la ubicación."""
+        return rx.window_alert(
+            "No se pudo obtener la ubicación. Por favor, asegúrate de haber concedido los permisos en tu navegador."
+        )
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
     def toggle_form(self):
         self.show_form = not self.show_form
     def set_city(self, city: str): self.city = city; self.neighborhood = ""

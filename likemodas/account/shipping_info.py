@@ -1,4 +1,4 @@
-# likemodas/account/shipping_info.py (CORREGIDO)
+# likemodas/account/shipping_info.py (VERSIÓN FINAL)
 
 import reflex as rx
 import reflex_local_auth
@@ -6,28 +6,9 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
+from ..ui.location_button import location_button  # <-- ✨ 1. IMPORTA EL NUEVO COMPONENTE
 
-# --- ✨ INICIO: CÓDIGO JAVASCRIPT ✨ ---
-# Este script se llamará desde el botón. Pide la ubicación y llama a un EventHandler de Reflex.
-get_location_script = """
-if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            reflex.call_event(
-                "set_location_coordinates",
-                [position.coords.latitude, position.coords.longitude]
-            );
-        },
-        (error) => {
-            alert("No se pudo obtener la ubicación. Por favor, asegúrate de haber concedido los permisos.");
-        }
-    );
-} else {
-    alert("La geolocalización no es soportada por este navegador.");
-}
-"""
-# --- ✨ FIN: CÓDIGO JAVASCRIPT ✨ ---
-
+# Ya no necesitas la variable 'get_location_script', puedes borrarla.
 
 def address_form() -> rx.Component:
     """Formulario para crear una nueva dirección."""
@@ -36,11 +17,10 @@ def address_form() -> rx.Component:
             rx.heading("Nueva Dirección de Envío", size="6", width="100%"),
             # ... (tu rx.grid con los inputs no cambia)
             rx.grid(
-                # ... (todos tus rx.vstack para nombre, teléfono, ciudad, etc.)
-                grid_column="span 2",
+                 # ...
+                 grid_column="span 2",
             ),
-
-            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+            
             rx.box(height="1em"),
             rx.text(
                 "Opcional: Para mayor precisión en la entrega, añade tu ubicación exacta.", 
@@ -49,15 +29,14 @@ def address_form() -> rx.Component:
                 text_align="center",
                 width="100%"
             ),
-            rx.button(
-                rx.icon(tag="map-pin", margin_right="0.5em"),
-                "Añadir mi ubicación con mapa",
-                # Llamamos al script de JavaScript al hacer clic.
-                on_click=rx.call_script(get_location_script),
-                variant="outline",
-                width="100%",
+
+            # --- ✨ 2. REEMPLAZA EL ANTIGUO BOTÓN POR EL NUEVO COMPONENTE ✨ ---
+            location_button(
+                # Conectamos los event handlers del componente a los de AppState.
+                on_location_success=AppState.set_location_coordinates,
+                on_location_error=AppState.on_location_error,
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+            # --- ✨ FIN DEL REEMPLAZO ✨ ---
 
             rx.hstack(
                 rx.button("Cancelar", on_click=AppState.toggle_form, color_scheme="gray"),
