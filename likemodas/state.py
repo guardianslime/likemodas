@@ -73,12 +73,21 @@ class ProductDetailData(rx.Base):
     seller_name: str = ""
     seller_id: int = 0
     attributes: dict = {}
-    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     shipping_cost: Optional[float] = None
     seller_free_shipping_threshold: Optional[int] = None
 
     class Config:
         orm_mode = True
+
+    # --- 👇 AÑADE ESTA NUEVA PROPIEDAD 👇 ---
+    @property
+    def shipping_display_text(self) -> str:
+        """Devuelve el texto de envío pre-formateado para el modal."""
+        if self.shipping_cost == 0.0:
+            return "Envío Gratis"
+        if self.shipping_cost is not None and self.shipping_cost > 0:
+            return f"Costo de Envío: {format_to_cop(self.shipping_cost)}"
+        return "Envío a convenir con el vendedor"
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
@@ -1804,17 +1813,38 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         with rx.session() as session:
             db_post = session.exec(
-            sqlmodel.select(BlogPostModel).options(
+                sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates).joinedload(CommentModel.userinfo).joinedload(UserInfo.user)
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user) # <-- Asegúrate que esta línea esté
                 ).where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                product_dto = ProductDetailData.from_orm(db_post)
+                # --- 👇 REEMPLAZA from_orm CON ESTE BLOQUE 👇 ---
+                seller_name = ""
+                seller_id = 0
+                seller_fsth = None
                 if db_post.userinfo and db_post.userinfo.user:
-                    product_dto.seller_name = db_post.userinfo.user.username
-                    product_dto.seller_id = db_post.userinfo.id
+                    seller_name = db_post.userinfo.user.username
+                    seller_id = db_post.userinfo.id
+                    seller_fsth = db_post.userinfo.free_shipping_threshold
+
+                product_dto = ProductDetailData(
+                    id=db_post.id,
+                    title=db_post.title,
+                    content=db_post.content,
+                    price_cop=db_post.price_cop,
+                    image_urls=db_post.image_urls,
+                    created_at_formatted=db_post.created_at_formatted,
+                    average_rating=db_post.average_rating,
+                    rating_count=db_post.rating_count,
+                    seller_name=seller_name,
+                    seller_id=seller_id,
+                    attributes=db_post.attributes,
+                    shipping_cost=db_post.shipping_cost,
+                    seller_free_shipping_threshold=seller_fsth,
+                )
                 self.product_in_modal = product_dto
                 
                 all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]

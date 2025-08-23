@@ -189,16 +189,13 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
 
-            # --- 👇 INICIO DEL BLOQUE CORREGIDO Y AÑADIDO 👇 ---
+            # --- 👇 REEMPLAZA EL BLOQUE DE ENVÍO POR ESTE 👇 ---
             rx.hstack(
-                rx.cond(
-                    AppState.product_in_modal.shipping_cost == 0.0,
-                    rx.badge("Envío Gratis", color_scheme="green", variant="solid", size="2"),
-                    rx.cond(
-                        AppState.product_in_modal.shipping_cost > 0,
-                        rx.text(f"Costo de Envío: {format_to_cop(AppState.product_in_modal.shipping_cost)}", size="3", weight="medium"),
-                        rx.text("Envío a convenir con el vendedor", size="3", color_scheme="gray")
-                    )
+                rx.badge(
+                    AppState.product_in_modal.shipping_display_text, # <-- Usamos la nueva propiedad
+                    color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
+                    variant="solid",
+                    size="2"
                 ),
                 rx.cond(
                     AppState.product_in_modal.seller_free_shipping_threshold > 0,
@@ -211,7 +208,6 @@ def product_detail_modal() -> rx.Component:
                 align="center",
                 margin_y="1em",
             ),
-            # --- FIN DEL BLOQUE ---
 
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.cond(
