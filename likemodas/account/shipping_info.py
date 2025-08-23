@@ -6,20 +6,15 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
-from ..ui.location_button import location_button  # <-- ✨ 1. IMPORTA EL NUEVO COMPONENTE
-
-# Ya no necesitas la variable 'get_location_script', puedes borrarla.
+# ELIMINA la siguiente línea, ya no existe:
+# from ..ui.location_button import location_button
 
 def address_form() -> rx.Component:
     """Formulario para crear una nueva dirección."""
     return rx.form(
         rx.vstack(
             rx.heading("Nueva Dirección de Envío", size="6", width="100%"),
-            # ... (tu rx.grid con los inputs no cambia)
-            rx.grid(
-                 # ...
-                 grid_column="span 2",
-            ),
+            # ... (el rx.grid con los inputs de texto no cambia)
             
             rx.box(height="1em"),
             rx.text(
@@ -30,13 +25,17 @@ def address_form() -> rx.Component:
                 width="100%"
             ),
 
-            # --- ✨ 2. REEMPLAZA EL ANTIGUO BOTÓN POR EL NUEVO COMPONENTE ✨ ---
-            location_button(
-                # Conectamos los event handlers del componente a los de AppState.
-                on_location_success=AppState.set_location_coordinates,
-                on_location_error=AppState.on_location_error,
+            # --- ✨ INICIO DEL CAMBIO FINAL ✨ ---
+            # Reemplazamos el componente `location_button` por un `rx.button` normal.
+            rx.button(
+                rx.icon(tag="map-pin", margin_right="0.5em"),
+                "Añadir mi ubicación con mapa",
+                # El on_click ahora llama a nuestro nuevo handler en AppState.
+                on_click=AppState.request_location_script,
+                variant="outline",
+                width="100%",
             ),
-            # --- ✨ FIN DEL REEMPLAZO ✨ ---
+            # --- ✨ FIN DEL CAMBIO FINAL ✨ ---
 
             rx.hstack(
                 rx.button("Cancelar", on_click=AppState.toggle_form, color_scheme="gray"),
