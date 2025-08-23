@@ -1096,7 +1096,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         self.is_loading = False
 
-    # --- ✅ FUNCIÓN AÑADIDA QUE FALTABA ---
     @rx.var
     def my_admin_posts(self) -> list[BlogPostModel]:
         if not self.authenticated_user_info:
