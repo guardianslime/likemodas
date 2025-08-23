@@ -94,12 +94,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     show_admin_sidebar: bool = False
 
     # --- Autenticación y Registro ---
-    success: bool = False
-    error_message: str = ""
-    message: str = ""
-    is_success: bool = False
-    token: str = ""
-    is_token_valid: bool = False
+    success: bool = False; error_message: str = ""; message: str = ""
+    is_success: bool = False; token: str = ""; is_token_valid: bool = False
 
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
@@ -481,8 +477,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/my-purchases")
     
     # --- Búsqueda y Filtros ---
-    search_term: str = ""
-    search_results: List[ProductCardData] = []
+    posts: list[ProductCardData] = []
+    search_term: str = ""; search_results: List[ProductCardData] = []
     min_price: str = ""; max_price: str = ""
     show_filters: bool = False; current_category: str = ""
     open_filter_name: str = ""
@@ -532,6 +528,26 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.search_results = [ProductCardData.from_orm(p) for p in results]
         return rx.redirect("/search-results")
         
+    @rx.var
+    def displayed_posts(self) -> list[ProductCardData]:
+        posts_to_filter = self.posts
+        if self.min_price:
+            try: posts_to_filter = [p for p in posts_to_filter if p.price >= float(self.min_price)]
+            except (ValueError, TypeError): pass
+        if self.max_price:
+            try: posts_to_filter = [p for p in posts_to_filter if p.price <= float(self.max_price)]
+            except (ValueError, TypeError): pass
+        if self.filter_colors:
+            posts_to_filter = [p for p in posts_to_filter if p.attributes.get("Color") and any(c in self.filter_colors for c in p.attributes.get("Color", []))]
+        if self.filter_materiales_tela:
+            posts_to_filter = [p for p in posts_to_filter if (p.attributes.get("Material") in self.filter_materiales_tela) or (p.attributes.get("Tela") in self.filter_materiales_tela)]
+        combined_sizes = self.filter_tallas + self.filter_numeros_calzado
+        if combined_sizes:
+            posts_to_filter = [p for p in posts_to_filter if (p.attributes.get("Talla") and any(s in combined_sizes for s in p.attributes.get("Talla", []))) or (p.attributes.get("Número") and any(n in combined_sizes for n in p.attributes.get("Número", [])))]
+        if self.filter_tipos_general:
+            posts_to_filter = [p for p in posts_to_filter if p.attributes.get("Tipo") in self.filter_tipos_general]
+        return posts_to_filter
+    
     # --- Panel de Administración ---
     pending_purchases: List[AdminPurchaseCardData] = []
     confirmed_purchases: List[AdminPurchaseCardData] = []
@@ -542,7 +558,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_new_purchase_notification(self, value: bool): self.new_purchase_notification = value
     def set_search_query_admin_history(self, query: str): self.search_query_admin_history = query
-    def toggle_admin_sidebar(self): self.show_admin_sidebar = not self.show_admin_sidebar
 
     @rx.event
     def notify_admin_of_new_purchase(self): self.new_purchase_notification = True
@@ -789,6 +804,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
+    def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
+        if not self.authenticated_user_info or not self.product_in_modal: return None
+        purchase_items = session.exec(sqlmodel.select(PurchaseItemModel).join(PurchaseModel).where(PurchaseModel.userinfo_id == self.authenticated_user_info.id, PurchaseItemModel.blog_post_id == self.product_in_modal.id, PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED]))).all()
+        claimed_purchase_ids = {c.purchase_item_id for c in self.product_comments if c.purchase_item_id}
+        for item in purchase_items:
+            if item.id not in claimed_purchase_ids: return item
+        return None
+
     # --- Publicaciones Guardadas ---
     saved_post_ids: set[int] = set()
     saved_posts_gallery: list[ProductCardData] = []
@@ -974,3 +997,39 @@ class AppState(reflex_local_auth.LocalAuthState):
     def filtered_attr_tamanos_mochila(self) -> list[str]:
         if not self.search_attr_tamano_mochila.strip(): return LISTA_TAMANOS_MOCHILAS
         return [o for o in LISTA_TAMANOS_MOCHILAS if self.search_attr_tamano_mochila.lower() in o.lower()]
+    @rx.var
+    def available_types(self) -> list[str]:
+        if self.category == Category.ROPA.value: return LISTA_TIPOS_ROPA
+        if self.category == Category.CALZADO.value: return LISTA_TIPOS_ZAPATOS
+        if self.category == Category.MOCHILAS.value: return LISTA_TIPOS_MOCHILAS
+        return []
+    @rx.var
+    def material_label(self) -> str:
+        if self.category == Category.ROPA.value: return "Tela"
+        return "Material"
+    @rx.var
+    def available_materials(self) -> list[str]:
+        if self.category == Category.ROPA.value: return MATERIALES_ROPA
+        if self.category == Category.CALZADO.value: return MATERIALES_CALZADO
+        if self.category == Category.MOCHILAS.value: return MATERIALES_MOCHILAS
+        return []
+    @rx.var
+    def filtered_attr_colores(self) -> list[str]:
+        if not self.search_attr_color.strip(): return LISTA_COLORES
+        return [o for o in LISTA_COLORES if self.search_attr_color.lower() in o.lower()]
+    @rx.var
+    def filtered_attr_tallas_ropa(self) -> list[str]:
+        if not self.search_attr_talla_ropa.strip(): return LISTA_TALLAS_ROPA
+        return [o for o in LISTA_TALLAS_ROPA if self.search_attr_talla_ropa.lower() in o.lower()]
+    @rx.var
+    def filtered_attr_materiales(self) -> list[str]:
+        if not self.search_attr_material.strip(): return self.available_materials
+        return [o for o in self.available_materials if self.search_attr_material.lower() in o.lower()]
+    @rx.var
+    def filtered_attr_numeros_calzado(self) -> list[str]:
+        if not self.search_attr_numero_calzado.strip(): return LISTA_NUMEROS_CALZADO
+        return [o for o in LISTA_NUMEROS_CALZADO if self.search_attr_numero_calzado.lower() in o.lower()]
+    @rx.var
+    def filtered_attr_tipos(self) -> list[str]:
+        if not self.search_attr_tipo.strip(): return self.available_types
+        return [o for o in self.available_types if self.search_attr_tipo.lower() in o.lower()]
