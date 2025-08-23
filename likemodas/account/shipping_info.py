@@ -6,7 +6,7 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
-from ..ui.location import LocationButton # Importamos el nuevo componente
+from ..ui.location_button import LocationButton
 
 def address_form() -> rx.Component:
     """Formulario para crear una nueva dirección."""
