@@ -994,6 +994,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(post_to_update)
                 session.commit()
                 yield rx.toast.info(f"Estado de publicación cambiado.")
+
+    
                 
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
@@ -1042,6 +1044,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
 
+    latitude: float = 0.0
+    longitude: float = 0.0
+
     def toggle_form(self):
         self.show_form = not self.show_form
     def set_city(self, city: str): self.city = city; self.neighborhood = ""
@@ -1070,19 +1075,42 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.addresses = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
 
     @rx.event
+    def set_location_coordinates(self, lat: float, lon: float):
+        """Recibe las coordenadas desde el frontend y las guarda en el estado."""
+        self.latitude = lat
+        self.longitude = lon
+        yield rx.toast.success("¡Ubicación capturada con éxito!")
+    # --- ✨ FIN DE LA MODIFICACIÓN (Parte 2/3) ✨ ---
+
+    @rx.event
     def add_new_address(self, form_data: dict):
         if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
             return rx.toast.error("Por favor, completa todos los campos requeridos.")
+        
         with rx.session() as session:
             is_first_address = len(self.addresses) == 0
             new_addr = ShippingAddressModel(
-                userinfo_id=self.authenticated_user_info.id, name=form_data["name"],
-                phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood,
-                address=form_data["address"], is_default=is_first_address
+                userinfo_id=self.authenticated_user_info.id,
+                name=form_data["name"],
+                phone=form_data["phone"],
+                city=self.city,
+                neighborhood=self.neighborhood,
+                address=form_data["address"],
+                is_default=is_first_address,
+                # --- ✨ INICIO DE LA MODIFICACIÓN (Parte 3/3) ✨ ---
+                # Guardamos las coordenadas si fueron capturadas.
+                latitude=self.latitude if self.latitude != 0.0 else None,
+                longitude=self.longitude if self.longitude != 0.0 else None,
+                # --- ✨ FIN DE LA MODIFICACIÓN (Parte 3/3) ✨ ---
             )
             session.add(new_addr)
             session.commit()
+        
         self.show_form = False
+        # Reseteamos las coordenadas después de guardar.
+        self.latitude = 0.0
+        self.longitude = 0.0
+        
         yield self.load_addresses()
         return rx.toast.success("Nueva dirección guardada.")
 

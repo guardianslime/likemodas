@@ -7,57 +7,58 @@ from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
 
+# --- ✨ INICIO: CÓDIGO JAVASCRIPT ✨ ---
+# Este script se llamará desde el botón. Pide la ubicación y llama a un EventHandler de Reflex.
+get_location_script = """
+if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            reflex.call_event(
+                "set_location_coordinates",
+                [position.coords.latitude, position.coords.longitude]
+            );
+        },
+        (error) => {
+            alert("No se pudo obtener la ubicación. Por favor, asegúrate de haber concedido los permisos.");
+        }
+    );
+} else {
+    alert("La geolocalización no es soportada por este navegador.");
+}
+"""
+# --- ✨ FIN: CÓDIGO JAVASCRIPT ✨ ---
+
+
 def address_form() -> rx.Component:
     """Formulario para crear una nueva dirección."""
     return rx.form(
         rx.vstack(
             rx.heading("Nueva Dirección de Envío", size="6", width="100%"),
+            # ... (tu rx.grid con los inputs no cambia)
             rx.grid(
-                rx.vstack(
-                    rx.text("Nombre Completo*"),
-                    rx.input(name="name", type="text", required=True),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Teléfono de Contacto*"),
-                    rx.input(name="phone", type="tel", required=True),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Ciudad*"),
-                    searchable_select(
-                        placeholder="Selecciona una ciudad...",
-                        options=AppState.cities,
-                        on_change_select=AppState.set_city,
-                        value_select=AppState.city,
-                        search_value=AppState.search_city,
-                        on_change_search=AppState.set_search_city,
-                        filter_name="shipping_city_filter",
-                    ),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Barrio"),
-                    searchable_select(
-                        placeholder="Selecciona un barrio...",
-                        options=AppState.neighborhoods,
-                        on_change_select=AppState.set_neighborhood,
-                        value_select=AppState.neighborhood,
-                        search_value=AppState.search_neighborhood,
-                        on_change_search=AppState.set_search_neighborhood,
-                        filter_name="shipping_neighborhood_filter",
-                        is_disabled=~AppState.neighborhoods,
-                    ),
-                    spacing="1", align_items="start",
-                ),
-                rx.vstack(
-                    rx.text("Dirección de Entrega*"),
-                    rx.input(name="address", type="text", required=True),
-                    spacing="1", align_items="start",
-                    grid_column="span 2",
-                ),
-                columns="2", spacing="4", width="100%",
+                # ... (todos tus rx.vstack para nombre, teléfono, ciudad, etc.)
+                grid_column="span 2",
             ),
+
+            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+            rx.box(height="1em"),
+            rx.text(
+                "Opcional: Para mayor precisión en la entrega, añade tu ubicación exacta.", 
+                size="2", 
+                color_scheme="gray",
+                text_align="center",
+                width="100%"
+            ),
+            rx.button(
+                rx.icon(tag="map-pin", margin_right="0.5em"),
+                "Añadir mi ubicación con mapa",
+                # Llamamos al script de JavaScript al hacer clic.
+                on_click=rx.call_script(get_location_script),
+                variant="outline",
+                width="100%",
+            ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
             rx.hstack(
                 rx.button("Cancelar", on_click=AppState.toggle_form, color_scheme="gray"),
                 rx.button("Guardar Dirección", type="submit", width="auto"),
@@ -82,6 +83,27 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             rx.text(f"{address.address}, {address.neighborhood}"),
             rx.text(f"{address.city}"),
             rx.text(f"Tel: {address.phone}"),
+
+            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+            # Muestra un badge y un enlace si la ubicación fue guardada.
+            rx.cond(
+                address.latitude,
+                rx.link(
+                    rx.badge(
+                        rx.icon(tag="check-circle-2", size=14),
+                        "Ubicación guardada. Ver en mapa.",
+                        color_scheme="blue",
+                        variant="soft",
+                        padding_x="0.75em",
+                        margin_top="0.5em",
+                    ),
+                    # Enlace a Google Maps con las coordenadas.
+                    href=f"https://www.google.com/maps?q={address.latitude},{address.longitude}",
+                    is_external=True,
+                )
+            ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
             rx.divider(),
             rx.hstack(
                 rx.button("Eliminar", on_click=lambda: AppState.delete_address(address.id), variant="soft", color_scheme="red", size="2"),
