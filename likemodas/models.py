@@ -142,14 +142,13 @@ class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
     userinfo_id: int = Field(foreign_key="userinfo.id")
     name: str; phone: str; city: str; neighborhood: str; address: str
-    is_default: bool = Field(default=False, nullable=False)
-    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
-
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-    # Añadimos campos opcionales para las coordenadas geográficas.
+    
+    # --- 👇 AÑADE ESTAS DOS LÍNEAS ---
     latitude: Optional[float] = Field(default=None)
     longitude: Optional[float] = Field(default=None)
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+    
+    is_default: bool = Field(default=False, nullable=False)
+    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
 
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
 
