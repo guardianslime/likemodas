@@ -1,6 +1,9 @@
 import reflex as rx
 import folium
-from .. import navigation # --- ¡ESTA ES LA LÍNEA QUE FALTABA! ---
+# --- LA CORRECCIÓN ESTÁ EN ESTA LÍNEA ---
+# Se cambió 'from .. import' por 'from . import' para que la importación
+# se realice dentro del mismo paquete 'likemodas'.
+from . import navigation 
 
 class MapPageState(rx.State):
     """Estado para manejar la página del mapa interactivo."""
@@ -35,7 +38,10 @@ def map_content() -> rx.Component:
                 border_radius="md",
                 margin_top="1em"
             ),
-            rx.link(rx.button("Volver al Formulario"), href=navigation.routes.SHIPPING_INFO_ROUTE),
+            rx.link(
+                rx.button("Volver al Formulario"), 
+                href=navigation.routes.SHIPPING_INFO_ROUTE
+            ),
             spacing="4",
             padding="2em",
             max_width="960px",
