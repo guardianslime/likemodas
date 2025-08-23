@@ -64,6 +64,8 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
+    # --- 👇 AÑADE ESTA LÍNEA 👇 ---
+    free_shipping_threshold: Optional[int] = Field(default=None)
     user: Optional["LocalUser"] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
@@ -109,7 +111,7 @@ class BlogPostModel(rx.Model, table=True):
     
     # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     shipping_cost: Optional[float] = Field(default=None)
-    free_shipping_threshold: Optional[int] = Field(default=None) # Para "Moda Completa"
+    #free_shipping_threshold: Optional[int] = Field(default=None) # Para "Moda Completa"
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
@@ -160,6 +162,8 @@ class PurchaseModel(rx.Model, table=True):
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING, nullable=False)
+    # --- 👇 AÑADE ESTA LÍNEA 👇 ---
+    shipping_applied: Optional[float] = Field(default=None)
     shipping_name: Optional[str] = None; shipping_city: Optional[str] = None
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
