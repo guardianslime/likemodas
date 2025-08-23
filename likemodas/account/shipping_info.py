@@ -90,7 +90,7 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
                 address.latitude,
                 rx.link(
                     rx.badge(
-                        rx.icon(tag="check-circle-2", size=14),
+                        rx.icon(tag="check-circle", size=14), # <-- ASÍ QUEDA CORREGIDO
                         "Ubicación guardada. Ver en mapa.",
                         color_scheme="blue",
                         variant="soft",
