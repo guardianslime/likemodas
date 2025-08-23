@@ -1085,12 +1085,23 @@ class AppState(reflex_local_auth.LocalAuthState):
             with rx.session() as session:
                 self.addresses = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
 
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # REEMPLAZA el antiguo 'set_location_coordinates' por este nuevo método.
     @rx.event
-    def set_location_coordinates(self, lat: float, lon: float):
-        """Recibe las coordenadas desde el frontend y las guarda en el estado."""
-        self.latitude = lat
-        self.longitude = lon
-        yield rx.toast.success("¡Ubicación capturada con éxito!")
+    def set_location_from_string(self, coords_str: str):
+        """
+        Recibe las coordenadas como una única cadena "lat,lon",
+        la procesa y actualiza el estado.
+        """
+        try:
+            lat_str, lon_str = coords_str.split(',')
+            self.latitude = float(lat_str)
+            self.longitude = float(lon_str)
+            yield rx.toast.success("¡Ubicación capturada con éxito!")
+        except Exception as e:
+            print(f"Error al procesar coordenadas: {e}")
+            yield rx.toast.error("Error al procesar las coordenadas recibidas.")
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     # --- ✨ FIN DE LA MODIFICACIÓN (Parte 2/3) ✨ ---
 
     @rx.event

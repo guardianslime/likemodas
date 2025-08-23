@@ -12,17 +12,17 @@ from ..ui.components import searchable_select
 GET_LOCATION_SCRIPT = """
 function getLocation() {
     if (!window.onLocationSuccess || !window.onLocationError) {
-        console.error("Reflex callbacks no están definidos. El evento on_click debe definirlos.");
+        console.error("Reflex callbacks no están definidos.");
         return;
     }
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                // Llama al callback de éxito que se define dinámicamente.
-                window.onLocationSuccess(position.coords.latitude, position.coords.longitude);
+                // Unimos lat y lon en una sola cadena separada por coma.
+                const coords_string = `${position.coords.latitude},${position.coords.longitude}`;
+                window.onLocationSuccess(coords_string);
             },
             (error) => {
-                // Llama al callback de error.
                 window.onLocationError();
             }
         );
@@ -96,23 +96,22 @@ def address_form() -> rx.Component:
                 width="100%"
             ),
 
-            # 3. El botón con la cadena de eventos en el on_click.
+            # --- ✨ 2. MODIFICAMOS EL BOTÓN ✨ ---
             rx.button(
                 rx.icon(tag="map-pin", margin_right="0.5em"),
                 "Añadir mi ubicación con mapa",
                 on_click=[
-                    # Paso A: Crea dinámicamente el callback de ÉXITO.
-                    rx.call_script(f"window.onLocationSuccess = (lat, lon) => {{ {AppState.set_location_coordinates}(lat, lon) }}"),
+                    # Usamos el nuevo EventHandler 'set_location_from_string' que solo espera un argumento.
+                    rx.call_script(f"window.onLocationSuccess = (coords) => {{ {AppState.set_location_from_string}(coords) }}"),
                     
-                    # Paso B: Crea dinámicamente el callback de ERROR.
                     rx.call_script("window.onLocationError = () => { alert('No se pudo obtener la ubicación. Por favor, asegúrese de haber concedido los permisos.') }"),
                     
-                    # Paso C: Llama a la función principal AHORA que los callbacks existen.
                     rx.call_script("getLocation()"),
                 ],
                 variant="outline",
                 width="100%",
             ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
             rx.hstack(
                 rx.button("Cancelar", on_click=AppState.toggle_form, color_scheme="gray"),
