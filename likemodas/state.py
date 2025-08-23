@@ -51,6 +51,16 @@ class ProductCardData(rx.Base):
     def price_cop(self) -> str:
         return format_to_cop(self.price)
     
+    # --- 👇 AÑADE ESTA NUEVA PROPIEDAD 👇 ---
+    @property
+    def shipping_display_text(self) -> str:
+        """Devuelve el texto de envío pre-formateado y listo para la UI."""
+        if self.shipping_cost == 0.0:
+            return "Envío Gratis"
+        if self.shipping_cost is not None and self.shipping_cost > 0:
+            return f"Envío: {format_to_cop(self.shipping_cost)}"
+        return "Envío a convenir"
+    
 class ProductDetailData(rx.Base):
     id: int
     title: str

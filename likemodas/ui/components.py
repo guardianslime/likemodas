@@ -106,16 +106,12 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             _product_card_rating(post),
                             rx.text(post.price_cop, size="6"),
 
-                            # --- 👇 AÑADE ESTE BLOQUE 👇 ---
+                            # --- 👇 ESTE BLOQUE ES EL QUE CAMBIA 👇 ---
                             rx.vstack(
-                                rx.cond(
-                                    post.shipping_cost == 0.0,
-                                    rx.badge("Envío Gratis", color_scheme="green", variant="soft"),
-                                    rx.cond(
-                                        post.shipping_cost > 0,
-                                        rx.text(f"Envío: {format_to_cop(post.shipping_cost)}", size="2"),
-                                        rx.text("Envío a convenir", size="2", color_scheme="gray")
-                                    )
+                                rx.badge(
+                                    post.shipping_display_text, # <-- Usamos la nueva propiedad
+                                    color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
+                                    variant="soft"
                                 ),
                                 rx.cond(
                                     post.seller_free_shipping_threshold > 0,
@@ -124,7 +120,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 spacing="2",
                                 align_items="start",
                                 margin_top="0.5em",
-                                min_height="50px", # Para mantener la alineación de los botones
+                                min_height="50px",
                             ),
                             # --- FIN DEL BLOQUE ---
 
