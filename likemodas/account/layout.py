@@ -7,7 +7,7 @@ from ..state import AppState
 def account_layout(child: rx.Component) -> rx.Component:
     """Layout que envuelve las páginas de la sección Mi Cuenta."""
     return rx.cond(
-        (AppState.is_hydrated == False), # ✅ CORRECTO
+        ~AppState.is_hydrated,
         # Muestra un spinner si el estado no está listo
         rx.center(rx.spinner(size="3"), height="85vh"),
         

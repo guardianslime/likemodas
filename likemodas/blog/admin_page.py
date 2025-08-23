@@ -47,7 +47,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
-                    on_change=lambda checked, post_id=post.id: AppState.toggle_publish_status(post_id),
+                    on_change=lambda checked: AppState.toggle_publish_status(post.id),
                 ),
                 rx.text(rx.cond(post.publish_active, "Visible", "Oculto")),
                 spacing="2",
@@ -60,7 +60,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
             rx.hstack(
                 rx.button(
                     "Editar", 
-                    on_click=lambda post_id=post.id: AppState.start_editing_post(post_id),
+                    on_click=lambda: AppState.start_editing_post(post.id), # <--- CORREGIDO
                     variant="outline",
                     size="2"
                 ),
@@ -74,8 +74,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
                         rx.flex(
                             rx.alert_dialog.cancel(rx.button("Cancelar")),
                             rx.alert_dialog.action(
-                                # LA CORRECCIÓN ESTÁ EN LA LÍNEA SIGUIENTE
-                                rx.button("Sí, Eliminar", on_click=lambda post_id=post.id: AppState.delete_post(post_id)),
+                                rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))
                             ),
                             spacing="3", margin_top="1em", justify="end",
                         ),

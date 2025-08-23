@@ -994,8 +994,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(post_to_update)
                 session.commit()
                 yield rx.toast.info(f"Estado de publicación cambiado.")
-
-    
                 
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
@@ -1044,35 +1042,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
 
-    # --- 1. AÑADE ESTAS VARIABLES DE ESTADO ---
-    # Guardarán temporalmente las coordenadas obtenidas del navegador
-    form_latitude: float = 0.0
-    form_longitude: float = 0.0
-    location_error: str = ""
-
-    # --- 2. AÑADE ESTE MANEJADOR DE EVENTOS ---
-    def handle_location_data(self, data: dict):
-        """Recibe los datos de ubicación (o el error) desde el componente de JS."""
-        self.location_error = ""
-        if "error" in data:
-            self.location_error = data["error"]
-            yield rx.toast.error(f"Error de ubicación: {self.location_error}", duration=5000)
-        else:
-            self.form_latitude = data.get("latitude", 0.0)
-            self.form_longitude = data.get("longitude", 0.0)
-            yield rx.toast.success("¡Ubicación añadida al formulario!")
-
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-    @rx.event
-    def on_location_error(self):
-        """Muestra una alerta si no se pudo obtener la ubicación."""
-        return rx.window_alert(
-            "No se pudo obtener la ubicación. Por favor, asegúrate de haber concedido los permisos en tu navegador."
-        )
-    
-
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-
     def toggle_form(self):
         self.show_form = not self.show_form
     def set_city(self, city: str): self.city = city; self.neighborhood = ""
@@ -1100,62 +1069,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             with rx.session() as session:
                 self.addresses = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id).order_by(ShippingAddressModel.is_default.desc())).all()
 
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-    # REEMPLAZA el antiguo 'set_location_coordinates' por este nuevo método.
-    @rx.event
-    def set_location_from_string(self, coords_str: str):
-        """
-        Recibe las coordenadas como una única cadena "lat,lon",
-        la procesa y actualiza el estado.
-        """
-        try:
-            lat_str, lon_str = coords_str.split(',')
-            self.latitude = float(lat_str)
-            self.longitude = float(lon_str)
-            yield rx.toast.success("¡Ubicación capturada con éxito!")
-        except Exception as e:
-            print(f"Error al procesar coordenadas: {e}")
-            yield rx.toast.error("Error al procesar las coordenadas recibidas.")
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-    # --- ✨ FIN DE LA MODIFICACIÓN (Parte 2/3) ✨ ---
-
-    # --- 3. REEMPLAZA TU FUNCIÓN add_new_address CON ESTA VERSIÓN MEJORADA ---
     @rx.event
     def add_new_address(self, form_data: dict):
-        """Guarda la nueva dirección, incluyendo las coordenadas si existen."""
-        try:
-            if not self.authenticated_user_info:
-                return rx.toast.error("Tu sesión ha expirado.")
-
-            if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
-                return rx.toast.error("Por favor, completa todos los campos requeridos (*).")
-
-            with rx.session() as session:
-                is_first_address = len(self.addresses) == 0
-                new_addr = ShippingAddressModel(
-                    userinfo_id=self.authenticated_user_info.id,
-                    name=form_data["name"],
-                    phone=form_data["phone"],
-                    city=self.city,
-                    neighborhood=self.neighborhood,
-                    address=form_data["address"],
-                    # Guarda las coordenadas si se obtuvieron
-                    latitude=self.form_latitude if self.form_latitude != 0.0 else None,
-                    longitude=self.form_longitude if self.form_longitude != 0.0 else None,
-                    is_default=is_first_address
-                )
-                session.add(new_addr)
-                session.commit()
-
-            # Limpiamos las coordenadas temporales después de guardar
-            self.form_latitude = 0.0
-            self.form_longitude = 0.0
-            self.show_form = False
-            yield self.load_addresses()
-            return rx.toast.success("Nueva dirección guardada.")
-        except Exception as e:
-            print(f"ERROR en add_new_address: {e}")
-            return rx.toast.error("Ocurrió un error inesperado al guardar la dirección.")
+        if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
+            return rx.toast.error("Por favor, completa todos los campos requeridos.")
+        with rx.session() as session:
+            is_first_address = len(self.addresses) == 0
+            new_addr = ShippingAddressModel(
+                userinfo_id=self.authenticated_user_info.id, name=form_data["name"],
+                phone=form_data["phone"], city=self.city, neighborhood=self.neighborhood,
+                address=form_data["address"], is_default=is_first_address
+            )
+            session.add(new_addr)
+            session.commit()
+        self.show_form = False
+        yield self.load_addresses()
+        return rx.toast.success("Nueva dirección guardada.")
 
     @rx.event
     def load_default_shipping_info(self):

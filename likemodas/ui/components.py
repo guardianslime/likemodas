@@ -35,10 +35,7 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
-                                on_click=[
-                                    lambda opt=option: on_change_select(opt), # ✅ CORRECTO
-                                    AppState.toggle_filter_dropdown(filter_name)
-                                ],
+                                on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
                         ),

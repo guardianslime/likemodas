@@ -1,4 +1,4 @@
-# likemodas/account/shipping_info.py (VERSIÓN COMPLETA Y CORREGIDA)
+# likemodas/account/shipping_info.py (CORREGIDO)
 
 import reflex as rx
 import reflex_local_auth
@@ -6,7 +6,6 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..models import ShippingAddressModel
 from ..ui.components import searchable_select
-from ..ui.location_button import LocationButton
 
 def address_form() -> rx.Component:
     """Formulario para crear una nueva dirección."""
@@ -47,7 +46,7 @@ def address_form() -> rx.Component:
                         search_value=AppState.search_neighborhood,
                         on_change_search=AppState.set_search_neighborhood,
                         filter_name="shipping_neighborhood_filter",
-                        is_disabled=(AppState.neighborhoods.length() == 0),
+                        is_disabled=~AppState.neighborhoods,
                     ),
                     spacing="1", align_items="start",
                 ),
@@ -59,31 +58,6 @@ def address_form() -> rx.Component:
                 ),
                 columns="2", spacing="4", width="100%",
             ),
-            
-            rx.divider(margin_y="1em"),
-            rx.text(
-                "Opcional: Para mayor precisión, añade tu ubicación exacta.", 
-                size="2", color_scheme="gray", width="100%", text_align="center"
-            ),
-            
-            # Usamos nuestro nuevo componente. ¡Así de simple!
-            LocationButton.create(
-                on_location_update=AppState.handle_location_data
-            ),
-            
-            # Mostramos un mensaje de éxito cuando se obtienen las coordenadas
-            rx.cond(
-                AppState.form_latitude != 0.0,
-                rx.badge(
-                    "¡Ubicación añadida!", 
-                    color_scheme="green", 
-                    variant="soft", 
-                    width="100%", 
-                    text_align="center",
-                    padding_y="0.5em"
-                )
-            ),
-
             rx.hstack(
                 rx.button("Cancelar", on_click=AppState.toggle_form, color_scheme="gray"),
                 rx.button("Guardar Dirección", type="submit", width="auto"),
@@ -108,29 +82,12 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
             rx.text(f"{address.address}, {address.neighborhood}"),
             rx.text(f"{address.city}"),
             rx.text(f"Tel: {address.phone}"),
-
-            # Muestra un enlace al mapa si la dirección tiene coordenadas
-            rx.cond(
-                address.latitude,
-                rx.link(
-                    rx.badge(
-                        rx.icon(tag="check-check", size=14),
-                        "Ubicación guardada. Ver en mapa.",
-                        color_scheme="blue", variant="soft",
-                        padding_x="0.75em", margin_top="0.5em",
-                    ),
-                    # URL de Google Maps corregida
-                    href=f"https://www.google.com/maps?q={address.latitude},{address.longitude}",
-                    is_external=True,
-                )
-            ),
-
             rx.divider(),
             rx.hstack(
-                rx.button("Eliminar", on_click=lambda address_id=address.id: AppState.delete_address(address_id), variant="soft", color_scheme="red", size="2"),
+                rx.button("Eliminar", on_click=lambda: AppState.delete_address(address.id), variant="soft", color_scheme="red", size="2"),
                 rx.button(
                     "Hacer Predeterminada",
-                    on_click=lambda address_id=address.id: AppState.set_as_default(address_id),
+                    on_click=lambda: AppState.set_as_default(address.id),
                     is_disabled=address.is_default,
                     variant="outline", size="2"
                 ),
@@ -150,7 +107,7 @@ def shipping_info_content() -> rx.Component:
             rx.text("Aquí puedes gestionar tus direcciones de envío.", margin_bottom="1.5em"),
             rx.foreach(AppState.addresses, address_card),
             rx.cond(
-                (AppState.show_form == False),
+                ~AppState.show_form,
                 rx.button("Crear Nueva Dirección", on_click=AppState.toggle_form, margin_top="2em"),
             ),
             rx.cond(AppState.show_form, address_form()),
