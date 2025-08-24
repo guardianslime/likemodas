@@ -189,10 +189,10 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
 
-            # --- 👇 REEMPLAZA EL BLOQUE DE ENVÍO POR ESTE 👇 ---
+            # --- Bloque de envío y Moda Completa ---
             rx.hstack(
                 rx.badge(
-                    AppState.product_in_modal.shipping_display_text, # <-- Usamos la nueva propiedad
+                    AppState.product_in_modal.shipping_display_text,
                     color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
                     variant="solid",
                     size="2"
@@ -208,7 +208,7 @@ def product_detail_modal() -> rx.Component:
                 align="center",
                 margin_y="1em",
             ),
-
+            
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.cond(
                 AppState.product_in_modal.attributes,

@@ -75,16 +75,15 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    Componente que muestra una galería de productos.
+    Componente que muestra una galería de productos con la maquetación corregida.
     """
     return rx.flex(
         rx.foreach(
             posts,
             lambda post: rx.box(
-                # El vstack principal de la tarjeta ahora tendrá on_click
                 rx.vstack(
+                    # --- Contenedor superior clickeable ---
                     rx.vstack(
-                        # Este vstack envuelve la parte superior clickeable que abre el modal
                         rx.box(
                             rx.cond(
                                 post.image_urls & (post.image_urls.length() > 0),
@@ -94,65 +93,44 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             width="260px", height="260px"
                         ),
                         rx.vstack(
-                            rx.text(post.title, weight="bold", size="6"),
+                            rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                             _product_card_rating(post),
-                            rx.text(post.price_cop, size="6"),
-                            spacing="2",
-                            align_items="start",
-                            width="100%"
-                        ),
-                        rx.vstack(
-                            rx.text(post.title, weight="bold", size="6"),
-                            _product_card_rating(post),
-                            rx.text(post.price_cop, size="6"),
-
-                            # --- 👇 ESTE BLOQUE ES EL QUE CAMBIA 👇 ---
-                            rx.vstack(
-                                rx.badge(
-                                    post.shipping_display_text, # <-- Usamos la nueva propiedad
-                                    color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
-                                    variant="soft"
-                                ),
-                                rx.cond(
-                                    post.seller_free_shipping_threshold > 0,
-                                    rx.badge(f"Moda Completa: Envío gratis por {post.seller_free_shipping_threshold}+ items", color_scheme="violet", variant="soft", size="1"),
-                                ),
-                                spacing="2",
-                                align_items="start",
+                            rx.text(post.price_cop, size="5", weight="medium"), # <-- Precio más pequeño
+                            
+                            # --- Información de envío y Moda Completa ---
+                            rx.badge(
+                                post.shipping_display_text,
+                                color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
+                                variant="soft",
                                 margin_top="0.5em",
-                                min_height="50px",
                             ),
-                            # --- FIN DEL BLOQUE ---
-
+                            rx.cond(
+                                post.seller_free_shipping_threshold > 0,
+                                rx.badge(f"Moda Completa", color_scheme="violet", variant="soft", size="1"),
+                            ),
+                            
                             spacing="2",
                             align_items="start",
                             width="100%"
                         ),
                         spacing="2",
                         width="100%",
-                        # Hacemos que esta sección superior sea la que abre el modal
                         on_click=lambda: AppState.open_product_detail_modal(post.id),
                         cursor="pointer",
                     ),
-
                     rx.spacer(),
-
-                    # --- INICIO DE LA MODIFICACIÓN ---
-                    # Añadimos el botón en la parte inferior de la tarjeta
+                    # --- Botón inferior ---
                     rx.button(
                         "Añadir al Carrito",
                         width="100%",
-                        # --- INICIO DE LA CORRECCIÓN ---
-                        # Reemplaza la lambda por el manejador de eventos de Reflex
                         on_click=[
                             AppState.add_to_cart(post.id),
                             rx.stop_propagation 
                         ],
                     ),
-                    # --- FIN DE LA MODIFICACIÓN ---
                 ),
                 width="290px", 
-                height="450px", # La altura se mantiene bien
+                height="520px", # Aumentamos un poco la altura para el nuevo texto
                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                 border_radius="8px", 
