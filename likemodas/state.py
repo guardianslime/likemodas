@@ -753,14 +753,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             if category_list:
                 category = category_list[0]
             
-        self.current_category = category if category else "todos"
+            self.current_category = category if category else "todos"
 
         with rx.session() as session:
             query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
             
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
-            
+
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
             
             temp_posts = []
@@ -768,9 +768,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
+                        userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
                         title=p.title,
                         price=p.price,
-                        price_cop=p.price_cop, 
+                        price_cop=p.price_cop,
                         image_urls=p.image_urls,
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
@@ -1403,6 +1404,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 temp_results.append(
                     ProductCardData(
                         id=p.id,
+                        userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
@@ -1759,6 +1761,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
+                        userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
@@ -2014,7 +2017,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             user_info = session.get(UserInfo, self.authenticated_user_info.id)
             if user_info:
                 temp_posts = []
-                # Eager load the related posts to avoid multiple queries
                 user_with_posts = session.exec(
                     sqlmodel.select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts))
                     .where(UserInfo.id == self.authenticated_user_info.id)
@@ -2025,6 +2027,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     temp_posts.append(
                         ProductCardData(
                             id=p.id,
+                            userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
                             title=p.title,
                             price=p.price,
                             price_cop=p.price_cop,
@@ -2040,6 +2043,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.saved_posts_gallery = temp_posts
         
         self.is_loading = False
+
 
     @rx.event
     def trigger_modal_from_load(self):
@@ -2232,6 +2236,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         temp_posts.append(
                             ProductCardData(
                                 id=p.id,
+                                userinfo_id=p.userinfo_id, # <-- ✨ LÍNEA AÑADIDA
                                 title=p.title,
                                 price=p.price,
                                 price_cop=p.price_cop,
@@ -2247,3 +2252,4 @@ class AppState(reflex_local_auth.LocalAuthState):
                     self.seller_page_posts = temp_posts
 
         self.is_loading = False
+
