@@ -2080,14 +2080,30 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
+                # --- INICIO DE LA CORRECCIÓN ---
+                # Se realiza el cálculo dinámico del envío aquí también.
+                
+                final_shipping_cost = 0.0
+                base_cost = db_post.shipping_cost or 0.0
+                buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
+                seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
+
+                final_shipping_cost = calculate_dynamic_shipping(
+                    base_cost=base_cost,
+                    seller_barrio=seller_barrio,
+                    buyer_barrio=buyer_barrio,
+                )
+                
+                # Se genera el texto de envío con el precio final calculado.
+                shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
+                # --- FIN DE LA CORRECCIÓN ---
+
                 seller_name = ""
                 seller_id = 0
                 if db_post.userinfo and db_post.userinfo.user:
                     seller_name = db_post.userinfo.user.username
                     seller_id = db_post.userinfo.id
                 
-                # La línea que causaba el error fue eliminada de aquí.
-
                 product_dto = ProductDetailData(
                     id=db_post.id,
                     title=db_post.title,
@@ -2101,12 +2117,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                     seller_id=seller_id,
                     attributes=db_post.attributes,
                     shipping_cost=db_post.shipping_cost,
-                    
-                    # --- LÍNEA CORREGIDA ---
-                    # Ahora leemos el campo correcto directamente del producto (db_post)
                     is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                    
-                    shipping_display_text=_get_shipping_display_text(db_post.shipping_cost),
+                    # Se usa el texto de envío recién calculado.
+                    shipping_display_text=shipping_text,
                 )
                 self.product_in_modal = product_dto
                 
