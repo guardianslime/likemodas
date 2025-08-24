@@ -65,7 +65,7 @@ class UserInfo(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
     # --- 👇 AÑADE ESTA LÍNEA 👇 ---
-    free_shipping_threshold: Optional[int] = Field(default=None)
+    # free_shipping_threshold: Optional[int] = Field(default=None)
     user: Optional["LocalUser"] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
@@ -112,6 +112,8 @@ class BlogPostModel(rx.Model, table=True):
     # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     shipping_cost: Optional[float] = Field(default=None)
     #free_shipping_threshold: Optional[int] = Field(default=None) # Para "Moda Completa"
+
+    is_moda_completa_eligible: bool = Field(default=True, nullable=False)
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
