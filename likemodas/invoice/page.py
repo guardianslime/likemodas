@@ -17,6 +17,7 @@ def invoice_page_content() -> rx.Component:
         rx.cond(
             InvoiceState.invoice_data,
             rx.vstack(
+                # ... (sección del encabezado y la tabla de artículos sin cambios) ...
                 rx.hstack(
                     rx.image(src="/logo.png", width="120px", height="auto"),
                     rx.spacer(),
@@ -80,6 +81,8 @@ def invoice_page_content() -> rx.Component:
                     variant="surface",
                     width="100%",
                 ),
+
+                # --- ✨ INICIO DE LA SECCIÓN DE TOTALES MODIFICADA ✨ ---
                 rx.hstack(
                     rx.spacer(),
                     rx.vstack(
@@ -89,10 +92,16 @@ def invoice_page_content() -> rx.Component:
                             justify="between", width="100%"
                         ),
                         rx.hstack(
+                            rx.text("Envío:", weight="bold", width="120px", text_align="right"),
+                            rx.text(InvoiceState.invoice_data.shipping_applied_cop, width="120px", text_align="right"),
+                            justify="between", width="100%"
+                        ),
+                        rx.hstack(
                             rx.text("IVA (19%):", weight="bold", width="120px", text_align="right"),
                             rx.text(InvoiceState.invoice_data.iva_cop, width="120px", text_align="right"),
                             justify="between", width="100%"
                         ),
+                        rx.divider(width="100%"),
                         rx.hstack(
                             rx.heading("Total:", size="5", width="120px", text_align="right"),
                             rx.heading(InvoiceState.invoice_data.total_price_cop, size="5", width="120px", text_align="right"),
@@ -103,10 +112,13 @@ def invoice_page_content() -> rx.Component:
                         padding="1em",
                         border="1px solid #ddd",
                         border_radius="md",
+                        min_width="300px",
                     ),
                     width="100%",
                     justify="end",
                 ),
+                # --- ✨ FIN DE LA SECCIÓN DE TOTALES MODIFICADA ✨ ---
+
                 rx.button(
                     "Imprimir Factura", on_click=rx.call_script("window.print()"),
                     class_name="no-print", margin_top="3em",

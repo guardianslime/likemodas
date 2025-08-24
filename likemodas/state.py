@@ -93,9 +93,16 @@ class PurchaseItemCardData(rx.Base):
     id: int
     title: str
     image_url: str
+    price_at_purchase: float  # <-- ✨ 1. AÑADE EL PRECIO SIN FORMATEAR
     price_at_purchase_cop: str
-    quantity: int  # --- ✨ 1. AÑADIR ESTE CAMPO ---
+    quantity: int
 
+    # <-- ✨ 2. AÑADE ESTA PROPIEDAD COMPUTADA PARA EL SUBTOTAL
+    @rx.var
+    def subtotal_cop(self) -> str:
+        """Calcula y formatea el subtotal para esta línea de artículo."""
+        return format_to_cop(self.price_at_purchase * self.quantity)
+    
 class UserPurchaseHistoryCardData(rx.Base):
     """DTO actualizado para el historial de compras del usuario."""
     id: int; purchase_date_formatted: str; status: str; total_price_cop: str
@@ -144,6 +151,7 @@ class InvoiceData(rx.Base):
     shipping_full_address: str
     shipping_phone: str
     subtotal_cop: str
+    shipping_applied_cop: str # <-- ✨ 1. AÑADE ESTE CAMPO
     iva_cop: str
     total_price_cop: str
 
@@ -327,6 +335,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return None
 
         with rx.session() as session:
+            # ... (la consulta a la base de datos no cambia) ...
             purchase = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -342,10 +351,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
                 return None
 
+            # --- ✨ 2. LÓGICA DE CÁLCULO ACTUALIZADA ✨ ---
             IVA_RATE = 0.19
-            total_amount = purchase.total_price
-            subtotal_amount = total_amount / (1 + IVA_RATE)
-            iva_amount = total_amount - subtotal_amount
+            grand_total = purchase.total_price
+            shipping_cost = purchase.shipping_applied or 0.0
+            
+            # El subtotal de los productos es el total menos el envío.
+            subtotal_products = grand_total - shipping_cost
+            
+            # El IVA se calcula sobre el subtotal de los productos.
+            # (Asumiendo que el envío no genera IVA, lo cual es común)
+            # Para que los números cuadren, recalculamos el subtotal base y el IVA.
+            subtotal_base_sin_iva = subtotal_products / (1 + IVA_RATE)
+            iva_amount = subtotal_base_sin_iva * IVA_RATE
 
             invoice_items = []
             for item in purchase.items:
@@ -373,9 +391,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 customer_email=purchase.userinfo.email if purchase.userinfo else "N/A",
                 shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}",
                 shipping_phone=purchase.shipping_phone,
-                subtotal_cop=format_to_cop(subtotal_amount),
+                subtotal_cop=format_to_cop(subtotal_base_sin_iva),
+                shipping_applied_cop=format_to_cop(shipping_cost), # <-- ✨ 3. PUEBLA EL NUEVO CAMPO
                 iva_cop=format_to_cop(iva_amount),
-                total_price_cop=format_to_cop(total_amount),
+                total_price_cop=format_to_cop(grand_total),
             )
             
     @rx.var
@@ -1554,6 +1573,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.user_purchases = []
             return
         with rx.session() as session:
+            # ... (la consulta a la base de datos no cambia) ...
             results = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -1574,8 +1594,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                                     id=item.blog_post.id,
                                     title=item.blog_post.title,
                                     image_url=item.blog_post.image_urls[0] if item.blog_post.image_urls else "",
+                                    # <-- ✨ 3. AÑADE EL VALOR SIN PROCESAR AQUÍ
+                                    price_at_purchase=item.price_at_purchase,
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                    quantity=item.quantity  # --- ✨ 2. POBLAR EL NUEVO CAMPO ---
+                                    quantity=item.quantity
                                 )
                             )
                 

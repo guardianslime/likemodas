@@ -34,15 +34,14 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
             # --- ✨ INICIO DE LA MODIFICACIÓN VISUAL ✨ ---
             rx.vstack(
                 rx.text(
-                    f"{item.quantity}x",  # Muestra la cantidad, ej: "2x"
-                    size="3",
-                    weight="bold",
-                    color_scheme="violet",
+                    f"{item.quantity}x {item.price_at_purchase_cop}", 
+                    size="2",
+                    color_scheme="gray",
                 ),
                 rx.text(
-                    item.price_at_purchase_cop, # Muestra el precio unitario
-                    size="2",
-                    weight="medium",
+                    item.subtotal_cop, # Muestra el subtotal del artículo
+                    size="3",
+                    weight="bold",
                 ),
                 spacing="0",
                 align_items="center",
