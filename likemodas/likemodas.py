@@ -33,11 +33,10 @@ app = rx.App(style={"font_family": "Arial, sans-serif"})
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
-    # ANTES: base_page(blog_public_page_content()),
-    # AHORA:
     base_page(landing.landing_content()),
     route="/",
-    on_load=AppState.on_load_main_page,
+    # --- CAMBIO CLAVE: Se usa el nuevo orquestador ---
+    on_load=AppState.load_main_page_data,
     title="Likemodas | Inicio"
 )
 

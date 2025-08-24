@@ -53,6 +53,8 @@ class ProductCardData(rx.Base):
     # seller_free_shipping_threshold: Optional[int] = None
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
+    # --- Se añade userinfo_id para el cálculo ---
+    userinfo_id: int 
 
     class Config:
         orm_mode = True
@@ -163,6 +165,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     _product_id_to_load_on_mount: Optional[int] = None
     success: bool = False
     error_message: str = ""
+
+
     
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
@@ -727,9 +731,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.search_attr_tamano_mochila.strip(): return LISTA_TAMANOS_MOCHILAS
         return [o for o in LISTA_TAMANOS_MOCHILAS if self.search_attr_tamano_mochila.lower() in o.lower()]
     
-
+    _raw_posts: list[ProductCardData] = []
     posts: list[ProductCardData] = []
     is_loading: bool = True
+
+
 
     @rx.event
     def on_load(self):
@@ -986,30 +992,31 @@ class AppState(reflex_local_auth.LocalAuthState):
                 highest_shipping_cost = 0.0
                 buyer_barrio = self.default_shipping_address.neighborhood
                 
-                # Pre-cargamos la información de los vendedores para eficiencia
-                seller_ids = {p.userinfo_id for p, q in cart_items_details if p}
-                sellers_info = session.exec(
-                    sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
-                ).all()
-                seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
+                if not buyer_barrio:
+                    final_shipping_cost = 0
+                else:
+                    seller_ids = {p.userinfo_id for p, q in cart_items_details if p}
+                    sellers_info = session.exec(
+                        sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
+                    ).all()
+                    seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
 
-                for product, quantity in cart_items_details:
-                    if not product: continue
+                    for product, quantity in cart_items_details:
+                        if not product: continue
+                        
+                        base_cost = product.shipping_cost or 0.0
+                        seller_barrio = seller_barrio_map.get(product.userinfo_id)
+                        
+                        current_item_shipping_cost = calculate_dynamic_shipping(
+                            base_cost=base_cost,
+                            seller_barrio=seller_barrio,
+                            buyer_barrio=buyer_barrio
+                        )
+                        
+                        if current_item_shipping_cost > highest_shipping_cost:
+                            highest_shipping_cost = current_item_shipping_cost
                     
-                    base_cost = product.shipping_cost or 0.0
-                    seller_barrio = seller_barrio_map.get(product.userinfo_id)
-                    
-                    # --- LÓGICA CLAVE: Llamada al nuevo calculador ---
-                    current_item_shipping_cost = calculate_dynamic_shipping(
-                        base_cost=base_cost,
-                        seller_barrio=seller_barrio,
-                        buyer_barrio=buyer_barrio
-                    )
-                    
-                    if current_item_shipping_cost > highest_shipping_cost:
-                        highest_shipping_cost = current_item_shipping_cost
-                
-                final_shipping_cost = highest_shipping_cost
+                    final_shipping_cost = highest_shipping_cost
             
             grand_total = subtotal + final_shipping_cost
 
@@ -1201,11 +1208,109 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def neighborhoods(self) -> List[str]:
-        if not self.city: return []
-        data = load_colombia_data()
-        all_hoods = data.get(self.city, [])
-        if not self.search_neighborhood.strip(): return all_hoods
-        return [n for n in all_hoods if self.search_neighborhood.lower() in n.lower()]
+        """
+        Devuelve la lista de barrios para el selector de dirección.
+        CORREGIDO: Ahora usa la lista completa de barrios de Popayán.
+        """
+        # --- INICIO DE LA CORRECCIÓN ---
+        # Antes usaba un archivo incorrecto. Ahora usamos la lista completa.
+        from .data.geography_data import LISTA_DE_BARRIOS
+
+        if self.city != "Popayán":
+             # Mantenemos la lógica anterior por si se añaden otras ciudades
+            data = load_colombia_data()
+            all_hoods = data.get(self.city, [])
+        else:
+            # Si la ciudad es Popayán, usamos nuestra lista maestra.
+            all_hoods = LISTA_DE_BARRIOS
+        # --- FIN DE LA CORRECCIÓN ---
+
+        if not self.search_neighborhood.strip():
+            return sorted(all_hoods)
+        return sorted([
+            n for n in all_hoods if self.search_neighborhood.lower() in n.lower()
+        ])
+
+    @rx.event
+    def recalculate_all_shipping_costs(self):
+        """
+        Toma la lista de productos cruda y recalcula el costo de envío para cada uno
+        basado en la dirección actual del comprador.
+        """
+        if not self._raw_posts:
+            self.posts = []
+            return
+
+        if not self.default_shipping_address:
+            # Si no hay dirección, los costos vuelven a ser los base.
+            self.posts = self._raw_posts
+            return
+
+        buyer_barrio = self.default_shipping_address.neighborhood
+        
+        with rx.session() as session:
+            seller_ids = {p.userinfo_id for p in self._raw_posts}
+            sellers_info = session.exec(
+                sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
+            ).all()
+            seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
+
+            recalculated_posts = []
+            for post in self._raw_posts:
+                seller_barrio = seller_barrio_map.get(post.userinfo_id)
+                
+                final_shipping_cost = calculate_dynamic_shipping(
+                    base_cost=post.shipping_cost or 0.0,
+                    seller_barrio=seller_barrio,
+                    buyer_barrio=buyer_barrio
+                )
+
+                # Creamos una copia del post para no modificar el original
+                updated_post = post.copy()
+                updated_post.shipping_display_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
+                
+                recalculated_posts.append(updated_post)
+
+        self.posts = recalculated_posts
+
+    @rx.event
+    async def load_main_page_data(self):
+        """
+        Orquestador principal: carga la dirección y LUEGO los productos y recalcula.
+        """
+        self.is_loading = True
+        yield
+
+        # 1. Cargar la dirección del usuario primero
+        await self.get_state(AppState).load_default_shipping_info()
+
+        # 2. Cargar los productos con su costo base
+        with rx.session() as session:
+            # (La lógica para obtener `results` de la BD es la misma que tenías en `on_load`)
+            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
+            
+            temp_posts = []
+            for p in results:
+                temp_posts.append(
+                    ProductCardData(
+                        id=p.id, title=p.title, price=p.price, price_cop=p.price_cop,
+                        image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count,
+                        attributes=p.attributes, shipping_cost=p.shipping_cost,
+                        is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        # Se guarda el costo base como texto inicial
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        userinfo_id=p.userinfo_id # Guardamos el ID del vendedor
+                    )
+                )
+            self._raw_posts = temp_posts
+        
+        # 3. Disparamos el primer recálculo
+        yield self.recalculate_all_shipping_costs
+        
+        # 4. Manejar el modal si viene un ID en la URL
+        # ... (la lógica del modal que ya tenías se puede añadir aquí) ...
+
+        self.is_loading = False
 
     @rx.event
     def load_addresses(self):
@@ -1228,6 +1333,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         self.show_form = False
         yield self.load_addresses()
+        yield self.load_default_shipping_info
+        yield self.recalculate_all_shipping_costs
         return rx.toast.success("Nueva dirección guardada.")
 
     @rx.event
@@ -1249,12 +1356,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             if address_to_delete and address_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(address_to_delete)
                 session.commit()
-                yield self.load_addresses()
+            yield self.load_addresses()
+        
+        # --- AÑADIR ESTAS LÍNEAS AL FINAL ---
+        yield self.load_default_shipping_info
+        yield self.recalculate_all_shipping_costs
 
     @rx.event
     def set_as_default(self, address_id: int):
+        """
+        MODIFICADO: Ahora dispara el recálculo después de cambiar la dirección.
+        """
         if not self.authenticated_user_info: return
         with rx.session() as session:
+            # ... (la lógica para cambiar la dirección en la BD se mantiene igual) ...
             current_default = session.exec(sqlmodel.select(ShippingAddressModel).where(ShippingAddressModel.userinfo_id == self.authenticated_user_info.id, ShippingAddressModel.is_default == True)).one_or_none()
             if current_default:
                 current_default.is_default = False
@@ -1264,7 +1379,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 new_default.is_default = True
                 session.add(new_default)
                 session.commit()
-                yield self.load_addresses()
+        
+        # --- LÍNEA CLAVE AÑADIDA ---
+        yield self.load_addresses
+        yield self.load_default_shipping_info # Actualizamos la dirección en el estado
+        yield self.recalculate_all_shipping_costs # Disparamos el recálculo
     
     search_term: str = ""
     search_results: List[ProductCardData] = []
