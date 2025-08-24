@@ -1881,11 +1881,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             if db_post and db_post.publish_active:
                 seller_name = ""
                 seller_id = 0
-                seller_fsth = None
                 if db_post.userinfo and db_post.userinfo.user:
                     seller_name = db_post.userinfo.user.username
                     seller_id = db_post.userinfo.id
-                    seller_fsth = db_post.userinfo.free_shipping_threshold
+                
+                # La línea que causaba el error fue eliminada de aquí.
 
                 product_dto = ProductDetailData(
                     id=db_post.id,
@@ -1900,8 +1900,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     seller_id=seller_id,
                     attributes=db_post.attributes,
                     shipping_cost=db_post.shipping_cost,
-                    seller_free_shipping_threshold=seller_fsth,
-                    # --- LÍNEA CLAVE AÑADIDA ---
+                    
+                    # --- LÍNEA CORREGIDA ---
+                    # Ahora leemos el campo correcto directamente del producto (db_post)
+                    is_moda_completa_eligible=db_post.is_moda_completa_eligible,
+                    
                     shipping_display_text=_get_shipping_display_text(db_post.shipping_cost),
                 )
                 self.product_in_modal = product_dto
