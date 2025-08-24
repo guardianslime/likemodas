@@ -189,13 +189,16 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
 
-            # --- Bloque de envío y Moda Completa ---
+            # --- LÓGICA DE ENVÍO MÁS ROBUSTA ---
             rx.hstack(
-                rx.badge(
-                    AppState.product_in_modal.shipping_display_text,
-                    color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
-                    variant="solid",
-                    size="2"
+                rx.cond(
+                    AppState.product_in_modal.shipping_cost == 0.0,
+                    rx.badge("Envío Gratis", color_scheme="green", variant="solid", size="2"),
+                    rx.cond(
+                        AppState.product_in_modal.shipping_cost > 0,
+                        rx.badge(f"Envío: {AppState.product_in_modal.formatted_shipping_cost}", color_scheme="gray", variant="solid", size="2"),
+                        rx.badge("Envío a convenir", color_scheme="gray", variant="solid", size="2")
+                    )
                 ),
                 rx.cond(
                     AppState.product_in_modal.seller_free_shipping_threshold > 0,

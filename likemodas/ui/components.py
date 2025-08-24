@@ -75,14 +75,13 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """
-    Componente que muestra una galería de productos con la maquetación corregida.
+    Componente que muestra una galería de productos con la maquetación y lógica de envío corregidas.
     """
     return rx.flex(
         rx.foreach(
             posts,
             lambda post: rx.box(
                 rx.vstack(
-                    # --- Contenedor superior clickeable ---
                     rx.vstack(
                         rx.box(
                             rx.cond(
@@ -95,13 +94,19 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.vstack(
                             rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                             _product_card_rating(post),
-                            rx.text(post.price_cop, size="5", weight="medium"), # <-- Precio más pequeño
+                            rx.text(post.price_cop, size="5", weight="medium"),
                             
-                            # --- Información de envío y Moda Completa ---
-                            rx.badge(
-                                post.shipping_display_text,
-                                color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
-                                variant="soft",
+                            # --- LÓGICA DE ENVÍO MÁS ROBUSTA ---
+                            rx.box(
+                                rx.cond(
+                                    post.shipping_cost == 0.0,
+                                    rx.badge("Envío Gratis", color_scheme="green", variant="soft"),
+                                    rx.cond(
+                                        post.shipping_cost > 0,
+                                        rx.badge(f"Envío: {post.formatted_shipping_cost}", color_scheme="gray", variant="soft"),
+                                        rx.badge("Envío a convenir", color_scheme="gray", variant="soft")
+                                    )
+                                ),
                                 margin_top="0.5em",
                             ),
                             rx.cond(
@@ -119,7 +124,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         cursor="pointer",
                     ),
                     rx.spacer(),
-                    # --- Botón inferior ---
                     rx.button(
                         "Añadir al Carrito",
                         width="100%",
@@ -130,7 +134,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     ),
                 ),
                 width="290px", 
-                height="520px", # Aumentamos un poco la altura para el nuevo texto
+                height="520px",
                 bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                 border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                 border_radius="8px", 

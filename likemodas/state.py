@@ -35,31 +35,27 @@ class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
-    price_cop: str = ""
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
     attributes: dict = {}
-    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     shipping_cost: Optional[float] = None
     seller_free_shipping_threshold: Optional[int] = None
 
     class Config:
         orm_mode = True
-    
+
     @property
     def price_cop(self) -> str:
         return format_to_cop(self.price)
-    
-    # --- 👇 AÑADE ESTA NUEVA PROPIEDAD 👇 ---
+
+    # --- 👇 PROPIEDAD SIMPLIFICADA 👇 ---
     @property
-    def shipping_display_text(self) -> str:
-        """Devuelve el texto de envío pre-formateado y listo para la UI."""
-        if self.shipping_cost == 0.0:
-            return "Envío Gratis"
+    def formatted_shipping_cost(self) -> str:
+        """Devuelve solo el costo de envío formateado como texto."""
         if self.shipping_cost is not None and self.shipping_cost > 0:
-            return f"Envío: {format_to_cop(self.shipping_cost)}"
-        return "Envío a convenir"
+            return format_to_cop(self.shipping_cost)
+        return ""
     
 class ProductDetailData(rx.Base):
     id: int
@@ -78,16 +74,14 @@ class ProductDetailData(rx.Base):
 
     class Config:
         orm_mode = True
-
-    # --- 👇 AÑADE ESTA NUEVA PROPIEDAD 👇 ---
+        
+    # --- 👇 PROPIEDAD SIMPLIFICADA 👇 ---
     @property
-    def shipping_display_text(self) -> str:
-        """Devuelve el texto de envío pre-formateado para el modal."""
-        if self.shipping_cost == 0.0:
-            return "Envío Gratis"
+    def formatted_shipping_cost(self) -> str:
+        """Devuelve solo el costo de envío formateado como texto."""
         if self.shipping_cost is not None and self.shipping_cost > 0:
-            return f"Costo de Envío: {format_to_cop(self.shipping_cost)}"
-        return "Envío a convenir con el vendedor"
+            return format_to_cop(self.shipping_cost)
+        return ""
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
