@@ -1305,7 +1305,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self._raw_posts = temp_posts
         
         # 3. Disparamos el primer recálculo
-        yield self.recalculate_all_shipping_costs
+        yield AppState.recalculate_all_shipping_costs
         
         self.is_loading = False
 
