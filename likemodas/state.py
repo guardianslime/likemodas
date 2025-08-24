@@ -31,16 +31,28 @@ from .data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
+def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
+    """Genera el texto de envío basado en el costo."""
+    if shipping_cost == 0.0:
+        return "Envío Gratis"
+    if shipping_cost is not None and shipping_cost > 0:
+        return f"Envío: {format_to_cop(shipping_cost)}"
+    return "Envío a convenir"
+
 class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
+    price_cop: str = ""
     image_urls: list[str] = []
     average_rating: float = 0.0
     rating_count: int = 0
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     seller_free_shipping_threshold: Optional[int] = None
+    
+    # --- 👇 CAMBIO CLAVE: Es un campo normal, no una propiedad 👇 ---
+    shipping_display_text: str = ""
 
     class Config:
         orm_mode = True
@@ -71,6 +83,9 @@ class ProductDetailData(rx.Base):
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     seller_free_shipping_threshold: Optional[int] = None
+    
+    # --- 👇 CAMBIO CLAVE: Es un campo normal, no una propiedad 👇 ---
+    shipping_display_text: str = ""
 
     class Config:
         orm_mode = True
@@ -751,7 +766,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .where(BlogPostModel.publish_active == True)
             )
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-            
+    
             temp_posts = []
             for p in results:
                 temp_posts.append(
@@ -759,13 +774,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                         id=p.id,
                         title=p.title,
                         price=p.price,
-                        price_cop=p.price_cop, 
-                        image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
+                        price_cop=p.price_cop,
+                        image_urls=p.image_urls,
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
                         seller_free_shipping_threshold=p.userinfo.free_shipping_threshold if p.userinfo else None,
+                        # --- 👇 LÍNEA CLAVE: Llenamos el campo con el texto ya formateado 👇 ---
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     )
                 )
             self.posts = temp_posts

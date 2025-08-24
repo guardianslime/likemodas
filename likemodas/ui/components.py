@@ -74,9 +74,6 @@ def _product_card_rating(post: ProductCardData) -> rx.Component:
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
-    """
-    Componente que muestra una galería de productos con la maquetación y lógica de envío corregidas.
-    """
     return rx.flex(
         rx.foreach(
             posts,
@@ -96,17 +93,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             _product_card_rating(post),
                             rx.text(post.price_cop, size="5", weight="medium"),
                             
-                            # --- LÓGICA DE ENVÍO MÁS ROBUSTA ---
-                            rx.box(
-                                rx.cond(
-                                    post.shipping_cost == 0.0,
-                                    rx.badge("Envío Gratis", color_scheme="green", variant="soft"),
-                                    rx.cond(
-                                        post.shipping_cost > 0,
-                                        rx.badge(f"Envío: {post.formatted_shipping_cost}", color_scheme="gray", variant="soft"),
-                                        rx.badge("Envío a convenir", color_scheme="gray", variant="soft")
-                                    )
-                                ),
+                            # --- LÓGICA DE ENVÍO SIMPLIFICADA ---
+                            rx.badge(
+                                post.shipping_display_text, # <-- Mostramos el texto pre-formateado
+                                color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
+                                variant="soft",
                                 margin_top="0.5em",
                             ),
                             rx.cond(
