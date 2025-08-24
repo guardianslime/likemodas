@@ -1,5 +1,6 @@
 # likemodas/state.py (CORREGIDO Y ACTUALIZADO)
-
+import math
+from collections import defaultdict
 from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
@@ -503,6 +504,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_cost=shipping_cost,
                 # free_shipping_threshold=free_shipping_threshold,
                 is_moda_completa_eligible=self.is_moda_completa,
+                combines_shipping=self.combines_shipping,
+                shipping_combination_limit=limit,
             )
             session.add(new_post)
             session.commit()
@@ -998,8 +1001,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def cart_summary(self) -> dict:
         """
-        Calcula el resumen del carrito utilizando el nuevo calculador de envío
-        basado en la ruta de comunas.
+        Calcula el resumen del carrito con la nueva lógica de envío combinado.
         """
         if not self.cart or not self.default_shipping_address:
             return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False}
@@ -1015,34 +1017,53 @@ class AppState(reflex_local_auth.LocalAuthState):
             if free_shipping_achieved:
                 final_shipping_cost = 0
             else:
-                highest_shipping_cost = 0.0
+                total_shipping_cost = 0.0
                 buyer_barrio = self.default_shipping_address.neighborhood
-                
-                if not buyer_barrio:
-                    final_shipping_cost = 0
-                else:
-                    seller_ids = {p.userinfo_id for p, q in cart_items_details if p}
-                    sellers_info = session.exec(
-                        sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
-                    ).all()
-                    seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
 
-                    for product, quantity in cart_items_details:
-                        if not product: continue
-                        
-                        base_cost = product.shipping_cost or 0.0
-                        seller_barrio = seller_barrio_map.get(product.userinfo_id)
-                        
-                        current_item_shipping_cost = calculate_dynamic_shipping(
-                            base_cost=base_cost,
+                seller_groups = defaultdict(list)
+                for product, quantity in cart_items_details:
+                    if product:
+                        for _ in range(quantity):
+                            seller_groups[product.userinfo_id].append(product)
+
+                seller_ids = list(seller_groups.keys())
+                sellers_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
+                seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
+
+                for seller_id, items in seller_groups.items():
+                    combinable_items = [p for p in items if p.combines_shipping]
+                    individual_items = [p for p in items if not p.combines_shipping]
+                    seller_barrio = seller_barrio_map.get(seller_id)
+
+                    for item in individual_items:
+                        cost = calculate_dynamic_shipping(
+                            base_cost=item.shipping_cost or 0.0,
                             seller_barrio=seller_barrio,
                             buyer_barrio=buyer_barrio
                         )
-                        
-                        if current_item_shipping_cost > highest_shipping_cost:
-                            highest_shipping_cost = current_item_shipping_cost
+                        total_shipping_cost += cost
                     
-                    final_shipping_cost = highest_shipping_cost
+                    if combinable_items:
+                        valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0]
+                        if not valid_limits:
+                            # Si no hay un límite válido, trátalos como individuales
+                            for item in combinable_items:
+                                cost = calculate_dynamic_shipping(base_cost=item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
+                                total_shipping_cost += cost
+                            continue
+
+                        limit = min(valid_limits)
+                        num_fees = math.ceil(len(combinable_items) / limit)
+                        highest_base_cost = max(p.shipping_cost or 0.0 for p in combinable_items)
+                        
+                        group_shipping_fee = calculate_dynamic_shipping(
+                            base_cost=highest_base_cost,
+                            seller_barrio=seller_barrio,
+                            buyer_barrio=buyer_barrio
+                        )
+                        total_shipping_cost += (group_shipping_fee * num_fees)
+                
+                final_shipping_cost = total_shipping_cost
             
             grand_total = subtotal + final_shipping_cost
 
@@ -1052,7 +1073,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 "grand_total": grand_total,
                 "free_shipping_achieved": free_shipping_achieved,
             }
-        
     # --- 👇 AÑADE ESTAS TRES NUEVAS PROPIEDADES 👇 ---
     @rx.var
     def subtotal_cop(self) -> str:
@@ -1673,6 +1693,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             if q in f"{e.first_name} {e.last_name} {e.email} {e.message}".lower()
         ]
     
+    # --- ✨ AÑADE ESTAS VARIABLES PARA EL FORMULARIO DE PRODUCTO ✨ ---
+    combines_shipping: bool = False
+    shipping_combination_limit_str: str = "3" # Valor por defecto
+
+    # --- ✨ AÑADE ESTOS SETTERS ✨ ---
+    def set_combines_shipping(self, value: bool):
+        self.combines_shipping = value
+    
+    def set_shipping_combination_limit_str(self, value: str):
+        self.shipping_combination_limit_str = value
+
     def set_shipping_cost_str(self, cost: str):
         self.shipping_cost_str = cost
 
