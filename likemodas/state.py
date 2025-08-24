@@ -93,12 +93,11 @@ class PurchaseItemCardData(rx.Base):
     id: int
     title: str
     image_url: str
-    price_at_purchase: float  # <-- ✨ 1. AÑADE EL PRECIO SIN FORMATEAR
+    price_at_purchase: float
     price_at_purchase_cop: str
     quantity: int
 
-    # <-- ✨ 2. AÑADE ESTA PROPIEDAD COMPUTADA PARA EL SUBTOTAL
-    @rx.var
+    @property # <-- ✨ ESTA ES LA CORRECCIÓN
     def subtotal_cop(self) -> str:
         """Calcula y formatea el subtotal para esta línea de artículo."""
         return format_to_cop(self.price_at_purchase * self.quantity)
