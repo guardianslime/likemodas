@@ -459,16 +459,29 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
+
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
         
-        # --- 👇 LÓGICA PARA PROCESAR LOS NUEVOS CAMPOS 👇 ---
+        limit = None  # <-- 1. Inicializamos 'limit' con un valor por defecto.
+        
         try:
             shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
-            #free_shipping_threshold = int(self.free_shipping_threshold_str) if self.free_shipping_threshold_str else None
+            
+            # 2. Asignamos el valor a 'limit' solo si la opción está activa.
+            if self.combines_shipping and self.shipping_combination_limit_str:
+                limit = int(self.shipping_combination_limit_str)
+            
+            # 3. Hacemos la validación después de definir la variable.
+            if self.combines_shipping and (limit is None or limit <= 0):
+                return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
         except ValueError:
-            return rx.toast.error("El costo de envío y el umbral deben ser números válidos.")
+            return rx.toast.error("Los costos y límites deben ser números válidos.")
+        
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         
         attributes = {}
         category = form_data.get("category")
@@ -477,13 +490,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.attr_colores: attributes["Color"] = self.attr_colores
             if self.attr_tallas_ropa: attributes["Talla"] = self.attr_tallas_ropa
             if self.attr_material: attributes["Tela"] = self.attr_material
-
         elif category == Category.CALZADO.value:
             if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
             if self.attr_colores: attributes["Color"] = self.attr_colores
             if self.attr_numeros_calzado: attributes["Número"] = self.attr_numeros_calzado
             if self.attr_material: attributes["Material"] = self.attr_material
-        
         elif category == Category.MOCHILAS.value:
             if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
             if self.attr_colores: attributes["Color"] = self.attr_colores
@@ -501,16 +512,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 attributes=attributes,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                # --- 👇 AÑADE ESTOS DOS CAMPOS AL CREAR EL OBJETO 👇 ---
                 shipping_cost=shipping_cost,
-                # free_shipping_threshold=free_shipping_threshold,
                 is_moda_completa_eligible=self.is_moda_completa,
                 combines_shipping=self.combines_shipping,
-                shipping_combination_limit=limit,
+                shipping_combination_limit=limit,  # <-- Ahora 'limit' siempre existe.
             )
             session.add(new_post)
             session.commit()
             session.refresh(new_post)
+
         self._clear_add_form()
         yield rx.toast.success("Producto publicado.")
         return rx.redirect("/blog")
