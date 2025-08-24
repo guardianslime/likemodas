@@ -909,9 +909,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False}
 
         with rx.session() as session:
-            # Obtenemos los detalles de los productos en el carrito
             cart_items = self.cart_details
-            
+            if not cart_items:
+                return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False}
+
             # 1. Calcular el subtotal de todos los productos
             subtotal = sum(p.price * q for p, q in cart_items if p)
             
@@ -919,7 +920,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             free_shipping_achieved = subtotal >= 200000
             
             shipping_cost = 0
-            # 3. Si no se alcanza, calcular el costo de envío
+            # 3. Si no se alcanza el envío gratis, calcular el costo de envío
             if not free_shipping_achieved:
                 # Sumamos el costo de envío de cada producto que lo tenga definido
                 shipping_cost = sum(p.shipping_cost for p, q in cart_items if p and p.shipping_cost is not None and p.shipping_cost > 0)
@@ -1048,10 +1049,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.authenticated_user_info:
             return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
         
+        # Obtener el resumen del carrito una vez
+        summary = self.cart_summary
+        
         with rx.session() as session:
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
-                total_price=self.cart_total, 
+                total_price=summary["grand_total"], 
+                shipping_applied=summary["shipping_cost"], # Guardamos el costo de envío aplicado
                 status=PurchaseStatus.PENDING,
                 shipping_name=self.default_shipping_address.name, 
                 shipping_city=self.default_shipping_address.city,

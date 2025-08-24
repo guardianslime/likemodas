@@ -2,6 +2,8 @@
 
 import reflex as rx
 import reflex_local_auth
+
+from likemodas.utils.formatting import format_to_cop
 from ..state import AppState
 
 def display_default_address() -> rx.Component:
@@ -71,10 +73,33 @@ def cart_page_content() -> rx.Component:
                     rx.table.body(rx.foreach(AppState.cart_details, cart_item_row))
                 ),
                 rx.divider(),
-                rx.hstack(
-                    rx.heading("Total:", size="6"),
-                    rx.heading(AppState.cart_total_cop, size="6"),
-                    justify="end", width="100%", padding_x="1em"
+                # --- Lógica de totales actualizada ---
+                rx.vstack(
+                    rx.hstack(
+                        rx.text("Subtotal:", size="5"),
+                        rx.spacer(),
+                        rx.text(format_to_cop(AppState.cart_summary["subtotal"]), size="5"),
+                        width="100%"
+                    ),
+                    rx.hstack(
+                        rx.text("Envío:", size="5"),
+                        rx.spacer(),
+                        rx.cond(
+                            AppState.cart_summary["free_shipping_achieved"],
+                            rx.badge("¡Gratis por tu compra!", color_scheme="green", size="2"),
+                            rx.text(format_to_cop(AppState.cart_summary["shipping_cost"]), size="5")
+                        ),
+                        width="100%"
+                    ),
+                    rx.divider(),
+                    rx.hstack(
+                        rx.heading("Total:", size="6"),
+                        rx.spacer(),
+                        rx.heading(format_to_cop(AppState.cart_summary["grand_total"]), size="6"),
+                        width="100%"
+                    ),
+                    spacing="3",
+                    padding_y="1em",
                 ),
                 display_default_address(),
                 spacing="5", width="100%", max_width="700px"
