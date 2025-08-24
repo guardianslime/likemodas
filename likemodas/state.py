@@ -498,7 +498,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             posts_to_filter = [
                 p for p in posts_to_filter 
                 if (p.attributes.get("Material") in self.filter_materiales_tela) or 
-                   (p.attributes.get("Tela") in self.filter_materiales_tela)
+                (p.attributes.get("Tela") in self.filter_materiales_tela)
             ]
 
         if self.filter_tallas:
@@ -510,25 +510,25 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             ]
 
-            if self.filter_tipos_general:
-                posts_to_filter = [
-                    p for p in posts_to_filter
-                    if p.attributes.get("Tipo") in self.filter_tipos_general
-                ]
+        if self.filter_tipos_general:
+            posts_to_filter = [
+                p for p in posts_to_filter
+                if p.attributes.get("Tipo") in self.filter_tipos_general
+            ]
 
-        # --- 👇 AÑADE ESTA LÓGICA DE FILTRADO 👇 ---
         if self.filter_free_shipping:
             posts_to_filter = [
                 p for p in posts_to_filter 
                 if p.shipping_cost == 0.0
             ]
 
+        # --- 👇 LÓGICA DEL FILTRO CORREGIDA AQUÍ 👇 ---
         if self.filter_complete_fashion:
             posts_to_filter = [
                 p for p in posts_to_filter 
-                if p.free_shipping_threshold is not None and p.free_shipping_threshold > 0
+                if p.is_moda_completa_eligible
             ]
-        # --- FIN DE LA MODIFICACIÓN ---
+        # --- FIN DE LA CORRECCIÓN ---
 
         return posts_to_filter
     
