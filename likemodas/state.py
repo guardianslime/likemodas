@@ -1281,25 +1281,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = True
         yield
 
-        # 1. Cargar la dirección del usuario primero
-        await self.get_state(AppState).load_default_shipping_info()
+        # --- INICIO DE LA CORRECCIÓN ---
+        # 1. Cargar la dirección del usuario primero usando yield.
+        yield AppState.load_default_shipping_info
+        # --- FIN DE LA CORRECCIÓN ---
 
         # 2. Cargar los productos con su costo base
         with rx.session() as session:
-            # (La lógica para obtener `results` de la BD es la misma que tenías en `on_load`)
             results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
             
             temp_posts = []
             for p in results:
                 temp_posts.append(
                     ProductCardData(
-                        id=p.id, title=p.title, price=p.price, price_cop=p.price_cop,
-                        image_urls=p.image_urls, average_rating=p.average_rating, rating_count=p.rating_count,
+                        id=p.id, userinfo_id=p.userinfo_id, title=p.title, price=p.price,
+                        price_cop=p.price_cop, image_urls=p.image_urls,
+                        average_rating=p.average_rating, rating_count=p.rating_count,
                         attributes=p.attributes, shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        # Se guarda el costo base como texto inicial
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        userinfo_id=p.userinfo_id # Guardamos el ID del vendedor
                     )
                 )
             self._raw_posts = temp_posts
@@ -1307,9 +1307,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         # 3. Disparamos el primer recálculo
         yield self.recalculate_all_shipping_costs
         
-        # 4. Manejar el modal si viene un ID en la URL
-        # ... (la lógica del modal que ya tenías se puede añadir aquí) ...
-
         self.is_loading = False
 
     @rx.event
