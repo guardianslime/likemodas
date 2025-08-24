@@ -190,19 +190,18 @@ def product_detail_modal() -> rx.Component:
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
-
-            # --- LÓGICA DE ENVÍO CORREGIDA Y SIMPLIFICADA ---
             rx.hstack(
                 rx.badge(
-                    AppState.product_in_modal.shipping_display_text, # <-- AHORA USA EL CAMPO CORRECTO
+                    AppState.product_in_modal.shipping_display_text,
                     color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
                     variant="solid",
                     size="2"
                 ),
+                # --- 👇 LÍNEA CORREGIDA AQUÍ 👇 ---
                 rx.cond(
-                    post.is_moda_completa_eligible, # <-- Solo comprueba si la bandera es verdadera
+                    AppState.product_in_modal.is_moda_completa_eligible, # Antes decía 'post.is_moda_completa_eligible'
                     rx.tooltip(
-                        rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="1"),
+                        rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
                         content="Este item cuenta para el envío gratis en compras sobre $200.000"
                     ),
                 ),
@@ -212,7 +211,6 @@ def product_detail_modal() -> rx.Component:
             ),
             
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-            # ... (el resto del componente sigue igual y no necesita cambios)
             rx.cond(
                 AppState.product_in_modal.attributes,
                 rx.vstack(
