@@ -1827,12 +1827,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user) # <-- Asegúrate que esta línea esté
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
                 ).where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                # --- 👇 REEMPLAZA from_orm CON ESTE BLOQUE 👇 ---
                 seller_name = ""
                 seller_id = 0
                 seller_fsth = None
@@ -1855,6 +1854,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     attributes=db_post.attributes,
                     shipping_cost=db_post.shipping_cost,
                     seller_free_shipping_threshold=seller_fsth,
+                    # --- LÍNEA CLAVE AÑADIDA ---
+                    shipping_display_text=_get_shipping_display_text(db_post.shipping_cost),
                 )
                 self.product_in_modal = product_dto
                 
