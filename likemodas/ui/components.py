@@ -101,8 +101,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 margin_top="0.5em",
                             ),
                             rx.cond(
-                                post.seller_free_shipping_threshold > 0,
-                                rx.badge(f"Moda Completa", color_scheme="violet", variant="soft", size="1"),
+                                post.is_moda_completa_eligible, # <-- Solo comprueba si la bandera es verdadera
+                                rx.tooltip(
+                                    rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="1"),
+                                    content="Este item cuenta para el envío gratis en compras sobre $200.000"
+                                )
                             ),
                             
                             spacing="2",

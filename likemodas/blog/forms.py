@@ -184,22 +184,26 @@ def blog_post_add_form() -> rx.Component:
                                 placeholder="Ej: 8000. Escribe 0 para Envío Gratis",
                                 type="number",
                                 value=AppState.shipping_cost_str,
-                                on_change=AppState.set_shipping_cost_str, # Necesitarás crear este simple setter en AppState
+                                on_change=AppState.set_shipping_cost_str,
                                 size="3",
                             ),
                             rx.text("Déjalo en blanco si el costo lo asume el comprador.", size="1", color_scheme="gray"),
                             align_items="stretch",
                         ),
                         rx.vstack(
-                            rx.text("Moda Completa (Opcional)", as_="div", size="2", weight="bold"),
-                            rx.input(
-                                placeholder="Ej: 3",
-                                type="number",
-                                value=AppState.free_shipping_threshold_str,
-                                on_change=AppState.set_free_shipping_threshold_str, # Y este también
-                                size="3",
+                            rx.text("Moda Completa", as_="div", size="2", weight="bold"),
+                            rx.hstack(
+                                rx.switch(
+                                    is_checked=AppState.is_moda_completa,
+                                    on_change=AppState.set_is_moda_completa,
+                                    size="2",
+                                ),
+                                rx.text("Activo"),
+                                align="center",
+                                spacing="3",
+                                height="100%",
                             ),
-                            rx.text("Envío gratis al comprar esta cantidad de items.", size="1", color_scheme="gray"),
+                            rx.text("Aplica para envío gratis en compras > $200.000.", size="1", color_scheme="gray"),
                             align_items="stretch",
                         ),
                         columns="2",

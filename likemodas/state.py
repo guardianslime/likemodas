@@ -49,7 +49,8 @@ class ProductCardData(rx.Base):
     rating_count: int = 0
     attributes: dict = {}
     shipping_cost: Optional[float] = None
-    seller_free_shipping_threshold: Optional[int] = None
+    # seller_free_shipping_threshold: Optional[int] = None
+    is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
 
     class Config:
@@ -69,7 +70,8 @@ class ProductDetailData(rx.Base):
     seller_id: int = 0
     attributes: dict = {}
     shipping_cost: Optional[float] = None
-    seller_free_shipping_threshold: Optional[int] = None
+    # seller_free_shipping_threshold: Optional[int] = None
+    is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
 
     class Config:
@@ -422,7 +424,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         # --- 👇 LÓGICA PARA PROCESAR LOS NUEVOS CAMPOS 👇 ---
         try:
             shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
-            free_shipping_threshold = int(self.free_shipping_threshold_str) if self.free_shipping_threshold_str else None
+            #free_shipping_threshold = int(self.free_shipping_threshold_str) if self.free_shipping_threshold_str else None
         except ValueError:
             return rx.toast.error("El costo de envío y el umbral deben ser números válidos.")
         
@@ -459,7 +461,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 publish_date=datetime.now(timezone.utc),
                 # --- 👇 AÑADE ESTOS DOS CAMPOS AL CREAR EL OBJETO 👇 ---
                 shipping_cost=shipping_cost,
-                free_shipping_threshold=free_shipping_threshold,
+                # free_shipping_threshold=free_shipping_threshold,
+                is_moda_completa_eligible=self.is_moda_completa,
             )
             session.add(new_post)
             session.commit()
@@ -736,14 +739,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.current_category = category if category else "todos"
 
         with rx.session() as session:
-        # --- 👇 MODIFICA LA CONSULTA PARA INCLUIR .options(...) 👇 ---
-            query = (
-                sqlmodel.select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo)) # Carga eficiente del vendedor
-                .where(BlogPostModel.publish_active == True)
-            )
+            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
+            
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-    
+            
             temp_posts = []
             for p in results:
                 temp_posts.append(
@@ -751,18 +753,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                         id=p.id,
                         title=p.title,
                         price=p.price,
-                        price_cop=p.price_cop,
+                        price_cop=p.price_cop, 
                         image_urls=p.image_urls,
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
-                        seller_free_shipping_threshold=p.userinfo.free_shipping_threshold if p.userinfo else None,
-                        # --- 👇 LÍNEA CLAVE: Llenamos el campo con el texto ya formateado 👇 ---
+                        is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     )
                 )
             self.posts = temp_posts
+        
         self.is_loading = False
     
     show_detail_modal: bool = False
@@ -888,17 +890,50 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
         self.shipping_cost_str = ""
-        self.free_shipping_threshold_str = ""
+        # self.free_shipping_threshold_str = ""
+
+        self.is_moda_completa = True # Resetea a su valor por defecto
 
     cart: Dict[int, int] = {}
     
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
+    # @rx.var
+    # def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
+    #@rx.var
+    # def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
     @rx.var
-    def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
-    @rx.var
-    def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
-    
+    def cart_summary(self) -> dict:
+        """Calcula el resumen completo del carrito con la nueva lógica de envío."""
+        if not self.cart:
+            return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False}
+
+        with rx.session() as session:
+            # Obtenemos los detalles de los productos en el carrito
+            cart_items = self.cart_details
+            
+            # 1. Calcular el subtotal de todos los productos
+            subtotal = sum(p.price * q for p, q in cart_items if p)
+            
+            # 2. Comprobar si se alcanza el umbral para envío gratis
+            free_shipping_achieved = subtotal >= 200000
+            
+            shipping_cost = 0
+            # 3. Si no se alcanza, calcular el costo de envío
+            if not free_shipping_achieved:
+                # Sumamos el costo de envío de cada producto que lo tenga definido
+                shipping_cost = sum(p.shipping_cost for p, q in cart_items if p and p.shipping_cost is not None and p.shipping_cost > 0)
+
+            # 4. Calcular el total final
+            grand_total = subtotal + shipping_cost
+
+            return {
+                "subtotal": subtotal,
+                "shipping_cost": shipping_cost,
+                "grand_total": grand_total,
+                "free_shipping_achieved": free_shipping_achieved,
+            }
+
     @rx.var
     def cart_details(self) -> List[Tuple[Optional[BlogPostModel], int]]:
         if not self.cart: return []
@@ -954,7 +989,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
-    free_shipping_threshold_str: str = ""
+    #free_shipping_threshold_str: str = ""
+    # --- 👇 AÑADE ESTA LÍNEA 👇 ---
+    is_moda_completa: bool = True # Activo por defecto
+
+    # --- 👇 AÑADE ESTE NUEVO MÉTODO 👇 ---
+    def set_is_moda_completa(self, value: bool):
+        self.is_moda_completa = value
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA LOS FILTROS 👇 ---
     filter_free_shipping: bool = False
@@ -1143,12 +1184,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
+                        image_urls=p.image_urls,
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
-                        free_shipping_threshold=p.free_shipping_threshold,
+                        is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     )
                 )
             self.search_results = temp_results
@@ -1486,7 +1528,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
-                .options(sqlalchemy.orm.joinedload(BlogPostModel.comments))
                 .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
@@ -1499,12 +1540,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
+                        image_urls=p.image_urls,
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
-                        free_shipping_threshold=p.free_shipping_threshold,
+                        is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                     )
                 )
             self.admin_store_posts = temp_posts
@@ -1750,7 +1792,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             user_info = session.get(UserInfo, self.authenticated_user_info.id)
             if user_info:
                 temp_posts = []
-                sorted_posts = sorted(user_info.saved_posts, key=lambda p: p.created_at, reverse=True)
+                # Eager load the related posts to avoid multiple queries
+                user_with_posts = session.exec(
+                    sqlmodel.select(UserInfo).options(sqlalchemy.orm.selectinload(UserInfo.saved_posts))
+                    .where(UserInfo.id == self.authenticated_user_info.id)
+                ).one()
+                
+                sorted_posts = sorted(user_with_posts.saved_posts, key=lambda p: p.created_at, reverse=True)
                 for p in sorted_posts:
                     temp_posts.append(
                         ProductCardData(
@@ -1758,12 +1806,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                             title=p.title,
                             price=p.price,
                             price_cop=p.price_cop,
-                            image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
+                            image_urls=p.image_urls,
                             average_rating=p.average_rating,
                             rating_count=p.rating_count,
                             attributes=p.attributes,
                             shipping_cost=p.shipping_cost,
-                            free_shipping_threshold=p.free_shipping_threshold,
+                            is_moda_completa_eligible=p.is_moda_completa_eligible,
+                            shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         )
                     )
                 self.saved_posts_gallery = temp_posts
@@ -1948,12 +1997,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 title=p.title,
                                 price=p.price,
                                 price_cop=p.price_cop,
-                                image_urls=p.image_urls, # <-- ¡ESTA LÍNEA FALTABA!
+                                image_urls=p.image_urls,
                                 average_rating=p.average_rating,
                                 rating_count=p.rating_count,
                                 attributes=p.attributes,
                                 shipping_cost=p.shipping_cost,
-                                free_shipping_threshold=p.free_shipping_threshold,
+                                is_moda_completa_eligible=p.is_moda_completa_eligible,
+                                shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                             )
                         )
                     self.seller_page_posts = temp_posts

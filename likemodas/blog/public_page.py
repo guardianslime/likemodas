@@ -3,6 +3,8 @@
 import reflex as rx
 import math
 
+from requests import post
+
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, CommentData, AttributeData
 from ..ui.components import product_gallery_component
@@ -198,10 +200,10 @@ def product_detail_modal() -> rx.Component:
                     size="2"
                 ),
                 rx.cond(
-                    AppState.product_in_modal.seller_free_shipping_threshold > 0,
+                    post.is_moda_completa_eligible, # <-- Solo comprueba si la bandera es verdadera
                     rx.tooltip(
-                        rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
-                        content=f"El envío es gratis al comprar {AppState.product_in_modal.seller_free_shipping_threshold} o más productos de este vendedor."
+                        rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="1"),
+                        content="Este item cuenta para el envío gratis en compras sobre $200.000"
                     ),
                 ),
                 spacing="4",
