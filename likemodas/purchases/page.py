@@ -78,10 +78,10 @@ def purchase_items_gallery(items: rx.Var[list[PurchaseItemCardData]]) -> rx.Comp
 
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
-    """Componente principal que muestra una compra. Ahora es más simple."""
+    """Componente principal que muestra una compra."""
     return rx.card(
         rx.vstack(
-            # ... (la sección con el ID de compra y los detalles de envío no cambia) ...
+            # ... (la sección superior no cambia) ...
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -106,20 +106,30 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: LLAMADA MODIFICADA ✨ ---
-            # En lugar de pasar `purchase.items`, usamos el nuevo mapa del estado
-            # para obtener los artículos de forma indirecta, lo que evita el error del compilador.
             purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
-            # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
             
-            rx.hstack(
-                rx.spacer(),
-                rx.heading("Total Compra:", size="5", weight="medium"),
-                rx.heading(purchase.total_price_cop, size="6"),
-                align="center",
-                spacing="3",
+            # --- ✨ INICIO DE LA SECCIÓN DE TOTALES MODIFICADA ✨ ---
+            rx.vstack(
+                rx.hstack(
+                    rx.spacer(),
+                    rx.text("Envío:", size="4", weight="medium"),
+                    rx.text(purchase.shipping_applied_cop, size="4"),
+                    align="center",
+                    spacing="3",
+                ),
+                rx.hstack(
+                    rx.spacer(),
+                    rx.heading("Total Compra:", size="5", weight="medium"),
+                    rx.heading(purchase.total_price_cop, size="6"),
+                    align="center",
+                    spacing="3",
+                ),
+                align_items="end",
+                width="100%",
                 margin_top="1em",
+                spacing="2"
             ),
+            # --- ✨ FIN DE LA SECCIÓN DE TOTALES MODIFICADA ✨ ---
             
             rx.cond(
                 purchase.status != PurchaseStatus.PENDING.value,

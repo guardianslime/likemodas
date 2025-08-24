@@ -104,9 +104,16 @@ class PurchaseItemCardData(rx.Base):
     
 class UserPurchaseHistoryCardData(rx.Base):
     """DTO actualizado para el historial de compras del usuario."""
-    id: int; purchase_date_formatted: str; status: str; total_price_cop: str
-    shipping_name: str; shipping_address: str; shipping_neighborhood: str
-    shipping_city: str; shipping_phone: str
+    id: int
+    purchase_date_formatted: str
+    status: str
+    total_price_cop: str
+    shipping_applied_cop: str  # <-- ✨ AÑADE ESTA LÍNEA
+    shipping_name: str
+    shipping_address: str
+    shipping_neighborhood: str
+    shipping_city: str
+    shipping_phone: str
     items: list[PurchaseItemCardData]
 
 class AttributeData(rx.Base):
@@ -1601,19 +1608,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                             )
                 
                 temp_purchases.append(
-                    UserPurchaseHistoryCardData(
-                        id=p.id, 
-                        purchase_date_formatted=p.purchase_date_formatted,
-                        status=p.status.value, 
-                        total_price_cop=p.total_price_cop,
-                        shipping_name=p.shipping_name, 
-                        shipping_address=p.shipping_address,
-                        shipping_neighborhood=p.shipping_neighborhood, 
-                        shipping_city=p.shipping_city,
-                        shipping_phone=p.shipping_phone, 
-                        items=purchase_items_data
-                    )
+                UserPurchaseHistoryCardData(
+                    id=p.id, 
+                    purchase_date_formatted=p.purchase_date_formatted,
+                    status=p.status.value, 
+                    total_price_cop=p.total_price_cop,
+                    shipping_applied_cop=format_to_cop(p.shipping_applied), # <-- ✨ AÑADE ESTA LÍNEA
+                    shipping_name=p.shipping_name, 
+                    shipping_address=p.shipping_address,
+                    shipping_neighborhood=p.shipping_neighborhood, 
+                    shipping_city=p.shipping_city,
+                    shipping_phone=p.shipping_phone, 
+                    items=purchase_items_data
                 )
+            )
             self.user_purchases = temp_purchases
 
     notifications: List[NotificationModel] = []
