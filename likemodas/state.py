@@ -13,6 +13,8 @@ import re
 import asyncio
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
+
+from likemodas.data.geography_data import LISTA_DE_BARRIOS
 from .logic.shipping_calculator import calculate_dynamic_shipping
 
 from . import navigation
@@ -148,6 +150,16 @@ class InvoiceData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
+    # --- 👇 INICIO DE LA CORRECCIÓN 👇 ---
+    # Se define como una variable de estado normal, no como una propiedad computada.
+    # Esto asegura que esté disponible durante la compilación para las migraciones.
+    lista_de_barrios_popayan: list[str] = LISTA_DE_BARRIOS
+    # --- FIN DE LA CORRECCIÓN ---
+
+    # --- Variables de Perfil del Vendedor ---
+    seller_profile_barrio: str = ""
+    seller_profile_address: str = ""
+    
     _product_id_to_load_on_mount: Optional[int] = None
     success: bool = False
     error_message: str = ""
@@ -901,6 +913,56 @@ class AppState(reflex_local_auth.LocalAuthState):
     # def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
     #@rx.var
     # def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
+    
+    @rx.var(cache=True)
+    def authenticated_user_info(self) -> UserInfo | None:
+        if not self.is_authenticated or self.authenticated_user.id < 0:
+            return None
+        with rx.session() as session:
+            query = (
+                sqlmodel.select(UserInfo)
+                .options(sqlalchemy.orm.joinedload(UserInfo.user))
+                .where(UserInfo.user_id == self.authenticated_user.id)
+            )
+            return session.exec(query).one_or_none()
+
+    @rx.var
+    def is_admin(self) -> bool:
+        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
+        
+    @rx.event
+    def on_load_seller_profile(self):
+        """Carga los datos del perfil del vendedor al entrar a la página de edición."""
+        if self.is_admin and self.authenticated_user_info:
+            self.seller_profile_barrio = self.authenticated_user_info.seller_barrio or ""
+            self.seller_profile_address = self.authenticated_user_info.seller_address or ""
+
+    def set_seller_profile_barrio(self, barrio: str):
+        """Actualiza el barrio seleccionado en el formulario de perfil."""
+        self.seller_profile_barrio = barrio
+
+    def set_seller_profile_address(self, address: str):
+        self.seller_profile_address = address
+
+    @rx.event
+    def save_seller_profile(self, form_data: dict):
+        """Guarda la información de ubicación del vendedor en la base de datos."""
+        if not self.is_admin or not self.authenticated_user_info:
+            return rx.toast.error("Acción no permitida.")
+
+        address = form_data.get("seller_address", "")
+        if not self.seller_profile_barrio or not address:
+            return rx.toast.error("Debes seleccionar un barrio y escribir una dirección.")
+
+        with rx.session() as session:
+            user_info_to_update = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info_to_update:
+                user_info_to_update.seller_barrio = self.seller_profile_barrio
+                user_info_to_update.seller_address = address
+                session.add(user_info_to_update)
+                session.commit()
+                return rx.toast.success("¡Ubicación de origen guardada!")
+    
     @rx.var
     def cart_summary(self) -> dict:
         """
@@ -1357,7 +1419,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if q in f"#{p.id}" or any(q in item.title.lower() for item in p.items)
         ]
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
+    
     # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
     @rx.var
     def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
