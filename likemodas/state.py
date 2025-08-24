@@ -934,6 +934,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                 "grand_total": grand_total,
                 "free_shipping_achieved": free_shipping_achieved,
             }
+        
+    # --- 👇 AÑADE ESTAS TRES NUEVAS PROPIEDADES 👇 ---
+    @rx.var
+    def subtotal_cop(self) -> str:
+        """Devuelve el subtotal del carrito ya formateado."""
+        return format_to_cop(self.cart_summary["subtotal"])
+
+    @rx.var
+    def shipping_cost_cop(self) -> str:
+        """Devuelve el costo de envío del carrito ya formateado."""
+        return format_to_cop(self.cart_summary["shipping_cost"])
+
+    @rx.var
+    def grand_total_cop(self) -> str:
+        """Devuelve el total general del carrito ya formateado."""
+        return format_to_cop(self.cart_summary["grand_total"])
 
     @rx.var
     def cart_details(self) -> List[Tuple[Optional[BlogPostModel], int]]:

@@ -73,12 +73,12 @@ def cart_page_content() -> rx.Component:
                     rx.table.body(rx.foreach(AppState.cart_details, cart_item_row))
                 ),
                 rx.divider(),
-                # --- Lógica de totales actualizada ---
+                # --- Lógica de totales SIMPLIFICADA ---
                 rx.vstack(
                     rx.hstack(
                         rx.text("Subtotal:", size="5"),
                         rx.spacer(),
-                        rx.text(format_to_cop(AppState.cart_summary["subtotal"]), size="5"),
+                        rx.text(AppState.subtotal_cop, size="5"), # <-- Cambio aquí
                         width="100%"
                     ),
                     rx.hstack(
@@ -87,7 +87,7 @@ def cart_page_content() -> rx.Component:
                         rx.cond(
                             AppState.cart_summary["free_shipping_achieved"],
                             rx.badge("¡Gratis por tu compra!", color_scheme="green", size="2"),
-                            rx.text(format_to_cop(AppState.cart_summary["shipping_cost"]), size="5")
+                            rx.text(AppState.shipping_cost_cop, size="5") # <-- Cambio aquí
                         ),
                         width="100%"
                     ),
@@ -95,7 +95,7 @@ def cart_page_content() -> rx.Component:
                     rx.hstack(
                         rx.heading("Total:", size="6"),
                         rx.spacer(),
-                        rx.heading(format_to_cop(AppState.cart_summary["grand_total"]), size="6"),
+                        rx.heading(AppState.grand_total_cop, size="6"), # <-- Cambio aquí
                         width="100%"
                     ),
                     spacing="3",
