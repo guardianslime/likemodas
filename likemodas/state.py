@@ -50,24 +50,11 @@ class ProductCardData(rx.Base):
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     seller_free_shipping_threshold: Optional[int] = None
-    
-    # --- 👇 CAMBIO CLAVE: Es un campo normal, no una propiedad 👇 ---
     shipping_display_text: str = ""
 
     class Config:
         orm_mode = True
 
-    @property
-    def price_cop(self) -> str:
-        return format_to_cop(self.price)
-
-    # --- 👇 PROPIEDAD SIMPLIFICADA 👇 ---
-    @property
-    def formatted_shipping_cost(self) -> str:
-        """Devuelve solo el costo de envío formateado como texto."""
-        if self.shipping_cost is not None and self.shipping_cost > 0:
-            return format_to_cop(self.shipping_cost)
-        return ""
     
 class ProductDetailData(rx.Base):
     id: int
@@ -83,20 +70,10 @@ class ProductDetailData(rx.Base):
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     seller_free_shipping_threshold: Optional[int] = None
-    
-    # --- 👇 CAMBIO CLAVE: Es un campo normal, no una propiedad 👇 ---
     shipping_display_text: str = ""
 
     class Config:
         orm_mode = True
-        
-    # --- 👇 PROPIEDAD SIMPLIFICADA 👇 ---
-    @property
-    def formatted_shipping_cost(self) -> str:
-        """Devuelve solo el costo de envío formateado como texto."""
-        if self.shipping_cost is not None and self.shipping_cost > 0:
-            return format_to_cop(self.shipping_cost)
-        return ""
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
