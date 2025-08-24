@@ -56,6 +56,7 @@ def sidebar_items() -> rx.Component:
                     sidebar_item("Dashboard", "users", "/admin/users"),
                     sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
                     sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
+                    sidebar_item("Mi Ubicación de Envío", "map-pin", "/admin/my-location"),
                     sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
                     sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
                     sidebar_item("Mensajes de Contacto", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),

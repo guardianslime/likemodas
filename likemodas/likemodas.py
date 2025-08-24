@@ -3,6 +3,8 @@
 import reflex as rx
 import reflex_local_auth
 
+from likemodas.admin.profile_page import seller_profile_page
+
 from .state import AppState
 from .ui.base import base_page
 
@@ -81,6 +83,14 @@ app.add_page(
     route=navigation.routes.BLOG_POST_ADD_ROUTE, 
     title="Añadir Producto"
 )
+
+# --- Añadir esta ruta dentro de la sección de Rutas de Administración ---
+app.add_page(
+    base_page(seller_profile_page()),
+    route="/admin/my-location",
+    on_load=AppState.on_load_seller_profile,
+    title="Mi Ubicación de Origen"
+)
 app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Confirmar Pagos", on_load=AppState.load_pending_purchases)
 app.add_page(
     base_page(admin_store_page()), 
@@ -97,3 +107,4 @@ app.add_page(
     on_load=InvoiceState.on_load_invoice_page, # <-- CAMBIA AppState POR InvoiceState
     title="Factura"
 )
+

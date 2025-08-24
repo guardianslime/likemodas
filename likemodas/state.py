@@ -13,8 +13,7 @@ import re
 import asyncio
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
-
-
+from .logic.shipping_calculator import calculate_dynamic_shipping
 
 from . import navigation
 from .models import (
@@ -904,33 +903,57 @@ class AppState(reflex_local_auth.LocalAuthState):
     # def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
     @rx.var
     def cart_summary(self) -> dict:
-        """Calcula el resumen completo del carrito con la nueva lógica de envío."""
-        if not self.cart:
+        """
+        Calcula el resumen del carrito utilizando el nuevo calculador de envío
+        basado en la ruta de comunas.
+        """
+        if not self.cart or not self.default_shipping_address:
             return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False}
 
         with rx.session() as session:
-            cart_items = self.cart_details
-            if not cart_items:
+            cart_items_details = self.cart_details
+            if not cart_items_details:
                 return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False}
 
-            # 1. Calcular el subtotal de todos los productos
-            subtotal = sum(p.price * q for p, q in cart_items if p)
-            
-            # 2. Comprobar si se alcanza el umbral para envío gratis
+            subtotal = sum(p.price * q for p, q in cart_items_details if p)
             free_shipping_achieved = subtotal >= 200000
-            
-            shipping_cost = 0
-            # 3. Si no se alcanza el envío gratis, calcular el costo de envío
-            if not free_shipping_achieved:
-                # Sumamos el costo de envío de cada producto que lo tenga definido
-                shipping_cost = sum(p.shipping_cost for p, q in cart_items if p and p.shipping_cost is not None and p.shipping_cost > 0)
 
-            # 4. Calcular el total final
-            grand_total = subtotal + shipping_cost
+            if free_shipping_achieved:
+                final_shipping_cost = 0
+            else:
+                highest_shipping_cost = 0.0
+                buyer_barrio = self.default_shipping_address.neighborhood
+                
+                # Pre-cargamos la información de los vendedores para eficiencia
+                seller_ids = {p.userinfo_id for p, q in cart_items_details if p}
+                sellers_info = session.exec(
+                    sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
+                ).all()
+                seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
+
+                for product, quantity in cart_items_details:
+                    if not product: continue
+                    
+                    base_cost = product.shipping_cost or 0.0
+                    seller_barrio = seller_barrio_map.get(product.userinfo_id)
+                    
+                    # --- LÓGICA CLAVE: Llamada al nuevo calculador ---
+                    current_item_shipping_cost = calculate_dynamic_shipping(
+                        base_cost=base_cost,
+                        seller_barrio=seller_barrio,
+                        buyer_barrio=buyer_barrio
+                    )
+                    
+                    if current_item_shipping_cost > highest_shipping_cost:
+                        highest_shipping_cost = current_item_shipping_cost
+                
+                final_shipping_cost = highest_shipping_cost
+            
+            grand_total = subtotal + final_shipping_cost
 
             return {
                 "subtotal": subtotal,
-                "shipping_cost": shipping_cost,
+                "shipping_cost": final_shipping_cost,
                 "grand_total": grand_total,
                 "free_shipping_achieved": free_shipping_achieved,
             }

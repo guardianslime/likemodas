@@ -70,6 +70,9 @@ class UserInfo(rx.Model, table=True):
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
+    seller_barrio: Optional[str] = Field(default=None)
+    seller_address: Optional[str] = Field(default=None)
+
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")

@@ -179,15 +179,15 @@ def blog_post_add_form() -> rx.Component:
                     # --- 👇 AÑADE TODO ESTE BLOQUE 👇 ---
                     rx.grid(
                         rx.vstack(
-                            rx.text("Costo del Envío (COP)", as_="div", size="2", weight="bold"),
+                            rx.text("Costo de Envío Mínimo (Local)", as_="div", size="2", weight="bold"),
                             rx.input(
-                                placeholder="Ej: 8000. Escribe 0 para Envío Gratis",
+                                placeholder="Ej: 3000. Para envíos en tu mismo barrio.",
                                 type="number",
                                 value=AppState.shipping_cost_str,
                                 on_change=AppState.set_shipping_cost_str,
                                 size="3",
                             ),
-                            rx.text("Déjalo en blanco si el costo lo asume el comprador.", size="1", color_scheme="gray"),
+                            rx.text("El costo final aumentará según la distancia.", size="1", color_scheme="gray"),
                             align_items="stretch",
                         ),
                         rx.vstack(
