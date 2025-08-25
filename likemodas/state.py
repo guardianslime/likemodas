@@ -1606,6 +1606,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
                 ) for p in results
             ]
+            # ✨ CORRECCIÓN: Llamada directa, sin yield
             self.set_new_purchase_notification(
                 any(p.status == PurchaseStatus.PENDING.value for p in self.active_purchases)
             )
@@ -2009,7 +2010,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 user_info.ban_expires_at = None
                 session.add(user_info)
                 session.commit()
-        return self.load_all_users()
+        yield AppState.load_all_users
     
     admin_store_posts: list[ProductCardData] = []
 
