@@ -39,7 +39,7 @@ class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
 class PurchaseStatus(str, enum.Enum):
-    PENDING = "pending_confirmation"
+    PENDING_CONFIRMATION = "pending_confirmation" # <-- CAMBIO DE NOMBRE
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
     DELIVERED = "delivered" # <-- AÑADE ESTE NUEVO ESTADO
