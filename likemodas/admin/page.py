@@ -48,7 +48,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             
             # --- ✨ INICIO DE LA NUEVA LÓGICA DE ACCIONES ✨ ---
             rx.cond(
-                purchase.status == PurchaseStatus.PENDING.value,
+                purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 # --- Caso 1: El pedido está PENDIENTE ---
                 rx.cond(
                     purchase.payment_method == "Contra Entrega",

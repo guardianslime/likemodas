@@ -1249,7 +1249,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 userinfo_id=self.authenticated_user_info.id,
                 total_price=summary["grand_total"], 
                 shipping_applied=summary["shipping_cost"],
-                status=PurchaseStatus.PENDING,
+                status=PurchaseStatus.PENDING_CONFIRMATION,
                 payment_method=self.payment_method, # <-- Guarda el método de pago
                 shipping_name=self.default_shipping_address.name, 
                 shipping_city=self.default_shipping_address.city,
@@ -1632,10 +1632,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 .where(PurchaseModel.status.in_([
-                    PurchaseStatus.PENDING,
+                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                    PurchaseStatus.PENDING_CONFIRMATION,
                     PurchaseStatus.CONFIRMED,
                     PurchaseStatus.SHIPPED,
-                    PurchaseStatus.DELIVERED,
+                    PurchaseStatus.DELIVERED, 
                 ]))
                 .order_by(PurchaseModel.purchase_date.asc())
             ).unique().all()
@@ -1651,7 +1652,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             ]
             # ✨ CORRECCIÓN: Llamada directa, sin yield
             self.set_new_purchase_notification(
-                any(p.status == PurchaseStatus.PENDING.value for p in self.active_purchases)
+                any(p.status == PurchaseStatus.PENDING_CONFIRMATION.value for p in self.active_purchases)
             )
 
     # ✨ NUEVA FUNCIÓN solo para notificar el envío
@@ -1722,7 +1723,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             # Verifica que esté pendiente y sea contra entrega
-            if purchase and purchase.status == PurchaseStatus.PENDING and purchase.payment_method == "Contra Entrega":
+            if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Contra Entrega":
                 # Cambia el estado directamente a ENVIADO
                 purchase.status = PurchaseStatus.SHIPPED
                 purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
