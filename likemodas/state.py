@@ -304,10 +304,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        self.token = self.router.page.params.get("token", "")
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+        # Reemplazamos el método obsoleto self.router.page.params
+        token = ""
+        try:
+            full_url = self.router.url
+            if "?" in full_url:
+                query_string = full_url.split("?")[1]
+                params = dict(param.split("=") for param in query_string.split("&"))
+                token = params.get("token", "")
+        except Exception:
+            pass  # Falla silenciosamente si la URL está mal formada
+
+        self.token = token
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+        
         if not self.token:
             self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
             return
+            
         with rx.session() as session:
             db_token = session.exec(sqlmodel.select(PasswordResetToken).where(PasswordResetToken.token == self.token)).one_or_none()
             if db_token and db_token.expires_at.replace(tzinfo=timezone.utc) > datetime.now(timezone.utc):
@@ -317,6 +332,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if db_token:
                     session.delete(db_token)
                     session.commit()
+
 
     def handle_reset_password(self, form_data: dict):
         password, confirm_password = form_data.get("password", ""), form_data.get("confirm_password", "")
