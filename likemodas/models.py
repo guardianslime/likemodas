@@ -121,6 +121,7 @@ class BlogPostModel(rx.Model, table=True):
     # --- ✨ AÑADE ESTOS DOS NUEVOS CAMPOS AQUÍ ✨ ---
     combines_shipping: bool = Field(default=False, nullable=False)
     shipping_combination_limit: Optional[int] = Field(default=None)
+    price_includes_iva: bool = Field(default=True, nullable=False)
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
@@ -129,6 +130,16 @@ class BlogPostModel(rx.Model, table=True):
     class Config:
         exclude = {"userinfo", "comments", "saved_by_users"}
     
+    # --- ✨ AÑADE ESTA PROPIEDAD PARA ESTANDARIZAR CÁLCULOS ✨ ---
+    @property
+    def base_price(self) -> float:
+        """Devuelve el precio del artículo SIN IVA."""
+        if self.price_includes_iva:
+            # Si el precio ya incluye IVA, lo calculamos hacia atrás
+            return (self.price or 0.0) / 1.19
+        # Si no, el precio introducido es el precio base
+        return self.price or 0.0
+
     @property
     def rating_count(self) -> int:
         if not self.comments: return 0
