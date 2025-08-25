@@ -1015,14 +1015,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             
     # --- ✨ 1. AÑADE LAS NUEVAS VARIABLES DE ESTADO ✨ ---
     payment_method: str = "online" # Valor por defecto para el carrito
-    admin_delivery_days: Dict[int, str] = {} # Para el input del admin
+    admin_delivery_time: Dict[int, Dict[str, str]] = {}
 
     # --- ✨ 2. AÑADE LOS SETTERS ✨ ---
     def set_payment_method(self, method: str):
         self.payment_method = method
 
-    def set_admin_delivery_days(self, purchase_id: int, days: str):
-        self.admin_delivery_days[purchase_id] = days
+    def set_admin_delivery_time(self, purchase_id: int, unit: str, value: str):
+        if purchase_id not in self.admin_delivery_time:
+            self.admin_delivery_time[purchase_id] = {"days": "0", "hours": "0", "minutes": "0"}
+        self.admin_delivery_time[purchase_id][unit] = value
     
     @rx.var
     def cart_summary(self) -> dict:
@@ -1443,39 +1445,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield self.recalculate_all_shipping_costs # Disparamos el recálculo
     
     # --- ✨ 4. AÑADE LAS NUEVAS FUNCIONES DE LÓGICA DE ENTREGA ✨ ---
-    @rx.event
-    def set_delivery_estimate(self, purchase_id: int):
-        if not self.is_admin:
-            return rx.toast.error("Acción no permitida.")
-        
-        days_str = self.admin_delivery_days.get(purchase_id, "")
-        try:
-            days = int(days_str)
-            if days <= 0:
-                raise ValueError
-        except (ValueError, TypeError):
-            return rx.toast.error("Por favor, introduce un número de días válido.")
-
-        with rx.session() as session:
-            purchase = session.get(PurchaseModel, purchase_id)
-            if purchase and purchase.status == PurchaseStatus.CONFIRMED:
-                now = datetime.now(timezone.utc)
-                purchase.estimated_delivery_date = now + timedelta(days=days)
-                purchase.delivery_confirmation_sent_at = now
-                session.add(purchase)
-                
-                notification = NotificationModel(
-                    userinfo_id=purchase.userinfo_id,
-                    message=f"¡Tu compra #{purchase.id} está en camino! Llegará en aproximadamente {days} días.",
-                    url="/my-purchases"
-                )
-                session.add(notification)
-                session.commit()
-                yield rx.toast.success("Notificación de envío enviada al cliente.")
-                return self.load_pending_purchases()
-            else:
-                return rx.toast.error("La compra no está confirmada o no se encontró.")
-
+    
     @rx.event
     def user_confirm_delivery(self, purchase_id: int):
         if not self.authenticated_user_info:
@@ -1594,27 +1564,53 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
 
     @rx.event
-    def confirm_payment(self, purchase_id: int):
+    def confirm_and_notify_shipment(self, purchase_id: int):
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
+
+        time_data = self.admin_delivery_time.get(purchase_id, {})
+        try:
+            days = int(time_data.get("days", "0") or "0")
+            hours = int(time_data.get("hours", "0") or "0")
+            minutes = int(time_data.get("minutes", "0") or "0")
+            
+            total_delta = timedelta(days=days, hours=hours, minutes=minutes)
+            if total_delta.total_seconds() <= 0:
+                return rx.toast.error("El tiempo de entrega debe ser mayor a cero.")
+
+        except (ValueError, TypeError):
+            return rx.toast.error("Por favor, introduce números válidos para el tiempo de entrega.")
+
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.PENDING:
-                purchase.status = PurchaseStatus.CONFIRMED
-                purchase.confirmed_at = datetime.now(timezone.utc)
+                now = datetime.now(timezone.utc)
+                # Actualizamos el estado directamente a ENVIADO
+                purchase.status = PurchaseStatus.SHIPPED
+                purchase.confirmed_at = now
+                purchase.estimated_delivery_date = now + total_delta
+                purchase.delivery_confirmation_sent_at = now
+                session.add(purchase)
+                
+                # Creamos y enviamos la notificación detallada
+                time_parts = []
+                if days > 0: time_parts.append(f"{days} día(s)")
+                if hours > 0: time_parts.append(f"{hours} hora(s)")
+                if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
+                time_str = ", ".join(time_parts)
+
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
-                    message=f"¡Tu compra #{purchase.id} ha sido confirmada!",
+                    message=f"¡Tu compra #{purchase.id} fue confirmada y está en camino! Llegará en aprox. {time_str}.",
                     url="/my-purchases"
                 )
-                session.add(purchase)
                 session.add(notification)
                 session.commit()
-                yield rx.toast.success(f"Compra #{purchase_id} confirmada.")
-                
-                yield AppState.load_pending_purchases
+
+                yield rx.toast.success("Pago confirmado y notificación de envío enviada.")
+                return self.load_pending_purchases()
             else:
-                yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
+                return rx.toast.error("Esta compra ya no está pendiente de confirmación.")
 
     search_query_admin_history: str = ""
 

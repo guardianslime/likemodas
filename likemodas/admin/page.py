@@ -7,11 +7,10 @@ from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
-    """
-    Muestra los detalles de una compra PENDIENTE en el panel de admin.
-    """
+    """Muestra los detalles de una compra PENDIENTE en el panel de admin."""
     return rx.card(
         rx.vstack(
+            # --- La sección superior con los detalles del cliente, envío y artículos no cambia ---
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
@@ -40,25 +39,37 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
                 spacing="1", align_items="start", width="100%",
             ),
-            rx.cond(
-                purchase.status == PurchaseStatus.PENDING.value,
-                rx.button("Confirmar Pago", on_click=AppState.confirm_payment(purchase.id), width="100%", margin_top="1em"),
-                rx.vstack(
-                    rx.text("Establecer tiempo de entrega (días):", size="3", weight="medium"),
-                    rx.hstack(
-                        rx.input(
-                            placeholder="Ej: 3",
-                            value=AppState.admin_delivery_days.get(purchase.id, ""),
-                            on_change=lambda days: AppState.set_admin_delivery_days(purchase.id, days),
-                        ),
-                        rx.button("Enviar Estimado", on_click=AppState.set_delivery_estimate(purchase.id)),
-                        width="100%"
+            
+            # --- ✨ INICIO DEL NUEVO FORMULARIO DE CONFIRMACIÓN ✨ ---
+            rx.vstack(
+                rx.text("Establecer tiempo de entrega:", size="3", weight="medium"),
+                rx.hstack(
+                    rx.input(
+                        placeholder="Días", type="number",
+                        on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "days", val),
                     ),
+                    rx.input(
+                        placeholder="Horas", type="number",
+                        on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "hours", val),
+                    ),
+                    rx.input(
+                        placeholder="Minutos", type="number",
+                        on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "minutes", val),
+                    ),
+                    spacing="3", width="100%",
+                ),
+                rx.button(
+                    "Confirmar y Notificar Envío",
+                    on_click=AppState.confirm_and_notify_shipment(purchase.id),
                     width="100%",
-                    margin_top="1em",
-                    spacing="2"
-                )
+                    margin_top="1em"
+                ),
+                width="100%",
+                margin_top="1em",
+                spacing="2"
             ),
+            # --- ✨ FIN DEL NUEVO FORMULARIO ✨ ---
+
             spacing="4", width="100%",
         ), width="100%",
     )
