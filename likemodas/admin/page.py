@@ -1,16 +1,30 @@
-# likemodas/admin/page.py (VERSIÓN CORREGIDA)
-
 import reflex as rx
-
-from likemodas.models import PurchaseStatus
 from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData
+from ..models import PurchaseStatus
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra y las acciones correspondientes a su estado."""
+    """
+    Muestra los detalles de una compra y las acciones dinámicas 
+    según el estado y el método de pago.
+    """
+    
+    # --- Componente reutilizable para el formulario de tiempo de entrega ---
+    set_delivery_time_form = rx.vstack(
+        rx.divider(),
+        rx.text("Establecer tiempo de entrega:", size="3", weight="medium"),
+        rx.hstack(
+            rx.input(placeholder="Días", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "days", val)),
+            rx.input(placeholder="Horas", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "hours", val)),
+            rx.input(placeholder="Minutos", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "minutes", val)),
+            spacing="3", width="100%",
+        ),
+        width="100%", spacing="2", margin_top="1em"
+    )
+
     return rx.card(
         rx.vstack(
-            # --- La sección superior con los detalles del cliente, envío y artículos no cambia ---
+            # --- Sección superior con detalles (no cambia) ---
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
@@ -32,44 +46,43 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%", margin_bottom="1em"
             ),
             
-            # --- ✨ INICIO DE LA NUEVA LÓGICA DE ACCIONES CONDICIONALES ✨ ---
+            # --- ✨ INICIO DE LA NUEVA LÓGICA DE ACCIONES ✨ ---
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING.value,
-                # Si está pendiente, solo se puede confirmar el pago
-                rx.button(
-                    "Confirmar Pago",
-                    on_click=AppState.admin_confirm_payment(purchase.id),
-                    width="100%",
+                # --- Caso 1: El pedido está PENDIENTE ---
+                rx.cond(
+                    purchase.payment_method == "Contra Entrega",
+                    # Si es Contra Entrega: El admin envía primero
+                    rx.vstack(
+                        set_delivery_time_form,
+                        rx.button("Enviar y Notificar al Cliente", on_click=AppState.ship_pending_cod_order(purchase.id), width="100%", margin_top="0.5em"),
+                    ),
+                    # Si es Online: El admin confirma el pago primero
+                    rx.button("Confirmar Pago", on_click=AppState.confirm_online_payment(purchase.id), width="100%", margin_top="1em")
                 )
             ),
+            
             rx.cond(
                 purchase.status == PurchaseStatus.CONFIRMED.value,
-                # Si está confirmado, se puede establecer el tiempo y notificar
+                # --- Caso 2: El pedido está CONFIRMADO (esto solo pasará con pagos Online) ---
                 rx.vstack(
-                    rx.divider(),
-                    rx.text("Establecer tiempo de entrega:", size="3", weight="medium"),
-                    rx.hstack(
-                        rx.input(placeholder="Días", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "days", val)),
-                        rx.input(placeholder="Horas", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "hours", val)),
-                        rx.input(placeholder="Minutos", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "minutes", val)),
-                        spacing="3", width="100%",
-                    ),
-                    rx.button("Notificar Envío", on_click=AppState.notify_shipment(purchase.id), width="100%", margin_top="0.5em"),
-                    width="100%", spacing="2", margin_top="1em"
+                    set_delivery_time_form,
+                    rx.button("Notificar Envío", on_click=AppState.ship_confirmed_online_order(purchase.id), width="100%", margin_top="0.5em"),
                 )
             ),
+
             rx.cond(
-                purchase.status == PurchaseStatus.SHIPPED.value,
-                # Si ya fue enviado, se muestra un mensaje
-                rx.callout(
-                    "Envío notificado al cliente. Esperando confirmación de entrega.",
-                    icon="check", # ✨ CORRECCIÓN FINAL Y DEFINITIVA AQUÍ
-                    color_scheme="green",
-                    width="100%",
-                    margin_top="1em",
+                (purchase.status == PurchaseStatus.SHIPPED.value) | (purchase.status == PurchaseStatus.DELIVERED.value),
+                # --- Caso 3: El pedido está ENVIADO o ENTREGADO ---
+                rx.cond(
+                    purchase.payment_method == "Contra Entrega",
+                    # Si es Contra Entrega, el admin necesita confirmar que recibió el dinero
+                    rx.button("Confirmar Pago Recibido", on_click=AppState.confirm_cod_payment_received(purchase.id), color_scheme="green", width="100%", margin_top="1em"),
+                    # Si es Online, ya está pago, solo se espera la confirmación del cliente
+                    rx.callout("Envío notificado. Esperando confirmación del cliente.", icon="check", width="100%", margin_top="1em")
                 )
             ),
-            # --- ✨ FIN DE LA LÓGICA DE ACCIONES CONDICIONALES ✨ ---
+            # --- ✨ FIN DE LA NUEVA LÓGICA DE ACCIONES ✨ ---
 
             spacing="4", width="100%",
         ), width="100%",
@@ -77,9 +90,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
 
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """
-    Muestra los detalles de una compra YA CONFIRMADA en el historial.
-    """
+    """Muestra los detalles de una compra en el historial."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -126,7 +137,6 @@ def admin_confirm_content() -> rx.Component:
         rx.vstack(
             rx.heading("Gestionar Órdenes Activas", size="8"),
             rx.cond(
-                # Usa la nueva lista de compras activas
                 AppState.active_purchases,
                 rx.foreach(AppState.active_purchases, purchase_card_admin),
                 rx.center(rx.text("No hay compras activas para gestionar."), padding_y="2em")

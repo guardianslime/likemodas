@@ -86,10 +86,12 @@ class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
     status: str; total_price: float; shipping_name: str; shipping_full_address: str
     shipping_phone: str; items_formatted: list[str]
+    payment_method: str  # <-- ✨ AÑADE ESTA LÍNEA
+
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
-
+    
 class PurchaseItemCardData(rx.Base):
     """DTO para mostrar la miniatura de un artículo en el historial de compras."""
     id: int
@@ -1613,20 +1615,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             
     @rx.event
     def load_active_purchases(self):
-        """Carga las compras que requieren acción del admin (Pendientes, Confirmadas y Enviadas)."""
+        """Carga las compras que requieren acción del admin."""
         if not self.is_admin: return
         with rx.session() as session:
             purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
-                .options(
-                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
-                )
-                # ✨ AHORA CARGA TODOS LOS ESTADOS ACTIVOS
+                .options(...) # Sin cambios aquí
+                # ✨ Ahora también carga órdenes ENTREGADAS para confirmar el pago contra entrega
                 .where(PurchaseModel.status.in_([
                     PurchaseStatus.PENDING,
                     PurchaseStatus.CONFIRMED,
                     PurchaseStatus.SHIPPED,
+                    PurchaseStatus.DELIVERED, 
                 ]))
                 .order_by(PurchaseModel.purchase_date.asc())
             ).unique().all()
@@ -1635,6 +1635,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 AdminPurchaseCardData(
                     id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
                     purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
+                    payment_method=p.payment_method, # <-- ✨ Puebla el nuevo campo
                     shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
                 ) for p in purchases
@@ -1644,41 +1645,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 any(p.status == PurchaseStatus.PENDING.value for p in self.active_purchases)
             )
 
-
-    # ✨ NUEVA FUNCIÓN solo para confirmar el pago
-    @rx.event
-    def admin_confirm_payment(self, purchase_id: int):
-        if not self.is_admin: 
-            return rx.toast.error("Acción no permitida.")
-        
-        with rx.session() as session:
-            purchase = session.get(PurchaseModel, purchase_id)
-            if purchase and purchase.status == PurchaseStatus.PENDING:
-                purchase.status = PurchaseStatus.CONFIRMED
-                purchase.confirmed_at = datetime.now(timezone.utc)
-                session.add(purchase)
-                
-                notification = NotificationModel(
-                    userinfo_id=purchase.userinfo_id,
-                    message=f"¡El pago de tu compra #{purchase.id} ha sido confirmado!",
-                    url="/my-purchases"
-                )
-                session.add(notification)
-                session.commit()
-
-                yield rx.toast.success(f"Pago de la compra #{purchase_id} confirmado.")
-                
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-                # Usamos AppState.nombre_del_evento para encadenarlo correctamente.
-                yield AppState.load_active_purchases
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
-            else:
-                yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
-
     # ✨ NUEVA FUNCIÓN solo para notificar el envío
     @rx.event
-    def notify_shipment(self, purchase_id: int):
+    def ship_confirmed_online_order(self, purchase_id: int):
         if not self.is_admin: 
             return rx.toast.error("Acción no permitida.")
         
@@ -1724,6 +1693,69 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             else:
                 yield rx.toast.error("La compra debe estar 'confirmada' para poder notificar el envío.")
+
+    @rx.event
+    def ship_pending_cod_order(self, purchase_id: int):
+        if not self.is_admin: 
+            return rx.toast.error("Acción no permitida.")
+        
+        time_data = self.admin_delivery_time.get(purchase_id, {})
+        try:
+            days = int(time_data.get("days", "0") or "0")
+            hours = int(time_data.get("hours", "0") or "0")
+            minutes = int(time_data.get("minutes", "0") or "0")
+            total_delta = timedelta(days=days, hours=hours, minutes=minutes)
+            if total_delta.total_seconds() <= 0:
+                return rx.toast.error("El tiempo de entrega debe ser mayor a cero.")
+        except (ValueError, TypeError):
+            return rx.toast.error("Por favor, introduce números válidos para el tiempo de entrega.")
+
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            # Verifica que esté pendiente y sea contra entrega
+            if purchase and purchase.status == PurchaseStatus.PENDING and purchase.payment_method == "Contra Entrega":
+                # Cambia el estado directamente a ENVIADO
+                purchase.status = PurchaseStatus.SHIPPED
+                purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
+                purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
+                session.add(purchase)
+
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox.",
+                    url="/my-purchases"
+                )
+
+                session.add(notification)
+                session.commit()
+                yield rx.toast.success("Pedido contra entrega en camino y notificado.")
+                yield AppState.load_active_purchases
+            else:
+                yield rx.toast.error("Esta acción no es válida para este pedido.")
+    
+    @rx.event
+    def confirm_cod_payment_received(self, purchase_id: int):
+        """Para pedidos ENVIADOS o ENTREGADOS. Cambia el estado a CONFIRMADO (pago completado)."""
+        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status in [PurchaseStatus.SHIPPED, PurchaseStatus.DELIVERED]:
+                # Ahora sí, el pago está CONFIRMADO
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                session.add(purchase)
+
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"Hemos recibido el pago de tu compra #{purchase.id}. ¡Gracias!",
+                    url="/my-purchases"
+                )
+                session.add(notification)
+                session.commit()
+                yield rx.toast.success(f"Pago de la compra #{purchase_id} registrado.")
+                yield AppState.load_active_purchases
+            else:
+                yield rx.toast.error("Esta acción no es válida para este pedido.")
 
     search_query_admin_history: str = ""
 
