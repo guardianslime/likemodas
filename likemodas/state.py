@@ -1620,13 +1620,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
-                .options(...) # Sin cambios aquí
-                # ✨ Ahora también carga órdenes ENTREGADAS para confirmar el pago contra entrega
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 .where(PurchaseModel.status.in_([
                     PurchaseStatus.PENDING,
                     PurchaseStatus.CONFIRMED,
                     PurchaseStatus.SHIPPED,
-                    PurchaseStatus.DELIVERED, 
+                    PurchaseStatus.DELIVERED,
                 ]))
                 .order_by(PurchaseModel.purchase_date.asc())
             ).unique().all()
