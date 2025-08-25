@@ -1015,6 +1015,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             
     # --- ✨ 1. AÑADE LAS NUEVAS VARIABLES DE ESTADO ✨ ---
     payment_method: str = "online" # Valor por defecto para el carrito
+    # --- ✨ AÑADE ESTA LÍNEA AQUÍ ✨ ---
+    active_purchases: List[AdminPurchaseCardData] = []
     admin_delivery_time: Dict[int, Dict[str, str]] = {}
 
     # --- ✨ 2. AÑADE LOS SETTERS ✨ ---
