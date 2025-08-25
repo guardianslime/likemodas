@@ -102,7 +102,12 @@ app.add_page(
     on_load=AppState.on_load_admin_store,
     title="Admin | Tienda"
 )
-app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_confirmed_purchases)
+app.add_page(
+    base_page(admin_page.payment_history_content()),
+    route="/admin/payment-history",
+    title="Historial de Pagos",
+    on_load=AppState.load_purchase_history # ✨ Llama a la función con el nuevo nombre
+)
 app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries, title="Mensajes de Contacto")
 
 app.add_page(

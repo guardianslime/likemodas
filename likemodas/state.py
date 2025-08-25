@@ -1535,7 +1535,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/search-results")
         
     pending_purchases: List[AdminPurchaseCardData] = []
-    active_purchases: List[AdminPurchaseCardData] = []
+    purchase_history: List[AdminPurchaseCardData] = []
     new_purchase_notification: bool = False
     all_users: List[UserInfo] = []
     admin_store_posts: list[ProductCardData] = []
@@ -1549,17 +1549,29 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.new_purchase_notification = True
 
     @rx.event
-    def load_pending_purchases(self):
-        if not self.is_admin: return
+    def load_purchase_history(self):
+        """Carga el historial de compras finalizadas (Entregadas)."""
+        if not self.is_admin:
+            self.purchase_history = []
+            return
         with rx.session() as session:
-            purchases = session.exec(sqlmodel.select(PurchaseModel).options(sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user), sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)).where(PurchaseModel.status == PurchaseStatus.PENDING).order_by(PurchaseModel.purchase_date.asc())).unique().all()
+            results = session.exec(
+                sqlmodel.select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
+                # Ahora solo carga los pedidos ya entregados
+                .where(PurchaseModel.status == PurchaseStatus.DELIVERED)
+                .order_by(PurchaseModel.purchase_date.desc())
+            ).unique().all()
             self.pending_purchases = [
                 AdminPurchaseCardData(
                     id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
                     purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
                     shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
-                ) for p in purchases
+                ) for p in results
             ]
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
 
@@ -1670,10 +1682,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def filtered_admin_purchases(self) -> list[AdminPurchaseCardData]:
         if not self.search_query_admin_history.strip():
-            return self.confirmed_purchases
+            # Usa el nuevo nombre de la variable
+            return self.purchase_history
         q = self.search_query_admin_history.lower()
         return [
-            p for p in self.confirmed_purchases
+            # Usa el nuevo nombre de la variable
+            p for p in self.purchase_history
             if q in f"#{p.id}" or q in p.customer_name.lower() or q in p.customer_email.lower()
         ]
 
