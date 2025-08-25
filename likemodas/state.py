@@ -365,26 +365,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             shipping_cost = purchase.shipping_applied or 0.0
             
             # El subtotal de los productos es el total menos el envío.
-            subtotal_products = grand_total - shipping_cost
-            
-            # El IVA se calcula sobre el subtotal de los productos.
-            # (Asumiendo que el envío no genera IVA, lo cual es común)
-            # Para que los números cuadren, recalculamos el subtotal base y el IVA.
-            subtotal_base_sin_iva = subtotal_products / (1 + IVA_RATE)
-            iva_amount = subtotal_base_sin_iva * IVA_RATE
+            # --- ✨ LÓGICA DE CÁLCULO DE FACTURA TOTALMENTE NUEVA Y CONSISTENTE ✨ ---
+            subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
+            shipping_cost = purchase.shipping_applied or 0.0
+            iva_amount = subtotal_base_products * 0.19
+            grand_total = purchase.total_price # Este es el valor final guardado, que debe ser la suma de las partes.
 
             invoice_items = []
             for item in purchase.items:
                 if item.blog_post:
-                    item_subtotal = item.price_at_purchase * item.quantity
-                    item_iva = item_subtotal * IVA_RATE
-                    item_total_con_iva = item_subtotal + item_iva
+                    item_base_subtotal = item.blog_post.base_price * item.quantity
+                    item_iva = item_base_subtotal * 0.19
+                    item_total_con_iva = item_base_subtotal + item_iva
                     invoice_items.append(
                         InvoiceItemData(
                             name=item.blog_post.title,
                             quantity=item.quantity,
-                            price_cop=format_to_cop(item.price_at_purchase),
-                            subtotal_cop=format_to_cop(item_subtotal),
+                            price_cop=format_to_cop(item.blog_post.base_price), # <-- Usamos precio base unitario
+                            subtotal_cop=format_to_cop(item_base_subtotal), # <-- Usamos subtotal base
                             iva_cop=format_to_cop(item_iva),
                             total_con_iva_cop=format_to_cop(item_total_con_iva)
                         )
@@ -399,8 +397,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 customer_email=purchase.userinfo.email if purchase.userinfo else "N/A",
                 shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}",
                 shipping_phone=purchase.shipping_phone,
-                subtotal_cop=format_to_cop(subtotal_base_sin_iva),
-                shipping_applied_cop=format_to_cop(shipping_cost), # <-- ✨ 3. PUEBLA EL NUEVO CAMPO
+                subtotal_cop=format_to_cop(subtotal_base_products),
+                shipping_applied_cop=format_to_cop(shipping_cost),
                 iva_cop=format_to_cop(iva_amount),
                 total_price_cop=format_to_cop(grand_total),
             )
@@ -507,6 +505,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 title=form_data["title"],
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
+                price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
                 image_urls=self.temp_images,
                 attributes=attributes,
@@ -832,6 +831,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
+    # --- ✨ AÑADE ESTA VARIABLE Y SU SETTER ✨ ---
+    price_includes_iva: bool = True
 
     post_images_in_form: list[str] = []
 
@@ -854,6 +855,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
     def set_price(self, price: str): self.price_str = price
+
+    def set_price_includes_iva(self, value: bool):
+        self.price_includes_iva = value
 
     @rx.event
     def start_editing_post(self, post_id: int):
@@ -1012,78 +1016,66 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def cart_summary(self) -> dict:
         """
-        Calcula el resumen del carrito con la nueva lógica de envío combinado.
+        Calcula el resumen del carrito usando el precio base para consistencia.
         """
-        if not self.cart or not self.default_shipping_address:
-            return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False}
+        if not self.cart:
+            return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
 
         with rx.session() as session:
             cart_items_details = self.cart_details
             if not cart_items_details:
-                return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False}
+                return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
 
-            subtotal = sum(p.price * q for p, q in cart_items_details if p)
-            free_shipping_achieved = subtotal >= 200000
+            # --- ✨ LÓGICA DE SUBTOTAL BASADA EN PRECIO BASE ✨ ---
+            subtotal_base = sum(p.base_price * q for p, q in cart_items_details if p)
+            iva = subtotal_base * 0.19
 
-            if free_shipping_achieved:
-                final_shipping_cost = 0
-            else:
+            free_shipping_achieved = (subtotal_base + iva) >= 200000
+            final_shipping_cost = 0
+
+            if not free_shipping_achieved and self.default_shipping_address:
+                # ... (la lógica de cálculo de envío combinado no necesita cambios)
+                # ... simplemente asegúrate de que esté aquí.
                 total_shipping_cost = 0.0
                 buyer_barrio = self.default_shipping_address.neighborhood
-
                 seller_groups = defaultdict(list)
                 for product, quantity in cart_items_details:
                     if product:
-                        for _ in range(quantity):
-                            seller_groups[product.userinfo_id].append(product)
-
+                        for _ in range(quantity): seller_groups[product.userinfo_id].append(product)
                 seller_ids = list(seller_groups.keys())
                 sellers_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
                 seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
-
                 for seller_id, items in seller_groups.items():
                     combinable_items = [p for p in items if p.combines_shipping]
                     individual_items = [p for p in items if not p.combines_shipping]
                     seller_barrio = seller_barrio_map.get(seller_id)
-
                     for item in individual_items:
-                        cost = calculate_dynamic_shipping(
-                            base_cost=item.shipping_cost or 0.0,
-                            seller_barrio=seller_barrio,
-                            buyer_barrio=buyer_barrio
-                        )
+                        cost = calculate_dynamic_shipping(base_cost=item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
                         total_shipping_cost += cost
-                    
                     if combinable_items:
                         valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0]
                         if not valid_limits:
-                            # Si no hay un límite válido, trátalos como individuales
                             for item in combinable_items:
                                 cost = calculate_dynamic_shipping(base_cost=item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
                                 total_shipping_cost += cost
                             continue
-
                         limit = min(valid_limits)
                         num_fees = math.ceil(len(combinable_items) / limit)
                         highest_base_cost = max(p.shipping_cost or 0.0 for p in combinable_items)
-                        
-                        group_shipping_fee = calculate_dynamic_shipping(
-                            base_cost=highest_base_cost,
-                            seller_barrio=seller_barrio,
-                            buyer_barrio=buyer_barrio
-                        )
+                        group_shipping_fee = calculate_dynamic_shipping(base_cost=highest_base_cost, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
                         total_shipping_cost += (group_shipping_fee * num_fees)
-                
                 final_shipping_cost = total_shipping_cost
             
-            grand_total = subtotal + final_shipping_cost
+            grand_total = subtotal_base + iva + final_shipping_cost
 
             return {
-                "subtotal": subtotal,
+                "subtotal": subtotal_base,
                 "shipping_cost": final_shipping_cost,
+                "iva": iva,
                 "grand_total": grand_total,
                 "free_shipping_achieved": free_shipping_achieved,
             }
+        
     # --- 👇 AÑADE ESTAS TRES NUEVAS PROPIEDADES 👇 ---
     @rx.var
     def subtotal_cop(self) -> str:

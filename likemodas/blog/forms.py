@@ -173,7 +173,27 @@ def blog_post_add_form() -> rx.Component:
                         required=True, size="3", on_change=AppState.set_category,
                     ),
 
-                    rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
+                    rx.grid(
+                        rx.vstack(
+                            rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
+                            rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
+                        ),
+                        rx.vstack(
+                            rx.text("Precio Incluye IVA (19%)", as_="div", size="2", weight="bold"),
+                            rx.hstack(
+                                rx.switch(
+                                    is_checked=AppState.price_includes_iva,
+                                    on_change=AppState.set_price_includes_iva,
+                                    size="2",
+                                ),
+                                rx.text(rx.cond(AppState.price_includes_iva, "Sí", "No")),
+                                align="center",
+                                spacing="3",
+                                height="100%",
+                            ),
+                        ),
+                        columns="2", spacing="4", width="100%",
+                    ),
                     rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
 
                     # --- 👇 AÑADE TODO ESTE BLOQUE 👇 ---
