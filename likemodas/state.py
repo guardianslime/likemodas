@@ -86,7 +86,9 @@ class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
     status: str; total_price: float; shipping_name: str; shipping_full_address: str
     shipping_phone: str; items_formatted: list[str]
-    payment_method: str  # <-- ✨ AÑADE ESTA LÍNEA
+    payment_method: str
+    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
+    confirmed_at: Optional[datetime] = None
 
     @property
     def total_price_cop(self) -> str:
@@ -1645,12 +1647,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 AdminPurchaseCardData(
                     id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
                     purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
-                    payment_method=p.payment_method, # <-- ✨ Puebla el nuevo campo
+                    payment_method=p.payment_method,
+                    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
+                    confirmed_at=p.confirmed_at,
                     shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
                 ) for p in purchases
             ]
-            # ✨ CORRECCIÓN: Llamada directa, sin yield
             self.set_new_purchase_notification(
                 any(p.status == PurchaseStatus.PENDING_CONFIRMATION.value for p in self.active_purchases)
             )
@@ -1775,44 +1778,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def confirm_cod_payment_received(self, purchase_id: int):
         """
-        Permite al admin finalizar una orden Contra Entrega.
-        Esto marca la orden como ENTREGADA y registra la confirmación del pago.
+        Permite al admin registrar que el pago Contra Entrega fue recibido.
+        Esto NO cambia el estado de la entrega, solo registra la fecha de confirmación del pago.
         """
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
         
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            # El admin puede confirmar el pago en cualquier momento después de enviar
-            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status in [PurchaseStatus.SHIPPED, PurchaseStatus.DELIVERED]:
-                
-                # Si el usuario ya la marcó como entregada, solo confirmamos el pago.
-                if purchase.status == PurchaseStatus.DELIVERED:
-                    purchase.confirmed_at = datetime.now(timezone.utc)
-                    session.add(purchase)
-                    session.commit()
-                    yield rx.toast.success(f"Pago de la compra #{purchase_id} registrado.")
-                    yield AppState.load_active_purchases
-                    return
-
-                # Si no, el admin finaliza todo el proceso.
-                purchase.status = PurchaseStatus.DELIVERED
+            
+            # La condición correcta: la orden debe ser 'Contra Entrega' y ya debe haber sido 'Enviada'.
+            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status == PurchaseStatus.SHIPPED:
+                # 1. Se registra únicamente la fecha en que se confirmó el pago.
                 purchase.confirmed_at = datetime.now(timezone.utc)
-                purchase.user_confirmed_delivery_at = datetime.now(timezone.utc) # Se asume entrega
                 session.add(purchase)
-
-                # Notificar al cliente
-                notification = NotificationModel(
-                    userinfo_id=purchase.userinfo_id,
-                    message=f"Hemos recibido el pago de tu compra #{purchase.id}. ¡Gracias!",
-                    url="/my-purchases"
-                )
-                session.add(notification)
                 session.commit()
-                yield rx.toast.success(f"Pago recibido y compra #{purchase_id} finalizada.")
+                
+                # 2. Se notifica al admin y se recarga la vista para que vea el cambio.
+                yield rx.toast.success(f"Pago de la compra #{purchase_id} registrado.")
                 yield AppState.load_active_purchases
             else:
-                yield rx.toast.error("Esta acción no es válida para este pedido.")
+                # Si la orden no cumple las condiciones, se muestra un error.
+                yield rx.toast.error("Esta acción no es válida para este pedido o su estado actual.")
 
     search_query_admin_history: str = ""
 

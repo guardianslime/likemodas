@@ -63,21 +63,31 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             
             rx.cond(
-                purchase.status == PurchaseStatus.CONFIRMED.value,
-                # --- Caso 2: El pedido está CONFIRMADO (esto solo pasará con pagos Online) ---
-                rx.vstack(
-                    set_delivery_time_form,
-                    rx.button("Notificar Envío", on_click=AppState.ship_confirmed_online_order(purchase.id), width="100%", margin_top="0.5em"),
-                )
-            ),
-
-            rx.cond(
                 (purchase.status == PurchaseStatus.SHIPPED.value) | (purchase.status == PurchaseStatus.DELIVERED.value),
                 # --- Caso 3: El pedido está ENVIADO o ENTREGADO ---
                 rx.cond(
                     purchase.payment_method == "Contra Entrega",
-                    # Si es Contra Entrega, el admin necesita confirmar que recibió el dinero
-                    rx.button("Confirmar Pago Recibido", on_click=AppState.confirm_cod_payment_received(purchase.id), color_scheme="green", width="100%", margin_top="1em"),
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                    # Si aún no se ha confirmado el pago, muestra el botón
+                    rx.cond(
+                        ~purchase.confirmed_at,
+                        rx.button(
+                            "Confirmar Pago Recibido", 
+                            on_click=AppState.confirm_cod_payment_received(purchase.id), 
+                            color_scheme="green", 
+                            width="100%", 
+                            margin_top="1em"
+                        ),
+                        # Si ya se confirmó, muestra un mensaje
+                        rx.callout(
+                            "Pago Recibido. Esperando confirmación del cliente.", 
+                            icon="check_circle", 
+                            color_scheme="green", 
+                            width="100%", 
+                            margin_top="1em"
+                        )
+                    ),
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                     # Si es Online, ya está pago, solo se espera la confirmación del cliente
                     rx.callout("Envío notificado. Esperando confirmación del cliente.", icon="check", width="100%", margin_top="1em")
                 )

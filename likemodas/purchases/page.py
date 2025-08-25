@@ -146,7 +146,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             # --- ✨ FIN DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
 
             rx.cond(
-                purchase.status != PurchaseStatus.PENDING_CONFIRMATION.value,
+                purchase.status == PurchaseStatus.DELIVERED.value,
                 rx.link(
                     rx.button("Imprimir Factura", variant="outline", width="100%", margin_top="1em"),
                     href=f"/invoice?id={purchase.id}",
