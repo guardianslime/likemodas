@@ -1,6 +1,8 @@
 # likemodas/admin/page.py (VERSIÓN CORREGIDA)
 
 import reflex as rx
+
+from likemodas.models import PurchaseStatus
 from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData
 
@@ -38,7 +40,25 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
                 spacing="1", align_items="start", width="100%",
             ),
-            rx.button("Confirmar Pago", on_click=AppState.confirm_payment(purchase.id), width="100%", margin_top="1em"),
+            rx.cond(
+                purchase.status == PurchaseStatus.PENDING.value,
+                rx.button("Confirmar Pago", on_click=AppState.confirm_payment(purchase.id), width="100%", margin_top="1em"),
+                rx.vstack(
+                    rx.text("Establecer tiempo de entrega (días):", size="3", weight="medium"),
+                    rx.hstack(
+                        rx.input(
+                            placeholder="Ej: 3",
+                            value=AppState.admin_delivery_days.get(purchase.id, ""),
+                            on_change=lambda days: AppState.set_admin_delivery_days(purchase.id, days),
+                        ),
+                        rx.button("Enviar Estimado", on_click=AppState.set_delivery_estimate(purchase.id)),
+                        width="100%"
+                    ),
+                    width="100%",
+                    margin_top="1em",
+                    spacing="2"
+                )
+            ),
             spacing="4", width="100%",
         ), width="100%",
     )

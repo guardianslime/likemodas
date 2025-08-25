@@ -1012,6 +1012,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(user_info_to_update)
                 session.commit()
                 return rx.toast.success("¡Ubicación de origen guardada!")
+            
+    # --- ✨ 1. AÑADE LAS NUEVAS VARIABLES DE ESTADO ✨ ---
+    payment_method: str = "online" # Valor por defecto para el carrito
+    admin_delivery_days: Dict[int, str] = {} # Para el input del admin
+
+    # --- ✨ 2. AÑADE LOS SETTERS ✨ ---
+    def set_payment_method(self, method: str):
+        self.payment_method = method
+
+    def set_admin_delivery_days(self, purchase_id: int, days: str):
+        self.admin_delivery_days[purchase_id] = days
     
     @rx.var
     def cart_summary(self) -> dict:
@@ -1206,15 +1217,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.authenticated_user_info:
             return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
         
-        # Obtener el resumen del carrito una vez
         summary = self.cart_summary
         
         with rx.session() as session:
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
                 total_price=summary["grand_total"], 
-                shipping_applied=summary["shipping_cost"], # Guardamos el costo de envío aplicado
+                shipping_applied=summary["shipping_cost"],
                 status=PurchaseStatus.PENDING,
+                payment_method=self.payment_method, # <-- Guarda el método de pago
                 shipping_name=self.default_shipping_address.name, 
                 shipping_city=self.default_shipping_address.city,
                 shipping_neighborhood=self.default_shipping_address.neighborhood, 
@@ -1431,6 +1442,90 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield self.load_default_shipping_info # Actualizamos la dirección en el estado
         yield self.recalculate_all_shipping_costs # Disparamos el recálculo
     
+    # --- ✨ 4. AÑADE LAS NUEVAS FUNCIONES DE LÓGICA DE ENTREGA ✨ ---
+    @rx.event
+    def set_delivery_estimate(self, purchase_id: int):
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
+        
+        days_str = self.admin_delivery_days.get(purchase_id, "")
+        try:
+            days = int(days_str)
+            if days <= 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return rx.toast.error("Por favor, introduce un número de días válido.")
+
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if purchase and purchase.status == PurchaseStatus.CONFIRMED:
+                now = datetime.now(timezone.utc)
+                purchase.estimated_delivery_date = now + timedelta(days=days)
+                purchase.delivery_confirmation_sent_at = now
+                session.add(purchase)
+                
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Tu compra #{purchase.id} está en camino! Llegará en aproximadamente {days} días.",
+                    url="/my-purchases"
+                )
+                session.add(notification)
+                session.commit()
+                yield rx.toast.success("Notificación de envío enviada al cliente.")
+                return self.load_pending_purchases()
+            else:
+                return rx.toast.error("La compra no está confirmada o no se encontró.")
+
+    @rx.event
+    def user_confirm_delivery(self, purchase_id: int):
+        if not self.authenticated_user_info:
+            return
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if purchase and purchase.userinfo_id == self.authenticated_user_info.id:
+                purchase.status = PurchaseStatus.DELIVERED
+                purchase.user_confirmed_delivery_at = datetime.now(timezone.utc)
+                session.add(purchase)
+                
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Gracias por confirmar! Ya puedes calificar los productos de tu compra #{purchase.id}.",
+                    url="/my-purchases" # O podrías dirigir a una página de calificación
+                )
+                session.add(notification)
+                session.commit()
+                return self.load_purchases()
+
+    @rx.event
+    def check_for_auto_confirmations(self):
+        """Revisa y auto-confirma entregas antiguas."""
+        if not self.authenticated_user_info:
+            return
+        
+        with rx.session() as session:
+            five_days_ago = datetime.now(timezone.utc) - timedelta(days=5)
+            
+            overdue_purchases = session.exec(
+                sqlmodel.select(PurchaseModel).where(
+                    PurchaseModel.userinfo_id == self.authenticated_user_info.id,
+                    PurchaseModel.status == PurchaseStatus.SHIPPED,
+                    PurchaseModel.delivery_confirmation_sent_at != None,
+                    PurchaseModel.delivery_confirmation_sent_at < five_days_ago,
+                    PurchaseModel.user_confirmed_delivery_at == None,
+                )
+            ).all()
+
+            if not overdue_purchases:
+                return
+
+            for purchase in overdue_purchases:
+                purchase.status = PurchaseStatus.DELIVERED
+                session.add(purchase)
+            
+            session.commit()
+            # Vuelve a cargar las compras para reflejar los cambios en la UI
+            return self.load_purchases()
+
     search_term: str = ""
     search_results: List[ProductCardData] = []
     def set_search_term(self, term: str): self.search_term = term

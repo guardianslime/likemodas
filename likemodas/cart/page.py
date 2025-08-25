@@ -98,6 +98,27 @@ def cart_page_content() -> rx.Component:
                         rx.heading(AppState.grand_total_cop, size="6"), # <-- Cambio aquí
                         width="100%"
                     ),
+                    
+                    rx.divider(),
+                    rx.vstack(
+                        rx.heading("Método de Pago", size="5", width="100%"),
+                        rx.radio(
+                            ["Online", "Contra Entrega"],
+                            value=AppState.payment_method,
+                            on_change=AppState.set_payment_method,
+                            spacing="4",
+                        ),
+                        rx.callout(
+                            "Nota: En caso de devolución del pedido, se cobrará nuevamente el valor del envío para cubrir los costos logísticos del retorno.",
+                            icon="info",
+                            margin_top="1em",
+                            width="100%"
+                        ),
+                        spacing="3",
+                        align_items="start",
+                        width="100%",
+                        padding_y="1em",
+                    ),
                     spacing="3",
                     padding_y="1em",
                 ),

@@ -1,5 +1,3 @@
-# likemodas/purchases/page.py (VERSIÓN FINAL CON SOLUCIÓN AL ERROR DE COMPILACIÓN)
-
 import reflex as rx
 import reflex_local_auth
 
@@ -7,10 +5,6 @@ from ..state import AppState, UserPurchaseHistoryCardData, PurchaseItemCardData
 from ..account.layout import account_layout
 from ..models import PurchaseStatus
 from ..blog.public_page import product_detail_modal
-
-# --- ✨ 1. CREACIÓN DE UN SUB-COMPONENTE PARA LA GALERÍA DE ARTÍCULOS ✨ ---
-# Este componente encapsula el `rx.foreach` que estaba causando el error.
-# Al ser un componente independiente, Reflex puede resolver los tipos de datos correctamente.
 
 def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
     """Componente para mostrar la miniatura de un artículo comprado individual."""
@@ -31,7 +25,6 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
                 _hover={"transform": "scale(1.05)"},
                 transition="transform 0.2s",
             ),
-            # --- ✨ INICIO DE LA MODIFICACIÓN VISUAL ✨ ---
             rx.vstack(
                 rx.text(
                     f"{item.quantity}x {item.price_at_purchase_cop}", 
@@ -39,7 +32,7 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
                     color_scheme="gray",
                 ),
                 rx.text(
-                    item.subtotal_cop, # Muestra el subtotal del artículo
+                    item.subtotal_cop,
                     size="3",
                     weight="bold",
                 ),
@@ -47,7 +40,6 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
                 align_items="center",
                 margin_top="0.25em"
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN VISUAL ✨ ---
             spacing="1",
             align="center",
         ),
@@ -55,13 +47,12 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
     )
 
 def purchase_items_gallery(items: rx.Var[list[PurchaseItemCardData]]) -> rx.Component:
-    """El nuevo componente que renderiza la galería de artículos para una compra."""
+    """Renderiza la galería de artículos para una compra."""
     return rx.vstack(
         rx.text("Artículos Comprados:", weight="medium", size="4"),
         rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
         rx.scroll_area(
             rx.hstack(
-                # Este `rx.foreach` ahora está en un contexto aislado y funciona correctamente.
                 rx.foreach(
                     items,
                     purchase_item_thumbnail
@@ -76,12 +67,10 @@ def purchase_items_gallery(items: rx.Var[list[PurchaseItemCardData]]) -> rx.Comp
         spacing="2", align_items="start", width="100%",
     )
 
-
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
-    """Componente principal que muestra una compra."""
+    """Componente principal que muestra una tarjeta de compra en el historial."""
     return rx.card(
         rx.vstack(
-            # ... (la sección superior no cambia) ...
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -108,7 +97,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             
             purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
             
-            # --- ✨ INICIO DE LA SECCIÓN DE TOTALES MODIFICADA ✨ ---
             rx.vstack(
                 rx.hstack(
                     rx.spacer(),
@@ -129,8 +117,34 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 margin_top="1em",
                 spacing="2"
             ),
-            # --- ✨ FIN DE LA SECCIÓN DE TOTALES MODIFICADA ✨ ---
             
+            # --- ✨ INICIO DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
+            rx.cond(
+                purchase.status == PurchaseStatus.SHIPPED.value,
+                rx.vstack(
+                    rx.divider(margin_y="1em"),
+                    rx.text("Tu pedido está en camino.", size="3", color_scheme="green"),
+                    rx.button(
+                        "Confirmar Recepción del Pedido",
+                        on_click=AppState.user_confirm_delivery(purchase.id),
+                        width="100%",
+                        margin_top="0.5em"
+                    ),
+                    spacing="2",
+                    width="100%"
+                )
+            ),
+            rx.cond(
+                purchase.status == PurchaseStatus.DELIVERED.value,
+                 rx.vstack(
+                    rx.divider(margin_y="1em"),
+                    rx.text("¡Pedido entregado! Gracias por tu compra.", size="3", color_scheme="violet"),
+                    width="100%",
+                    align_items="center"
+                 )
+            ),
+            # --- ✨ FIN DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
+
             rx.cond(
                 purchase.status != PurchaseStatus.PENDING.value,
                 rx.link(
@@ -145,10 +159,9 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
         width="100%", padding="1.5em",
     )
 
-
 @reflex_local_auth.require_login
 def purchase_history_content() -> rx.Component:
-    """Página del historial de compras del usuario. (Sin cambios en esta función)"""
+    """Página del historial de compras del usuario."""
     page_content = rx.center(
         rx.vstack(
             rx.heading("Mi Historial de Compras", size="7"),
@@ -169,7 +182,8 @@ def purchase_history_content() -> rx.Component:
             product_detail_modal(),
             spacing="6", width="100%", max_width="960px", align="center"
         ),
-        width="100%"
+        width="100%",
+        # ✨ Se ejecuta al cargar la página para auto-confirmar entregas antiguas
+        on_mount=AppState.check_for_auto_confirmations
     )
     return account_layout(page_content)
-
