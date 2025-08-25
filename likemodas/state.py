@@ -1383,7 +1383,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     def add_new_address(self, form_data: dict):
         if not all([form_data.get("name"), form_data.get("phone"), self.city, form_data.get("address")]):
             return rx.toast.error("Por favor, completa todos los campos requeridos.")
+        
         with rx.session() as session:
+            # La lógica para crear y guardar la dirección no cambia
             is_first_address = len(self.addresses) == 0
             new_addr = ShippingAddressModel(
                 userinfo_id=self.authenticated_user_info.id, name=form_data["name"],
@@ -1392,10 +1394,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             session.add(new_addr)
             session.commit()
+
         self.show_form = False
-        yield self.load_addresses()
-        yield self.load_default_shipping_info
-        yield self.recalculate_all_shipping_costs
+
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+        # En lugar de llamar a las funciones con `()`, entregamos la referencia al evento.
+        yield AppState.load_addresses
+        yield AppState.load_default_shipping_info
+        yield AppState.recalculate_all_shipping_costs
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
         return rx.toast.success("Nueva dirección guardada.")
 
     @rx.event
