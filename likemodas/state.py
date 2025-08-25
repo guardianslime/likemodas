@@ -1441,11 +1441,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             if address_to_delete and address_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(address_to_delete)
                 session.commit()
-            yield self.load_addresses()
         
-        # --- AÑADIR ESTAS LÍNEAS AL FINAL ---
-        yield self.load_default_shipping_info
-        yield self.recalculate_all_shipping_costs
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+        # En lugar de llamar a las funciones con `()`, entregamos la referencia al evento.
+        yield AppState.load_addresses
+        yield AppState.load_default_shipping_info
+        yield AppState.recalculate_all_shipping_costs
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     @rx.event
     def set_as_default(self, address_id: int):
