@@ -921,10 +921,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 session.add(post_to_update)
                 session.commit()
-                yield self.cancel_editing_post(False)
-                yield self.load_all_my_posts()
-                yield self.on_load_admin_store()
+                
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                # Se eliminó la llamada a la función inexistente y se corrigió el encadenamiento
+                yield AppState.cancel_editing_post(False)
+                yield AppState.on_load_admin_store
                 yield rx.toast.success("Publicación actualizada correctamente.")
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     temp_images: list[str] = []
 
@@ -1269,7 +1272,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             
         self.cart.clear()
         self.default_shipping_address = None
-        yield self.notify_admin_of_new_purchase()
+        # ✨ CORRECCIÓN AQUÍ
+        yield AppState.notify_admin_of_new_purchase
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
 
@@ -1467,10 +1471,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(new_default)
                 session.commit()
         
-        # --- LÍNEA CLAVE AÑADIDA ---
-        yield self.load_addresses
-        yield self.load_default_shipping_info # Actualizamos la dirección en el estado
-        yield self.recalculate_all_shipping_costs # Disparamos el recálculo
+        # ✨ CORRECCIÓN AQUÍ
+        yield AppState.load_addresses
+        yield AppState.load_default_shipping_info
+        yield AppState.recalculate_all_shipping_costs
     
     # --- ✨ 4. AÑADE LAS NUEVAS FUNCIONES DE LÓGICA DE ENTREGA ✨ ---
     
@@ -1488,11 +1492,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
                     message=f"¡Gracias por confirmar! Ya puedes calificar los productos de tu compra #{purchase.id}.",
-                    url="/my-purchases" # O podrías dirigir a una página de calificación
+                    url="/my-purchases"
                 )
                 session.add(notification)
                 session.commit()
-                return self.load_purchases()
+                # ✨ CORRECCIÓN AQUÍ
+                yield AppState.load_purchases
 
     @rx.event
     def check_for_auto_confirmations(self):
@@ -1521,8 +1526,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(purchase)
             
             session.commit()
-            # Vuelve a cargar las compras para reflejar los cambios en la UI
-            return self.load_purchases()
+            # ✨ CORRECCIÓN AQUÍ
+            yield AppState.load_purchases
 
     search_term: str = ""
     search_results: List[ProductCardData] = []
@@ -1601,8 +1606,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
                 ) for p in results
             ]
-            yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
-
+            self.set_new_purchase_notification(
+                any(p.status == PurchaseStatus.PENDING.value for p in self.active_purchases)
+            )
+            
     @rx.event
     def load_active_purchases(self):
         """Carga las compras que requieren acción del admin (Pendientes, Confirmadas y Enviadas)."""
@@ -1631,10 +1638,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
                 ) for p in purchases
             ]
-            # Usamos yield para el evento anidado, corrigiendo el error del generador
-            yield self.set_new_purchase_notification(
+            # ✨ CORRECCIÓN: Llamada directa, sin yield
+            self.set_new_purchase_notification(
                 any(p.status == PurchaseStatus.PENDING.value for p in self.active_purchases)
             )
+
 
     # ✨ NUEVA FUNCIÓN solo para confirmar el pago
     @rx.event
@@ -1670,7 +1678,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ✨ NUEVA FUNCIÓN solo para notificar el envío
     @rx.event
     def notify_shipment(self, purchase_id: int):
-        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        if not self.is_admin: 
+            return rx.toast.error("Acción no permitida.")
         
         time_data = self.admin_delivery_time.get(purchase_id, {})
         try:
@@ -1704,8 +1713,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 session.add(notification)
                 session.commit()
+                
                 yield rx.toast.success("Notificación de envío enviada.")
-                yield self.load_active_purchases
+                
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                # Usamos AppState.nombre_del_evento para encadenarlo correctamente.
+                yield AppState.load_active_purchases
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             else:
                 yield rx.toast.error("La compra debe estar 'confirmada' para poder notificar el envío.")
 
@@ -1962,7 +1977,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     user_info.role = UserRole.ADMIN
                 session.add(user_info)
                 session.commit()
-        return self.load_all_users()
+        # ✨ CORRECCIÓN AQUÍ
+        yield AppState.load_all_users
 
     @rx.event
     def ban_user(self, userinfo_id: int, days: int = 7):
@@ -1979,7 +1995,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 user_info.ban_expires_at = datetime.now(timezone.utc) + timedelta(days=days)
                 session.add(user_info)
                 session.commit()
-        return self.load_all_users()
+        yield AppState.load_all_users
 
     @rx.event
     def unban_user(self, userinfo_id: int):
