@@ -1639,7 +1639,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ✨ NUEVA FUNCIÓN solo para confirmar el pago
     @rx.event
     def admin_confirm_payment(self, purchase_id: int):
-        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        if not self.is_admin: 
+            return rx.toast.error("Acción no permitida.")
+        
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.PENDING:
@@ -1654,12 +1656,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 session.add(notification)
                 session.commit()
+
                 yield rx.toast.success(f"Pago de la compra #{purchase_id} confirmado.")
-                # Recargamos la lista de compras activas
-                yield self.load_active_purchases
+                
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                # Usamos AppState.nombre_del_evento para encadenarlo correctamente.
+                yield AppState.load_active_purchases
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             else:
                 yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
-    
+
     # ✨ NUEVA FUNCIÓN solo para notificar el envío
     @rx.event
     def notify_shipment(self, purchase_id: int):
