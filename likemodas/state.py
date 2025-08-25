@@ -1734,6 +1734,35 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("Esta acción no es válida para este pedido.")
     
     @rx.event
+    def confirm_online_payment(self, purchase_id: int):
+        """
+        Confirma un pago online. Cambia el estado de PENDING a CONFIRMED.
+        Este es el primer paso para los pagos online.
+        """
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
+
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if purchase and purchase.status == PurchaseStatus.PENDING and purchase.payment_method == "Online":
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                session.add(purchase)
+
+                # Notificar al cliente que su pago fue confirmado
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Tu pago para la compra #{purchase.id} ha sido confirmado! Pronto prepararemos tu envío.",
+                    url="/my-purchases"
+                )
+                session.add(notification)
+                session.commit()
+                yield rx.toast.success(f"Pago de la compra #{purchase_id} confirmado.")
+                yield AppState.load_active_purchases
+            else:
+                yield rx.toast.error("Esta acción no es válida para este tipo de compra o estado.")
+
+    @rx.event
     def confirm_cod_payment_received(self, purchase_id: int):
         """Para pedidos ENVIADOS o ENTREGADOS. Cambia el estado a CONFIRMADO (pago completado)."""
         if not self.is_admin: return rx.toast.error("Acción no permitida.")
