@@ -63,7 +63,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 # Si ya fue enviado, se muestra un mensaje
                 rx.callout(
                     "Envío notificado al cliente. Esperando confirmación de entrega.",
-                    icon="check-circle", # ✨ CORRECCIÓN DEFINITIVA AQUÍ
+                    icon="check", # ✨ CORRECCIÓN FINAL Y DEFINITIVA AQUÍ
                     color_scheme="green",
                     width="100%",
                     margin_top="1em",
