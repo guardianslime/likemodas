@@ -7,7 +7,7 @@ from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra PENDIENTE en el panel de admin."""
+    """Muestra los detalles de una compra y las acciones correspondientes a su estado."""
     return rx.card(
         rx.vstack(
             # --- La sección superior con los detalles del cliente, envío y artículos no cambia ---
@@ -27,52 +27,54 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             rx.divider(),
             rx.vstack(
-                rx.text("Detalles de Envío:", weight="medium", size="4"),
-                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
-                rx.text(f"Dirección: {purchase.shipping_full_address}", size="3"),
-                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
-                spacing="1", align_items="start", width="100%",
-            ),
-            rx.divider(),
-            rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
-                spacing="1", align_items="start", width="100%",
+                spacing="1", align_items="start", width="100%", margin_bottom="1em"
             ),
             
-            # --- ✨ INICIO DEL NUEVO FORMULARIO DE CONFIRMACIÓN ✨ ---
-            rx.vstack(
-                rx.text("Establecer tiempo de entrega:", size="3", weight="medium"),
-                rx.hstack(
-                    rx.input(
-                        placeholder="Días", type="number",
-                        on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "days", val),
-                    ),
-                    rx.input(
-                        placeholder="Horas", type="number",
-                        on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "hours", val),
-                    ),
-                    rx.input(
-                        placeholder="Minutos", type="number",
-                        on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "minutes", val),
-                    ),
-                    spacing="3", width="100%",
-                ),
+            # --- ✨ INICIO DE LA NUEVA LÓGICA DE ACCIONES CONDICIONALES ✨ ---
+            rx.cond(
+                purchase.status == PurchaseStatus.PENDING.value,
+                # Si está pendiente, solo se puede confirmar el pago
                 rx.button(
-                    "Confirmar y Notificar Envío",
-                    on_click=AppState.confirm_and_notify_shipment(purchase.id),
+                    "Confirmar Pago",
+                    on_click=AppState.admin_confirm_payment(purchase.id),
                     width="100%",
-                    margin_top="1em"
-                ),
-                width="100%",
-                margin_top="1em",
-                spacing="2"
+                )
             ),
-            # --- ✨ FIN DEL NUEVO FORMULARIO ✨ ---
+            rx.cond(
+                purchase.status == PurchaseStatus.CONFIRMED.value,
+                # Si está confirmado, se puede establecer el tiempo y notificar
+                rx.vstack(
+                    rx.divider(),
+                    rx.text("Establecer tiempo de entrega:", size="3", weight="medium"),
+                    rx.hstack(
+                        rx.input(placeholder="Días", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "days", val)),
+                        rx.input(placeholder="Horas", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "hours", val)),
+                        rx.input(placeholder="Minutos", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "minutes", val)),
+                        spacing="3", width="100%",
+                    ),
+                    rx.button("Notificar Envío", on_click=AppState.notify_shipment(purchase.id), width="100%", margin_top="0.5em"),
+                    width="100%", spacing="2", margin_top="1em"
+                )
+            ),
+            rx.cond(
+                purchase.status == PurchaseStatus.SHIPPED.value,
+                # Si ya fue enviado, se muestra un mensaje
+                rx.callout(
+                    "Envío notificado al cliente. Esperando confirmación de entrega.",
+                    icon="check_circle",
+                    color_scheme="green",
+                    width="100%",
+                    margin_top="1em",
+                )
+            ),
+            # --- ✨ FIN DE LA LÓGICA DE ACCIONES CONDICIONALES ✨ ---
 
             spacing="4", width="100%",
         ), width="100%",
     )
+
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
     """
@@ -119,14 +121,15 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
 
 @require_admin
 def admin_confirm_content() -> rx.Component:
-    """Página de admin para confirmar pagos pendientes."""
+    """Página de admin para gestionar órdenes activas."""
     return rx.center(
         rx.vstack(
-            rx.heading("Confirmar Pagos Pendientes", size="8"),
+            rx.heading("Gestionar Órdenes Activas", size="8"),
             rx.cond(
-                AppState.pending_purchases,
-                rx.foreach(AppState.pending_purchases, purchase_card_admin),
-                rx.center(rx.text("No hay compras pendientes por confirmar."), padding_y="2em")
+                # Usa la nueva lista de compras activas
+                AppState.active_purchases,
+                rx.foreach(AppState.active_purchases, purchase_card_admin),
+                rx.center(rx.text("No hay compras activas para gestionar."), padding_y="2em")
             ),
             align="center", spacing="5", padding="2em", width="100%", max_width="960px", 
         ), width="100%"

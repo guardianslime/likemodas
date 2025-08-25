@@ -1535,7 +1535,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/search-results")
         
     pending_purchases: List[AdminPurchaseCardData] = []
-    confirmed_purchases: List[AdminPurchaseCardData] = []
+    active_purchases: List[AdminPurchaseCardData] = []
     new_purchase_notification: bool = False
     all_users: List[UserInfo] = []
     admin_store_posts: list[ProductCardData] = []
@@ -1564,35 +1564,86 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield self.set_new_purchase_notification(len(self.pending_purchases) > 0)
 
     @rx.event
-    def confirm_and_notify_shipment(self, purchase_id: int):
-        if not self.is_admin:
-            return rx.toast.error("Acción no permitida.")
+    def load_active_purchases(self):
+        """Carga las compras que requieren acción del admin (Pendientes, Confirmadas y Enviadas)."""
+        if not self.is_admin: return
+        with rx.session() as session:
+            purchases = session.exec(
+                sqlmodel.select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                )
+                # ✨ AHORA CARGA TODOS LOS ESTADOS ACTIVOS
+                .where(PurchaseModel.status.in_([
+                    PurchaseStatus.PENDING,
+                    PurchaseStatus.CONFIRMED,
+                    PurchaseStatus.SHIPPED,
+                ]))
+                .order_by(PurchaseModel.purchase_date.asc())
+            ).unique().all()
+            
+            self.active_purchases = [
+                AdminPurchaseCardData(
+                    id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
+                    purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
+                    shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                    shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
+                ) for p in purchases
+            ]
+            # Usamos yield para el evento anidado, corrigiendo el error del generador
+            yield self.set_new_purchase_notification(
+                any(p.status == PurchaseStatus.PENDING.value for p in self.active_purchases)
+            )
 
+    # ✨ NUEVA FUNCIÓN solo para confirmar el pago
+    @rx.event
+    def admin_confirm_payment(self, purchase_id: int):
+        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            if purchase and purchase.status == PurchaseStatus.PENDING:
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                session.add(purchase)
+                
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡El pago de tu compra #{purchase.id} ha sido confirmado!",
+                    url="/my-purchases"
+                )
+                session.add(notification)
+                session.commit()
+                yield rx.toast.success(f"Pago de la compra #{purchase_id} confirmado.")
+                # Recargamos la lista de compras activas
+                yield self.load_active_purchases
+            else:
+                yield rx.toast.error("La compra no se encontró o ya fue confirmada.")
+    
+    # ✨ NUEVA FUNCIÓN solo para notificar el envío
+    @rx.event
+    def notify_shipment(self, purchase_id: int):
+        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        
         time_data = self.admin_delivery_time.get(purchase_id, {})
         try:
             days = int(time_data.get("days", "0") or "0")
             hours = int(time_data.get("hours", "0") or "0")
             minutes = int(time_data.get("minutes", "0") or "0")
-            
             total_delta = timedelta(days=days, hours=hours, minutes=minutes)
             if total_delta.total_seconds() <= 0:
                 return rx.toast.error("El tiempo de entrega debe ser mayor a cero.")
-
         except (ValueError, TypeError):
             return rx.toast.error("Por favor, introduce números válidos para el tiempo de entrega.")
 
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            if purchase and purchase.status == PurchaseStatus.PENDING:
-                now = datetime.now(timezone.utc)
-                # Actualizamos el estado directamente a ENVIADO
+            if purchase and purchase.status == PurchaseStatus.CONFIRMED:
                 purchase.status = PurchaseStatus.SHIPPED
-                purchase.confirmed_at = now
-                purchase.estimated_delivery_date = now + total_delta
-                purchase.delivery_confirmation_sent_at = now
+                purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
+                purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
-                
-                # Creamos y enviamos la notificación detallada
+
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
@@ -1601,16 +1652,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
-                    message=f"¡Tu compra #{purchase.id} fue confirmada y está en camino! Llegará en aprox. {time_str}.",
+                    message=f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}.",
                     url="/my-purchases"
                 )
                 session.add(notification)
                 session.commit()
-
-                yield rx.toast.success("Pago confirmado y notificación de envío enviada.")
-                return self.load_pending_purchases()
+                yield rx.toast.success("Notificación de envío enviada.")
+                yield self.load_active_purchases
             else:
-                return rx.toast.error("Esta compra ya no está pendiente de confirmación.")
+                yield rx.toast.error("La compra debe estar 'confirmada' para poder notificar el envío.")
 
     search_query_admin_history: str = ""
 

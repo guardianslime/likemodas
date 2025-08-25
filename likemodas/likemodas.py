@@ -90,7 +90,12 @@ app.add_page(
     on_load=AppState.on_load_seller_profile,
     title="Mi Ubicación de Origen"
 )
-app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Confirmar Pagos", on_load=AppState.load_pending_purchases)
+app.add_page(
+    base_page(admin_page.admin_confirm_content()),
+    route="/admin/confirm-payments",
+    title="Gestionar Órdenes", # Título opcional actualizado
+    on_load=AppState.load_active_purchases # ✨ Asegúrate que llame a la función renombrada
+)
 app.add_page(
     base_page(admin_store_page()), 
     route="/admin/store", 
