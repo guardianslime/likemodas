@@ -42,6 +42,7 @@ class PurchaseStatus(str, enum.Enum):
     PENDING = "pending_confirmation"
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
+    DELIVERED = "delivered" # <-- AÑADE ESTE NUEVO ESTADO
 class VoteType(str, enum.Enum):
     LIKE = "like"
     DISLIKE = "dislike"
@@ -114,6 +115,7 @@ class BlogPostModel(rx.Model, table=True):
     
     # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     shipping_cost: Optional[float] = Field(default=None)
+    
     #free_shipping_threshold: Optional[int] = Field(default=None) # Para "Moda Completa"
 
     is_moda_completa_eligible: bool = Field(default=True, nullable=False)
@@ -188,6 +190,12 @@ class PurchaseModel(rx.Model, table=True):
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     
+    # --- ✨ AÑADE TODOS ESTOS NUEVOS CAMPOS AQUÍ ✨ ---
+    payment_method: str = Field(default="online", nullable=False)
+    estimated_delivery_date: Optional[datetime] = Field(default=None)
+    delivery_confirmation_sent_at: Optional[datetime] = Field(default=None)
+    user_confirmed_delivery_at: Optional[datetime] = Field(default=None)
+
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
