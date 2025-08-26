@@ -127,24 +127,26 @@ def chat_view() -> rx.Component:
         ),
         rx.cond(
             is_ticket_open,
-            # --- FORMULARIO DE MENSAJE (solo si el ticket está abierto) ---
             rx.form(
+                # --- INICIO DE LA CORRECCIÓN ---
                 rx.hstack(
-                    rx.input(
+                    rx.text_area(  # Cambiado de rx.input a rx.text_area
                         name="message_content",
                         placeholder="Escribe tu mensaje...",
                         value=AppState.new_message_content,
                         on_change=AppState.set_new_message_content,
                         flex_grow="1",
+                        style={"min_height": "40px", "max_height": "120px"}, # Altura adaptable
                     ),
-                    rx.button("Enviar", type="submit"),
+                    rx.button("Enviar", type="submit", height="100%"),
                     width="100%",
+                    align_items="end", # Alinea el botón con la base del text_area
                 ),
+                # --- FIN DE LA CORRECCIÓN ---
                 on_submit=AppState.post_support_message,
                 reset_on_submit=True,
                 width="100%",
             ),
-            # --- MENSAJE DE TICKET CERRADO ---
             rx.callout("Esta solicitud ha sido cerrada y ya no se pueden enviar mensajes.", icon="info", width="100%")
         ),
         spacing="4",

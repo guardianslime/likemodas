@@ -2828,6 +2828,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(notification)
             session.commit()
         
+        # --- CORRECCIÓN ---
+        # Limpiamos explícitamente la variable de estado después de enviar.
+        self.new_message_content = ""
+
         yield AppState.on_load_return_page # Recargar para mostrar el nuevo mensaje
 
     def set_search_query_tickets(self, query: str):
