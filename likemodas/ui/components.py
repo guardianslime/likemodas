@@ -80,48 +80,73 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             lambda post: rx.box(
                 rx.vstack(
                     rx.vstack(
+                        # --- INICIO DE LA CORRECCIÓN ---
                         rx.box(
+                            # 1. El contenedor de la imagen necesita una posición "relative"
+                            # para que la insignia se pueda superponer.
+                            position="relative",
+                            width="260px",
+                            height="260px",
+                            
+                            # La imagen se queda como está
                             rx.cond(
                                 post.image_urls & (post.image_urls.length() > 0),
-                                rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="260px", object_fit="cover"),
-                                rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
+                                rx.image(
+                                    src=rx.get_upload_url(post.image_urls[0]), 
+                                    width="100%", 
+                                    height="260px", 
+                                    object_fit="cover"
+                                ),
+                                rx.box(
+                                    rx.icon("image_off", size=48), 
+                                    width="100%", 
+                                    height="260px", 
+                                    bg=rx.color("gray", 3), 
+                                    display="flex", 
+                                    align_items="center", 
+                                    justify_content="center"
+                                )
                             ),
-                            width="260px", height="260px"
+                            
+                            # 2. Se añade la insignia aquí, con posición "absolute".
+                            #    Ahora muestra "Importado" o "Nacional" según el estado.
+                            rx.badge(
+                                rx.cond(post.is_imported, "Importado", "Nacional"),
+                                color_scheme=rx.cond(post.is_imported, "purple", "cyan"),
+                                variant="solid",
+                                style={
+                                    "position": "absolute",
+                                    "top": "0.5rem",
+                                    "left": "0.5rem",
+                                    "z_index": "1",
+                                }
+                            ),
                         ),
                         rx.vstack(
                             rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                             _product_card_rating(post),
-                            # --- INICIO DE LA MODIFICACIÓN ---
-                            rx.hstack(
-                                rx.text(post.price_cop, size="5", weight="medium"),
-                                rx.cond(
-                                    post.is_imported,
-                                    rx.badge("Importado", color_scheme="purple", variant="soft"),
-                                ),
-                                spacing="3",
-                                align="center",
-                            ),
-                            # --- FIN DE LA MODIFICACIÓN ---
                             
-                            # --- LÓGICA DE ENVÍO SIMPLIFICADA ---
+                            # 3. La insignia se elimina de al lado del precio.
+                            rx.text(post.price_cop, size="5", weight="medium"),
+                            
                             rx.badge(
-                                post.shipping_display_text, # <-- Mostramos el texto pre-formateado
+                                post.shipping_display_text,
                                 color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
                                 variant="soft",
                                 margin_top="0.5em",
                             ),
                             rx.cond(
-                                post.is_moda_completa_eligible, # <-- Solo comprueba si la bandera es verdadera
+                                post.is_moda_completa_eligible,
                                 rx.tooltip(
                                     rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="1"),
                                     content="Este item cuenta para el envío gratis en compras sobre $200.000"
                                 )
                             ),
-                            
                             spacing="2",
                             align_items="start",
                             width="100%"
                         ),
+                        # --- FIN DE LA CORRECCIÓN ---
                         spacing="2",
                         width="100%",
                         on_click=lambda: AppState.open_product_detail_modal(post.id),
