@@ -13,6 +13,7 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState # <-- AÑADE ESTA IMPORTACIÓN
 # Asegúrate de que 'landing' esté importado desde .pages
 from .pages import landing, search_results, category_page, seller_page # <-- Añade seller_page
+from .returns import page as returns_page
 
 from .blog import (
     blog_public_page_content, 
@@ -115,5 +116,12 @@ app.add_page(
     route="/invoice",
     on_load=InvoiceState.on_load_invoice_page, # <-- CAMBIA AppState POR InvoiceState
     title="Factura"
+)
+
+app.add_page(
+    base_page(returns_page.return_exchange_page_content()),
+    route=navigation.routes.RETURN_EXCHANGE_ROUTE,
+    on_load=AppState.on_load_return_page,
+    title="Devolución o Cambio",
 )
 

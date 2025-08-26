@@ -23,7 +23,8 @@ from . import navigation
 from .models import (
     UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
     PurchaseModel, PurchaseStatus, PurchaseItemModel, NotificationModel, Category,
-    PasswordResetToken, LocalUser, ContactEntryModel, CommentModel
+    PasswordResetToken, LocalUser, ContactEntryModel, CommentModel,
+    SupportTicketModel, SupportMessageModel, TicketStatus
 )
 from .services.email_service import send_verification_email, send_password_reset_email
 from .utils.formatting import format_to_cop
@@ -166,6 +167,12 @@ class InvoiceData(rx.Base):
     shipping_applied_cop: str # <-- ✨ 1. AÑADE ESTE CAMPO
     iva_cop: str
     total_price_cop: str
+
+class SupportMessageData(rx.Base):
+    author_id: int
+    author_username: str
+    content: str
+    created_at_formatted: str
 
 
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
@@ -2606,3 +2613,173 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         self.is_loading = False
 
+
+    current_ticket_purchase: Optional[UserPurchaseHistoryCardData] = None
+    current_ticket: Optional[SupportTicketModel] = None
+    ticket_messages: list[SupportMessageData] = []
+    new_message_content: str = ""
+
+# 3. --- Añadir los nuevos setters y event handlers a AppState ---
+    def set_new_message_content(self, content: str):
+        self.new_message_content = content
+
+    @rx.event
+    def go_to_return_page(self, purchase_id: int):
+        """Navega a la página de devoluciones y prepara el estado."""
+        self.current_ticket = None
+        self.current_ticket_purchase = None
+        self.ticket_messages = []
+        return rx.redirect(f"/returns?purchase_id={purchase_id}")
+
+    @rx.event
+    def on_load_return_page(self):
+        """Se ejecuta al cargar la página /returns."""
+        self.is_loading = True
+        yield
+
+        if not self.authenticated_user_info:
+            self.is_loading = False
+            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+
+        purchase_id_str = "0"
+        try:
+            full_url = self.router.url
+            if "?" in full_url:
+                query_params = parse_qs(full_url.split("?")[1])
+                purchase_id_str = query_params.get("purchase_id", ["0"])[0]
+        except Exception:
+            pass
+
+        try:
+            purchase_id = int(purchase_id_str)
+        except ValueError:
+            self.is_loading = False
+            return rx.toast.error("ID de compra no válido.")
+
+        with rx.session() as session:
+            # Cargar la información de la compra
+            purchase = session.get(PurchaseModel, purchase_id)
+            if not purchase or purchase.userinfo_id != self.authenticated_user_info.id:
+                self.is_loading = False
+                return rx.toast.error("Compra no encontrada o no autorizada.")
+            
+            # Convertir a DTO para la UI
+            self.current_ticket_purchase = UserPurchaseHistoryCardData(
+                id=purchase.id,
+                purchase_date_formatted=purchase.purchase_date_formatted,
+                total_price_cop=purchase.total_price_cop,
+                # ... (puedes añadir más campos si los necesitas en el resumen)
+            )
+
+            # Buscar si ya existe un ticket para esta compra
+            ticket = session.exec(
+                sqlmodel.select(SupportTicketModel).where(SupportTicketModel.purchase_id == purchase_id)
+            ).one_or_none()
+
+            if ticket:
+                self.current_ticket = ticket
+                # Cargar los mensajes del chat
+                messages = session.exec(
+                    sqlmodel.select(SupportMessageModel)
+                    .options(sqlalchemy.orm.joinedload(SupportMessageModel.author).joinedload(UserInfo.user))
+                    .where(SupportMessageModel.ticket_id == ticket.id)
+                    .order_by(SupportMessageModel.created_at.asc())
+                ).all()
+                self.ticket_messages = [
+                    SupportMessageData(
+                        author_id=m.author_id,
+                        author_username=m.author.user.username,
+                        content=m.content,
+                        created_at_formatted=m.created_at_formatted,
+                    ) for m in messages
+                ]
+        
+        self.is_loading = False
+
+    @rx.event
+    def create_support_ticket(self, reason: str):
+        """Crea un nuevo ticket de soporte y el mensaje inicial."""
+        if not self.authenticated_user_info or not self.current_ticket_purchase:
+            return rx.toast.error("Error de sesión. Intenta de nuevo.")
+
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, self.current_ticket_purchase.id)
+            if not purchase:
+                return rx.toast.error("La compra asociada no existe.")
+
+            # Encontrar el vendedor (dueño del primer producto)
+            first_item = purchase.items[0] if purchase.items else None
+            if not first_item or not first_item.blog_post:
+                return rx.toast.error("No se pueden encontrar los productos de la compra.")
+            
+            seller_id = first_item.blog_post.userinfo_id
+
+            # Crear el ticket
+            new_ticket = SupportTicketModel(
+                purchase_id=purchase.id,
+                buyer_id=self.authenticated_user_info.id,
+                seller_id=seller_id,
+                subject=reason,
+            )
+            session.add(new_ticket)
+            session.commit()
+            session.refresh(new_ticket)
+
+            # Crear el mensaje inicial
+            initial_message_content = (
+                f"Solicitud iniciada por el comprador.\n"
+                f"Motivo: {reason}\n"
+                f"--- Detalles de la Compra ---\n"
+                f"ID: #{purchase.id}\n"
+                f"Fecha: {purchase.purchase_date_formatted}\n"
+                f"Total: {purchase.total_price_cop}"
+            )
+            initial_message = SupportMessageModel(
+                ticket_id=new_ticket.id,
+                author_id=self.authenticated_user_info.id,
+                content=initial_message_content,
+            )
+            session.add(initial_message)
+
+            # Notificar al vendedor
+            notification = NotificationModel(
+                userinfo_id=seller_id,
+                message=f"Nueva solicitud de devolución/cambio para la compra #{purchase.id}.",
+                url=f"/returns?purchase_id={purchase.id}",
+            )
+            session.add(notification)
+            session.commit()
+
+        yield rx.toast.success("Tu solicitud ha sido enviada al vendedor.")
+        yield AppState.on_load_return_page # Recargar la página para mostrar el chat
+
+    @rx.event
+    def post_support_message(self, form_data: dict):
+        """Añade un nuevo mensaje al chat de soporte."""
+        content = form_data.get("message_content")
+        if not content or not self.is_authenticated or not self.current_ticket:
+            return
+
+        with rx.session() as session:
+            new_message = SupportMessageModel(
+                ticket_id=self.current_ticket.id,
+                author_id=self.authenticated_user_info.id,
+                content=content,
+            )
+            session.add(new_message)
+            
+            # Determinar a quién notificar
+            recipient_id = (
+                self.current_ticket.seller_id
+                if self.authenticated_user_info.id == self.current_ticket.buyer_id
+                else self.current_ticket.buyer_id
+            )
+            notification = NotificationModel(
+                userinfo_id=recipient_id,
+                message=f"Nuevo mensaje en tu solicitud para la compra #{self.current_ticket.purchase_id}.",
+                url=f"/returns?purchase_id={self.current_ticket.purchase_id}",
+            )
+            session.add(notification)
+            session.commit()
+        
+        yield AppState.on_load_return_page # Recargar para mostrar el nuevo mensaje

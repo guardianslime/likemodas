@@ -147,12 +147,28 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
 
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
-                rx.link(
-                    rx.button("Imprimir Factura", variant="outline", width="100%", margin_top="1em"),
-                    href=f"/invoice?id={purchase.id}",
-                    is_external=False, 
-                    target="_blank",
+                # --- INICIO DE LA MODIFICACIÓN ---
+                rx.hstack(
+                    rx.link(
+                        rx.button("Imprimir Factura", variant="outline", width="100%"),
+                        href=f"/invoice?id={purchase.id}",
+                        is_external=False,
+                        target="_blank",
+                        width="100%",
+                    ),
+                    # --- BOTÓN NUEVO ---
+                    rx.button(
+                        "Devolución o Cambio",
+                        on_click=AppState.go_to_return_page(purchase.id),
+                        variant="solid",
+                        color_scheme="orange",
+                        width="100%",
+                    ),
+                    spacing="3",
+                    margin_top="1em",
+                    width="100%",
                 ),
+                # --- FIN DE LA MODIFICACIÓN ---
             ),
             spacing="4", width="100%"
         ),
