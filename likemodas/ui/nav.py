@@ -25,10 +25,11 @@ def notification_icon() -> rx.Component:
             ),
         ),
         rx.menu.content(
+            # --- INICIO DE LA CORRECCIÓN ---
             rx.cond(
-                AppState.notifications,
+                AppState.notification_list,  # Usar la nueva propiedad
                 rx.foreach(
-                    AppState.notifications,
+                    AppState.notification_list,  # Usar la nueva propiedad
                     lambda n: rx.menu.item(
                         rx.box(
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
@@ -39,6 +40,7 @@ def notification_icon() -> rx.Component:
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
+            # --- FIN DE LA CORRECCIÓN ---
             bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
             max_height="300px", overflow_y="auto"
         ),

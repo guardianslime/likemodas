@@ -1948,6 +1948,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         notifications: List[NotificationModel] = []
     
     @rx.var
+    def notification_list(self) -> list[NotificationModel]:
+        """Devuelve la lista de notificaciones de forma segura para el compilador."""
+        return self.notifications
+
+    @rx.var
     def unread_count(self) -> int:
         return sum(1 for n in self.notifications if not n.is_read)
     
