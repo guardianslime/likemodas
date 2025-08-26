@@ -1945,24 +1945,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # --- FIN DE LA CORRECCIÓN ---
             self.user_purchases = temp_purchases
 
-        notifications: List[NotificationModel] = []
+        _notifications: List[NotificationModel] = []
     
     @rx.var
     def notification_list(self) -> list[NotificationModel]:
         """Devuelve la lista de notificaciones de forma segura para el compilador."""
-        return self.notifications
+        return self._notifications # <-- Usar el nuevo nombre
 
     @rx.var
     def unread_count(self) -> int:
-        return sum(1 for n in self.notifications if not n.is_read)
+        return sum(1 for n in self._notifications if not n.is_read) # <-- Usar el nuevo nombre
     
     @rx.event
     def load_notifications(self):
         if not self.authenticated_user_info:
-            self.notifications = []
+            self._notifications = [] # <-- Usar el nuevo nombre
             return
         with rx.session() as session:
-            self.notifications = session.exec(
+            self._notifications = session.exec( # <-- Usar el nuevo nombre
                 sqlmodel.select(NotificationModel)
                 .where(NotificationModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
@@ -1972,7 +1972,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def mark_all_as_read(self):
         if not self.authenticated_user_info:
             return
-        unread_ids = [n.id for n in self.notifications if not n.is_read]
+        unread_ids = [n.id for n in self._notifications if not n.is_read] # <-- Usar el nuevo nombre
         if not unread_ids:
             return
         with rx.session() as session:
