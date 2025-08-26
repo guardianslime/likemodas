@@ -1945,7 +1945,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # --- FIN DE LA CORRECCIÓN ---
             self.user_purchases = temp_purchases
 
-        _notifications: List[NotificationModel] = []
+    _notifications: List[NotificationModel] = []
     
     @rx.var
     def notification_list(self) -> list[NotificationModel]:
