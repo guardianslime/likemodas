@@ -1724,17 +1724,25 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            # Verifica que esté pendiente y sea contra entrega
             if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Contra Entrega":
-                # Cambia el estado directamente a ENVIADO
                 purchase.status = PurchaseStatus.SHIPPED
                 purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
+                # --- ✨ INICIO DEL CÓDIGO AÑADIDO ✨ ---
+                # Construye el texto del tiempo de entrega
+                time_parts = []
+                if days > 0: time_parts.append(f"{days} día(s)")
+                if hours > 0: time_parts.append(f"{hours} hora(s)")
+                if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
+                time_str = ", ".join(time_parts)
+                # --- ✨ FIN DEL CÓDIGO AÑADIDO ✨ ---
+
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
-                    message=f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox.",
+                    # --- ✨ LÍNEA MODIFICADA ✨ ---
+                    message=f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}.",
                     url="/my-purchases"
                 )
 
