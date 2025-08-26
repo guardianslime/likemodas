@@ -1949,8 +1949,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.var
     def notification_list(self) -> list[NotificationModel]:
-        """Devuelve la lista de notificaciones de forma segura para el compilador."""
-        return self._notifications # <-- Usar el nuevo nombre
+        """
+        Devuelve la lista de notificaciones de forma segura para el compilador.
+        Usa getattr para evitar un AttributeError durante la exportación inicial.
+        """
+        return getattr(self, "_notifications", [])
 
     @rx.var
     def unread_count(self) -> int:
