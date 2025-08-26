@@ -81,8 +81,8 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                         # Si ya se confirmó, muestra un mensaje
                         rx.callout(
                             "Pago Recibido. Esperando confirmación del cliente.", 
-                            # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-                            icon="check-circle", 
+                            # --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
+                            icon="check", 
                             color_scheme="green", 
                             width="100%", 
                             margin_top="1em"
