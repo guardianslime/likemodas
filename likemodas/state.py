@@ -1899,7 +1899,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.user_purchases = []
             return
         with rx.session() as session:
-            # ... (la consulta a la base de datos no cambia) ...
             results = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -1920,31 +1919,33 @@ class AppState(reflex_local_auth.LocalAuthState):
                                     id=item.blog_post.id,
                                     title=item.blog_post.title,
                                     image_url=item.blog_post.image_urls[0] if item.blog_post.image_urls else "",
-                                    # <-- ✨ 3. AÑADE EL VALOR SIN PROCESAR AQUÍ
                                     price_at_purchase=item.price_at_purchase,
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
                                     quantity=item.quantity
                                 )
                             )
                 
+                # --- INICIO DE LA CORRECCIÓN ---
                 temp_purchases.append(
-                UserPurchaseHistoryCardData(
-                    id=p.id, 
-                    purchase_date_formatted=p.purchase_date_formatted,
-                    status=p.status.value, 
-                    total_price_cop=p.total_price_cop,
-                    shipping_applied_cop=format_to_cop(p.shipping_applied), # <-- ✨ AÑADE ESTA LÍNEA
-                    shipping_name=p.shipping_name, 
-                    shipping_address=p.shipping_address,
-                    shipping_neighborhood=p.shipping_neighborhood, 
-                    shipping_city=p.shipping_city,
-                    shipping_phone=p.shipping_phone, 
-                    items=purchase_items_data
+                    UserPurchaseHistoryCardData(
+                        id=p.id,
+                        userinfo_id=p.userinfo_id, # <-- ESTA ES LA LÍNEA QUE FALTABA
+                        purchase_date_formatted=p.purchase_date_formatted,
+                        status=p.status.value,
+                        total_price_cop=p.total_price_cop,
+                        shipping_applied_cop=format_to_cop(p.shipping_applied),
+                        shipping_name=p.shipping_name,
+                        shipping_address=p.shipping_address,
+                        shipping_neighborhood=p.shipping_neighborhood,
+                        shipping_city=p.shipping_city,
+                        shipping_phone=p.shipping_phone,
+                        items=purchase_items_data
+                    )
                 )
-            )
+                # --- FIN DE LA CORRECCIÓN ---
             self.user_purchases = temp_purchases
 
-    notifications: List[NotificationModel] = []
+        notifications: List[NotificationModel] = []
     
     @rx.var
     def unread_count(self) -> int:
