@@ -4,6 +4,7 @@ import reflex as rx
 import reflex_local_auth
 from ..state import AppState, SupportMessageData
 from ..ui.skeletons import skeleton_block
+from ..models import TicketStatus # <-- AÑADE ESTA LÍNEA
 
 # --- Opciones para la devolución o cambio ---
 RETURN_REASONS = [
@@ -82,7 +83,9 @@ def chat_message_bubble(message: SupportMessageData) -> rx.Component:
 
 def chat_view() -> rx.Component:
     """Vista que muestra la conversación del ticket de soporte."""
-    is_ticket_open = AppState.current_ticket.status.not_in(["RESOLVED", "CLOSED"])
+    # --- INICIO DE LA CORRECCIÓN ---
+    is_ticket_open = (AppState.current_ticket.status != TicketStatus.RESOLVED.value) & (AppState.current_ticket.status != TicketStatus.CLOSED.value)
+    # --- FIN DE LA CORRECCIÓN ---
 
     return rx.vstack(
         purchase_summary_header(),
@@ -109,7 +112,7 @@ def chat_view() -> rx.Component:
                             spacing="3", margin_top="1em", justify="end",
                         ),
                     ),
-                )
+                ),
             ),
             width="100%",
             margin_top="1.5em"
