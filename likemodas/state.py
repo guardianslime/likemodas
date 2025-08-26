@@ -24,7 +24,7 @@ from .models import (
     UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
     PurchaseModel, PurchaseStatus, PurchaseItemModel, NotificationModel, Category,
     PasswordResetToken, LocalUser, ContactEntryModel, CommentModel,
-    SupportTicketModel, SupportMessageModel, TicketStatus
+    SupportTicketModel, SupportMessageModel, TicketStatus, format_utc_to_local
 )
 from .services.email_service import send_verification_email, send_password_reset_email
 from .utils.formatting import format_to_cop
@@ -175,6 +175,14 @@ class SupportMessageData(rx.Base):
     content: str
     created_at_formatted: str
 
+class SupportTicketAdminData(rx.Base):
+    """DTO para mostrar un resumen del ticket en la lista del admin."""
+    ticket_id: int
+    purchase_id: int
+    buyer_name: str
+    subject: str
+    status: str
+    created_at_formatted: str
 
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
@@ -2634,6 +2642,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     current_ticket: Optional[SupportTicketModel] = None
     ticket_messages: list[SupportMessageData] = []
     new_message_content: str = ""
+    all_support_tickets: list[SupportTicketAdminData] = []
+    search_query_tickets: str = ""
 
 # 3. --- Añadir los nuevos setters y event handlers a AppState ---
     def set_new_message_content(self, content: str):
@@ -2809,3 +2819,76 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         
         yield AppState.on_load_return_page # Recargar para mostrar el nuevo mensaje
+
+    def set_search_query_tickets(self, query: str):
+        """Actualiza el término de búsqueda para los tickets."""
+        self.search_query_tickets = query
+
+    @rx.var
+    def filtered_support_tickets(self) -> list[SupportTicketAdminData]:
+        """Filtra la lista de tickets de soporte para el admin."""
+        if not self.search_query_tickets.strip():
+            return self.all_support_tickets
+        
+        query = self.search_query_tickets.lower()
+        return [
+            ticket for ticket in self.all_support_tickets
+            if query in f"#{ticket.purchase_id}" or 
+               query in ticket.buyer_name.lower() or
+               query in ticket.subject.lower()
+        ]
+
+    @rx.event
+    def on_load_admin_tickets_page(self):
+        """Carga todos los tickets de soporte donde el usuario actual es el vendedor."""
+        if not self.is_admin:
+            return rx.redirect("/")
+
+        with rx.session() as session:
+            tickets = session.exec(
+                sqlmodel.select(SupportTicketModel)
+                .options(sqlalchemy.orm.joinedload(SupportTicketModel.buyer).joinedload(UserInfo.user))
+                .where(SupportTicketModel.seller_id == self.authenticated_user_info.id)
+                .order_by(SupportTicketModel.created_at.desc())
+            ).all()
+
+            self.all_support_tickets = [
+                SupportTicketAdminData(
+                    ticket_id=t.id,
+                    purchase_id=t.purchase_id,
+                    buyer_name=t.buyer.user.username,
+                    subject=t.subject,
+                    status=t.status.value,
+                    created_at_formatted=format_utc_to_local(t.created_at)
+                ) for t in tickets if t.buyer and t.buyer.user
+            ]
+
+    @rx.event
+    def close_ticket(self, ticket_id: int):
+        """Permite al comprador o al vendedor cerrar un ticket."""
+        if not self.authenticated_user_info:
+            return rx.toast.error("Debes iniciar sesión.")
+
+        with rx.session() as session:
+            ticket = session.get(SupportTicketModel, ticket_id)
+            if not ticket:
+                return rx.toast.error("La solicitud no fue encontrada.")
+
+            # Verificar permisos
+            if self.authenticated_user_info.id not in [ticket.buyer_id, ticket.seller_id]:
+                return rx.toast.error("No tienes permiso para modificar esta solicitud.")
+
+            ticket.status = TicketStatus.CLOSED
+            
+            # Añadir mensaje de sistema al chat
+            system_message = SupportMessageModel(
+                ticket_id=ticket.id,
+                author_id=self.authenticated_user_info.id,
+                content=f"--- Solicitud cerrada por {self.authenticated_user_info.user.username} ---"
+            )
+            session.add(ticket)
+            session.add(system_message)
+            session.commit()
+        
+        yield rx.toast.success("La solicitud ha sido cerrada.")
+        yield AppState.on_load_return_page # Recargar la página del chat
