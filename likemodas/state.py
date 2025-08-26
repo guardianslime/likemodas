@@ -1957,7 +1957,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def unread_count(self) -> int:
-        return sum(1 for n in self._notifications if not n.is_read) # <-- Usar el nuevo nombre
+        """
+        Calcula de forma segura el número de notificaciones no leídas.
+        """
+        # --- INICIO DE LA CORRECCIÓN ---
+        # Usamos getattr aquí también para acceder a la lista de forma segura
+        notifications_list = getattr(self, "_notifications", [])
+        return sum(1 for n in notifications_list if not n.is_read)
     
     @rx.event
     def load_notifications(self):
