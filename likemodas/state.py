@@ -2659,14 +2659,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_return_page(self):
-        """Se ejecuta al cargar la página /returns."""
+        """Se ejecuta al cargar la página /returns y autoriza al comprador o al vendedor."""
         self.is_loading = True
+        # Resetea el estado para evitar mostrar datos de un ticket anterior
+        self.current_ticket = None
+        self.current_ticket_purchase = None
+        self.ticket_messages = []
         yield
 
         if not self.authenticated_user_info:
             self.is_loading = False
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
+        # --- (La lógica para obtener el purchase_id no cambia) ---
         purchase_id_str = "0"
         try:
             full_url = self.router.url
@@ -2683,17 +2688,29 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("ID de compra no válido.")
 
         with rx.session() as session:
-            # Cargar la información de la compra
             purchase = session.get(PurchaseModel, purchase_id)
-            if not purchase or purchase.userinfo_id != self.authenticated_user_info.id:
+            if not purchase:
                 self.is_loading = False
-                return rx.toast.error("Compra no encontrada o no autorizada.")
+                return rx.toast.error("Compra no encontrada.")
+
+            # --- INICIO DE LA LÓGICA DE AUTORIZACIÓN CORREGIDA ---
+            ticket = session.exec(
+                sqlmodel.select(SupportTicketModel).where(SupportTicketModel.purchase_id == purchase_id)
+            ).one_or_none()
+
+            # Un usuario está autorizado si es el comprador O si existe un ticket y es el vendedor.
+            is_buyer = purchase.userinfo_id == self.authenticated_user_info.id
+            is_seller = ticket and ticket.seller_id == self.authenticated_user_info.id
             
-            # --- INICIO DE LA CORRECCIÓN ---
-            # Se rellena el DTO con todos los campos necesarios del modelo PurchaseModel
+            if not is_buyer and not is_seller:
+                self.is_loading = False
+                return rx.toast.error("No tienes autorización para ver esta solicitud.")
+            # --- FIN DE LA LÓGICA DE AUTORIZACIÓN CORREGIDA ---
+
+            # Si la autorización pasa, se procede a cargar los datos como antes.
             self.current_ticket_purchase = UserPurchaseHistoryCardData(
                 id=purchase.id,
-                userinfo_id=purchase.userinfo_id, # <-- Este es el campo clave que faltaba
+                userinfo_id=purchase.userinfo_id,
                 purchase_date_formatted=purchase.purchase_date_formatted,
                 status=purchase.status.value,
                 total_price_cop=purchase.total_price_cop,
@@ -2703,18 +2720,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_neighborhood=purchase.shipping_neighborhood,
                 shipping_city=purchase.shipping_city,
                 shipping_phone=purchase.shipping_phone,
-                items=[] # Los items no son necesarios aquí, se puede dejar vacío
+                items=[]
             )
-            # --- FIN DE LA CORRECCIÓN ---
-
-            # Buscar si ya existe un ticket para esta compra
-            ticket = session.exec(
-                sqlmodel.select(SupportTicketModel).where(SupportTicketModel.purchase_id == purchase_id)
-            ).one_or_none()
 
             if ticket:
                 self.current_ticket = ticket
-                # Cargar los mensajes del chat
                 messages = session.exec(
                     sqlmodel.select(SupportMessageModel)
                     .options(sqlalchemy.orm.joinedload(SupportMessageModel.author).joinedload(UserInfo.user))
@@ -2724,7 +2734,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.ticket_messages = [
                     SupportMessageData(
                         author_id=m.author_id,
-                        author_username=m.author.user.username,
+                        author_username=m.author.user.username if m.author and m.author.user else "Usuario",
                         content=m.content,
                         created_at_formatted=m.created_at_formatted,
                     ) for m in messages
