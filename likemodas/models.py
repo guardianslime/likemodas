@@ -52,6 +52,11 @@ class Category(str, enum.Enum):
     MOCHILAS = "mochilas"
     OTROS = "otros"
 
+class TicketStatus(str, enum.Enum):
+    OPEN = "open"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
 # --- Modelos de Base de Datos ---
 
 class UserInfo(rx.Model, table=True):
@@ -298,3 +303,31 @@ class CommentVoteModel(rx.Model, table=True):
 
     class Config:
         exclude = {"userinfo", "comment"}
+
+class SupportTicketModel(rx.Model, table=True):
+    """Representa una solicitud de devolución o cambio."""
+    purchase_id: int = Field(foreign_key="purchasemodel.id", unique=True) # Solo un ticket por compra
+    buyer_id: int = Field(foreign_key="userinfo.id")
+    seller_id: int = Field(foreign_key="userinfo.id")
+    subject: str  # e.g., "El pedido no cumple con las características"
+    status: TicketStatus = Field(default=TicketStatus.OPEN, nullable=False)
+    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+
+    purchase: "PurchaseModel" = Relationship(sa_relationship_kwargs={"foreign_keys": "[SupportTicketModel.purchase_id]"})
+    buyer: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[SupportTicketModel.buyer_id]"})
+    seller: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[SupportTicketModel.seller_id]"})
+    messages: List["SupportMessageModel"] = Relationship(back_populates="ticket")
+
+class SupportMessageModel(rx.Model, table=True):
+    """Representa un mensaje individual dentro de un ticket de soporte."""
+    ticket_id: int = Field(foreign_key="supportticketmodel.id")
+    author_id: int = Field(foreign_key="userinfo.id")
+    content: str
+    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+
+    ticket: "SupportTicketModel" = Relationship(back_populates="messages")
+    author: "UserInfo" = Relationship()
+
+    @property
+    def created_at_formatted(self) -> str:
+        return format_utc_to_local(self.created_at)
