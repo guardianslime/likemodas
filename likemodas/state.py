@@ -1627,19 +1627,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                # Se elimina el estado 'DELIVERED' de esta consulta.
+                # Ahora solo se mostrarán las órdenes que están pendientes o en tránsito.
                 .where(PurchaseModel.status.in_([
-                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                     PurchaseStatus.PENDING_CONFIRMATION,
                     PurchaseStatus.CONFIRMED,
                     PurchaseStatus.SHIPPED,
-                    PurchaseStatus.DELIVERED, 
                 ]))
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 .order_by(PurchaseModel.purchase_date.asc())
             ).unique().all()
             
@@ -1648,7 +1648,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
                     purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
                     payment_method=p.payment_method,
-                    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
                     confirmed_at=p.confirmed_at,
                     shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
