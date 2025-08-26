@@ -211,7 +211,6 @@ def blog_post_add_form() -> rx.Component:
                         spacing="4",
                         width="100%",
                     ),
-                    rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
 
                     # --- 👇 AÑADE TODO ESTE BLOQUE 👇 ---
                     rx.grid(
