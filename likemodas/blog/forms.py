@@ -179,7 +179,7 @@ def blog_post_add_form() -> rx.Component:
                             rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
                         ),
                         rx.vstack(
-                            rx.text("Precio Incluye IVA (19%)", as_="div", size="2", weight="bold"),
+                            rx.text("Incluye IVA (19%)", as_="div", size="2", weight="bold"), # <-- TEXTO CAMBIADO
                             rx.hstack(
                                 rx.switch(
                                     is_checked=AppState.price_includes_iva,
@@ -192,7 +192,24 @@ def blog_post_add_form() -> rx.Component:
                                 height="100%",
                             ),
                         ),
-                        columns="2", spacing="4", width="100%",
+                        # --- NUEVO INTERRUPTOR "IMPORTADO" ---
+                        rx.vstack(
+                            rx.text("Origen", as_="div", size="2", weight="bold"),
+                            rx.hstack(
+                                rx.switch(
+                                    is_checked=AppState.is_imported,
+                                    on_change=AppState.set_is_imported,
+                                    size="2",
+                                ),
+                                rx.text(rx.cond(AppState.is_imported, "Importado", "Nacional")),
+                                align="center",
+                                spacing="3",
+                                height="100%",
+                            ),
+                        ),
+                        columns="3", # <-- CAMBIAR DE 2 A 3 COLUMNAS
+                        spacing="4",
+                        width="100%",
                     ),
                     rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
 

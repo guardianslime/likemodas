@@ -91,7 +91,17 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.vstack(
                             rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                             _product_card_rating(post),
-                            rx.text(post.price_cop, size="5", weight="medium"),
+                            # --- INICIO DE LA MODIFICACIÓN ---
+                            rx.hstack(
+                                rx.text(post.price_cop, size="5", weight="medium"),
+                                rx.cond(
+                                    post.is_imported,
+                                    rx.badge("Importado", color_scheme="purple", variant="soft"),
+                                ),
+                                spacing="3",
+                                align="center",
+                            ),
+                            # --- FIN DE LA MODIFICACIÓN ---
                             
                             # --- LÓGICA DE ENVÍO SIMPLIFICADA ---
                             rx.badge(

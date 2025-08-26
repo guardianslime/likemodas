@@ -56,6 +56,7 @@ class ProductCardData(rx.Base):
     # seller_free_shipping_threshold: Optional[int] = None
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
+    is_imported: bool = False  # <-- AÑADE ESTA LÍNEA
     # --- Se añade userinfo_id para el cálculo ---
     userinfo_id: int 
 
@@ -79,6 +80,7 @@ class ProductDetailData(rx.Base):
     # seller_free_shipping_threshold: Optional[int] = None
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
+    is_imported: bool = False  # <-- AÑADE ESTA LÍNEA
 
     class Config:
         orm_mode = True
@@ -551,6 +553,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 is_moda_completa_eligible=self.is_moda_completa,
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,  # <-- Ahora 'limit' siempre existe.
+                is_imported=self.is_imported, # <-- AÑADE ESTA LÍNEA
             )
             session.add(new_post)
             session.commit()
@@ -853,6 +856,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        is_imported=p.is_imported, # <-- AÑADIR
                     )
                 )
             self.posts = temp_posts
@@ -894,6 +898,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_price_includes_iva(self, value: bool):
         self.price_includes_iva = value
+
+    # --- AÑADE ESTAS LÍNEAS ---
+    is_imported: bool = False
+
+    def set_is_imported(self, value: bool):
+        self.is_imported = value
+    # --- FIN ---
 
     @rx.event
     def start_editing_post(self, post_id: int):
@@ -993,6 +1004,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         # self.free_shipping_threshold_str = ""
 
         self.is_moda_completa = True # Resetea a su valor por defecto
+        self.is_imported = False # <-- AÑADE ESTA LÍNEA
 
     cart: Dict[int, int] = {}
     
@@ -1404,6 +1416,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attributes=p.attributes, shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        is_imported=p.is_imported, # <-- AÑADIR
                     )
                 )
             self._raw_posts = temp_posts
@@ -1583,6 +1596,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        is_imported=p.is_imported, # <-- AÑADIR
                     )
                 )
             self.search_results = temp_results
@@ -2156,6 +2170,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        is_imported=p.is_imported, # <-- AÑADIR
                     )
                 )
             self.admin_store_posts = temp_posts
@@ -2422,6 +2437,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                             shipping_cost=p.shipping_cost,
                             is_moda_completa_eligible=p.is_moda_completa_eligible,
                             shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                            is_imported=p.is_imported, # <-- AÑADIR
                         )
                     )
                 self.saved_posts_gallery = temp_posts
@@ -2508,6 +2524,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     is_moda_completa_eligible=db_post.is_moda_completa_eligible,
                     # Se usa el texto de envío recién calculado.
                     shipping_display_text=shipping_text,
+                    is_imported=db_post.is_imported, # <-- AÑADIR
                 )
                 self.product_in_modal = product_dto
                 
@@ -2631,6 +2648,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 shipping_cost=p.shipping_cost,
                                 is_moda_completa_eligible=p.is_moda_completa_eligible,
                                 shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                                is_imported=p.is_imported, # <-- AÑADIR
                             )
                         )
                     self.seller_page_posts = temp_posts

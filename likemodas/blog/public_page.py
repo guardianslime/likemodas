@@ -191,23 +191,28 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
             rx.hstack(
-                rx.badge(
-                    AppState.product_in_modal.shipping_display_text,
-                    color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
-                    variant="solid",
-                    size="2"
+            rx.badge(
+                AppState.product_in_modal.shipping_display_text,
+                color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
+                variant="solid",
+                size="2"
+            ),
+            rx.cond(
+                AppState.product_in_modal.is_moda_completa_eligible,
+                rx.tooltip(
+                    rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
+                    content="Este item cuenta para el envío gratis en compras sobre $200.000"
                 ),
-                # --- 👇 LÍNEA CORREGIDA AQUÍ 👇 ---
-                rx.cond(
-                    AppState.product_in_modal.is_moda_completa_eligible, # Antes decía 'post.is_moda_completa_eligible'
-                    rx.tooltip(
-                        rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
-                        content="Este item cuenta para el envío gratis en compras sobre $200.000"
-                    ),
-                ),
-                spacing="4",
-                align="center",
-                margin_y="1em",
+            ),
+            # --- INICIO DE LA MODIFICACIÓN ---
+            rx.cond(
+                AppState.product_in_modal.is_imported,
+                rx.badge("Importado", color_scheme="purple", variant="solid", size="2"),
+            ),
+            # --- FIN DE LA MODIFICACIÓN ---
+            spacing="4",
+            align="center",
+            margin_y="1em",
             ),
             
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
