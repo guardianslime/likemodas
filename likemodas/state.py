@@ -112,10 +112,11 @@ class PurchaseItemCardData(rx.Base):
 class UserPurchaseHistoryCardData(rx.Base):
     """DTO actualizado para el historial de compras del usuario."""
     id: int
+    userinfo_id: int  # --- AÑADE ESTA LÍNEA ---
     purchase_date_formatted: str
     status: str
     total_price_cop: str
-    shipping_applied_cop: str  # <-- ✨ AÑADE ESTA LÍNEA
+    shipping_applied_cop: str
     shipping_name: str
     shipping_address: str
     shipping_neighborhood: str
@@ -2663,13 +2664,23 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.is_loading = False
                 return rx.toast.error("Compra no encontrada o no autorizada.")
             
-            # Convertir a DTO para la UI
+            # --- INICIO DE LA CORRECCIÓN ---
+            # Se rellena el DTO con todos los campos necesarios del modelo PurchaseModel
             self.current_ticket_purchase = UserPurchaseHistoryCardData(
                 id=purchase.id,
+                userinfo_id=purchase.userinfo_id, # <-- Este es el campo clave que faltaba
                 purchase_date_formatted=purchase.purchase_date_formatted,
+                status=purchase.status.value,
                 total_price_cop=purchase.total_price_cop,
-                # ... (puedes añadir más campos si los necesitas en el resumen)
+                shipping_applied_cop=format_to_cop(purchase.shipping_applied),
+                shipping_name=purchase.shipping_name,
+                shipping_address=purchase.shipping_address,
+                shipping_neighborhood=purchase.shipping_neighborhood,
+                shipping_city=purchase.shipping_city,
+                shipping_phone=purchase.shipping_phone,
+                items=[] # Los items no son necesarios aquí, se puede dejar vacío
             )
+            # --- FIN DE LA CORRECCIÓN ---
 
             # Buscar si ya existe un ticket para esta compra
             ticket = session.exec(
