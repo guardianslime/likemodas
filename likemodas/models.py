@@ -129,6 +129,7 @@ class BlogPostModel(rx.Model, table=True):
     combines_shipping: bool = Field(default=False, nullable=False)
     shipping_combination_limit: Optional[int] = Field(default=None)
     price_includes_iva: bool = Field(default=True, nullable=False)
+    is_imported: bool = Field(default=False, nullable=False) # <-- AÑADE ESTA LÍNEA
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     comments: List["CommentModel"] = Relationship(back_populates="blog_post")
