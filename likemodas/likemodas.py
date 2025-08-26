@@ -4,6 +4,7 @@ import reflex as rx
 import reflex_local_auth
 
 from likemodas.admin.profile_page import seller_profile_page
+from likemodas.admin.tickets_page import admin_tickets_page_content
 
 from .state import AppState
 from .ui.base import base_page
@@ -109,7 +110,12 @@ app.add_page(
     title="Historial de Pagos",
     on_load=AppState.load_purchase_history # ✨ Llama a la función con el nuevo nombre
 )
-app.add_page(base_page(contact_page.contact_entries_list_content()), route=navigation.routes.CONTACT_ENTRIES_ROUTE, on_load=AppState.load_entries, title="Mensajes de Contacto")
+app.add_page(
+    base_page(admin_tickets_page_content()),
+    route=navigation.routes.SUPPORT_TICKETS_ROUTE,
+    on_load=AppState.on_load_admin_tickets_page,
+    title="Solicitudes de Soporte"
+)
 
 app.add_page(
     invoice_page.invoice_page_content(),

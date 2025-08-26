@@ -59,7 +59,7 @@ def sidebar_items() -> rx.Component:
                     sidebar_item("Mi Ubicación de Envío", "map-pin", "/admin/my-location"),
                     sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
                     sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
-                    sidebar_item("Mensajes de Contacto", "mailbox", navigation.routes.CONTACT_ENTRIES_ROUTE),
+                    sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
                     spacing="1", width="100%"
                 ),
                 rx.divider(margin_y="1em"),

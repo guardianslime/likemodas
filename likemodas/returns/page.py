@@ -82,9 +82,38 @@ def chat_message_bubble(message: SupportMessageData) -> rx.Component:
 
 def chat_view() -> rx.Component:
     """Vista que muestra la conversación del ticket de soporte."""
+    is_ticket_open = AppState.current_ticket.status.not_in(["RESOLVED", "CLOSED"])
+
     return rx.vstack(
         purchase_summary_header(),
-        rx.heading(f"Asunto: {AppState.current_ticket.subject}", size="5", margin_top="1.5em", text_align="left"),
+        rx.hstack(
+            rx.heading(f"Asunto: {AppState.current_ticket.subject}", size="5", text_align="left"),
+            rx.spacer(),
+            # --- BOTÓN PARA CERRAR SOLICITUD ---
+            rx.cond(
+                is_ticket_open,
+                rx.alert_dialog.root(
+                    rx.alert_dialog.trigger(
+                        rx.button("Cerrar Solicitud", color_scheme="red", variant="soft")
+                    ),
+                    rx.alert_dialog.content(
+                        rx.alert_dialog.title("Confirmar Cierre"),
+                        rx.alert_dialog.description(
+                            "¿Estás seguro de que quieres cerrar esta solicitud? Esta acción no se puede deshacer."
+                        ),
+                        rx.flex(
+                            rx.alert_dialog.cancel(rx.button("Cancelar")),
+                            rx.alert_dialog.action(
+                                rx.button("Sí, Cerrar", on_click=AppState.close_ticket(AppState.current_ticket.id))
+                            ),
+                            spacing="3", margin_top="1em", justify="end",
+                        ),
+                    ),
+                )
+            ),
+            width="100%",
+            margin_top="1.5em"
+        ),
         rx.vstack(
             rx.foreach(AppState.ticket_messages, chat_message_bubble),
             spacing="3",
@@ -93,21 +122,27 @@ def chat_view() -> rx.Component:
             overflow_y="auto",
             padding="1em",
         ),
-        rx.form(
-            rx.hstack(
-                rx.input(
-                    name="message_content",
-                    placeholder="Escribe tu mensaje...",
-                    value=AppState.new_message_content,
-                    on_change=AppState.set_new_message_content,
-                    flex_grow="1",
+        rx.cond(
+            is_ticket_open,
+            # --- FORMULARIO DE MENSAJE (solo si el ticket está abierto) ---
+            rx.form(
+                rx.hstack(
+                    rx.input(
+                        name="message_content",
+                        placeholder="Escribe tu mensaje...",
+                        value=AppState.new_message_content,
+                        on_change=AppState.set_new_message_content,
+                        flex_grow="1",
+                    ),
+                    rx.button("Enviar", type="submit"),
+                    width="100%",
                 ),
-                rx.button("Enviar", type="submit"),
+                on_submit=AppState.post_support_message,
+                reset_on_submit=True,
                 width="100%",
             ),
-            on_submit=AppState.post_support_message,
-            reset_on_submit=True,
-            width="100%",
+            # --- MENSAJE DE TICKET CERRADO ---
+            rx.callout("Esta solicitud ha sido cerrada y ya no se pueden enviar mensajes.", icon="info", width="100%")
         ),
         spacing="4",
         width="100%",
