@@ -35,11 +35,19 @@ def edit_post_dialog() -> rx.Component:
 
 def post_admin_row(post: BlogPostModel) -> rx.Component:
     """Componente para una fila de la tabla de administración."""
+    # --- LÓGICA CORREGIDA PARA OBTENER LA IMAGEN ---
+    # Accedemos a la imagen de la primera variante, si existe.
+    main_image_url = rx.cond(
+        post.variants & (post.variants.length() > 0),
+        post.variants[0].get("image_url", ""),
+        ""
+    )
+
     return rx.table.row(
         rx.table.cell(
             rx.cond(
-                post.image_urls & (post.image_urls.length() > 0),
-                rx.avatar(src=rx.get_upload_url(post.image_urls[0]), size="4"),
+                main_image_url != "",
+                rx.avatar(src=rx.get_upload_url(main_image_url), size="4"),
                 rx.box(rx.icon("image_off", size=24), width="var(--avatar-size-4)", height="var(--avatar-size-4)", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center", border_radius="100%")
             )
         ),
@@ -60,7 +68,7 @@ def post_admin_row(post: BlogPostModel) -> rx.Component:
             rx.hstack(
                 rx.button(
                     "Editar", 
-                    on_click=lambda: AppState.start_editing_post(post.id), # <--- CORREGIDO
+                    on_click=lambda: AppState.start_editing_post(post.id),
                     variant="outline",
                     size="2"
                 ),
