@@ -57,6 +57,8 @@ class ProductCardData(rx.Base):
     is_imported: bool = False  # <-- AÑADE ESTA LÍNEA
     # --- Se añade userinfo_id para el cálculo ---
     userinfo_id: int 
+    average_rating: float = 0.0
+    rating_count: int = 0
 
     class Config:
         orm_mode = True
@@ -1527,6 +1529,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_posts = []
             for p in results:
+                main_image = p.variants[0].get("image_url", "") if p.variants else ""
                 temp_posts.append(
                     ProductCardData(
                         id=p.id, userinfo_id=p.userinfo_id, title=p.title, price=p.price,
@@ -1536,6 +1539,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         is_imported=p.is_imported, # <-- AÑADIR
+                        average_rating=p.average_rating, # <-- AÑADIR
+                        rating_count=p.rating_count    # <-- AÑADIR
                     )
                 )
             self._raw_posts = temp_posts
@@ -1716,6 +1721,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         is_imported=p.is_imported, # <-- AÑADIR
+                        average_rating=p.average_rating, # <-- AÑADIR
+                        rating_count=p.rating_count    # <-- AÑADIR
                     )
                 )
             self.search_results = temp_results
@@ -2290,6 +2297,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         is_imported=p.is_imported, # <-- AÑADIR
+                        average_rating=p.average_rating, # <-- AÑADIR
+                        rating_count=p.rating_count    # <-- AÑADIR
+
                     )
                 )
             self.admin_store_posts = temp_posts
@@ -2557,6 +2567,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                             is_moda_completa_eligible=p.is_moda_completa_eligible,
                             shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                             is_imported=p.is_imported, # <-- AÑADIR
+                            average_rating=p.average_rating, # <-- AÑADIR
+                            rating_count=p.rating_count    # <-- AÑADIR
                         )
                     )
                 self.saved_posts_gallery = temp_posts
@@ -2775,6 +2787,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 is_moda_completa_eligible=p.is_moda_completa_eligible,
                                 shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                                 is_imported=p.is_imported, # <-- AÑADIR
+                                average_rating=p.average_rating, # <-- AÑADIR
+                                rating_count=p.rating_count    # <-- AÑADIR
                             )
                         )
                     self.seller_page_posts = temp_posts
