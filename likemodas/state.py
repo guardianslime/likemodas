@@ -48,15 +48,16 @@ class ProductCardData(rx.Base):
     title: str
     price: float = 0.0
     price_cop: str = ""
-    image_urls: list[str] = []
-    attributes: dict = {}
+    image_urls: list[str] = [] # Este campo parece ser un remanente, ver sección de errores adicionales
+    attributes: dict = {} # También es un remanente
     shipping_cost: Optional[float] = None
-    # seller_free_shipping_threshold: Optional[int] = None
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
-    is_imported: bool = False  # <-- AÑADE ESTA LÍNEA
-    # --- Se añade userinfo_id para el cálculo ---
-    userinfo_id: int 
+    is_imported: bool = False
+    userinfo_id: int
+    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
+    average_rating: float = 0.0
+    rating_count: int = 0
 
     class Config:
         orm_mode = True
@@ -1516,10 +1517,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = True
         yield
 
-        # --- INICIO DE LA CORRECCIÓN ---
         # 1. Cargar la dirección del usuario primero usando yield.
         yield AppState.load_default_shipping_info
-        # --- FIN DE LA CORRECCIÓN ---
 
         # 2. Cargar los productos con su costo base
         with rx.session() as session:
@@ -1529,13 +1528,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             for p in results:
                 temp_posts.append(
                     ProductCardData(
-                        id=p.id, userinfo_id=p.userinfo_id, title=p.title, price=p.price,
-                        price_cop=p.price_cop, image_urls=p.image_urls,
-                        average_rating=p.average_rating, rating_count=p.rating_count,
-                        attributes=p.attributes, shipping_cost=p.shipping_cost,
+                        id=p.id, 
+                        userinfo_id=p.userinfo_id, 
+                        title=p.title, 
+                        price=p.price,
+                        price_cop=p.price_cop, 
+                        image_urls=p.image_urls,
+                        attributes=p.attributes, 
+                        shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported, # <-- AÑADIR
+                        is_imported=p.is_imported,
+                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count
                     )
                 )
             self._raw_posts = temp_posts
@@ -1704,24 +1710,26 @@ class AppState(reflex_local_auth.LocalAuthState):
                 temp_results.append(
                     ProductCardData(
                         id=p.id,
-                        userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
+                        userinfo_id=p.userinfo_id,
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
                         image_urls=p.image_urls,
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported, # <-- AÑADIR
+                        is_imported=p.is_imported,
+                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count
                     )
                 )
             self.search_results = temp_results
             
         return rx.redirect("/search-results")
         
+
     pending_purchases: List[AdminPurchaseCardData] = []
     purchase_history: List[AdminPurchaseCardData] = []
     new_purchase_notification: bool = False
@@ -2278,18 +2286,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
-                        userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
+                        userinfo_id=p.userinfo_id,
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
                         image_urls=p.image_urls,
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported, # <-- AÑADIR
+                        is_imported=p.is_imported,
+                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count
                     )
                 )
             self.admin_store_posts = temp_posts
@@ -2545,18 +2554,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                     temp_posts.append(
                         ProductCardData(
                             id=p.id,
-                            userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
+                            userinfo_id=p.userinfo_id,
                             title=p.title,
                             price=p.price,
                             price_cop=p.price_cop,
                             image_urls=p.image_urls,
-                            average_rating=p.average_rating,
-                            rating_count=p.rating_count,
                             attributes=p.attributes,
                             shipping_cost=p.shipping_cost,
                             is_moda_completa_eligible=p.is_moda_completa_eligible,
                             shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                            is_imported=p.is_imported, # <-- AÑADIR
+                            is_imported=p.is_imported,
+                            # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                            average_rating=p.average_rating,
+                            rating_count=p.rating_count
                         )
                     )
                 self.saved_posts_gallery = temp_posts
@@ -2775,6 +2785,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 is_moda_completa_eligible=p.is_moda_completa_eligible,
                                 shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                                 is_imported=p.is_imported, # <-- AÑADIR
+                                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                                average_rating=p.average_rating,
+                                rating_count=p.rating_count
                             )
                         )
                     self.seller_page_posts = temp_posts
