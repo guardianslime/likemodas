@@ -1,10 +1,9 @@
-# likemodas/pages/seller_page.py (Archivo Corregido)
+# likemodas/pages/seller_page.py
 
 import reflex as rx
 from ..state import AppState
 from ..ui.components import product_gallery_component
 from ..ui.skeletons import skeleton_product_gallery
-# --- 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN ---
 from ..blog.public_page import product_detail_modal
 
 def seller_page_content() -> rx.Component:
@@ -16,7 +15,9 @@ def seller_page_content() -> rx.Component:
                 rx.heading(
                     "Publicaciones de ",
                     rx.text(
-                        AppState.seller_page_info.user.username,
+                        # --- 👇 LÍNEA CORREGIDA 👇 ---
+                        # Se accede a .username directamente desde el nuevo modelo de datos.
+                        AppState.seller_page_info.username,
                         as_="span",
                         color_scheme="violet",
                     ),
@@ -38,7 +39,6 @@ def seller_page_content() -> rx.Component:
                 )
             ),
             
-            # --- 2. AÑADE EL COMPONENTE DEL MODAL AQUÍ ---
             product_detail_modal(),
 
             spacing="6", width="100%", padding="2em", align="center"

@@ -194,6 +194,12 @@ class SupportTicketAdminData(rx.Base):
     status: str
     created_at_formatted: str
 
+class SellerInfoData(rx.Base):
+    """DTO para mostrar la información pública de un vendedor."""
+    id: int
+    username: str
+
+
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -2741,7 +2747,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     def base_app_url(self) -> str:
         return get_config().deploy_url
     
-    seller_page_info: Optional[UserInfo] = None
+    # --- 👇 LÍNEA MODIFICADA 👇 ---
+    seller_page_info: Optional[SellerInfoData] = None
     seller_page_posts: list[ProductCardData] = []
 
     @rx.event
@@ -2770,13 +2777,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         if seller_id_int > 0:
             with rx.session() as session:
-                seller_info = session.exec(
+                seller_info_db = session.exec(
                     sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
                     .where(UserInfo.id == seller_id_int)
                 ).one_or_none()
-                self.seller_page_info = seller_info
+                
+                # --- 👇 BLOQUE CORREGIDO 👇 ---
+                if seller_info_db and seller_info_db.user:
+                    # En lugar de guardar el objeto complejo, creamos un DTO simple
+                    self.seller_page_info = SellerInfoData(
+                        id=seller_info_db.id,
+                        username=seller_info_db.user.username
+                    )
 
-                if seller_info:
+                    # La carga de los posts del vendedor no cambia
                     posts = session.exec(
                         sqlmodel.select(BlogPostModel)
                         .where(
@@ -2786,16 +2800,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                         .order_by(BlogPostModel.created_at.desc())
                     ).all()
                     
+                    # ... (el resto del bucle para crear temp_posts no cambia)
                     temp_posts = []
                     for p in posts:
                         temp_posts.append(
                             ProductCardData(
+                                # ... todos los campos como los teníamos antes
                                 id=p.id,
                                 userinfo_id=p.userinfo_id,
                                 title=p.title,
                                 price=p.price,
                                 price_cop=p.price_cop,
-                                # --- 👇 LÍNEA CORREGIDA 👇 ---
                                 variants=p.variants or [],
                                 attributes={},
                                 average_rating=p.average_rating,
