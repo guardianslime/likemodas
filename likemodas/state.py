@@ -1511,22 +1511,17 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     async def load_main_page_data(self):
-        """
-        Orquestador principal: carga la dirección y LUEGO los productos y recalcula.
-        """
         self.is_loading = True
         yield
-
-        # 1. Cargar la dirección del usuario primero usando yield.
         yield AppState.load_default_shipping_info
 
-        # 2. Cargar los productos con su costo base
         with rx.session() as session:
             results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
             
             temp_posts = []
             for p in results:
                 temp_posts.append(
+                    # --- 👇 BLOQUE CORREGIDO (SIN DUPLICADOS) 👇 ---
                     ProductCardData(
                         id=p.id, 
                         userinfo_id=p.userinfo_id, 
@@ -1534,21 +1529,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price=p.price,
                         price_cop=p.price_cop, 
                         image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
                         attributes=p.attributes, 
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported,
-                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count
+                        is_imported=p.is_imported
                     )
                 )
             self._raw_posts = temp_posts
         
-        # 3. Disparamos el primer recálculo
         yield AppState.recalculate_all_shipping_costs
-        
         self.is_loading = False
 
     @rx.event
@@ -1708,6 +1700,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             temp_results = []
             for p in results:
                 temp_results.append(
+                    # --- 👇 BLOQUE CORREGIDO (SIN DUPLICADOS) 👇 ---
                     ProductCardData(
                         id=p.id,
                         userinfo_id=p.userinfo_id,
@@ -1715,14 +1708,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price=p.price,
                         price_cop=p.price_cop,
                         image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported,
-                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count
+                        is_imported=p.is_imported
                     )
                 )
             self.search_results = temp_results
@@ -2284,6 +2276,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             temp_posts = []
             for p in results:
                 temp_posts.append(
+                    # --- 👇 BLOQUE CORREGIDO (SIN DUPLICADOS) 👇 ---
                     ProductCardData(
                         id=p.id,
                         userinfo_id=p.userinfo_id,
@@ -2291,14 +2284,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price=p.price,
                         price_cop=p.price_cop,
                         image_urls=p.image_urls,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
                         attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported,
-                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count
+                        is_imported=p.is_imported
                     )
                 )
             self.admin_store_posts = temp_posts
@@ -2552,6 +2544,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 sorted_posts = sorted(user_with_posts.saved_posts, key=lambda p: p.created_at, reverse=True)
                 for p in sorted_posts:
                     temp_posts.append(
+                        # --- 👇 BLOQUE CORREGIDO (SIN DUPLICADOS) 👇 ---
                         ProductCardData(
                             id=p.id,
                             userinfo_id=p.userinfo_id,
@@ -2559,14 +2552,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                             price=p.price,
                             price_cop=p.price_cop,
                             image_urls=p.image_urls,
+                            average_rating=p.average_rating,
+                            rating_count=p.rating_count,
                             attributes=p.attributes,
                             shipping_cost=p.shipping_cost,
                             is_moda_completa_eligible=p.is_moda_completa_eligible,
                             shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                            is_imported=p.is_imported,
-                            # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                            average_rating=p.average_rating,
-                            rating_count=p.rating_count
+                            is_imported=p.is_imported
                         )
                     )
                 self.saved_posts_gallery = temp_posts
@@ -2771,9 +2763,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     temp_posts = []
                     for p in posts:
                         temp_posts.append(
+                            # --- 👇 ESTE BLOQUE YA ESTÁ CORREGIDO (SIN DUPLICADOS) 👇 ---
                             ProductCardData(
                                 id=p.id,
-                                userinfo_id=p.userinfo_id, # <-- ✨ LÍNEA AÑADIDA
+                                userinfo_id=p.userinfo_id,
                                 title=p.title,
                                 price=p.price,
                                 price_cop=p.price_cop,
@@ -2784,10 +2777,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 shipping_cost=p.shipping_cost,
                                 is_moda_completa_eligible=p.is_moda_completa_eligible,
                                 shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                                is_imported=p.is_imported, # <-- AÑADIR
-                                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                                average_rating=p.average_rating,
-                                rating_count=p.rating_count
+                                is_imported=p.is_imported
                             )
                         )
                     self.seller_page_posts = temp_posts
