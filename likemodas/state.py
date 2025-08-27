@@ -2602,7 +2602,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_rating = 0
         self.review_content = ""
         self.show_review_form = False
-        self.modal_selected_variant_index = 0 # Siempre empieza en la primera variante
+        self.modal_selected_variant_index = 0
         self.review_limit_reached = False
 
         with rx.session() as session:
@@ -2615,9 +2615,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
-                # --- INICIO DE LA CORRECCIÓN ---
-                # Se realiza el cálculo dinámico del envío aquí también.
-                
                 final_shipping_cost = 0.0
                 base_cost = db_post.shipping_cost or 0.0
                 buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
@@ -2629,9 +2626,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     buyer_barrio=buyer_barrio,
                 )
                 
-                # Se genera el texto de envío con el precio final calculado.
                 shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
-                # --- FIN DE LA CORRECCIÓN ---
 
                 seller_name = ""
                 seller_id = 0
@@ -2644,8 +2639,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                     title=db_post.title,
                     content=db_post.content,
                     price_cop=db_post.price_cop,
-                    variants=db_post.variants, # <-- Pasa la lista de variantes
-                    image_urls=db_post.image_urls,
+                    # --- 👇 LÍNEA CORREGIDA 👇 ---
+                    # Ahora pasamos la lista de variantes directamente.
+                    variants=db_post.variants,
                     created_at_formatted=db_post.created_at_formatted,
                     average_rating=db_post.average_rating,
                     rating_count=db_post.rating_count,
@@ -2654,11 +2650,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                     attributes=db_post.attributes,
                     shipping_cost=db_post.shipping_cost,
                     is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                    # Se usa el texto de envío recién calculado.
                     shipping_display_text=shipping_text,
-                    is_imported=db_post.is_imported, # <-- AÑADIR
+                    is_imported=db_post.is_imported,
                 )
                 self.product_in_modal = product_dto
+                
+                # ... (el resto de la función para cargar comentarios y reviews continúa igual)
                 
                 all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
                 original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
