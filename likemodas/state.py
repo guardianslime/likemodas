@@ -2639,15 +2639,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                     title=db_post.title,
                     content=db_post.content,
                     price_cop=db_post.price_cop,
-                    # --- 👇 LÍNEA CORREGIDA 👇 ---
-                    # Ahora pasamos la lista de variantes directamente.
                     variants=db_post.variants,
                     created_at_formatted=db_post.created_at_formatted,
                     average_rating=db_post.average_rating,
                     rating_count=db_post.rating_count,
                     seller_name=seller_name,
                     seller_id=seller_id,
-                    attributes=db_post.attributes,
+                    # --- 👇 LÍNEA CORREGIDA 👇 ---
+                    # Se eliminó la referencia al campo inexistente 'attributes'.
+                    # El DTO usará su valor por defecto, un diccionario vacío {}.
                     shipping_cost=db_post.shipping_cost,
                     is_moda_completa_eligible=db_post.is_moda_completa_eligible,
                     shipping_display_text=shipping_text,
