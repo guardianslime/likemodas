@@ -173,11 +173,21 @@ def product_detail_modal() -> rx.Component:
                 rx.cond(
                     AppState.current_modal_image_url,
                     rx.image(
-                        src=AppState.current_modal_image_url, # Usa la nueva propiedad computada
+                        src=AppState.current_modal_image_url,
                         alt=AppState.product_in_modal.title,
                         width="100%", height="100%", object_fit="cover",
                     ),
-                    rx.box(rx.icon("image_off", ...)),
+                    # --- 👇 LÍNEA CORREGIDA 👇 ---
+                    # Se reemplazó el '...' con el estilo para centrar el ícono
+                    rx.box(
+                        rx.icon("image_off", size=48), 
+                        width="100%", 
+                        height="100%", 
+                        display="flex", 
+                        align_items="center", 
+                        justify_content="center", 
+                        bg=rx.color("gray", 3)
+                    ),
                 ),
                 position="relative", width="100%", height=FIXED_HEIGHT, border_radius="var(--radius-3)", overflow="hidden",
             ),
