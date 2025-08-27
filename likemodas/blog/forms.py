@@ -142,21 +142,28 @@ def blog_post_add_form() -> rx.Component:
                         border="2px dashed #ccc", padding="2em", width="100%"
                     ),
                     rx.cond(
-                        AppState.temp_images,
-                        rx.grid(
-                            rx.foreach(
-                                AppState.temp_images,
-                                lambda img: rx.box(
-                                    rx.image(src=rx.get_upload_url(img), width="100px", height="100px", object_fit="cover"),
-                                    rx.icon_button(rx.icon("trash-2"),
-                                        on_click=AppState.remove_temp_image(img),
-                                        size="1", color_scheme="red", variant="soft",
-                                        style={"position": "absolute", "top": "4px", "right": "4px"}
-                                    ),
-                                    position="relative"
+                        AppState.new_variants,
+                        rx.vstack(
+                            rx.text("Selecciona una imagen para añadirle características:", size="2", margin_top="1em"),
+                            rx.flex(
+                                rx.foreach(
+                                    AppState.new_variants,
+                                    lambda variant, index: rx.box(
+                                        rx.image(
+                                            src=rx.get_upload_url(variant.get("image_url", "")),
+                                            width="80px", height="80px", object_fit="cover", border_radius="md"
+                                        ),
+                                        border_width=rx.cond(AppState.selected_variant_index == index, "3px", "1px"),
+                                        border_color=rx.cond(AppState.selected_variant_index == index, "violet", "gray"),
+                                        padding="2px",
+                                        border_radius="lg",
+                                        cursor="pointer",
+                                        on_click=AppState.select_variant_for_editing(index),
+                                    )
                                 ),
+                                wrap="wrap", spacing="3", margin_top="0.5em"
                             ),
-                            columns="4", spacing="2", margin_top="1em"
+                            align_items="stretch"
                         )
                     ),
                     spacing="2",
@@ -277,12 +284,13 @@ def blog_post_add_form() -> rx.Component:
                     ),
 
                     rx.cond(
-                        AppState.category != "",
+                        (AppState.category != "") & (AppState.selected_variant_index >= 0),
                         rx.vstack(
-                            rx.text("Características del Producto", as_="div", size="2", weight="bold"),
+                            rx.text("Características de la Variante Seleccionada", as_="div", size="2", weight="bold"),
                             rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
                             rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
                             rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
+                            rx.button("Guardar Atributos para Variante", on_click=AppState.save_variant_attributes, margin_top="0.5em"),
                             align_items="stretch", width="100%",
                         )
                     ),

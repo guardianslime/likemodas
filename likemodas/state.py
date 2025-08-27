@@ -49,8 +49,6 @@ class ProductCardData(rx.Base):
     price: float = 0.0
     price_cop: str = ""
     image_urls: list[str] = []
-    average_rating: float = 0.0
-    rating_count: int = 0
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     # seller_free_shipping_threshold: Optional[int] = None
@@ -69,7 +67,7 @@ class ProductDetailData(rx.Base):
     title: str
     content: str
     price_cop: str
-    image_urls: list[str] = []
+    variants: list[dict] = []
     created_at_formatted: str
     average_rating: float = 0.0
     rating_count: int = 0
@@ -489,12 +487,66 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_attr_tipo(self, value: str):
         self.attr_tipo = value
 
+    async def handle_add_upload(self, files: list[rx.UploadFile]):
+        """Modificado para crear placeholders de variantes al subir imágenes."""
+        for file in files:
+            upload_data = await file.read()
+            unique_filename = f"{secrets.token_hex(8)}-{file.name}"
+            outfile = rx.get_upload_dir() / unique_filename
+            outfile.write_bytes(upload_data)
+            # Crea una nueva entrada de variante con la imagen y atributos vacíos
+            self.new_variants.append({
+                "image_url": unique_filename,
+                "attributes": {}
+            })
+
+    def select_variant_for_editing(self, index: int):
+        """Selecciona una variante y carga sus atributos en el formulario."""
+        self.selected_variant_index = index
+        # Limpia los campos de atributos actuales
+        self.attr_colores = []
+        self.attr_tallas_ropa = []
+        self.attr_numeros_calzado = []
+        self.attr_tamanos_mochila = []
+
+        # Carga los atributos de la variante seleccionada, si existen
+        variant_attrs = self.new_variants[index].get("attributes", {})
+        self.attr_colores = variant_attrs.get("Color", [])
+        if self.category == Category.ROPA.value:
+            self.attr_tallas_ropa = variant_attrs.get("Talla", [])
+        elif self.category == Category.CALZADO.value:
+            self.attr_numeros_calzado = variant_attrs.get("Número", [])
+        elif self.category == Category.MOCHILAS.value:
+            self.attr_tamanos_mochila = variant_attrs.get("Tamaño", [])
+
+    def save_variant_attributes(self):
+        """Guarda los atributos actuales del formulario en la variante seleccionada."""
+        if self.selected_variant_index < 0:
+            return rx.toast.error("Primero selecciona una imagen para asignarle atributos.")
+
+        attributes = {}
+        if self.category == Category.ROPA.value:
+            if self.attr_colores: attributes["Color"] = self.attr_colores
+            if self.attr_tallas_ropa: attributes["Talla"] = self.attr_tallas_ropa
+        elif self.category == Category.CALZADO.value:
+            if self.attr_colores: attributes["Color"] = self.attr_colores
+            if self.attr_numeros_calzado: attributes["Número"] = self.attr_numeros_calzado
+        elif self.category == Category.MOCHILAS.value:
+            if self.attr_colores: attributes["Color"] = self.attr_colores
+            if self.attr_tamanos_mochila: attributes["Tamaño"] = self.attr_tamanos_mochila
+
+        self.new_variants[self.selected_variant_index]["attributes"] = attributes
+        return rx.toast.success(f"Atributos guardados para la imagen #{self.selected_variant_index + 1}")
+
+
     def _clear_add_form(self):
         self.title = ""
         self.content = ""
         self.price = ""
         self.category = ""
         self.temp_images = []
+        self.new_variants = []
+        self.selected_variant_index = -1
         self.attr_colores = []
         self.attr_talla_ropa = ""
         self.attr_material = ""
@@ -553,6 +605,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
+                variants=self.new_variants, # <-- Guarda la lista de variantes
                 image_urls=self.temp_images,
                 attributes=attributes,
                 publish_active=True,
@@ -1013,6 +1066,43 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         self.is_moda_completa = True # Resetea a su valor por defecto
         self.is_imported = False # <-- AÑADE ESTA LÍNEA
+    
+    # --- Variables para el formulario de variantes ---
+    # Guarda la lista de variantes que se están creando
+    new_variants: list[dict] = [] 
+    # Índice de la imagen/variante seleccionada para editar sus atributos
+    selected_variant_index: int = -1 
+
+    # --- Variables para el modal de producto ---
+    # Índice de la variante que el cliente está viendo en el modal
+    modal_selected_variant_index: int = 0
+
+    @rx.var
+    def current_modal_variant(self) -> Optional[dict]:
+        """Devuelve la variante seleccionada actualmente en el modal."""
+        if self.product_in_modal and self.product_in_modal.variants:
+            if 0 <= self.modal_selected_variant_index < len(self.product_in_modal.variants):
+                return self.product_in_modal.variants[self.modal_selected_variant_index]
+        return None
+
+    @rx.var
+    def current_modal_image_url(self) -> str:
+        """Devuelve la URL de la imagen de la variante seleccionada."""
+        variant = self.current_modal_variant
+        return rx.get_upload_url(variant.get("image_url", "")) if variant else ""
+
+    @rx.var
+    def current_modal_attributes_list(self) -> list[AttributeData]:
+        """Devuelve los atributos de la variante seleccionada como una lista para la UI."""
+        variant = self.current_modal_variant
+        if not variant or not variant.get("attributes"):
+            return []
+
+        processed = []
+        for k, v in variant["attributes"].items():
+            value_str = ", ".join(v) if isinstance(v, list) else str(v)
+            processed.append(AttributeData(key=k, value=value_str))
+        return processed
 
     cart: Dict[int, int] = {}
     
@@ -2491,6 +2581,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             updates=[self._convert_comment_to_dto(update) for update in sorted(comment_model.updates, key=lambda u: u.created_at)]
         )
 
+    # --- NUEVOS MANEJADORES PARA EL MODAL ---
+    def set_modal_variant_index(self, index: int):
+        """Cambia la variante que se está viendo en el modal."""
+        self.modal_selected_variant_index = index
+
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         self.product_in_modal = None
@@ -2501,6 +2596,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_rating = 0
         self.review_content = ""
         self.show_review_form = False
+        self.modal_selected_variant_index = 0 # Siempre empieza en la primera variante
         self.review_limit_reached = False
 
         with rx.session() as session:
@@ -2542,6 +2638,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     title=db_post.title,
                     content=db_post.content,
                     price_cop=db_post.price_cop,
+                    variants=db_post.variants, # <-- Pasa la lista de variantes
                     image_urls=db_post.image_urls,
                     created_at_formatted=db_post.created_at_formatted,
                     average_rating=db_post.average_rating,

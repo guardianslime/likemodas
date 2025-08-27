@@ -167,21 +167,47 @@ def product_detail_modal() -> rx.Component:
     
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
-        return rx.box(
-            rx.cond(
-                AppState.product_in_modal.image_urls & (AppState.product_in_modal.image_urls.length() > 0),
-                rx.fragment(
+        return rx.vstack( # Cambiado a vstack para incluir las miniaturas debajo
+            # --- IMAGEN PRINCIPAL (MODIFICADA) ---
+            rx.box(
+                rx.cond(
+                    AppState.current_modal_image_url,
                     rx.image(
-                        src=rx.get_upload_url(AppState.current_image_url),
+                        src=AppState.current_modal_image_url, # Usa la nueva propiedad computada
                         alt=AppState.product_in_modal.title,
                         width="100%", height="100%", object_fit="cover",
                     ),
-                    rx.button(rx.icon(tag="chevron-left"), on_click=AppState.prev_image, position="absolute", top="50%", left="0.5rem", variant="soft"),
-                    rx.button(rx.icon(tag="chevron-right"), on_click=AppState.next_image, position="absolute", top="50%", right="0.5rem", variant="soft"),
+                    rx.box(rx.icon("image_off", ...)),
                 ),
-                rx.box(rx.icon("image_off", size=48), width="100%", height="100%", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center"),
+                position="relative", width="100%", height=FIXED_HEIGHT, border_radius="var(--radius-3)", overflow="hidden",
             ),
-            position="relative", width="100%", height=FIXED_HEIGHT, border_radius="var(--radius-3)", overflow="hidden",
+            # --- GALERÍA DE MINIATURAS (NUEVA) ---
+            rx.cond(
+                AppState.product_in_modal.variants.length() > 1,
+                rx.hstack(
+                    rx.foreach(
+                        AppState.product_in_modal.variants,
+                        lambda variant, index: rx.box(
+                            rx.image(
+                                src=rx.get_upload_url(variant.get("image_url")),
+                                width="60px", height="60px", object_fit="cover", border_radius="md"
+                            ),
+                            border_width=rx.cond(AppState.modal_selected_variant_index == index, "2px", "1px"),
+                            border_color=rx.cond(AppState.modal_selected_variant_index == index, "violet", "gray"),
+                            padding="2px",
+                            border_radius="lg",
+                            cursor="pointer",
+                            on_click=AppState.set_modal_variant_index(index),
+                        )
+                    ),
+                    spacing="3",
+                    padding="0.5em",
+                    width="100%",
+                    overflow_x="auto",
+                )
+            ),
+            spacing="3",
+            width="100%",
         )
 
     def _modal_info_section() -> rx.Component:
@@ -217,12 +243,12 @@ def product_detail_modal() -> rx.Component:
             
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.cond(
-                AppState.product_in_modal.attributes,
+                AppState.current_modal_attributes_list,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
                     rx.foreach(
-                        AppState.product_attributes_list,
+                        AppState.current_modal_attributes_list, # Usa la nueva propiedad computada
                         lambda item: rx.hstack(
                             rx.text(item.key, ":", weight="bold"),
                             rx.text(item.value),
@@ -230,10 +256,7 @@ def product_detail_modal() -> rx.Component:
                             align="center"
                         )
                     ),
-                    align_items="start",
-                    width="100%",
-                    spacing="2",
-                    margin_top="1em",
+                    align_items="start", width="100%", spacing="2", margin_top="1em",
                 )
             ),
             rx.text(
