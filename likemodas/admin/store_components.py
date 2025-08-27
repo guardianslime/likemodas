@@ -10,12 +10,15 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
     """
     return rx.box(
         rx.vstack(
-            # El link se elimina ya que la edición es a través de un modal
             rx.vstack(
                 rx.box(
+                    # --- 👇 LÍNEA CORREGIDA 👇 ---
+                    # Se cambió 'post.image_urls' por 'post.variants'
                     rx.cond(
-                        post.image_urls & (post.image_urls.length() > 0),
-                        rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="260px", object_fit="cover"),
+                        post.variants & (post.variants.length() > 0),
+                        # --- 👇 LÍNEA CORREGIDA 👇 ---
+                        # Se obtiene la URL del primer objeto en la lista 'variants'
+                        rx.image(src=rx.get_upload_url(post.variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
                         rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                     ),
                     width="260px", height="260px"
@@ -28,9 +31,6 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
             rx.spacer(),
             rx.button(
                 "Editar / Ver Detalles",
-                # --- ✨ CORRECCIÓN CLAVE AQUÍ ---
-                # Se llama al manejador de estado que abre el modal,
-                # pasando el ID del producto.
                 on_click=AppState.start_editing_post(post.id),
                 width="100%",
                 variant="outline"
