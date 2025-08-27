@@ -48,14 +48,15 @@ class ProductCardData(rx.Base):
     title: str
     price: float = 0.0
     price_cop: str = ""
-    image_urls: list[str] = [] # Este campo parece ser un remanente, ver sección de errores adicionales
-    attributes: dict = {} # También es un remanente
+    # --- 👇 LÍNEA ELIMINADA 👇 ---
+    # image_urls: list[str] = []
+    variants: list[dict] = [] # Se añade para consistencia
+    attributes: dict = {}
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
     is_imported: bool = False
     userinfo_id: int
-    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     average_rating: float = 0.0
     rating_count: int = 0
 
@@ -74,12 +75,12 @@ class ProductDetailData(rx.Base):
     rating_count: int = 0
     seller_name: str = ""
     seller_id: int = 0
+    # El campo 'attributes' se mantiene por ahora, aunque redundante.
     attributes: dict = {}
     shipping_cost: Optional[float] = None
-    # seller_free_shipping_threshold: Optional[int] = None
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
-    is_imported: bool = False  # <-- AÑADE ESTA LÍNEA
+    is_imported: bool = False
 
     class Config:
         orm_mode = True
@@ -940,10 +941,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def current_image_url(self) -> str:
-        if self.product_in_modal and self.product_in_modal.image_urls:
-            if not self.product_in_modal.image_urls: return ""
-            safe_index = self.current_image_index % len(self.product_in_modal.image_urls)
-            return self.product_in_modal.image_urls[safe_index]
+        """Devuelve la URL de la imagen de la variante seleccionada."""
+        # --- 👇 CÓDIGO CORREGIDO Y ROBUSTO 👇 ---
+        if self.product_in_modal and self.product_in_modal.variants:
+            # Asegurarse de que el índice sea válido
+            if 0 <= self.modal_selected_variant_index < len(self.product_in_modal.variants):
+                # Obtener el diccionario de la variante actual
+                variant = self.product_in_modal.variants[self.modal_selected_variant_index]
+                # Obtener la URL de la imagen de ese diccionario de forma segura
+                image_url = variant.get("image_url", "")
+                return rx.get_upload_url(image_url) if image_url else ""
         return ""
 
     def next_image(self):
@@ -1511,6 +1518,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     async def load_main_page_data(self):
+        """
+        Orquestador principal: carga la dirección y LUEGO los productos y recalcula.
+        """
         self.is_loading = True
         yield
         yield AppState.load_default_shipping_info
@@ -1527,10 +1537,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title, 
                         price=p.price,
                         price_cop=p.price_cop,
-                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                        image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
-                        attributes={}, # El atributo general ya no es relevante aquí
-                        # ---
+                        # --- 👇 LÍNEA CORREGIDA 👇 ---
+                        variants=p.variants or [],
+                        attributes={},
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
@@ -1707,10 +1716,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                        image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                        # --- 👇 LÍNEA CORREGIDA 👇 ---
+                        variants=p.variants or [],
                         attributes={},
-                        # ---
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
@@ -2284,10 +2292,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                        image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                        # --- 👇 LÍNEA CORREGIDA 👇 ---
+                        variants=p.variants or [],
                         attributes={},
-                        # ---
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
@@ -2553,10 +2560,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                             title=p.title,
                             price=p.price,
                             price_cop=p.price_cop,
-                            # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                            image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                            # --- 👇 LÍNEA CORREGIDA 👇 ---
+                            variants=p.variants or [],
                             attributes={},
-                            # ---
                             average_rating=p.average_rating,
                             rating_count=p.rating_count,
                             shipping_cost=p.shipping_cost,
@@ -2770,10 +2776,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 title=p.title,
                                 price=p.price,
                                 price_cop=p.price_cop,
-                                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                                image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                                # --- 👇 LÍNEA CORREGIDA 👇 ---
+                                variants=p.variants or [],
                                 attributes={},
-                                # ---
                                 average_rating=p.average_rating,
                                 rating_count=p.rating_count,
                                 shipping_cost=p.shipping_cost,

@@ -85,8 +85,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.box(
                             # Primero van los hijos (componentes)
                             rx.cond(
-                                post.image_urls & (post.image_urls.length() > 0),
-                                rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="260px", object_fit="cover"),
+                                # --- 👇 LÍNEA CORREGIDA 👇 ---
+                                post.variants & (post.variants.length() > 0),
+                                # --- 👇 LÍNEA CORREGIDA 👇 ---
+                                rx.image(src=rx.get_upload_url(post.variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
                                 rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                             ),
                             rx.badge(
