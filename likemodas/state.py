@@ -1521,17 +1521,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             temp_posts = []
             for p in results:
                 temp_posts.append(
-                    # --- 👇 BLOQUE CORREGIDO (SIN DUPLICADOS) 👇 ---
                     ProductCardData(
                         id=p.id, 
                         userinfo_id=p.userinfo_id, 
                         title=p.title, 
                         price=p.price,
-                        price_cop=p.price_cop, 
-                        image_urls=p.image_urls,
+                        price_cop=p.price_cop,
+                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                        image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                        attributes={}, # El atributo general ya no es relevante aquí
+                        # ---
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
-                        attributes=p.attributes, 
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
@@ -1700,17 +1701,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             temp_results = []
             for p in results:
                 temp_results.append(
-                    # --- 👇 BLOQUE CORREGIDO (SIN DUPLICADOS) 👇 ---
                     ProductCardData(
                         id=p.id,
                         userinfo_id=p.userinfo_id,
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls,
+                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                        image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                        attributes={},
+                        # ---
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
-                        attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
@@ -2276,17 +2278,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             temp_posts = []
             for p in results:
                 temp_posts.append(
-                    # --- 👇 BLOQUE CORREGIDO (SIN DUPLICADOS) 👇 ---
                     ProductCardData(
                         id=p.id,
                         userinfo_id=p.userinfo_id,
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls,
+                        # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                        image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                        attributes={},
+                        # ---
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
-                        attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
@@ -2544,17 +2547,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                 sorted_posts = sorted(user_with_posts.saved_posts, key=lambda p: p.created_at, reverse=True)
                 for p in sorted_posts:
                     temp_posts.append(
-                        # --- 👇 BLOQUE CORREGIDO (SIN DUPLICADOS) 👇 ---
                         ProductCardData(
                             id=p.id,
                             userinfo_id=p.userinfo_id,
                             title=p.title,
                             price=p.price,
                             price_cop=p.price_cop,
-                            image_urls=p.image_urls,
+                            # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                            image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                            attributes={},
+                            # ---
                             average_rating=p.average_rating,
                             rating_count=p.rating_count,
-                            attributes=p.attributes,
                             shipping_cost=p.shipping_cost,
                             is_moda_completa_eligible=p.is_moda_completa_eligible,
                             shipping_display_text=_get_shipping_display_text(p.shipping_cost),
@@ -2763,17 +2767,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                     temp_posts = []
                     for p in posts:
                         temp_posts.append(
-                            # --- 👇 ESTE BLOQUE YA ESTÁ CORREGIDO (SIN DUPLICADOS) 👇 ---
                             ProductCardData(
                                 id=p.id,
                                 userinfo_id=p.userinfo_id,
                                 title=p.title,
                                 price=p.price,
                                 price_cop=p.price_cop,
-                                image_urls=p.image_urls,
+                                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                                image_urls=[v.get("image_url", "") for v in p.variants if v] if p.variants else [],
+                                attributes={},
+                                # ---
                                 average_rating=p.average_rating,
                                 rating_count=p.rating_count,
-                                attributes=p.attributes,
                                 shipping_cost=p.shipping_cost,
                                 is_moda_completa_eligible=p.is_moda_completa_eligible,
                                 shipping_display_text=_get_shipping_display_text(p.shipping_cost),
