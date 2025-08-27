@@ -919,7 +919,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     product_in_modal: Optional[ProductDetailData] = None
     current_image_index: int = 0
     is_editing_post: bool = False
-    post_to_edit: Optional[BlogPostModel] = None
+    # --- 👇 LÍNEA MODIFICADA 👇 ---
+    # Cambiamos de 'Optional[BlogPostModel]' a 'Optional[int]'
+    post_to_edit_id: Optional[int] = None 
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
@@ -971,11 +973,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id)
             if db_post and (db_post.userinfo_id == self.authenticated_user_info.id or self.is_admin):
-                self.post_to_edit = db_post
+                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                # Guardamos solo el ID
+                self.post_to_edit_id = db_post.id
+                # El resto de los campos se llenan como antes
                 self.post_title = db_post.title
                 self.post_content = db_post.content
                 self.price_str = str(db_post.price or 0.0)
-                self.post_images_in_form = db_post.image_urls.copy() if db_post.image_urls else []
+                # Obtenemos las imágenes de los variants
+                self.post_images_in_form = [v.get("image_url", "") for v in (db_post.variants or [])]
                 self.is_editing_post = True
             else:
                 yield rx.toast.error("No se encontró la publicación o no tienes permisos.")
@@ -984,7 +990,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     def cancel_editing_post(self, open_state: bool):
         if not open_state:
             self.is_editing_post = False
-            self.post_to_edit = None
+            # --- 👇 LÍNEA CORREGIDA 👇 ---
+            self.post_to_edit_id = None
             self.post_title = ""
             self.post_content = ""
             self.price_str = ""
@@ -992,11 +999,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def save_edited_post(self, form_data: dict):
-        if not self.is_admin or not self.post_to_edit:
+        # 1. Se comprueba 'post_to_edit_id' en lugar de 'post_to_edit'
+        if not self.is_admin or self.post_to_edit_id is None:
             return rx.toast.error("No se pudo guardar la publicación.")
         
         with rx.session() as session:
-            post_to_update = session.get(BlogPostModel, self.post_to_edit.id)
+            # 2. Se carga el post desde la base de datos usando el ID
+            post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
             if post_to_update:
                 post_to_update.title = form_data.get("title", post_to_update.title)
                 post_to_update.content = form_data.get("content", post_to_update.content)
@@ -1006,13 +1015,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                 except (ValueError, TypeError):
                     return rx.toast.error("El precio debe ser un número válido.")
 
-                post_to_update.image_urls = self.post_images_in_form
+                # --- 3. Lógica para actualizar 'variants' preservando atributos ---
+                
+                # Mapea las URLs originales a sus atributos para no perderlos
+                existing_variants_map = {
+                    v.get("image_url"): v.get("attributes", {}) 
+                    for v in (post_to_update.variants or [])
+                }
+                
+                new_variants_list = []
+                for image_url in self.post_images_in_form:
+                    # Si la imagen ya existía, se conservan sus atributos.
+                    # Si es nueva, se le asignan atributos vacíos.
+                    new_variants_list.append({
+                        "image_url": image_url,
+                        "attributes": existing_variants_map.get(image_url, {})
+                    })
+                
+                post_to_update.variants = new_variants_list
                 
                 session.add(post_to_update)
                 session.commit()
                 
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                # Se eliminó la llamada a la función inexistente y se corrigió el encadenamiento
+                # El resto de la lógica para cerrar el modal y notificar es correcta
                 yield AppState.cancel_editing_post(False)
                 yield AppState.on_load_admin_store
                 yield rx.toast.success("Publicación actualizada correctamente.")
