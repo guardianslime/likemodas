@@ -2615,6 +2615,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if db_post and db_post.publish_active:
+                # ... (la lógica de envío y del vendedor no cambia) ...
                 final_shipping_cost = 0.0
                 base_cost = db_post.shipping_cost or 0.0
                 buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
@@ -2633,21 +2634,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if db_post.userinfo and db_post.userinfo.user:
                     seller_name = db_post.userinfo.user.username
                     seller_id = db_post.userinfo.id
-                
+
                 product_dto = ProductDetailData(
                     id=db_post.id,
                     title=db_post.title,
                     content=db_post.content,
                     price_cop=db_post.price_cop,
-                    variants=db_post.variants,
+                    # --- 👇 LÍNEA CORREGIDA 👇 ---
+                    # Usamos 'or []' para proporcionar una lista vacía si db_post.variants es None
+                    variants=db_post.variants or [],
                     created_at_formatted=db_post.created_at_formatted,
                     average_rating=db_post.average_rating,
                     rating_count=db_post.rating_count,
                     seller_name=seller_name,
                     seller_id=seller_id,
-                    # --- 👇 LÍNEA CORREGIDA 👇 ---
-                    # Se eliminó la referencia al campo inexistente 'attributes'.
-                    # El DTO usará su valor por defecto, un diccionario vacío {}.
                     shipping_cost=db_post.shipping_cost,
                     is_moda_completa_eligible=db_post.is_moda_completa_eligible,
                     shipping_display_text=shipping_text,
