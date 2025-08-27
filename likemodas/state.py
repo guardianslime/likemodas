@@ -489,18 +489,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_attr_tipo(self, value: str):
         self.attr_tipo = value
 
-    async def handle_add_upload(self, files: list[rx.UploadFile]):
-        """Modificado para crear placeholders de variantes al subir imágenes."""
-        for file in files:
-            upload_data = await file.read()
-            unique_filename = f"{secrets.token_hex(8)}-{file.name}"
-            outfile = rx.get_upload_dir() / unique_filename
-            outfile.write_bytes(upload_data)
-            # Crea una nueva entrada de variante con la imagen y atributos vacíos
-            self.new_variants.append({
-                "image_url": unique_filename,
-                "attributes": {}
-            })
 
     def select_variant_for_editing(self, index: int):
         """Selecciona una variante y carga sus atributos en el formulario."""
@@ -607,16 +595,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
-                variants=self.new_variants, # <-- Guarda la lista de variantes
-                image_urls=self.temp_images,
-                attributes=attributes,
+                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                # Se eliminaron 'image_urls' y 'attributes' de aquí.
+                # Solo se guarda el campo 'variants'.
+                variants=self.new_variants,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost,
                 is_moda_completa_eligible=self.is_moda_completa,
                 combines_shipping=self.combines_shipping,
-                shipping_combination_limit=limit,  # <-- Ahora 'limit' siempre existe.
-                is_imported=self.is_imported, # <-- AÑADE ESTA LÍNEA
+                shipping_combination_limit=limit,
+                is_imported=self.is_imported,
             )
             session.add(new_post)
             session.commit()
@@ -1033,12 +1022,17 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     async def handle_add_upload(self, files: list[rx.UploadFile]):
+        """Modificado para crear placeholders de variantes al subir imágenes."""
         for file in files:
             upload_data = await file.read()
             unique_filename = f"{secrets.token_hex(8)}-{file.name}"
             outfile = rx.get_upload_dir() / unique_filename
             outfile.write_bytes(upload_data)
-            self.temp_images.append(unique_filename)
+            # Crea una nueva entrada de variante y la añade a la lista correcta
+            self.new_variants.append({
+                "image_url": unique_filename,
+                "attributes": {}
+            })
 
     @rx.event
     def remove_temp_image(self, filename: str):

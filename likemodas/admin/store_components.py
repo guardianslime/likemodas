@@ -5,19 +5,16 @@ from ..state import AppState, ProductCardData
 
 def admin_product_card(post: ProductCardData) -> rx.Component:
     """
-    Tarjeta de producto para la vista de admin. Ahora abre el modal de edición
-    directamente desde el estado.
+    Tarjeta de producto para la vista de admin. Ahora lee desde 'variants'.
     """
     return rx.box(
         rx.vstack(
             rx.vstack(
                 rx.box(
-                    # --- 👇 LÍNEA CORREGIDA 👇 ---
-                    # Se cambió 'post.image_urls' por 'post.variants'
                     rx.cond(
+                        # --- 👇 LÍNEA CORREGIDA 👇 ---
                         post.variants & (post.variants.length() > 0),
                         # --- 👇 LÍNEA CORREGIDA 👇 ---
-                        # Se obtiene la URL del primer objeto en la lista 'variants'
                         rx.image(src=rx.get_upload_url(post.variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
                         rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                     ),
@@ -25,7 +22,7 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                 ),
                 rx.text(post.title, weight="bold", size="6"),
                 rx.text(post.price_cop, size="6"),
-                rx.box(height="21px"), # Espaciador para mantener la altura
+                rx.box(height="21px"),
                 spacing="2", align="start"
             ),
             rx.spacer(),
