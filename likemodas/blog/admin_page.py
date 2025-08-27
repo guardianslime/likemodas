@@ -5,6 +5,7 @@ from ..state import AppState
 from ..models import BlogPostModel
 from .. import navigation
 from .forms import blog_post_edit_form
+from ..state import AppState, AdminPostRowData 
 
 def edit_post_dialog() -> rx.Component:
     """El diálogo modal que contiene el formulario de edición."""
@@ -33,24 +34,17 @@ def edit_post_dialog() -> rx.Component:
         on_open_change=AppState.cancel_editing_post,
     )
 
-def post_admin_row(post: BlogPostModel) -> rx.Component:
+def post_admin_row(post: AdminPostRowData) -> rx.Component:
     """Componente para una fila de la tabla de administración."""
-    # --- LÓGICA CORREGIDA PARA OBTENER LA IMAGEN ---
-    # Accedemos a la imagen de la primera variante, si existe.
-    main_image_url = rx.cond(
-        post.variants & (post.variants.length() > 0),
-        post.variants[0].get("image_url", ""),
-        ""
-    )
-
     return rx.table.row(
         rx.table.cell(
             rx.cond(
-                main_image_url != "",
-                rx.avatar(src=rx.get_upload_url(main_image_url), size="4"),
+                post.main_image_url != "",
+                rx.avatar(src=rx.get_upload_url(post.main_image_url), size="4"),
                 rx.box(rx.icon("image_off", size=24), width="var(--avatar-size-4)", height="var(--avatar-size-4)", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center", border_radius="100%")
             )
         ),
+        # ... el resto de la función no necesita cambios, ya que usa los mismos nombres de campo (title, price_cop, etc.)
         rx.table.cell(
             rx.hstack(
                 rx.switch(

@@ -126,6 +126,14 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_phone: str
     items: list[PurchaseItemCardData]
 
+class AdminPostRowData(rx.Base):
+    """DTO para una fila en la tabla de publicaciones del admin."""
+    id: int
+    title: str
+    price_cop: str
+    publish_active: bool
+    main_image_url: str = ""
+
 class AttributeData(rx.Base):
     key: str
     value: str
@@ -1226,11 +1234,32 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_complete_fashion: bool = False
         
     @rx.var
-    def my_admin_posts(self) -> list[BlogPostModel]:
+    def my_admin_posts(self) -> list[AdminPostRowData]: # <-- Cambia el tipo de retorno
         if not self.authenticated_user_info:
             return []
         with rx.session() as session:
-            return session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.userinfo_id == self.authenticated_user_info.id).order_by(BlogPostModel.created_at.desc())).all()
+            posts_from_db = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
+                .order_by(BlogPostModel.created_at.desc())
+            ).all()
+
+            # --- INICIO DE LA CORRECCIÓN ---
+            # Convertir los modelos de la BD al DTO simple
+            admin_posts = []
+            for p in posts_from_db:
+                main_image = p.variants[0].get("image_url", "") if p.variants else ""
+                admin_posts.append(
+                    AdminPostRowData(
+                        id=p.id,
+                        title=p.title,
+                        price_cop=p.price_cop,
+                        publish_active=p.publish_active,
+                        main_image_url=main_image,
+                    )
+                )
+            return admin_posts
+            # --- FIN DE LA CORRECCIÓN ---
 
     @rx.event
     def delete_post(self, post_id: int):
