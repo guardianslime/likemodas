@@ -199,6 +199,14 @@ class SellerInfoData(rx.Base):
     id: int
     username: str
 
+class SupportTicketData(rx.Base):
+    """DTO para mostrar la información de un ticket en la vista de chat."""
+    id: int
+    purchase_id: int
+    buyer_id: int
+    seller_id: int
+    subject: str
+    status: str
 
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
@@ -2827,7 +2835,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
 
     current_ticket_purchase: Optional[UserPurchaseHistoryCardData] = None
-    current_ticket: Optional[SupportTicketModel] = None
+    current_ticket: Optional[SupportTicketData] = None
     ticket_messages: list[SupportMessageData] = []
     new_message_content: str = ""
     all_support_tickets: list[SupportTicketAdminData] = []
@@ -2896,19 +2904,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             # --- FIN DE LA LÓGICA DE AUTORIZACIÓN CORREGIDA ---
 
             # Si la autorización pasa, se procede a cargar los datos como antes.
-            self.current_ticket_purchase = UserPurchaseHistoryCardData(
-                id=purchase.id,
-                userinfo_id=purchase.userinfo_id,
-                purchase_date_formatted=purchase.purchase_date_formatted,
-                status=purchase.status.value,
-                total_price_cop=purchase.total_price_cop,
-                shipping_applied_cop=format_to_cop(purchase.shipping_applied),
-                shipping_name=purchase.shipping_name,
-                shipping_address=purchase.shipping_address,
-                shipping_neighborhood=purchase.shipping_neighborhood,
-                shipping_city=purchase.shipping_city,
-                shipping_phone=purchase.shipping_phone,
-                items=[]
+            self.current_ticket = SupportTicketData(
+                id=ticket.id,
+                purchase_id=ticket.purchase_id,
+                buyer_id=ticket.buyer_id,
+                seller_id=ticket.seller_id,
+                subject=ticket.subject,
+                status=ticket.status.value,
             )
 
             if ticket:
