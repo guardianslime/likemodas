@@ -893,26 +893,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_posts = []
             for p in results:
+                # --- INICIO DE LA CORRECCIÓN ---
+                main_image = p.variants[0].get("image_url", "") if p.variants else ""
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
-                        userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
+                        userinfo_id=p.userinfo_id,
                         title=p.title,
-                        price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls,
+                        main_image_url=main_image,
+                        is_imported=p.is_imported,
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
-                        attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
-                        is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported, # <-- AÑADIR
+                        is_moda_completa_eligible=p.is_moda_completa_eligible
                     )
                 )
+                # --- FIN DE LA CORRECCIÓN ---
             self.posts = temp_posts
         
         self.is_loading = False
+
     
     show_detail_modal: bool = False
     product_in_modal: Optional[ProductDetailData] = None
@@ -2526,6 +2527,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 sorted_posts = sorted(user_with_posts.saved_posts, key=lambda p: p.created_at, reverse=True)
                 for p in sorted_posts:
+                    # --- INICIO DE LA CORRECCIÓN ---
                     main_image = p.variants[0].get("image_url", "") if p.variants else ""
                     temp_posts.append(
                         ProductCardData(
@@ -2539,10 +2541,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                             rating_count=p.rating_count,
                             shipping_cost=p.shipping_cost,
                             is_moda_completa_eligible=p.is_moda_completa_eligible,
+                            shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         )
                     )
+                    # --- FIN DE LA CORRECCIÓN ---
                 self.saved_posts_gallery = temp_posts
-                self.is_loading = False
+        
+        self.is_loading = False
 
 
     @rx.event
