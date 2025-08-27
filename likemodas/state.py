@@ -46,22 +46,12 @@ def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
 class ProductCardData(rx.Base):
     id: int
     title: str
-    price: float = 0.0
-    price_cop: str = ""
-    image_urls: list[str] = []
-    attributes: dict = {}
-    shipping_cost: Optional[float] = None
-    # seller_free_shipping_threshold: Optional[int] = None
-    is_moda_completa_eligible: bool = False
-    shipping_display_text: str = ""
-    is_imported: bool = False  # <-- AÑADE ESTA LÍNEA
-    # --- Se añade userinfo_id para el cálculo ---
-    userinfo_id: int 
+    price_cop: str
+    main_image_url: str = ""  # Imagen principal de la primera variante
+    is_imported: bool = False
     average_rating: float = 0.0
     rating_count: int = 0
-
-    class Config:
-        orm_mode = True
+    userinfo_id: int
 
     
 class ProductDetailData(rx.Base):
@@ -607,23 +597,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
-                variants=self.new_variants, # <-- Guarda la lista de variantes
-                image_urls=self.temp_images,
-                attributes=attributes,
+                variants=self.new_variants, # Correcto
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost,
                 is_moda_completa_eligible=self.is_moda_completa,
                 combines_shipping=self.combines_shipping,
-                shipping_combination_limit=limit,  # <-- Ahora 'limit' siempre existe.
-                is_imported=self.is_imported, # <-- AÑADE ESTA LÍNEA
+                shipping_combination_limit=limit,
+                is_imported=self.is_imported,
             )
             session.add(new_post)
             session.commit()
-            session.refresh(new_post)
 
         self._clear_add_form()
-        yield rx.toast.success("Producto publicado.")
+        yield rx.toast.success("Producto publicado con sus variantes.")
         return rx.redirect("/blog")
     
     @rx.var
@@ -1517,13 +1504,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         self.is_loading = True
         yield
-
-        # --- INICIO DE LA CORRECCIÓN ---
-        # 1. Cargar la dirección del usuario primero usando yield.
         yield AppState.load_default_shipping_info
-        # --- FIN DE LA CORRECCIÓN ---
 
-        # 2. Cargar los productos con su costo base
         with rx.session() as session:
             results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
             
@@ -1532,22 +1514,21 @@ class AppState(reflex_local_auth.LocalAuthState):
                 main_image = p.variants[0].get("image_url", "") if p.variants else ""
                 temp_posts.append(
                     ProductCardData(
-                        id=p.id, userinfo_id=p.userinfo_id, title=p.title, price=p.price,
-                        price_cop=p.price_cop, image_urls=p.image_urls,
-                        average_rating=p.average_rating, rating_count=p.rating_count,
-                        attributes=p.attributes, shipping_cost=p.shipping_cost,
-                        is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported, # <-- AÑADIR
-                        average_rating=p.average_rating, # <-- AÑADIR
-                        rating_count=p.rating_count    # <-- AÑADIR
+                        id=p.id,
+                        userinfo_id=p.userinfo_id,
+                        title=p.title,
+                        price_cop=p.price_cop,
+                        main_image_url=main_image,
+                        is_imported=p.is_imported,
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        shipping_cost=p.shipping_cost, # Guardamos para recálculo
+                        is_moda_completa_eligible=p.is_moda_completa_eligible # Guardamos para recálculo
                     )
                 )
             self._raw_posts = temp_posts
         
-        # 3. Disparamos el primer recálculo
         yield AppState.recalculate_all_shipping_costs
-        
         self.is_loading = False
 
     @rx.event
@@ -1706,23 +1687,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_results = []
             for p in results:
+                main_image = p.variants[0].get("image_url", "") if p.variants else ""
                 temp_results.append(
                     ProductCardData(
                         id=p.id,
-                        userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
+                        userinfo_id=p.userinfo_id,
                         title=p.title,
-                        price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls,
+                        main_image_url=main_image,
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        is_imported=p.is_imported,
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
-                        attributes=p.attributes,
-                        shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported, # <-- AÑADIR
-                        average_rating=p.average_rating, # <-- AÑADIR
-                        rating_count=p.rating_count    # <-- AÑADIR
                     )
                 )
             self.search_results = temp_results
@@ -2614,8 +2591,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments), # Simplificado
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
                 ).where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
@@ -2650,19 +2626,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                     title=db_post.title,
                     content=db_post.content,
                     price_cop=db_post.price_cop,
-                    variants=db_post.variants, # <-- Pasa la lista de variantes
-                    image_urls=db_post.image_urls,
+                    variants=db_post.variants, # Correcto
                     created_at_formatted=db_post.created_at_formatted,
-                    average_rating=db_post.average_rating,
-                    rating_count=db_post.rating_count,
                     seller_name=seller_name,
                     seller_id=seller_id,
-                    attributes=db_post.attributes,
-                    shipping_cost=db_post.shipping_cost,
-                    is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                    # Se usa el texto de envío recién calculado.
+                    is_imported=db_post.is_imported,
                     shipping_display_text=shipping_text,
-                    is_imported=db_post.is_imported, # <-- AÑADIR
+                    is_moda_completa_eligible=db_post.is_moda_completa_eligible,
                 )
                 self.product_in_modal = product_dto
                 
