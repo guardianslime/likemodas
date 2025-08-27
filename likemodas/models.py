@@ -110,8 +110,7 @@ class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     title: str; content: str
     price: float = 0.0
-    attributes: dict = Field(default={}, sa_column=Column(JSON))
-    image_urls: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    variants: list = Field(default_factory=list, sa_column=Column(JSON))
     publish_active: bool = False
     publish_date: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
