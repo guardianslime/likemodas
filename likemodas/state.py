@@ -2666,7 +2666,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             .where(
                 PurchaseModel.userinfo_id == self.authenticated_user_info.id,
                 PurchaseItemModel.blog_post_id == self.product_in_modal.id,
-                PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED])
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                # La condición aquí también se cambia para requerir "DELIVERED"
+                PurchaseModel.status == PurchaseStatus.DELIVERED
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             )
         ).all()
 
@@ -2753,28 +2756,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
-    def _find_unclaimed_purchase(self, session: sqlmodel.Session) -> Optional[PurchaseItemModel]:
-        if not self.authenticated_user_info or not self.product_in_modal:
-            return None
-        
-        purchase_items = session.exec(
-            sqlmodel.select(PurchaseItemModel)
-            .join(PurchaseModel)
-            .where(
-                PurchaseModel.userinfo_id == self.authenticated_user_info.id,
-                PurchaseItemModel.blog_post_id == self.product_in_modal.id,
-                PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED])
-            )
-        ).all()
-
-        claimed_purchase_ids = {
-            c.purchase_item_id for c in self.product_comments if c.purchase_item_id
-        }
-
-        for item in purchase_items:
-            if item.id not in claimed_purchase_ids:
-                return item
-        return None
 
     saved_post_ids: set[int] = set()
     saved_posts_gallery: list[ProductCardData] = []
@@ -2898,7 +2879,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Reseteo inicial de todas las variables del modal
         self.product_in_modal = None
         self.show_detail_modal = True
-        self.modal_selected_attributes = {}  # Limpia selecciones de atributos anteriores
+        self.modal_selected_attributes = {}
         self.modal_selected_variant_index = 0
         self.product_comments = []
         self.my_review_for_product = None
@@ -2921,63 +2902,43 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("Producto no encontrado o no disponible.")
                 return
 
-            # Lógica de envío y datos del vendedor
+            # (Lógica de envío y datos del vendedor no cambia)
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
-            final_shipping_cost = calculate_dynamic_shipping(
-                base_cost=db_post.shipping_cost or 0.0,
-                seller_barrio=seller_barrio,
-                buyer_barrio=buyer_barrio,
-            )
+            final_shipping_cost = calculate_dynamic_shipping(base_cost=db_post.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
             shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
-
-            # Creación del DTO del producto para el modal
-            self.product_in_modal = ProductDetailData(
-                id=db_post.id,
-                title=db_post.title,
-                content=db_post.content,
-                price_cop=db_post.price_cop,
-                variants=db_post.variants or [],
-                created_at_formatted=db_post.created_at_formatted,
-                average_rating=db_post.average_rating,
-                rating_count=db_post.rating_count,
-                seller_name=seller_name,
-                seller_id=seller_id,
-                shipping_cost=db_post.shipping_cost,
-                is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                shipping_display_text=shipping_text,
-                is_imported=db_post.is_imported,
-            )
             
-            # Establece las selecciones por defecto basadas en la PRIMERA variante
+            self.product_in_modal = ProductDetailData.from_orm(db_post, update={"shipping_display_text": shipping_text, "seller_name": seller_name, "seller_id": seller_id})
+            
             if self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
-            # Carga y procesamiento de comentarios
+            # Carga de comentarios (no cambia)
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
             self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
 
-            # Lógica para mostrar el formulario de opinión (sin cambios)
+            # Lógica para mostrar el formulario de opinión
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
+                
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                # La condición ahora solo busca compras con el estado "DELIVERED"
                 purchase_count = session.exec(
                     sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
                     .join(PurchaseModel)
                     .where(
                         PurchaseModel.userinfo_id == user_info_id,
                         PurchaseItemModel.blog_post_id == post_id,
-                        PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.SHIPPED])
+                        PurchaseModel.status == PurchaseStatus.DELIVERED
                     )
                 ).one()
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
                 if purchase_count > 0:
-                    user_original_comment = next(
-                        (c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None),
-                        None
-                    )
+                    user_original_comment = next((c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None), None)
                     if not user_original_comment:
                         self.show_review_form = True
                     else:
