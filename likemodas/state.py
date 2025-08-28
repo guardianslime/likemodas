@@ -43,6 +43,53 @@ def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
         return f"Envío: {format_to_cop(shipping_cost)}"
     return "Envío a convenir"
 
+# --- ✨ INICIO DE LA CORRECCIÓN: NUEVOS DTOs ---
+
+class UserInfoDTO(rx.Base):
+    """DTO simple y serializable para la información del usuario en sesión."""
+    id: int
+    user_id: int
+    username: str
+    email: str
+    role: str
+
+class NotificationDTO(rx.Base):
+    """DTO para las notificaciones."""
+    id: int
+    message: str
+    is_read: bool
+    url: Optional[str]
+    created_at_formatted: str
+
+class ContactEntryDTO(rx.Base):
+    """DTO para las entradas de contacto."""
+    id: int
+    first_name: str
+    last_name: Optional[str]
+    email: Optional[str]
+    message: str
+    created_at_formatted: str
+    userinfo_id: Optional[int]
+
+class CartItemData(rx.Base):
+    """DTO simple para representar un artículo en el carrito."""
+    id: int
+    title: str
+    price: float
+    price_cop: str
+    image_url: str
+    quantity: int
+
+    @property
+    def subtotal(self) -> float:
+        return self.price * self.quantity
+
+    @property
+    def subtotal_cop(self) -> str:
+        return format_to_cop(self.subtotal)
+
+# --- ✨ FIN DE LA CORRECCIÓN ---
+
 class ProductCardData(rx.Base):
     id: int
     title: str
@@ -232,6 +279,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- 👇 INICIO DE LA CORRECCIÓN 👇 ---
     # Se define como una variable de estado normal, no como una propiedad computada.
     # Esto asegura que esté disponible durante la compilación para las migraciones.
+    # --- ✨ INICIO DE LA CORRECCIÓN: VARIABLES DE ESTADO MODIFICADAS ---
+    _notifications: List[NotificationDTO] = []
+    contact_entries: list[ContactEntryDTO] = []
+    # --- ✨ FIN DE LA CORRECCIÓN ---
     lista_de_barrios_popayan: list[str] = LISTA_DE_BARRIOS
     # --- FIN DE LA CORRECCIÓN ---
 
@@ -245,22 +296,31 @@ class AppState(reflex_local_auth.LocalAuthState):
 
 
     
+    # --- ✨ INICIO DE LA CORRECCIÓN: PROPIEDADES COMPUTADAS REFACTORIZADAS ---
     @rx.var(cache=True)
-    def authenticated_user_info(self) -> UserInfo | None:
+    def authenticated_user_info(self) -> UserInfoDTO | None:
         if not self.is_authenticated or self.authenticated_user.id < 0:
             return None
-        
         with rx.session() as session:
             query = (
                 sqlmodel.select(UserInfo)
                 .options(sqlalchemy.orm.joinedload(UserInfo.user))
                 .where(UserInfo.user_id == self.authenticated_user.id)
             )
-            return session.exec(query).one_or_none()
+            user_info_db = session.exec(query).one_or_none()
+            if user_info_db and user_info_db.user:
+                return UserInfoDTO(
+                    id=user_info_db.id,
+                    user_id=user_info_db.user_id,
+                    username=user_info_db.user.username,
+                    email=user_info_db.email,
+                    role=user_info_db.role.value
+                )
+            return None
 
     @rx.var
     def is_admin(self) -> bool:
-        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
+        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN.value
 
     def handle_registration_email(self, form_data: dict):
         self.success = False
@@ -2205,11 +2265,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     _notifications: List[NotificationModel] = []
     
     @rx.var
-    def notification_list(self) -> list[NotificationModel]:
-        """
-        Devuelve la lista de notificaciones de forma segura para el compilador.
-        Usa getattr para evitar un AttributeError durante la exportación inicial.
-        """
+    def notification_list(self) -> list[NotificationDTO]:
         return getattr(self, "_notifications", [])
 
     @rx.var
@@ -2225,14 +2281,24 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_notifications(self):
         if not self.authenticated_user_info:
-            self._notifications = [] # <-- Usar el nuevo nombre
+            self._notifications = []
             return
         with rx.session() as session:
-            self._notifications = session.exec( # <-- Usar el nuevo nombre
+            notifications_db = session.exec(
                 sqlmodel.select(NotificationModel)
                 .where(NotificationModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
             ).all()
+            # Convertir a DTO
+            self._notifications = [
+                NotificationDTO(
+                    id=n.id,
+                    message=n.message,
+                    is_read=n.is_read,
+                    url=n.url,
+                    created_at_formatted=n.created_at_formatted
+                ) for n in notifications_db
+            ]
     
     @rx.event
     def mark_all_as_read(self):
@@ -2256,7 +2322,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.search_query_contact = query
 
     @rx.var
-    def filtered_entries(self) -> list[ContactEntryModel]:
+    def filtered_entries(self) -> list[ContactEntryDTO]:
         if not self.search_query_contact.strip():
             return self.contact_entries
         q = self.search_query_contact.lower()

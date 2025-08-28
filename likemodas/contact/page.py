@@ -1,9 +1,6 @@
-# likemodas/contact/page.py (CORREGIDO Y COMPLETO)
-
 import reflex as rx
 import reflex_local_auth
-from ..models import ContactEntryModel
-from ..state import AppState
+from ..state import AppState, ContactEntryDTO # <-- ✨ AÑADE LA IMPORTACIÓN
 
 def contact_form() -> rx.Component:
     """Formulario para enviar un mensaje de contacto, usando AppState."""
@@ -18,13 +15,13 @@ def contact_form() -> rx.Component:
             rx.text_area(name="message", placeholder="Tu mensaje", required=True, width="100%"),
             rx.button("Enviar", type="submit"),
         ),
-        # CAMBIO CLAVE: El on_submit ahora apunta al método en AppState.
         on_submit=AppState.handle_contact_submit,
         reset_on_submit=True,
     )
 
-def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
-    """Muestra un mensaje de contacto individual."""
+# --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+def contact_entry_list_item(contact: ContactEntryDTO) -> rx.Component:
+    """Muestra un mensaje de contacto individual usando el DTO."""
     return rx.box(
         rx.heading(
             rx.cond(
@@ -47,6 +44,7 @@ def contact_entry_list_item(contact: ContactEntryModel) -> rx.Component:
         border_radius="0.5em",
         width="100%"
     )
+# --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
 @reflex_local_auth.require_login
 def contact_entries_list_content() -> rx.Component:
@@ -55,7 +53,6 @@ def contact_entries_list_content() -> rx.Component:
         rx.heading("Historial de Contacto", size="7"),
         rx.input(
             placeholder="Buscar en mensajes...",
-            # CAMBIO CLAVE: Todas las referencias de estado apuntan a AppState.
             value=AppState.search_query_contact,
             on_change=AppState.set_search_query_contact,
             width="100%",
@@ -76,7 +73,6 @@ def contact_page_content() -> rx.Component:
     return rx.vstack(
         rx.heading("Contáctanos", size="9"),
         rx.cond(
-            # CAMBIO CLAVE: Se usa la variable de estado de AppState.
             AppState.did_submit_contact,
             rx.heading(AppState.thank_you_message, size="5", text_align="center"),
             contact_form()

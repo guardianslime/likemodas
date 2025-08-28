@@ -1,5 +1,3 @@
-# likemodas/ui/nav.py
-
 import reflex as rx
 from .. import navigation
 from ..state import AppState
@@ -25,11 +23,12 @@ def notification_icon() -> rx.Component:
             ),
         ),
         rx.menu.content(
-            # --- INICIO DE LA CORRECCIÓN ---
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Ahora itera sobre una lista de DTOs, que es seguro.
             rx.cond(
-                AppState.notification_list,  # Usar la nueva propiedad
+                AppState.notification_list,
                 rx.foreach(
-                    AppState.notification_list,  # Usar la nueva propiedad
+                    AppState.notification_list,
                     lambda n: rx.menu.item(
                         rx.box(
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
@@ -40,7 +39,7 @@ def notification_icon() -> rx.Component:
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            # --- FIN DE LA CORRECCIÓN ---
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
             max_height="300px", overflow_y="auto"
         ),
@@ -48,9 +47,7 @@ def notification_icon() -> rx.Component:
     )
 
 def public_navbar() -> rx.Component:
-    """
-    La barra de navegación pública definitiva, con menú de hamburguesa.
-    """
+    """La barra de navegación pública definitiva, con menú de hamburguesa."""
     icon_color = rx.color_mode_cond("black", "white")
     
     hamburger_menu = rx.menu.root(
@@ -58,12 +55,10 @@ def public_navbar() -> rx.Component:
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
         ),
         rx.menu.content(
-            # --- CAMBIO CLAVE AQUÍ: El redirect ahora recarga la página de inicio ---
             rx.menu.item("Inicio", on_click=lambda: rx.redirect("/")),
             rx.menu.sub(
                 rx.menu.sub_trigger("Categorías"),
                 rx.menu.sub_content(
-                    # --- Los enlaces ahora apuntan a la raíz con un parámetro de consulta ---
                     rx.menu.item("Ropa", on_click=lambda: rx.redirect(f"/?category={Category.ROPA.value}")),
                     rx.menu.item("Calzado", on_click=lambda: rx.redirect(f"/?category={Category.CALZADO.value}")),
                     rx.menu.item("Mochilas", on_click=lambda: rx.redirect(f"/?category={Category.MOCHILAS.value}")),
