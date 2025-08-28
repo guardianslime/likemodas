@@ -1002,23 +1002,26 @@ class AppState(reflex_local_auth.LocalAuthState):
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
-                        userinfo_id=p.userinfo_id,  # <-- ✨ LÍNEA AÑADIDA
+                        userinfo_id=p.userinfo_id,
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        image_urls=p.image_urls,
+                        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                        # Se reemplaza 'image_urls=p.image_urls' por 'variants=p.variants'
+                        variants=p.variants or [],
+                        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
-                        attributes=p.attributes,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported, # <-- AÑADIR
+                        is_imported=p.is_imported,
                     )
                 )
             self.posts = temp_posts
         
         self.is_loading = False
+    
     
     show_detail_modal: bool = False
     product_in_modal: Optional[ProductDetailData] = None
