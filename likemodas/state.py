@@ -1457,53 +1457,40 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def current_variant_display_attributes(self) -> dict[str, str]:
-        """
-        Prepara los atributos de la variante actual que son de SOLO LECTURA 
-        (ej: Color) para ser mostrados en el modal.
-        """
+        """Prepara los atributos de la variante actual que son de SOLO LECTURA."""
         variant = self.current_modal_variant
-        if not variant:
-            return {}
-
+        if not variant: return {}
+        
         display_attrs = {}
         attributes = variant.get("attributes", {})
         for key, value in attributes.items():
             if key not in self.SELECTABLE_ATTRIBUTES:
-                # Une los valores si es una lista (ej: ["Azul", "Blanco"] -> "Azul, Blanco")
                 display_attrs[key] = ", ".join(value) if isinstance(value, list) else value
-                
         return display_attrs
 
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
-        """
-        Calcula el estado de los selectores INTERACTIVOS (Talla, Número, etc.),
-        filtrando las opciones disponibles.
-        """
-        if not self.product_in_modal:
-            return []
+        """Calcula el estado de los selectores INTERACTIVOS (Talla, etc.)."""
+        if not self.product_in_modal: return []
 
-        # --- ✨ MODIFICACIÓN: Filtra para obtener solo las claves seleccionables ✨ ---
-        all_keys = sorted([
-            key for variant in self.product_in_modal.variants
-            for key in variant.get("attributes", {})
-            if key in self.SELECTABLE_ATTRIBUTES
-        ])
+        all_keys = sorted(list(
+            {key for variant in self.product_in_modal.variants for key in variant.get("attributes", {})}
+        ))
+        
+        # Filtra para obtener solo las claves que hemos definido como seleccionables
+        selectable_keys = [key for key in all_keys if key in self.SELECTABLE_ATTRIBUTES]
         
         current_selection = self.modal_selected_attributes
         selectors = []
 
-        for i, key in enumerate(all_keys):
-            # La lógica de filtrado de opciones se mantiene, pero ahora solo para Talla, etc.
+        for i, key in enumerate(selectable_keys):
             possible_variants = [
                 v for v in self.product_in_modal.variants
                 if all(
                     current_selection.get(prev_key) in v.get("attributes", {}).get(prev_key, [])
-                    for prev_key in all_keys[:i]
+                    for prev_key in selectable_keys[:i]
                 )
             ]
-
             available_options = set()
             for variant in possible_variants:
                 attr_value = variant.get("attributes", {}).get(key)
@@ -1520,7 +1507,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             )
         return selectors
-
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     @rx.event
     def add_to_cart(self, product_id: int):

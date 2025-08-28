@@ -205,28 +205,30 @@ def product_detail_modal() -> rx.Component:
                 rx.divider(margin_y="1em"),
                 rx.heading("Características", size="4"),
                 
-                # Bucle para atributos de SÓLO LECTURA (Color)
+                # --- ✨ Bucle para atributos de SÓLO LECTURA (Color) ✨ ---
                 rx.foreach(
                     AppState.current_variant_display_attributes.items(),
                     lambda item: rx.hstack(
-                        rx.text(item[0], weight="bold", size="3"), # Clave (ej: "Color")
-                        rx.text(item[1], size="3"),                # Valor (ej: "Azul, Verde")
-                        spacing="3"
+                        rx.text(f"{item[0]}:", weight="bold", size="3"),
+                        rx.text(item[1], size="3"),
+                        spacing="3",
+                        align_items="center",
+                        width="100%"
                     ),
                 ),
 
-                # Bucle para atributos SELECCIONABLES (Talla)
+                # --- ✨ Bucle para atributos SELECCIONABLES (Talla) ✨ ---
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(
                         rx.text(selector.key, weight="bold", size="3"),
                         rx.segmented_control.root(
                             rx.foreach(
-                                selector.options, # Usa las opciones filtradas
+                                selector.options,
                                 lambda option: rx.segmented_control.item(option, value=option)
                             ),
                             on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
-                            value=selector.current_value, # Usa el valor actual del selector
+                            value=selector.current_value,
                         ),
                         align_items="start",
                         width="100%",
