@@ -201,7 +201,6 @@ def product_detail_modal() -> rx.Component:
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             
-            # --- ✨ INICIO DE LA MODIFICACIÓN: SELECTORES DE VARIANTES ✨ ---
             rx.cond(
                 AppState.product_in_modal_grouped_attributes,
                 rx.vstack(
@@ -210,19 +209,18 @@ def product_detail_modal() -> rx.Component:
                     rx.foreach(
                         AppState.product_in_modal_grouped_attributes.items(),
                         lambda item: rx.vstack(
-                            rx.text(item[0], weight="bold", size="3"), # Ej: "Talla"
+                            rx.text(item[0], weight="bold", size="3"),
+                            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                            # Se eliminó el componente inexistente ".list"
                             rx.segmented_control.root(
-                                rx.segmented_control.list(
-                                    rx.foreach(
-                                        item[1], # La lista de opciones (ej: ["XS", "S"])
-                                        lambda option: rx.segmented_control.item(option, value=option)
-                                    ),
+                                rx.foreach(
+                                    item[1],
+                                    lambda option: rx.segmented_control.item(option, value=option)
                                 ),
-                                # Actualiza el estado cuando el usuario elige una opción
                                 on_change=lambda value: AppState.set_modal_selected_attribute(item[0], value),
-                                # El valor seleccionado se toma del estado
                                 value=AppState.modal_selected_attributes.get(item[0], ""),
                             ),
+                            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                             align_items="start",
                             width="100%",
                             spacing="2"
@@ -231,7 +229,6 @@ def product_detail_modal() -> rx.Component:
                     align_items="start", width="100%", spacing="3", margin_top="1em",
                 )
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
             
             rx.text(
                 "Publicado por: ",
