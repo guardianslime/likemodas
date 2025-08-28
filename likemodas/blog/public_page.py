@@ -1,5 +1,3 @@
-# likemodas/blog/public_page.py (VERSIÓN FINAL)
-
 import reflex as rx
 import math
 
@@ -59,7 +57,6 @@ def review_submission_form() -> rx.Component:
     o nada, según el estado del usuario.
     """
     return rx.cond(
-        # Condición 1: Si el formulario debe mostrarse, lo renderiza.
         AppState.show_review_form,
         rx.form(
             rx.vstack(
@@ -94,27 +91,21 @@ def review_submission_form() -> rx.Component:
             ),
             on_submit=AppState.submit_review,
         ),
-        
-        # Condición 2: Si el formulario NO se muestra, comprueba si es por el límite.
         rx.cond(
             AppState.review_limit_reached,
-            # Si el límite fue alcanzado, muestra el mensaje.
             rx.callout(
                 "Has alcanzado el límite de actualizaciones para esta compra. Para dejar una nueva opinión, debes adquirir el producto nuevamente.",
                 icon="info",
                 margin_top="1.5em",
                 width="100%"
             ),
-            # Si no se cumple ninguna de las anteriores (el usuario no ha comprado), no muestra nada.
             rx.fragment()
         )
     )
 
 def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal con un botón para ver su historial."""
-    # --- ✨ LA CORRECCIÓN ESTÁ AQUÍ ✨ ---
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
-
     return rx.box(
         rx.vstack(
             rx.hstack(
@@ -167,31 +158,28 @@ def product_detail_modal() -> rx.Component:
     
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
-        return rx.vstack( # Cambiado a vstack para incluir las miniaturas debajo
-            # --- IMAGEN PRINCIPAL (MODIFICADA) ---
+        return rx.vstack(
             rx.box(
                 rx.cond(
-                    AppState.current_modal_image_url,
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                    # 1. Comprobamos el nuevo nombre de la variable, que devuelve el nombre del archivo.
+                    AppState.current_modal_image_filename,
                     rx.image(
-                        src=AppState.current_modal_image_url,
+                        # 2. Envolvemos el nombre del archivo con rx.get_upload_url() aquí, en la UI.
+                        src=rx.get_upload_url(AppState.current_modal_image_filename),
+                        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                         alt=AppState.product_in_modal.title,
                         width="100%", height="100%", object_fit="cover",
                     ),
-                    # --- 👇 LÍNEA CORREGIDA 👇 ---
-                    # Se reemplazó el '...' con el estilo para centrar el ícono
                     rx.box(
                         rx.icon("image_off", size=48), 
-                        width="100%", 
-                        height="100%", 
-                        display="flex", 
-                        align_items="center", 
-                        justify_content="center", 
+                        width="100%", height="100%", 
+                        display="flex", align_items="center", justify_content="center", 
                         bg=rx.color("gray", 3)
                     ),
                 ),
                 position="relative", width="100%", height=FIXED_HEIGHT, border_radius="var(--radius-3)", overflow="hidden",
             ),
-            # --- GALERÍA DE MINIATURAS (NUEVA) ---
             rx.cond(
                 AppState.product_in_modal.variants.length() > 1,
                 rx.hstack(
@@ -227,30 +215,27 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
             rx.hstack(
-            rx.badge(
-                AppState.product_in_modal.shipping_display_text,
-                color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
-                variant="solid",
-                size="2"
-            ),
-            rx.cond(
-                AppState.product_in_modal.is_moda_completa_eligible,
-                rx.tooltip(
-                    rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
-                    content="Este item cuenta para el envío gratis en compras sobre $200.000"
+                rx.badge(
+                    AppState.product_in_modal.shipping_display_text,
+                    color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
+                    variant="solid",
+                    size="2"
                 ),
+                rx.cond(
+                    AppState.product_in_modal.is_moda_completa_eligible,
+                    rx.tooltip(
+                        rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
+                        content="Este item cuenta para el envío gratis en compras sobre $200.000"
+                    ),
+                ),
+                rx.cond(
+                    AppState.product_in_modal.is_imported,
+                    rx.badge("Importado", color_scheme="purple", variant="solid", size="2"),
+                ),
+                spacing="4",
+                align="center",
+                margin_y="1em",
             ),
-            # --- INICIO DE LA MODIFICACIÓN ---
-            rx.cond(
-                AppState.product_in_modal.is_imported,
-                rx.badge("Importado", color_scheme="purple", variant="solid", size="2"),
-            ),
-            # --- FIN DE LA MODIFICACIÓN ---
-            spacing="4",
-            align="center",
-            margin_y="1em",
-            ),
-            
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.cond(
                 AppState.current_modal_attributes_list,
@@ -258,7 +243,7 @@ def product_detail_modal() -> rx.Component:
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
                     rx.foreach(
-                        AppState.current_modal_attributes_list, # Usa la nueva propiedad computada
+                        AppState.current_modal_attributes_list,
                         lambda item: rx.hstack(
                             rx.text(item.key, ":", weight="bold"),
                             rx.text(item.value),
