@@ -1118,19 +1118,21 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     temp_images: list[str] = []
 
-    @rx.event
     async def handle_add_upload(self, files: list[rx.UploadFile]):
-        """Modificado para crear placeholders de variantes al subir imágenes."""
+        """Modificado para crear placeholders y auto-seleccionar la primera imagen."""
         for file in files:
             upload_data = await file.read()
             unique_filename = f"{secrets.token_hex(8)}-{file.name}"
             outfile = rx.get_upload_dir() / unique_filename
             outfile.write_bytes(upload_data)
-            # Crea una nueva entrada de variante y la añade a la lista correcta
             self.new_variants.append({
                 "image_url": unique_filename,
                 "attributes": {}
             })
+        
+        # 1. CORRECCIÓN: Si es la primera imagen, la seleccionamos automáticamente.
+        if self.selected_variant_index == -1 and len(self.new_variants) > 0:
+            self.selected_variant_index = 0
 
     @rx.event
     def remove_temp_image(self, filename: str):
@@ -2827,117 +2829,107 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_modal_variant_index(self, index: int):
         """Cambia la variante que se está viendo en el modal."""
         self.modal_selected_variant_index = index
+        # 2. CORRECCIÓN: Limpiamos las selecciones de atributos al cambiar de imagen.
+        self.modal_selected_attributes = {}
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
+        # Reseteo inicial de todas las variables del modal
         self.product_in_modal = None
         self.show_detail_modal = True
-        self.current_image_index = 0
+        self.modal_selected_attributes = {}
+        self.modal_selected_variant_index = 0
         self.product_comments = []
         self.my_review_for_product = None
         self.review_rating = 0
         self.review_content = ""
         self.show_review_form = False
-        self.modal_selected_variant_index = 0
         self.review_limit_reached = False
 
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates),
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
                 ).where(BlogPostModel.id == post_id)
             ).unique().one_or_none()
 
-            if db_post and db_post.publish_active:
-                # ... (la lógica de envío y del vendedor no cambia) ...
-                final_shipping_cost = 0.0
-                base_cost = db_post.shipping_cost or 0.0
-                buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
-                seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
-
-                final_shipping_cost = calculate_dynamic_shipping(
-                    base_cost=base_cost,
-                    seller_barrio=seller_barrio,
-                    buyer_barrio=buyer_barrio,
-                )
-                
-                shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
-
-                seller_name = ""
-                seller_id = 0
-                if db_post.userinfo and db_post.userinfo.user:
-                    seller_name = db_post.userinfo.user.username
-                    seller_id = db_post.userinfo.id
-
-                product_dto = ProductDetailData(
-                    id=db_post.id,
-                    title=db_post.title,
-                    content=db_post.content,
-                    price_cop=db_post.price_cop,
-                    # --- 👇 LÍNEA CORREGIDA 👇 ---
-                    # Usamos 'or []' para proporcionar una lista vacía si db_post.variants es None
-                    variants=db_post.variants or [],
-                    created_at_formatted=db_post.created_at_formatted,
-                    average_rating=db_post.average_rating,
-                    rating_count=db_post.rating_count,
-                    seller_name=seller_name,
-                    seller_id=seller_id,
-                    shipping_cost=db_post.shipping_cost,
-                    is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                    shipping_display_text=shipping_text,
-                    is_imported=db_post.is_imported,
-                )
-                self.product_in_modal = product_dto
-                
-                # ... (el resto de la función para cargar comentarios y reviews continúa igual)
-                
-                all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
-                original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
-                self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
-
-                if self.is_authenticated:
-                    user_info = self.authenticated_user_info
-
-                    purchase_count = session.exec(
-                        sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
-                        .join(PurchaseModel)
-                        .where(
-                            PurchaseModel.userinfo_id == user_info.id,
-                            PurchaseItemModel.blog_post_id == post_id,
-                            PurchaseModel.status.in_([PurchaseStatus.CONFIRMED, PurchaseStatus.SHIPPED])
-                        )
-                    ).one()
-
-                    if purchase_count > 0:
-                        user_original_comment = next(
-                            (c for c in db_post.comments if c.userinfo_id == user_info.id and c.parent_comment_id is None),
-                            None
-                        )
-
-                        if not user_original_comment:
-                            self.show_review_form = True
-                        else:
-                            total_allowed_updates = purchase_count 
-                            current_updates_count = len(user_original_comment.updates)
-
-                            if current_updates_count < total_allowed_updates:
-                                self.show_review_form = True
-                                latest_entry_in_thread = sorted(
-                                    [user_original_comment] + user_original_comment.updates,
-                                    key=lambda c: c.created_at,
-                                    reverse=True
-                                )[0]
-                                self.my_review_for_product = self._convert_comment_to_dto(latest_entry_in_thread)
-                                self.review_rating = latest_entry_in_thread.rating
-                                self.review_content = latest_entry_in_thread.content
-                            else:
-                                self.review_limit_reached = True
-            else:
+            if not db_post or not db_post.publish_active:
                 self.show_detail_modal = False
                 yield rx.toast.error("Producto no encontrado o no disponible.")
                 return
+
+            # Lógica de envío y datos del vendedor (sin cambios)
+            buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
+            seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
+            final_shipping_cost = calculate_dynamic_shipping(
+                base_cost=db_post.shipping_cost or 0.0,
+                seller_barrio=seller_barrio,
+                buyer_barrio=buyer_barrio,
+            )
+            shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
+            seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
+            seller_id = db_post.userinfo.id if db_post.userinfo else 0
+
+            # Creación del DTO del producto para el modal
+            self.product_in_modal = ProductDetailData(
+                id=db_post.id, title=db_post.title, content=db_post.content,
+                price_cop=db_post.price_cop, variants=db_post.variants or [],
+                created_at_formatted=db_post.created_at_formatted,
+                average_rating=db_post.average_rating, rating_count=db_post.rating_count,
+                seller_name=seller_name, seller_id=seller_id,
+                shipping_cost=db_post.shipping_cost, is_moda_completa_eligible=db_post.is_moda_completa_eligible,
+                shipping_display_text=shipping_text, is_imported=db_post.is_imported,
+            )
+            
+            # Carga y procesamiento de comentarios
+            all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
+            original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
+            self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
+
+            # --- ✨ INICIO DE LA LÓGICA DE OPINIONES CORREGIDA Y SIMPLIFICADA ✨ ---
+            if self.is_authenticated:
+                # Usamos el user_info_id, que es consistente para queries
+                user_info_id = self.authenticated_user_info.id
+
+                # 1. Contar cuántas veces ha comprado este producto y el pedido ha sido entregado/enviado.
+                purchase_count = session.exec(
+                    sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
+                    .join(PurchaseModel)
+                    .where(
+                        PurchaseModel.userinfo_id == user_info_id,
+                        PurchaseItemModel.blog_post_id == post_id,
+                        PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.SHIPPED]) # Condición de compra
+                    )
+                ).one()
+
+                # 2. Si ha comprado el producto al menos una vez.
+                if purchase_count > 0:
+                    # Buscar el comentario original del usuario para este producto.
+                    user_original_comment = next(
+                        (c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None),
+                        None
+                    )
+
+                    # Si no hay comentario original, puede crear uno nuevo.
+                    if not user_original_comment:
+                        self.show_review_form = True
+                    else:
+                        # Si ya comentó, verificar si puede actualizarlo.
+                        # Puede actualizar hasta N-1 veces, donde N es el número de compras.
+                        current_updates_count = len(user_original_comment.updates)
+                        if current_updates_count < purchase_count:
+                            self.show_review_form = True
+                            # Cargar los datos de la última opinión (ya sea la original o la última actualización)
+                            latest_entry = sorted([user_original_comment] + user_original_comment.updates, key=lambda c: c.created_at, reverse=True)[0]
+                            self.my_review_for_product = self._convert_comment_to_dto(latest_entry)
+                            self.review_rating = latest_entry.rating
+                            self.review_content = latest_entry.content
+                        else:
+                            # Si ya ha usado todas sus oportunidades de actualización.
+                            self.review_limit_reached = True
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
         yield AppState.load_saved_post_ids
 
