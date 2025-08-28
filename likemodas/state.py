@@ -208,6 +208,23 @@ class SupportTicketData(rx.Base):
     subject: str
     status: str
 
+class CartItemData(rx.Base):
+    """DTO simple para representar un artículo en el carrito."""
+    id: int
+    title: str
+    price: float
+    price_cop: str
+    image_url: str
+    quantity: int
+
+    @property
+    def subtotal(self) -> float:
+        return self.price * self.quantity
+
+    @property
+    def subtotal_cop(self) -> str:
+        return format_to_cop(self.subtotal)
+
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -1218,6 +1235,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.admin_delivery_time[purchase_id] = {"days": "0", "hours": "0", "minutes": "0"}
         self.admin_delivery_time[purchase_id][unit] = value
     
+    # --- ✨ PASO 3: REEMPLAZAR LA PROPIEDAD cart_summary ✨ ---
     @rx.var
     def cart_summary(self) -> dict:
         """
@@ -1227,51 +1245,75 @@ class AppState(reflex_local_auth.LocalAuthState):
             return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
 
         with rx.session() as session:
-            cart_items_details = self.cart_details
+            cart_items_details = self.cart_details  # Ahora es una lista de CartItemData
             if not cart_items_details:
                 return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
 
-            # --- ✨ LÓGICA DE SUBTOTAL BASADA EN PRECIO BASE ✨ ---
-            subtotal_base = sum(p.base_price * q for p, q in cart_items_details if p)
+            # Cargar los modelos completos para cálculos de envío y base_price
+            post_ids = [item.id for item in cart_items_details]
+            db_posts = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()
+            post_map = {p.id: p for p in db_posts}
+
+            subtotal_base = 0
+            for item in cart_items_details:
+                db_post = post_map.get(item.id)
+                if db_post:
+                    subtotal_base += db_post.base_price * item.quantity
+
             iva = subtotal_base * 0.19
-
-            free_shipping_achieved = (subtotal_base + iva) >= 200000
-            final_shipping_cost = 0
-
+            subtotal_con_iva = subtotal_base + iva
+            free_shipping_achieved = subtotal_con_iva >= 200000
+            
+            final_shipping_cost = 0.0
             if not free_shipping_achieved and self.default_shipping_address:
-                # ... (la lógica de cálculo de envío combinado no necesita cambios)
-                # ... simplemente asegúrate de que esté aquí.
-                total_shipping_cost = 0.0
                 buyer_barrio = self.default_shipping_address.neighborhood
                 seller_groups = defaultdict(list)
-                for product, quantity in cart_items_details:
-                    if product:
-                        for _ in range(quantity): seller_groups[product.userinfo_id].append(product)
+                for item in cart_items_details:
+                    db_post = post_map.get(item.id)
+                    if db_post:
+                        for _ in range(item.quantity):
+                            seller_groups[db_post.userinfo_id].append(db_post)
+
                 seller_ids = list(seller_groups.keys())
                 sellers_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
                 seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
-                for seller_id, items in seller_groups.items():
-                    combinable_items = [p for p in items if p.combines_shipping]
-                    individual_items = [p for p in items if not p.combines_shipping]
+
+                for seller_id, items_from_seller in seller_groups.items():
+                    combinable_items = [p for p in items_from_seller if p.combines_shipping]
+                    individual_items = [p for p in items_from_seller if not p.combines_shipping]
                     seller_barrio = seller_barrio_map.get(seller_id)
-                    for item in individual_items:
-                        cost = calculate_dynamic_shipping(base_cost=item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
-                        total_shipping_cost += cost
+
+                    for individual_item in individual_items:
+                        cost = calculate_dynamic_shipping(
+                            base_cost=individual_item.shipping_cost or 0.0,
+                            seller_barrio=seller_barrio,
+                            buyer_barrio=buyer_barrio
+                        )
+                        final_shipping_cost += cost
+
                     if combinable_items:
                         valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0]
                         if not valid_limits:
                             for item in combinable_items:
-                                cost = calculate_dynamic_shipping(base_cost=item.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
-                                total_shipping_cost += cost
+                                cost = calculate_dynamic_shipping(
+                                    base_cost=item.shipping_cost or 0.0,
+                                    seller_barrio=seller_barrio,
+                                    buyer_barrio=buyer_barrio
+                                )
+                                final_shipping_cost += cost
                             continue
+                        
                         limit = min(valid_limits)
                         num_fees = math.ceil(len(combinable_items) / limit)
                         highest_base_cost = max(p.shipping_cost or 0.0 for p in combinable_items)
-                        group_shipping_fee = calculate_dynamic_shipping(base_cost=highest_base_cost, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
-                        total_shipping_cost += (group_shipping_fee * num_fees)
-                final_shipping_cost = total_shipping_cost
+                        group_shipping_fee = calculate_dynamic_shipping(
+                            base_cost=highest_base_cost,
+                            seller_barrio=seller_barrio,
+                            buyer_barrio=buyer_barrio
+                        )
+                        final_shipping_cost += (group_shipping_fee * num_fees)
             
-            grand_total = subtotal_base + iva + final_shipping_cost
+            grand_total = subtotal_con_iva + final_shipping_cost
 
             return {
                 "subtotal": subtotal_base,
@@ -1280,6 +1322,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 "grand_total": grand_total,
                 "free_shipping_achieved": free_shipping_achieved,
             }
+    # --- ✨ FIN DEL PASO 3 ✨ ---
         
     # --- 👇 AÑADE ESTAS TRES NUEVAS PROPIEDADES 👇 ---
     @rx.var
@@ -1298,14 +1341,44 @@ class AppState(reflex_local_auth.LocalAuthState):
         return format_to_cop(self.cart_summary["grand_total"])
 
     @rx.var
-    def cart_details(self) -> List[Tuple[Optional[BlogPostModel], int]]:
-        if not self.cart: return []
+    def cart_details(self) -> List[CartItemData]:
+        """
+        Devuelve los detalles de los artículos del carrito como una lista de DTOs simples y serializables.
+        """
+        if not self.cart:
+            return []
+        
         with rx.session() as session:
             post_ids = list(self.cart.keys())
-            if not post_ids: return []
-            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()
+            if not post_ids:
+                return []
+            
+            results = session.exec(
+                sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
+            ).all()
+            
             post_map = {p.id: p for p in results}
-            return [(post_map.get(pid), self.cart[pid]) for pid in post_ids]
+            
+            cart_items_data = []
+            for post_id, quantity in self.cart.items():
+                post = post_map.get(post_id)
+                if post:
+                    # Extrae la URL de la imagen de la primera variante de forma segura
+                    main_image = ""
+                    if post.variants:
+                        main_image = post.variants[0].get("image_url", "")
+                    
+                    cart_items_data.append(
+                        CartItemData(
+                            id=post.id,
+                            title=post.title,
+                            price=post.price,
+                            price_cop=post.price_cop,
+                            image_url=main_image,
+                            quantity=quantity
+                        )
+                    )
+            return cart_items_data
 
     @rx.event
     def add_to_cart(self, post_id: int):

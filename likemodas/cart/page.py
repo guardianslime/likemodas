@@ -4,7 +4,7 @@ import reflex as rx
 import reflex_local_auth
 
 from likemodas.utils.formatting import format_to_cop
-from ..state import AppState
+from ..state import AppState, CartItemData  # <-- ✨ AÑADE LA IMPORTACIÓN DE CartItemData
 
 def display_default_address() -> rx.Component:
     return rx.vstack(
@@ -45,21 +45,23 @@ def display_default_address() -> rx.Component:
         width="100%", spacing="4",
     )
 
-def cart_item_row(item: rx.Var) -> rx.Component:
-    post, quantity = item[0], item[1]
+# --- ✨ PASO 4: REEMPLAZAR LA FUNCIÓN cart_item_row ✨ ---
+def cart_item_row(item: CartItemData) -> rx.Component:
+    """Renderiza una fila en la tabla del carrito usando el DTO simple."""
     return rx.table.row(
-        rx.table.cell(rx.text(post.title)),
+        rx.table.cell(rx.text(item.title)),
         rx.table.cell(
             rx.hstack(
-                rx.button("-", on_click=lambda: AppState.remove_from_cart(post.id), size="1"),
-                rx.text(quantity),
-                rx.button("+", on_click=lambda: AppState.add_to_cart(post.id), size="1"),
+                rx.button("-", on_click=lambda: AppState.remove_from_cart(item.id), size="1"),
+                rx.text(item.quantity),
+                rx.button("+", on_click=lambda: AppState.add_to_cart(item.id), size="1"),
                 align="center", spacing="3"
             )
         ),
-        rx.table.cell(rx.text(post.price_cop)),
-        rx.table.cell(rx.text(f"${(post.price * quantity):,.0f}")),
+        rx.table.cell(rx.text(item.price_cop)),
+        rx.table.cell(rx.text(item.subtotal_cop)), # Usamos la nueva propiedad del DTO
     )
+# --- ✨ FIN DEL PASO 4 ✨ ---
 
 @reflex_local_auth.require_login
 def cart_page_content() -> rx.Component:
@@ -70,15 +72,14 @@ def cart_page_content() -> rx.Component:
             rx.vstack(
                 rx.table.root(
                     rx.table.header(rx.table.row(rx.table.column_header_cell("Producto"), rx.table.column_header_cell("Cantidad"), rx.table.column_header_cell("Precio Unitario"), rx.table.column_header_cell("Subtotal"))),
-                    rx.table.body(rx.foreach(AppState.cart_details, cart_item_row))
+                    rx.table.body(rx.foreach(AppState.cart_details, cart_item_row)) # Esta línea ya es correcta
                 ),
                 rx.divider(),
-                # --- Lógica de totales SIMPLIFICADA ---
                 rx.vstack(
                     rx.hstack(
-                        rx.text("Subtotal:", size="5"),
+                        rx.text("Subtotal (IVA Incluido):", size="5"),
                         rx.spacer(),
-                        rx.text(AppState.subtotal_cop, size="5"), # <-- Cambio aquí
+                        rx.text(AppState.subtotal_cop, size="5"),
                         width="100%"
                     ),
                     rx.hstack(
@@ -87,7 +88,7 @@ def cart_page_content() -> rx.Component:
                         rx.cond(
                             AppState.cart_summary["free_shipping_achieved"],
                             rx.badge("¡Gratis por tu compra!", color_scheme="green", size="2"),
-                            rx.text(AppState.shipping_cost_cop, size="5") # <-- Cambio aquí
+                            rx.text(AppState.shipping_cost_cop, size="5")
                         ),
                         width="100%"
                     ),
@@ -95,7 +96,7 @@ def cart_page_content() -> rx.Component:
                     rx.hstack(
                         rx.heading("Total:", size="6"),
                         rx.spacer(),
-                        rx.heading(AppState.grand_total_cop, size="6"), # <-- Cambio aquí
+                        rx.heading(AppState.grand_total_cop, size="6"),
                         width="100%"
                     ),
                     
