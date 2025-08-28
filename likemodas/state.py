@@ -2902,7 +2902,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("Producto no encontrado o no disponible.")
                 return
 
-            # (Lógica de envío y datos del vendedor no cambia)
+            # Lógica de envío y datos del vendedor (sin cambios)
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
             final_shipping_cost = calculate_dynamic_shipping(base_cost=db_post.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
@@ -2910,22 +2910,37 @@ class AppState(reflex_local_auth.LocalAuthState):
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             
-            self.product_in_modal = ProductDetailData.from_orm(db_post, update={"shipping_display_text": shipping_text, "seller_name": seller_name, "seller_id": seller_id})
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Construimos el DTO manualmente en lugar de usar from_orm con 'update'
+            self.product_in_modal = ProductDetailData(
+                id=db_post.id,
+                title=db_post.title,
+                content=db_post.content,
+                price_cop=db_post.price_cop,
+                variants=db_post.variants or [],
+                created_at_formatted=db_post.created_at_formatted,
+                average_rating=db_post.average_rating,
+                rating_count=db_post.rating_count,
+                shipping_cost=db_post.shipping_cost,
+                is_moda_completa_eligible=db_post.is_moda_completa_eligible,
+                is_imported=db_post.is_imported,
+                # Añadimos los campos calculados
+                shipping_display_text=shipping_text,
+                seller_name=seller_name,
+                seller_id=seller_id
+            )
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
             if self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
-            # Carga de comentarios (no cambia)
+            # El resto de la función (carga de comentarios y lógica de opinión) no cambia
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
             self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
 
-            # Lógica para mostrar el formulario de opinión
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
-                
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                # La condición ahora solo busca compras con el estado "DELIVERED"
                 purchase_count = session.exec(
                     sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
                     .join(PurchaseModel)
@@ -2935,7 +2950,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         PurchaseModel.status == PurchaseStatus.DELIVERED
                     )
                 ).one()
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
                 if purchase_count > 0:
                     user_original_comment = next((c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None), None)
