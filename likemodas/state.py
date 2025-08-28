@@ -2116,27 +2116,26 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
+                # --- ✨ LÓGICA DE MENSAJE MEJORADA ✨ ---
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
                 if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
-                time_str = ", ".join(time_parts)
+                
+                time_str = ", ".join(time_parts) if time_parts else "pronto"
+                mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
+                # --- ✨ FIN DE LA LÓGICA MEJORADA ✨ ---
 
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
-                    message=f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}.",
+                    message=mensaje,
                     url="/my-purchases"
                 )
                 session.add(notification)
                 session.commit()
                 
                 yield rx.toast.success("Notificación de envío enviada.")
-                
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-                # Usamos AppState.nombre_del_evento para encadenarlo correctamente.
                 yield AppState.load_active_purchases
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
             else:
                 yield rx.toast.error("La compra debe estar 'confirmada' para poder notificar el envío.")
 
@@ -2164,19 +2163,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # --- ✨ INICIO DEL CÓDIGO AÑADIDO ✨ ---
-                # Construye el texto del tiempo de entrega
+                # --- ✨ LÓGICA DE MENSAJE MEJORADA ✨ ---
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
                 if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
-                time_str = ", ".join(time_parts)
-                # --- ✨ FIN DEL CÓDIGO AÑADIDO ✨ ---
+                
+                time_str = ", ".join(time_parts) if time_parts else "pronto"
+                mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
+                # --- ✨ FIN DE LA LÓGICA MEJORADA ✨ ---
 
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
-                    # --- ✨ LÍNEA MODIFICADA ✨ ---
-                    message=f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}.",
+                    message=mensaje,
                     url="/my-purchases"
                 )
 
