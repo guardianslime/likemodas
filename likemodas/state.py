@@ -1470,44 +1470,35 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
-        """Calcula el estado de los selectores INTERACTIVOS (Talla, etc.)."""
-        if not self.product_in_modal: return []
+        """
+        Calcula los selectores para la variante actual. Ahora muestra
+        SOLAMENTE las opciones de la variante seleccionada.
+        """
+        # Obtiene la variante correspondiente a la imagen seleccionada
+        variant = self.current_modal_variant
+        if not variant:
+            return []
 
-        all_keys = sorted(list(
-            {key for variant in self.product_in_modal.variants for key in variant.get("attributes", {})}
-        ))
-        
-        # Filtra para obtener solo las claves que hemos definido como seleccionables
-        selectable_keys = [key for key in all_keys if key in self.SELECTABLE_ATTRIBUTES]
-        
-        current_selection = self.modal_selected_attributes
         selectors = []
+        attributes = variant.get("attributes", {})
+        current_selection = self.modal_selected_attributes
 
-        for i, key in enumerate(selectable_keys):
-            possible_variants = [
-                v for v in self.product_in_modal.variants
-                if all(
-                    current_selection.get(prev_key) in v.get("attributes", {}).get(prev_key, [])
-                    for prev_key in selectable_keys[:i]
+        # Itera sobre los atributos de la variante actual
+        for key, value in attributes.items():
+            # Si el atributo es uno de los que definimos como seleccionable...
+            if key in self.SELECTABLE_ATTRIBUTES:
+                # Crea el DTO para el selector
+                selectors.append(
+                    ModalSelectorDTO(
+                        key=key,
+                        # Las opciones son los valores de esta variante específica
+                        options=sorted(value) if isinstance(value, list) else [value],
+                        # El valor actual es el que está guardado en el estado
+                        current_value=current_selection.get(key, "")
+                    )
                 )
-            ]
-            available_options = set()
-            for variant in possible_variants:
-                attr_value = variant.get("attributes", {}).get(key)
-                if isinstance(attr_value, list):
-                    available_options.update(attr_value)
-                elif attr_value:
-                    available_options.add(attr_value)
-            
-            selectors.append(
-                ModalSelectorDTO(
-                    key=key,
-                    options=sorted(list(available_options)),
-                    current_value=current_selection.get(key, "")
-                )
-            )
+                
         return selectors
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     @rx.event
     def add_to_cart(self, product_id: int):
