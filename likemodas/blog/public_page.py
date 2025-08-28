@@ -1,9 +1,6 @@
 import reflex as rx
 import math
-from ..state import AppState, CommentData
-# --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-from ..state import AppState, CommentData, AttributeGroupDTO # Importa el nuevo DTO
-# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+from ..state import AppState, CommentData, ModalSelectorDTO
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
@@ -134,7 +131,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""
     
-    # ... (_modal_image_section no necesita cambios)
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
@@ -180,7 +176,6 @@ def product_detail_modal() -> rx.Component:
 
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
-            # ... (la sección superior con título, precio, etc., no cambia)
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
@@ -206,36 +201,41 @@ def product_detail_modal() -> rx.Component:
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # Ahora usamos la nueva propiedad `modal_attribute_selectors`
-            rx.cond(
-                AppState.modal_attribute_selectors,
-                rx.vstack(
-                    rx.divider(margin_y="1em"),
-                    rx.heading("Características", size="4"),
-                    rx.foreach(
-                        AppState.modal_attribute_selectors, # Itera sobre la nueva propiedad
-                        lambda selector: rx.vstack(
-                            rx.text(selector.key, weight="bold", size="3"),
-                            rx.segmented_control.root(
-                                rx.foreach(
-                                    selector.options, # Usa las opciones filtradas
-                                    lambda option: rx.segmented_control.item(option, value=option)
-                                ),
-                                on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
-                                value=selector.current_value, # Usa el valor actual del selector
-                            ),
-                            align_items="start",
-                            width="100%",
-                            spacing="2"
-                        )
+            rx.vstack(
+                rx.divider(margin_y="1em"),
+                rx.heading("Características", size="4"),
+                
+                # Bucle para atributos de SÓLO LECTURA (Color)
+                rx.foreach(
+                    AppState.current_variant_display_attributes.items(),
+                    lambda item: rx.hstack(
+                        rx.text(item[0], weight="bold", size="3"), # Clave (ej: "Color")
+                        rx.text(item[1], size="3"),                # Valor (ej: "Azul, Verde")
+                        spacing="3"
                     ),
-                    align_items="start", width="100%", spacing="3", margin_top="1em",
-                )
+                ),
+
+                # Bucle para atributos SELECCIONABLES (Talla)
+                rx.foreach(
+                    AppState.modal_attribute_selectors,
+                    lambda selector: rx.vstack(
+                        rx.text(selector.key, weight="bold", size="3"),
+                        rx.segmented_control.root(
+                            rx.foreach(
+                                selector.options, # Usa las opciones filtradas
+                                lambda option: rx.segmented_control.item(option, value=option)
+                            ),
+                            on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
+                            value=selector.current_value, # Usa el valor actual del selector
+                        ),
+                        align_items="start",
+                        width="100%",
+                        spacing="2"
+                    )
+                ),
+                align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
-            # ... (la sección inferior con "Publicado por" y botones no cambia)
             rx.text(
                 "Publicado por: ",
                 rx.link(
@@ -267,7 +267,6 @@ def product_detail_modal() -> rx.Component:
             align="start", height="100%",
         )
     
-    # ... (El resto de product_detail_modal y blog_public_page_content no cambia)
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
