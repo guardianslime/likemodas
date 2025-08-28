@@ -1661,15 +1661,28 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
         
         summary = self.cart_summary
-        cart_details_data = self.cart_details # Obtenemos los detalles para el checkout
-        
+        cart_details_data = self.cart_details
+
         with rx.session() as session:
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # 1. Extrae los IDs de producto de las claves del carrito.
+            #    La clave es "product_id-variant_index-selection", así que tomamos la primera parte.
+            product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+
+            # 2. Busca los productos en la base de datos usando los IDs correctos.
+            post_map = {
+                p.id: p for p in session.exec(
+                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))
+                ).all()
+            }
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
                 total_price=summary["grand_total"], 
                 shipping_applied=summary["shipping_cost"],
                 status=PurchaseStatus.PENDING_CONFIRMATION,
-                payment_method=self.payment_method, # <-- Guarda el método de pago
+                payment_method=self.payment_method,
                 shipping_name=self.default_shipping_address.name, 
                 shipping_city=self.default_shipping_address.city,
                 shipping_neighborhood=self.default_shipping_address.neighborhood, 
@@ -1680,20 +1693,21 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
             
-            post_map = {p.id: p for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(list(self.cart.keys())))).all()}
+            # Crear los items de la compra con la información de la variante
             for item_data in cart_details_data:
-                session.add(PurchaseItemModel(
-                    purchase_id=new_purchase.id,
-                    blog_post_id=item_data.product_id,
-                    quantity=item_data.quantity,
-                    price_at_purchase=item_data.price,
-                    selected_variant=item_data.variant_details # <-- Guardamos la variante!
-                ))
+                post = post_map.get(item_data.product_id)
+                if post:
+                    session.add(PurchaseItemModel(
+                        purchase_id=new_purchase.id,
+                        blog_post_id=item_data.product_id,
+                        quantity=item_data.quantity,
+                        price_at_purchase=post.price, # Usamos el precio actual del producto
+                        selected_variant=item_data.variant_details
+                    ))
             session.commit()
             
         self.cart.clear()
         self.default_shipping_address = None
-        # ✨ CORRECCIÓN AQUÍ
         yield AppState.notify_admin_of_new_purchase
         yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
         return rx.redirect("/my-purchases")
