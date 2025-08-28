@@ -243,7 +243,7 @@ class SupportTicketData(rx.Base):
 class AttributeGroupDTO(rx.Base):
     """DTO para agrupar un atributo y sus posibles valores."""
     key: str        # ej: "Talla"
-    values: list[str] # ej: ["XS", "S", "M"]
+    options: list[str] # RENOMBRADO de 'values' a 'options'
 # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
 class CartItemData(rx.Base):
@@ -1426,7 +1426,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def product_in_modal_grouped_attributes(self) -> list[AttributeGroupDTO]:
         """
         Agrupa los atributos de todas las variantes para mostrarlos como opciones.
-        Ahora devuelve una lista de DTOs con tipos explícitos.
+        Ahora devuelve una lista de DTOs con tipos explícitos y el atributo renombrado.
         """
         if not self.product_in_modal:
             return []
@@ -1441,9 +1441,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 else:
                     grouped[key].add(value)
         
-        # Convertir el diccionario a una lista de DTOs
+        # Convertir el diccionario a una lista de DTOs, usando 'options'
         return [
-            AttributeGroupDTO(key=key, values=sorted(list(values)))
+            AttributeGroupDTO(key=key, options=sorted(list(values)))
             for key, values in grouped.items()
         ]
     # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---

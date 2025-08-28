@@ -214,10 +214,10 @@ def product_detail_modal() -> rx.Component:
                     rx.foreach(
                         AppState.product_in_modal_grouped_attributes, # Itera sobre la lista de DTOs
                         lambda item: rx.vstack(
-                            rx.text(item.key, weight="bold", size="3"), # Usa item.key
+                            rx.text(item.key, weight="bold", size="3"),
                             rx.segmented_control.root(
                                 rx.foreach(
-                                    item.values, # Itera sobre item.values (lista de strings)
+                                    item.options, # <-- CORREGIDO: Itera sobre item.options
                                     lambda option: rx.segmented_control.item(option, value=option)
                                 ),
                                 on_change=lambda value: AppState.set_modal_selected_attribute(item.key, value),
