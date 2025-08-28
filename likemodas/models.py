@@ -224,6 +224,12 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
     
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # Este campo guardará un JSON con los detalles de la variante elegida
+    # por ejemplo: {"Talla": "S", "Color": "Azul"}
+    selected_variant: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
     comments: List["CommentModel"] = Relationship()
