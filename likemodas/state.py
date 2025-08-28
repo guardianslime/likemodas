@@ -1021,19 +1021,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     post_images_in_form: list[str] = []
 
-    @rx.var
-    def current_image_url(self) -> str:
-        """Devuelve la URL de la imagen de la variante seleccionada."""
-        # --- 👇 CÓDIGO CORREGIDO Y ROBUSTO 👇 ---
-        if self.product_in_modal and self.product_in_modal.variants:
-            # Asegurarse de que el índice sea válido
-            if 0 <= self.modal_selected_variant_index < len(self.product_in_modal.variants):
-                # Obtener el diccionario de la variante actual
-                variant = self.product_in_modal.variants[self.modal_selected_variant_index]
-                # Obtener la URL de la imagen de ese diccionario de forma segura
-                image_url = variant.get("image_url", "")
-                return rx.get_upload_url(image_url) if image_url else ""
-        return ""
+
 
     def next_image(self):
         if self.product_in_modal and self.product_in_modal.image_urls:
@@ -1204,10 +1192,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         return None
 
     @rx.var
-    def current_modal_image_url(self) -> str:
-        """Devuelve la URL de la imagen de la variante seleccionada."""
+    def current_modal_image_filename(self) -> str:
+        """
+        Devuelve SOLO el nombre del archivo de la variante seleccionada.
+        Esto es un string simple y seguro para el backend.
+        """
         variant = self.current_modal_variant
-        return rx.get_upload_url(variant.get("image_url", "")) if variant else ""
+        return variant.get("image_url", "") if variant else ""
 
     @rx.var
     def current_modal_attributes_list(self) -> list[AttributeData]:
