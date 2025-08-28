@@ -1502,56 +1502,54 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def add_to_cart(self, product_id: int):
-        """Añade una variante específica de un producto al carrito."""
+        """
+        Añade una variante específica de un producto al carrito, validando la selección.
+        """
         if not self.is_authenticated:
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         if not self.product_in_modal or product_id != self.product_in_modal.id:
             return rx.toast.error("Error al identificar el producto.")
 
-        # Validar que se hayan seleccionado todos los atributos necesarios
-        required_keys = self.product_in_modal_grouped_attributes.keys()
+        # 1. Valida que el usuario haya hecho una selección para cada selector obligatorio (Talla, etc.)
+        required_keys = {selector.key for selector in self.modal_attribute_selectors}
         if not all(key in self.modal_selected_attributes for key in required_keys):
-            return rx.toast.error("Por favor, selecciona todas las opciones (talla, color, etc.).")
+            return rx.toast.error(f"Por favor, selecciona una opción para: {', '.join(required_keys)}")
 
-        # Encontrar el índice de la variante que coincide con la selección
+        # 2. Construye el conjunto completo de atributos deseados
+        # Combina los atributos de solo lectura (Color) con los seleccionados por el usuario (Talla)
+        final_selection = self.modal_selected_attributes.copy()
+        display_attrs = self.current_variant_display_attributes
+        for key, value in display_attrs.items():
+            # Tomamos el primer valor si hay varios colores en la descripción (ej: "Verde, Blanco")
+            final_selection[key] = value.split(', ')[0]
+
+        # 3. Busca la variante que coincida exactamente con la selección final del usuario
         variant_index = -1
         for i, variant in enumerate(self.product_in_modal.variants):
-            attrs = variant.get("attributes", {})
+            variant_attrs = variant.get("attributes", {})
             match = True
-            for key, selected_value in self.modal_selected_attributes.items():
-                variant_value = attrs.get(key)
-                # Manejar el caso donde el atributo puede ser una lista (color) o un string (talla)
-                if isinstance(variant_value, list):
-                    if selected_value not in variant_value:
-                        match = False; break
-                elif variant_value != selected_value:
-                    match = False; break
+            # Comprueba si la variante contiene todos los atributos de la selección final
+            for key, selected_value in final_selection.items():
+                attr_value = variant_attrs.get(key)
+                if isinstance(attr_value, list):
+                    if selected_value not in attr_value:
+                        match = False
+                        break
+                elif attr_value != selected_value:
+                    match = False
+                    break
             if match:
                 variant_index = i
                 break
-        
-        if variant_index == -1:
-            # Esto puede pasar si las imágenes tienen atributos combinados (ej. una imagen para S-Azul y S-Rojo)
-            # Buscamos la primera variante que contenga los atributos seleccionados
-            for i, variant in enumerate(self.product_in_modal.variants):
-                attrs = variant.get("attributes", {})
-                is_subset = all(
-                    self.modal_selected_attributes.get(k) in v for k, v in attrs.items() if isinstance(v, list)
-                ) and all(
-                    self.modal_selected_attributes.get(k) == v for k, v in attrs.items() if not isinstance(v, list)
-                )
-                if is_subset:
-                    variant_index = i
-                    break
-
+                
         if variant_index == -1:
             return rx.toast.error("La combinación de atributos seleccionada no está disponible.")
 
-        # Crear la clave única y añadir al carrito
+        # 4. Crea la clave única para el carrito y añade el producto
         cart_key = f"{product_id}-{variant_index}"
         self.cart[cart_key] = self.cart.get(cart_key, 0) + 1
         
-        # Limpiar y cerrar modal
+        # 5. Limpia el estado del modal y ciérralo
         self.modal_selected_attributes = {}
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido al carrito.")
