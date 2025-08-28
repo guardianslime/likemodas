@@ -613,6 +613,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.new_variants[self.selected_variant_index]["attributes"] = attributes
         return rx.toast.success(f"Atributos guardados para la imagen #{self.selected_variant_index + 1}")
 
+    def _set_default_attributes_from_variant(self, variant: dict):
+        """Función auxiliar para establecer la selección por defecto en el modal."""
+        new_selections = {}
+        attributes = variant.get("attributes", {})
+        for key, value in attributes.items():
+            # Si el atributo tiene una lista de opciones (ej: Color), toma la primera
+            if isinstance(value, list) and value:
+                new_selections[key] = value[0]
+            # Si es un solo valor (ej: Talla), lo toma directamente
+            elif isinstance(value, str):
+                new_selections[key] = value
+        # Actualiza el estado que controla los selectores en el modal
+        self.modal_selected_attributes = new_selections
 
     def _clear_add_form(self):
         self.title = ""
@@ -2827,17 +2840,21 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- NUEVOS MANEJADORES PARA EL MODAL ---
     def set_modal_variant_index(self, index: int):
-        """Cambia la variante que se está viendo en el modal."""
+        """
+        Cambia la variante en el modal y actualiza las selecciones de atributos
+        para que coincidan con la nueva variante seleccionada.
+        """
         self.modal_selected_variant_index = index
-        # 2. CORRECCIÓN: Limpiamos las selecciones de atributos al cambiar de imagen.
-        self.modal_selected_attributes = {}
+        if self.product_in_modal and 0 <= index < len(self.product_in_modal.variants):
+            selected_variant = self.product_in_modal.variants[index]
+            self._set_default_attributes_from_variant(selected_variant)
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         # Reseteo inicial de todas las variables del modal
         self.product_in_modal = None
         self.show_detail_modal = True
-        self.modal_selected_attributes = {}
+        self.modal_selected_attributes = {}  # Limpia selecciones de atributos anteriores
         self.modal_selected_variant_index = 0
         self.product_comments = []
         self.my_review_for_product = None
@@ -2860,7 +2877,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("Producto no encontrado o no disponible.")
                 return
 
-            # Lógica de envío y datos del vendedor (sin cambios)
+            # Lógica de envío y datos del vendedor
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
             final_shipping_cost = calculate_dynamic_shipping(
@@ -2874,62 +2891,61 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             # Creación del DTO del producto para el modal
             self.product_in_modal = ProductDetailData(
-                id=db_post.id, title=db_post.title, content=db_post.content,
-                price_cop=db_post.price_cop, variants=db_post.variants or [],
+                id=db_post.id,
+                title=db_post.title,
+                content=db_post.content,
+                price_cop=db_post.price_cop,
+                variants=db_post.variants or [],
                 created_at_formatted=db_post.created_at_formatted,
-                average_rating=db_post.average_rating, rating_count=db_post.rating_count,
-                seller_name=seller_name, seller_id=seller_id,
-                shipping_cost=db_post.shipping_cost, is_moda_completa_eligible=db_post.is_moda_completa_eligible,
-                shipping_display_text=shipping_text, is_imported=db_post.is_imported,
+                average_rating=db_post.average_rating,
+                rating_count=db_post.rating_count,
+                seller_name=seller_name,
+                seller_id=seller_id,
+                shipping_cost=db_post.shipping_cost,
+                is_moda_completa_eligible=db_post.is_moda_completa_eligible,
+                shipping_display_text=shipping_text,
+                is_imported=db_post.is_imported,
             )
             
+            # Establece las selecciones por defecto basadas en la PRIMERA variante
+            if self.product_in_modal.variants:
+                self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
+
             # Carga y procesamiento de comentarios
             all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
             self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
 
-            # --- ✨ INICIO DE LA LÓGICA DE OPINIONES CORREGIDA Y SIMPLIFICADA ✨ ---
+            # Lógica para mostrar el formulario de opinión (sin cambios)
             if self.is_authenticated:
-                # Usamos el user_info_id, que es consistente para queries
                 user_info_id = self.authenticated_user_info.id
-
-                # 1. Contar cuántas veces ha comprado este producto y el pedido ha sido entregado/enviado.
                 purchase_count = session.exec(
                     sqlmodel.select(sqlmodel.func.count(PurchaseItemModel.id))
                     .join(PurchaseModel)
                     .where(
                         PurchaseModel.userinfo_id == user_info_id,
                         PurchaseItemModel.blog_post_id == post_id,
-                        PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.SHIPPED]) # Condición de compra
+                        PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.SHIPPED])
                     )
                 ).one()
 
-                # 2. Si ha comprado el producto al menos una vez.
                 if purchase_count > 0:
-                    # Buscar el comentario original del usuario para este producto.
                     user_original_comment = next(
                         (c for c in db_post.comments if c.userinfo_id == user_info_id and c.parent_comment_id is None),
                         None
                     )
-
-                    # Si no hay comentario original, puede crear uno nuevo.
                     if not user_original_comment:
                         self.show_review_form = True
                     else:
-                        # Si ya comentó, verificar si puede actualizarlo.
-                        # Puede actualizar hasta N-1 veces, donde N es el número de compras.
                         current_updates_count = len(user_original_comment.updates)
                         if current_updates_count < purchase_count:
                             self.show_review_form = True
-                            # Cargar los datos de la última opinión (ya sea la original o la última actualización)
                             latest_entry = sorted([user_original_comment] + user_original_comment.updates, key=lambda c: c.created_at, reverse=True)[0]
                             self.my_review_for_product = self._convert_comment_to_dto(latest_entry)
                             self.review_rating = latest_entry.rating
                             self.review_content = latest_entry.content
                         else:
-                            # Si ya ha usado todas sus oportunidades de actualización.
                             self.review_limit_reached = True
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
         yield AppState.load_saved_post_ids
 
