@@ -1510,12 +1510,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.product_in_modal or product_id != self.product_in_modal.id:
             return rx.toast.error("Error al identificar el producto.")
 
-        # 1. Valida que el usuario haya hecho una selección para cada selector obligatorio (Talla, etc.)
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+        # 1. Usa la nueva propiedad `modal_attribute_selectors` para obtener las claves requeridas.
         required_keys = {selector.key for selector in self.modal_attribute_selectors}
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
+        # 2. Valida que el usuario haya hecho una selección para cada selector obligatorio (Talla, etc.)
         if not all(key in self.modal_selected_attributes for key in required_keys):
             return rx.toast.error(f"Por favor, selecciona una opción para: {', '.join(required_keys)}")
 
-        # 2. Construye el conjunto completo de atributos deseados
+        # 3. Construye el conjunto completo de atributos deseados
         # Combina los atributos de solo lectura (Color) con los seleccionados por el usuario (Talla)
         final_selection = self.modal_selected_attributes.copy()
         display_attrs = self.current_variant_display_attributes
@@ -1523,7 +1527,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             # Tomamos el primer valor si hay varios colores en la descripción (ej: "Verde, Blanco")
             final_selection[key] = value.split(', ')[0]
 
-        # 3. Busca la variante que coincida exactamente con la selección final del usuario
+        # 4. Busca la variante que coincida exactamente con la selección final del usuario
         variant_index = -1
         for i, variant in enumerate(self.product_in_modal.variants):
             variant_attrs = variant.get("attributes", {})
@@ -1545,11 +1549,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         if variant_index == -1:
             return rx.toast.error("La combinación de atributos seleccionada no está disponible.")
 
-        # 4. Crea la clave única para el carrito y añade el producto
+        # 5. Crea la clave única para el carrito y añade el producto
         cart_key = f"{product_id}-{variant_index}"
         self.cart[cart_key] = self.cart.get(cart_key, 0) + 1
         
-        # 5. Limpia el estado del modal y ciérralo
+        # 6. Limpia el estado del modal y ciérralo
         self.modal_selected_attributes = {}
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido al carrito.")
