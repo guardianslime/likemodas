@@ -71,22 +71,6 @@ class ContactEntryDTO(rx.Base):
     created_at_formatted: str
     userinfo_id: Optional[int]
 
-class CartItemData(rx.Base):
-    """DTO simple para representar un artículo en el carrito."""
-    id: int
-    title: str
-    price: float
-    price_cop: str
-    image_url: str
-    quantity: int
-
-    @property
-    def subtotal(self) -> float:
-        return self.price * self.quantity
-
-    @property
-    def subtotal_cop(self) -> str:
-        return format_to_cop(self.subtotal)
 
 # --- ✨ FIN DE LA CORRECCIÓN ---
 
@@ -256,13 +240,16 @@ class SupportTicketData(rx.Base):
     status: str
 
 class CartItemData(rx.Base):
-    """DTO simple para representar un artículo en el carrito."""
-    id: int
+    """DTO para el carrito, ahora incluye detalles de la variante."""
+    cart_key: str  # e.g., "15-2" (product_id-variant_index)
+    product_id: int
+    variant_index: int
     title: str
     price: float
     price_cop: str
     image_url: str
     quantity: int
+    variant_details: dict # e.g., {"Talla": "S", "Color": "Azul"}
 
     @property
     def subtotal(self) -> float:
@@ -1214,6 +1201,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         return processed
 
     cart: Dict[int, int] = {}
+
+    modal_selected_attributes: dict = {}
     
     @rx.var
     def cart_items_count(self) -> int: return sum(self.cart.values())
@@ -1393,59 +1382,122 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def cart_details(self) -> List[CartItemData]:
-        """
-        Devuelve los detalles de los artículos del carrito como una lista de DTOs simples y serializables.
-        """
-        if not self.cart:
-            return []
-        
+        if not self.cart: return []
         with rx.session() as session:
-            post_ids = list(self.cart.keys())
-            if not post_ids:
-                return []
-            
-            results = session.exec(
-                sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))
-            ).all()
-            
+            product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+            if not product_ids: return []
+
+            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
             post_map = {p.id: p for p in results}
             
             cart_items_data = []
-            for post_id, quantity in self.cart.items():
-                post = post_map.get(post_id)
-                if post:
-                    # Extrae la URL de la imagen de la primera variante de forma segura
-                    main_image = ""
-                    if post.variants:
-                        main_image = post.variants[0].get("image_url", "")
-                    
+            for cart_key, quantity in self.cart.items():
+                product_id_str, variant_index_str = cart_key.split('-')
+                product_id = int(product_id_str)
+                variant_index = int(variant_index_str)
+                
+                post = post_map.get(product_id)
+                if post and post.variants and 0 <= variant_index < len(post.variants):
+                    variant = post.variants[variant_index]
                     cart_items_data.append(
                         CartItemData(
-                            id=post.id,
-                            title=post.title,
-                            price=post.price,
-                            price_cop=post.price_cop,
-                            image_url=main_image,
-                            quantity=quantity
+                            cart_key=cart_key, product_id=product_id, variant_index=variant_index,
+                            title=post.title, price=post.price, price_cop=post.price_cop,
+                            image_url=variant.get("image_url", ""), quantity=quantity,
+                            variant_details=variant.get("attributes", {})
                         )
                     )
             return cart_items_data
+        
+     # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
+    def set_modal_selected_attribute(self, key: str, value: str):
+        """Actualiza la selección de un atributo en el modal."""
+        self.modal_selected_attributes[key] = value
+
+    # --- ✨ PROPIEDAD COMPUTADA para agrupar atributos en el modal ✨ ---
+    @rx.var
+    def product_in_modal_grouped_attributes(self) -> dict:
+        """Agrupa los atributos de todas las variantes para mostrarlos como opciones."""
+        if not self.product_in_modal:
+            return {}
+
+        grouped = defaultdict(set)
+        for variant in self.product_in_modal.variants:
+            attributes = variant.get("attributes", {})
+            for key, value in attributes.items():
+                if isinstance(value, list):
+                    for v in value:
+                        grouped[key].add(v)
+                else:
+                    grouped[key].add(value)
+        
+        # Convertir los sets a listas ordenadas para la UI
+        return {key: sorted(list(values)) for key, values in grouped.items()}
+
 
     @rx.event
-    def add_to_cart(self, post_id: int):
+    def add_to_cart(self, product_id: int):
+        """Añade una variante específica de un producto al carrito."""
         if not self.is_authenticated:
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-        self.cart[post_id] = self.cart.get(post_id, 0) + 1
-        self.show_detail_modal = False
-        self.product_in_modal = None
-        return rx.toast.success("Producto añadido al carrito.")
+        if not self.product_in_modal or product_id != self.product_in_modal.id:
+            return rx.toast.error("Error al identificar el producto.")
+
+        # Validar que se hayan seleccionado todos los atributos necesarios
+        required_keys = self.product_in_modal_grouped_attributes.keys()
+        if not all(key in self.modal_selected_attributes for key in required_keys):
+            return rx.toast.error("Por favor, selecciona todas las opciones (talla, color, etc.).")
+
+        # Encontrar el índice de la variante que coincide con la selección
+        variant_index = -1
+        for i, variant in enumerate(self.product_in_modal.variants):
+            attrs = variant.get("attributes", {})
+            match = True
+            for key, selected_value in self.modal_selected_attributes.items():
+                variant_value = attrs.get(key)
+                # Manejar el caso donde el atributo puede ser una lista (color) o un string (talla)
+                if isinstance(variant_value, list):
+                    if selected_value not in variant_value:
+                        match = False; break
+                elif variant_value != selected_value:
+                    match = False; break
+            if match:
+                variant_index = i
+                break
         
+        if variant_index == -1:
+            # Esto puede pasar si las imágenes tienen atributos combinados (ej. una imagen para S-Azul y S-Rojo)
+            # Buscamos la primera variante que contenga los atributos seleccionados
+            for i, variant in enumerate(self.product_in_modal.variants):
+                attrs = variant.get("attributes", {})
+                is_subset = all(
+                    self.modal_selected_attributes.get(k) in v for k, v in attrs.items() if isinstance(v, list)
+                ) and all(
+                    self.modal_selected_attributes.get(k) == v for k, v in attrs.items() if not isinstance(v, list)
+                )
+                if is_subset:
+                    variant_index = i
+                    break
+
+        if variant_index == -1:
+            return rx.toast.error("La combinación de atributos seleccionada no está disponible.")
+
+        # Crear la clave única y añadir al carrito
+        cart_key = f"{product_id}-{variant_index}"
+        self.cart[cart_key] = self.cart.get(cart_key, 0) + 1
+        
+        # Limpiar y cerrar modal
+        self.modal_selected_attributes = {}
+        self.show_detail_modal = False
+        return rx.toast.success("Producto añadido al carrito.")
+
     @rx.event
-    def remove_from_cart(self, post_id: int):
-        if post_id in self.cart:
-            self.cart[post_id] -= 1
-            if self.cart[post_id] <= 0:
-                del self.cart[post_id]
+    def remove_from_cart(self, cart_key: str):
+        """Elimina un artículo del carrito usando su clave única."""
+        if cart_key in self.cart:
+            self.cart[cart_key] -= 1
+            if self.cart[cart_key] <= 0:
+                del self.cart[cart_key]
 
     title: str = ""
     content: str = ""
@@ -1557,6 +1609,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
         
         summary = self.cart_summary
+        cart_details_data = self.cart_details # Obtenemos los detalles para el checkout
         
         with rx.session() as session:
             new_purchase = PurchaseModel(
@@ -1576,14 +1629,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.refresh(new_purchase)
             
             post_map = {p.id: p for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(list(self.cart.keys())))).all()}
-            for post_id, quantity in self.cart.items():
-                if post_id in post_map: 
-                    session.add(PurchaseItemModel(
-                        purchase_id=new_purchase.id,
-                        blog_post_id=post_map[post_id].id,
-                        quantity=quantity,
-                        price_at_purchase=post_map[post_id].price
-                    ))
+            for item_data in cart_details_data:
+                session.add(PurchaseItemModel(
+                    purchase_id=new_purchase.id,
+                    blog_post_id=item_data.product_id,
+                    quantity=item_data.quantity,
+                    price_at_purchase=item_data.price,
+                    selected_variant=item_data.variant_details # <-- Guardamos la variante!
+                ))
             session.commit()
             
         self.cart.clear()

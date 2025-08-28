@@ -1,10 +1,6 @@
 import reflex as rx
 import math
-
-from requests import post
-
-from likemodas.utils.formatting import format_to_cop
-from ..state import AppState, CommentData, AttributeData
+from ..state import AppState, CommentData
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
@@ -14,7 +10,7 @@ def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                rx.icon("pencil", size=16, margin_right="0.5em"), 
+                rx.icon("pencil", size=16, margin_right="0.5em"),
                 rx.text("Actualización:", weight="bold"),
                 star_rating_display(comment.rating, 1),
                 rx.spacer(),
@@ -52,10 +48,7 @@ def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Compone
     )
 
 def review_submission_form() -> rx.Component:
-    """
-    Muestra el formulario para opinar, el mensaje de límite alcanzado, 
-    o nada, según el estado del usuario.
-    """
+    """Muestra el formulario para opinar."""
     return rx.cond(
         AppState.show_review_form,
         rx.form(
@@ -82,29 +75,23 @@ def review_submission_form() -> rx.Component:
                     width="100%",
                 ),
                 rx.button(rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%"),
-                spacing="3",
-                padding="1.5em",
-                border="1px solid",
-                border_color=rx.color("gray", 6),
-                border_radius="md",
-                width="100%",
+                spacing="3", padding="1.5em", border="1px solid",
+                border_color=rx.color("gray", 6), border_radius="md", width="100%",
             ),
             on_submit=AppState.submit_review,
         ),
         rx.cond(
             AppState.review_limit_reached,
             rx.callout(
-                "Has alcanzado el límite de actualizaciones para esta compra. Para dejar una nueva opinión, debes adquirir el producto nuevamente.",
-                icon="info",
-                margin_top="1.5em",
-                width="100%"
+                "Has alcanzado el límite de actualizaciones para esta compra.",
+                icon="info", margin_top="1.5em", width="100%"
             ),
             rx.fragment()
         )
     )
 
 def render_comment_item(comment: CommentData) -> rx.Component:
-    """Renderiza un comentario principal con un botón para ver su historial."""
+    """Renderiza un comentario principal con su historial."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
     return rx.box(
         rx.vstack(
@@ -125,32 +112,20 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                         rx.text("Ver historial (", rx.text(update_count, as_="span"), " actualizaciones)")
                     ),
                     on_click=AppState.toggle_comment_updates(comment.id),
-                    variant="soft",
-                    size="1",
-                    margin_top="0.5em"
+                    variant="soft", size="1", margin_top="0.5em"
                 )
             ),
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
-                rx.foreach(
-                    comment.updates,
-                    render_update_item
-                )
+                rx.foreach(comment.updates, render_update_item)
             ),
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
-                width="100%",
-                justify="end",
-                spacing="1",
-                margin_top="1em"
+                width="100%", justify="end", spacing="1", margin_top="1em"
             ),
-            align_items="start",
-            spacing="2"
+            align_items="start", spacing="2"
         ),
-        padding="1em",
-        border_bottom="1px solid",
-        border_color=rx.color("gray", 4),
-        width="100%"
+        padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
     )
 
 def product_detail_modal() -> rx.Component:
@@ -161,24 +136,21 @@ def product_detail_modal() -> rx.Component:
         return rx.vstack(
             rx.box(
                 rx.cond(
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    # 1. Comprobamos el nuevo nombre de la variable, que devuelve el nombre del archivo.
                     AppState.current_modal_image_filename,
                     rx.image(
-                        # 2. Envolvemos el nombre del archivo con rx.get_upload_url() aquí, en la UI.
                         src=rx.get_upload_url(AppState.current_modal_image_filename),
-                        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                         alt=AppState.product_in_modal.title,
                         width="100%", height="100%", object_fit="cover",
                     ),
                     rx.box(
                         rx.icon("image_off", size=48), 
-                        width="100%", height="100%", 
-                        display="flex", align_items="center", justify_content="center", 
+                        width="100%", height="100%", display="flex", 
+                        align_items="center", justify_content="center", 
                         bg=rx.color("gray", 3)
                     ),
                 ),
-                position="relative", width="100%", height=FIXED_HEIGHT, border_radius="var(--radius-3)", overflow="hidden",
+                position="relative", width="100%", height=FIXED_HEIGHT, 
+                border_radius="var(--radius-3)", overflow="hidden",
             ),
             rx.cond(
                 AppState.product_in_modal.variants.length() > 1,
@@ -192,20 +164,14 @@ def product_detail_modal() -> rx.Component:
                             ),
                             border_width=rx.cond(AppState.modal_selected_variant_index == index, "2px", "1px"),
                             border_color=rx.cond(AppState.modal_selected_variant_index == index, "violet", "gray"),
-                            padding="2px",
-                            border_radius="lg",
-                            cursor="pointer",
+                            padding="2px", border_radius="lg", cursor="pointer",
                             on_click=AppState.set_modal_variant_index(index),
                         )
                     ),
-                    spacing="3",
-                    padding="0.5em",
-                    width="100%",
-                    overflow_x="auto",
+                    spacing="3", padding="0.5em", width="100%", overflow_x="auto",
                 )
             ),
-            spacing="3",
-            width="100%",
+            spacing="3", width="100%",
         )
 
     def _modal_info_section() -> rx.Component:
@@ -218,8 +184,7 @@ def product_detail_modal() -> rx.Component:
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
                     color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
-                    variant="solid",
-                    size="2"
+                    variant="solid", size="2"
                 ),
                 rx.cond(
                     AppState.product_in_modal.is_moda_completa_eligible,
@@ -232,41 +197,51 @@ def product_detail_modal() -> rx.Component:
                     AppState.product_in_modal.is_imported,
                     rx.badge("Importado", color_scheme="purple", variant="solid", size="2"),
                 ),
-                spacing="4",
-                align="center",
-                margin_y="1em",
+                spacing="4", align="center", margin_y="1em",
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
+            
+            # --- ✨ INICIO DE LA MODIFICACIÓN: SELECTORES DE VARIANTES ✨ ---
             rx.cond(
-                AppState.current_modal_attributes_list,
+                AppState.product_in_modal_grouped_attributes,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
                     rx.foreach(
-                        AppState.current_modal_attributes_list,
-                        lambda item: rx.hstack(
-                            rx.text(item.key, ":", weight="bold"),
-                            rx.text(item.value),
-                            spacing="2",
-                            align="center"
+                        AppState.product_in_modal_grouped_attributes.items(),
+                        lambda item: rx.vstack(
+                            rx.text(item[0], weight="bold", size="3"), # Ej: "Talla"
+                            rx.segmented_control.root(
+                                rx.segmented_control.list(
+                                    rx.foreach(
+                                        item[1], # La lista de opciones (ej: ["XS", "S"])
+                                        lambda option: rx.segmented_control.item(option, value=option)
+                                    ),
+                                ),
+                                # Actualiza el estado cuando el usuario elige una opción
+                                on_change=lambda value: AppState.set_modal_selected_attribute(item[0], value),
+                                # El valor seleccionado se toma del estado
+                                value=AppState.modal_selected_attributes.get(item[0], ""),
+                            ),
+                            align_items="start",
+                            width="100%",
+                            spacing="2"
                         )
                     ),
-                    align_items="start", width="100%", spacing="2", margin_top="1em",
+                    align_items="start", width="100%", spacing="3", margin_top="1em",
                 )
             ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+            
             rx.text(
                 "Publicado por: ",
                 rx.link(
                     AppState.product_in_modal.seller_name,
                     href=f"/vendedor?id={AppState.product_in_modal.seller_id}",
-                    color_scheme="violet",
-                    font_weight="bold",
+                    color_scheme="violet", font_weight="bold",
                 ),
-                size="3",
-                color_scheme="gray",
-                margin_top="1.5em",
-                text_align="left",
-                width="100%"
+                size="3", color_scheme="gray", margin_top="1.5em",
+                text_align="left", width="100%"
             ),
             rx.spacer(),
             rx.hstack(
@@ -274,8 +249,7 @@ def product_detail_modal() -> rx.Component:
                 rx.icon_button(
                     rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
                     on_click=AppState.toggle_save_post,
-                    size="3",
-                    variant="outline",
+                    size="3", variant="outline",
                 ),
                 rx.icon_button(
                     rx.icon(tag="share-2"),
@@ -283,15 +257,11 @@ def product_detail_modal() -> rx.Component:
                         rx.set_clipboard(AppState.base_app_url + "/?product=" + AppState.product_in_modal.id.to_string()),
                         rx.toast.success("¡Enlace para compartir copiado!")
                     ],
-                    size="3",
-                    variant="outline",
+                    size="3", variant="outline",
                 ),
-                spacing="3",
-                width="100%",
-                margin_top="1.5em",
+                spacing="3", width="100%", margin_top="1.5em",
             ),
-            align="start",
-            height="100%",
+            align="start", height="100%",
         )
     
     return rx.dialog.root(
@@ -313,10 +283,7 @@ def product_detail_modal() -> rx.Component:
                         rx.vstack(
                             rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
                             rx.foreach(AppState.product_comments, render_comment_item),
-                            spacing="1",
-                            width="100%",
-                            max_height="400px",
-                            overflow_y="auto"
+                            spacing="1", width="100%", max_height="400px", overflow_y="auto"
                         )
                     )
                 ),
