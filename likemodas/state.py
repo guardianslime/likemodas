@@ -239,6 +239,12 @@ class SupportTicketData(rx.Base):
     subject: str
     status: str
 
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Se añade esta configuración para permitir el uso de .from_orm()
+    class Config:
+        orm_mode = True
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
 # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
 class AttributeGroupDTO(rx.Base):
     """DTO para agrupar un atributo y sus posibles valores."""
