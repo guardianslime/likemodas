@@ -239,6 +239,13 @@ class SupportTicketData(rx.Base):
     subject: str
     status: str
 
+# --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+class AttributeGroupDTO(rx.Base):
+    """DTO para agrupar un atributo y sus posibles valores."""
+    key: str        # ej: "Talla"
+    values: list[str] # ej: ["XS", "S", "M"]
+# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
 class CartItemData(rx.Base):
     """DTO para el carrito, ahora incluye detalles de la variante."""
     cart_key: str  # e.g., "15-2" (product_id-variant_index)
@@ -1414,12 +1421,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Actualiza la selección de un atributo en el modal."""
         self.modal_selected_attributes[key] = value
 
-    # --- ✨ PROPIEDAD COMPUTADA para agrupar atributos en el modal ✨ ---
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
     @rx.var
-    def product_in_modal_grouped_attributes(self) -> dict:
-        """Agrupa los atributos de todas las variantes para mostrarlos como opciones."""
+    def product_in_modal_grouped_attributes(self) -> list[AttributeGroupDTO]:
+        """
+        Agrupa los atributos de todas las variantes para mostrarlos como opciones.
+        Ahora devuelve una lista de DTOs con tipos explícitos.
+        """
         if not self.product_in_modal:
-            return {}
+            return []
 
         grouped = defaultdict(set)
         for variant in self.product_in_modal.variants:
@@ -1431,8 +1441,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 else:
                     grouped[key].add(value)
         
-        # Convertir los sets a listas ordenadas para la UI
-        return {key: sorted(list(values)) for key, values in grouped.items()}
+        # Convertir el diccionario a una lista de DTOs
+        return [
+            AttributeGroupDTO(key=key, values=sorted(list(values)))
+            for key, values in grouped.items()
+        ]
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
 
     @rx.event

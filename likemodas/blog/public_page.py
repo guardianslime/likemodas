@@ -1,6 +1,9 @@
 import reflex as rx
 import math
 from ..state import AppState, CommentData
+# --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+from ..state import AppState, CommentData, AttributeGroupDTO # Importa el nuevo DTO
+# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
@@ -131,6 +134,7 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""
     
+    # ... (_modal_image_section no necesita cambios)
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
@@ -201,26 +205,24 @@ def product_detail_modal() -> rx.Component:
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
             rx.cond(
                 AppState.product_in_modal_grouped_attributes,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
                     rx.foreach(
-                        AppState.product_in_modal_grouped_attributes.items(),
+                        AppState.product_in_modal_grouped_attributes, # Itera sobre la lista de DTOs
                         lambda item: rx.vstack(
-                            rx.text(item[0], weight="bold", size="3"),
-                            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                            # Se eliminó el componente inexistente ".list"
+                            rx.text(item.key, weight="bold", size="3"), # Usa item.key
                             rx.segmented_control.root(
                                 rx.foreach(
-                                    item[1],
+                                    item.values, # Itera sobre item.values (lista de strings)
                                     lambda option: rx.segmented_control.item(option, value=option)
                                 ),
-                                on_change=lambda value: AppState.set_modal_selected_attribute(item[0], value),
-                                value=AppState.modal_selected_attributes.get(item[0], ""),
+                                on_change=lambda value: AppState.set_modal_selected_attribute(item.key, value),
+                                value=AppState.modal_selected_attributes.get(item.key, ""),
                             ),
-                            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                             align_items="start",
                             width="100%",
                             spacing="2"
@@ -229,6 +231,7 @@ def product_detail_modal() -> rx.Component:
                     align_items="start", width="100%", spacing="3", margin_top="1em",
                 )
             ),
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
             rx.text(
                 "Publicado por: ",
@@ -261,6 +264,7 @@ def product_detail_modal() -> rx.Component:
             align="start", height="100%",
         )
     
+    # ... (El resto de product_detail_modal y blog_public_page_content no cambia)
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
