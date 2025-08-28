@@ -1992,9 +1992,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        # --- 👇 LÍNEA CORREGIDA 👇 ---
+                        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                         variants=p.variants or [],
-                        attributes={},
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
@@ -2341,22 +2340,28 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if p.items:
                     for item in p.items:
                         if item.blog_post:
+                            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                            # Se obtiene la imagen de la primera variante del producto
+                            main_image = ""
+                            if item.blog_post.variants:
+                                main_image = item.blog_post.variants[0].get("image_url", "")
+                            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                            
                             purchase_items_data.append(
                                 PurchaseItemCardData(
                                     id=item.blog_post.id,
                                     title=item.blog_post.title,
-                                    image_url=item.blog_post.image_urls[0] if item.blog_post.image_urls else "",
+                                    image_url=main_image, # Se usa la nueva variable
                                     price_at_purchase=item.price_at_purchase,
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
                                     quantity=item.quantity
                                 )
                             )
                 
-                # --- INICIO DE LA CORRECCIÓN ---
                 temp_purchases.append(
                     UserPurchaseHistoryCardData(
                         id=p.id,
-                        userinfo_id=p.userinfo_id, # <-- ESTA ES LA LÍNEA QUE FALTABA
+                        userinfo_id=p.userinfo_id,
                         purchase_date_formatted=p.purchase_date_formatted,
                         status=p.status.value,
                         total_price_cop=p.total_price_cop,
@@ -2369,10 +2374,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         items=purchase_items_data
                     )
                 )
-                # --- FIN DE LA CORRECCIÓN ---
             self.user_purchases = temp_purchases
-
-    _notifications: List[NotificationModel] = []
     
     @rx.var
     def notification_list(self) -> list[NotificationDTO]:

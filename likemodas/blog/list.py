@@ -10,8 +10,12 @@ def _gallery_card(post: BlogPostModel) -> rx.Component:
         rx.card(
             rx.inset(
                 rx.cond(
-                    post.image_urls,
-                    rx.image(src=rx.get_upload_url(post.image_urls[0]), width="100%", height="140px", object_fit="cover"),
+                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                    post.variants,
+                    rx.image(
+                        src=rx.get_upload_url(post.variants[0].get("image_url", "")), 
+                        width="100%", height="140px", object_fit="cover"
+                    ),
                     rx.box(
                         rx.icon("image_off", size=48), height="140px", width="100%", bg=rx.color("gray", 4),
                         display="flex", align_items="center", justify_content="center",

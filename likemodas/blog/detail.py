@@ -7,12 +7,20 @@ from .notfound import blog_post_not_found
 from ..ui.carousel import Carousel
 
 def _image_section() -> rx.Component:
-    """Muestra las imágenes del post del admin."""
+    """Muestra las imágenes del post del admin usando el sistema de variantes."""
     return rx.box(
         Carousel.create(
+            # --- ✨ CORRECCIÓN AQUÍ ✨ ---
             rx.foreach(
-                AppState.post.image_urls,
-                lambda image_url: rx.image(src=rx.get_upload_url(image_url), alt=AppState.post.title, width="100%", height="auto", object_fit="cover", border_radius="var(--radius-3)")
+                # Itera sobre las variantes para obtener las URLs de las imágenes
+                AppState.post.variants,
+                lambda variant: rx.image(
+                    src=rx.get_upload_url(variant.get("image_url", "")), 
+                    alt=AppState.post.title, 
+                    width="100%", height="auto", 
+                    object_fit="cover", 
+                    border_radius="var(--radius-3)"
+                )
             ),
             show_arrows=True, show_indicators=True, infinite_loop=True, auto_play=True, width="100%"
         ),
