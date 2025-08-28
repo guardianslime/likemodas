@@ -3098,7 +3098,10 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_return_page(self):
-        """Se ejecuta al cargar la página /returns y autoriza al comprador o al vendedor."""
+        """
+        Se ejecuta al cargar la página /returns y autoriza al comprador o al vendedor,
+        manejando el caso donde el ticket aún no ha sido creado.
+        """
         self.is_loading = True
         # Resetea el estado para evitar mostrar datos de un ticket anterior
         self.current_ticket = None
@@ -3110,7 +3113,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.is_loading = False
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
-        # --- (La lógica para obtener el purchase_id no cambia) ---
+        # Lógica para obtener el purchase_id de la URL (sin cambios)
         purchase_id_str = "0"
         try:
             full_url = self.router.url
@@ -3127,43 +3130,54 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("ID de compra no válido.")
 
         with rx.session() as session:
-            purchase = session.get(PurchaseModel, purchase_id)
-            if not purchase:
+            # Cargar la compra asociada desde la base de datos
+            purchase_db = session.get(PurchaseModel, purchase_id)
+            if not purchase_db:
                 self.is_loading = False
                 return rx.toast.error("Compra no encontrada.")
 
-            # --- INICIO DE LA LÓGICA DE AUTORIZACIÓN CORREGIDA ---
+            # Intentar encontrar un ticket existente para esta compra
             ticket = session.exec(
                 sqlmodel.select(SupportTicketModel).where(SupportTicketModel.purchase_id == purchase_id)
             ).one_or_none()
 
-            # Un usuario está autorizado si es el comprador O si existe un ticket y es el vendedor.
-            is_buyer = purchase.userinfo_id == self.authenticated_user_info.id
+            # --- ✨ INICIO DE LA LÓGICA CORREGIDA ✨ ---
+
+            # Autorización: El usuario debe ser el comprador o, si el ticket existe, el vendedor.
+            is_buyer = purchase_db.userinfo_id == self.authenticated_user_info.id
             is_seller = ticket and ticket.seller_id == self.authenticated_user_info.id
             
             if not is_buyer and not is_seller:
                 self.is_loading = False
                 return rx.toast.error("No tienes autorización para ver esta solicitud.")
-            # --- FIN DE LA LÓGICA DE AUTORIZACIÓN CORREGIDA ---
 
-            # Si la autorización pasa, se procede a cargar los datos como antes.
-            self.current_ticket = SupportTicketData(
-                id=ticket.id,
-                purchase_id=ticket.purchase_id,
-                buyer_id=ticket.buyer_id,
-                seller_id=ticket.seller_id,
-                subject=ticket.subject,
-                status=ticket.status.value,
-            )
+            # Cargar los datos de la compra para mostrarlos en la cabecera
+            # (Esto se hace tanto si hay ticket como si no)
+            purchase_items_data = []
+            for item in purchase_db.items:
+                if item.blog_post:
+                    main_image = item.blog_post.variants[0].get("image_url", "") if item.blog_post.variants else ""
+                    purchase_items_data.append(
+                        PurchaseItemCardData(
+                            id=item.blog_post.id, title=item.blog_post.title, image_url=main_image,
+                            price_at_purchase=item.price_at_purchase,
+                            price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                            quantity=item.quantity
+                        )
+                    )
+            self.current_ticket_purchase = UserPurchaseHistoryCardData.from_orm(purchase_db, update={'items': purchase_items_data})
 
+            # Si el ticket SÍ existe, cargamos sus datos y mensajes
             if ticket:
-                self.current_ticket = ticket
+                self.current_ticket = SupportTicketData.from_orm(ticket)
+                
                 messages = session.exec(
                     sqlmodel.select(SupportMessageModel)
                     .options(sqlalchemy.orm.joinedload(SupportMessageModel.author).joinedload(UserInfo.user))
                     .where(SupportMessageModel.ticket_id == ticket.id)
                     .order_by(SupportMessageModel.created_at.asc())
                 ).all()
+                
                 self.ticket_messages = [
                     SupportMessageData(
                         author_id=m.author_id,
@@ -3172,8 +3186,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         created_at_formatted=m.created_at_formatted,
                     ) for m in messages
                 ]
-        
+            # Si el ticket NO existe, self.current_ticket permanece como None, y la UI
+            # mostrará las opciones para crear uno nuevo.
+
         self.is_loading = False
+        # --- ✨ FIN DE LA LÓGICA CORREGIDA ✨ ---
 
     @rx.event
     def create_support_ticket(self, reason: str):
