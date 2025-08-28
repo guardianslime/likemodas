@@ -3103,7 +3103,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         manejando el caso donde el ticket aún no ha sido creado.
         """
         self.is_loading = True
-        # Resetea el estado para evitar mostrar datos de un ticket anterior
         self.current_ticket = None
         self.current_ticket_purchase = None
         self.ticket_messages = []
@@ -3113,7 +3112,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.is_loading = False
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
-        # Lógica para obtener el purchase_id de la URL (sin cambios)
         purchase_id_str = "0"
         try:
             full_url = self.router.url
@@ -3130,20 +3128,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("ID de compra no válido.")
 
         with rx.session() as session:
-            # Cargar la compra asociada desde la base de datos
             purchase_db = session.get(PurchaseModel, purchase_id)
             if not purchase_db:
                 self.is_loading = False
                 return rx.toast.error("Compra no encontrada.")
 
-            # Intentar encontrar un ticket existente para esta compra
             ticket = session.exec(
                 sqlmodel.select(SupportTicketModel).where(SupportTicketModel.purchase_id == purchase_id)
             ).one_or_none()
 
-            # --- ✨ INICIO DE LA LÓGICA CORREGIDA ✨ ---
-
-            # Autorización: El usuario debe ser el comprador o, si el ticket existe, el vendedor.
             is_buyer = purchase_db.userinfo_id == self.authenticated_user_info.id
             is_seller = ticket and ticket.seller_id == self.authenticated_user_info.id
             
@@ -3151,8 +3144,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.is_loading = False
                 return rx.toast.error("No tienes autorización para ver esta solicitud.")
 
-            # Cargar los datos de la compra para mostrarlos en la cabecera
-            # (Esto se hace tanto si hay ticket como si no)
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Primero, preparamos la lista de artículos DTO, como antes.
             purchase_items_data = []
             for item in purchase_db.items:
                 if item.blog_post:
@@ -3165,12 +3158,26 @@ class AppState(reflex_local_auth.LocalAuthState):
                             quantity=item.quantity
                         )
                     )
-            self.current_ticket_purchase = UserPurchaseHistoryCardData.from_orm(purchase_db, update={'items': purchase_items_data})
+            
+            # Ahora, construimos el DTO principal manualmente, campo por campo.
+            self.current_ticket_purchase = UserPurchaseHistoryCardData(
+                id=purchase_db.id,
+                userinfo_id=purchase_db.userinfo_id,
+                purchase_date_formatted=purchase_db.purchase_date_formatted,
+                status=purchase_db.status.value,
+                total_price_cop=purchase_db.total_price_cop,
+                shipping_applied_cop=format_to_cop(purchase_db.shipping_applied),
+                shipping_name=purchase_db.shipping_name,
+                shipping_address=purchase_db.shipping_address,
+                shipping_neighborhood=purchase_db.shipping_neighborhood,
+                shipping_city=purchase_db.shipping_city,
+                shipping_phone=purchase_db.shipping_phone,
+                items=purchase_items_data  # Usamos la lista que acabamos de crear
+            )
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
-            # Si el ticket SÍ existe, cargamos sus datos y mensajes
             if ticket:
                 self.current_ticket = SupportTicketData.from_orm(ticket)
-                
                 messages = session.exec(
                     sqlmodel.select(SupportMessageModel)
                     .options(sqlalchemy.orm.joinedload(SupportMessageModel.author).joinedload(UserInfo.user))
@@ -3186,9 +3193,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         created_at_formatted=m.created_at_formatted,
                     ) for m in messages
                 ]
-            # Si el ticket NO existe, self.current_ticket permanece como None, y la UI
-            # mostrará las opciones para crear uno nuevo.
-
         self.is_loading = False
         # --- ✨ FIN DE LA LÓGICA CORREGIDA ✨ ---
 
