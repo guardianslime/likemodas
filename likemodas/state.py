@@ -265,6 +265,12 @@ class CartItemData(rx.Base):
     @property
     def subtotal_cop(self) -> str:
         return format_to_cop(self.subtotal)
+    
+class ModalSelectorDTO(rx.Base):
+    """Representa el estado completo de un selector en el modal."""
+    key: str           # ej: "Talla"
+    options: list[str]   # ej: ["S", "M"] (solo las opciones válidas)
+    current_value: str # ej: "S"
 
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
@@ -1433,35 +1439,67 @@ class AppState(reflex_local_auth.LocalAuthState):
         
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
-        """Actualiza la selección de un atributo en el modal."""
+        """
+        Actualiza la selección de un atributo y resetea los atributos dependientes.
+        """
         self.modal_selected_attributes[key] = value
+
+        # Reinicia las selecciones de los atributos que vienen después
+        all_keys = sorted(list(
+            {k for variant in self.product_in_modal.variants for k in variant.get("attributes", {})}
+        ))
+        
+        key_index = all_keys.index(key)
+        for next_key in all_keys[key_index + 1:]:
+            if next_key in self.modal_selected_attributes:
+                del self.modal_selected_attributes[next_key]
 
     # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
     @rx.var
-    def product_in_modal_grouped_attributes(self) -> list[AttributeGroupDTO]:
+    def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
         """
-        Agrupa los atributos de todas las variantes para mostrarlos como opciones.
-        Ahora devuelve una lista de DTOs con tipos explícitos y el atributo renombrado.
+        Calcula el estado de cada selector de atributos en el modal.
+        Filtra las opciones disponibles basándose en las selecciones actuales.
         """
         if not self.product_in_modal:
             return []
 
-        grouped = defaultdict(set)
-        for variant in self.product_in_modal.variants:
-            attributes = variant.get("attributes", {})
-            for key, value in attributes.items():
-                if isinstance(value, list):
-                    for v in value:
-                        grouped[key].add(v)
-                else:
-                    grouped[key].add(value)
+        # Obtiene todas las claves de atributos posibles para este producto (ej: "Color", "Talla")
+        all_keys = sorted(list(
+            {key for variant in self.product_in_modal.variants for key in variant.get("attributes", {})}
+        ))
         
-        # Convertir el diccionario a una lista de DTOs, usando 'options'
-        return [
-            AttributeGroupDTO(key=key, options=sorted(list(values)))
-            for key, values in grouped.items()
-        ]
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+        current_selection = self.modal_selected_attributes
+        selectors = []
+
+        # Itera sobre cada tipo de atributo (Color, Talla, etc.) para construir su selector
+        for i, key in enumerate(all_keys):
+            # Filtra las variantes que coinciden con las selecciones ya hechas en los selectores anteriores
+            possible_variants = [
+                v for v in self.product_in_modal.variants
+                if all(
+                    current_selection.get(prev_key) in v.get("attributes", {}).get(prev_key, [])
+                    for prev_key in all_keys[:i]
+                )
+            ]
+
+            # De las variantes posibles, extrae las opciones disponibles para el selector actual
+            available_options = set()
+            for variant in possible_variants:
+                attr_value = variant.get("attributes", {}).get(key)
+                if isinstance(attr_value, list):
+                    available_options.update(attr_value)
+                elif attr_value:
+                    available_options.add(attr_value)
+            
+            selectors.append(
+                ModalSelectorDTO(
+                    key=key,
+                    options=sorted(list(available_options)),
+                    current_value=current_selection.get(key, "")
+                )
+            )
+        return selectors
 
 
     @rx.event

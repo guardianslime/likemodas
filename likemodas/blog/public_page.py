@@ -180,6 +180,7 @@ def product_detail_modal() -> rx.Component:
 
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
+            # ... (la sección superior con título, precio, etc., no cambia)
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
@@ -206,22 +207,23 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             
             # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Ahora usamos la nueva propiedad `modal_attribute_selectors`
             rx.cond(
-                AppState.product_in_modal_grouped_attributes,
+                AppState.modal_attribute_selectors,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.heading("Características", size="4"),
                     rx.foreach(
-                        AppState.product_in_modal_grouped_attributes, # Itera sobre la lista de DTOs
-                        lambda item: rx.vstack(
-                            rx.text(item.key, weight="bold", size="3"),
+                        AppState.modal_attribute_selectors, # Itera sobre la nueva propiedad
+                        lambda selector: rx.vstack(
+                            rx.text(selector.key, weight="bold", size="3"),
                             rx.segmented_control.root(
                                 rx.foreach(
-                                    item.options, # <-- CORREGIDO: Itera sobre item.options
+                                    selector.options, # Usa las opciones filtradas
                                     lambda option: rx.segmented_control.item(option, value=option)
                                 ),
-                                on_change=lambda value: AppState.set_modal_selected_attribute(item.key, value),
-                                value=AppState.modal_selected_attributes.get(item.key, ""),
+                                on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
+                                value=selector.current_value, # Usa el valor actual del selector
                             ),
                             align_items="start",
                             width="100%",
@@ -233,6 +235,7 @@ def product_detail_modal() -> rx.Component:
             ),
             # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
+            # ... (la sección inferior con "Publicado por" y botones no cambia)
             rx.text(
                 "Publicado por: ",
                 rx.link(
