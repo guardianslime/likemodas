@@ -1314,21 +1314,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
 
         with rx.session() as session:
-            cart_items_details = self.cart_details  # Ahora es una lista de CartItemData
+            cart_items_details = self.cart_details
             if not cart_items_details:
                 return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
 
-            # Cargar los modelos completos para cálculos de envío y base_price
-            post_ids = [item.id for item in cart_items_details]
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Usamos 'item.product_id' en lugar de 'item.id'
+            post_ids = [item.product_id for item in cart_items_details]
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             db_posts = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()
             post_map = {p.id: p for p in db_posts}
 
-            subtotal_base = 0
-            for item in cart_items_details:
-                db_post = post_map.get(item.id)
-                if db_post:
-                    subtotal_base += db_post.base_price * item.quantity
-
+            subtotal_base = sum(post_map.get(item.product_id).base_price * item.quantity for item in cart_items_details if post_map.get(item.product_id))
             iva = subtotal_base * 0.19
             subtotal_con_iva = subtotal_base + iva
             free_shipping_achieved = subtotal_con_iva >= 200000
@@ -1338,7 +1336,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 buyer_barrio = self.default_shipping_address.neighborhood
                 seller_groups = defaultdict(list)
                 for item in cart_items_details:
-                    db_post = post_map.get(item.id)
+                    db_post = post_map.get(item.product_id)
                     if db_post:
                         for _ in range(item.quantity):
                             seller_groups[db_post.userinfo_id].append(db_post)
@@ -1351,7 +1349,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     combinable_items = [p for p in items_from_seller if p.combines_shipping]
                     individual_items = [p for p in items_from_seller if not p.combines_shipping]
                     seller_barrio = seller_barrio_map.get(seller_id)
-
                     for individual_item in individual_items:
                         cost = calculate_dynamic_shipping(
                             base_cost=individual_item.shipping_cost or 0.0,
@@ -1359,22 +1356,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                             buyer_barrio=buyer_barrio
                         )
                         final_shipping_cost += cost
-
                     if combinable_items:
-                        valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0]
-                        if not valid_limits:
-                            for item in combinable_items:
-                                cost = calculate_dynamic_shipping(
-                                    base_cost=item.shipping_cost or 0.0,
-                                    seller_barrio=seller_barrio,
-                                    buyer_barrio=buyer_barrio
-                                )
-                                final_shipping_cost += cost
-                            continue
-                        
+                        valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1]
                         limit = min(valid_limits)
                         num_fees = math.ceil(len(combinable_items) / limit)
-                        highest_base_cost = max(p.shipping_cost or 0.0 for p in combinable_items)
+                        highest_base_cost = max((p.shipping_cost or 0.0 for p in combinable_items), default=0.0)
                         group_shipping_fee = calculate_dynamic_shipping(
                             base_cost=highest_base_cost,
                             seller_barrio=seller_barrio,
@@ -1383,7 +1369,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         final_shipping_cost += (group_shipping_fee * num_fees)
             
             grand_total = subtotal_con_iva + final_shipping_cost
-
+            
             return {
                 "subtotal": subtotal_base,
                 "shipping_cost": final_shipping_cost,
