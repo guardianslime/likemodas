@@ -278,6 +278,12 @@ class ModalSelectorDTO(rx.Base):
     options: list[str]   # ej: ["S", "M"] (solo las opciones válidas)
     current_value: str # ej: "S"
 
+class VariantFormData(rx.Base):
+    """DTO para manejar los datos de una variante en el formulario."""
+    attributes: dict[str, str]
+    stock: int = 10  # Stock por defecto
+    image_url: str = ""
+
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -640,6 +646,61 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Actualiza el estado que controla los selectores en el modal
         self.modal_selected_attributes = new_selections
 
+    # Nuevas variables para el formulario de variantes
+    variant_form_data: list[VariantFormData] = []
+    
+    # Método para generar las combinaciones de variantes
+    def generate_variants(self):
+        self.variant_form_data = []
+        # Recopila los atributos seleccionados
+        colors = self.attr_colores
+        sizes = []
+        size_key = ""
+
+        if self.category == Category.ROPA.value:
+            sizes = self.attr_tallas_ropa
+            size_key = "Talla"
+        elif self.category == Category.CALZADO.value:
+            sizes = self.attr_numeros_calzado
+            size_key = "Número"
+        elif self.category == Category.MOCHILAS.value:
+            sizes = self.attr_tamanos_mochila
+            size_key = "Tamaño"
+
+        if not colors or not sizes:
+            return rx.toast.error("Debes seleccionar al menos un color y una talla/tamaño.")
+
+        # Genera las combinaciones
+        for color in colors:
+            for size in sizes:
+                self.variant_form_data.append(
+                    VariantFormData(attributes={"Color": color, size_key: size})
+                )
+        return rx.toast.info(f"{len(self.variant_form_data)} variantes generadas.")
+
+    # Métodos para manejar el stock en el formulario
+    def _update_variant_stock(self, index: int, new_stock: int):
+        if 0 <= index < len(self.variant_form_data):
+            self.variant_form_data[index].stock = max(0, new_stock) # Evita stock negativo
+
+    def set_variant_stock(self, index: int, stock_str: str):
+        try:
+            self._update_variant_stock(index, int(stock_str))
+        except ValueError:
+            pass # Ignora si no es un número
+
+    def increment_variant_stock(self, index: int):
+        if 0 <= index < len(self.variant_form_data):
+            self._update_variant_stock(index, self.variant_form_data[index].stock + 1)
+            
+    def decrement_variant_stock(self, index: int):
+        if 0 <= index < len(self.variant_form_data):
+            self._update_variant_stock(index, self.variant_form_data[index].stock - 1)
+
+    def assign_image_to_variant(self, index: int, image_url: str):
+        if 0 <= index < len(self.variant_form_data):
+            self.variant_form_data[index].image_url = image_url
+
     def _clear_add_form(self):
         self.title = ""
         self.content = ""
@@ -656,48 +717,37 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        if not self.is_admin:
+        """
+        Crea y publica un nuevo producto, guardando las variantes con su stock individual.
+        """
+        if not self.is_admin or not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
+        if not self.variant_form_data:
+            return rx.toast.error("Debes generar y configurar las variantes del producto antes de publicar.")
 
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-        
-        limit = None  # <-- 1. Inicializamos 'limit' con un valor por defecto.
-        
         try:
             shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
-            
-            # 2. Asignamos el valor a 'limit' solo si la opción está activa.
+            limit = None
             if self.combines_shipping and self.shipping_combination_limit_str:
                 limit = int(self.shipping_combination_limit_str)
-            
-            # 3. Hacemos la validación después de definir la variable.
             if self.combines_shipping and (limit is None or limit <= 0):
                 return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
         except ValueError:
             return rx.toast.error("Los costos y límites deben ser números válidos.")
-        
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-        
-        attributes = {}
-        category = form_data.get("category")
-        if category == Category.ROPA.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            if self.attr_colores: attributes["Color"] = self.attr_colores
-            if self.attr_tallas_ropa: attributes["Talla"] = self.attr_tallas_ropa
-            if self.attr_material: attributes["Tela"] = self.attr_material
-        elif category == Category.CALZADO.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            if self.attr_colores: attributes["Color"] = self.attr_colores
-            if self.attr_numeros_calzado: attributes["Número"] = self.attr_numeros_calzado
-            if self.attr_material: attributes["Material"] = self.attr_material
-        elif category == Category.MOCHILAS.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            if self.attr_colores: attributes["Color"] = self.attr_colores
-            if self.attr_tamanos_mochila: attributes["Tamaño"] = self.attr_tamanos_mochila
-            if self.attr_material: attributes["Material"] = self.attr_material
-        
+
+        # Convierte los datos del formulario de variantes al formato JSON para la base de datos
+        variants_for_db = [
+            {
+                "attributes": v.attributes,
+                "stock": v.stock,
+                # Asigna la imagen específica o la primera imagen subida como fallback
+                "image_url": v.image_url or (self.new_variants[0].get("image_url") if self.new_variants else "")
+            }
+            for v in self.variant_form_data
+        ]
+
         with rx.session() as session:
             new_post = BlogPostModel(
                 userinfo_id=self.authenticated_user_info.id,
@@ -706,10 +756,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
-                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                # Se eliminaron 'image_urls' y 'attributes' de aquí.
-                # Solo se guarda el campo 'variants'.
-                variants=self.new_variants,
+                variants=variants_for_db,  # Guarda la estructura completa de variantes
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost,
@@ -722,8 +769,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_post)
 
-        self._clear_add_form()
-        yield rx.toast.success("Producto publicado.")
+        self._clear_add_form() # Recuerda añadir la limpieza de `variant_form_data` en este método
+        yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
     
     @rx.var
@@ -1488,34 +1535,43 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
-        """
-        Calcula los selectores para la variante actual. Ahora muestra
-        SOLAMENTE las opciones de la variante seleccionada.
-        """
-        # Obtiene la variante correspondiente a la imagen seleccionada
-        variant = self.current_modal_variant
-        if not variant:
-            return []
-
-        selectors = []
-        attributes = variant.get("attributes", {})
+        if not self.product_in_modal: return []
+        
+        all_variants = self.product_in_modal.variants
         current_selection = self.modal_selected_attributes
-
-        # Itera sobre los atributos de la variante actual
-        for key, value in attributes.items():
-            # Si el atributo es uno de los que definimos como seleccionable...
-            if key in self.SELECTABLE_ATTRIBUTES:
-                # Crea el DTO para el selector
+        
+        # Determina todos los tipos de atributos seleccionables (ej. "Color", "Talla")
+        selectable_keys = sorted(list(
+            {key for v in all_variants for key in v.get("attributes", {})}
+        ))
+        
+        selectors = []
+        # Construye los selectores dinámicamente
+        for i, key in enumerate(selectable_keys):
+            # Filtra las variantes que coinciden con la selección actual
+            filtered_variants = all_variants
+            for prev_key in selectable_keys[:i]:
+                if prev_key in current_selection:
+                    filtered_variants = [
+                        v for v in filtered_variants 
+                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key]
+                    ]
+            
+            # Extrae las opciones válidas y con stock > 0
+            valid_options = {
+                v.get("attributes", {}).get(key)
+                for v in filtered_variants
+                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key)
+            }
+            
+            if valid_options:
                 selectors.append(
                     ModalSelectorDTO(
                         key=key,
-                        # Las opciones son los valores de esta variante específica
-                        options=sorted(value) if isinstance(value, list) else [value],
-                        # El valor actual es el que está guardado en el estado
+                        options=sorted(list(valid_options)),
                         current_value=current_selection.get(key, "")
                     )
                 )
-                
         return selectors
 
     @rx.event
@@ -1533,19 +1589,31 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not all(key in self.modal_selected_attributes for key in required_keys):
             return rx.toast.error(f"Por favor, selecciona una opción para: {', '.join(required_keys)}")
 
-        # 2. Construye la clave para el carrito a partir de la selección del usuario.
-        # Esto asegura que "Talla: S" y "Talla: M" sean entradas diferentes en el carrito.
+        # Construye la clave de la variante
         selection_items = sorted(self.modal_selected_attributes.items())
         selection_key_part = "-".join([f"{k}:{v}" for k, v in selection_items])
-        
-        # La clave del carrito ahora es una combinación del ID del producto, el índice de la imagen y la selección.
         cart_key = f"{product_id}-{self.modal_selected_variant_index}-{selection_key_part}"
-
-        # 3. Añade el producto al carrito usando la nueva clave única.
-        self.cart[cart_key] = self.cart.get(cart_key, 0) + 1
         
-        # 4. Limpia el estado del modal y ciérralo.
-        self.modal_selected_attributes = {}
+        # Encuentra la variante específica en el producto
+        variant_to_check = None
+        if self.product_in_modal and self.product_in_modal.variants:
+            # Esta es una simplificación. Lo ideal es buscar por atributos.
+            # Por ahora, usamos el índice de la imagen como proxy.
+            if 0 <= self.modal_selected_variant_index < len(self.product_in_modal.variants):
+                variant_to_check = self.product_in_modal.variants[self.modal_selected_variant_index]
+        
+        if not variant_to_check:
+            return rx.toast.error("Variante no encontrada.")
+            
+        # VERIFICACIÓN DE STOCK
+        stock_disponible = variant_to_check.get("stock", 0)
+        cantidad_en_carrito = self.cart.get(cart_key, 0)
+        
+        if cantidad_en_carrito + 1 > stock_disponible:
+            return rx.toast.error("¡Lo sentimos! No hay suficiente stock para este producto.")
+        
+        # Si hay stock, procede a añadirlo
+        self.cart[cart_key] = cantidad_en_carrito + 1
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido al carrito.")
 
@@ -1661,37 +1729,66 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def handle_checkout(self):
+        """
+        Procesa la compra:
+        1. Bloquea los productos en la BD para evitar sobreventas.
+        2. Verifica el stock de cada variante específica.
+        3. Si hay stock, deduce la cantidad y crea el registro de compra.
+        4. Si un producto se queda sin stock, lo desactiva automáticamente.
+        """
         if not self.is_authenticated or not self.default_shipping_address:
-            return rx.toast.error("Por favor, selecciona una dirección predeterminada.")
+            return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
         if not self.authenticated_user_info:
-            return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
-        
+            return rx.toast.error("Error de sesión. Vuelve a iniciar sesión.")
+        if not self.cart:
+            return rx.toast.info("Tu carrito está vacío.")
+
         summary = self.cart_summary
-        cart_details_data = self.cart_details
 
         with rx.session() as session:
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # 1. Extrae los IDs de producto de las claves del carrito.
-            #    La clave es "product_id-variant_index-selection", así que tomamos la primera parte.
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+            
+            # Bloquea las filas de los productos en la BD para una transacción segura
+            posts_to_update = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.id.in_(product_ids))
+                .with_for_update()
+            ).all()
+            post_map = {p.id: p for p in posts_to_update}
 
-            # 2. Busca los productos en la base de datos usando los IDs correctos.
-            post_map = {
-                p.id: p for p in session.exec(
-                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))
-                ).all()
-            }
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            # --- FASE 1: Verificación de Stock ---
+            for cart_key, quantity_in_cart in self.cart.items():
+                parts = cart_key.split('-')
+                prod_id = int(parts[0])
+                selection_parts = parts[2:]
+                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
 
+                post = post_map.get(prod_id)
+                if not post:
+                    return rx.toast.error(f"El producto con ID {prod_id} ya no está disponible. Compra cancelada.")
+
+                variant_found = False
+                for variant in post.variants:
+                    if variant.get("attributes") == selection_attrs:
+                        if variant.get("stock", 0) < quantity_in_cart:
+                            attr_str = ', '.join(selection_attrs.values())
+                            return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Tu compra ha sido cancelada.")
+                        variant_found = True
+                        break
+                
+                if not variant_found:
+                    return rx.toast.error(f"La variante seleccionada para '{post.title}' ya no existe. Compra cancelada.")
+
+            # --- FASE 2: Creación de Compra y Deducción de Stock ---
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
-                total_price=summary["grand_total"], 
+                total_price=summary["grand_total"],
                 shipping_applied=summary["shipping_cost"],
                 status=PurchaseStatus.PENDING_CONFIRMATION,
                 payment_method=self.payment_method,
-                shipping_name=self.default_shipping_address.name, 
+                shipping_name=self.default_shipping_address.name,
                 shipping_city=self.default_shipping_address.city,
-                shipping_neighborhood=self.default_shipping_address.neighborhood, 
+                shipping_neighborhood=self.default_shipping_address.neighborhood,
                 shipping_address=self.default_shipping_address.address,
                 shipping_phone=self.default_shipping_address.phone
             )
@@ -1699,19 +1796,41 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
             
-            # Crear los items de la compra con la información de la variante
-            for item_data in cart_details_data:
-                post = post_map.get(item_data.product_id)
-                if post:
-                    session.add(PurchaseItemModel(
-                        purchase_id=new_purchase.id,
-                        blog_post_id=item_data.product_id,
-                        quantity=item_data.quantity,
-                        price_at_purchase=post.price, # Usamos el precio actual del producto
-                        selected_variant=item_data.variant_details
-                    ))
+            for cart_key, quantity_in_cart in self.cart.items():
+                parts = cart_key.split('-')
+                prod_id = int(parts[0])
+                selection_parts = parts[2:]
+                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                
+                post = post_map.get(prod_id)
+                
+                # Deducir el stock de la variante correcta
+                for variant in post.variants:
+                    if variant.get("attributes") == selection_attrs:
+                        variant["stock"] -= quantity_in_cart
+                        break
+                
+                # Marcar el post para ser actualizado en la sesión
+                session.add(post)
+
+                # Crear el registro del artículo comprado
+                session.add(PurchaseItemModel(
+                    purchase_id=new_purchase.id,
+                    blog_post_id=post.id,
+                    quantity=quantity_in_cart,
+                    price_at_purchase=post.price,
+                    selected_variant=selection_attrs # Guarda la variante exacta
+                ))
+
+            # --- FASE 3: Verificación de Desactivación Automática ---
+            for post in post_map.values():
+                total_stock = sum(v.get("stock", 0) for v in post.variants)
+                if total_stock <= 0:
+                    post.publish_active = False
+                    session.add(post)
+
             session.commit()
-            
+
         self.cart.clear()
         self.default_shipping_address = None
         yield AppState.notify_admin_of_new_purchase

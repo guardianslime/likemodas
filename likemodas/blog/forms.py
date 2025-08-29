@@ -7,6 +7,75 @@ from ..data.product_options import (
     LISTA_NUMEROS_CALZADO, LISTA_TAMANOS_MOCHILAS
 )
 
+def variant_stock_manager() -> rx.Component:
+    """Componente para gestionar el stock de las variantes generadas."""
+    return rx.vstack(
+        rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
+        rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
+        
+        # Botón para generar las variantes
+        rx.button("Generar Variantes", on_click=AppState.generate_variants, margin_y="1em"),
+        
+        # Tabla de gestión de stock
+        rx.cond(
+            AppState.variant_form_data,
+            rx.vstack(
+                rx.foreach(
+                    AppState.variant_form_data,
+                    lambda variant, index: rx.box(
+                        rx.hstack(
+                            # Atributos de la variante
+                            rx.vstack(
+                                rx.foreach(
+                                    variant.attributes.items(),
+                                    lambda item: rx.text(f"{item[0]}: ", rx.text.strong(item[1])),
+                                ),
+                                align_items="start",
+                                flex_grow=1,
+                            ),
+                            
+                            # Contador de stock
+                            rx.hstack(
+                                rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(index)),
+                                rx.input(
+                                    value=variant.stock.to_string(),
+                                    on_change=lambda val: AppState.set_variant_stock(index, val),
+                                    text_align="center",
+                                    max_width="70px",
+                                ),
+                                rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(index)),
+                                align="center",
+                                spacing="2",
+                            ),
+                            
+                            # Selector de imagen
+                            rx.select(
+                                [v.get("image_url") for v in AppState.new_variants],
+                                placeholder="Imagen...",
+                                value=variant.image_url,
+                                on_change=lambda url: AppState.assign_image_to_variant(index, url),
+                                max_width="150px",
+                            ),
+                            
+                            spacing="4",
+                            align="center",
+                            width="100%",
+                        ),
+                        padding="0.75em",
+                        border="1px solid",
+                        border_color=rx.color("gray", 6),
+                        border_radius="md",
+                        width="100%",
+                    )
+                ),
+                spacing="3",
+                width="100%",
+            )
+        ),
+        align_items="stretch",
+        width="100%",
+    )
+
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     tipo_selector = searchable_select(
@@ -185,17 +254,14 @@ def blog_post_add_form() -> rx.Component:
                     rx.cond(
                         AppState.category != "",
                         rx.vstack(
-                            rx.text("Características de la Variante Seleccionada", as_="div", size="2", weight="bold"),
+                            rx.text("Características del Producto", as_="div", size="2", weight="bold"),
                             rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
                             rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
                             rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
-                            # El botón se desactiva si no hay una imagen seleccionada
-                            rx.button(
-                                "Guardar Atributos para Variante", 
-                                on_click=AppState.save_variant_attributes, 
-                                margin_top="0.5em",
-                                is_disabled=AppState.selected_variant_index < 0,
-                            ),
+                            
+                            # AÑADE EL NUEVO COMPONENTE AQUÍ
+                            variant_stock_manager(),
+                            
                             align_items="stretch", width="100%",
                         )
                     ),
