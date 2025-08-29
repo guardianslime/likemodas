@@ -677,6 +677,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     new_variants: list[dict] = []
     selected_variant_index: int = -1 # -1 significa que no hay ninguna seleccionada
     variant_form_data: list[VariantFormData] = []
+    # --- AÑADE ESTA LÍNEA AQUÍ ---
+    generated_variants_map: dict[int, list[VariantFormData]] = {}
+    # --- FIN DE LA CORRECCIÓN ---
+
+    # --- NUEVA PROPIEDAD COMPUTADA ---
+
     
     @rx.var
     def current_variant_display_attributes(self) -> dict[str, str]:
