@@ -1329,6 +1329,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             value_str = ", ".join(v) if isinstance(v, list) else str(v)
             processed.append(AttributeData(key=k, value=value_str))
         return processed
+    
+    @rx.var
+    def unique_modal_variants(self) -> list[dict]:
+        """
+        Devuelve una lista de variantes con URLs de imagen únicas para las miniaturas del modal.
+        Cada item contiene la variante y su índice original para que los clics funcionen.
+        """
+        if not self.product_in_modal or not self.product_in_modal.variants:
+            return []
+        
+        unique_items = []
+        seen_images = set()
+        for i, variant in enumerate(self.product_in_modal.variants):
+            image_url = variant.get("image_url")
+            if image_url and image_url not in seen_images:
+                seen_images.add(image_url)
+                unique_items.append({"variant": variant, "index": i})
+        return unique_items
 
     cart: Dict[int, int] = {}
 
