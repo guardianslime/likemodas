@@ -701,19 +701,22 @@ class AppState(reflex_local_auth.LocalAuthState):
         if 0 <= index < len(self.variant_form_data):
             self.variant_form_data[index].image_url = image_url
 
-    def _clear_add_form(self):
-        self.title = ""
-        self.content = ""
-        self.price = ""
-        self.category = ""
-        self.temp_images = []
-        self.new_variants = []
-        self.selected_variant_index = -1
-        self.attr_colores = []
-        self.attr_talla_ropa = ""
-        self.attr_material = ""
-        self.attr_numero_calzado = ""
-        self.attr_tamano_mochila = ""
+
+    # --- 👇 AÑADE ESTA NUEVA FUNCIÓN AQUÍ 👇 ---
+    @rx.var
+    def uploaded_image_urls(self) -> list[str]:
+        """
+        Devuelve una lista de solo las URLs de las imágenes subidas en el formulario.
+        Esta es la forma correcta de transformar datos para la UI.
+        """
+        if not self.new_variants:
+            return []
+        # Retorna solo las URLs que no están vacías
+        return [
+            v.get("image_url", "") 
+            for v in self.new_variants 
+            if v.get("image_url")
+        ]
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
@@ -1230,30 +1233,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.post_images_in_form.remove(filename)
 
 
-    def _clear_add_form(self):
-        self.title = ""
-        self.content = ""
-        self.price = ""
-        self.category = ""
-        self.temp_images = []
-        # ... (otras variables que ya limpiabas)
-        
-        # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
-        self.shipping_cost_str = ""
-        # self.free_shipping_threshold_str = ""
-
-        self.is_moda_completa = True # Resetea a su valor por defecto
-        self.is_imported = False # <-- AÑADE ESTA LÍNEA
-    
-    # --- Variables para el formulario de variantes ---
-    # Guarda la lista de variantes que se están creando
-    new_variants: list[dict] = [] 
-    # Índice de la imagen/variante seleccionada para editar sus atributos
-    selected_variant_index: int = -1 
-
-    # --- Variables para el modal de producto ---
-    # Índice de la variante que el cliente está viendo en el modal
-    modal_selected_variant_index: int = 0
 
     @rx.var
     def current_modal_variant(self) -> Optional[dict]:
@@ -1650,8 +1629,30 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_image(self, filename: str): self.temp_images.remove(filename)
-    def _clear_add_form(self): self.title = ""; self.content = ""; self.price = ""; self.category = ""; self.temp_images = []
-
+    
+    def _clear_add_form(self):
+        self.title = ""
+        self.content = ""
+        self.price = ""
+        self.category = ""
+        self.temp_images = []
+        self.new_variants = []
+        self.selected_variant_index = -1
+        self.attr_colores = []
+        self.attr_tallas_ropa = []
+        self.attr_numeros_calzado = []
+        self.attr_tamanos_mochila = []
+        self.attr_material = ""
+        self.attr_tipo = ""
+        self.shipping_cost_str = ""
+        self.is_moda_completa = True
+        self.is_imported = False
+        self.combines_shipping = False
+        self.shipping_combination_limit_str = "3"
+        
+        # --- 👇 LÍNEA IMPORTANTE A AÑADIR/VERIFICAR 👇 ---
+        self.variant_form_data = [] # Asegúrate de que esta línea esté aquí
+        
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
     #free_shipping_threshold_str: str = ""

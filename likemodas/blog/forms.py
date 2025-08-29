@@ -48,15 +48,17 @@ def variant_stock_manager() -> rx.Component:
                                 spacing="2",
                             ),
                             
+                            # --- 👇 SECCIÓN CORREGIDA 👇 ---
                             # Selector de imagen
                             rx.select(
-                                [v.get("image_url") for v in AppState.new_variants],
+                                # Usamos la nueva variable computada que ya es una lista de strings
+                                AppState.uploaded_image_urls,
                                 placeholder="Imagen...",
                                 value=variant.image_url,
                                 on_change=lambda url: AppState.assign_image_to_variant(index, url),
                                 max_width="150px",
                             ),
-                            
+                            # --- FIN DE LA SECCIÓN CORREGIDA ---               
                             spacing="4",
                             align="center",
                             width="100%",
