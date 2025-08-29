@@ -16,11 +16,17 @@ def variant_stock_manager() -> rx.Component:
         rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants, margin_y="1em"),
         
         rx.cond(
-            # --- CORRECCIÓN APLICADA AQUÍ ---
+            # Esta condición, que ya corregimos, está bien.
             (AppState.selected_variant_index >= 0) & AppState.generated_variants_map.contains(AppState.selected_variant_index),
             rx.vstack(
                 rx.foreach(
-                    AppState.current_generated_variants,
+                    # --- CAMBIO DEFINITIVO AQUÍ ---
+                    # En lugar de la propiedad computada, accedemos directamente al
+                    # valor en el diccionario usando el índice seleccionado.
+                    # Esto es estáticamente analizable por Reflex.
+                    AppState.generated_variants_map[AppState.selected_variant_index],
+                    
+                    # El resto de la función lambda no cambia.
                     lambda variant, index: rx.box(
                         rx.hstack(
                             # Atributos de la variante
