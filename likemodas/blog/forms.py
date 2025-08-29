@@ -15,11 +15,9 @@ def variant_stock_manager() -> rx.Component:
         
         rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants, margin_y="1em"),
         
-        # --- CAMBIO CLAVE EN LA UI ---
-        # La tabla ahora depende de `current_generated_variants`, que está
-        # ligado a la imagen seleccionada (`selected_variant_index`).
         rx.cond(
-            AppState.current_generated_variants,
+            # --- CORRECCIÓN APLICADA AQUÍ ---
+            (AppState.selected_variant_index >= 0) & AppState.generated_variants_map.contains(AppState.selected_variant_index),
             rx.vstack(
                 rx.foreach(
                     AppState.current_generated_variants,
@@ -34,7 +32,7 @@ def variant_stock_manager() -> rx.Component:
                                 align_items="start", flex_grow=1,
                             ),
                             
-                            # Contador de stock (ahora pasa el índice del grupo y del item)
+                            # Contador de stock
                             rx.hstack(
                                 rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_variant_index, index)),
                                 rx.input(
@@ -46,7 +44,7 @@ def variant_stock_manager() -> rx.Component:
                                 align="center", spacing="2",
                             ),
                             
-                            # Selector de imagen (ahora pasa el índice del grupo y del item)
+                            # Selector de imagen
                             rx.select(
                                 AppState.uploaded_image_urls,
                                 placeholder="Imagen...",
