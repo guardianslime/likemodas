@@ -80,7 +80,7 @@ def blog_post_add_form() -> rx.Component:
         filter_name="attr_material_filter",
     )
     
-    # --- CORRECCIÓN: Se define el selector de color simple ---
+    # --- Se define el selector de color simple ---
     color_selector_simple = searchable_select(
         placeholder="Selecciona un color...",
         options=AppState.filtered_attr_colores,
@@ -93,7 +93,7 @@ def blog_post_add_form() -> rx.Component:
     
     caracteristicas_ropa = rx.vstack(
         rx.grid(
-            # --- CORRECCIÓN: Se usa el selector simple ---
+            # --- Se usa el selector simple en lugar del múltiple ---
             color_selector_simple,
             multi_select_component(
                 placeholder="Añadir talla...", options=AppState.filtered_attr_tallas_ropa,
@@ -110,7 +110,7 @@ def blog_post_add_form() -> rx.Component:
     
     caracteristicas_calzado = rx.vstack(
         rx.grid(
-            # --- CORRECCIÓN: Se usa el selector simple ---
+            # --- Se usa el selector simple en lugar del múltiple ---
             color_selector_simple,
             multi_select_component(
                 placeholder="Añadir número...", options=AppState.filtered_attr_numeros_calzado,
@@ -127,7 +127,7 @@ def blog_post_add_form() -> rx.Component:
     
     caracteristicas_mochilas = rx.vstack(
         rx.grid(
-            # --- CORRECCIÓN: Se usa el selector simple ---
+            # --- Se usa el selector simple en lugar del múltiple ---
             color_selector_simple,
             multi_select_component(
                 placeholder="Añadir tamaño...", options=AppState.filtered_attr_tamanos_mochila,
