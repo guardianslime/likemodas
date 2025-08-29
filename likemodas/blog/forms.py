@@ -13,8 +13,6 @@ def variant_stock_manager() -> rx.Component:
         rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
         rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
         
-        # --- CORRECCIÓN APLICADA AQUÍ ---
-        # Se añade type="button" para evitar que envíe el formulario completo.
         rx.button(
             "Generar / Actualizar Variantes", 
             on_click=AppState.generate_variants, 
@@ -29,7 +27,6 @@ def variant_stock_manager() -> rx.Component:
                     AppState.generated_variants_map[AppState.selected_variant_index],
                     lambda variant, index: rx.box(
                         rx.hstack(
-                            # Atributos de la variante
                             rx.vstack(
                                 rx.foreach(
                                     variant.attributes.items(),
@@ -38,7 +35,6 @@ def variant_stock_manager() -> rx.Component:
                                 align_items="start", flex_grow=1,
                             ),
                             
-                            # Contador de stock
                             rx.hstack(
                                 rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_variant_index, index)),
                                 rx.input(
@@ -50,7 +46,6 @@ def variant_stock_manager() -> rx.Component:
                                 align="center", spacing="2",
                             ),
                             
-                            # Selector de imagen
                             rx.select(
                                 AppState.uploaded_image_urls,
                                 placeholder="Imagen...",
@@ -84,16 +79,22 @@ def blog_post_add_form() -> rx.Component:
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
         filter_name="attr_material_filter",
     )
-    color_selector_multiple = multi_select_component(
-        placeholder="Añadir color...", options=AppState.filtered_attr_colores,
-        selected_items=AppState.attr_colores, add_handler=AppState.add_attribute_value,
-        remove_handler=AppState.remove_attribute_value, prop_name="attr_colores",
-        search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+    
+    # --- CORRECCIÓN: Se define el selector de color simple ---
+    color_selector_simple = searchable_select(
+        placeholder="Selecciona un color...",
+        options=AppState.filtered_attr_colores,
+        on_change_select=AppState.set_attr_colores,
+        value_select=AppState.attr_colores,
+        search_value=AppState.search_attr_color,
+        on_change_search=AppState.set_search_attr_color,
         filter_name="attr_color_filter",
     )
+    
     caracteristicas_ropa = rx.vstack(
         rx.grid(
-            color_selector_multiple,
+            # --- CORRECCIÓN: Se usa el selector simple ---
+            color_selector_simple,
             multi_select_component(
                 placeholder="Añadir talla...", options=AppState.filtered_attr_tallas_ropa,
                 selected_items=AppState.attr_tallas_ropa, add_handler=AppState.add_attribute_value,
@@ -106,9 +107,11 @@ def blog_post_add_form() -> rx.Component:
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
+    
     caracteristicas_calzado = rx.vstack(
         rx.grid(
-            color_selector_multiple,
+            # --- CORRECCIÓN: Se usa el selector simple ---
+            color_selector_simple,
             multi_select_component(
                 placeholder="Añadir número...", options=AppState.filtered_attr_numeros_calzado,
                 selected_items=AppState.attr_numeros_calzado, add_handler=AppState.add_attribute_value,
@@ -121,9 +124,11 @@ def blog_post_add_form() -> rx.Component:
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
+    
     caracteristicas_mochilas = rx.vstack(
         rx.grid(
-            color_selector_multiple,
+            # --- CORRECCIÓN: Se usa el selector simple ---
+            color_selector_simple,
             multi_select_component(
                 placeholder="Añadir tamaño...", options=AppState.filtered_attr_tamanos_mochila,
                 selected_items=AppState.attr_tamanos_mochila, add_handler=AppState.add_attribute_value,
@@ -243,8 +248,6 @@ def blog_post_add_form() -> rx.Component:
                         columns="2", spacing="4", width="100%",
                     ),
                     
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    # La condición ahora solo depende de que se haya seleccionado una categoría
                     rx.cond(
                         AppState.category != "",
                         rx.vstack(
@@ -253,13 +256,11 @@ def blog_post_add_form() -> rx.Component:
                             rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
                             rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
                             
-                            # AÑADE EL NUEVO COMPONENTE AQUÍ
                             variant_stock_manager(),
                             
                             align_items="stretch", width="100%",
                         )
                     ),
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(placeholder="Detalles del producto...", name="content", required=True, size="2", style={"height": "150px"}),
@@ -280,7 +281,6 @@ def blog_post_add_form() -> rx.Component:
 
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar una publicación."""
-    # (Este formulario no necesita cambios)
     return rx.form(
         rx.vstack(
             rx.text("Imágenes del Producto", as_="div", size="2", weight="bold"),

@@ -607,11 +607,15 @@ class AppState(reflex_local_auth.LocalAuthState):
     attr_tallas_ropa: list[str] = []
     attr_numeros_calzado: list[str] = []
     attr_tamanos_mochila: list[str] = []
-    attr_colores: list[str] = []
+    # --- CAMBIO CLAVE 1: De lista a string ---
+    # Ya no permitimos múltiples colores, solo uno a la vez.
+    attr_colores: str = "" # Antes era una lista: attr_colores: list[str] = []
     attr_material: str = ""
     attr_tipo: str = ""
     search_attr_tipo: str = ""
 
+    # --- AÑADE ESTE NUEVO SETTER ---
+    def set_attr_colores(self, value: str): self.attr_colores = value
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
     def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
@@ -628,7 +632,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.selected_variant_index = index
         
         # Limpia los campos del formulario antes de cargar los nuevos
-        self.attr_colores = []
+        self.attr_colores = "" # Limpiar el color
         self.attr_tallas_ropa = []
         self.attr_numeros_calzado = []
         self.attr_tamanos_mochila = []
@@ -636,7 +640,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Carga los atributos guardados para esta imagen, si existen
         if 0 <= index < len(self.new_variants):
             variant_attrs = self.new_variants[index].get("attributes", {})
-            self.attr_colores = variant_attrs.get("Color", [])
+            # Ahora asignamos un string, no una lista. Asumimos el primer color si hay varios guardados por error.
+            self.attr_colores = variant_attrs.get("Color", [""])[0] if isinstance(variant_attrs.get("Color"), list) else variant_attrs.get("Color", "")
             if self.category == Category.ROPA.value:
                 self.attr_tallas_ropa = variant_attrs.get("Talla", [])
             elif self.category == Category.CALZADO.value:
@@ -713,7 +718,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Por favor, selecciona una imagen primero.")
 
         # 1. Recopila los atributos del formulario
-        colors = self.attr_colores
+        color = self.attr_colores
         sizes, size_key = [], ""
         if self.category == Category.ROPA.value:
             sizes, size_key = self.attr_tallas_ropa, "Talla"
@@ -722,24 +727,23 @@ class AppState(reflex_local_auth.LocalAuthState):
         elif self.category == Category.MOCHILAS.value:
             sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
 
-        if not colors or not sizes:
-            return rx.toast.error("Debes seleccionar al menos un color y una talla/tamaño/número.")
+        if not color or not sizes: # Se valida el string de color
+            return rx.toast.error("Debes seleccionar un color y al menos una talla/tamaño/número.")
 
-        # 2. Guarda estos atributos en la imagen seleccionada (para que se recuerden)
-        current_attributes = {"Color": colors, size_key: sizes}
+       # Guarda los atributos en la imagen (Color ahora es un string)
+        current_attributes = {"Color": color, size_key: sizes}
         self.new_variants[self.selected_variant_index]["attributes"] = current_attributes
 
-        # 3. Genera las combinaciones para la tabla de stock
+        # Genera las combinaciones
         generated_variants = []
-        for color in colors:
-            for size in sizes:
-                generated_variants.append(
-                    VariantFormData(attributes={"Color": color, size_key: size})
-                )
+        for size in sizes: # El bucle de colores ya no es necesario
+            generated_variants.append(
+                VariantFormData(attributes={"Color": color, size_key: size})
+            )
         
-        # 4. Asocia las variantes generadas con el índice de la imagen seleccionada
         self.generated_variants_map[self.selected_variant_index] = generated_variants
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
+
 
     # --- FUNCIONES DE STOCK MODIFICADAS ---
     def _update_variant_stock(self, group_index: int, item_index: int, new_stock: int):
@@ -1590,8 +1594,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         for next_key in all_keys[key_index + 1:]:
             if next_key in self.modal_selected_attributes:
                 del self.modal_selected_attributes[next_key]
-
-    
 
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
