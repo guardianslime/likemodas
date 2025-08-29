@@ -92,7 +92,6 @@ class ProductCardData(rx.Base):
     class Config:
         orm_mode = True
 
-    # --- 👇 Propiedades Añadidas para la Calificación 👇 ---
     @property
     def full_stars(self) -> list[int]:
         return list(range(math.floor(self.average_rating)))
@@ -125,7 +124,6 @@ class ProductDetailData(rx.Base):
     class Config:
         orm_mode = True
 
-    # --- 👇 Propiedades Añadidas para la Calificación 👇 ---
     @property
     def full_stars(self) -> list[int]:
         return list(range(math.floor(self.average_rating)))

@@ -132,10 +132,28 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""
     
+    # --- 👇 FUNCIÓN INTERNA CORREGIDA 👇 ---
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
-            # ... (código existente de la sección de imagen principal) ...
+            rx.box(
+                rx.cond(
+                    AppState.current_modal_image_filename,
+                    rx.image(
+                        src=rx.get_upload_url(AppState.current_modal_image_filename),
+                        alt=AppState.product_in_modal.title,
+                        width="100%", height="100%", object_fit="cover",
+                    ),
+                    rx.box(
+                        rx.icon("image_off", size=48), 
+                        width="100%", height="100%", display="flex", 
+                        align_items="center", justify_content="center", 
+                        bg=rx.color("gray", 3)
+                    ),
+                ),
+                position="relative", width="100%", height=FIXED_HEIGHT, 
+                border_radius="var(--radius-3)", overflow="hidden",
+            ),
             rx.cond(
                 AppState.product_in_modal.variants.length() > 1,
                 rx.hstack(
@@ -146,14 +164,13 @@ def product_detail_modal() -> rx.Component:
                                 src=rx.get_upload_url(variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
-                            # --- SECCIÓN CORREGIDA ---
+                            # Esta es la corrección definitiva para el AttributeError
                             border_width=rx.cond(
                                 AppState.modal_selected_variant_index == index, "2px", "1px"
                             ),
                             border_color=rx.cond(
                                 AppState.modal_selected_variant_index == index, "violet", "gray"
                             ),
-                            # --- FIN DE LA CORRECCIÓN ---
                             padding="2px", border_radius="lg", cursor="pointer",
                             on_click=AppState.set_modal_variant_index(index),
                         )
