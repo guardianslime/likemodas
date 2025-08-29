@@ -1,9 +1,26 @@
+# likemodas/blog/public_page.py (CORREGIDO)
+
 import reflex as rx
 import math
 from ..state import AppState, CommentData, ModalSelectorDTO
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
+
+# --- ✨ 1. AÑADE ESTA NUEVA FUNCIÓN AUXILIAR ✨ ---
+def _render_static_stars(rating: rx.Var[int]) -> rx.Component:
+    """Renders a static star rating based on a simple integer."""
+    return rx.hstack(
+        rx.foreach(
+            rx.Var.range(5),
+            lambda i: rx.icon(
+                "star",
+                color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
+                size=20
+            )
+        ),
+        spacing="1"
+    )
 
 def render_update_item(comment: CommentData) -> rx.Component:
     """Componente para mostrar una actualización de un comentario."""
@@ -12,7 +29,8 @@ def render_update_item(comment: CommentData) -> rx.Component:
             rx.hstack(
                 rx.icon("pencil", size=16, margin_right="0.5em"),
                 rx.text("Actualización:", weight="bold"),
-                star_rating_display(comment.rating, 1),
+                # --- ✨ 2. CORRECCIÓN AQUÍ ✨ ---
+                _render_static_stars(comment.rating), # Usa la nueva función
                 rx.spacer(),
                 rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%"
@@ -38,7 +56,7 @@ def star_rating_display(rating_data: rx.Var) -> rx.Component:
             rx.cond(rating_data.has_half_star, rx.icon("star_half", color="gold", size=20)),
             rx.foreach(rating_data.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
             rx.text(
-                f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
+                 f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
                 size="3", 
                 color_scheme="gray", 
                 margin_left="0.5em"
@@ -48,6 +66,7 @@ def star_rating_display(rating_data: rx.Var) -> rx.Component:
         rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
     )
 
+# ... (review_submission_form sin cambios) ...
 def review_submission_form() -> rx.Component:
     """Muestra el formulario para opinar."""
     return rx.cond(
@@ -91,6 +110,7 @@ def review_submission_form() -> rx.Component:
         )
     )
 
+
 def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal con su historial."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
@@ -100,7 +120,8 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
                 rx.spacer(),
-                star_rating_display(comment.rating, 1),
+                # --- ✨ 3. CORRECCIÓN AQUÍ ✨ ---
+                _render_static_stars(comment.rating), # Usa la nueva función
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
@@ -129,10 +150,10 @@ def render_comment_item(comment: CommentData) -> rx.Component:
         padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
     )
 
+# ... (resto del archivo 'public_page.py' sin cambios) ...
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""
     
-    # --- 👇 FUNCIÓN INTERNA CORREGIDA 👇 ---
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
@@ -164,7 +185,6 @@ def product_detail_modal() -> rx.Component:
                                 src=rx.get_upload_url(variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
-                            # Esta es la corrección definitiva para el AttributeError
                             border_width=rx.cond(
                                 AppState.modal_selected_variant_index == index, "2px", "1px"
                             ),
@@ -187,8 +207,6 @@ def product_detail_modal() -> rx.Component:
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             
-            # --- 👇 LÍNEA CORREGIDA 👇 ---
-            # Se le pasa el objeto completo que ya contiene la lógica de las estrellas.
             star_rating_display(AppState.product_in_modal),
             
             rx.hstack(
