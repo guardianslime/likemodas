@@ -175,30 +175,28 @@ def product_detail_modal() -> rx.Component:
                 position="relative", width="100%", height=FIXED_HEIGHT, 
                 border_radius="var(--radius-3)", overflow="hidden",
             ),
-            # --- LÓGICA DE MINIATURAS CORREGIDA ---
             rx.cond(
-                # Sigue mostrando la barra solo si hay más de una imagen ÚNICA
                 AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
-                    # Itera sobre las variantes con imagen única
                     rx.foreach(
                         AppState.unique_modal_variants,
                         lambda item: rx.box(
                             rx.image(
-                                src=rx.get_upload_url(item["variant"].get("image_url")),
+                                # --- CORRECCIÓN AQUÍ: item.variant en lugar de item["variant"] ---
+                                src=rx.get_upload_url(item.variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
-                            # El borde ahora se activa si la imagen de la miniatura es la misma
-                            # que la imagen de la variante principal que se está mostrando.
                             border_width=rx.cond(
-                                AppState.current_modal_image_filename == item["variant"].get("image_url"), "2px", "1px"
+                                # --- CORRECCIÓN AQUÍ ---
+                                AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"
                             ),
                             border_color=rx.cond(
-                                AppState.current_modal_image_filename == item["variant"].get("image_url"), "violet", "gray"
+                                # --- CORRECCIÓN AQUÍ ---
+                                AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"
                             ),
                             padding="2px", border_radius="lg", cursor="pointer",
-                            # Al hacer clic, se usa el índice original para seleccionar la variante correcta
-                            on_click=AppState.set_modal_variant_index(item["index"]),
+                            # --- CORRECCIÓN AQUÍ: item.index en lugar de item["index"] ---
+                            on_click=AppState.set_modal_variant_index(item.index),
                         )
                     ),
                     spacing="3", padding="0.5em", width="100%", overflow_x="auto",

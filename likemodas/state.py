@@ -304,6 +304,12 @@ class VariantFormData(rx.Base):
     stock: int = 10  # Stock por defecto
     image_url: str = ""
 
+# --- AÑADE ESTA NUEVA CLASE DTO AQUÍ ---
+class UniqueVariantItem(rx.Base):
+    """Un DTO para que rx.foreach entienda la estructura de las variantes únicas."""
+    variant: dict  # El diccionario de la variante en sí
+    index: int     # El índice original en la lista completa de variantes
+
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -1331,10 +1337,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         return processed
     
     @rx.var
-    def unique_modal_variants(self) -> list[dict]:
+    def unique_modal_variants(self) -> list[UniqueVariantItem]: # <-- Cambia el tipo de retorno
         """
-        Devuelve una lista de variantes con URLs de imagen únicas para las miniaturas del modal.
-        Cada item contiene la variante y su índice original para que los clics funcionen.
+        Devuelve una lista de DTOs con URLs de imagen únicas para las miniaturas del modal.
         """
         if not self.product_in_modal or not self.product_in_modal.variants:
             return []
@@ -1345,7 +1350,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             image_url = variant.get("image_url")
             if image_url and image_url not in seen_images:
                 seen_images.add(image_url)
-                unique_items.append({"variant": variant, "index": i})
+                # En lugar de un dict, creamos una instancia del nuevo DTO
+                unique_items.append(UniqueVariantItem(variant=variant, index=i))
         return unique_items
 
     cart: Dict[int, int] = {}
