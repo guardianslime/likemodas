@@ -13,15 +13,16 @@ def variant_stock_manager() -> rx.Component:
         rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
         rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
         
-        # Botón para generar las variantes
-        rx.button("Generar Variantes", on_click=AppState.generate_variants, margin_y="1em"),
+        rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants, margin_y="1em"),
         
-        # Tabla de gestión de stock
+        # --- CAMBIO CLAVE EN LA UI ---
+        # La tabla ahora depende de `current_generated_variants`, que está
+        # ligado a la imagen seleccionada (`selected_variant_index`).
         rx.cond(
-            AppState.variant_form_data,
+            AppState.current_generated_variants,
             rx.vstack(
                 rx.foreach(
-                    AppState.variant_form_data,
+                    AppState.current_generated_variants,
                     lambda variant, index: rx.box(
                         rx.hstack(
                             # Atributos de la variante
@@ -30,52 +31,39 @@ def variant_stock_manager() -> rx.Component:
                                     variant.attributes.items(),
                                     lambda item: rx.text(f"{item[0]}: ", rx.text.strong(item[1])),
                                 ),
-                                align_items="start",
-                                flex_grow=1,
+                                align_items="start", flex_grow=1,
                             ),
                             
-                            # Contador de stock
+                            # Contador de stock (ahora pasa el índice del grupo y del item)
                             rx.hstack(
-                                rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(index)),
+                                rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_variant_index, index)),
                                 rx.input(
                                     value=variant.stock.to_string(),
-                                    on_change=lambda val: AppState.set_variant_stock(index, val),
-                                    text_align="center",
-                                    max_width="70px",
+                                    on_change=lambda val: AppState.set_variant_stock(AppState.selected_variant_index, index, val),
+                                    text_align="center", max_width="70px",
                                 ),
-                                rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(index)),
-                                align="center",
-                                spacing="2",
+                                rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_variant_index, index)),
+                                align="center", spacing="2",
                             ),
                             
-                            # --- 👇 SECCIÓN CORREGIDA 👇 ---
-                            # Selector de imagen
+                            # Selector de imagen (ahora pasa el índice del grupo y del item)
                             rx.select(
-                                # Usamos la nueva variable computada que ya es una lista de strings
                                 AppState.uploaded_image_urls,
                                 placeholder="Imagen...",
                                 value=variant.image_url,
-                                on_change=lambda url: AppState.assign_image_to_variant(index, url),
+                                on_change=lambda url: AppState.assign_image_to_variant(AppState.selected_variant_index, index, url),
                                 max_width="150px",
                             ),
-                            # --- FIN DE LA SECCIÓN CORREGIDA ---               
-                            spacing="4",
-                            align="center",
-                            width="100%",
+                            spacing="4", align="center", width="100%",
                         ),
-                        padding="0.75em",
-                        border="1px solid",
-                        border_color=rx.color("gray", 6),
-                        border_radius="md",
-                        width="100%",
+                        padding="0.75em", border="1px solid",
+                        border_color=rx.color("gray", 6), border_radius="md", width="100%",
                     )
                 ),
-                spacing="3",
-                width="100%",
+                spacing="3", width="100%",
             )
         ),
-        align_items="stretch",
-        width="100%",
+        align_items="stretch", width="100%",
     )
 
 def blog_post_add_form() -> rx.Component:

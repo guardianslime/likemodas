@@ -615,23 +615,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     SELECTABLE_ATTRIBUTES = ["Talla", "Número", "Tamaño"]
 
     def select_variant_for_editing(self, index: int):
-        """Selecciona una variante y carga sus atributos en el formulario."""
+        """
+        Selecciona una imagen. Carga sus atributos guardados en el formulario.
+        La nueva propiedad `current_generated_variants` se actualizará automáticamente.
+        """
         self.selected_variant_index = index
-        # Limpia los campos de atributos actuales
+        
+        # Limpia los campos del formulario antes de cargar los nuevos
         self.attr_colores = []
         self.attr_tallas_ropa = []
         self.attr_numeros_calzado = []
         self.attr_tamanos_mochila = []
 
-        # Carga los atributos de la variante seleccionada, si existen
-        variant_attrs = self.new_variants[index].get("attributes", {})
-        self.attr_colores = variant_attrs.get("Color", [])
-        if self.category == Category.ROPA.value:
-            self.attr_tallas_ropa = variant_attrs.get("Talla", [])
-        elif self.category == Category.CALZADO.value:
-            self.attr_numeros_calzado = variant_attrs.get("Número", [])
-        elif self.category == Category.MOCHILAS.value:
-            self.attr_tamanos_mochila = variant_attrs.get("Tamaño", [])
+        # Carga los atributos guardados para esta imagen, si existen
+        if 0 <= index < len(self.new_variants):
+            variant_attrs = self.new_variants[index].get("attributes", {})
+            self.attr_colores = variant_attrs.get("Color", [])
+            if self.category == Category.ROPA.value:
+                self.attr_tallas_ropa = variant_attrs.get("Talla", [])
+            elif self.category == Category.CALZADO.value:
+                self.attr_numeros_calzado = variant_attrs.get("Número", [])
+            elif self.category == Category.MOCHILAS.value:
+                self.attr_tamanos_mochila = variant_attrs.get("Tamaño", [])
 
     def save_variant_attributes(self):
         """Guarda los atributos actuales del formulario en la variante seleccionada."""
@@ -667,59 +672,88 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.modal_selected_attributes = new_selections
 
     # Nuevas variables para el formulario de variantes
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Se añaden las variables que faltaban para el formulario de AÑADIR posts.
+    new_variants: list[dict] = []
+    selected_variant_index: int = -1 # -1 significa que no hay ninguna seleccionada
     variant_form_data: list[VariantFormData] = []
     
+    @rx.var
+    def current_variant_display_attributes(self) -> dict[str, str]:
+        """Prepara los atributos de la variante actual que son de SOLO LECTURA."""
+        variant = self.current_modal_variant
+        if not variant: return {}
+        
+        display_attrs = {}
+        attributes = variant.get("attributes", {})
+        for key, value in attributes.items():
+            if key not in self.SELECTABLE_ATTRIBUTES:
+                display_attrs[key] = ", ".join(value) if isinstance(value, list) else value
+        return display_attrs
+
     # Método para generar las combinaciones de variantes
     def generate_variants(self):
-        self.variant_form_data = []
-        # Recopila los atributos seleccionados
-        colors = self.attr_colores
-        sizes = []
-        size_key = ""
+        """
+        Genera variantes y las asocia con la imagen actualmente seleccionada.
+        También guarda los atributos en la variante principal para persistencia.
+        """
+        if self.selected_variant_index < 0:
+            return rx.toast.error("Por favor, selecciona una imagen primero.")
 
+        # 1. Recopila los atributos del formulario
+        colors = self.attr_colores
+        sizes, size_key = [], ""
         if self.category == Category.ROPA.value:
-            sizes = self.attr_tallas_ropa
-            size_key = "Talla"
+            sizes, size_key = self.attr_tallas_ropa, "Talla"
         elif self.category == Category.CALZADO.value:
-            sizes = self.attr_numeros_calzado
-            size_key = "Número"
+            sizes, size_key = self.attr_numeros_calzado, "Número"
         elif self.category == Category.MOCHILAS.value:
-            sizes = self.attr_tamanos_mochila
-            size_key = "Tamaño"
+            sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
 
         if not colors or not sizes:
-            return rx.toast.error("Debes seleccionar al menos un color y una talla/tamaño.")
+            return rx.toast.error("Debes seleccionar al menos un color y una talla/tamaño/número.")
 
-        # Genera las combinaciones
+        # 2. Guarda estos atributos en la imagen seleccionada (para que se recuerden)
+        current_attributes = {"Color": colors, size_key: sizes}
+        self.new_variants[self.selected_variant_index]["attributes"] = current_attributes
+
+        # 3. Genera las combinaciones para la tabla de stock
+        generated_variants = []
         for color in colors:
             for size in sizes:
-                self.variant_form_data.append(
+                generated_variants.append(
                     VariantFormData(attributes={"Color": color, size_key: size})
                 )
-        return rx.toast.info(f"{len(self.variant_form_data)} variantes generadas.")
+        
+        # 4. Asocia las variantes generadas con el índice de la imagen seleccionada
+        self.generated_variants_map[self.selected_variant_index] = generated_variants
+        return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
 
-    # Métodos para manejar el stock en el formulario
-    def _update_variant_stock(self, index: int, new_stock: int):
-        if 0 <= index < len(self.variant_form_data):
-            self.variant_form_data[index].stock = max(0, new_stock) # Evita stock negativo
+    # --- FUNCIONES DE STOCK MODIFICADAS ---
+    def _update_variant_stock(self, group_index: int, item_index: int, new_stock: int):
+        if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
+            self.generated_variants_map[group_index][item_index].stock = max(0, new_stock)
 
-    def set_variant_stock(self, index: int, stock_str: str):
+    def set_variant_stock(self, group_index: int, item_index: int, stock_str: str):
         try:
-            self._update_variant_stock(index, int(stock_str))
-        except ValueError:
-            pass # Ignora si no es un número
+            self._update_variant_stock(group_index, item_index, int(stock_str))
+        except (ValueError, TypeError):
+            pass
 
-    def increment_variant_stock(self, index: int):
-        if 0 <= index < len(self.variant_form_data):
-            self._update_variant_stock(index, self.variant_form_data[index].stock + 1)
+    def increment_variant_stock(self, group_index: int, item_index: int):
+        if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
+            current_stock = self.generated_variants_map[group_index][item_index].stock
+            self._update_variant_stock(group_index, item_index, current_stock + 1)
             
-    def decrement_variant_stock(self, index: int):
-        if 0 <= index < len(self.variant_form_data):
-            self._update_variant_stock(index, self.variant_form_data[index].stock - 1)
+    def decrement_variant_stock(self, group_index: int, item_index: int):
+        if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
+            current_stock = self.generated_variants_map[group_index][item_index].stock
+            self._update_variant_stock(group_index, item_index, current_stock - 1)
 
-    def assign_image_to_variant(self, index: int, image_url: str):
-        if 0 <= index < len(self.variant_form_data):
-            self.variant_form_data[index].image_url = image_url
+    def assign_image_to_variant(self, group_index: int, item_index: int, image_url: str):
+        if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
+            self.generated_variants_map[group_index][item_index].image_url = image_url
+    
 
 
     # --- 👇 AÑADE ESTA NUEVA FUNCIÓN AQUÍ 👇 ---
@@ -747,8 +781,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Acción no permitida.")
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
-        if not self.variant_form_data:
-            return rx.toast.error("Debes generar y configurar las variantes del producto antes de publicar.")
+        
+        if not self.generated_variants_map:
+            return rx.toast.error("Debes generar y configurar las variantes para al menos una imagen.")
 
         try:
             shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
@@ -760,16 +795,22 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             return rx.toast.error("Los costos y límites deben ser números válidos.")
 
-        # Convierte los datos del formulario de variantes al formato JSON para la base de datos
-        variants_for_db = [
-            {
-                "attributes": v.attributes,
-                "stock": v.stock,
-                # Asigna la imagen específica o la primera imagen subida como fallback
-                "image_url": v.image_url or (self.new_variants[0].get("image_url") if self.new_variants else "")
-            }
-            for v in self.variant_form_data
-        ]
+        # --- Lógica para aplanar las variantes del map a una sola lista para la BD ---
+        all_variants_for_db = []
+        for index, generated_list in self.generated_variants_map.items():
+            # Obtiene la URL de la imagen principal para este grupo de variantes
+            main_image_url_for_group = self.new_variants[index].get("image_url", "")
+            
+            for variant_data in generated_list:
+                all_variants_for_db.append({
+                    "attributes": variant_data.attributes,
+                    "stock": variant_data.stock,
+                    # Usa la imagen asignada a la variante, o la imagen principal del grupo como fallback
+                    "image_url": variant_data.image_url or main_image_url_for_group
+                })
+
+        if not all_variants_for_db:
+             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
 
         with rx.session() as session:
             new_post = BlogPostModel(
@@ -779,7 +820,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
-                variants=variants_for_db,  # Guarda la estructura completa de variantes
+                variants=all_variants_for_db,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost,
@@ -792,7 +833,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_post)
 
-        self._clear_add_form() # Recuerda añadir la limpieza de `variant_form_data` en este método
+        self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
     
@@ -1110,10 +1151,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     price_includes_iva: bool = True
     post_images_in_form: list[str] = []
 
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Se añaden las variables que faltaban para el formulario de AÑADIR posts.
-    new_variants: list[dict] = []
-    selected_variant_index: int = -1 # -1 significa que no hay ninguna seleccionada
+    
+
+    
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     def next_image(self):
@@ -1521,18 +1561,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if next_key in self.modal_selected_attributes:
                 del self.modal_selected_attributes[next_key]
 
-    @rx.var
-    def current_variant_display_attributes(self) -> dict[str, str]:
-        """Prepara los atributos de la variante actual que son de SOLO LECTURA."""
-        variant = self.current_modal_variant
-        if not variant: return {}
-        
-        display_attrs = {}
-        attributes = variant.get("attributes", {})
-        for key, value in attributes.items():
-            if key not in self.SELECTABLE_ATTRIBUTES:
-                display_attrs[key] = ", ".join(value) if isinstance(value, list) else value
-        return display_attrs
+    
 
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
@@ -1700,6 +1729,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         # --- 👇 LÍNEA IMPORTANTE A AÑADIR/VERIFICAR 👇 ---
         self.variant_form_data = [] # Asegúrate de que esta línea esté aquí
+        self.generated_variants_map = {} # Asegúrate de limpiar el map
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
