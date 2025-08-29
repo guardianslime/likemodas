@@ -79,9 +79,7 @@ class ProductCardData(rx.Base):
     title: str
     price: float = 0.0
     price_cop: str = ""
-    # --- 👇 LÍNEA ELIMINADA 👇 ---
-    # image_urls: list[str] = []
-    variants: list[dict] = [] # Se añade para consistencia
+    variants: list[dict] = []
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
@@ -94,7 +92,19 @@ class ProductCardData(rx.Base):
     class Config:
         orm_mode = True
 
-    
+    # --- 👇 Propiedades Añadidas para la Calificación 👇 ---
+    @property
+    def full_stars(self) -> list[int]:
+        return list(range(math.floor(self.average_rating)))
+
+    @property
+    def has_half_star(self) -> bool:
+        return (self.average_rating - math.floor(self.average_rating)) >= 0.5
+
+    @property
+    def empty_stars(self) -> list[int]:
+        return list(range(5 - math.ceil(self.average_rating)))
+
 class ProductDetailData(rx.Base):
     id: int
     title: str
@@ -106,7 +116,6 @@ class ProductDetailData(rx.Base):
     rating_count: int = 0
     seller_name: str = ""
     seller_id: int = 0
-    # El campo 'attributes' se mantiene por ahora, aunque redundante.
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
@@ -115,6 +124,19 @@ class ProductDetailData(rx.Base):
 
     class Config:
         orm_mode = True
+
+    # --- 👇 Propiedades Añadidas para la Calificación 👇 ---
+    @property
+    def full_stars(self) -> list[int]:
+        return list(range(math.floor(self.average_rating)))
+
+    @property
+    def has_half_star(self) -> bool:
+        return (self.average_rating - math.floor(self.average_rating)) >= 0.5
+
+    @property
+    def empty_stars(self) -> list[int]:
+        return list(range(5 - math.ceil(self.average_rating)))
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
@@ -1652,7 +1674,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         # --- 👇 LÍNEA IMPORTANTE A AÑADIR/VERIFICAR 👇 ---
         self.variant_form_data = [] # Asegúrate de que esta línea esté aquí
-        
+
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
     #free_shipping_threshold_str: str = ""

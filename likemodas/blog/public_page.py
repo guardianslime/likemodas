@@ -29,19 +29,25 @@ def render_update_item(comment: CommentData) -> rx.Component:
         margin_left="2.5em"
     )
 
-def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Component:
-    """Componente para mostrar estrellas de valoración."""
-    full_stars = rx.Var.range(math.floor(rating))
-    has_half_star = (rating - math.floor(rating)) >= 0.5
-    empty_stars = rx.Var.range(5 - math.ceil(rating))
-    
+def star_rating_display(rating_data: rx.Var) -> rx.Component:
+    """Componente para mostrar estrellas de valoración (Ahora recibe el DTO)."""
     return rx.cond(
-        count > 0,
+        rating_data.rating_count > 0,
         rx.hstack(
-            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=20)),
-            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=20), rx.fragment()),
-            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
-            rx.text(f"{rating:.1f} de 5 ({count} opiniones)", size="3", color_scheme="gray", margin_left="0.5em"),
+            # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+            rx.foreach(rating_data.full_stars, lambda _: rx.icon("star", color="gold", size=20)),
+            rx.cond(rating_data.has_half_star, rx.icon("star_half", color="gold", size=20)),
+            rx.foreach(rating_data.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
+            # --- FIN DE LA CORRECCIÓN ---
+            rx.text(
+                rx.moment(
+                    f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
+                    format="L" 
+                ),
+                size="3", 
+                color_scheme="gray", 
+                margin_left="0.5em"
+            ),
             align="center", spacing="1",
         ),
         rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
@@ -162,8 +168,14 @@ def product_detail_modal() -> rx.Component:
                                 src=rx.get_upload_url(variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
-                            border_width=rx.cond(AppState.modal_selected_variant_index == index, "2px", "1px"),
-                            border_color=rx.cond(AppState.modal_selected_variant_index == index, "violet", "gray"),
+                            # --- 👇 LÍNEAS CORREGIDAS 👇 ---
+                            border_width=rx.cond(
+                                AppState.modal_selected_variant_index == index, "2px", "1px"
+                            ),
+                            border_color=rx.cond(
+                                AppState.modal_selected_variant_index == index, "violet", "gray"
+                            ),
+                            # --- FIN DE LA CORRECCIÓN ---
                             padding="2px", border_radius="lg", cursor="pointer",
                             on_click=AppState.set_modal_variant_index(index),
                         )
@@ -179,7 +191,11 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
+            
+            # --- 👇 LÍNEA CORREGIDA 👇 ---
+            # Se le pasa el objeto completo que ya contiene la lógica de las estrellas.
+            star_rating_display(AppState.product_in_modal),
+            
             rx.hstack(
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
@@ -205,7 +221,6 @@ def product_detail_modal() -> rx.Component:
                 rx.divider(margin_y="1em"),
                 rx.heading("Características", size="4"),
                 
-                # --- ✨ Bucle para atributos de SÓLO LECTURA (Color) ✨ ---
                 rx.foreach(
                     AppState.current_variant_display_attributes.items(),
                     lambda item: rx.hstack(
@@ -217,7 +232,6 @@ def product_detail_modal() -> rx.Component:
                     ),
                 ),
 
-                # --- ✨ Bucle para atributos SELECCIONABLES (Talla) ✨ ---
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(

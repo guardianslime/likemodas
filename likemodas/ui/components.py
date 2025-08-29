@@ -56,18 +56,13 @@ def searchable_select(
 
 
 def _product_card_rating(post: ProductCardData) -> rx.Component:
-    average_rating = post.average_rating
-    rating_count = post.rating_count
-    full_stars = rx.Var.range(math.floor(average_rating))
-    has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
-    empty_stars = rx.Var.range(5 - math.ceil(average_rating))
     return rx.cond(
-        rating_count > 0,
+        post.rating_count > 0,
         rx.hstack(
-            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=18)),
-            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=18), rx.fragment()),
-            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
-            rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
+            rx.foreach(post.full_stars, lambda _: rx.icon("star", color="gold", size=18)),
+            rx.cond(post.has_half_star, rx.icon("star_half", color="gold", size=18)),
+            rx.foreach(post.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
+            rx.text(f"({post.rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
         rx.box(height="21px")
