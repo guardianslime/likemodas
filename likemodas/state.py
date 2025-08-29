@@ -1103,18 +1103,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     product_in_modal: Optional[ProductDetailData] = None
     current_image_index: int = 0
     is_editing_post: bool = False
-    # --- 👇 LÍNEA MODIFICADA 👇 ---
-    # Cambiamos de 'Optional[BlogPostModel]' a 'Optional[int]'
     post_to_edit_id: Optional[int] = None 
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
-    # --- ✨ AÑADE ESTA VARIABLE Y SU SETTER ✨ ---
     price_includes_iva: bool = True
-
     post_images_in_form: list[str] = []
 
-
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Se añaden las variables que faltaban para el formulario de AÑADIR posts.
+    new_variants: list[dict] = []
+    selected_variant_index: int = -1 # -1 significa que no hay ninguna seleccionada
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     def next_image(self):
         if self.product_in_modal and self.product_in_modal.image_urls:
