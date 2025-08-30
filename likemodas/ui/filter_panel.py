@@ -175,7 +175,7 @@ def floating_filter_panel() -> rx.Component:
         width="100%"
     )
 
-    # El resto del componente permanece igual
+    # --- El resto del componente no necesita cambios ---
     return rx.box(
         rx.hstack(
             rx.vstack(
