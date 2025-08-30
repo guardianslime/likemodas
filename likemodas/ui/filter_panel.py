@@ -18,7 +18,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_ropa,
             selected_items=AppState.filter_tipos_general, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
@@ -30,7 +30,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir talla...", 
             options=AppState.filtered_tallas_ropa,
             selected_items=AppState.filter_tallas, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_tallas", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_tallas", item),
             prop_name="filter_tallas",
@@ -42,7 +42,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir tela...", 
             options=AppState.filtered_materiales,
             selected_items=AppState.filter_materiales_tela, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_materiales_tela", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_materiales_tela", item),
             prop_name="filter_materiales_tela",
@@ -62,7 +62,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_zapatos,
             selected_items=AppState.filter_tipos_general, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
@@ -74,7 +74,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir número...", 
             options=AppState.filtered_numeros_calzado,
             selected_items=AppState.filter_numeros_calzado, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_numeros_calzado", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_numeros_calzado", item),
             prop_name="filter_numeros_calzado",
@@ -86,7 +86,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir material...", 
             options=AppState.filtered_materiales,
             selected_items=AppState.filter_materiales_tela, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_materiales_tela", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_materiales_tela", item),
             prop_name="filter_materiales_tela",
@@ -106,7 +106,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_mochilas,
             selected_items=AppState.filter_tipos_general, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
@@ -118,7 +118,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir material...", 
             options=AppState.filtered_materiales,
             selected_items=AppState.filter_materiales_tela, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_materiales_tela", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_materiales_tela", item),
             prop_name="filter_materiales_tela",
@@ -138,7 +138,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir tipo...",
             options=AppState.filtered_tipos_general,
             selected_items=AppState.filter_tipos_general,
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
@@ -150,7 +150,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir material...", 
             options=AppState.filtered_materiales,
             selected_items=AppState.filter_materiales_tela, 
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_materiales_tela", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_materiales_tela", item),
             prop_name="filter_materiales_tela",
@@ -162,7 +162,7 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir talla/medida...",
             options=AppState.filtered_medidas_general,
             selected_items=AppState.filter_tallas,
-            # --- CORRECCIÓN AQUÍ ---
+            # --- CORRECCIÓN APLICADA ---
             add_handler=lambda val: AppState.add_filter_value("filter_tallas", val),
             remove_handler=lambda item: AppState.remove_filter_value("filter_tallas", item),
             prop_name="filter_tallas",
@@ -175,7 +175,7 @@ def floating_filter_panel() -> rx.Component:
         width="100%"
     )
 
-    # --- El resto del archivo no necesita cambios ---
+    # El resto del componente permanece igual
     return rx.box(
         rx.hstack(
             rx.vstack(
