@@ -30,9 +30,9 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir talla...", 
             options=AppState.filtered_tallas_ropa,
             selected_items=AppState.filter_tallas, 
-            add_handler=lambda val: AppState.add_filter_value("filter_tallas", val), # Adaptamos también el add_handler
-            remove_handler=lambda item: AppState.remove_filter_value("filter_tallas", item), #
-            prop_name="filter_tallas",
+            add_handler=lambda val: AppState.add_filter_value("filter_tallas", val), #
+            remove_handler=lambda item: AppState.remove_filter_value("filter_tallas", item),
+            prop_name="filter_tallas", # Este prop ya no es estrictamente necesario, pero no daña
             search_value=AppState.search_talla, 
             on_change_search=AppState.set_search_talla,
             filter_name="ropa_talla_filter",
