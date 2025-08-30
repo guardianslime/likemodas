@@ -178,7 +178,7 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        on_click=remove_handler(item), #
+                        on_click=lambda: remove_handler(item), # Asegúrate de que sea una lambda que llama al handler
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
