@@ -19,8 +19,8 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_ropa,
             selected_items=AppState.filter_tipos_general, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val), #
+            remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
             search_value=AppState.search_tipo_prenda, 
             on_change_search=AppState.set_search_tipo_prenda,
