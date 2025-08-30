@@ -682,6 +682,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Actualiza el estado que controla los selectores en el modal
         self.modal_selected_attributes = new_selections
 
+    # --- 👇 AÑADE ESTAS LÍNEAS NUEVAS --- 👇
+    temp_talla: str = ""
+    temp_numero: str = ""
+    temp_tamano: str = ""
+
+    def set_temp_talla(self, talla: str):
+        self.temp_talla = talla
+    
+    def set_temp_numero(self, numero: str):
+        self.temp_numero = numero
+        
+    def set_temp_tamano(self, tamano: str):
+        self.temp_tamano = tamano
+    # --- FIN DE LAS LÍNEAS NUEVAS ---
+
     # Nuevas variables para el formulario de variantes
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # Se añaden las variables que faltaban para el formulario de AÑADIR posts.

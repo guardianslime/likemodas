@@ -91,19 +91,18 @@ def blog_post_add_form() -> rx.Component:
         filter_name="attr_color_filter",
     )
     
+    # --- 👇 REEMPLAZA ESTOS 3 BLOQUES COMPLETOS --- 👇
     caracteristicas_ropa = rx.vstack(
         rx.grid(
-            color_selector_simple,
-            multi_select_component(
-                placeholder="Añadir talla...", options=AppState.filtered_attr_tallas_ropa,
-                selected_items=AppState.attr_tallas_ropa, 
-                # 👇 --- CAMBIOS CLAVE AQUÍ --- 👇
-                add_handler=lambda val: AppState.add_variant_attribute("Talla", val),
+            color_selector_simple,  # Este se mantiene igual
+            attribute_editor(
+                title="Talla",
+                options_list=LISTA_TALLAS_ROPA,
+                temp_value_var=AppState.temp_talla,
+                temp_value_setter=AppState.set_temp_talla,
+                add_handler=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla),
                 remove_handler=lambda val: AppState.remove_variant_attribute("Talla", val),
-                prop_name="attr_tallas_ropa", # Este prop ya no es funcionalmente necesario pero lo mantenemos por consistencia
-                # 👆 --- FIN DE CAMBIOS CLAVE --- 👆
-                search_value=AppState.search_attr_talla_ropa, on_change_search=AppState.set_search_attr_talla_ropa,
-                filter_name="attr_talla_filter",
+                current_selections=AppState.attr_tallas_ropa,
             ),
             columns="2", spacing="3", width="100%",
         ),
@@ -114,14 +113,14 @@ def blog_post_add_form() -> rx.Component:
     caracteristicas_calzado = rx.vstack(
         rx.grid(
             color_selector_simple,
-            multi_select_component(
-                placeholder="Añadir número...", options=AppState.filtered_attr_numeros_calzado,
-                selected_items=AppState.attr_numeros_calzado, 
-                add_handler=lambda val: AppState.add_variant_attribute("Número", val), # Cambiado
-                remove_handler=lambda val: AppState.remove_variant_attribute("Número", val), # Cambiado
-                prop_name="attr_numeros_calzado",
-                search_value=AppState.search_attr_numero_calzado, on_change_search=AppState.set_search_attr_numero_calzado,
-                filter_name="attr_numero_filter",
+            attribute_editor(
+                title="Número",
+                options_list=LISTA_NUMEROS_CALZADO,
+                temp_value_var=AppState.temp_numero,
+                temp_value_setter=AppState.set_temp_numero,
+                add_handler=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Número", val),
+                current_selections=AppState.attr_numeros_calzado,
             ),
             columns="2", spacing="3", width="100%",
         ),
@@ -129,18 +128,17 @@ def blog_post_add_form() -> rx.Component:
         spacing="3", width="100%",
     )
     
-    # Reemplaza la sección de caracteristicas_mochilas
     caracteristicas_mochilas = rx.vstack(
         rx.grid(
             color_selector_simple,
-            multi_select_component(
-                placeholder="Añadir tamaño...", options=AppState.filtered_attr_tamanos_mochila,
-                selected_items=AppState.attr_tamanos_mochila, 
-                add_handler=lambda val: AppState.add_variant_attribute("Tamaño", val), # Cambiado
-                remove_handler=lambda val: AppState.remove_variant_attribute("Tamaño", val), # Cambiado
-                prop_name="attr_tamanos_mochila",
-                search_value=AppState.search_attr_tamano_mochila, on_change_search=AppState.set_search_attr_tamano_mochila,
-                filter_name="attr_tamano_mochila_filter",
+            attribute_editor(
+                title="Tamaño",
+                options_list=LISTA_TAMANOS_MOCHILAS,
+                temp_value_var=AppState.temp_tamano,
+                temp_value_setter=AppState.set_temp_tamano,
+                add_handler=lambda: AppState.add_variant_attribute("Tamaño", AppState.temp_tamano),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Tamaño", val),
+                current_selections=AppState.attr_tamanos_mochila,
             ),
             columns="2", spacing="3", width="100%",
         ),
@@ -333,3 +331,54 @@ def blog_post_edit_form() -> rx.Component:
         on_submit=AppState.save_edited_post,
         width="100%",
     )
+
+
+# --- 👇 AÑADE ESTE COMPONENTE NUEVO COMPLETO --- 👇
+def attribute_editor(
+    title: str,
+    options_list: list[str],
+    temp_value_var: rx.Var[str],
+    temp_value_setter: rx.event.EventSpec,
+    add_handler: rx.event.EventHandler,
+    remove_handler: rx.event.EventHandler,
+    current_selections: rx.Var[list[str]],
+) -> rx.Component:
+    """
+    Un componente para añadir y quitar atributos específicos a una variante.
+    """
+    return rx.vstack(
+        rx.text(title, weight="bold", size="3"),
+        # Muestra los atributos ya seleccionados como badges
+        rx.flex(
+            rx.foreach(
+                current_selections,
+                lambda item: rx.badge(
+                    item,
+                    rx.icon(
+                        "x",
+                        size=12,
+                        cursor="pointer",
+                        on_click=lambda: remove_handler(item),
+                        margin_left="0.25em"
+                    ),
+                    variant="soft", color_scheme="gray", size="2",
+                ),
+            ),
+            wrap="wrap", spacing="2", min_height="36px",
+        ),
+        # Selector y botón para añadir un nuevo atributo
+        rx.hstack(
+            rx.select(
+                options_list,
+                placeholder=f"Seleccionar {title.lower()}...",
+                value=temp_value_var,
+                on_change=temp_value_setter,
+            ),
+            rx.button("Añadir", on_click=add_handler),
+            width="100%"
+        ),
+        align_items="stretch",
+        width="100%",
+        spacing="2"
+    )
+# --- FIN DEL COMPONENTE NUEVO ---
