@@ -93,12 +93,15 @@ def blog_post_add_form() -> rx.Component:
     
     caracteristicas_ropa = rx.vstack(
         rx.grid(
-            # --- Se usa el selector simple en lugar del múltiple ---
             color_selector_simple,
             multi_select_component(
                 placeholder="Añadir talla...", options=AppState.filtered_attr_tallas_ropa,
-                selected_items=AppState.attr_tallas_ropa, add_handler=AppState.add_attribute_value,
-                remove_handler=AppState.remove_attribute_value, prop_name="attr_tallas_ropa",
+                selected_items=AppState.attr_tallas_ropa, 
+                # 👇 --- CAMBIOS CLAVE AQUÍ --- 👇
+                add_handler=lambda val: AppState.add_variant_attribute("Talla", val),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Talla", val),
+                prop_name="attr_tallas_ropa", # Este prop ya no es funcionalmente necesario pero lo mantenemos por consistencia
+                # 👆 --- FIN DE CAMBIOS CLAVE --- 👆
                 search_value=AppState.search_attr_talla_ropa, on_change_search=AppState.set_search_attr_talla_ropa,
                 filter_name="attr_talla_filter",
             ),
@@ -110,12 +113,13 @@ def blog_post_add_form() -> rx.Component:
     
     caracteristicas_calzado = rx.vstack(
         rx.grid(
-            # --- Se usa el selector simple en lugar del múltiple ---
             color_selector_simple,
             multi_select_component(
                 placeholder="Añadir número...", options=AppState.filtered_attr_numeros_calzado,
-                selected_items=AppState.attr_numeros_calzado, add_handler=AppState.add_attribute_value,
-                remove_handler=AppState.remove_attribute_value, prop_name="attr_numeros_calzado",
+                selected_items=AppState.attr_numeros_calzado, 
+                add_handler=lambda val: AppState.add_variant_attribute("Número", val), # Cambiado
+                remove_handler=lambda val: AppState.remove_variant_attribute("Número", val), # Cambiado
+                prop_name="attr_numeros_calzado",
                 search_value=AppState.search_attr_numero_calzado, on_change_search=AppState.set_search_attr_numero_calzado,
                 filter_name="attr_numero_filter",
             ),
@@ -125,14 +129,16 @@ def blog_post_add_form() -> rx.Component:
         spacing="3", width="100%",
     )
     
+    # Reemplaza la sección de caracteristicas_mochilas
     caracteristicas_mochilas = rx.vstack(
         rx.grid(
-            # --- Se usa el selector simple en lugar del múltiple ---
             color_selector_simple,
             multi_select_component(
                 placeholder="Añadir tamaño...", options=AppState.filtered_attr_tamanos_mochila,
-                selected_items=AppState.attr_tamanos_mochila, add_handler=AppState.add_attribute_value,
-                remove_handler=AppState.remove_attribute_value, prop_name="attr_tamanos_mochila",
+                selected_items=AppState.attr_tamanos_mochila, 
+                add_handler=lambda val: AppState.add_variant_attribute("Tamaño", val), # Cambiado
+                remove_handler=lambda val: AppState.remove_variant_attribute("Tamaño", val), # Cambiado
+                prop_name="attr_tamanos_mochila",
                 search_value=AppState.search_attr_tamano_mochila, on_change_search=AppState.set_search_attr_tamano_mochila,
                 filter_name="attr_tamano_mochila_filter",
             ),

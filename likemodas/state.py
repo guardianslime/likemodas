@@ -974,17 +974,46 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_materiales_tela: list[str] = []
     filter_tipos_general: list[str] = []
 
-    def add_attribute_value(self, attribute_name: str, value: str):
-        current_list = getattr(self, attribute_name)
-        if value not in current_list:
-            current_list.append(value)
-            setattr(self, attribute_name, current_list)
+    def add_variant_attribute(self, key: str, value: str):
+        """
+        Añade un valor de atributo (ej: "S") a la lista de un atributo específico (ej: "Talla")
+        de la variante actualmente seleccionada.
+        """
+        if self.selected_variant_index < 0 or self.selected_variant_index >= len(self.new_variants):
+            return
 
-    def remove_attribute_value(self, attribute_name: str, value: str):
-        current_list = getattr(self, attribute_name)
-        if value in current_list:
-            current_list.remove(value)
-            setattr(self, attribute_name, current_list)
+        variant = self.new_variants[self.selected_variant_index]
+        if "attributes" not in variant:
+            variant["attributes"] = {}
+        
+        if key not in variant["attributes"]:
+            variant["attributes"][key] = []
+
+        # Evita duplicados
+        if value not in variant["attributes"][key]:
+            variant["attributes"][key].append(value)
+            # Actualiza también el "buffer" de la UI para que se refresque visualmente
+            if key == "Talla": self.attr_tallas_ropa = variant["attributes"][key]
+            elif key == "Número": self.attr_numeros_calzado = variant["attributes"][key]
+            elif key == "Tamaño": self.attr_tamanos_mochila = variant["attributes"][key]
+
+
+    def remove_variant_attribute(self, key: str, value: str):
+        """
+        Elimina un valor de atributo de la lista de un atributo específico
+        de la variante actualmente seleccionada.
+        """
+        if self.selected_variant_index < 0 or self.selected_variant_index >= len(self.new_variants):
+            return
+
+        variant = self.new_variants[self.selected_variant_index]
+        if "attributes" in variant and key in variant["attributes"]:
+            if value in variant["attributes"][key]:
+                variant["attributes"][key].remove(value)
+                # Actualiza también el "buffer" de la UI para que se refresque visualmente
+                if key == "Talla": self.attr_tallas_ropa = variant["attributes"][key]
+                elif key == "Número": self.attr_numeros_calzado = variant["attributes"][key]
+                elif key == "Tamaño": self.attr_tamanos_mochila = variant["attributes"][key]
 
     def add_filter_value(self, filter_name: str, value: str):
         current_list = getattr(self, filter_name)
