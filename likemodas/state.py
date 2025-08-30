@@ -1726,7 +1726,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_title(self, value: str): self.title = value
     def set_content(self, value: str): self.content = value
     def set_price_from_input(self, value: str): self.price = value
-    def set_category(self, value: str): self.category = value
+    def set_category(self, value: str):
+        """
+        Establece la categoría del producto y reinicia todos los estados
+        relacionados con los atributos para evitar la contaminación de datos.
+        """
+        # 1. Establecer la nueva categoría
+        self.category = value
+
+        # 2. Limpiar todas las listas y valores de atributos del formulario
+        self.attr_colores = ""
+        self.attr_tallas_ropa = []
+        self.attr_numeros_calzado = []
+        self.attr_tamanos_mochila = []
+        self.attr_material = ""
+        self.attr_tipo = ""
+
+        # 3. Limpiar las variantes ya generadas, ya que ahora son inválidas
+        self.generated_variants_map = {}
+        
+        # 4. Limpiar los atributos guardados en las imágenes subidas
+        for variant in self.new_variants:
+            if "attributes" in variant:
+                variant["attributes"] = {}
+                
+        # 5. Reiniciar la selección de la imagen a la primera (si hay alguna)
+        if self.new_variants:
+            self.selected_variant_index = 0
+        else:
+            self.selected_variant_index = -1
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
