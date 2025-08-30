@@ -2523,7 +2523,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase = session.get(PurchaseModel, purchase_id)
             
             # La condición correcta: la orden debe ser 'Contra Entrega' y ya debe haber sido 'Enviada'.
-            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status == PurchaseStatus.SHIPPED:
+            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status in [PurchaseStatus.SHIPPED, PurchaseStatus.DELIVERED]:
                 # 1. Se registra únicamente la fecha en que se confirmó el pago.
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 session.add(purchase)
