@@ -1602,28 +1602,30 @@ class AppState(reflex_local_auth.LocalAuthState):
         all_variants = self.product_in_modal.variants
         current_selection = self.modal_selected_attributes
         
-        # Determina todos los tipos de atributos seleccionables (ej. "Color", "Talla")
-        selectable_keys = sorted(list(
+        # 1. Obtenemos todas las claves de atributos presentes en las variantes
+        all_keys_in_variants = sorted(list(
             {key for v in all_variants for key in v.get("attributes", {})}
         ))
         
+        # 2. Filtramos para quedarnos SOLO con las que son seleccionables
+        selectable_keys = [key for key in all_keys_in_variants if key in self.SELECTABLE_ATTRIBUTES]
+
         selectors = []
-        # Construye los selectores dinámicamente
+        # Ahora el bucle solo se ejecutará para "Talla", "Número", o "Tamaño"
         for i, key in enumerate(selectable_keys):
-            # Filtra las variantes que coinciden con la selección actual
+            # ... el resto de la lógica de la función no necesita cambios ...
             filtered_variants = all_variants
             for prev_key in selectable_keys[:i]:
                 if prev_key in current_selection:
                     filtered_variants = [
                         v for v in filtered_variants 
-                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key]
+                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key] # [cite: 885, 886]
                     ]
             
-            # Extrae las opciones válidas y con stock > 0
             valid_options = {
                 v.get("attributes", {}).get(key)
                 for v in filtered_variants
-                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key)
+                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key) # [cite: 887]
             }
             
             if valid_options:
@@ -1631,7 +1633,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     ModalSelectorDTO(
                         key=key,
                         options=sorted(list(valid_options)),
-                        current_value=current_selection.get(key, "")
+                        current_value=current_selection.get(key, "") # [cite: 888, 889]
                     )
                 )
         return selectors
@@ -1747,7 +1749,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.temp_images = []
         self.new_variants = []
         self.selected_variant_index = -1
-        self.attr_colores = []
+        self.attr_colores = "" # Reiniciar a una cadena vacía, no una lista.
         self.attr_tallas_ropa = []
         self.attr_numeros_calzado = []
         self.attr_tamanos_mochila = []
