@@ -1655,55 +1655,67 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
         """
-        CORREGIDO: Genera selectores de atributos (Talla, Número, etc.)
-        basándose ÚNICAMENTE en los atributos de la variante visualmente seleccionada.
+        SOLUCIÓN DEFINITIVA: Construye los selectores de atributos de forma inteligente.
+        Primero, identifica el "grupo visual" al que pertenece la variante seleccionada
+        (ej. todas las camisetas amarillas) y luego genera los selectores (ej. Talla)
+        únicamente a partir de las opciones disponibles dentro de ese grupo.
         """
-        # 1. Obtenemos la variante que el usuario está viendo actualmente en el modal.
-        current_variant = self.current_modal_variant
-        if not current_variant:
+        # Si no hay un producto o una variante seleccionada en el modal, no hacemos nada.
+        if not self.product_in_modal or not self.current_modal_variant:
             return []
 
-        all_variants_del_producto = self.product_in_modal.variants
-        current_selection = self.modal_selected_attributes
+        # 1. Identificamos la variante que el usuario seleccionó (nuestro punto de anclaje).
+        anchor_variant = self.current_modal_variant
+        anchor_attributes = anchor_variant.get("attributes", {})
 
-        # 2. --- LÍNEA CLAVE ---
-        # Extraemos las claves de atributos (ej: "Color", "Talla") SOLO de la variante actual.
-        keys_in_current_variant = current_variant.get("attributes", {}).keys()
+        # 2. Definimos las características del "grupo visual".
+        #    Son los atributos que no se pueden seleccionar, como el "Color".
+        group_defining_attrs = {
+            key: value
+            for key, value in anchor_attributes.items()
+            if key not in self.SELECTABLE_ATTRIBUTES
+        }
 
-        # 3. Filtramos para quedarnos solo con las que son seleccionables por el usuario.
-        selectable_keys = sorted([
-            key for key in keys_in_current_variant if key in self.SELECTABLE_ATTRIBUTES
-        ])
+        # 3. Buscamos en TODO el producto y filtramos solo las variantes
+        #    que pertenecen a este mismo grupo visual.
+        variants_in_group = []
+        for variant in self.product_in_modal.variants:
+            v_attrs = variant.get("attributes", {})
+            is_in_group = True
+            for key, value in group_defining_attrs.items():
+                if v_attrs.get(key) != value:
+                    is_in_group = False
+                    break
+            if is_in_group:
+                variants_in_group.append(variant)
 
+        # 4. De este grupo ya filtrado, extraemos las claves de los atributos que SÍ son
+        #    seleccionables (ej. "Talla", "Número"). Para un grupo de Ropa, esto
+        #    ahora solo devolverá ["Talla"].
+        all_selectable_keys_in_group = {
+            key
+            for v in variants_in_group
+            for key in v.get("attributes", {}).keys()
+            if key in self.SELECTABLE_ATTRIBUTES
+        }
+
+        # 5. Finalmente, construimos los selectores solo para esas claves.
         selectors = []
-        # 4. El bucle ahora solo se ejecutará para las claves correctas (ej: solo "Talla" para ropa).
-        for i, key in enumerate(selectable_keys):
-            # Filtramos las variantes del producto para encontrar las opciones disponibles
-            # basadas en selecciones anteriores (si las hubiera).
-            filtered_variants_for_options = all_variants_del_producto
-            for prev_key in selectable_keys[:i]:
-                if prev_key in current_selection:
-                    filtered_variants_for_options = [
-                        v for v in filtered_variants_for_options
-                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key]
-                    ]
-            
-            # Recopilamos las opciones válidas (con stock > 0) para el selector actual.
+        for key in sorted(list(all_selectable_keys_in_group)):
+            # Obtenemos todas las opciones disponibles (con stock) para este selector.
             valid_options = sorted(list({
                 v.get("attributes", {}).get(key)
-                for v in filtered_variants_for_options
+                for v in variants_in_group
                 if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key)
             }))
             
-            # Si hay opciones válidas, creamos el DTO para el selector.
             if valid_options:
-                selectors.append(
-                    ModalSelectorDTO(
-                        key=key,
-                        options=valid_options,
-                        current_value=current_selection.get(key, "")
-                    )
-                )
+                selectors.append(ModalSelectorDTO(
+                    key=key,
+                    options=valid_options,
+                    current_value=self.modal_selected_attributes.get(key, "")
+                ))
+        
         return selectors
 
     @rx.event
