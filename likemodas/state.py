@@ -1641,43 +1641,54 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
-        if not self.product_in_modal: return []
-        
-        all_variants = self.product_in_modal.variants
+        """
+        CORREGIDO: Genera selectores de atributos (Talla, Número, etc.)
+        basándose ÚNICAMENTE en los atributos de la variante visualmente seleccionada.
+        """
+        # 1. Obtenemos la variante que el usuario está viendo actualmente en el modal.
+        current_variant = self.current_modal_variant
+        if not current_variant:
+            return []
+
+        all_variants_del_producto = self.product_in_modal.variants
         current_selection = self.modal_selected_attributes
-        
-        # 1. Obtenemos todas las claves de atributos presentes en las variantes
-        all_keys_in_variants = sorted(list(
-            {key for v in all_variants for key in v.get("attributes", {})}
-        ))
-        
-        # 2. Filtramos para quedarnos SOLO con las que son seleccionables
-        selectable_keys = [key for key in all_keys_in_variants if key in self.SELECTABLE_ATTRIBUTES]
+
+        # 2. --- LÍNEA CLAVE ---
+        # Extraemos las claves de atributos (ej: "Color", "Talla") SOLO de la variante actual.
+        keys_in_current_variant = current_variant.get("attributes", {}).keys()
+
+        # 3. Filtramos para quedarnos solo con las que son seleccionables por el usuario.
+        selectable_keys = sorted([
+            key for key in keys_in_current_variant if key in self.SELECTABLE_ATTRIBUTES
+        ])
 
         selectors = []
-        # Ahora el bucle solo se ejecutará para "Talla", "Número", o "Tamaño"
+        # 4. El bucle ahora solo se ejecutará para las claves correctas (ej: solo "Talla" para ropa).
         for i, key in enumerate(selectable_keys):
-            # ... el resto de la lógica de la función no necesita cambios ...
-            filtered_variants = all_variants
+            # Filtramos las variantes del producto para encontrar las opciones disponibles
+            # basadas en selecciones anteriores (si las hubiera).
+            filtered_variants_for_options = all_variants_del_producto
             for prev_key in selectable_keys[:i]:
                 if prev_key in current_selection:
-                    filtered_variants = [
-                        v for v in filtered_variants 
-                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key] # [cite: 885, 886]
+                    filtered_variants_for_options = [
+                        v for v in filtered_variants_for_options
+                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key]
                     ]
             
-            valid_options = {
+            # Recopilamos las opciones válidas (con stock > 0) para el selector actual.
+            valid_options = sorted(list({
                 v.get("attributes", {}).get(key)
-                for v in filtered_variants
-                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key) # [cite: 887]
-            }
+                for v in filtered_variants_for_options
+                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key)
+            }))
             
+            # Si hay opciones válidas, creamos el DTO para el selector.
             if valid_options:
                 selectors.append(
                     ModalSelectorDTO(
                         key=key,
-                        options=sorted(list(valid_options)),
-                        current_value=current_selection.get(key, "") # [cite: 888, 889]
+                        options=valid_options,
+                        current_value=current_selection.get(key, "")
                     )
                 )
         return selectors
