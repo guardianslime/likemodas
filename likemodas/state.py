@@ -1861,6 +1861,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.variant_form_data = [] # Asegúrate de que esta línea esté aquí
         self.generated_variants_map = {} # Asegúrate de limpiar el map
 
+    @rx.event
+    def on_load_add_product_page(self):
+        """
+        Se ejecuta cada vez que se carga la página de añadir producto,
+        garantizando un estado de formulario completamente limpio.
+        """
+        self._clear_add_form()
+
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
     #free_shipping_threshold_str: str = ""
