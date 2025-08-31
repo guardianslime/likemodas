@@ -726,39 +726,52 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Método para generar las combinaciones de variantes
     def generate_variants(self):
         """
-        Genera variantes y las asocia con la imagen actualmente seleccionada.
-        También guarda los atributos en la variante principal para persistencia.
+        CORREGIDO: Genera variantes y las asocia con la imagen actualmente seleccionada.
+        Añade una lógica de "limpieza" para asegurar que solo se guarden los atributos
+        relevantes para la categoría actual del producto.
         """
         if self.selected_variant_index < 0:
             return rx.toast.error("Por favor, selecciona una imagen primero.")
 
-        # 1. Recopila los atributos del formulario
+        # 1. Recopila todos los atributos del formulario
         color = self.attr_colores
         sizes, size_key = [], ""
+        
+        # --- INICIO DE LA LÓGICA DE LIMPIEZA ---
+        attributes_to_save = {}
         if self.category == Category.ROPA.value:
             sizes, size_key = self.attr_tallas_ropa, "Talla"
+            if color: attributes_to_save["Color"] = color
+            if sizes: attributes_to_save[size_key] = sizes
+
         elif self.category == Category.CALZADO.value:
             sizes, size_key = self.attr_numeros_calzado, "Número"
+            if color: attributes_to_save["Color"] = color
+            if sizes: attributes_to_save[size_key] = sizes
+
         elif self.category == Category.MOCHILAS.value:
             sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
-
-        if not color or not sizes: # Se valida el string de color
+            if color: attributes_to_save["Color"] = color
+            if sizes: attributes_to_save[size_key] = sizes
+        
+        if not color or not sizes:
             return rx.toast.error("Debes seleccionar un color y al menos una talla/tamaño/número.")
+        # --- FIN DE LA LÓGICA DE LIMPIEZA ---
 
-       # Guarda los atributos en la imagen (Color ahora es un string)
-        current_attributes = {"Color": color, size_key: sizes}
-        self.new_variants[self.selected_variant_index]["attributes"] = current_attributes
+        # 2. Guarda los atributos ya limpios en la imagen
+        self.new_variants[self.selected_variant_index]["attributes"] = attributes_to_save
 
-        # Genera las combinaciones
+        # 3. Genera las combinaciones finales
         generated_variants = []
-        for size in sizes: # El bucle de colores ya no es necesario
+        for size in sizes:
+            # Crea la combinación específica (ej: Color y Talla)
+            final_variant_attributes = {"Color": color, size_key: size}
             generated_variants.append(
-                VariantFormData(attributes={"Color": color, size_key: size})
+                VariantFormData(attributes=final_variant_attributes)
             )
         
         self.generated_variants_map[self.selected_variant_index] = generated_variants
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
-
 
     # --- FUNCIONES DE STOCK MODIFICADAS ---
     def _update_variant_stock(self, group_index: int, item_index: int, new_stock: int):
