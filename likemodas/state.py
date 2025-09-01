@@ -822,6 +822,23 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.generated_variants_map[group_index][item_index].image_url = image_url
     # ✅ FIN DE LA CORRECCIÓN
 
+    # ✅ INICIO DE LA CORRECCIÓN: Añade esta propiedad computada aquí
+    @rx.var
+    def uploaded_image_urls(self) -> list[str]:
+        """
+        Devuelve una lista de solo las URLs de las imágenes subidas en el formulario.
+        Esta es la forma correcta de transformar datos para la UI.
+        """
+        if not self.new_variants:
+            return []
+        # Retorna solo las URLs que no están vacías
+        return [
+            v.get("image_url", "") 
+            for v in self.new_variants 
+            if v.get("image_url")
+        ]
+    # ✅ FIN DE LA CORRECCIÓN
+
     def _clear_add_form(self):
         self.title = ""
         self.content = ""
