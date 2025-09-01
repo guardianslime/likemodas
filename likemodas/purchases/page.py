@@ -69,12 +69,12 @@ def purchase_items_gallery(items: rx.Var[list[PurchaseItemCardData]]) -> rx.Comp
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """
-    CORREGIDO: Componente principal que muestra una compra en el historial.
-    Ahora renderiza la galería de artículos directamente y de forma segura con rx.cond.
+    SOLUCIÓN DEFINITIVA: Renderiza la tarjeta de compra y sus artículos
+    usando un patrón seguro que funciona tanto en la compilación como en el navegador.
     """
     return rx.card(
         rx.vstack(
-            # --- (La parte superior de la tarjeta no cambia) ---
+            # ... (Toda la parte superior de la tarjeta se mantiene igual: ID, Envío, etc.) ...
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -82,11 +82,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     align_items="start",
                 ),
                 rx.spacer(),
-                rx.vstack(
-                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
-                    align_items="end",
-                ),
-                justify="between",
+                rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
                 width="100%",
             ),
             rx.divider(),
@@ -99,32 +95,33 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- 👇 INICIO DE LA LÓGICA CORREGIDA Y SIMPLIFICADA 👇 ---
+            # --- 👇 INICIO DE LA LÓGICA CORREGIDA Y DEFINITIVA 👇 ---
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
                 rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
-                # Usamos rx.cond para asegurarnos de que `purchase.items` existe antes de intentar iterarlo
+                
+                # PATRÓN SEGURO:
+                # 1. Comprueba si la ID de la compra existe como clave en el mapa.
                 rx.cond(
-                    purchase.items,
+                    AppState.purchase_items_map.contains(purchase.id),
+                    # 2. Si existe, renderiza el rx.foreach usando el mapa.
                     rx.scroll_area(
                         rx.hstack(
                             rx.foreach(
-                                purchase.items, # Accedemos directamente a la lista de artículos
+                                AppState.purchase_items_map[purchase.id],
                                 purchase_item_thumbnail
                             ),
-                            spacing="4",
-                            padding_y="0.5em",
+                            spacing="4", padding_y="0.5em",
                         ),
-                        type="auto",
-                        scrollbars="horizontal",
-                        width="100%",
+                        type="auto", scrollbars="horizontal", width="100%",
                     )
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
             # --- FIN DE LA LÓGICA CORREGIDA ---
             
-            rx.vstack(
+            # ... (El resto de la tarjeta: Totales, Botones, etc. se mantiene igual) ...
+             rx.vstack(
                 rx.hstack(
                     rx.spacer(),
                     rx.text("Envío:", size="4", weight="medium"),
@@ -144,8 +141,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 margin_top="1em",
                 spacing="2"
             ),
-            
-            # --- (El resto de la lógica de estado de entrega y botones no cambia) ---
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
