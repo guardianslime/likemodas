@@ -1741,73 +1741,38 @@ class AppState(reflex_local_auth.LocalAuthState):
         return selectors
 
     @rx.event
-    def add_to_cart(self, product_id: int):
+    def add_default_variant_to_cart(self, product_id: int):
         """
-        Añade una variante específica de un producto al carrito, validando la selección y el stock.
+        Añade la PRIMERA variante de un producto al carrito.
+        Es una función simple diseñada para los botones de la galería principal.
         """
         if not self.is_authenticated:
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-        if not self.product_in_modal or product_id != self.product_in_modal.id:
-            return rx.toast.error("Error al identificar el producto.")
 
-        # --- ✨ INICIO DE LA LÓGICA DE STOCK CORREGIDA ✨ ---
+        with rx.session() as session:
+            post = session.get(BlogPostModel, product_id)
+            if not post or not post.variants:
+                return rx.toast.error("Este producto no tiene variantes disponibles.")
 
-        # 1. Validar que se hayan seleccionado todos los atributos requeridos (Talla, Número, etc.)
-        required_keys = {selector.key for selector in self.modal_attribute_selectors}
-        if not all(key in self.modal_selected_attributes for key in required_keys):
-            missing_keys = required_keys - set(self.modal_selected_attributes.keys())
-            return rx.toast.error(f"Por favor, selecciona: {', '.join(missing_keys)}")
-
-        # 2. Encontrar la variante exacta que coincide con la selección del usuario
-        variant_to_add = None
-        for variant in self.product_in_modal.variants:
-            variant_attrs = variant.get("attributes", {})
+            # Tomamos la primera variante como la predeterminada
+            default_variant = post.variants[0]
+            variant_index = 0
             
-            # Compara los atributos de solo lectura (como Color) y los seleccionables (como Talla)
-            current_variant_attrs_for_comparison = self.product_in_modal.variants[self.modal_selected_variant_index].get("attributes", {})
-            
-            is_match = True
-            # Comprobar atributos de solo lectura (los de la variante visual)
-            for key, value in current_variant_attrs_for_comparison.items():
-                if key not in self.SELECTABLE_ATTRIBUTES and variant_attrs.get(key) != value:
-                    is_match = False
-                    break
-            if not is_match: continue
+            # Construimos una clave simple para el carrito (sin atributos seleccionables)
+            # Asumimos que los atributos de la primera variante son los identificadores
+            selection_items = sorted(default_variant.get("attributes", {}).items())
+            selection_key_part = "-".join([f"{k}:{v}" for k, v in selection_items])
+            cart_key = f"{product_id}-{variant_index}-{selection_key_part}"
 
-            # Comprobar atributos seleccionables (los del estado `modal_selected_attributes`)
-            for key, value in self.modal_selected_attributes.items():
-                if variant_attrs.get(key) != value:
-                    is_match = False
-                    break
+            # Verificamos el stock
+            stock_disponible = default_variant.get("stock", 0)
+            cantidad_en_carrito = self.cart.get(cart_key, 0)
             
-            if is_match:
-                variant_to_add = variant
-                break
-        
-        if not variant_to_add:
-            return rx.toast.error("La combinación de producto seleccionada no está disponible.")
-
-        # 3. Construir la clave única para el carrito
-        selection_items = sorted(self.modal_selected_attributes.items())
-        selection_key_part = "-".join([f"{k}:{v}" for k, v in selection_items])
-        
-        # El índice de la variante visual (thumbnail) sigue siendo parte de la clave para la imagen
-        cart_key = f"{product_id}-{self.modal_selected_variant_index}-{selection_key_part}"
-        
-        # 4. Verificar el stock de la variante encontrada
-        stock_disponible = variant_to_add.get("stock", 0)
-        cantidad_en_carrito = self.cart.get(cart_key, 0)
-        
-        if cantidad_en_carrito + 1 > stock_disponible:
-            return rx.toast.error("¡Lo sentimos! No hay suficiente stock para esta combinación.")
-        
-        # 5. Si hay stock, añadir al carrito
-        self.cart[cart_key] = cantidad_en_carrito + 1
-        
-        # --- ✨ FIN DE LA LÓGICA DE STOCK CORREGIDA ✨ ---
-        
-        self.show_detail_modal = False
-        return rx.toast.success("Producto añadido al carrito.")
+            if cantidad_en_carrito + 1 > stock_disponible:
+                return rx.toast.error("No hay suficiente stock para este producto.")
+            
+            self.cart[cart_key] = cantidad_en_carrito + 1
+            return rx.toast.success("Producto añadido al carrito.")
 
     @rx.event
     def remove_from_cart(self, cart_key: str):

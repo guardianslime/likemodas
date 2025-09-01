@@ -123,7 +123,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         "Añadir al Carrito",
                         width="100%",
                         on_click=[
-                            AppState.add_to_cart(post.id),
+                            AppState.add_default_variant_to_cart(post.id),
                             rx.stop_propagation
                         ],
                     ),
