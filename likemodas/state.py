@@ -671,6 +671,30 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     SELECTABLE_ATTRIBUTES = ["Talla", "Número", "Tamaño"]
 
+    # ✅ INICIO DE LA CORRECCIÓN: Funciones de manejo de atributos que faltaban
+    def add_variant_attribute(self, key: str, value: str):
+        """
+        Añade un valor de atributo a la lista de un atributo específico
+        de la variante actualmente seleccionada en el formulario.
+        """
+        if self.selected_variant_index < 0 or self.selected_variant_index >= len(self.new_variants):
+            return
+
+        variant = self.new_variants[self.selected_variant_index]
+        if "attributes" not in variant:
+            variant["attributes"] = {}
+        
+        if key not in variant["attributes"]:
+            variant["attributes"][key] = []
+
+        if value and value not in variant["attributes"][key]:
+            variant["attributes"][key].append(value)
+            # Actualiza el "buffer" de la UI para que se refresque visualmente
+            if key == "Talla": self.attr_tallas_ropa = variant["attributes"][key][:]
+            elif key == "Número": self.attr_numeros_calzado = variant["attributes"][key][:]
+            elif key == "Tamaño": self.attr_tamanos_mochila = variant["attributes"][key][:]
+
+
     def select_variant_for_editing(self, index: int):
         """Selecciona una variante y carga sus atributos en el formulario."""
         self.selected_variant_index = index
@@ -740,6 +764,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                 new_selections[key] = value
         # Actualiza el estado que controla los selectores en el modal
         self.modal_selected_attributes = new_selections
+
+    def remove_variant_attribute(self, key: str, value: str):
+        """
+        Elimina un valor de atributo de la lista de un atributo específico
+        de la variante actualmente seleccionada en el formulario.
+        """
+        if self.selected_variant_index < 0 or self.selected_variant_index >= len(self.new_variants):
+            return
+
+        variant = self.new_variants[self.selected_variant_index]
+        if "attributes" in variant and key in variant["attributes"]:
+            if value in variant["attributes"][key]:
+                variant["attributes"][key].remove(value)
+                # Actualiza el "buffer" de la UI para que se refresque visualmente
+                if key == "Talla": self.attr_tallas_ropa = variant["attributes"][key][:]
+                elif key == "Número": self.attr_numeros_calzado = variant["attributes"][key][:]
+                elif key == "Tamaño": self.attr_tamanos_mochila = variant["attributes"][key][:]
+    # ✅ FIN DE LA CORRECCIÓN
 
     def _clear_add_form(self):
         self.title = ""
