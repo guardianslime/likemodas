@@ -1,3 +1,5 @@
+# likemodas/ui/components.py (CORREGIDO Y REFORZADO)
+
 import reflex as rx
 import math
 from likemodas.utils.formatting import format_to_cop
@@ -33,7 +35,6 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
-                                # La llamada al on_change_select es directa
                                 on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
@@ -144,6 +145,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         max_width="1800px",
     )
 
+# --- INICIO DEL COMPONENTE CORREGIDO ---
 def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
@@ -155,7 +157,7 @@ def multi_select_component(
     on_change_search: rx.event.EventSpec,
     filter_name: str,
 ) -> rx.Component:
-    """Un componente para seleccionar múltiples opciones con un buscador."""
+    """Un componente para seleccionar múltiples opciones con un buscador (VERSIÓN CORREGIDA)."""
     return rx.vstack(
         rx.flex(
             rx.foreach(
@@ -166,8 +168,8 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        # Corrección: Se simplifica la llamada al manejador
-                        on_click=lambda: remove_handler(item),
+                        # Se restaura la forma explícita de llamar al manejador
+                        on_click=remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
@@ -179,8 +181,8 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            # Corrección: El manejador se pasa directamente
-            on_change_select=add_handler,
+            # Se restaura la forma explícita de llamar al manejador
+            on_change_select=lambda val: add_handler(prop_name, val),
             value_select="",
             search_value=search_value,
             on_change_search=on_change_search,
@@ -188,3 +190,4 @@ def multi_select_component(
         ),
         spacing="2", align_items="stretch", width="100%",
     )
+# --- FIN DEL COMPONENTE CORREGIDO ---
