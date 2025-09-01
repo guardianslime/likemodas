@@ -1720,31 +1720,47 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def add_to_cart(self, product_id: int):
         """
-        Añade una variante específica de un producto al carrito, validando la selección.
+        CORREGIDO: Añade una variante específica al carrito usando un índice verdadero
+        para una identificación robusta.
         """
         if not self.is_authenticated:
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         if not self.product_in_modal or product_id != self.product_in_modal.id:
             return rx.toast.error("Error al identificar el producto.")
 
-        # 1. Valida que el usuario haya hecho una selección para cada selector obligatorio (Talla, etc.)
         required_keys = {selector.key for selector in self.modal_attribute_selectors}
         if not all(key in self.modal_selected_attributes for key in required_keys):
-            return rx.toast.error(f"Por favor, selecciona una opción para: {', '.join(required_keys)}")
+            missing_keys = required_keys - set(self.modal_selected_attributes.keys())
+            return rx.toast.error(f"Por favor, selecciona: {', '.join(missing_keys)}")
 
-        # 2. Construye la clave para el carrito a partir de la selección del usuario.
-        # Esto asegura que "Talla: S" y "Talla: M" sean entradas diferentes en el carrito.
-        selection_items = sorted(self.modal_selected_attributes.items())
-        selection_key_part = "-".join([f"{k}:{v}" for k, v in selection_items])
+        # Combina los atributos visuales (del thumbnail) con los seleccionados (de los menús)
+        visual_variant_attrs = self.product_in_modal.variants[self.modal_selected_variant_index].get("attributes", {})
+        non_selectable_attrs = {k: v for k, v in visual_variant_attrs.items() if k not in self.SELECTABLE_ATTRIBUTES}
         
-        # La clave del carrito ahora es una combinación del ID del producto, el índice de la imagen y la selección.
-        cart_key = f"{product_id}-{self.modal_selected_variant_index}-{selection_key_part}"
+        full_target_attrs = {**non_selectable_attrs, **self.modal_selected_attributes}
 
-        # 3. Añade el producto al carrito usando la nueva clave única.
-        self.cart[cart_key] = self.cart.get(cart_key, 0) + 1
+        # Encuentra la variante exacta y su índice real
+        variant_to_add = None
+        true_variant_index = -1
+        for i, variant in enumerate(self.product_in_modal.variants):
+            if variant.get("attributes") == full_target_attrs:
+                variant_to_add = variant
+                true_variant_index = i
+                break
         
-        # 4. Limpia el estado del modal y ciérralo.
-        self.modal_selected_attributes = {}
+        if not variant_to_add:
+            return rx.toast.error("La combinación de producto seleccionada no está disponible.")
+
+        # Construye la clave SIMPLIFICADA del carrito
+        cart_key = f"{product_id}-{true_variant_index}"
+        
+        stock_disponible = variant_to_add.get("stock", 0)
+        cantidad_en_carrito = self.cart.get(cart_key, 0)
+        
+        if cantidad_en_carrito + 1 > stock_disponible:
+            return rx.toast.error("¡Lo sentimos! No hay suficiente stock para esta combinación.")
+        
+        self.cart[cart_key] = cantidad_en_carrito + 1
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido al carrito.")
 
@@ -1860,37 +1876,54 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def handle_checkout(self):
+        """
+        CORREGIDO: Procesa la compra usando la clave simplificada para identificar
+        y verificar el stock de forma segura.
+        """
         if not self.is_authenticated or not self.default_shipping_address:
-            return rx.toast.error("Por favor, selecciona una dirección predeterminada.")
+            return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
         if not self.authenticated_user_info:
-            return rx.toast.error("Error de usuario. Vuelve a iniciar sesión.")
-        
+            return rx.toast.error("Error de sesión. Vuelve a iniciar sesión.")
+        if not self.cart:
+            return rx.toast.info("Tu carrito está vacío.")
+
         summary = self.cart_summary
-        cart_details_data = self.cart_details
 
         with rx.session() as session:
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # 1. Extrae los IDs de producto de las claves del carrito.
-            #    La clave es "product_id-variant_index-selection", así que tomamos la primera parte.
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+            
+            posts_to_update = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.id.in_(product_ids))
+                .with_for_update()
+            ).all()
+            post_map = {p.id: p for p in posts_to_update}
 
-            # 2. Busca los productos en la base de datos usando los IDs correctos.
-            post_map = {
-                p.id: p for p in session.exec(
-                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))
-                ).all()
-            }
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            # FASE 1: Verificación de Stock (Ahora mucho más simple y robusta)
+            for cart_key, quantity_in_cart in self.cart.items():
+                parts = cart_key.split('-')
+                prod_id = int(parts[0])
+                variant_index = int(parts[1])
 
+                post = post_map.get(prod_id)
+                if not post or not post.variants or not (0 <= variant_index < len(post.variants)):
+                    return rx.toast.error(f"El producto '{post.title if post else 'ID ' + str(prod_id)}' ya no está disponible. Compra cancelada.")
+
+                variant_to_check = post.variants[variant_index]
+                if variant_to_check.get("stock", 0) < quantity_in_cart:
+                    attr_str = ', '.join(f"{k}: {v}" for k, v in variant_to_check.get("attributes", {}).items())
+                    return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Tu compra ha sido cancelada.")
+
+            # FASE 2: Creación de Compra y Deducción de Stock
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
-                total_price=summary["grand_total"], 
+                total_price=summary["grand_total"],
                 shipping_applied=summary["shipping_cost"],
                 status=PurchaseStatus.PENDING_CONFIRMATION,
                 payment_method=self.payment_method,
-                shipping_name=self.default_shipping_address.name, 
+                shipping_name=self.default_shipping_address.name,
                 shipping_city=self.default_shipping_address.city,
-                shipping_neighborhood=self.default_shipping_address.neighborhood, 
+                shipping_neighborhood=self.default_shipping_address.neighborhood,
                 shipping_address=self.default_shipping_address.address,
                 shipping_phone=self.default_shipping_address.phone
             )
@@ -1898,19 +1931,34 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
             
-            # Crear los items de la compra con la información de la variante
-            for item_data in cart_details_data:
-                post = post_map.get(item_data.product_id)
-                if post:
-                    session.add(PurchaseItemModel(
-                        purchase_id=new_purchase.id,
-                        blog_post_id=item_data.product_id,
-                        quantity=item_data.quantity,
-                        price_at_purchase=post.price, # Usamos el precio actual del producto
-                        selected_variant=item_data.variant_details
-                    ))
+            for cart_key, quantity_in_cart in self.cart.items():
+                parts = cart_key.split('-')
+                prod_id = int(parts[0])
+                variant_index = int(parts[1])
+                
+                post = post_map.get(prod_id)
+                variant_to_update = post.variants[variant_index]
+                
+                variant_to_update["stock"] -= quantity_in_cart
+                session.add(post)
+
+                session.add(PurchaseItemModel(
+                    purchase_id=new_purchase.id,
+                    blog_post_id=post.id,
+                    quantity=quantity_in_cart,
+                    price_at_purchase=post.price,
+                    selected_variant=variant_to_update.get("attributes", {})
+                ))
+
+            # FASE 3: Verificación de Desactivación Automática
+            for post in post_map.values():
+                total_stock = sum(v.get("stock", 0) for v in post.variants)
+                if total_stock <= 0:
+                    post.publish_active = False
+                    session.add(post)
+
             session.commit()
-            
+
         self.cart.clear()
         self.default_shipping_address = None
         yield AppState.notify_admin_of_new_purchase
