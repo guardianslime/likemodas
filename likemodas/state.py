@@ -181,6 +181,7 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_phone: str
     items: list[PurchaseItemCardData]
     estimated_delivery_date_formatted: str = "" # <-- AÑADE ESTA LÍNEA
+    
 
 class AdminPostRowData(rx.Base):
     """DTO para una fila en la tabla de publicaciones del admin."""

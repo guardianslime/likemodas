@@ -27,7 +27,7 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
             ),
             rx.vstack(
                 rx.text(
-                    f"{item.quantity}x {item.price_at_purchase_cop}",
+                    f"{item.quantity}x {item.price_at_purchase_cop}", 
                     size="2",
                     color_scheme="gray",
                 ),
@@ -46,14 +46,31 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
         width="110px",
     )
 
+def purchase_items_gallery(items: rx.Var[list[PurchaseItemCardData]]) -> rx.Component:
+    """Renderiza la galería de artículos para una compra."""
+    return rx.vstack(
+        rx.text("Artículos Comprados:", weight="medium", size="4"),
+        rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
+        rx.scroll_area(
+            rx.hstack(
+                rx.foreach(
+                    items,
+                    purchase_item_thumbnail
+                ),
+                spacing="4",
+                padding_y="0.5em",
+            ),
+            type="auto",
+            scrollbars="horizontal",
+            width="100%",
+        ),
+        spacing="2", align_items="start", width="100%",
+    )
+
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
-    """
-    Renderiza la tarjeta de compra y sus artículos usando un patrón seguro que 
-    funciona tanto en la compilación como en el navegador.
-    """
+    """Componente principal que muestra una tarjeta de compra en el historial."""
     return rx.card(
         rx.vstack(
-            # Sección superior de la tarjeta
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -61,12 +78,14 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     align_items="start",
                 ),
                 rx.spacer(),
-                rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
+                rx.vstack(
+                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
+                    align_items="end",
+                ),
+                justify="between",
                 width="100%",
             ),
             rx.divider(),
-            
-            # Detalles de Envío
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -76,32 +95,8 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- ✅ INICIO DE LA LÓGICA CORREGIDA Y DEFINITIVA ✅ ---
-            rx.vstack(
-                rx.text("Artículos Comprados:", weight="medium", size="4"),
-                rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
-                
-                # PATRÓN SEGURO:
-                # 1. Comprueba si la ID de la compra existe como clave en el mapa.
-                rx.cond(
-                    AppState.purchase_items_map.contains(purchase.id),
-                    # 2. Si existe, renderiza el rx.foreach usando el mapa.
-                    rx.scroll_area(
-                        rx.hstack(
-                            rx.foreach(
-                                AppState.purchase_items_map[purchase.id],
-                                purchase_item_thumbnail
-                            ),
-                            spacing="4", padding_y="0.5em",
-                        ),
-                        type="auto", scrollbars="horizontal", width="100%",
-                    )
-                ),
-                spacing="2", align_items="start", width="100%",
-            ),
-            # --- ✅ FIN DE LA LÓGICA CORREGIDA ✅ ---
+            purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
             
-            # Sección de Totales
             rx.vstack(
                 rx.hstack(
                     rx.spacer(),
@@ -123,20 +118,12 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="2"
             ),
             
-            # Lógica de Estado de Entrega
+            # --- ✨ INICIO DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
-                    rx.callout.root(
-                        rx.callout.icon(rx.icon("truck")),
-                        rx.callout.text(
-                            "Tu pedido está en camino. ",
-                            rx.text.strong(f"Llegada estimada: {purchase.estimated_delivery_date_formatted}"),
-                        ),
-                        color_scheme="green",
-                        size="2",
-                    ),
+                    rx.text("Tu pedido está en camino.", size="3", color_scheme="green"),
                     rx.button(
                         "Confirmar Recepción del Pedido",
                         on_click=AppState.user_confirm_delivery(purchase.id),
@@ -149,17 +136,18 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
-                rx.vstack(
+                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("¡Pedido entregado! Gracias por tu compra.", size="3", color_scheme="violet"),
                     width="100%",
                     align_items="center"
-                )
+                 )
             ),
-            
-            # Botones de Acción Post-Entrega
+            # --- ✨ FIN DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
+
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
+                # --- INICIO DE LA MODIFICACIÓN ---
                 rx.hstack(
                     rx.link(
                         rx.button("Imprimir Factura", variant="outline", width="100%"),
@@ -168,6 +156,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                         target="_blank",
                         width="100%",
                     ),
+                    # --- BOTÓN NUEVO ---
                     rx.button(
                         "Devolución o Cambio",
                         on_click=AppState.go_to_return_page(purchase.id),
@@ -179,6 +168,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     margin_top="1em",
                     width="100%",
                 ),
+                # --- FIN DE LA MODIFICACIÓN ---
             ),
             spacing="4", width="100%"
         ),
@@ -209,6 +199,7 @@ def purchase_history_content() -> rx.Component:
             spacing="6", width="100%", max_width="960px", align="center"
         ),
         width="100%",
+        # ✨ Se ejecuta al cargar la página para auto-confirmar entregas antiguas
         on_mount=AppState.check_for_auto_confirmations
     )
     return account_layout(page_content)
