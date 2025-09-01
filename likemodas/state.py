@@ -204,6 +204,18 @@ class CommentData(rx.Base):
     created_at_formatted: str
     updates: List["CommentData"] = []
 
+
+# likemodas/state.py (Añadir esta clase)
+
+class InvoiceItemData(rx.Base):
+    """Un modelo específico para cada línea de artículo en la factura."""
+    name: str
+    quantity: int
+    price_cop: str
+    subtotal_cop: str
+    iva_cop: str
+    total_con_iva_cop: str
+
 class InvoiceData(rx.Base):
     """DTO para contener toda la información necesaria para una factura."""
     id: int
@@ -228,21 +240,6 @@ class InvoiceData(rx.Base):
     @property
     def total_cop(self) -> str:
         return format_to_cop(self.price * self.quantity)
-
-class InvoiceData(rx.Base):
-    """DTO para contener toda la información necesaria para una factura."""
-    id: int
-    purchase_date_formatted: str
-    status: str
-    items: list[InvoiceItemData]
-    customer_name: str
-    customer_email: str
-    shipping_full_address: str
-    shipping_phone: str
-    subtotal_cop: str
-    shipping_applied_cop: str # <-- ✨ 1. AÑADE ESTE CAMPO
-    iva_cop: str
-    total_price_cop: str
 
 class SupportMessageData(rx.Base):
     author_id: int
