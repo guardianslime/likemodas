@@ -137,14 +137,16 @@ class ProductDetailData(rx.Base):
         return list(range(5 - math.ceil(self.average_rating)))
 
 class AdminPurchaseCardData(rx.Base):
-    id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
-    status: str; total_price: float; shipping_name: str; shipping_full_address: str
+    id: int
+    customer_name: str
+    customer_email: str
+    purchase_date_formatted: str
+    status: str
+    total_price: float
+    shipping_name: str
+    shipping_full_address: str
     shipping_phone: str
-    
-    # --- ✅ LÍNEA CORREGIDA AQUÍ ---
-    # Se añade ` = []` para que la lista siempre exista por defecto.
-    items_formatted: list[str] = []
-    
+    items_formatted: list[str] = [] # Añadimos el default = [] por seguridad
     payment_method: str
     confirmed_at: Optional[datetime] = None
 
