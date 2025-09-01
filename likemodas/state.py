@@ -653,6 +653,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     temp_numero: str = ""
     temp_tamano: str = ""
 
+    # ✅ INICIO DE LA CORRECCIÓN: Añade la línea que falta aquí
+    generated_variants_map: dict[int, list[VariantFormData]] = {}
+    # ✅ FIN DE LA CORRECCIÓN
+
     def set_temp_talla(self, talla: str):
         self.temp_talla = talla
     
