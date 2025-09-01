@@ -31,3 +31,4 @@ def account_sidebar() -> rx.Component:
         height="100%",
         min_width="250px"
     )
+

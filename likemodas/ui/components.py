@@ -1,13 +1,9 @@
-# likemodas/ui/components.py (Versión Corregida y con Diagnóstico)
-
 import reflex as rx
 import math
-
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
-# La función searchable_select no necesita cambios
 def searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
@@ -37,6 +33,7 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
+                                # La llamada al on_change_select es directa
                                 on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
@@ -54,20 +51,14 @@ def searchable_select(
         position="relative", width="100%",
     )
 
-
 def _product_card_rating(post: ProductCardData) -> rx.Component:
-    average_rating = post.average_rating
-    rating_count = post.rating_count
-    full_stars = rx.Var.range(math.floor(average_rating))
-    has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
-    empty_stars = rx.Var.range(5 - math.ceil(average_rating))
     return rx.cond(
-        rating_count > 0,
+        post.rating_count > 0,
         rx.hstack(
-            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=18)),
-            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=18), rx.fragment()),
-            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
-            rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
+            rx.foreach(post.full_stars, lambda _: rx.icon("star", color="gold", size=18)),
+            rx.cond(post.has_half_star, rx.icon("star_half", color="gold", size=18)),
+            rx.foreach(post.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
+            rx.text(f"({post.rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
         rx.box(height="21px")
@@ -79,15 +70,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             posts,
             lambda post: rx.box(
                 rx.vstack(
-                    # Este vstack envuelve la imagen y el texto para el on_click
                     rx.vstack(
-                        # --- INICIO DE LA CORRECCIÓN ---
                         rx.box(
-                            # Primero van los hijos (componentes)
                             rx.cond(
-                                # --- 👇 LÍNEA CORREGIDA 👇 ---
                                 post.variants & (post.variants.length() > 0),
-                                # --- 👇 LÍNEA CORREGIDA 👇 ---
                                 rx.image(src=rx.get_upload_url(post.variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
                                 rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                             ),
@@ -102,12 +88,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     "z_index": "1",
                                 }
                             ),
-                            # Después van las propiedades (argumentos de palabra clave)
                             position="relative",
                             width="260px",
                             height="260px",
                         ),
-                        # --- FIN DE LA CORRECCIÓN ---
                         rx.vstack(
                             rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                             _product_card_rating(post),
@@ -160,7 +144,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         max_width="1800px",
     )
 
-
 def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
@@ -183,7 +166,8 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        on_click=remove_handler(prop_name, item),
+                        # Corrección: Se simplifica la llamada al manejador
+                        on_click=lambda: remove_handler(item),
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
@@ -195,7 +179,8 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            on_change_select=lambda val: add_handler(prop_name, val),
+            # Corrección: El manejador se pasa directamente
+            on_change_select=add_handler,
             value_select="",
             search_value=search_value,
             on_change_search=on_change_search,
@@ -203,3 +188,4 @@ def multi_select_component(
         ),
         spacing="2", align_items="stretch", width="100%",
     )
+

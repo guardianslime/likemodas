@@ -59,3 +59,4 @@ def admin_tickets_page_content() -> rx.Component:
         ),
         padding_top="2em",
     )
+

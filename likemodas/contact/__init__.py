@@ -7,3 +7,4 @@ __all__ = [
     "contact_page_content",
     "contact_entries_list_content",
 ]
+

@@ -136,3 +136,4 @@ def public_navbar() -> rx.Component:
         style={"backdrop_filter": "blur(10px)"},
         on_mount=[AppState.load_notifications],
     )
+

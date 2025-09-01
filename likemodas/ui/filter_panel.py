@@ -14,13 +14,12 @@ def floating_filter_panel() -> rx.Component:
     filtros_ropa = rx.vstack(
         rx.divider(), 
         rx.text("Filtros de Ropa", weight="bold"),
-        # --- AÑADE ESTE COMPONENTE ---
         multi_select_component(
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_ropa,
             selected_items=AppState.filter_tipos_general, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
             search_value=AppState.search_tipo_prenda, 
             on_change_search=AppState.set_search_tipo_prenda,
@@ -30,8 +29,8 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir talla...", 
             options=AppState.filtered_tallas_ropa,
             selected_items=AppState.filter_tallas, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_tallas", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_tallas", item),
             prop_name="filter_tallas",
             search_value=AppState.search_talla, 
             on_change_search=AppState.set_search_talla,
@@ -41,8 +40,8 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir tela...", 
             options=AppState.filtered_materiales,
             selected_items=AppState.filter_materiales_tela, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_materiales_tela", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_materiales_tela", item),
             prop_name="filter_materiales_tela",
             search_value=AppState.search_material_tela, 
             on_change_search=AppState.set_search_material_tela,
@@ -56,13 +55,12 @@ def floating_filter_panel() -> rx.Component:
     filtros_calzado = rx.vstack(
         rx.divider(), 
         rx.text("Filtros de Calzado", weight="bold"),
-        # --- AÑADE ESTE COMPONENTE ---
         multi_select_component(
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_zapatos,
             selected_items=AppState.filter_tipos_general, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
             search_value=AppState.search_tipo_zapato, 
             on_change_search=AppState.set_search_tipo_zapato,
@@ -72,8 +70,8 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir número...", 
             options=AppState.filtered_numeros_calzado,
             selected_items=AppState.filter_numeros_calzado, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_numeros_calzado", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_numeros_calzado", item),
             prop_name="filter_numeros_calzado",
             search_value=AppState.search_numero_calzado, 
             on_change_search=AppState.set_search_numero_calzado,
@@ -83,8 +81,8 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir material...", 
             options=AppState.filtered_materiales,
             selected_items=AppState.filter_materiales_tela, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_materiales_tela", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_materiales_tela", item),
             prop_name="filter_materiales_tela",
             search_value=AppState.search_material_tela, 
             on_change_search=AppState.set_search_material_tela,
@@ -98,25 +96,23 @@ def floating_filter_panel() -> rx.Component:
     filtros_mochilas = rx.vstack(
         rx.divider(), 
         rx.text("Filtros de Mochilas", weight="bold"),
-        # --- AÑADE ESTE COMPONENTE ---
         multi_select_component(
             placeholder="Añadir tipo...", 
             options=AppState.filtered_tipos_mochilas,
             selected_items=AppState.filter_tipos_general, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
             search_value=AppState.search_tipo_mochila, 
             on_change_search=AppState.set_search_tipo_mochila,
             filter_name="mochila_tipo_filter",
         ),
-        # Puedes añadir un filtro de tamaño para mochilas si lo necesitas
         multi_select_component(
             placeholder="Añadir material...", 
             options=AppState.filtered_materiales,
             selected_items=AppState.filter_materiales_tela, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_materiales_tela", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_materiales_tela", item),
             prop_name="filter_materiales_tela",
             search_value=AppState.search_material_tela, 
             on_change_search=AppState.set_search_material_tela,
@@ -130,13 +126,12 @@ def floating_filter_panel() -> rx.Component:
     filtros_generales = rx.vstack(
         rx.divider(), 
         rx.text("Filtros Generales", weight="bold"),
-        # --- AÑADE ESTE COMPONENTE ---
         multi_select_component(
             placeholder="Añadir tipo...",
             options=AppState.filtered_tipos_general,
             selected_items=AppState.filter_tipos_general,
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value,
+            add_handler=lambda val: AppState.add_filter_value("filter_tipos_general", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_tipos_general", item),
             prop_name="filter_tipos_general",
             search_value=AppState.search_tipo_general,
             on_change_search=AppState.set_search_tipo_general,
@@ -146,20 +141,19 @@ def floating_filter_panel() -> rx.Component:
             placeholder="Añadir material...", 
             options=AppState.filtered_materiales,
             selected_items=AppState.filter_materiales_tela, 
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value, 
+            add_handler=lambda val: AppState.add_filter_value("filter_materiales_tela", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_materiales_tela", item),
             prop_name="filter_materiales_tela",
             search_value=AppState.search_material_tela, 
             on_change_search=AppState.set_search_material_tela,
             filter_name="general_material_filter",
         ),
-        # --- ✨ AQUÍ ESTÁ EL FILTRO GENERAL QUE FALTABA ---
         multi_select_component(
             placeholder="Añadir talla/medida...",
             options=AppState.filtered_medidas_general,
             selected_items=AppState.filter_tallas,
-            add_handler=AppState.add_filter_value,
-            remove_handler=AppState.remove_filter_value,
+            add_handler=lambda val: AppState.add_filter_value("filter_tallas", val),
+            remove_handler=lambda item: AppState.remove_filter_value("filter_tallas", item),
             prop_name="filter_tallas",
             search_value=AppState.search_talla,
             on_change_search=AppState.set_search_talla,
@@ -170,12 +164,10 @@ def floating_filter_panel() -> rx.Component:
         width="100%"
     )
 
-    # --- Contenedor principal del panel ---
+    # El resto del componente permanece igual
     return rx.box(
         rx.hstack(
-            # Columna izquierda: El panel de filtros
             rx.vstack(
-                # Encabezado con título y botón de limpiar
                 rx.hstack(
                     rx.heading("Filtros", size="6"),
                     rx.spacer(),
@@ -186,11 +178,8 @@ def floating_filter_panel() -> rx.Component:
                     flex_shrink=0,
                 ),
                 rx.divider(),
-                
-                # Cuerpo de los filtros con barra de desplazamiento
                 rx.scroll_area(
                     rx.vstack(
-                        # Filtro de Precio
                         rx.vstack(
                             rx.text("Precio", weight="bold"),
                             rx.input(placeholder="Mínimo", value=AppState.min_price, on_change=AppState.set_min_price, type="number"),
@@ -199,8 +188,6 @@ def floating_filter_panel() -> rx.Component:
                             align_items="start", 
                             width="100%"
                         ),
-
-                        # --- 👇 AÑADE ESTE NUEVO BLOQUE DE FILTROS 👇 ---
                         rx.vstack(
                             rx.divider(),
                             rx.hstack(
@@ -208,7 +195,7 @@ def floating_filter_panel() -> rx.Component:
                                 rx.spacer(),
                                 rx.switch(
                                     is_checked=AppState.filter_free_shipping,
-                                    on_change=AppState.set_filter_free_shipping, # Crea este setter
+                                    on_change=AppState.set_filter_free_shipping,
                                 ),
                                 width="100%",
                                 justify="between",
@@ -219,7 +206,7 @@ def floating_filter_panel() -> rx.Component:
                                 rx.spacer(),
                                 rx.switch(
                                     is_checked=AppState.filter_complete_fashion,
-                                    on_change=AppState.set_filter_complete_fashion, # Crea este setter
+                                    on_change=AppState.set_filter_complete_fashion,
                                 ),
                                 width="100%",
                                 justify="between",
@@ -228,11 +215,8 @@ def floating_filter_panel() -> rx.Component:
                             spacing="3",
                             width="100%",
                         ),
-
-                        # Lógica condicional para mostrar filtros
                         rx.cond(
                             (AppState.current_category != "") & (AppState.current_category != "todos"),
-                            # if: hay una categoría específica, muestra los filtros correspondientes
                             rx.cond(
                                 AppState.current_category == Category.ROPA.value,
                                 filtros_ropa,
@@ -246,7 +230,6 @@ def floating_filter_panel() -> rx.Component:
                                     )
                                 )
                             ),
-                            # else: no hay categoría, muestra los filtros generales
                             filtros_generales
                         ),
                         spacing="4",
@@ -262,8 +245,6 @@ def floating_filter_panel() -> rx.Component:
                 width="280px",
                 bg=rx.color("gray", 2),
             ),
-            
-            # Columna derecha: El botón para mostrar/ocultar el panel
             rx.box(
                 rx.text("Filtros", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.09em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}),
                 on_click=AppState.toggle_filters, 
@@ -278,8 +259,6 @@ def floating_filter_panel() -> rx.Component:
             spacing="0",
             height="100%",
         ),
-        
-        # Estilos para posicionar y animar todo el componente del panel
         height="95vh",
         max_height="800px",
         position="fixed",
@@ -289,3 +268,4 @@ def floating_filter_panel() -> rx.Component:
         transition="transform 0.3s ease-in-out",
         z_index=1000,
     )
+

@@ -24,3 +24,4 @@ def password_input(
         ),
         align_items="stretch",
     )
+

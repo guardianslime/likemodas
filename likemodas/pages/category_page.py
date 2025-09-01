@@ -34,3 +34,4 @@ def category_content() -> rx.Component:
         align="center"
     )
     return rx.box(page_content, width="100%")
+

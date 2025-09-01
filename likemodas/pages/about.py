@@ -15,3 +15,4 @@ def about_page_content() -> rx.Component:
             id='my-child'
         )
     return my_child
+

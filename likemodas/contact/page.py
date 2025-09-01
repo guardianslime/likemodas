@@ -82,3 +82,4 @@ def contact_page_content() -> rx.Component:
         align="center",
         min_height="85vh",
     )
+

@@ -113,3 +113,4 @@ BARRIO_A_COMUNA = {
     for comuna, barrios in BARRIOS_POR_COMUNA.items() 
     for barrio in barrios
 }
+

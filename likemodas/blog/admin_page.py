@@ -127,3 +127,4 @@ def blog_admin_page() -> rx.Component:
         min_height="85vh",
         width="100%"
     )
+

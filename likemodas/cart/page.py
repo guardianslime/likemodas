@@ -146,3 +146,4 @@ def cart_page_content() -> rx.Component:
         ),
         align="center", width="100%", padding="2em"
     )
+

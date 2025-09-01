@@ -58,3 +58,4 @@ def blog_post_detail_content() -> rx.Component:
         ),
         width="100%",
     )
+

@@ -11,3 +11,4 @@ def test_page() -> rx.Component:
     return base_page(
         rx.heading(f"El parámetro de prueba es: {TestState.test_param}")
     )
+

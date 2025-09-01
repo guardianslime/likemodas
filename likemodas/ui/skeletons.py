@@ -93,3 +93,4 @@ def skeleton_product_detail_view() -> rx.Component:
         max_width="1400px",
         padding="2em",
     )
+

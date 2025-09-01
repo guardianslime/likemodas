@@ -28,3 +28,4 @@ def require_admin(page):
             rx.center(rx.spinner(), height="100vh")
         )
     return admin_page
+

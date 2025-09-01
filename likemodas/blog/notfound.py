@@ -5,3 +5,4 @@ def blog_post_not_found() -> rx.Component:
         rx.heading("Blog PostNot Found"), spacing="5",
         align="center",
         min_height="85vh")
+

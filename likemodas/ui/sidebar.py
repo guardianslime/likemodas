@@ -137,3 +137,4 @@ def sliding_admin_sidebar() -> rx.Component:
         transition="transform 0.4s ease-in-out",
         z_index="1000",
     )
+

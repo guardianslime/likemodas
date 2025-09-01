@@ -44,3 +44,4 @@ def my_register_form() -> rx.Component:
         on_submit=AppState.handle_registration_email,
         reset_on_submit=True,
     )
+

@@ -31,3 +31,4 @@ LOCATIONS = {
 
 def load_colombia_data():
     return LOCATIONS
+

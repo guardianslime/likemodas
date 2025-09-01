@@ -176,3 +176,4 @@ def payment_history_content() -> rx.Component:
             align="center", spacing="6", padding="2em", width="100%", max_width="960px",
         ), width="100%"
     )
+

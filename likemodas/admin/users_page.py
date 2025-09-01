@@ -71,3 +71,4 @@ def user_management_page() -> rx.Component:
         ),
         padding_top="2em",
     )
+

@@ -85,3 +85,4 @@ def send_password_reset_email(recipient_email: str, token: str):
         print(f"✅ Correo de reseteo enviado a {recipient_email}. ID: {email['id']}")
     except Exception as e:
         print(f"❌ ERROR al enviar el correo de reseteo con Resend: {e}")
+

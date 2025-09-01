@@ -61,3 +61,4 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             )
         )
     )
+

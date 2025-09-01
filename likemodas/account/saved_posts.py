@@ -35,3 +35,4 @@ def saved_posts_content() -> rx.Component:
         width="100%",
     )
     return account_layout(page_content)
+
