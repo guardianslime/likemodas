@@ -139,9 +139,13 @@ class ProductDetailData(rx.Base):
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
     status: str; total_price: float; shipping_name: str; shipping_full_address: str
-    shipping_phone: str; items_formatted: list[str]
+    shipping_phone: str
+    
+    # --- ✅ LÍNEA CORREGIDA AQUÍ ---
+    # Se añade ` = []` para que la lista siempre exista por defecto.
+    items_formatted: list[str] = []
+    
     payment_method: str
-    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     confirmed_at: Optional[datetime] = None
 
     @property
@@ -306,7 +310,7 @@ class CartItemData(rx.Base):
 class ModalSelectorDTO(rx.Base):
     """Representa el estado completo de un selector en el modal."""
     key: str           # ej: "Talla"
-    options: list[str]   # ej: ["S", "M"] (solo las opciones válidas)
+    options: list[str] = [] # ej: ["S", "M"] (solo las opciones válidas)
     current_value: str # ej: "S"
 
 class VariantFormData(rx.Base):
