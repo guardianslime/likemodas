@@ -1,11 +1,11 @@
-# likemodas/blog/forms.py (CORREGIDO)
+# likemodas/blog/forms.py
 
 import reflex as rx
 from ..state import AppState
 from ..models import Category
 from ..ui.components import multi_select_component, searchable_select
 from ..data.product_options import (
-    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES,
+    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES, 
     LISTA_NUMEROS_CALZADO, LISTA_TAMANOS_MOCHILAS
 )
 
@@ -19,11 +19,10 @@ def attribute_editor(
     current_selections: rx.Var[list[str]],
 ) -> rx.Component:
     """
-    [cite_start]Un componente para añadir y quitar atributos específicos a una variante. [cite: 1438]
+    Un componente para añadir y quitar atributos específicos a una variante.
     """
     return rx.vstack(
         rx.text(title, weight="bold", size="3"),
-        # [cite_start]Muestra los atributos ya seleccionados como badges [cite: 1439]
         rx.flex(
             rx.foreach(
                 current_selections,
@@ -41,7 +40,6 @@ def attribute_editor(
             ),
             wrap="wrap", spacing="2", min_height="36px",
         ),
-        # [cite_start]Selector y botón para añadir un nuevo atributo [cite: 1442]
         rx.hstack(
             rx.select(
                 options_list,
@@ -58,15 +56,15 @@ def attribute_editor(
     )
 
 def variant_stock_manager() -> rx.Component:
-    """Componente para gestionar el stock de las variantes generadas.""" 
+    """Componente para gestionar el stock de las variantes generadas."""
     return rx.vstack(
         rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
         rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
         rx.button(
-            "Generar / Actualizar Variantes",
-            on_click=AppState.generate_variants,
-            margin_y="1em",
-            type="button"
+            "Generar / Actualizar Variantes", 
+            on_click=AppState.generate_variants, 
+            margin_y="1em", 
+            type="button" 
         ),
         rx.cond(
             (AppState.selected_variant_index >= 0) & AppState.generated_variants_map.contains(AppState.selected_variant_index),
@@ -112,7 +110,7 @@ def variant_stock_manager() -> rx.Component:
     )
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con características dinámicas y con buscador.""" 
+    """Formulario para añadir productos con características dinámicas y con buscador."""
     tipo_selector = searchable_select(
         placeholder="Tipo...", options=AppState.filtered_attr_tipos,
         on_change_select=AppState.set_attr_tipo, value_select=AppState.attr_tipo,
