@@ -148,6 +148,10 @@ class AdminPurchaseCardData(rx.Base):
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
     
+    @property
+    def estimated_delivery_date_formatted(self) -> str:
+        return format_utc_to_local(self.estimated_delivery_date)
+    
 class PurchaseItemCardData(rx.Base):
     """DTO para mostrar la miniatura de un artículo en el historial de compras."""
     id: int
@@ -176,6 +180,7 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_city: str
     shipping_phone: str
     items: list[PurchaseItemCardData]
+    estimated_delivery_date_formatted: str = "" # <-- AÑADE ESTA LÍNEA
 
 class AdminPostRowData(rx.Base):
     """DTO para una fila en la tabla de publicaciones del admin."""
@@ -2445,7 +2450,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 any(p.status == PurchaseStatus.PENDING_CONFIRMATION.value for p in self.active_purchases)
             )
 
-    # ✨ NUEVA FUNCIÓN solo para notificar el envío
+    # Para pagos Online ya confirmados
     @rx.event
     def ship_confirmed_online_order(self, purchase_id: int):
         if not self.is_admin: 
@@ -2470,7 +2475,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # --- ✨ LÓGICA DE MENSAJE MEJORADA ✨ ---
+                # --- LÓGICA DE MENSAJE MEJORADA ---
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
@@ -2478,7 +2483,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 time_str = ", ".join(time_parts) if time_parts else "pronto"
                 mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
-                # --- ✨ FIN DE LA LÓGICA MEJORADA ✨ ---
 
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
@@ -2493,6 +2497,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:
                 yield rx.toast.error("La compra debe estar 'confirmada' para poder notificar el envío.")
 
+    # Para pagos Contra Entrega
     @rx.event
     def ship_pending_cod_order(self, purchase_id: int):
         if not self.is_admin: 
@@ -2517,7 +2522,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # --- ✨ LÓGICA DE MENSAJE MEJORADA ✨ ---
+                # --- LÓGICA DE MENSAJE MEJORADA ---
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
@@ -2525,16 +2530,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 time_str = ", ".join(time_parts) if time_parts else "pronto"
                 mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
-                # --- ✨ FIN DE LA LÓGICA MEJORADA ✨ ---
 
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
                     message=mensaje,
                     url="/my-purchases"
                 )
-
                 session.add(notification)
                 session.commit()
+                
                 yield rx.toast.success("Pedido contra entrega en camino y notificado.")
                 yield AppState.load_active_purchases
             else:
@@ -2724,7 +2728,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_neighborhood=p.shipping_neighborhood,
                         shipping_city=p.shipping_city,
                         shipping_phone=p.shipping_phone,
-                        items=purchase_items_data
+                        items=purchase_items_data,
+                        estimated_delivery_date_formatted=p.estimated_delivery_date_formatted
                     )
                 )
             self.user_purchases = temp_purchases

@@ -123,7 +123,19 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
+                    # --- 👇 REEMPLAZA ESTA LÍNEA 👇 ---
                     rx.text("Tu pedido está en camino.", size="3", color_scheme="green"),
+                    # --- 👇 CON ESTE BLOQUE 👇 ---
+                    rx.callout.root(
+                        rx.callout.icon(rx.icon("truck")),
+                        rx.callout.text(
+                            "Tu pedido está en camino. ",
+                            rx.text.strong(f"Llegada estimada: {purchase.estimated_delivery_date_formatted}"),
+                        ),
+                        color_scheme="green",
+                        size="2",
+                    ),
+                    # --- FIN DEL REEMPLAZO ---
                     rx.button(
                         "Confirmar Recepción del Pedido",
                         on_click=AppState.user_confirm_delivery(purchase.id),
