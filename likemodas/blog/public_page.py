@@ -341,7 +341,10 @@ def blog_public_page_content() -> rx.Component:
     """Página pública principal que muestra la galería y contiene el modal."""
     return rx.center(
         rx.vstack(
-            floating_filter_panel(),
+            # --- ✅ CAMBIO APLICADO AQUÍ ✅ ---
+            # floating_filter_panel(),
+            rx.fragment(), # Reemplazo temporal
+            
             rx.cond(
                 AppState.is_loading,
                 skeleton_product_gallery(),
