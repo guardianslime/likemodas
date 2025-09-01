@@ -43,10 +43,18 @@ def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
         return f"Envío: {format_to_cop(shipping_cost)}"
     return "Envío a convenir"
 
-# --- ✨ INICIO DE LA CORRECCIÓN: NUEVOS DTOs ---
+# ✅ INICIO DE LA CORRECCIÓN: Coloca este bloque completo de DTOs aquí
 
+def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
+    """Genera el texto de envío basado en el costo."""
+    if shipping_cost == 0.0:
+        return "Envío Gratis"
+    if shipping_cost is not None and shipping_cost > 0:
+        return f"Envío: {format_to_cop(shipping_cost)}"
+    return "Envío a convenir"
+
+# --- DTOs (Data Transfer Objects) ---
 class UserInfoDTO(rx.Base):
-    """DTO simple y serializable para la información del usuario en sesión."""
     id: int
     user_id: int
     username: str
@@ -54,7 +62,6 @@ class UserInfoDTO(rx.Base):
     role: str
 
 class NotificationDTO(rx.Base):
-    """DTO para las notificaciones."""
     id: int
     message: str
     is_read: bool
@@ -62,7 +69,6 @@ class NotificationDTO(rx.Base):
     created_at_formatted: str
 
 class ContactEntryDTO(rx.Base):
-    """DTO para las entradas de contacto."""
     id: int
     first_name: str
     last_name: Optional[str]
@@ -71,15 +77,11 @@ class ContactEntryDTO(rx.Base):
     created_at_formatted: str
     userinfo_id: Optional[int]
 
-
-# --- ✨ FIN DE LA CORRECCIÓN ---
-
 class ProductCardData(rx.Base):
     id: int
     title: str
     price: float = 0.0
     price_cop: str = ""
-    # ✅ CORRECCIÓN CLAVE: Asegura que 'variants' siempre sea una lista.
     variants: list[dict] = []
     attributes: dict = {}
     shipping_cost: Optional[float] = None
@@ -89,11 +91,18 @@ class ProductCardData(rx.Base):
     userinfo_id: int
     average_rating: float = 0.0
     rating_count: int = 0
-
     class Config:
         orm_mode = True
+    @property
+    def full_stars(self) -> list[int]:
+        return list(range(math.floor(self.average_rating)))
+    @property
+    def has_half_star(self) -> bool:
+        return (self.average_rating - math.floor(self.average_rating)) >= 0.5
+    @property
+    def empty_stars(self) -> list[int]:
+        return list(range(5 - math.ceil(self.average_rating)))
 
-    
 class ProductDetailData(rx.Base):
     id: int
     title: str
@@ -105,59 +114,47 @@ class ProductDetailData(rx.Base):
     rating_count: int = 0
     seller_name: str = ""
     seller_id: int = 0
-    attributes: dict = {} 
+    attributes: dict = {}
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
     is_imported: bool = False
-
     class Config:
         orm_mode = True
-    
-    # ✅ INICIO DE LA CORRECCIÓN: Se añaden las propiedades que faltaban
     @property
     def full_stars(self) -> list[int]:
         return list(range(math.floor(self.average_rating)))
-
     @property
     def has_half_star(self) -> bool:
         return (self.average_rating - math.floor(self.average_rating)) >= 0.5
-
     @property
     def empty_stars(self) -> list[int]:
-        return list(range(5 - math.ceil(self.average_rating))) 
-    # ✅ FIN DE LA CORRECCIÓN
+        return list(range(5 - math.ceil(self.average_rating)))
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
     status: str; total_price: float; shipping_name: str; shipping_full_address: str
     shipping_phone: str; items_formatted: list[str]
     payment_method: str
-    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     confirmed_at: Optional[datetime] = None
-
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
     
 class PurchaseItemCardData(rx.Base):
-    """DTO para mostrar la miniatura de un artículo en el historial de compras."""
     id: int
     title: str
     image_url: str
     price_at_purchase: float
     price_at_purchase_cop: str
     quantity: int
-
-    @property # <-- ✨ ESTA ES LA CORRECCIÓN
+    @property
     def subtotal_cop(self) -> str:
-        """Calcula y formatea el subtotal para esta línea de artículo."""
         return format_to_cop(self.price_at_purchase * self.quantity)
     
 class UserPurchaseHistoryCardData(rx.Base):
-    """DTO actualizado para el historial de compras del usuario."""
     id: int
-    userinfo_id: int  # --- AÑADE ESTA LÍNEA ---
+    userinfo_id: int
     purchase_date_formatted: str
     status: str
     total_price_cop: str
@@ -170,7 +167,6 @@ class UserPurchaseHistoryCardData(rx.Base):
     items: list[PurchaseItemCardData]
 
 class AdminPostRowData(rx.Base):
-    """DTO para una fila en la tabla de publicaciones del admin."""
     id: int
     title: str
     price_cop: str
@@ -191,7 +187,6 @@ class CommentData(rx.Base):
     updates: List["CommentData"] = []
 
 class InvoiceItemData(rx.Base):
-    """Un modelo específico para cada línea de artículo en la factura."""
     name: str
     quantity: int
     price_cop: str
@@ -199,16 +194,7 @@ class InvoiceItemData(rx.Base):
     iva_cop: str
     total_con_iva_cop: str
 
-    @property
-    def price_cop(self) -> str:
-        return format_to_cop(self.price)
-
-    @property
-    def total_cop(self) -> str:
-        return format_to_cop(self.price * self.quantity)
-
 class InvoiceData(rx.Base):
-    """DTO para contener toda la información necesaria para una factura."""
     id: int
     purchase_date_formatted: str
     status: str
@@ -218,7 +204,7 @@ class InvoiceData(rx.Base):
     shipping_full_address: str
     shipping_phone: str
     subtotal_cop: str
-    shipping_applied_cop: str # <-- ✨ 1. AÑADE ESTE CAMPO
+    shipping_applied_cop: str
     iva_cop: str
     total_price_cop: str
 
@@ -229,7 +215,6 @@ class SupportMessageData(rx.Base):
     created_at_formatted: str
 
 class SupportTicketAdminData(rx.Base):
-    """DTO para mostrar un resumen del ticket en la lista del admin."""
     ticket_id: int
     purchase_id: int
     buyer_name: str
@@ -238,35 +223,25 @@ class SupportTicketAdminData(rx.Base):
     created_at_formatted: str
 
 class SellerInfoData(rx.Base):
-    """DTO para mostrar la información pública de un vendedor."""
     id: int
     username: str
 
 class SupportTicketData(rx.Base):
-    """DTO para mostrar la información de un ticket en la vista de chat."""
     id: int
     purchase_id: int
     buyer_id: int
     seller_id: int
     subject: str
     status: str
-
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Se añade esta configuración para permitir el uso de .from_orm()
     class Config:
         orm_mode = True
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
-# --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
 class AttributeGroupDTO(rx.Base):
-    """DTO para agrupar un atributo y sus posibles valores."""
-    key: str        # ej: "Talla"
-    options: list[str] # RENOMBRADO de 'values' a 'options'
-# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+    key: str
+    options: list[str]
 
 class CartItemData(rx.Base):
-    """DTO para el carrito, ahora incluye detalles de la variante."""
-    cart_key: str  # e.g., "15-2" (product_id-variant_index)
+    cart_key: str
     product_id: int
     variant_index: int
     title: str
@@ -274,28 +249,29 @@ class CartItemData(rx.Base):
     price_cop: str
     image_url: str
     quantity: int
-    variant_details: dict # e.g., {"Talla": "S", "Color": "Azul"}
-
+    variant_details: dict
     @property
     def subtotal(self) -> float:
         return self.price * self.quantity
-
     @property
     def subtotal_cop(self) -> str:
         return format_to_cop(self.subtotal)
-    
-class ModalSelectorDTO(rx.Base):
-    """Representa el estado completo de un selector en el modal."""
-    key: str           # ej: "Talla"
-    options: list[str]   # ej: ["S", "M"] (solo las opciones válidas)
-    current_value: str # ej: "S"
 
-# ✅ CORRECCIÓN CLAVE: Nuevo DTO para usar con rx.foreach de forma segura.
+class ModalSelectorDTO(rx.Base):
+    key: str
+    options: list[str]
+    current_value: str
+
+class VariantFormData(rx.Base):
+    attributes: dict[str, str]
+    stock: int = 10
+    image_url: str = ""
+
 class UniqueVariantItem(rx.Base):
-    """Un DTO para que rx.foreach entienda la estructura de las variantes únicas."""
     variant: dict
     index: int
 
+# ✅ FIN DE LA CORRECCIÓN: El bloque de DTOs termina aquí.
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
