@@ -22,4 +22,3 @@ def landing_content() -> rx.Component:
         ),
         width="100%"
     )
-

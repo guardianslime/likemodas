@@ -114,4 +114,3 @@ def shipping_info_content() -> rx.Component:
             align_items="start", width="100%", max_width="700px"
         )
     )
-

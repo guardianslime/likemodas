@@ -61,4 +61,3 @@ class InvoiceState(rx.State):
             yield rx.toast.error("Factura no encontrada o no tienes permisos para verla.")
         
         self.is_loading = False
-

@@ -15,4 +15,3 @@ PRICING_ROUTE="/pricing"
 BLOG_PUBLIC_DETAIL_ROUTE = "/blog-public"
 RETURN_EXCHANGE_ROUTE = "/returns" 
 SUPPORT_TICKETS_ROUTE = "/admin/tickets"
-

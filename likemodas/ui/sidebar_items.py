@@ -11,4 +11,3 @@ def sidebar_dark_mode_toggle_item() -> rx.Component:
         on_click=toggle_color_mode,
         width="100%"
     )
-

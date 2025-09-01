@@ -14,4 +14,3 @@ __all__ = [
     "blog_public_page_content",
     "blog_admin_page",
 ]
-

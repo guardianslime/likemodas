@@ -3645,4 +3645,3 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
-

@@ -130,4 +130,3 @@ def invoice_page_content() -> rx.Component:
         ),
         style=invoice_style,
     )
-

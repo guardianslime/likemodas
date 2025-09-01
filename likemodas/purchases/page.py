@@ -203,4 +203,3 @@ def purchase_history_content() -> rx.Component:
         on_mount=AppState.check_for_auto_confirmations
     )
     return account_layout(page_content)
-

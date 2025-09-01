@@ -12,4 +12,3 @@ def dashboard_content() -> rx.Component:
         product_gallery_component(posts=AppState.posts[:12]),
         min_height="85vh",
     )
-

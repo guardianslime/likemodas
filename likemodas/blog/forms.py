@@ -1,25 +1,73 @@
+# likemodas/blog/forms.py (CORREGIDO)
+
 import reflex as rx
 from ..state import AppState
 from ..models import Category
 from ..ui.components import multi_select_component, searchable_select
 from ..data.product_options import (
-    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES, 
+    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES,
     LISTA_NUMEROS_CALZADO, LISTA_TAMANOS_MOCHILAS
 )
 
+def attribute_editor(
+    title: str,
+    options_list: list[str],
+    temp_value_var: rx.Var[str],
+    temp_value_setter: rx.event.EventSpec,
+    add_handler: rx.event.EventHandler,
+    remove_handler: rx.event.EventHandler,
+    current_selections: rx.Var[list[str]],
+) -> rx.Component:
+    """
+    [cite_start]Un componente para añadir y quitar atributos específicos a una variante. [cite: 1438]
+    """
+    return rx.vstack(
+        rx.text(title, weight="bold", size="3"),
+        # [cite_start]Muestra los atributos ya seleccionados como badges [cite: 1439]
+        rx.flex(
+            rx.foreach(
+                current_selections,
+                lambda item: rx.badge(
+                    item,
+                    rx.icon(
+                        "x",
+                        size=12,
+                        cursor="pointer",
+                        on_click=lambda: remove_handler(item),
+                        margin_left="0.25em"
+                    ),
+                    variant="soft", color_scheme="gray", size="2",
+                ),
+            ),
+            wrap="wrap", spacing="2", min_height="36px",
+        ),
+        # [cite_start]Selector y botón para añadir un nuevo atributo [cite: 1442]
+        rx.hstack(
+            rx.select(
+                options_list,
+                placeholder=f"Seleccionar {title.lower()}...",
+                value=temp_value_var,
+                on_change=temp_value_setter,
+            ),
+            rx.button("Añadir", on_click=add_handler),
+            width="100%"
+        ),
+        align_items="stretch",
+        width="100%",
+        spacing="2"
+    )
+
 def variant_stock_manager() -> rx.Component:
-    """Componente para gestionar el stock de las variantes generadas."""
+    """Componente para gestionar el stock de las variantes generadas.""" 
     return rx.vstack(
         rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
         rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
-        
         rx.button(
-            "Generar / Actualizar Variantes", 
-            on_click=AppState.generate_variants, 
-            margin_y="1em", 
-            type="button" 
+            "Generar / Actualizar Variantes",
+            on_click=AppState.generate_variants,
+            margin_y="1em",
+            type="button"
         ),
-        
         rx.cond(
             (AppState.selected_variant_index >= 0) & AppState.generated_variants_map.contains(AppState.selected_variant_index),
             rx.vstack(
@@ -34,7 +82,6 @@ def variant_stock_manager() -> rx.Component:
                                 ),
                                 align_items="start", flex_grow=1,
                             ),
-                            
                             rx.hstack(
                                 rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_variant_index, index)),
                                 rx.input(
@@ -45,7 +92,6 @@ def variant_stock_manager() -> rx.Component:
                                 rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_variant_index, index)),
                                 align="center", spacing="2",
                             ),
-                            
                             rx.select(
                                 AppState.uploaded_image_urls,
                                 placeholder="Imagen...",
@@ -66,7 +112,7 @@ def variant_stock_manager() -> rx.Component:
     )
 
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con características dinámicas y con buscador."""
+    """Formulario para añadir productos con características dinámicas y con buscador.""" 
     tipo_selector = searchable_select(
         placeholder="Tipo...", options=AppState.filtered_attr_tipos,
         on_change_select=AppState.set_attr_tipo, value_select=AppState.attr_tipo,
@@ -80,7 +126,6 @@ def blog_post_add_form() -> rx.Component:
         filter_name="attr_material_filter",
     )
     
-    # --- Se define el selector de color simple ---
     color_selector_simple = searchable_select(
         placeholder="Selecciona un color...",
         options=AppState.filtered_attr_colores,
@@ -91,10 +136,9 @@ def blog_post_add_form() -> rx.Component:
         filter_name="attr_color_filter",
     )
     
-    # --- 👇 REEMPLAZA ESTOS 3 BLOQUES COMPLETOS --- 👇
     caracteristicas_ropa = rx.vstack(
         rx.grid(
-            color_selector_simple,  # Este se mantiene igual
+            color_selector_simple,
             attribute_editor(
                 title="Talla",
                 options_list=LISTA_TALLAS_ROPA,
@@ -251,7 +295,6 @@ def blog_post_add_form() -> rx.Component:
                         ),
                         columns="2", spacing="4", width="100%",
                     ),
-                    
                     rx.cond(
                         AppState.category != "",
                         rx.vstack(
@@ -259,13 +302,10 @@ def blog_post_add_form() -> rx.Component:
                             rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
                             rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
                             rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
-                            
                             variant_stock_manager(),
-                            
                             align_items="stretch", width="100%",
                         )
                     ),
-
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(placeholder="Detalles del producto...", name="content", required=True, size="2", style={"height": "150px"}),
                     rx.hstack(
@@ -331,54 +371,3 @@ def blog_post_edit_form() -> rx.Component:
         on_submit=AppState.save_edited_post,
         width="100%",
     )
-
-
-# --- 👇 AÑADE ESTE COMPONENTE NUEVO COMPLETO --- 👇
-def attribute_editor(
-    title: str,
-    options_list: list[str],
-    temp_value_var: rx.Var[str],
-    temp_value_setter: rx.event.EventSpec,
-    add_handler: rx.event.EventHandler,
-    remove_handler: rx.event.EventHandler,
-    current_selections: rx.Var[list[str]],
-) -> rx.Component:
-    """
-    Un componente para añadir y quitar atributos específicos a una variante.
-    """
-    return rx.vstack(
-        rx.text(title, weight="bold", size="3"),
-        # Muestra los atributos ya seleccionados como badges
-        rx.flex(
-            rx.foreach(
-                current_selections,
-                lambda item: rx.badge(
-                    item,
-                    rx.icon(
-                        "x",
-                        size=12,
-                        cursor="pointer",
-                        on_click=lambda: remove_handler(item),
-                        margin_left="0.25em"
-                    ),
-                    variant="soft", color_scheme="gray", size="2",
-                ),
-            ),
-            wrap="wrap", spacing="2", min_height="36px",
-        ),
-        # Selector y botón para añadir un nuevo atributo
-        rx.hstack(
-            rx.select(
-                options_list,
-                placeholder=f"Seleccionar {title.lower()}...",
-                value=temp_value_var,
-                on_change=temp_value_setter,
-            ),
-            rx.button("Añadir", on_click=add_handler),
-            width="100%"
-        ),
-        align_items="stretch",
-        width="100%",
-        spacing="2"
-    )
-# --- FIN DEL COMPONENTE NUEVO ---

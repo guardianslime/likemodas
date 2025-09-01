@@ -268,4 +268,3 @@ def floating_filter_panel() -> rx.Component:
         transition="transform 0.3s ease-in-out",
         z_index=1000,
     )
-

@@ -20,4 +20,3 @@ def format_to_cop(price: Optional[float]) -> str:
     # 3. Añade el símbolo de peso y un espacio.
     #    Ejemplo: "55.000" -> "$ 55.000"
     return f"$ {colombian_format}"
-

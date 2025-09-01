@@ -11,4 +11,3 @@ def blog_post_add_content() -> rx.Component:
         min_height="85vh",
         padding="2em",
     )
-

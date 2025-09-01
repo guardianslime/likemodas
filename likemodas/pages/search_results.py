@@ -25,4 +25,3 @@ def search_results_content() -> rx.Component:
         ),
         width="100%"
     )
-

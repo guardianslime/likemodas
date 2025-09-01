@@ -63,4 +63,3 @@ LISTA_TAMANOS_MOCHILAS = ["Pequeña", "Mediana", "Grande", "Extra Grande"]
 # --- ✅ LISTA GENERAL DE MEDIDAS ACTUALIZADA ---
 # Se añaden los tamaños de mochilas para que aparezcan en los filtros generales
 LISTA_MEDIDAS_GENERAL = sorted(list(set(LISTA_TALLAS_ROPA + LISTA_NUMEROS_CALZADO + LISTA_TAMANOS_MOCHILAS)))
-

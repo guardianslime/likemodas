@@ -45,4 +45,3 @@ def seller_page_content() -> rx.Component:
         ),
         width="100%"
     )
-

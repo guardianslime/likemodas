@@ -29,4 +29,3 @@ class Carousel(NoSSRComponent):
     # El método para importar el CSS necesario.
     def add_imports(self) -> dict[str, str] | None:
         return {"": "react-responsive-carousel/lib/styles/carousel.min.css"}
-

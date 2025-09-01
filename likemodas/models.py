@@ -337,4 +337,3 @@ class SupportMessageModel(rx.Model, table=True):
     @property
     def created_at_formatted(self) -> str:
         return format_utc_to_local(self.created_at)
-

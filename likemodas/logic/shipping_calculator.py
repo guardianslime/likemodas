@@ -72,4 +72,3 @@ def calculate_dynamic_shipping(
     total_shipping_cost = min(base_cost + distance_cost, 12000.0)
     
     return total_shipping_cost
-

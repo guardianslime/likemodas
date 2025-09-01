@@ -188,4 +188,3 @@ def multi_select_component(
         ),
         spacing="2", align_items="stretch", width="100%",
     )
-

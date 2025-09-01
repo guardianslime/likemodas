@@ -14,4 +14,3 @@ def validate_password(password: str) -> list[str]:
         errors.append("Debe contener al menos una letra mayúscula.")
     
     return errors
-

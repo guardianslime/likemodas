@@ -47,4 +47,3 @@ def seller_profile_page() -> rx.Component:
         padding_top="2em",
         min_height="85vh",
     )
-

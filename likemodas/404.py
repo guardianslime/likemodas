@@ -22,4 +22,3 @@ def four_oh_four():
             min_height="85vh",
         )
     )
-
