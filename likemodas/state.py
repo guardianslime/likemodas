@@ -624,14 +624,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     attr_tipo: str = ""
     search_attr_tipo: str = ""
 
-    # ✅ INICIO DE LA CORRECCIÓN: Variables temporales que faltaban
+    # ✅ INICIO CORRECCIÓN 1: Variables temporales para el formulario
     temp_talla: str = ""
     temp_numero: str = ""
     temp_tamano: str = ""
+    temp_color: str = "" # Variable que faltaba
 
-    # ✅ INICIO DE LA CORRECCIÓN: Añade la línea que falta aquí
     generated_variants_map: dict[int, list[VariantFormData]] = {}
-    # ✅ FIN DE LA CORRECCIÓN
+    
+    def set_temp_color(self, color: str): # Setter que faltaba
+        self.temp_color = color
 
     def set_temp_talla(self, talla: str):
         self.temp_talla = talla
@@ -641,7 +643,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         
     def set_temp_tamano(self, tamano: str):
         self.temp_tamano = tamano
-    # ✅ FIN DE LA CORRECCIÓN
+    # ✅ FIN CORRECCIÓN 1
 
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
@@ -651,29 +653,23 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     SELECTABLE_ATTRIBUTES = ["Talla", "Número", "Tamaño"]
 
-    # ✅ INICIO DE LA CORRECCIÓN: Funciones de manejo de atributos que faltaban
+    # ✅ INICIO CORRECCIÓN 2: Lógica de atributos unificada
     def add_variant_attribute(self, key: str, value: str):
-        """
-        Añade un valor de atributo a la lista de un atributo específico
-        de la variante actualmente seleccionada en el formulario.
-        """
-        if self.selected_variant_index < 0 or self.selected_variant_index >= len(self.new_variants):
+        """Añade un valor de atributo a la lista de un atributo específico."""
+        if self.selected_variant_index < 0 or not value:
             return
-
-        variant = self.new_variants[self.selected_variant_index]
-        if "attributes" not in variant:
-            variant["attributes"] = {}
         
-        if key not in variant["attributes"]:
-            variant["attributes"][key] = []
-
-        if value and value not in variant["attributes"][key]:
-            variant["attributes"][key].append(value)
-            # Actualiza el "buffer" de la UI para que se refresque visualmente
-            if key == "Talla": self.attr_tallas_ropa = variant["attributes"][key][:]
-            elif key == "Número": self.attr_numeros_calzado = variant["attributes"][key][:]
-            elif key == "Tamaño": self.attr_tamanos_mochila = variant["attributes"][key][:]
-
+        target_list_name = ""
+        if key == "Color": target_list_name = "attr_colores"
+        elif key == "Talla": target_list_name = "attr_tallas_ropa"
+        elif key == "Número": target_list_name = "attr_numeros_calzado"
+        elif key == "Tamaño": target_list_name = "attr_tamanos_mochila"
+        
+        if target_list_name:
+            current_list = getattr(self, target_list_name)
+            if value not in current_list:
+                current_list.append(value)
+                setattr(self, target_list_name, current_list[:])
 
     def select_variant_for_editing(self, index: int):
         """Selecciona una variante y carga sus atributos en el formulario."""
@@ -746,32 +742,38 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.modal_selected_attributes = new_selections
 
     def remove_variant_attribute(self, key: str, value: str):
-        """
-        Elimina un valor de atributo de la lista de un atributo específico
-        de la variante actualmente seleccionada en el formulario.
-        """
-        if self.selected_variant_index < 0 or self.selected_variant_index >= len(self.new_variants):
-            return
+        """Elimina un valor de atributo de su lista correspondiente."""
+        target_list_name = ""
+        if key == "Color": target_list_name = "attr_colores"
+        elif key == "Talla": target_list_name = "attr_tallas_ropa"
+        elif key == "Número": target_list_name = "attr_numeros_calzado"
+        elif key == "Tamaño": target_list_name = "attr_tamanos_mochila"
 
-        variant = self.new_variants[self.selected_variant_index]
-        if "attributes" in variant and key in variant["attributes"]:
-            if value in variant["attributes"][key]:
-                variant["attributes"][key].remove(value)
-                # Actualiza el "buffer" de la UI para que se refresque visualmente
-                if key == "Talla": self.attr_tallas_ropa = variant["attributes"][key][:]
-                elif key == "Número": self.attr_numeros_calzado = variant["attributes"][key][:]
-                elif key == "Tamaño": self.attr_tamanos_mochila = variant["attributes"][key][:]
-    # ✅ FIN DE LA CORRECCIÓN
+        if target_list_name:
+            current_list = getattr(self, target_list_name)
+            if value in current_list:
+                current_list.remove(value)
+                setattr(self, target_list_name, current_list[:])
+    # ✅ FIN CORRECCIÓN 2
 
-    # ✅ INICIO DE LA CORRECCIÓN: Función 'generate_variants' que faltaba
+    # ✅ INICIO CORRECCIÓN 3: Lógica de generación de variantes reescrita
     def generate_variants(self):
         """
-        Genera variantes y las asocia con la imagen actualmente seleccionada.
+        Genera el producto cartesiano de todos los atributos seleccionados
+        para crear combinaciones de variantes únicas y correctas.
         """
         if self.selected_variant_index < 0:
             return rx.toast.error("Por favor, selecciona una imagen primero.")
 
-        color = self.attr_colores
+        main_variant = self.new_variants[self.selected_variant_index]
+        attributes_for_main = {}
+        if self.attr_colores: attributes_for_main["Color"] = self.attr_colores
+        if self.attr_tallas_ropa: attributes_for_main["Talla"] = self.attr_tallas_ropa
+        if self.attr_numeros_calzado: attributes_for_main["Número"] = self.attr_numeros_calzado
+        if self.attr_tamanos_mochila: attributes_for_main["Tamaño"] = self.attr_tamanos_mochila
+        main_variant["attributes"] = attributes_for_main
+
+        colors = self.attr_colores
         sizes, size_key = [], ""
         if self.category == Category.ROPA.value:
             sizes, size_key = self.attr_tallas_ropa, "Talla"
@@ -779,22 +781,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             sizes, size_key = self.attr_numeros_calzado, "Número"
         elif self.category == Category.MOCHILAS.value:
             sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
-
-        if not color or not sizes:
-            return rx.toast.error("Debes seleccionar un color y al menos una talla/tamaño/número.")
-
-        current_attributes = {"Color": color, size_key: sizes}
-        self.new_variants[self.selected_variant_index]["attributes"] = current_attributes
+        
+        if not colors or not sizes:
+            return rx.toast.error(f"Debes seleccionar al menos un color y una/un {size_key.lower()}.")
 
         generated_variants = []
-        for size in sizes:
-            generated_variants.append(
-                VariantFormData(attributes={"Color": color, size_key: size})
-            )
+        for color in colors:
+            for size in sizes:
+                generated_variants.append(
+                    VariantFormData(
+                        attributes={"Color": color, size_key: size}
+                    )
+                )
         
         self.generated_variants_map[self.selected_variant_index] = generated_variants
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
-    # ✅ FIN DE LA CORRECCIÓN
+    # ✅ FIN CORRECCIÓN 3
 
     # ✅ INICIO DE LA CORRECCIÓN: Añade este bloque de funciones
     def _update_variant_stock(self, group_index: int, item_index: int, new_stock: int):
@@ -1841,17 +1843,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             return admin_posts
             # --- FIN DE LA CORRECCIÓN ---
 
-    # ✅ INICIO DE LA CORRECCIÓN: Método de eliminación a prueba de errores.
+    # ✅ INICIO CORRECCIÓN 5: Lógica de eliminación segura
     @rx.event
     def delete_post(self, post_id: int):
-        """
-        Elimina una publicación de forma segura, verificando primero si ha sido vendida.
-        """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         
         with rx.session() as session:
-            # 1. Verificar si el producto ha sido vendido.
             has_been_purchased = session.exec(
                 sqlmodel.select(PurchaseItemModel).where(PurchaseItemModel.blog_post_id == post_id)
             ).first()
@@ -1859,17 +1857,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             if has_been_purchased:
                 return rx.toast.error("No se puede eliminar un producto que ya ha sido vendido.")
 
-            # 2. Si no ha sido vendido, proceder con la eliminación.
             post_to_delete = session.get(BlogPostModel, post_id)
             if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(post_to_delete)
                 session.commit()
-                # Recargar la vista de admin después de eliminar
                 yield AppState.on_load_admin_store
                 yield rx.toast.success("Publicación eliminada.")
             else:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
-    # ✅ FIN DE LA CORRECCIÓN
+    # ✅ FIN CORRECCIÓN 5
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
@@ -2578,16 +2574,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         ]
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     
-    # ✅ INICIO DE LA CORRECCIÓN: Nueva propiedad computada para evitar el error de renderizado.
+    # ✅ INICIO CORRECCIÓN 6: Mapa de datos para la página de compras
     @rx.var
     def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
         """
         Crea un diccionario que mapea el ID de una compra a su lista de artículos.
-        Esto evita el acceso anidado (purchase.items) que causa el error de compilación
-        en el frontend.
+        Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
         """
         return {p.id: p.items for p in self.user_purchases}
-    # ✅ FIN DE LA CORRECCIÓN
+    # ✅ FIN CORRECCIÓN 6
 
     @rx.event
     def load_purchases(self):

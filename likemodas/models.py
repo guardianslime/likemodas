@@ -129,8 +129,7 @@ class BlogPostModel(rx.Model, table=True):
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     
-    # ✅ INICIO DE LA CORRECCIÓN: Añade 'cascade="all, delete-orphan"' a esta relación
-    # Esto asegura que al borrar un post, se borren también todos sus comentarios asociados.
+    # ✅ INICIO DE LA CORRECCIÓN
     comments: List["CommentModel"] = Relationship(
         back_populates="blog_post",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
