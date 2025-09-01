@@ -1740,6 +1740,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         return selectors
 
+    @rx.var
+    def modal_options_map(self) -> dict[str, list[str]]:
+        """
+        Crea un mapa que asocia la clave de un selector (ej: "Talla")
+        con su lista de opciones (ej: ["S", "M"]).
+        Esto evita el acceso anidado a `selector.options`.
+        """
+        if not self.product_in_modal:
+            return {}
+        return {
+            selector.key: selector.options 
+            for selector in self.modal_attribute_selectors
+        }
+
     @rx.event
     def add_default_variant_to_cart(self, product_id: int):
         """Añade la PRIMERA variante de un producto al carrito (para la galería)."""
