@@ -281,8 +281,13 @@ def product_detail_modal() -> rx.Component:
             ),
             rx.spacer(),
             rx.hstack(
-                rx.button("Añadir al Carrito", on_click=AppState.add_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1"),
+                # --- ✅ LÍNEA CORREGIDA AQUÍ ✅ ---
                 rx.button("Añadir al Carrito", on_click=AppState.add_selected_variant_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1"),
+                rx.icon_button(
+                    rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
+                    on_click=AppState.toggle_save_post,
+                    size="3", variant="outline",
+                ),
                 rx.icon_button(
                     rx.icon(tag="share-2"),
                     on_click=[
