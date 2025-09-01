@@ -1,13 +1,14 @@
 # likemodas/blog/public_page.py
 
 import reflex as rx
-from ..state import AppState, CommentData
+import math
+from ..state import AppState, CommentData, ModalSelectorDTO
 from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 
 def _render_static_stars(rating: rx.Var[int]) -> rx.Component:
-    """Renders a static star rating based on a simple integer."""
+    """Renderiza una calificación de estrellas estática basada en un entero."""
     return rx.hstack(
         rx.foreach(
             rx.Var.range(5),
@@ -45,7 +46,7 @@ def render_update_item(comment: CommentData) -> rx.Component:
     )
 
 def star_rating_display(rating_data: rx.Var) -> rx.Component:
-    """Componente para mostrar estrellas de valoración (Recibe el DTO del producto)."""
+    """Componente para mostrar estrellas de valoración (recibe el DTO del producto)."""
     return rx.cond(
         rating_data.rating_count > 0,
         rx.hstack(
@@ -53,7 +54,7 @@ def star_rating_display(rating_data: rx.Var) -> rx.Component:
             rx.cond(rating_data.has_half_star, rx.icon("star_half", color="gold", size=20)),
             rx.foreach(rating_data.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
             rx.text(
-                 f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
+                f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
                 size="3", 
                 color_scheme="gray", 
                 margin_left="0.5em"
@@ -171,7 +172,6 @@ def product_detail_modal() -> rx.Component:
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
-                    # ✅ CORRECCIÓN CLAVE: Usa el DTO 'UniqueVariantItem' para un renderizado seguro.
                     rx.foreach(
                         AppState.unique_modal_variants,
                         lambda item: rx.box(
