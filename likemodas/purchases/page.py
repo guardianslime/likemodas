@@ -68,9 +68,13 @@ def purchase_items_gallery(items: rx.Var[list[PurchaseItemCardData]]) -> rx.Comp
     )
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
-    """Componente principal que muestra una tarjeta de compra en el historial."""
+    """
+    CORREGIDO: Componente principal que muestra una compra en el historial.
+    Ahora renderiza la galería de artículos directamente y de forma segura con rx.cond.
+    """
     return rx.card(
         rx.vstack(
+            # --- (La parte superior de la tarjeta no cambia) ---
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -95,7 +99,30 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
+            # --- 👇 INICIO DE LA LÓGICA CORREGIDA Y SIMPLIFICADA 👇 ---
+            rx.vstack(
+                rx.text("Artículos Comprados:", weight="medium", size="4"),
+                rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
+                # Usamos rx.cond para asegurarnos de que `purchase.items` existe antes de intentar iterarlo
+                rx.cond(
+                    purchase.items,
+                    rx.scroll_area(
+                        rx.hstack(
+                            rx.foreach(
+                                purchase.items, # Accedemos directamente a la lista de artículos
+                                purchase_item_thumbnail
+                            ),
+                            spacing="4",
+                            padding_y="0.5em",
+                        ),
+                        type="auto",
+                        scrollbars="horizontal",
+                        width="100%",
+                    )
+                ),
+                spacing="2", align_items="start", width="100%",
+            ),
+            # --- FIN DE LA LÓGICA CORREGIDA ---
             
             rx.vstack(
                 rx.hstack(
@@ -118,14 +145,11 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="2"
             ),
             
-            # --- ✨ INICIO DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
+            # --- (El resto de la lógica de estado de entrega y botones no cambia) ---
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
-                    # --- 👇 REEMPLAZA ESTA LÍNEA 👇 ---
-                    rx.text("Tu pedido está en camino.", size="3", color_scheme="green"),
-                    # --- 👇 CON ESTE BLOQUE 👇 ---
                     rx.callout.root(
                         rx.callout.icon(rx.icon("truck")),
                         rx.callout.text(
@@ -135,7 +159,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                         color_scheme="green",
                         size="2",
                     ),
-                    # --- FIN DEL REEMPLAZO ---
                     rx.button(
                         "Confirmar Recepción del Pedido",
                         on_click=AppState.user_confirm_delivery(purchase.id),
@@ -155,11 +178,8 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     align_items="center"
                  )
             ),
-            # --- ✨ FIN DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
-
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
-                # --- INICIO DE LA MODIFICACIÓN ---
                 rx.hstack(
                     rx.link(
                         rx.button("Imprimir Factura", variant="outline", width="100%"),
@@ -168,7 +188,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                         target="_blank",
                         width="100%",
                     ),
-                    # --- BOTÓN NUEVO ---
                     rx.button(
                         "Devolución o Cambio",
                         on_click=AppState.go_to_return_page(purchase.id),
@@ -180,7 +199,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     margin_top="1em",
                     width="100%",
                 ),
-                # --- FIN DE LA MODIFICACIÓN ---
             ),
             spacing="4", width="100%"
         ),
