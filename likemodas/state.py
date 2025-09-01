@@ -1841,18 +1841,35 @@ class AppState(reflex_local_auth.LocalAuthState):
             return admin_posts
             # --- FIN DE LA CORRECCIÓN ---
 
+    # ✅ INICIO DE LA CORRECCIÓN: Método de eliminación a prueba de errores.
     @rx.event
     def delete_post(self, post_id: int):
+        """
+        Elimina una publicación de forma segura, verificando primero si ha sido vendida.
+        """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
+        
         with rx.session() as session:
+            # 1. Verificar si el producto ha sido vendido.
+            has_been_purchased = session.exec(
+                sqlmodel.select(PurchaseItemModel).where(PurchaseItemModel.blog_post_id == post_id)
+            ).first()
+
+            if has_been_purchased:
+                return rx.toast.error("No se puede eliminar un producto que ya ha sido vendido.")
+
+            # 2. Si no ha sido vendido, proceder con la eliminación.
             post_to_delete = session.get(BlogPostModel, post_id)
             if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(post_to_delete)
                 session.commit()
+                # Recargar la vista de admin después de eliminar
+                yield AppState.on_load_admin_store
                 yield rx.toast.success("Publicación eliminada.")
             else:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
+    # ✅ FIN DE LA CORRECCIÓN
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
@@ -1875,7 +1892,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     default_shipping_address: Optional[ShippingAddressModel] = None
 
     @rx.event
-    def handle_checkout(self):
+    def handle_checkout(self, form_data: dict):
         """
         CORREGIDO: Procesa la compra usando la clave simplificada para identificar
         y verificar el stock de forma segura.
@@ -2561,15 +2578,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         ]
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     
-    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
+    # ✅ INICIO DE LA CORRECCIÓN: Nueva propiedad computada para evitar el error de renderizado.
     @rx.var
     def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
         """
         Crea un diccionario que mapea el ID de una compra a su lista de artículos.
-        Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
+        Esto evita el acceso anidado (purchase.items) que causa el error de compilación
+        en el frontend.
         """
         return {p.id: p.items for p in self.user_purchases}
-    # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
+    # ✅ FIN DE LA CORRECCIÓN
 
     @rx.event
     def load_purchases(self):

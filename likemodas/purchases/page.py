@@ -52,8 +52,9 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
 def purchase_items_gallery(purchase_id: rx.Var[int]) -> rx.Component:
     """
     Renderiza la galería de artículos para una compra, buscando los items de forma segura
-    a través del ID de la compra.
+    a través del ID de la compra. Esto evita el error de frontend.
     """
+    # Se utiliza la nueva propiedad computada `purchase_items_map` para un acceso seguro.
     items = AppState.purchase_items_map.get(purchase_id, [])
     return rx.vstack(
         rx.text("Artículos Comprados:", weight="medium", size="4"),
@@ -102,7 +103,8 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # Se pasa el ID de la compra en lugar de la lista de items
+            # Se pasa el ID de la compra en lugar de la lista de items para que el componente
+            # `purchase_items_gallery` pueda buscar los datos de forma segura.
             purchase_items_gallery(purchase_id=purchase.id),
             
             rx.vstack(
