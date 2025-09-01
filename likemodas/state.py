@@ -318,7 +318,61 @@ class AppState(reflex_local_auth.LocalAuthState):
     success: bool = False
     error_message: str = ""
 
+    # ✅ INICIO DE LA CORRECCIÓN: Variables y lógica de registro que faltaban
+    success: bool = False
+    error_message: str = ""
     
+    def handle_registration_email(self, form_data: dict):
+        self.success = False
+        self.error_message = ""
+        username = form_data.get("username")
+        email = form_data.get("email")
+        password = form_data.get("password")
+        confirm_password = form_data.get("confirm_password")
+
+        if not all([username, email, password, confirm_password]):
+            self.error_message = "Todos los campos son obligatorios."
+            return
+        if password != confirm_password:
+            self.error_message = "Las contraseñas no coinciden."
+            return
+        password_errors = validate_password(password)
+        if password_errors:
+            self.error_message = "\n".join(password_errors)
+            return
+
+        try:
+            with rx.session() as session:
+                if session.exec(sqlmodel.select(LocalUser).where(LocalUser.username == username)).first():
+                    self.error_message = "El nombre de usuario ya está en uso."
+                    return
+                if session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == email)).first():
+                    self.error_message = "El email ya está registrado."
+                    return
+
+                password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+                new_user = LocalUser(username=username, password_hash=password_hash, enabled=True)
+                session.add(new_user)
+                session.commit()
+                session.refresh(new_user)
+                
+                user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
+                new_user_info = UserInfo(email=email, user_id=new_user.id, role=user_role)
+                session.add(new_user_info)
+                session.commit()
+                session.refresh(new_user_info)
+
+                token_str = secrets.token_urlsafe(32)
+                expires = datetime.now(timezone.utc) + timedelta(hours=24)
+                verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
+                session.add(verification_token)
+                session.commit()
+                
+                send_verification_email(recipient_email=email, token=token_str)
+                self.success = True
+        except Exception as e:
+            self.error_message = f"Error inesperado: {e}"
+    # ✅ FIN DE LA CORRECCIÓN
     
     # --- ✨ INICIO DE LA CORRECCIÓN: PROPIEDADES COMPUTADAS REFACTORIZADAS ---
     @rx.var(cache=True)
