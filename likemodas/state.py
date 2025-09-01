@@ -204,14 +204,22 @@ class CommentData(rx.Base):
     created_at_formatted: str
     updates: List["CommentData"] = []
 
-class InvoiceItemData(rx.Base):
-    """Un modelo específico para cada línea de artículo en la factura."""
-    name: str
-    quantity: int
-    price_cop: str
+class InvoiceData(rx.Base):
+    """DTO para contener toda la información necesaria para una factura."""
+    id: int
+    purchase_date_formatted: str
+    status: str
+    # --- ✅ LÍNEA CORREGIDA AQUÍ ---
+    # Se añade ` = []` para que la lista siempre esté definida por defecto.
+    items: list[InvoiceItemData] = []
+    customer_name: str
+    customer_email: str
+    shipping_full_address: str
+    shipping_phone: str
     subtotal_cop: str
+    shipping_applied_cop: str
     iva_cop: str
-    total_con_iva_cop: str
+    total_price_cop: str
 
     @property
     def price_cop(self) -> str:
@@ -2155,17 +2163,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def load_main_page_data(self):
         """
-        Orquestador principal: carga la dirección y LUEGO los productos y recalcula.
+        Orquestador principal: carga la dirección y LUEGO los productos,
+        extrayendo correctamente los atributos para los filtros.
         """
         self.is_loading = True
         yield
         yield AppState.load_default_shipping_info
 
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
+            results = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.publish_active == True)
+                .order_by(BlogPostModel.created_at.desc())
+            ).all()
             
             temp_posts = []
             for p in results:
+                # --- ✅ INICIO DE LA LÓGICA MEJORADA ✅ ---
+                # Extrae los atributos de la primera variante como una base
+                # para los filtros de la galería. Si no hay variantes, usa un dict vacío.
+                base_attributes = {}
+                if p.variants:
+                    base_attributes = p.variants[0].get("attributes", {})
+                # --- ✅ FIN DE LA LÓGICA MEJORADA ✅ ---
+
                 temp_posts.append(
                     ProductCardData(
                         id=p.id, 
@@ -2173,9 +2194,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title, 
                         price=p.price,
                         price_cop=p.price_cop,
-                        # --- 👇 LÍNEA CORREGIDA 👇 ---
                         variants=p.variants or [],
-                        attributes={},
+                        attributes=base_attributes,  # <-- Se usan los atributos extraídos
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
