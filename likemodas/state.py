@@ -99,14 +99,13 @@ class ProductDetailData(rx.Base):
     title: str
     content: str
     price_cop: str
-    # ✅ CORRECCIÓN CLAVE: Asegura que 'variants' siempre sea una lista.
     variants: list[dict] = []
     created_at_formatted: str
     average_rating: float = 0.0
     rating_count: int = 0
     seller_name: str = ""
     seller_id: int = 0
-    attributes: dict = {}
+    attributes: dict = {} 
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
@@ -114,6 +113,20 @@ class ProductDetailData(rx.Base):
 
     class Config:
         orm_mode = True
+    
+    # ✅ INICIO DE LA CORRECCIÓN: Se añaden las propiedades que faltaban
+    @property
+    def full_stars(self) -> list[int]:
+        return list(range(math.floor(self.average_rating)))
+
+    @property
+    def has_half_star(self) -> bool:
+        return (self.average_rating - math.floor(self.average_rating)) >= 0.5
+
+    @property
+    def empty_stars(self) -> list[int]:
+        return list(range(5 - math.ceil(self.average_rating))) 
+    # ✅ FIN DE LA CORRECCIÓN
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
