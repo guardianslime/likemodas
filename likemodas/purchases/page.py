@@ -1,5 +1,3 @@
-# likemodas/purchases/page.py (CORREGIDO Y COMPLETO)
-
 import reflex as rx
 import reflex_local_auth
 
@@ -50,12 +48,12 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """
-    Renderiza la tarjeta de compra y sus artículos usando un patrón seguro
-    que funciona tanto en la compilación como en el navegador.
+    Renderiza la tarjeta de compra y sus artículos usando un patrón seguro que 
+    funciona tanto en la compilación como en el navegador.
     """
     return rx.card(
         rx.vstack(
-            # --- Sección superior de la tarjeta ---
+            # Sección superior de la tarjeta
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -68,7 +66,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- Detalles de Envío ---
+            # Detalles de Envío
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -78,7 +76,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- Galería de Artículos (Lógica Corregida y Definitiva) ---
+            # --- ✅ INICIO DE LA LÓGICA CORREGIDA Y DEFINITIVA ✅ ---
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
                 rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
@@ -101,9 +99,10 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
+            # --- ✅ FIN DE LA LÓGICA CORREGIDA ✅ ---
             
-            # --- Sección de Totales ---
-             rx.vstack(
+            # Sección de Totales
+            rx.vstack(
                 rx.hstack(
                     rx.spacer(),
                     rx.text("Envío:", size="4", weight="medium"),
@@ -124,7 +123,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="2"
             ),
             
-            # --- Lógica de Estado de Entrega ---
+            # Lógica de Estado de Entrega
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
@@ -150,15 +149,15 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             ),
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
-                 rx.vstack(
+                rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("¡Pedido entregado! Gracias por tu compra.", size="3", color_scheme="violet"),
                     width="100%",
                     align_items="center"
-                 )
+                )
             ),
             
-            # --- Botones de Acción Post-Entrega ---
+            # Botones de Acción Post-Entrega
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                 rx.hstack(
@@ -210,7 +209,6 @@ def purchase_history_content() -> rx.Component:
             spacing="6", width="100%", max_width="960px", align="center"
         ),
         width="100%",
-        # Se ejecuta al cargar la página para auto-confirmar entregas antiguas
         on_mount=AppState.check_for_auto_confirmations
     )
     return account_layout(page_content)
