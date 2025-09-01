@@ -342,11 +342,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             return None
 
-    @rx.var
-    def is_admin(self) -> bool:
-        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN.value
 
-    def handle_registration_email(self, form_data: dict):
         self.success = False
         self.error_message = ""
         username = form_data.get("username")
@@ -597,6 +593,21 @@ class AppState(reflex_local_auth.LocalAuthState):
     attr_material: str = ""
     attr_tipo: str = ""
     search_attr_tipo: str = ""
+
+    # ✅ INICIO DE LA CORRECCIÓN: Variables temporales que faltaban
+    temp_talla: str = ""
+    temp_numero: str = ""
+    temp_tamano: str = ""
+
+    def set_temp_talla(self, talla: str):
+        self.temp_talla = talla
+    
+    def set_temp_numero(self, numero: str):
+        self.temp_numero = numero
+        
+    def set_temp_tamano(self, tamano: str):
+        self.temp_tamano = tamano
+    # ✅ FIN DE LA CORRECCIÓN
 
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
