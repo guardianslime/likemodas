@@ -146,9 +146,13 @@ class AdminPurchaseCardData(rx.Base):
     shipping_name: str
     shipping_full_address: str
     shipping_phone: str
-    items_formatted: list[str] = [] # Añadimos el default = [] por seguridad
+    items_formatted: list[str] = []
     payment_method: str
     confirmed_at: Optional[datetime] = None
+
+    # --- ✅ CAMPO AÑADIDO QUE FALTABA ---
+    # Este campo debe existir para que la propiedad de abajo funcione.
+    estimated_delivery_date: Optional[datetime] = None
 
     @property
     def total_price_cop(self) -> str:
@@ -156,6 +160,7 @@ class AdminPurchaseCardData(rx.Base):
     
     @property
     def estimated_delivery_date_formatted(self) -> str:
+        # Ahora, esta propiedad puede acceder a un campo que sí existe.
         return format_utc_to_local(self.estimated_delivery_date)
     
 class PurchaseItemCardData(rx.Base):
