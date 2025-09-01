@@ -128,7 +128,14 @@ class BlogPostModel(rx.Model, table=True):
     is_imported: bool = Field(default=False, nullable=False)
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
-    comments: List["CommentModel"] = Relationship(back_populates="blog_post")
+    
+    # ✅ INICIO DE LA CORRECCIÓN: Añade 'cascade="all, delete-orphan"' a esta relación
+    comments: List["CommentModel"] = Relationship(
+        back_populates="blog_post",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+    # ✅ FIN DE LA CORRECCIÓN
+
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     
     class Config:
