@@ -237,6 +237,10 @@ class PurchaseItemModel(rx.Model, table=True):
     class Config:
         exclude = {"purchase", "blog_post", "comments"}
 
+    @property
+    def estimated_delivery_date_formatted(self) -> str:
+        return format_utc_to_local(self.estimated_delivery_date)
+
 class NotificationModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     message: str
