@@ -2619,7 +2619,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     
     # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
-    
+    @rx.var
+    def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
+        """
+        Crea un diccionario que mapea el ID de una compra a su lista de artículos.
+        Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
+        """
+        return {p.id: p.items for p in self.user_purchases}
+    # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
 
     @rx.event
     def load_purchases(self):

@@ -1,4 +1,4 @@
-# likemodas/purchases/page.py (CORREGIDO)
+# likemodas/purchases/page.py (VERSIÓN FINAL CORREGIDA)
 
 import reflex as rx
 import reflex_local_auth
@@ -29,7 +29,7 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
             ),
             rx.vstack(
                 rx.text(
-                    f"{item.quantity}x {item.price_at_purchase_cop}", 
+                    f"{item.quantity}x {item.price_at_purchase_cop}",
                     size="2",
                     color_scheme="gray",
                 ),
@@ -96,12 +96,12 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
-            
+
             # --- INICIO DE LA CORRECCIÓN CLAVE ---
-            # En lugar de buscar en el `purchase_items_map`, pasamos `purchase.items` directamente.
-            purchase_items_gallery(items=purchase.items),
+            # Volvemos a usar el `purchase_items_map` que es más estable para el compilador.
+            purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
             # --- FIN DE LA CORRECCIÓN CLAVE ---
-            
+
             rx.vstack(
                 rx.hstack(
                     rx.spacer(),
@@ -122,7 +122,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 margin_top="1em",
                 spacing="2"
             ),
-            
+
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
@@ -147,7 +147,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     align_items="center"
                  )
             ),
-
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                 rx.hstack(
