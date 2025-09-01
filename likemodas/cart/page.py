@@ -52,6 +52,7 @@ def cart_item_row(item: CartItemData) -> rx.Component:
         rx.table.cell(
             rx.vstack(
                 rx.text(item.title, weight="bold"),
+                # Muestra los detalles de la variante
                 rx.foreach(
                     item.variant_details.items(),
                     lambda detail: rx.text(f"{detail[0]}: {', '.join(detail[1]) if isinstance(detail[1], list) else detail[1]}", size="2", color_scheme="gray")
@@ -62,10 +63,11 @@ def cart_item_row(item: CartItemData) -> rx.Component:
         ),
         rx.table.cell(
             rx.hstack(
+                # El botón de eliminar ahora usa la clave única del carrito
                 rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1"),
                 rx.text(item.quantity),
-                # --- ✅ LÍNEA CORREGIDA AQUÍ ✅ ---
-                rx.button("+", on_click=lambda: AppState.add_default_variant_to_cart(item.product_id), size="1"),
+                # El botón de añadir no necesita cambios aquí
+                rx.button("+", on_click=lambda: AppState.add_to_cart(item.product_id), size="1"),
                 align="center", spacing="3"
             )
         ),

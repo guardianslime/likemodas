@@ -10,7 +10,7 @@ def category_content() -> rx.Component:
     """Página de categoría que muestra productos filtrados, usando AppState."""
     # Asegúrate de tener una propiedad `filtered_posts` en tu AppState
     # que filtre la lista `posts` según los filtros activos.
-    gallery_content = product_gallery_component(posts=AppState.filtered_posts)
+    gallery_content = product_gallery_component(posts=AppState.filtered_posts) 
     
     no_products_message = rx.center(
         rx.text(f"😔 No hay productos en la categoría '{AppState.current_category}' que coincidan con los filtros."),

@@ -249,29 +249,23 @@ def product_detail_modal() -> rx.Component:
                     ),
                 ),
 
-                # --- ✅ INICIO DE LA LÓGICA CORREGIDA ✅ ---
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(
                         rx.text(selector.key, weight="bold", size="3"),
-                        # Usamos el mapa aplanado para acceder a las opciones de forma segura
-                        rx.cond(
-                            AppState.modal_options_map.contains(selector.key),
-                            rx.segmented_control.root(
-                                rx.foreach(
-                                    AppState.modal_options_map[selector.key],
-                                    lambda option: rx.segmented_control.item(option, value=option)
-                                ),
-                                on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
-                                value=selector.current_value,
-                            )
+                        rx.segmented_control.root(
+                            rx.foreach(
+                                selector.options,
+                                lambda option: rx.segmented_control.item(option, value=option)
+                            ),
+                            on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
+                            value=selector.current_value,
                         ),
                         align_items="start",
                         width="100%",
                         spacing="2"
                     )
                 ),
-                # --- ✅ FIN DE LA LÓGICA CORREGIDA ✅ ---
                 align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
             
@@ -287,7 +281,7 @@ def product_detail_modal() -> rx.Component:
             ),
             rx.spacer(),
             rx.hstack(
-                rx.button("Añadir al Carrito", on_click=AppState.add_selected_variant_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1"),
+                rx.button("Añadir al Carrito", on_click=AppState.add_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1"),
                 rx.icon_button(
                     rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
                     on_click=AppState.toggle_save_post,
@@ -345,9 +339,7 @@ def blog_public_page_content() -> rx.Component:
             rx.cond(
                 AppState.is_loading,
                 skeleton_product_gallery(),
-                # --- ✅ CAMBIO ESTRUCTURAL AQUÍ ✅ ---
-                # Usamos la lista base, que es más estable para la carga inicial.
-                product_gallery_component(posts=AppState.posts)
+                product_gallery_component(posts=AppState.displayed_posts)
             ),
             product_detail_modal(),
             spacing="6", width="100%", padding="2em", align="center"

@@ -218,10 +218,6 @@ class PurchaseModel(rx.Model, table=True):
         if not self.items: return []
         return [f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)" for item in self.items if item.blog_post]
 
-    @property
-    def estimated_delivery_date_formatted(self) -> str:
-        return format_utc_to_local(self.estimated_delivery_date)
-
 class PurchaseItemModel(rx.Model, table=True):
     purchase_id: int = Field(foreign_key="purchasemodel.id")
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")

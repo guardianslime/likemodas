@@ -79,12 +79,9 @@ app.add_page(
     on_load=AppState.load_all_users,
     title="Gestión de Usuarios"
 )
-
 app.add_page(
     base_page(blog_post_add_content()), 
     route=navigation.routes.BLOG_POST_ADD_ROUTE, 
-    # --- ✨ LÍNEA AÑADIDA ---
-    on_load=AppState.on_load_add_product_page,
     title="Añadir Producto"
 )
 

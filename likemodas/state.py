@@ -137,31 +137,16 @@ class ProductDetailData(rx.Base):
         return list(range(5 - math.ceil(self.average_rating)))
 
 class AdminPurchaseCardData(rx.Base):
-    id: int
-    customer_name: str
-    customer_email: str
-    purchase_date_formatted: str
-    status: str
-    total_price: float
-    shipping_name: str
-    shipping_full_address: str
-    shipping_phone: str
-    items_formatted: list[str] = []
+    id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
+    status: str; total_price: float; shipping_name: str; shipping_full_address: str
+    shipping_phone: str; items_formatted: list[str]
     payment_method: str
+    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     confirmed_at: Optional[datetime] = None
-
-    # --- ✅ CAMPO AÑADIDO QUE FALTABA ---
-    # Este campo debe existir para que la propiedad de abajo funcione.
-    estimated_delivery_date: Optional[datetime] = None
 
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
-    
-    @property
-    def estimated_delivery_date_formatted(self) -> str:
-        # Ahora, esta propiedad puede acceder a un campo que sí existe.
-        return format_utc_to_local(self.estimated_delivery_date)
     
 class PurchaseItemCardData(rx.Base):
     """DTO para mostrar la miniatura de un artículo en el historial de compras."""
@@ -191,8 +176,6 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_city: str
     shipping_phone: str
     items: list[PurchaseItemCardData]
-    estimated_delivery_date_formatted: str = "" # <-- AÑADE ESTA LÍNEA
-    
 
 class AdminPostRowData(rx.Base):
     """DTO para una fila en la tabla de publicaciones del admin."""
@@ -215,9 +198,6 @@ class CommentData(rx.Base):
     created_at_formatted: str
     updates: List["CommentData"] = []
 
-
-# likemodas/state.py (Añadir esta clase)
-
 class InvoiceItemData(rx.Base):
     """Un modelo específico para cada línea de artículo en la factura."""
     name: str
@@ -227,23 +207,6 @@ class InvoiceItemData(rx.Base):
     iva_cop: str
     total_con_iva_cop: str
 
-class InvoiceData(rx.Base):
-    """DTO para contener toda la información necesaria para una factura."""
-    id: int
-    purchase_date_formatted: str
-    status: str
-    # --- ✅ LÍNEA CORREGIDA AQUÍ ---
-    # Se añade ` = []` para que la lista siempre esté definida por defecto.
-    items: list[InvoiceItemData] = []
-    customer_name: str
-    customer_email: str
-    shipping_full_address: str
-    shipping_phone: str
-    subtotal_cop: str
-    shipping_applied_cop: str
-    iva_cop: str
-    total_price_cop: str
-
     @property
     def price_cop(self) -> str:
         return format_to_cop(self.price)
@@ -251,6 +214,21 @@ class InvoiceData(rx.Base):
     @property
     def total_cop(self) -> str:
         return format_to_cop(self.price * self.quantity)
+
+class InvoiceData(rx.Base):
+    """DTO para contener toda la información necesaria para una factura."""
+    id: int
+    purchase_date_formatted: str
+    status: str
+    items: list[InvoiceItemData]
+    customer_name: str
+    customer_email: str
+    shipping_full_address: str
+    shipping_phone: str
+    subtotal_cop: str
+    shipping_applied_cop: str # <-- ✨ 1. AÑADE ESTE CAMPO
+    iva_cop: str
+    total_price_cop: str
 
 class SupportMessageData(rx.Base):
     author_id: int
@@ -317,7 +295,7 @@ class CartItemData(rx.Base):
 class ModalSelectorDTO(rx.Base):
     """Representa el estado completo de un selector en el modal."""
     key: str           # ej: "Talla"
-    options: list[str] = [] # ej: ["S", "M"] (solo las opciones válidas)
+    options: list[str]   # ej: ["S", "M"] (solo las opciones válidas)
     current_value: str # ej: "S"
 
 class VariantFormData(rx.Base):
@@ -748,52 +726,39 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Método para generar las combinaciones de variantes
     def generate_variants(self):
         """
-        CORREGIDO: Genera variantes y las asocia con la imagen actualmente seleccionada.
-        Añade una lógica de "limpieza" para asegurar que solo se guarden los atributos
-        relevantes para la categoría actual del producto.
+        Genera variantes y las asocia con la imagen actualmente seleccionada.
+        También guarda los atributos en la variante principal para persistencia.
         """
         if self.selected_variant_index < 0:
             return rx.toast.error("Por favor, selecciona una imagen primero.")
 
-        # 1. Recopila todos los atributos del formulario
+        # 1. Recopila los atributos del formulario
         color = self.attr_colores
         sizes, size_key = [], ""
-        
-        # --- INICIO DE LA LÓGICA DE LIMPIEZA ---
-        attributes_to_save = {}
         if self.category == Category.ROPA.value:
             sizes, size_key = self.attr_tallas_ropa, "Talla"
-            if color: attributes_to_save["Color"] = color
-            if sizes: attributes_to_save[size_key] = sizes
-
         elif self.category == Category.CALZADO.value:
             sizes, size_key = self.attr_numeros_calzado, "Número"
-            if color: attributes_to_save["Color"] = color
-            if sizes: attributes_to_save[size_key] = sizes
-
         elif self.category == Category.MOCHILAS.value:
             sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
-            if color: attributes_to_save["Color"] = color
-            if sizes: attributes_to_save[size_key] = sizes
-        
-        if not color or not sizes:
+
+        if not color or not sizes: # Se valida el string de color
             return rx.toast.error("Debes seleccionar un color y al menos una talla/tamaño/número.")
-        # --- FIN DE LA LÓGICA DE LIMPIEZA ---
 
-        # 2. Guarda los atributos ya limpios en la imagen
-        self.new_variants[self.selected_variant_index]["attributes"] = attributes_to_save
+       # Guarda los atributos en la imagen (Color ahora es un string)
+        current_attributes = {"Color": color, size_key: sizes}
+        self.new_variants[self.selected_variant_index]["attributes"] = current_attributes
 
-        # 3. Genera las combinaciones finales
+        # Genera las combinaciones
         generated_variants = []
-        for size in sizes:
-            # Crea la combinación específica (ej: Color y Talla)
-            final_variant_attributes = {"Color": color, size_key: size}
+        for size in sizes: # El bucle de colores ya no es necesario
             generated_variants.append(
-                VariantFormData(attributes=final_variant_attributes)
+                VariantFormData(attributes={"Color": color, size_key: size})
             )
         
         self.generated_variants_map[self.selected_variant_index] = generated_variants
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
+
 
     # --- FUNCIONES DE STOCK MODIFICADAS ---
     def _update_variant_stock(self, group_index: int, item_index: int, new_stock: int):
@@ -904,7 +869,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/blog")
     
     @rx.var
-    def filtered_posts(self) -> list[ProductCardData]: # <--- RENOMBRADO AQUÍ
+    def displayed_posts(self) -> list[ProductCardData]:
         posts_to_filter = self.posts
 
         if self.min_price:
@@ -1676,136 +1641,82 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
-        """
-        SOLUCIÓN DEFINITIVA: Construye los selectores de atributos de forma inteligente.
-        Primero, identifica el "grupo visual" al que pertenece la variante seleccionada
-        (ej. todas las camisetas amarillas) y luego genera los selectores (ej. Talla)
-        únicamente a partir de las opciones disponibles dentro de ese grupo.
-        """
-        # Si no hay un producto o una variante seleccionada en el modal, no hacemos nada.
-        if not self.product_in_modal or not self.current_modal_variant:
-            return []
+        if not self.product_in_modal: return []
+        
+        all_variants = self.product_in_modal.variants
+        current_selection = self.modal_selected_attributes
+        
+        # 1. Obtenemos todas las claves de atributos presentes en las variantes
+        all_keys_in_variants = sorted(list(
+            {key for v in all_variants for key in v.get("attributes", {})}
+        ))
+        
+        # 2. Filtramos para quedarnos SOLO con las que son seleccionables
+        selectable_keys = [key for key in all_keys_in_variants if key in self.SELECTABLE_ATTRIBUTES]
 
-        # 1. Identificamos la variante que el usuario seleccionó (nuestro punto de anclaje).
-        anchor_variant = self.current_modal_variant
-        anchor_attributes = anchor_variant.get("attributes", {})
-
-        # 2. Definimos las características del "grupo visual".
-        #    Son los atributos que no se pueden seleccionar, como el "Color".
-        group_defining_attrs = {
-            key: value
-            for key, value in anchor_attributes.items()
-            if key not in self.SELECTABLE_ATTRIBUTES
-        }
-
-        # 3. Buscamos en TODO el producto y filtramos solo las variantes
-        #    que pertenecen a este mismo grupo visual.
-        variants_in_group = []
-        for variant in self.product_in_modal.variants:
-            v_attrs = variant.get("attributes", {})
-            is_in_group = True
-            for key, value in group_defining_attrs.items():
-                if v_attrs.get(key) != value:
-                    is_in_group = False
-                    break
-            if is_in_group:
-                variants_in_group.append(variant)
-
-        # 4. De este grupo ya filtrado, extraemos las claves de los atributos que SÍ son
-        #    seleccionables (ej. "Talla", "Número"). Para un grupo de Ropa, esto
-        #    ahora solo devolverá ["Talla"].
-        all_selectable_keys_in_group = {
-            key
-            for v in variants_in_group
-            for key in v.get("attributes", {}).keys()
-            if key in self.SELECTABLE_ATTRIBUTES
-        }
-
-        # 5. Finalmente, construimos los selectores solo para esas claves.
         selectors = []
-        for key in sorted(list(all_selectable_keys_in_group)):
-            # Obtenemos todas las opciones disponibles (con stock) para este selector.
-            valid_options = sorted(list({
+        # Ahora el bucle solo se ejecutará para "Talla", "Número", o "Tamaño"
+        for i, key in enumerate(selectable_keys):
+            # ... el resto de la lógica de la función no necesita cambios ...
+            filtered_variants = all_variants
+            for prev_key in selectable_keys[:i]:
+                if prev_key in current_selection:
+                    filtered_variants = [
+                        v for v in filtered_variants 
+                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key] # [cite: 885, 886]
+                    ]
+            
+            valid_options = {
                 v.get("attributes", {}).get(key)
-                for v in variants_in_group
-                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key)
-            }))
+                for v in filtered_variants
+                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key) # [cite: 887]
+            }
             
             if valid_options:
-                selectors.append(ModalSelectorDTO(
-                    key=key,
-                    options=valid_options,
-                    current_value=self.modal_selected_attributes.get(key, "")
-                ))
-        
+                selectors.append(
+                    ModalSelectorDTO(
+                        key=key,
+                        options=sorted(list(valid_options)),
+                        current_value=current_selection.get(key, "") # [cite: 888, 889]
+                    )
+                )
         return selectors
 
-    @rx.var
-    def modal_options_map(self) -> dict[str, list[str]]:
-        """
-        Crea un mapa que asocia la clave de un selector (ej: "Talla")
-        con su lista de opciones (ej: ["S", "M"]).
-        Esto evita el acceso anidado a `selector.options`.
-        """
-        if not self.product_in_modal:
-            return {}
-        return {
-            selector.key: selector.options 
-            for selector in self.modal_attribute_selectors
-        }
-
     @rx.event
-    def add_default_variant_to_cart(self, product_id: int):
-        """Añade la PRIMERA variante de un producto al carrito (para la galería)."""
-        if not self.is_authenticated:
-            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-
-        with rx.session() as session:
-            post = session.get(BlogPostModel, product_id)
-            if not post or not post.variants:
-                return rx.toast.error("Este producto no tiene variantes disponibles.")
-
-            variant_index = 0
-            default_variant = post.variants[variant_index]
-            
-            selection_items = sorted(default_variant.get("attributes", {}).items())
-            selection_key_part = "-".join([f"{k}:{v}" for k, v in selection_items])
-            cart_key = f"{product_id}-{variant_index}-{selection_key_part}"
-
-            stock_disponible = default_variant.get("stock", 0)
-            cantidad_en_carrito = self.cart.get(cart_key, 0)
-            
-            if cantidad_en_carrito + 1 > stock_disponible:
-                return rx.toast.error("No hay suficiente stock para este producto.")
-            
-            self.cart[cart_key] = cantidad_en_carrito + 1
-            return rx.toast.success("Producto añadido al carrito.")
-        
-    @rx.event
-    def add_selected_variant_to_cart(self, product_id: int):
-        """Añade una variante ESPECÍFICA de un producto al carrito (para el modal)."""
+    def add_to_cart(self, product_id: int):
+        """
+        Añade una variante específica de un producto al carrito, validando la selección y el stock.
+        """
         if not self.is_authenticated:
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         if not self.product_in_modal or product_id != self.product_in_modal.id:
             return rx.toast.error("Error al identificar el producto.")
 
+        # --- ✨ INICIO DE LA LÓGICA DE STOCK CORREGIDA ✨ ---
+
+        # 1. Validar que se hayan seleccionado todos los atributos requeridos (Talla, Número, etc.)
         required_keys = {selector.key for selector in self.modal_attribute_selectors}
         if not all(key in self.modal_selected_attributes for key in required_keys):
             missing_keys = required_keys - set(self.modal_selected_attributes.keys())
             return rx.toast.error(f"Por favor, selecciona: {', '.join(missing_keys)}")
 
+        # 2. Encontrar la variante exacta que coincide con la selección del usuario
         variant_to_add = None
         for variant in self.product_in_modal.variants:
             variant_attrs = variant.get("attributes", {})
+            
+            # Compara los atributos de solo lectura (como Color) y los seleccionables (como Talla)
             current_variant_attrs_for_comparison = self.product_in_modal.variants[self.modal_selected_variant_index].get("attributes", {})
             
             is_match = True
+            # Comprobar atributos de solo lectura (los de la variante visual)
             for key, value in current_variant_attrs_for_comparison.items():
                 if key not in self.SELECTABLE_ATTRIBUTES and variant_attrs.get(key) != value:
                     is_match = False
                     break
             if not is_match: continue
 
+            # Comprobar atributos seleccionables (los del estado `modal_selected_attributes`)
             for key, value in self.modal_selected_attributes.items():
                 if variant_attrs.get(key) != value:
                     is_match = False
@@ -1818,17 +1729,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not variant_to_add:
             return rx.toast.error("La combinación de producto seleccionada no está disponible.")
 
+        # 3. Construir la clave única para el carrito
         selection_items = sorted(self.modal_selected_attributes.items())
         selection_key_part = "-".join([f"{k}:{v}" for k, v in selection_items])
+        
+        # El índice de la variante visual (thumbnail) sigue siendo parte de la clave para la imagen
         cart_key = f"{product_id}-{self.modal_selected_variant_index}-{selection_key_part}"
         
+        # 4. Verificar el stock de la variante encontrada
         stock_disponible = variant_to_add.get("stock", 0)
         cantidad_en_carrito = self.cart.get(cart_key, 0)
         
         if cantidad_en_carrito + 1 > stock_disponible:
             return rx.toast.error("¡Lo sentimos! No hay suficiente stock para esta combinación.")
         
+        # 5. Si hay stock, añadir al carrito
         self.cart[cart_key] = cantidad_en_carrito + 1
+        
+        # --- ✨ FIN DE LA LÓGICA DE STOCK CORREGIDA ✨ ---
         
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido al carrito.")
@@ -1918,14 +1836,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         # --- 👇 LÍNEA IMPORTANTE A AÑADIR/VERIFICAR 👇 ---
         self.variant_form_data = [] # Asegúrate de que esta línea esté aquí
         self.generated_variants_map = {} # Asegúrate de limpiar el map
-
-    @rx.event
-    def on_load_add_product_page(self):
-        """
-        Se ejecuta cada vez que se carga la página de añadir producto,
-        garantizando un estado de formulario completamente limpio.
-        """
-        self._clear_add_form()
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
@@ -2195,30 +2105,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def load_main_page_data(self):
         """
-        Orquestador principal: carga la dirección y LUEGO los productos,
-        extrayendo correctamente los atributos para los filtros.
+        Orquestador principal: carga la dirección y LUEGO los productos y recalcula.
         """
         self.is_loading = True
         yield
         yield AppState.load_default_shipping_info
 
         with rx.session() as session:
-            results = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .where(BlogPostModel.publish_active == True)
-                .order_by(BlogPostModel.created_at.desc())
-            ).all()
+            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
             
             temp_posts = []
             for p in results:
-                # --- ✅ INICIO DE LA LÓGICA MEJORADA ✅ ---
-                # Extrae los atributos de la primera variante como una base
-                # para los filtros de la galería. Si no hay variantes, usa un dict vacío.
-                base_attributes = {}
-                if p.variants:
-                    base_attributes = p.variants[0].get("attributes", {})
-                # --- ✅ FIN DE LA LÓGICA MEJORADA ✅ ---
-
                 temp_posts.append(
                     ProductCardData(
                         id=p.id, 
@@ -2226,8 +2123,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title, 
                         price=p.price,
                         price_cop=p.price_cop,
+                        # --- 👇 LÍNEA CORREGIDA 👇 ---
                         variants=p.variants or [],
-                        attributes=base_attributes,  # <-- Se usan los atributos extraídos
+                        attributes={},
                         average_rating=p.average_rating,
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
@@ -2503,7 +2401,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 any(p.status == PurchaseStatus.PENDING_CONFIRMATION.value for p in self.active_purchases)
             )
 
-    # Para pagos Online ya confirmados
+    # ✨ NUEVA FUNCIÓN solo para notificar el envío
     @rx.event
     def ship_confirmed_online_order(self, purchase_id: int):
         if not self.is_admin: 
@@ -2528,7 +2426,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # --- LÓGICA DE MENSAJE MEJORADA ---
+                # --- ✨ LÓGICA DE MENSAJE MEJORADA ✨ ---
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
@@ -2536,6 +2434,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 time_str = ", ".join(time_parts) if time_parts else "pronto"
                 mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
+                # --- ✨ FIN DE LA LÓGICA MEJORADA ✨ ---
 
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
@@ -2550,7 +2449,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:
                 yield rx.toast.error("La compra debe estar 'confirmada' para poder notificar el envío.")
 
-    # Para pagos Contra Entrega
     @rx.event
     def ship_pending_cod_order(self, purchase_id: int):
         if not self.is_admin: 
@@ -2575,7 +2473,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # --- LÓGICA DE MENSAJE MEJORADA ---
+                # --- ✨ LÓGICA DE MENSAJE MEJORADA ✨ ---
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
@@ -2583,15 +2481,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 time_str = ", ".join(time_parts) if time_parts else "pronto"
                 mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
+                # --- ✨ FIN DE LA LÓGICA MEJORADA ✨ ---
 
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
                     message=mensaje,
                     url="/my-purchases"
                 )
+
                 session.add(notification)
                 session.commit()
-                
                 yield rx.toast.success("Pedido contra entrega en camino y notificado.")
                 yield AppState.load_active_purchases
             else:
@@ -2781,8 +2680,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_neighborhood=p.shipping_neighborhood,
                         shipping_city=p.shipping_city,
                         shipping_phone=p.shipping_phone,
-                        items=purchase_items_data,
-                        estimated_delivery_date_formatted=p.estimated_delivery_date_formatted
+                        items=purchase_items_data
                     )
                 )
             self.user_purchases = temp_purchases
