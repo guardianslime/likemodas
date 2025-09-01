@@ -1,11 +1,118 @@
+# likemodas/blog/forms.py
+
 import reflex as rx
 from ..state import AppState
 from ..models import Category
-from ..ui.components import multi_select_component, searchable_select
+from ..ui.components import searchable_select
 from ..data.product_options import (
-    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_MATERIALES, 
-    LISTA_NUMEROS_CALZADO, LISTA_TAMANOS_MOCHILAS
+    LISTA_TALLAS_ROPA,
+    LISTA_NUMEROS_CALZADO,
+    LISTA_TAMANOS_MOCHILAS
 )
+
+def variant_stock_manager() -> rx.Component:
+    """Componente para gestionar el stock de las variantes generadas."""
+    return rx.vstack(
+        rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
+        rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
+        
+        rx.button(
+            "Generar / Actualizar Variantes", 
+            on_click=AppState.generate_variants, 
+            margin_y="1em", 
+            type="button" 
+        ),
+        
+        rx.cond(
+            (AppState.selected_variant_index >= 0) & AppState.generated_variants_map.contains(AppState.selected_variant_index),
+            rx.vstack(
+                rx.foreach(
+                    AppState.generated_variants_map[AppState.selected_variant_index],
+                    lambda variant, index: rx.box(
+                        rx.hstack(
+                            rx.vstack(
+                                rx.foreach(
+                                    variant.attributes.items(),
+                                    lambda item: rx.text(f"{item[0]}: ", rx.text.strong(item[1])),
+                                ),
+                                align_items="start", flex_grow=1,
+                            ),
+                            
+                            rx.hstack(
+                                rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_variant_index, index)),
+                                rx.input(
+                                    value=variant.stock.to_string(),
+                                    on_change=lambda val: AppState.set_variant_stock(AppState.selected_variant_index, index, val),
+                                    text_align="center", max_width="70px",
+                                ),
+                                rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_variant_index, index)),
+                                align="center", spacing="2",
+                            ),
+                            
+                            rx.select(
+                                AppState.uploaded_image_urls,
+                                placeholder="Imagen...",
+                                value=variant.image_url,
+                                on_change=lambda url: AppState.assign_image_to_variant(AppState.selected_variant_index, index, url),
+                                max_width="150px",
+                            ),
+                            spacing="4", align="center", width="100%",
+                        ),
+                        padding="0.75em", border="1px solid",
+                        border_color=rx.color("gray", 6), border_radius="md", width="100%",
+                    )
+                ),
+                spacing="3", width="100%",
+            )
+        ),
+        align_items="stretch", width="100%",
+    )
+
+def attribute_editor(
+    title: str,
+    options_list: list[str],
+    temp_value_var: rx.Var[str],
+    temp_value_setter: rx.event.EventSpec,
+    add_handler: rx.event.EventHandler,
+    remove_handler: rx.event.EventHandler,
+    current_selections: rx.Var[list[str]],
+) -> rx.Component:
+    """
+    Un componente para añadir y quitar atributos específicos a una variante.
+    """
+    return rx.vstack(
+        rx.text(title, weight="bold", size="3"),
+        rx.flex(
+            rx.foreach(
+                current_selections,
+                lambda item: rx.badge(
+                    item,
+                    rx.icon(
+                        "x",
+                        size=12,
+                        cursor="pointer",
+                        on_click=lambda: remove_handler(item),
+                        margin_left="0.25em"
+                    ),
+                    variant="soft", color_scheme="gray", size="2",
+                ),
+            ),
+            wrap="wrap", spacing="2", min_height="36px",
+        ),
+        rx.hstack(
+            rx.select(
+                options_list,
+                placeholder=f"Seleccionar {title.lower()}...",
+                value=temp_value_var,
+                on_change=temp_value_setter,
+            ),
+            rx.button("Añadir", on_click=add_handler),
+            width="100%"
+        ),
+        align_items="stretch",
+        width="100%",
+        spacing="2"
+    )
 
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
@@ -21,52 +128,64 @@ def blog_post_add_form() -> rx.Component:
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
         filter_name="attr_material_filter",
     )
-    color_selector_multiple = multi_select_component(
-        placeholder="Añadir color...", options=AppState.filtered_attr_colores,
-        selected_items=AppState.attr_colores, add_handler=AppState.add_attribute_value,
-        remove_handler=AppState.remove_attribute_value, prop_name="attr_colores",
-        search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+    
+    color_selector_simple = searchable_select(
+        placeholder="Selecciona un color...",
+        options=AppState.filtered_attr_colores,
+        on_change_select=AppState.set_attr_colores,
+        value_select=AppState.attr_colores,
+        search_value=AppState.search_attr_color,
+        on_change_search=AppState.set_search_attr_color,
         filter_name="attr_color_filter",
     )
+    
     caracteristicas_ropa = rx.vstack(
         rx.grid(
-            color_selector_multiple,
-            multi_select_component(
-                placeholder="Añadir talla...", options=AppState.filtered_attr_tallas_ropa,
-                selected_items=AppState.attr_tallas_ropa, add_handler=AppState.add_attribute_value,
-                remove_handler=AppState.remove_attribute_value, prop_name="attr_tallas_ropa",
-                search_value=AppState.search_attr_talla_ropa, on_change_search=AppState.set_search_attr_talla_ropa,
-                filter_name="attr_talla_filter",
+            color_selector_simple,
+            attribute_editor(
+                title="Talla",
+                options_list=LISTA_TALLAS_ROPA,
+                temp_value_var=AppState.temp_talla,
+                temp_value_setter=AppState.set_temp_talla,
+                add_handler=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Talla", val),
+                current_selections=AppState.attr_tallas_ropa,
             ),
             columns="2", spacing="3", width="100%",
         ),
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
+    
     caracteristicas_calzado = rx.vstack(
         rx.grid(
-            color_selector_multiple,
-            multi_select_component(
-                placeholder="Añadir número...", options=AppState.filtered_attr_numeros_calzado,
-                selected_items=AppState.attr_numeros_calzado, add_handler=AppState.add_attribute_value,
-                remove_handler=AppState.remove_attribute_value, prop_name="attr_numeros_calzado",
-                search_value=AppState.search_attr_numero_calzado, on_change_search=AppState.set_search_attr_numero_calzado,
-                filter_name="attr_numero_filter",
+            color_selector_simple,
+            attribute_editor(
+                title="Número",
+                options_list=LISTA_NUMEROS_CALZADO,
+                temp_value_var=AppState.temp_numero,
+                temp_value_setter=AppState.set_temp_numero,
+                add_handler=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Número", val),
+                current_selections=AppState.attr_numeros_calzado,
             ),
             columns="2", spacing="3", width="100%",
         ),
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
+    
     caracteristicas_mochilas = rx.vstack(
         rx.grid(
-            color_selector_multiple,
-            multi_select_component(
-                placeholder="Añadir tamaño...", options=AppState.filtered_attr_tamanos_mochila,
-                selected_items=AppState.attr_tamanos_mochila, add_handler=AppState.add_attribute_value,
-                remove_handler=AppState.remove_attribute_value, prop_name="attr_tamanos_mochila",
-                search_value=AppState.search_attr_tamano_mochila, on_change_search=AppState.set_search_attr_tamano_mochila,
-                filter_name="attr_tamano_mochila_filter",
+            color_selector_simple,
+            attribute_editor(
+                title="Tamaño",
+                options_list=LISTA_TAMANOS_MOCHILAS,
+                temp_value_var=AppState.temp_tamano,
+                temp_value_setter=AppState.set_temp_tamano,
+                add_handler=lambda: AppState.add_variant_attribute("Tamaño", AppState.temp_tamano),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Tamaño", val),
+                current_selections=AppState.attr_tamanos_mochila,
             ),
             columns="2", spacing="3", width="100%",
         ),
@@ -180,26 +299,19 @@ def blog_post_add_form() -> rx.Component:
                         columns="2", spacing="4", width="100%",
                     ),
                     
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    # La condición ahora solo depende de que se haya seleccionado una categoría
                     rx.cond(
                         AppState.category != "",
                         rx.vstack(
-                            rx.text("Características de la Variante Seleccionada", as_="div", size="2", weight="bold"),
+                            rx.text("Características del Producto", as_="div", size="2", weight="bold"),
                             rx.cond(AppState.category == Category.ROPA.value, caracteristicas_ropa),
                             rx.cond(AppState.category == Category.CALZADO.value, caracteristicas_calzado),
                             rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
-                            # El botón se desactiva si no hay una imagen seleccionada
-                            rx.button(
-                                "Guardar Atributos para Variante", 
-                                on_click=AppState.save_variant_attributes, 
-                                margin_top="0.5em",
-                                is_disabled=AppState.selected_variant_index < 0,
-                            ),
+                            
+                            variant_stock_manager(),
+                            
                             align_items="stretch", width="100%",
                         )
                     ),
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(placeholder="Detalles del producto...", name="content", required=True, size="2", style={"height": "150px"}),
@@ -218,9 +330,9 @@ def blog_post_add_form() -> rx.Component:
         width="100%", max_width="1024px",
     )
 
+
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar una publicación."""
-    # (Este formulario no necesita cambios)
     return rx.form(
         rx.vstack(
             rx.text("Imágenes del Producto", as_="div", size="2", weight="bold"),

@@ -31,7 +31,7 @@ from .utils.formatting import format_to_cop
 from .utils.validators import validate_password
 from .data.colombia_locations import load_colombia_data
 from .data.product_options import (
-    MATERIALES_ROPA, MATERIALES_CALZADO, MATERIALES_MOCHILAS, LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TAMANOS_MOCHILAS, LISTA_TIPOS_GENERAL,
+    LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_TAMANOS_MOCHILAS, MATERIALES_ROPA, MATERIALES_CALZADO, MATERIALES_MOCHILAS, LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TAMANOS_MOCHILAS, LISTA_TIPOS_GENERAL,
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
@@ -79,9 +79,8 @@ class ProductCardData(rx.Base):
     title: str
     price: float = 0.0
     price_cop: str = ""
-    # --- 👇 LÍNEA ELIMINADA 👇 ---
-    # image_urls: list[str] = []
-    variants: list[dict] = [] # Se añade para consistencia
+    # ✅ CORRECCIÓN CLAVE: Asegura que 'variants' siempre sea una lista.
+    variants: list[dict] = []
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
@@ -100,13 +99,13 @@ class ProductDetailData(rx.Base):
     title: str
     content: str
     price_cop: str
+    # ✅ CORRECCIÓN CLAVE: Asegura que 'variants' siempre sea una lista.
     variants: list[dict] = []
     created_at_formatted: str
     average_rating: float = 0.0
     rating_count: int = 0
     seller_name: str = ""
     seller_id: int = 0
-    # El campo 'attributes' se mantiene por ahora, aunque redundante.
     attributes: dict = {}
     shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False
@@ -278,6 +277,12 @@ class ModalSelectorDTO(rx.Base):
     options: list[str]   # ej: ["S", "M"] (solo las opciones válidas)
     current_value: str # ej: "S"
 
+# ✅ CORRECCIÓN CLAVE: Nuevo DTO para usar con rx.foreach de forma segura.
+class UniqueVariantItem(rx.Base):
+    """Un DTO para que rx.foreach entienda la estructura de las variantes únicas."""
+    variant: dict
+    index: int
+
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -300,7 +305,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     success: bool = False
     error_message: str = ""
 
-
+    
     
     # --- ✨ INICIO DE LA CORRECCIÓN: PROPIEDADES COMPUTADAS REFACTORIZADAS ---
     @rx.var(cache=True)
@@ -606,6 +611,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.attr_numeros_calzado = variant_attrs.get("Número", [])
         elif self.category == Category.MOCHILAS.value:
             self.attr_tamanos_mochila = variant_attrs.get("Tamaño", [])
+
+    @rx.var
+    def unique_modal_variants(self) -> list[UniqueVariantItem]:
+        """
+        Devuelve una lista de DTOs con URLs de imagen únicas para las miniaturas del modal.
+        """
+        if not self.product_in_modal or not self.product_in_modal.variants:
+            return []
+        
+        unique_items = []
+        seen_images = set()
+        for i, variant in enumerate(self.product_in_modal.variants):
+            image_url = variant.get("image_url")
+            if image_url and image_url not in seen_images:
+                seen_images.add(image_url)
+                # En lugar de un dict, creamos una instancia del nuevo DTO
+                unique_items.append(UniqueVariantItem(variant=variant, index=i))
+        return unique_items
 
     def save_variant_attributes(self):
         """Guarda los atributos actuales del formulario en la variante seleccionada."""
