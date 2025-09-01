@@ -345,13 +345,11 @@ def blog_public_page_content() -> rx.Component:
             rx.cond(
                 AppState.is_loading,
                 skeleton_product_gallery(),
-                product_gallery_component(posts=AppState.displayed_posts)
+                # --- ✅ CAMBIO ESTRUCTURAL AQUÍ ✅ ---
+                # Usamos la lista base, que es más estable para la carga inicial.
+                product_gallery_component(posts=AppState.posts)
             ),
-            
-            # --- ✅ CAMBIO APLICADO AQUÍ ✅ ---
-            # product_detail_modal(),
-            rx.fragment(), # Reemplazo temporal
-
+            product_detail_modal(),
             spacing="6", width="100%", padding="2em", align="center"
         ),
         width="100%"

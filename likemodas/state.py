@@ -904,7 +904,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.redirect("/blog")
     
     @rx.var
-    def displayed_posts(self) -> list[ProductCardData]:
+    def filtered_posts(self) -> list[ProductCardData]: # <--- RENOMBRADO AQUÍ
         posts_to_filter = self.posts
 
         if self.min_price:
