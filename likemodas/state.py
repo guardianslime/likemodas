@@ -796,6 +796,31 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
     # ✅ FIN DE LA CORRECCIÓN
 
+    # ✅ INICIO DE LA CORRECCIÓN: Añade este bloque de funciones
+    def _update_variant_stock(self, group_index: int, item_index: int, new_stock: int):
+        if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
+            self.generated_variants_map[group_index][item_index].stock = max(0, new_stock)
+
+    def set_variant_stock(self, group_index: int, item_index: int, stock_str: str):
+        try:
+            self._update_variant_stock(group_index, item_index, int(stock_str))
+        except (ValueError, TypeError):
+            pass
+
+    def increment_variant_stock(self, group_index: int, item_index: int):
+        if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
+            current_stock = self.generated_variants_map[group_index][item_index].stock
+            self._update_variant_stock(group_index, item_index, current_stock + 1)
+            
+    def decrement_variant_stock(self, group_index: int, item_index: int):
+        if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
+            current_stock = self.generated_variants_map[group_index][item_index].stock
+            self._update_variant_stock(group_index, item_index, current_stock - 1)
+
+    def assign_image_to_variant(self, group_index: int, item_index: int, image_url: str):
+        if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
+            self.generated_variants_map[group_index][item_index].image_url = image_url
+    # ✅ FIN DE LA CORRECCIÓN
 
     def _clear_add_form(self):
         self.title = ""
