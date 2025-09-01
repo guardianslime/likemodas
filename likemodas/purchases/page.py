@@ -1,5 +1,3 @@
-# likemodas/purchases/page.py (VERSIÓN FINAL CORREGIDA)
-
 import reflex as rx
 import reflex_local_auth
 
@@ -29,7 +27,7 @@ def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
             ),
             rx.vstack(
                 rx.text(
-                    f"{item.quantity}x {item.price_at_purchase_cop}",
+                    f"{item.quantity}x {item.price_at_purchase_cop}", 
                     size="2",
                     color_scheme="gray",
                 ),
@@ -96,12 +94,9 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
-
-            # --- INICIO DE LA CORRECCIÓN CLAVE ---
-            # Volvemos a usar el `purchase_items_map` que es más estable para el compilador.
+            
             purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
-            # --- FIN DE LA CORRECCIÓN CLAVE ---
-
+            
             rx.vstack(
                 rx.hstack(
                     rx.spacer(),
@@ -122,7 +117,8 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 margin_top="1em",
                 spacing="2"
             ),
-
+            
+            # --- ✨ INICIO DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
@@ -147,8 +143,11 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     align_items="center"
                  )
             ),
+            # --- ✨ FIN DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
+
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
+                # --- INICIO DE LA MODIFICACIÓN ---
                 rx.hstack(
                     rx.link(
                         rx.button("Imprimir Factura", variant="outline", width="100%"),
@@ -157,6 +156,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                         target="_blank",
                         width="100%",
                     ),
+                    # --- BOTÓN NUEVO ---
                     rx.button(
                         "Devolución o Cambio",
                         on_click=AppState.go_to_return_page(purchase.id),
@@ -168,6 +168,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     margin_top="1em",
                     width="100%",
                 ),
+                # --- FIN DE LA MODIFICACIÓN ---
             ),
             spacing="4", width="100%"
         ),
@@ -198,6 +199,7 @@ def purchase_history_content() -> rx.Component:
             spacing="6", width="100%", max_width="960px", align="center"
         ),
         width="100%",
+        # ✨ Se ejecuta al cargar la página para auto-confirmar entregas antiguas
         on_mount=AppState.check_for_auto_confirmations
     )
     return account_layout(page_content)

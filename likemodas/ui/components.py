@@ -1,11 +1,13 @@
-# likemodas/ui/components.py (CORREGIDO Y REFORZADO)
+# likemodas/ui/components.py (Versión Corregida y con Diagnóstico)
 
 import reflex as rx
 import math
+
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
+# La función searchable_select no necesita cambios
 def searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
@@ -52,14 +54,20 @@ def searchable_select(
         position="relative", width="100%",
     )
 
+
 def _product_card_rating(post: ProductCardData) -> rx.Component:
+    average_rating = post.average_rating
+    rating_count = post.rating_count
+    full_stars = rx.Var.range(math.floor(average_rating))
+    has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
+    empty_stars = rx.Var.range(5 - math.ceil(average_rating))
     return rx.cond(
-        post.rating_count > 0,
+        rating_count > 0,
         rx.hstack(
-            rx.foreach(post.full_stars, lambda _: rx.icon("star", color="gold", size=18)),
-            rx.cond(post.has_half_star, rx.icon("star_half", color="gold", size=18)),
-            rx.foreach(post.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
-            rx.text(f"({post.rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
+            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=18)),
+            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=18), rx.fragment()),
+            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
+            rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
         rx.box(height="21px")
@@ -71,10 +79,15 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             posts,
             lambda post: rx.box(
                 rx.vstack(
+                    # Este vstack envuelve la imagen y el texto para el on_click
                     rx.vstack(
+                        # --- INICIO DE LA CORRECCIÓN ---
                         rx.box(
+                            # Primero van los hijos (componentes)
                             rx.cond(
+                                # --- 👇 LÍNEA CORREGIDA 👇 ---
                                 post.variants & (post.variants.length() > 0),
+                                # --- 👇 LÍNEA CORREGIDA 👇 ---
                                 rx.image(src=rx.get_upload_url(post.variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
                                 rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                             ),
@@ -89,10 +102,12 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     "z_index": "1",
                                 }
                             ),
+                            # Después van las propiedades (argumentos de palabra clave)
                             position="relative",
                             width="260px",
                             height="260px",
                         ),
+                        # --- FIN DE LA CORRECCIÓN ---
                         rx.vstack(
                             rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                             _product_card_rating(post),
@@ -145,7 +160,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         max_width="1800px",
     )
 
-# --- INICIO DEL COMPONENTE CORREGIDO ---
+
 def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
@@ -157,7 +172,7 @@ def multi_select_component(
     on_change_search: rx.event.EventSpec,
     filter_name: str,
 ) -> rx.Component:
-    """Un componente para seleccionar múltiples opciones con un buscador (VERSIÓN CORREGIDA)."""
+    """Un componente para seleccionar múltiples opciones con un buscador."""
     return rx.vstack(
         rx.flex(
             rx.foreach(
@@ -168,7 +183,6 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        # Se restaura la forma explícita de llamar al manejador
                         on_click=remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
@@ -181,7 +195,6 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            # Se restaura la forma explícita de llamar al manejador
             on_change_select=lambda val: add_handler(prop_name, val),
             value_select="",
             search_value=search_value,
@@ -190,4 +203,3 @@ def multi_select_component(
         ),
         spacing="2", align_items="stretch", width="100%",
     )
-# --- FIN DEL COMPONENTE CORREGIDO ---
