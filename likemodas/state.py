@@ -654,43 +654,23 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # ✅ INICIO CORRECCIÓN 2: Lógica de atributos unificada
     def add_variant_attribute(self, key: str):
-        """Añade un atributo a la lista correspondiente en el estado del formulario."""
-        target_list_name = ""
-        value = ""
-        if key == "Color": 
-            target_list_name, value = "attr_colores", self.temp_color
-        elif key == "Talla": 
-            target_list_name, value = "attr_tallas_ropa", self.temp_talla
-        elif key == "Número": 
-            target_list_name, value = "attr_numeros_calzado", self.temp_numero
-        elif key == "Tamaño": 
-            target_list_name, value = "attr_tamanos_mochila", self.temp_tamano
-
+        target_list_name, value = "", ""
+        if key == "Color": target_list_name, value = "attr_colores", self.temp_color
+        elif key == "Talla": target_list_name, value = "attr_tallas_ropa", self.temp_talla
+        elif key == "Número": target_list_name, value = "attr_numeros_calzado", self.temp_numero
+        elif key == "Tamaño": target_list_name, value = "attr_tamanos_mochila", self.temp_tamano
         if not value: return
-        
         current_list = getattr(self, target_list_name)
         if value not in current_list:
             current_list.append(value)
             setattr(self, target_list_name, sorted(current_list))
 
     def select_variant_for_editing(self, index: int):
-        """Selecciona una variante y carga sus atributos en el formulario."""
         self.selected_variant_index = index
-        # Limpia los campos de atributos actuales
         self.attr_colores = []
         self.attr_tallas_ropa = []
         self.attr_numeros_calzado = []
         self.attr_tamanos_mochila = []
-
-        # Carga los atributos de la variante seleccionada, si existen
-        variant_attrs = self.new_variants[index].get("attributes", {})
-        self.attr_colores = variant_attrs.get("Color", [])
-        if self.category == Category.ROPA.value:
-            self.attr_tallas_ropa = variant_attrs.get("Talla", [])
-        elif self.category == Category.CALZADO.value:
-            self.attr_numeros_calzado = variant_attrs.get("Número", [])
-        elif self.category == Category.MOCHILAS.value:
-            self.attr_tamanos_mochila = variant_attrs.get("Tamaño", [])
 
     @rx.var
     def unique_modal_variants(self) -> list[UniqueVariantItem]:
@@ -744,51 +724,39 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.modal_selected_attributes = new_selections
 
     def remove_variant_attribute(self, key: str, value: str):
-        """Elimina un valor de atributo de su lista correspondiente."""
         target_list_name = ""
         if key == "Color": target_list_name = "attr_colores"
         elif key == "Talla": target_list_name = "attr_tallas_ropa"
         elif key == "Número": target_list_name = "attr_numeros_calzado"
         elif key == "Tamaño": target_list_name = "attr_tamanos_mochila"
+        if not target_list_name: return
+        current_list = getattr(self, target_list_name)
+        if value in current_list:
+            current_list.remove(value)
+            setattr(self, target_list_name, current_list)
 
-        if target_list_name:
-            current_list = getattr(self, target_list_name)
-            if value in current_list:
-                current_list.remove(value)
-                setattr(self, target_list_name, current_list[:])
     # ✅ FIN CORRECCIÓN 2
 
     # ✅ INICIO CORRECCIÓN 3: Lógica de generación de variantes reescrita
     def generate_variants(self):
-        """
-        Toma los atributos del formulario y crea la lista PLANA de combinaciones,
-        que es lo que el resto de la app necesita.
-        """
         if self.selected_variant_index < 0:
-            return rx.toast.error("Por favor, selecciona una imagen primero.")
+            return rx.toast.error("Selecciona una imagen primero.")
 
         colors = self.attr_colores
         sizes, size_key = [], ""
-        category = self.category # Asumiendo que self.category está seteado
-        if category == Category.ROPA.value:
-            sizes, size_key = self.attr_tallas_ropa, "Talla"
-        elif category == Category.CALZADO.value:
-            sizes, size_key = self.attr_numeros_calzado, "Número"
-        elif category == Category.MOCHILAS.value:
-            sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
+        if self.category == Category.ROPA.value: sizes, size_key = self.attr_tallas_ropa, "Talla"
+        elif self.category == Category.CALZADO.value: sizes, size_key = self.attr_numeros_calzado, "Número"
+        elif self.category == Category.MOCHILAS.value: sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
         
         if not colors or not sizes:
-            return rx.toast.error(f"Debes seleccionar al menos un color y una/un {size_key.lower()}.")
+            return rx.toast.error(f"Debes añadir al menos un color y una/un {size_key.lower()}.")
 
-        generated_variants = []
-        for color in colors:
-            for size in sizes:
-                generated_variants.append(
-                    VariantFormData(attributes={"Color": color, size_key: size})
-                )
-        
+        generated_variants = [
+            VariantFormData(attributes={"Color": color, size_key: size})
+            for color in colors for size in sizes
+        ]
         self.generated_variants_map[self.selected_variant_index] = generated_variants
-        return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
+        return rx.toast.info(f"{len(generated_variants)} combinaciones generadas para la imagen seleccionada.")
 
 
     # ✅ INICIO DE LA CORRECCIÓN: Añade este bloque de funciones
@@ -926,7 +894,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
                 variants=final_variants_to_save,
-                variants=self.new_variants,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 category=form_data.get("category"),
