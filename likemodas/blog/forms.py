@@ -5,10 +5,11 @@ from ..state import AppState
 from ..models import Category
 from ..ui.components import searchable_select
 from ..data.product_options import (
-    LISTA_COLORES,
     LISTA_TALLAS_ROPA,
     LISTA_NUMEROS_CALZADO,
-    LISTA_TAMANOS_MOCHILAS
+    LISTA_TAMANOS_MOCHILAS,
+    # --- ✅ AÑADE LA IMPORTACIÓN DE LA LISTA DE COLORES ---
+    LISTA_COLORES 
 )
 
 def variant_stock_manager() -> rx.Component:
@@ -107,7 +108,7 @@ def attribute_editor(
                 value=temp_value_var,
                 on_change=temp_value_setter,
             ),
-            rx.button("Añadir", on_click=add_handler),
+            rx.button("Añadir", on_click=add_handler, type="button"),
             width="100%"
         ),
         align_items="stretch",
@@ -129,13 +130,12 @@ def blog_post_add_form() -> rx.Component:
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
         filter_name="attr_material_filter",
     )
-
     
     caracteristicas_ropa = rx.vstack(
         rx.grid(
             # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
-            # Reemplaza el antiguo 'color_selector_simple' con este 'attribute_editor' para Color.
-            # Esto soluciona el TypeError y hace que la UI sea consistente.
+            # Se reemplaza el selector de color incorrecto por el componente reutilizable 'attribute_editor'.
+            # Esto soluciona el TypeError porque 'add_variant_attribute' maneja correctamente la lista en el estado.
             attribute_editor(
                 title="Color",
                 options_list=LISTA_COLORES,
@@ -173,6 +173,15 @@ def blog_post_add_form() -> rx.Component:
                 remove_handler=lambda val: AppState.remove_variant_attribute("Color", val),
                 current_selections=AppState.attr_colores,
             ),
+            attribute_editor(
+                title="Número",
+                options_list=LISTA_NUMEROS_CALZADO,
+                temp_value_var=AppState.temp_numero,
+                temp_value_setter=AppState.set_temp_numero,
+                add_handler=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Número", val),
+                current_selections=AppState.attr_numeros_calzado,
+            ),
             columns="2", spacing="3", width="100%",
         ),
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
@@ -190,6 +199,15 @@ def blog_post_add_form() -> rx.Component:
                 add_handler=lambda: AppState.add_variant_attribute("Color", AppState.temp_color),
                 remove_handler=lambda val: AppState.remove_variant_attribute("Color", val),
                 current_selections=AppState.attr_colores,
+            ),
+            attribute_editor(
+                title="Tamaño",
+                options_list=LISTA_TAMANOS_MOCHILAS,
+                temp_value_var=AppState.temp_tamano,
+                temp_value_setter=AppState.set_temp_tamano,
+                add_handler=lambda: AppState.add_variant_attribute("Tamaño", AppState.temp_tamano),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Tamaño", val),
+                current_selections=AppState.attr_tamanos_mochila,
             ),
             columns="2", spacing="3", width="100%",
         ),
@@ -312,7 +330,7 @@ def blog_post_add_form() -> rx.Component:
                             rx.cond(AppState.category == Category.MOCHILAS.value, caracteristicas_mochilas),
                             
                             variant_stock_manager(),
-                            
+                        
                             align_items="stretch", width="100%",
                         )
                     ),
