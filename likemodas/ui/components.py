@@ -1,12 +1,11 @@
-# likemodas/ui/components.py (Versión Definitiva Corregida)
+# likemodas/ui/components.py (Versión Completa y Definitiva)
 
 import reflex as rx
+import math
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
-# (Las funciones searchable_select y multi_select_component no cambian)
-# ...
 def searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
@@ -52,7 +51,7 @@ def searchable_select(
         ),
         position="relative", width="100%",
     )
-    
+
 def multi_select_component(
     placeholder: str,
     options: rx.Var[list[str]],
@@ -75,7 +74,8 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        on_click=remove_handler(prop_name, item),
+                        # Corrección: Se envuelve la llamada en una lambda.
+                        on_click=lambda: remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
@@ -96,8 +96,6 @@ def multi_select_component(
         spacing="2", align_items="stretch", width="100%",
     )
 
-
-# --- INICIO DE LA CORRECCIÓN ---
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """
     Un componente seguro para mostrar estrellas que no usa math de Python.
@@ -122,7 +120,6 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
         ),
         rx.box(height=f"{size+3}px")  # Placeholder para alinear tarjetas
     )
-# --- FIN DE LA CORRECCIÓN ---
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """Galería de productos que ahora usa el componente de estrellas seguro."""
@@ -150,7 +147,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             ),
                             rx.vstack(
                                 rx.text(post.title, weight="bold", size="6", no_of_lines=1),
-                                # --- Llamada al nuevo componente seguro ---
                                 star_rating_display_safe(post.average_rating, post.rating_count),
                                 rx.text(post.price_cop, size="5", weight="medium"),
                                 rx.badge(
