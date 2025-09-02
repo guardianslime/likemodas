@@ -1,4 +1,4 @@
-# likemodas/state.py (Corregido)
+# likemodas/state.py (Versión Definitiva Corregida)
 
 from __future__ import annotations
 import reflex as rx
@@ -13,7 +13,6 @@ import re
 import asyncio
 import math
 from collections import defaultdict
-from pydantic import Field # <-- ¡CORRECCIÓN AQUÍ! Se añade la importación que faltaba.
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
 
@@ -197,10 +196,9 @@ class CommentData(rx.Base):
     author_username: str
     author_initial: str
     created_at_formatted: str
-    # ✅ CORRECCIÓN: Usar Field(default_factory=list) es más seguro
-    # que usar una lista vacía como valor por defecto para evitar
-    # que todas las instancias compartan la misma lista en memoria.
-    updates: List["CommentData"] = Field(default_factory=list)
+    # ✅ CORRECCIÓN: Volvemos a la definición original. Es más simple y compatible.
+    # El riesgo es bajo porque siempre creamos nuevas instancias de este DTO.
+    updates: List["CommentData"] = []
 
 class InvoiceItemData(rx.Base):
     """Un modelo específico para cada línea de artículo en la factura."""
