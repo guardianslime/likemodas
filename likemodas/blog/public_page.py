@@ -107,7 +107,6 @@ def review_submission_form() -> rx.Component:
         )
     )
 
-# --- ✅ FUNCIÓN CORREGIDA Y ROBUSTA ---
 def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal con su historial."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
@@ -150,8 +149,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
         ),
         padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
     )
-# --- ✅ FIN DE LA CORRECCIÓN ---
-
 
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""

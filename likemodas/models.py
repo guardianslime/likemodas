@@ -29,7 +29,7 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
         return local_dt.strftime('%d-%m-%Y %I:%M %p')
     except Exception:
         return utc_dt.strftime('%Y-%m-%d %H:%M')
-    
+
 class SavedPostLink(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id", primary_key=True)
     blogpostmodel_id: int = Field(foreign_key="blogpostmodel.id", primary_key=True)
@@ -129,12 +129,10 @@ class BlogPostModel(rx.Model, table=True):
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
     
-    # ✅ INICIO DE LA CORRECCIÓN
     comments: List["CommentModel"] = Relationship(
         back_populates="blog_post",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    # ✅ FIN DE LA CORRECCIÓN
 
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     
@@ -143,7 +141,6 @@ class BlogPostModel(rx.Model, table=True):
     
     @property
     def base_price(self) -> float:
-        """Devuelve el precio del artículo SIN IVA."""
         if self.price_includes_iva:
             return (self.price or 0.0) / 1.19
         return self.price or 0.0
@@ -222,12 +219,15 @@ class PurchaseItemModel(rx.Model, table=True):
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     quantity: int
     price_at_purchase: float
-    
     selected_variant: dict = Field(default_factory=dict, sa_column=Column(JSON))
 
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
-    comments: List["CommentModel"] = Relationship()
+    
+    # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
+    # Se añade 'back_populates' para crear una relación bidireccional, crucial para la integridad de los datos.
+    comments: List["CommentModel"] = Relationship(back_populates="purchase_item")
+    # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
 
     class Config:
         exclude = {"purchase", "blog_post", "comments"}
@@ -280,8 +280,13 @@ class CommentModel(rx.Model, table=True):
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
     votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
+    # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
+    # Se añade la relación inversa a PurchaseItemModel para completar el enlace bidireccional.
+    purchase_item: Optional["PurchaseItemModel"] = Relationship(back_populates="comments")
+    # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
+
     class Config:
-        exclude = {"blog_post", "userinfo", "parent", "updates", "votes"}
+        exclude = {"blog_post", "userinfo", "parent", "updates", "votes", "purchase_item"}
 
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
