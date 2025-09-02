@@ -132,10 +132,19 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     variant="soft", size="1", margin_top="0.5em"
                 )
             ),
+            
+            # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
+            # Se añade una comprobación anidada. Primero se asegura de que el historial esté expandido,
+            # y LUEGO se asegura de que la lista 'updates' exista antes de intentar recorrerla con foreach.
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
-                rx.foreach(comment.updates, render_update_item)
+                rx.cond(
+                    comment.updates,
+                    rx.foreach(comment.updates, render_update_item),
+                )
             ),
+            # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
+            
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%", justify="end", spacing="1", margin_top="1em"
