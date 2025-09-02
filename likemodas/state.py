@@ -871,7 +871,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✅ INICIO DE LA CORRECCIÓN: REEMPLAZA ESTA FUNCIÓN POR COMPLETO ✅ ---
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        if not self.is_admin: return rx.toast.error("Acción no permitida.")
+        if not self.is_admin or not self.authenticated_user_info:
+            return rx.toast.error("Acción no permitida.")
         
         final_variants_to_save = []
         for group_index, image_variant_group in enumerate(self.new_variants):
@@ -893,10 +894,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 title=form_data["title"],
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
+                
+                # --- ✅ CORRECCIÓN CRÍTICA: Se eliminó la línea duplicada 'variants=self.new_variants' ---
                 variants=final_variants_to_save,
+                
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                category=form_data.get("category"),
+                category=Category(form_data["category"]),
                 price_includes_iva=self.price_includes_iva,
                 is_imported=self.is_imported,
                 shipping_cost=float(self.shipping_cost_str) if self.shipping_cost_str else None,
@@ -906,7 +910,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             session.add(new_post)
             session.commit()
-
+        
         self._clear_add_form()
         yield rx.toast.success("¡Producto publicado con éxito!")
         return rx.redirect("/blog")
