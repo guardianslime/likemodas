@@ -61,6 +61,23 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     rx.button("Confirmar Pago", on_click=AppState.confirm_online_payment(purchase.id), width="100%", margin_top="1em")
                 )
             ),
+
+            # --- ✅ INICIO DEL NUEVO BLOQUE AÑADIDO ✅ ---
+            # --- Caso 2: El pago online ya fue CONFIRMADO ---
+            # Ahora el admin debe establecer el tiempo de entrega y notificar el envío.
+            rx.cond(
+                purchase.status == PurchaseStatus.CONFIRMED.value,
+                rx.vstack(
+                    set_delivery_time_form,
+                    rx.button(
+                        "Notificar Envío al Cliente", 
+                        on_click=AppState.ship_confirmed_online_order(purchase.id), 
+                        width="100%", 
+                        margin_top="0.5em"
+                    ),
+                )
+            ),
+            # --- ✅ FIN DEL NUEVO BLOQUE AÑADIDO ✅ ---
             
             rx.cond(
                 (purchase.status == PurchaseStatus.SHIPPED.value) | (purchase.status == PurchaseStatus.DELIVERED.value),

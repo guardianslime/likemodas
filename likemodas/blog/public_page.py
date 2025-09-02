@@ -1,3 +1,5 @@
+# likemodas/blog/public_page.py
+
 import reflex as rx
 import math
 from ..state import AppState, CommentData, ModalSelectorDTO
@@ -5,14 +7,26 @@ from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 
+def _render_static_stars(rating: rx.Var[int]) -> rx.Component:
+    return rx.hstack(
+        rx.foreach(
+            rx.Var.range(5),
+            lambda i: rx.icon(
+                "star",
+                color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
+                size=20
+            )
+        ),
+        spacing="1"
+    )
+
 def render_update_item(comment: CommentData) -> rx.Component:
-    """Componente para mostrar una actualización de un comentario."""
     return rx.box(
         rx.vstack(
             rx.hstack(
                 rx.icon("pencil", size=16, margin_right="0.5em"),
                 rx.text("Actualización:", weight="bold"),
-                star_rating_display(comment.rating, 1),
+                _render_static_stars(comment.rating),
                 rx.spacer(),
                 rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%"
@@ -21,34 +35,27 @@ def render_update_item(comment: CommentData) -> rx.Component:
             align_items="start",
             spacing="1"
         ),
-        padding="0.75em",
-        border="1px dashed",
-        border_color=rx.color("gray", 6),
-        border_radius="md",
-        margin_top="1em",
-        margin_left="2.5em"
+        padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),
+        border_radius="md", margin_top="1em", margin_left="2.5em"
     )
 
-def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Component:
-    """Componente para mostrar estrellas de valoración."""
-    full_stars = rx.Var.range(math.floor(rating))
-    has_half_star = (rating - math.floor(rating)) >= 0.5
-    empty_stars = rx.Var.range(5 - math.ceil(rating))
-    
+def star_rating_display(rating_data: rx.Var) -> rx.Component:
     return rx.cond(
-        count > 0,
+        rating_data.rating_count > 0,
         rx.hstack(
-            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=20)),
-            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=20), rx.fragment()),
-            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
-            rx.text(f"{rating:.1f} de 5 ({count} opiniones)", size="3", color_scheme="gray", margin_left="0.5em"),
+            rx.foreach(rating_data.full_stars, lambda _: rx.icon("star", color="gold", size=20)),
+            rx.cond(rating_data.has_half_star, rx.icon("star_half", color="gold", size=20)),
+            rx.foreach(rating_data.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
+            rx.text(
+                f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
+                size="3", color_scheme="gray", margin_left="0.5em"
+            ),
             align="center", spacing="1",
         ),
         rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
     )
 
 def review_submission_form() -> rx.Component:
-    """Muestra el formulario para opinar."""
     return rx.cond(
         AppState.show_review_form,
         rx.form(
@@ -99,12 +106,12 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
                 rx.spacer(),
-                star_rating_display(comment.rating, 1),
+                _render_static_stars(comment.rating),
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
             rx.cond(
-                comment.updates,
+                comment.updates & (comment.updates.length() > 0),
                 rx.button(
                     rx.cond(
                         AppState.expanded_comments.get(comment.id, False),
@@ -117,7 +124,10 @@ def render_comment_item(comment: CommentData) -> rx.Component:
             ),
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
-                rx.foreach(comment.updates, render_update_item)
+                rx.cond(
+                    comment.updates & (comment.updates.length() > 0),
+                    rx.foreach(comment.updates, render_update_item)
+                ),
             ),
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
@@ -130,7 +140,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""
-    
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
@@ -142,30 +151,22 @@ def product_detail_modal() -> rx.Component:
                         alt=AppState.product_in_modal.title,
                         width="100%", height="100%", object_fit="cover",
                     ),
-                    rx.box(
-                        rx.icon("image_off", size=48), 
-                        width="100%", height="100%", display="flex", 
-                        align_items="center", justify_content="center", 
-                        bg=rx.color("gray", 3)
-                    ),
+                    rx.box(rx.icon("image_off", size=48), width="100%", height="100%", display="flex", align_items="center", justify_content="center", bg=rx.color("gray", 3)),
                 ),
                 position="relative", width="100%", height=FIXED_HEIGHT, 
                 border_radius="var(--radius-3)", overflow="hidden",
             ),
             rx.cond(
-                AppState.product_in_modal.variants.length() > 1,
+                AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
                     rx.foreach(
-                        AppState.product_in_modal.variants,
-                        lambda variant, index: rx.box(
-                            rx.image(
-                                src=rx.get_upload_url(variant.get("image_url")),
-                                width="60px", height="60px", object_fit="cover", border_radius="md"
-                            ),
-                            border_width=rx.cond(AppState.modal_selected_variant_index == index, "2px", "1px"),
-                            border_color=rx.cond(AppState.modal_selected_variant_index == index, "violet", "gray"),
+                        AppState.unique_modal_variants,
+                        lambda item: rx.box(
+                            rx.image(src=rx.get_upload_url(item.variant.get("image_url")), width="60px", height="60px", object_fit="cover", border_radius="md"),
+                            border_width=rx.cond(AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"),
+                            border_color=rx.cond(AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"),
                             padding="2px", border_radius="lg", cursor="pointer",
-                            on_click=AppState.set_modal_variant_index(index),
+                            on_click=AppState.set_modal_variant_index(item.index),
                         )
                     ),
                     spacing="3", padding="0.5em", width="100%", overflow_x="auto",
@@ -173,13 +174,12 @@ def product_detail_modal() -> rx.Component:
             ),
             spacing="3", width="100%",
         )
-
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count),
+            star_rating_display(AppState.product_in_modal),
             rx.hstack(
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
@@ -200,24 +200,17 @@ def product_detail_modal() -> rx.Component:
                 spacing="4", align="center", margin_y="1em",
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-            
             rx.vstack(
                 rx.divider(margin_y="1em"),
                 rx.heading("Características", size="4"),
-                
-                # --- ✨ Bucle para atributos de SÓLO LECTURA (Color) ✨ ---
                 rx.foreach(
                     AppState.current_variant_display_attributes.items(),
                     lambda item: rx.hstack(
                         rx.text(f"{item[0]}:", weight="bold", size="3"),
                         rx.text(item[1], size="3"),
-                        spacing="3",
-                        align_items="center",
-                        width="100%"
+                        spacing="3", align_items="center", width="100%"
                     ),
                 ),
-
-                # --- ✨ Bucle para atributos SELECCIONABLES (Talla) ✨ ---
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(
@@ -230,14 +223,11 @@ def product_detail_modal() -> rx.Component:
                             on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
                             value=selector.current_value,
                         ),
-                        align_items="start",
-                        width="100%",
-                        spacing="2"
+                        align_items="start", width="100%", spacing="2"
                     )
                 ),
                 align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
-            
             rx.text(
                 "Publicado por: ",
                 rx.link(
@@ -268,7 +258,6 @@ def product_detail_modal() -> rx.Component:
             ),
             align="start", height="100%",
         )
-    
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
