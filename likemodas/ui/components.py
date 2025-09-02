@@ -9,18 +9,15 @@ from reflex.event import EventSpec
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """
     Un componente seguro para mostrar estrellas que no usa math de Python.
-    Construye las estrellas condicionalmente, lo cual es seguro para el compilador.
     """
     return rx.cond(
         count > 0,
         rx.hstack(
             rx.foreach(
-                rx.Var.range(5),  # Itera 5 veces para crear 5 estrellas
+                rx.Var.range(5),
                 lambda i: rx.icon(
                     "star",
-                    # Colorea la estrella si el rating es mayor que su índice
                     color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
-                    # Rellena la estrella para que sea sólida
                     style={"fill": rx.cond(rating > i, "gold", "none")},
                     size=size,
                 )
@@ -28,7 +25,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
             rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
-        rx.box(height=f"{size+3}px")  # Placeholder para alinear tarjetas
+        rx.box(height=f"{size+3}px")
     )
 
 def searchable_select(
@@ -100,8 +97,7 @@ def multi_select_component(
                         size=12,
                         cursor="pointer",
                         # --- CORRECCIÓN FINAL ---
-                        # Se envuelve la llamada en una lambda para que no se ejecute
-                        # hasta que el usuario haga clic.
+                        # Esta es la sintaxis correcta que el traceback estaba pidiendo.
                         on_click=lambda: remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
