@@ -1,4 +1,4 @@
-# likemodas/ui/components.py (Versión Definitiva Corregida)
+# likemodas/ui/components.py (Versión Completa y Definitiva)
 
 import reflex as rx
 import math
@@ -15,12 +15,10 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
         count > 0,
         rx.hstack(
             rx.foreach(
-                rx.Var.range(5),  # Itera 5 veces para crear 5 estrellas
+                rx.Var.range(5),
                 lambda i: rx.icon(
                     "star",
-                    # Colorea la estrella si el rating es mayor que su índice
                     color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
-                    # Rellena la estrella para que sea sólida
                     style={"fill": rx.cond(rating > i, "gold", "none")},
                     size=size,
                 )
@@ -28,7 +26,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
             rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
-        rx.box(height=f"{size+3}px")  # Placeholder para alinear tarjetas
+        rx.box(height=f"{size+3}px")
     )
 
 def searchable_select(
@@ -60,7 +58,6 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
-                                # CORRECCIÓN: Se simplifica la llamada al evento
                                 on_click=[on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
@@ -76,6 +73,51 @@ def searchable_select(
             )
         ),
         position="relative", width="100%",
+    )
+
+def multi_select_component(
+    placeholder: str,
+    options: rx.Var[list[str]],
+    selected_items: rx.Var[list[str]],
+    add_handler: rx.event.EventHandler,
+    remove_handler: rx.event.EventHandler,
+    prop_name: str,
+    search_value: rx.Var[str],
+    on_change_search: rx.event.EventSpec,
+    filter_name: str,
+) -> rx.Component:
+    """Un componente para seleccionar múltiples opciones con un buscador."""
+    return rx.vstack(
+        rx.flex(
+            rx.foreach(
+                selected_items,
+                lambda item: rx.badge(
+                    item,
+                    rx.icon(
+                        "x",
+                        size=12,
+                        cursor="pointer",
+                        # Se restaura la sintaxis original de corrector01.txt que funcionaba
+                        on_click=remove_handler(prop_name, item),
+                        margin_left="0.25em"
+                    ),
+                    variant="soft", color_scheme="gray", size="2",
+                ),
+            ),
+            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
+            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
+        ),
+        searchable_select(
+            placeholder=placeholder,
+            options=options,
+            # Se restaura la sintaxis original de corrector01.txt que funcionaba
+            on_change_select=lambda val: add_handler(prop_name, val),
+            value_select="",
+            search_value=search_value,
+            on_change_search=on_change_search,
+            filter_name=filter_name,
+        ),
+        spacing="2", align_items="stretch", width="100%",
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
@@ -104,6 +146,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             ),
                             rx.vstack(
                                 rx.text(post.title, weight="bold", size="6", no_of_lines=1),
+                                # Llamada al componente de estrellas seguro y universal
                                 star_rating_display_safe(post.average_rating, post.rating_count),
                                 rx.text(post.price_cop, size="5", weight="medium"),
                                 rx.badge(
@@ -141,52 +184,4 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             ),
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
-    )
-
-def multi_select_component(
-    placeholder: str,
-    options: rx.Var[list[str]],
-    selected_items: rx.Var[list[str]],
-    add_handler: rx.event.EventHandler,
-    remove_handler: rx.event.EventHandler,
-    prop_name: str,
-    search_value: rx.Var[str],
-    on_change_search: rx.event.EventSpec,
-    filter_name: str,
-) -> rx.Component:
-    """Un componente para seleccionar múltiples opciones con un buscador."""
-    return rx.vstack(
-        rx.flex(
-            rx.foreach(
-                selected_items,
-                lambda item: rx.badge(
-                    item,
-                    rx.icon(
-                        "x",
-                        size=12,
-                        cursor="pointer",
-                        # --- CORRECCIÓN FINAL ---
-                        # Se elimina el 'lambda:' que causaba el TypeError.
-                        # Reflex vinculará los argumentos 'prop_name' y 'item' correctamente.
-                        on_click=remove_handler(prop_name, item),
-                        margin_left="0.25em"
-                    ),
-                    variant="soft", color_scheme="gray", size="2",
-                ),
-            ),
-            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
-            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
-        ),
-        searchable_select(
-            placeholder=placeholder,
-            options=options,
-            # --- CORRECCIÓN FINAL ---
-            # Se simplifica la llamada para que sea consistente con la de 'remove_handler'.
-            on_change_select=add_handler(prop_name),
-            value_select="",
-            search_value=search_value,
-            on_change_search=on_change_search,
-            filter_name=filter_name,
-        ),
-        spacing="2", align_items="stretch", width="100%",
     )
