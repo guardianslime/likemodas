@@ -6,6 +6,31 @@ from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
+def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
+    """
+    Un componente seguro para mostrar estrellas que no usa math de Python.
+    Construye las estrellas condicionalmente, lo cual es seguro para el compilador.
+    """
+    return rx.cond(
+        count > 0,
+        rx.hstack(
+            rx.foreach(
+                rx.Var.range(5),  # Itera 5 veces para crear 5 estrellas
+                lambda i: rx.icon(
+                    "star",
+                    # Colorea la estrella si el rating es mayor que su índice
+                    color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
+                    # Rellena la estrella para que sea sólida
+                    style={"fill": rx.cond(rating > i, "gold", "none")},
+                    size=size,
+                )
+            ),
+            rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
+            align="center", spacing="1",
+        ),
+        rx.box(height=f"{size+3}px")  # Placeholder para alinear tarjetas
+    )
+
 def searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
@@ -35,7 +60,7 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
-                                on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
+                                on_click=[on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
                         ),
@@ -50,75 +75,6 @@ def searchable_select(
             )
         ),
         position="relative", width="100%",
-    )
-
-def multi_select_component(
-    placeholder: str,
-    options: rx.Var[list[str]],
-    selected_items: rx.Var[list[str]],
-    add_handler: rx.event.EventHandler,
-    remove_handler: rx.event.EventHandler,
-    prop_name: str,
-    search_value: rx.Var[str],
-    on_change_search: rx.event.EventSpec,
-    filter_name: str,
-) -> rx.Component:
-    """Un componente para seleccionar múltiples opciones con un buscador."""
-    return rx.vstack(
-        rx.flex(
-            rx.foreach(
-                selected_items,
-                lambda item: rx.badge(
-                    item,
-                    rx.icon(
-                        "x",
-                        size=12,
-                        cursor="pointer",
-                        # Corrección: Se envuelve la llamada en una lambda.
-                        on_click=lambda: remove_handler(prop_name, item),
-                        margin_left="0.25em"
-                    ),
-                    variant="soft", color_scheme="gray", size="2",
-                ),
-            ),
-            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
-            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
-        ),
-        searchable_select(
-            placeholder=placeholder,
-            options=options,
-            on_change_select=lambda val: add_handler(prop_name, val),
-            value_select="",
-            search_value=search_value,
-            on_change_search=on_change_search,
-            filter_name=filter_name,
-        ),
-        spacing="2", align_items="stretch", width="100%",
-    )
-
-def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
-    """
-    Un componente seguro para mostrar estrellas que no usa math de Python.
-    Construye las estrellas condicionalmente, lo cual es seguro para el compilador.
-    """
-    return rx.cond(
-        count > 0,
-        rx.hstack(
-            rx.foreach(
-                rx.Var.range(5),  # Itera 5 veces para crear 5 estrellas
-                lambda i: rx.icon(
-                    "star",
-                    # Colorea la estrella si el rating es mayor que su índice
-                    color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
-                    # Rellena la estrella para que sea sólida
-                    style={"fill": rx.cond(rating > i, "gold", "none")},
-                    size=size,
-                )
-            ),
-            rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
-            align="center", spacing="1",
-        ),
-        rx.box(height=f"{size+3}px")  # Placeholder para alinear tarjetas
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
@@ -164,7 +120,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 spacing="2", align_items="start", width="100%"
                             ),
                             spacing="2", width="100%",
-                            on_click=lambda: AppState.open_product_detail_modal(post.id),
+                            on_click=AppState.open_product_detail_modal(post.id),
                             cursor="pointer",
                         ),
                         rx.spacer(),
@@ -184,4 +140,51 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             ),
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
+    )
+
+def multi_select_component(
+    placeholder: str,
+    options: rx.Var[list[str]],
+    selected_items: rx.Var[list[str]],
+    add_handler: rx.event.EventHandler,
+    remove_handler: rx.event.EventHandler,
+    prop_name: str,
+    search_value: rx.Var[str],
+    on_change_search: rx.event.EventSpec,
+    filter_name: str,
+) -> rx.Component:
+    """Un componente para seleccionar múltiples opciones con un buscador."""
+    return rx.vstack(
+        rx.flex(
+            rx.foreach(
+                selected_items,
+                lambda item: rx.badge(
+                    item,
+                    rx.icon(
+                        "x",
+                        size=12,
+                        cursor="pointer",
+                        # --- CORRECCIÓN FINAL ---
+                        # Se elimina el 'lambda:' que causaba el TypeError.
+                        # Reflex vinculará los argumentos 'prop_name' y 'item' correctamente.
+                        on_click=remove_handler(prop_name, item),
+                        margin_left="0.25em"
+                    ),
+                    variant="soft", color_scheme="gray", size="2",
+                ),
+            ),
+            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
+            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
+        ),
+        searchable_select(
+            placeholder=placeholder,
+            options=options,
+            # Esta llamada sí necesita lambda porque on_change_select pasa un argumento (val)
+            on_change_select=lambda val: add_handler(prop_name, val),
+            value_select="",
+            search_value=search_value,
+            on_change_search=on_change_search,
+            filter_name=filter_name,
+        ),
+        spacing="2", align_items="stretch", width="100%",
     )
