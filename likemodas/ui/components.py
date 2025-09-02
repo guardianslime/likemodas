@@ -1,4 +1,4 @@
-# likemodas/ui/components.py (Versión Completa y Definitiva)
+# likemodas/ui/components.py (Versión Definitiva Corregida)
 
 import reflex as rx
 import math
@@ -15,10 +15,12 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
         count > 0,
         rx.hstack(
             rx.foreach(
-                rx.Var.range(5),
+                rx.Var.range(5),  # Itera 5 veces para crear 5 estrellas
                 lambda i: rx.icon(
                     "star",
+                    # Colorea la estrella si el rating es mayor que su índice
                     color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
+                    # Rellena la estrella para que sea sólida
                     style={"fill": rx.cond(rating > i, "gold", "none")},
                     size=size,
                 )
@@ -26,7 +28,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
             rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
-        rx.box(height=f"{size+3}px")
+        rx.box(height=f"{size+3}px")  # Placeholder para alinear tarjetas
     )
 
 def searchable_select(
@@ -97,8 +99,10 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        # Se restaura la sintaxis original de corrector01.txt que funcionaba
-                        on_click=remove_handler(prop_name, item),
+                        # --- CORRECCIÓN FINAL ---
+                        # Se envuelve la llamada en una lambda para que no se ejecute
+                        # hasta que el usuario haga clic.
+                        on_click=lambda: remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
@@ -110,7 +114,8 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            # Se restaura la sintaxis original de corrector01.txt que funcionaba
+            # Esta llamada también usa lambda porque on_change_select (definido en searchable_select)
+            # pasa un argumento 'val'.
             on_change_select=lambda val: add_handler(prop_name, val),
             value_select="",
             search_value=search_value,
@@ -146,7 +151,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             ),
                             rx.vstack(
                                 rx.text(post.title, weight="bold", size="6", no_of_lines=1),
-                                # Llamada al componente de estrellas seguro y universal
                                 star_rating_display_safe(post.average_rating, post.rating_count),
                                 rx.text(post.price_cop, size="5", weight="medium"),
                                 rx.badge(
