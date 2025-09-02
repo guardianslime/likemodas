@@ -107,6 +107,7 @@ def review_submission_form() -> rx.Component:
         )
     )
 
+# --- ✅ FUNCIÓN CORREGIDA Y ROBUSTA ---
 def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal con su historial."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
@@ -120,8 +121,9 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
+            # El botón para expandir solo aparece si 'updates' existe y tiene contenido
             rx.cond(
-                comment.updates,
+                comment.updates & (comment.updates.length() > 0),
                 rx.button(
                     rx.cond(
                         AppState.expanded_comments.get(comment.id, False),
@@ -132,19 +134,14 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     variant="soft", size="1", margin_top="0.5em"
                 )
             ),
-            
-            # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
-            # Se añade una comprobación anidada. Primero se asegura de que el historial esté expandido,
-            # y LUEGO se asegura de que la lista 'updates' exista antes de intentar recorrerla con foreach.
+            # El historial solo se renderiza si está expandido Y si 'updates' existe y tiene contenido
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
                 rx.cond(
-                    comment.updates,
-                    rx.foreach(comment.updates, render_update_item),
-                )
+                    comment.updates & (comment.updates.length() > 0),
+                    rx.foreach(comment.updates, render_update_item)
+                ),
             ),
-            # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
-            
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%", justify="end", spacing="1", margin_top="1em"
@@ -153,6 +150,8 @@ def render_comment_item(comment: CommentData) -> rx.Component:
         ),
         padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
     )
+# --- ✅ FIN DE LA CORRECCIÓN ---
+
 
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""
