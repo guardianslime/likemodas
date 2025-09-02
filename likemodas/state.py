@@ -196,7 +196,10 @@ class CommentData(rx.Base):
     author_username: str
     author_initial: str
     created_at_formatted: str
-    updates: List["CommentData"] = []
+    # ✅ CORRECCIÓN: Usar Field(default_factory=list) es más seguro
+    # que usar una lista vacía como valor por defecto para evitar
+    # que todas las instancias compartan la misma lista en memoria.
+    updates: List["CommentData"] = Field(default_factory=list)
 
 class InvoiceItemData(rx.Base):
     """Un modelo específico para cada línea de artículo en la factura."""
