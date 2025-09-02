@@ -1,4 +1,4 @@
-# likemodas/ui/components.py (Versión Completa y Definitiva)
+# likemodas/ui/components.py (Versión Definitiva Corregida)
 
 import reflex as rx
 import math
@@ -164,10 +164,11 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        # --- CORRECCIÓN FINAL ---
-                        # Se elimina el 'lambda:' que causaba el TypeError.
-                        # Reflex vinculará los argumentos 'prop_name' y 'item' correctamente.
-                        on_click=remove_handler(prop_name, item),
+                        # --- INICIO DE LA CORRECCIÓN CLAVE ---
+                        # Se envuelve la llamada en una lambda para que no se ejecute
+                        # hasta que el usuario haga clic.
+                        on_click=lambda: remove_handler(prop_name, item),
+                        # --- FIN DE LA CORRECCIÓN CLAVE ---
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
@@ -179,7 +180,8 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            # Esta llamada sí necesita lambda porque on_change_select pasa un argumento (val)
+            # Esta llamada también usa lambda porque on_change_select (definido en searchable_select)
+            # pasa un argumento 'option' o 'val'.
             on_change_select=lambda val: add_handler(prop_name, val),
             value_select="",
             search_value=search_value,
