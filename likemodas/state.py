@@ -635,19 +635,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     temp_tamano: str = ""
     temp_color: str = "" # Variable que faltaba
 
-    # generated_variants_map: dict[int, list[VariantFormData]] = {}
+    generated_variants_map: dict[int, list[VariantFormData]] = {}
     
-    def set_temp_color(self, color: str): # Setter que faltaba
-        self.temp_color = color
-
-    def set_temp_talla(self, talla: str):
-        self.temp_talla = talla
-    
-    def set_temp_numero(self, numero: str):
-        self.temp_numero = numero
-        
-    def set_temp_tamano(self, tamano: str):
-        self.temp_tamano = tamano
+    # Setters para las variables temporales.
+    def set_temp_talla(self, value: str): self.temp_talla = value
+    def set_temp_numero(self, value: str): self.temp_numero = value
+    def set_temp_tamano(self, value: str): self.temp_tamano = value
+    def set_temp_color(self, value: str): self.temp_color = value
     # ✅ FIN CORRECCIÓN 1
 
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
@@ -659,22 +653,25 @@ class AppState(reflex_local_auth.LocalAuthState):
     SELECTABLE_ATTRIBUTES = ["Talla", "Número", "Tamaño"]
 
     # ✅ INICIO CORRECCIÓN 2: Lógica de atributos unificada
-    def add_variant_attribute(self, key: str, value: str):
-        """Añade un valor de atributo a la lista de un atributo específico."""
-        if self.selected_variant_index < 0 or not value:
-            return
-        
+    def add_variant_attribute(self, key: str):
+        """Añade un atributo a la lista correspondiente en el estado del formulario."""
         target_list_name = ""
-        if key == "Color": target_list_name = "attr_colores"
-        elif key == "Talla": target_list_name = "attr_tallas_ropa"
-        elif key == "Número": target_list_name = "attr_numeros_calzado"
-        elif key == "Tamaño": target_list_name = "attr_tamanos_mochila"
+        value = ""
+        if key == "Color": 
+            target_list_name, value = "attr_colores", self.temp_color
+        elif key == "Talla": 
+            target_list_name, value = "attr_tallas_ropa", self.temp_talla
+        elif key == "Número": 
+            target_list_name, value = "attr_numeros_calzado", self.temp_numero
+        elif key == "Tamaño": 
+            target_list_name, value = "attr_tamanos_mochila", self.temp_tamano
+
+        if not value: return
         
-        if target_list_name:
-            current_list = getattr(self, target_list_name)
-            if value not in current_list:
-                current_list.append(value)
-                setattr(self, target_list_name, current_list[:])
+        current_list = getattr(self, target_list_name)
+        if value not in current_list:
+            current_list.append(value)
+            setattr(self, target_list_name, sorted(current_list))
 
     def select_variant_for_editing(self, index: int):
         """Selecciona una variante y carga sus atributos en el formulario."""
@@ -764,27 +761,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ✅ INICIO CORRECCIÓN 3: Lógica de generación de variantes reescrita
     def generate_variants(self):
         """
-        Genera el producto cartesiano de todos los atributos seleccionados
-        para crear combinaciones de variantes únicas y correctas.
+        Toma los atributos del formulario y crea la lista PLANA de combinaciones,
+        que es lo que el resto de la app necesita.
         """
         if self.selected_variant_index < 0:
             return rx.toast.error("Por favor, selecciona una imagen primero.")
 
-        main_variant = self.new_variants[self.selected_variant_index]
-        attributes_for_main = {}
-        if self.attr_colores: attributes_for_main["Color"] = self.attr_colores
-        if self.attr_tallas_ropa: attributes_for_main["Talla"] = self.attr_tallas_ropa
-        if self.attr_numeros_calzado: attributes_for_main["Número"] = self.attr_numeros_calzado
-        if self.attr_tamanos_mochila: attributes_for_main["Tamaño"] = self.attr_tamanos_mochila
-        main_variant["attributes"] = attributes_for_main
-
         colors = self.attr_colores
         sizes, size_key = [], ""
-        if self.category == Category.ROPA.value:
+        category = self.category # Asumiendo que self.category está seteado
+        if category == Category.ROPA.value:
             sizes, size_key = self.attr_tallas_ropa, "Talla"
-        elif self.category == Category.CALZADO.value:
+        elif category == Category.CALZADO.value:
             sizes, size_key = self.attr_numeros_calzado, "Número"
-        elif self.category == Category.MOCHILAS.value:
+        elif category == Category.MOCHILAS.value:
             sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
         
         if not colors or not sizes:
@@ -794,14 +784,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         for color in colors:
             for size in sizes:
                 generated_variants.append(
-                    VariantFormData(
-                        attributes={"Color": color, size_key: size}
-                    )
+                    VariantFormData(attributes={"Color": color, size_key: size})
                 )
         
         self.generated_variants_map[self.selected_variant_index] = generated_variants
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
-    # ✅ FIN CORRECCIÓN 3
+
 
     # ✅ INICIO DE LA CORRECCIÓN: Añade este bloque de funciones
     def _update_variant_stock(self, group_index: int, item_index: int, new_stock: int):
@@ -915,35 +903,29 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✅ INICIO DE LA CORRECCIÓN: REEMPLAZA ESTA FUNCIÓN POR COMPLETO ✅ ---
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        """Guarda el nuevo producto con la estructura de variantes agrupadas."""
-        if not self.is_admin:
-            return rx.toast.error("Acción no permitida.")
-        if not self.new_variants:
-            return rx.toast.error("Debes subir al menos una imagen para el producto.")
+        if not self.is_admin: return rx.toast.error("Acción no permitida.")
         
-        # Validar que cada variante (imagen) tenga los atributos necesarios
-        for i, variant in enumerate(self.new_variants):
-            attrs = variant.get("attributes", {})
-            category = form_data.get("category")
-            
-            size_key = ""
-            if category == Category.ROPA.value: size_key = "Talla"
-            elif category == Category.CALZADO.value: size_key = "Número"
-            elif category == Category.MOCHILAS.value: size_key = "Tamaño"
-
-            if not attrs.get("Color"):
-                return rx.toast.error(f"La imagen #{i+1} debe tener al menos un color asignado.")
-            if not attrs.get(size_key):
-                 return rx.toast.error(f"La imagen #{i+1} debe tener al menos una {size_key.lower()} asignada.")
+        final_variants_to_save = []
+        for group_index, image_variant_group in enumerate(self.new_variants):
+            image_url = image_variant_group.get("image_url", "")
+            if group_index in self.generated_variants_map:
+                for generated_variant in self.generated_variants_map[group_index]:
+                    final_variants_to_save.append({
+                        "image_url": image_url,
+                        "stock": generated_variant.stock,
+                        "attributes": generated_variant.attributes,
+                    })
+        
+        if not final_variants_to_save:
+            return rx.toast.error("Debes generar las variantes para al menos una imagen antes de publicar.")
 
         with rx.session() as session:
-            # La lógica para crear el post es la misma, pero ahora 'self.new_variants'
-            # contiene la estructura de datos correcta y agrupada.
             new_post = BlogPostModel(
                 userinfo_id=self.authenticated_user_info.id,
                 title=form_data["title"],
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
+                variants=final_variants_to_save,
                 variants=self.new_variants,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
