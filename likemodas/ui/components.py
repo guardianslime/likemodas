@@ -1,13 +1,9 @@
-# likemodas/ui/components.py (Versión Corregida y con Diagnóstico)
-
 import reflex as rx
 import math
-
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
-# La función searchable_select no necesita cambios
 def searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
@@ -37,6 +33,7 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
+                                # La llamada al on_change_select es directa
                                 on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
@@ -54,20 +51,14 @@ def searchable_select(
         position="relative", width="100%",
     )
 
-
 def _product_card_rating(post: ProductCardData) -> rx.Component:
-    average_rating = post.average_rating
-    rating_count = post.rating_count
-    full_stars = rx.Var.range(math.floor(average_rating))
-    has_half_star = (average_rating - math.floor(average_rating)) >= 0.5
-    empty_stars = rx.Var.range(5 - math.ceil(average_rating))
     return rx.cond(
-        rating_count > 0,
+        post.rating_count > 0,
         rx.hstack(
-            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=18)),
-            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=18), rx.fragment()),
-            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
-            rx.text(f"({rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
+            rx.foreach(post.full_stars, lambda _: rx.icon("star", color="gold", size=18)),
+            rx.cond(post.has_half_star, rx.icon("star_half", color="gold", size=18)),
+            rx.foreach(post.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
+            rx.text(f"({post.rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
         rx.box(height="21px")
@@ -128,18 +119,14 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         cursor="pointer",
                     ),
                     rx.spacer(),
-                    
-                    # ✅ INICIO DE LA CORRECCIÓN
-                    # Cambiamos el texto y el evento on_click del botón
                     rx.button(
-                        "Ver Opciones y Añadir",
+                        "Añadir al Carrito",
                         width="100%",
                         on_click=[
-                            AppState.open_product_detail_modal(post.id),
+                            AppState.add_to_cart(post.id),
                             rx.stop_propagation
                         ],
                     ),
-                    # ✅ FIN DE LA CORRECCIÓN
                 ),
                 width="290px",
                 height="520px",
@@ -156,7 +143,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
         width="100%",
         max_width="1800px",
     )
-
 
 def multi_select_component(
     placeholder: str,
@@ -180,7 +166,8 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        on_click=remove_handler(prop_name, item),
+                        # Corrección: Se simplifica la llamada al manejador
+                        on_click=lambda: remove_handler(item),
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
@@ -192,7 +179,8 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            on_change_select=lambda val: add_handler(prop_name, val),
+            # Corrección: El manejador se pasa directamente
+            on_change_select=add_handler,
             value_select="",
             search_value=search_value,
             on_change_search=on_change_search,

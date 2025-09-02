@@ -1,4 +1,4 @@
-# likemodas/models.py
+# likemodas/models.py (VERSIÓN COMPLETA Y BLINDADA)
 
 from typing import Optional, List
 from datetime import datetime
@@ -38,17 +38,14 @@ class SavedPostLink(rx.Model, table=True):
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
-
 class PurchaseStatus(str, enum.Enum):
-    PENDING_CONFIRMATION = "pending_confirmation"
+    PENDING_CONFIRMATION = "pending_confirmation" # <-- CAMBIO DE NOMBRE
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
-    DELIVERED = "delivered"
-
+    DELIVERED = "delivered" # <-- AÑADE ESTE NUEVO ESTADO
 class VoteType(str, enum.Enum):
     LIKE = "like"
     DISLIKE = "dislike"
-
 class Category(str, enum.Enum):
     ROPA = "ropa"
     CALZADO = "calzado"
@@ -60,7 +57,6 @@ class TicketStatus(str, enum.Enum):
     IN_PROGRESS = "in_progress"
     RESOLVED = "resolved"
     CLOSED = "closed"
-
 # --- Modelos de Base de Datos ---
 
 class UserInfo(rx.Model, table=True):
@@ -74,6 +70,8 @@ class UserInfo(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
 
+    # --- 👇 AÑADE ESTA LÍNEA 👇 ---
+    # free_shipping_threshold: Optional[int] = Field(default=None)
     user: Optional["LocalUser"] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
@@ -110,8 +108,7 @@ class PasswordResetToken(rx.Model, table=True):
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    title: str
-    content: str
+    title: str; content: str
     price: float = 0.0
     variants: list = Field(default_factory=list, sa_column=Column(JSON))
     publish_active: bool = False
@@ -120,29 +117,34 @@ class BlogPostModel(rx.Model, table=True):
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
     
+    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     shipping_cost: Optional[float] = Field(default=None)
+    
+    #free_shipping_threshold: Optional[int] = Field(default=None) # Para "Moda Completa"
+
     is_moda_completa_eligible: bool = Field(default=True, nullable=False)
+
+    # --- ✨ AÑADE ESTOS DOS NUEVOS CAMPOS AQUÍ ✨ ---
     combines_shipping: bool = Field(default=False, nullable=False)
     shipping_combination_limit: Optional[int] = Field(default=None)
     price_includes_iva: bool = Field(default=True, nullable=False)
-    is_imported: bool = Field(default=False, nullable=False)
+    is_imported: bool = Field(default=False, nullable=False) # <-- AÑADE ESTA LÍNEA
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
-    
-    comments: List["CommentModel"] = Relationship(
-        back_populates="blog_post",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
-    )
-
+    comments: List["CommentModel"] = Relationship(back_populates="blog_post")
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     
     class Config:
         exclude = {"userinfo", "comments", "saved_by_users"}
     
+    # --- ✨ AÑADE ESTA PROPIEDAD PARA ESTANDARIZAR CÁLCULOS ✨ ---
     @property
     def base_price(self) -> float:
+        """Devuelve el precio del artículo SIN IVA."""
         if self.price_includes_iva:
+            # Si el precio ya incluye IVA, lo calculamos hacia atrás
             return (self.price or 0.0) / 1.19
+        # Si no, el precio introducido es el precio base
         return self.price or 0.0
 
     @property
@@ -187,11 +189,13 @@ class PurchaseModel(rx.Model, table=True):
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
     status: PurchaseStatus = Field(default=PurchaseStatus.PENDING_CONFIRMATION, nullable=False)
+    # --- 👇 AÑADE ESTA LÍNEA 👇 ---
     shipping_applied: Optional[float] = Field(default=None)
     shipping_name: Optional[str] = None; shipping_city: Optional[str] = None
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     
+    # --- ✨ AÑADE TODOS ESTOS NUEVOS CAMPOS AQUÍ ✨ ---
     payment_method: str = Field(default="online", nullable=False)
     estimated_delivery_date: Optional[datetime] = Field(default=None)
     delivery_confirmation_sent_at: Optional[datetime] = Field(default=None)
@@ -219,13 +223,16 @@ class PurchaseItemModel(rx.Model, table=True):
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     quantity: int
     price_at_purchase: float
+    
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # Este campo guardará un JSON con los detalles de la variante elegida
+    # por ejemplo: {"Talla": "S", "Color": "Azul"}
     selected_variant: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
-    
-    # --- ✅ CORRECCIÓN CRÍTICA: Se añade 'back_populates' para crear la relación bidireccional. ---
-    comments: List["CommentModel"] = Relationship(back_populates="purchase_item")
+    comments: List["CommentModel"] = Relationship()
 
     class Config:
         exclude = {"purchase", "blog_post", "comments"}
@@ -278,11 +285,8 @@ class CommentModel(rx.Model, table=True):
     blog_post: "BlogPostModel" = Relationship(back_populates="comments")
     votes: List["CommentVoteModel"] = Relationship(back_populates="comment")
 
-    # --- ✅ CORRECCIÓN CRÍTICA: Se añade la relación inversa a PurchaseItemModel. ---
-    purchase_item: Optional["PurchaseItemModel"] = Relationship(back_populates="comments")
-    
     class Config:
-        exclude = {"blog_post", "userinfo", "parent", "updates", "votes", "purchase_item"}
+        exclude = {"blog_post", "userinfo", "parent", "updates", "votes"}
 
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
@@ -307,24 +311,29 @@ class CommentVoteModel(rx.Model, table=True):
         exclude = {"userinfo", "comment"}
 
 class SupportTicketModel(rx.Model, table=True):
-    purchase_id: int = Field(foreign_key="purchasemodel.id", unique=True)
+    """Representa una solicitud de devolución o cambio."""
+    purchase_id: int = Field(foreign_key="purchasemodel.id", unique=True) # Solo un ticket por compra
     buyer_id: int = Field(foreign_key="userinfo.id")
     seller_id: int = Field(foreign_key="userinfo.id")
-    subject: str
+    subject: str  # e.g., "El pedido no cumple con las características"
     status: TicketStatus = Field(default=TicketStatus.OPEN, nullable=False)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+
     purchase: "PurchaseModel" = Relationship(sa_relationship_kwargs={"foreign_keys": "[SupportTicketModel.purchase_id]"})
     buyer: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[SupportTicketModel.buyer_id]"})
     seller: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[SupportTicketModel.seller_id]"})
     messages: List["SupportMessageModel"] = Relationship(back_populates="ticket")
 
 class SupportMessageModel(rx.Model, table=True):
+    """Representa un mensaje individual dentro de un ticket de soporte."""
     ticket_id: int = Field(foreign_key="supportticketmodel.id")
     author_id: int = Field(foreign_key="userinfo.id")
     content: str
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+
     ticket: "SupportTicketModel" = Relationship(back_populates="messages")
     author: "UserInfo" = Relationship()
+
     @property
     def created_at_formatted(self) -> str:
         return format_utc_to_local(self.created_at)

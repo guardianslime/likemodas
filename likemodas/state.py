@@ -31,7 +31,7 @@ from .utils.formatting import format_to_cop
 from .utils.validators import validate_password
 from .data.colombia_locations import load_colombia_data
 from .data.product_options import (
-    LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_TAMANOS_MOCHILAS, MATERIALES_ROPA, MATERIALES_CALZADO, MATERIALES_MOCHILAS, LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TAMANOS_MOCHILAS, LISTA_TIPOS_GENERAL,
+    MATERIALES_ROPA, MATERIALES_CALZADO, MATERIALES_MOCHILAS, LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TAMANOS_MOCHILAS, LISTA_TIPOS_GENERAL,
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
@@ -43,18 +43,10 @@ def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
         return f"Envío: {format_to_cop(shipping_cost)}"
     return "Envío a convenir"
 
-# ✅ INICIO DE LA CORRECCIÓN: Coloca este bloque completo de DTOs aquí
+# --- ✨ INICIO DE LA CORRECCIÓN: NUEVOS DTOs ---
 
-def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
-    """Genera el texto de envío basado en el costo."""
-    if shipping_cost == 0.0:
-        return "Envío Gratis"
-    if shipping_cost is not None and shipping_cost > 0:
-        return f"Envío: {format_to_cop(shipping_cost)}"
-    return "Envío a convenir"
-
-# --- DTOs (Data Transfer Objects) ---
 class UserInfoDTO(rx.Base):
+    """DTO simple y serializable para la información del usuario en sesión."""
     id: int
     user_id: int
     username: str
@@ -62,6 +54,7 @@ class UserInfoDTO(rx.Base):
     role: str
 
 class NotificationDTO(rx.Base):
+    """DTO para las notificaciones."""
     id: int
     message: str
     is_read: bool
@@ -69,6 +62,7 @@ class NotificationDTO(rx.Base):
     created_at_formatted: str
 
 class ContactEntryDTO(rx.Base):
+    """DTO para las entradas de contacto."""
     id: int
     first_name: str
     last_name: Optional[str]
@@ -76,6 +70,9 @@ class ContactEntryDTO(rx.Base):
     message: str
     created_at_formatted: str
     userinfo_id: Optional[int]
+
+
+# --- ✨ FIN DE LA CORRECCIÓN ---
 
 class ProductCardData(rx.Base):
     id: int
@@ -91,14 +88,18 @@ class ProductCardData(rx.Base):
     userinfo_id: int
     average_rating: float = 0.0
     rating_count: int = 0
+
     class Config:
         orm_mode = True
+
     @property
     def full_stars(self) -> list[int]:
         return list(range(math.floor(self.average_rating)))
+
     @property
     def has_half_star(self) -> bool:
         return (self.average_rating - math.floor(self.average_rating)) >= 0.5
+
     @property
     def empty_stars(self) -> list[int]:
         return list(range(5 - math.ceil(self.average_rating)))
@@ -119,14 +120,18 @@ class ProductDetailData(rx.Base):
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
     is_imported: bool = False
+
     class Config:
         orm_mode = True
+
     @property
     def full_stars(self) -> list[int]:
         return list(range(math.floor(self.average_rating)))
+
     @property
     def has_half_star(self) -> bool:
         return (self.average_rating - math.floor(self.average_rating)) >= 0.5
+
     @property
     def empty_stars(self) -> list[int]:
         return list(range(5 - math.ceil(self.average_rating)))
@@ -136,25 +141,31 @@ class AdminPurchaseCardData(rx.Base):
     status: str; total_price: float; shipping_name: str; shipping_full_address: str
     shipping_phone: str; items_formatted: list[str]
     payment_method: str
+    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     confirmed_at: Optional[datetime] = None
+
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
     
 class PurchaseItemCardData(rx.Base):
+    """DTO para mostrar la miniatura de un artículo en el historial de compras."""
     id: int
     title: str
     image_url: str
     price_at_purchase: float
     price_at_purchase_cop: str
     quantity: int
-    @property
+
+    @property # <-- ✨ ESTA ES LA CORRECCIÓN
     def subtotal_cop(self) -> str:
+        """Calcula y formatea el subtotal para esta línea de artículo."""
         return format_to_cop(self.price_at_purchase * self.quantity)
     
 class UserPurchaseHistoryCardData(rx.Base):
+    """DTO actualizado para el historial de compras del usuario."""
     id: int
-    userinfo_id: int
+    userinfo_id: int  # --- AÑADE ESTA LÍNEA ---
     purchase_date_formatted: str
     status: str
     total_price_cop: str
@@ -167,6 +178,7 @@ class UserPurchaseHistoryCardData(rx.Base):
     items: list[PurchaseItemCardData]
 
 class AdminPostRowData(rx.Base):
+    """DTO para una fila en la tabla de publicaciones del admin."""
     id: int
     title: str
     price_cop: str
@@ -187,6 +199,7 @@ class CommentData(rx.Base):
     updates: List["CommentData"] = []
 
 class InvoiceItemData(rx.Base):
+    """Un modelo específico para cada línea de artículo en la factura."""
     name: str
     quantity: int
     price_cop: str
@@ -194,7 +207,16 @@ class InvoiceItemData(rx.Base):
     iva_cop: str
     total_con_iva_cop: str
 
+    @property
+    def price_cop(self) -> str:
+        return format_to_cop(self.price)
+
+    @property
+    def total_cop(self) -> str:
+        return format_to_cop(self.price * self.quantity)
+
 class InvoiceData(rx.Base):
+    """DTO para contener toda la información necesaria para una factura."""
     id: int
     purchase_date_formatted: str
     status: str
@@ -204,7 +226,7 @@ class InvoiceData(rx.Base):
     shipping_full_address: str
     shipping_phone: str
     subtotal_cop: str
-    shipping_applied_cop: str
+    shipping_applied_cop: str # <-- ✨ 1. AÑADE ESTE CAMPO
     iva_cop: str
     total_price_cop: str
 
@@ -215,6 +237,7 @@ class SupportMessageData(rx.Base):
     created_at_formatted: str
 
 class SupportTicketAdminData(rx.Base):
+    """DTO para mostrar un resumen del ticket en la lista del admin."""
     ticket_id: int
     purchase_id: int
     buyer_name: str
@@ -223,25 +246,35 @@ class SupportTicketAdminData(rx.Base):
     created_at_formatted: str
 
 class SellerInfoData(rx.Base):
+    """DTO para mostrar la información pública de un vendedor."""
     id: int
     username: str
 
 class SupportTicketData(rx.Base):
+    """DTO para mostrar la información de un ticket en la vista de chat."""
     id: int
     purchase_id: int
     buyer_id: int
     seller_id: int
     subject: str
     status: str
+
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Se añade esta configuración para permitir el uso de .from_orm()
     class Config:
         orm_mode = True
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
+# --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
 class AttributeGroupDTO(rx.Base):
-    key: str
-    options: list[str]
+    """DTO para agrupar un atributo y sus posibles valores."""
+    key: str        # ej: "Talla"
+    options: list[str] # RENOMBRADO de 'values' a 'options'
+# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
 class CartItemData(rx.Base):
-    cart_key: str
+    """DTO para el carrito, ahora incluye detalles de la variante."""
+    cart_key: str  # e.g., "15-2" (product_id-variant_index)
     product_id: int
     variant_index: int
     title: str
@@ -249,29 +282,34 @@ class CartItemData(rx.Base):
     price_cop: str
     image_url: str
     quantity: int
-    variant_details: dict
+    variant_details: dict # e.g., {"Talla": "S", "Color": "Azul"}
+
     @property
     def subtotal(self) -> float:
         return self.price * self.quantity
+
     @property
     def subtotal_cop(self) -> str:
         return format_to_cop(self.subtotal)
-
+    
 class ModalSelectorDTO(rx.Base):
-    key: str
-    options: list[str]
-    current_value: str
+    """Representa el estado completo de un selector en el modal."""
+    key: str           # ej: "Talla"
+    options: list[str]   # ej: ["S", "M"] (solo las opciones válidas)
+    current_value: str # ej: "S"
 
 class VariantFormData(rx.Base):
+    """DTO para manejar los datos de una variante en el formulario."""
     attributes: dict[str, str]
-    stock: int = 10
+    stock: int = 10  # Stock por defecto
     image_url: str = ""
 
+# --- AÑADE ESTA NUEVA CLASE DTO AQUÍ ---
 class UniqueVariantItem(rx.Base):
-    variant: dict
-    index: int
+    """Un DTO para que rx.foreach entienda la estructura de las variantes únicas."""
+    variant: dict  # El diccionario de la variante en sí
+    index: int     # El índice original en la lista completa de variantes
 
-# ✅ FIN DE LA CORRECCIÓN: El bloque de DTOs termina aquí.
 # --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -294,61 +332,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     success: bool = False
     error_message: str = ""
 
-    # ✅ INICIO DE LA CORRECCIÓN: Variables y lógica de registro que faltaban
-    success: bool = False
-    error_message: str = ""
-    
-    def handle_registration_email(self, form_data: dict):
-        self.success = False
-        self.error_message = ""
-        username = form_data.get("username")
-        email = form_data.get("email")
-        password = form_data.get("password")
-        confirm_password = form_data.get("confirm_password")
 
-        if not all([username, email, password, confirm_password]):
-            self.error_message = "Todos los campos son obligatorios."
-            return
-        if password != confirm_password:
-            self.error_message = "Las contraseñas no coinciden."
-            return
-        password_errors = validate_password(password)
-        if password_errors:
-            self.error_message = "\n".join(password_errors)
-            return
-
-        try:
-            with rx.session() as session:
-                if session.exec(sqlmodel.select(LocalUser).where(LocalUser.username == username)).first():
-                    self.error_message = "El nombre de usuario ya está en uso."
-                    return
-                if session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == email)).first():
-                    self.error_message = "El email ya está registrado."
-                    return
-
-                password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-                new_user = LocalUser(username=username, password_hash=password_hash, enabled=True)
-                session.add(new_user)
-                session.commit()
-                session.refresh(new_user)
-                
-                user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
-                new_user_info = UserInfo(email=email, user_id=new_user.id, role=user_role)
-                session.add(new_user_info)
-                session.commit()
-                session.refresh(new_user_info)
-
-                token_str = secrets.token_urlsafe(32)
-                expires = datetime.now(timezone.utc) + timedelta(hours=24)
-                verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
-                session.add(verification_token)
-                session.commit()
-                
-                send_verification_email(recipient_email=email, token=token_str)
-                self.success = True
-        except Exception as e:
-            self.error_message = f"Error inesperado: {e}"
-    # ✅ FIN DE LA CORRECCIÓN
     
     # --- ✨ INICIO DE LA CORRECCIÓN: PROPIEDADES COMPUTADAS REFACTORIZADAS ---
     @rx.var(cache=True)
@@ -372,7 +356,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             return None
 
+    @rx.var
+    def is_admin(self) -> bool:
+        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN.value
 
+    def handle_registration_email(self, form_data: dict):
         self.success = False
         self.error_message = ""
         username = form_data.get("username")
@@ -615,35 +603,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.category == Category.MOCHILAS.value:
             return MATERIALES_MOCHILAS
         return []
-
-    # Lista de variantes para el producto que se está creando. Cada dict es una IMAGEN con sus atributos.
-    new_variants: list[dict] = []
-    # Índice de la imagen/variante que se está editando en el formulario.
-    selected_variant_index: int = -1
-
+            
     attr_tallas_ropa: list[str] = []
     attr_numeros_calzado: list[str] = []
     attr_tamanos_mochila: list[str] = []
-    attr_colores: list[str] = []
+    # --- CAMBIO CLAVE 1: De lista a string ---
+    # Ya no permitimos múltiples colores, solo uno a la vez.
+    attr_colores: str = "" # Antes era una lista: attr_colores: list[str] = []
     attr_material: str = ""
     attr_tipo: str = ""
     search_attr_tipo: str = ""
 
-    # ✅ INICIO CORRECCIÓN 1: Variables temporales para el formulario
-    temp_talla: str = ""
-    temp_numero: str = ""
-    temp_tamano: str = ""
-    temp_color: str = "" # Variable que faltaba
-
-    generated_variants_map: dict[int, list[VariantFormData]] = {}
-    
-    # Setters para las variables temporales.
-    def set_temp_talla(self, value: str): self.temp_talla = value
-    def set_temp_numero(self, value: str): self.temp_numero = value
-    def set_temp_tamano(self, value: str): self.temp_tamano = value
-    def set_temp_color(self, value: str): self.temp_color = value
-    # ✅ FIN CORRECCIÓN 1
-
+    # --- AÑADE ESTE NUEVO SETTER ---
+    def set_attr_colores(self, value: str): self.attr_colores = value
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
     def set_attr_material(self, value: str): self.attr_material = value
     def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
@@ -652,43 +624,30 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     SELECTABLE_ATTRIBUTES = ["Talla", "Número", "Tamaño"]
 
-    # ✅ INICIO CORRECCIÓN 2: Lógica de atributos unificada
-    def add_variant_attribute(self, key: str):
-        target_list_name, value = "", ""
-        if key == "Color": target_list_name, value = "attr_colores", self.temp_color
-        elif key == "Talla": target_list_name, value = "attr_tallas_ropa", self.temp_talla
-        elif key == "Número": target_list_name, value = "attr_numeros_calzado", self.temp_numero
-        elif key == "Tamaño": target_list_name, value = "attr_tamanos_mochila", self.temp_tamano
-        if not value: return
-        current_list = getattr(self, target_list_name)
-        if value not in current_list:
-            current_list.append(value)
-            setattr(self, target_list_name, sorted(current_list))
-
     def select_variant_for_editing(self, index: int):
+        """
+        Selecciona una imagen. Carga sus atributos guardados en el formulario.
+        La nueva propiedad `current_generated_variants` se actualizará automáticamente.
+        """
         self.selected_variant_index = index
-        self.attr_colores = []
+        
+        # Limpia los campos del formulario antes de cargar los nuevos
+        self.attr_colores = "" # Limpiar el color
         self.attr_tallas_ropa = []
         self.attr_numeros_calzado = []
         self.attr_tamanos_mochila = []
 
-    @rx.var
-    def unique_modal_variants(self) -> list[UniqueVariantItem]:
-        """
-        Devuelve una lista de DTOs con URLs de imagen únicas para las miniaturas del modal.
-        """
-        if not self.product_in_modal or not self.product_in_modal.variants:
-            return []
-        
-        unique_items = []
-        seen_images = set()
-        for i, variant in enumerate(self.product_in_modal.variants):
-            image_url = variant.get("image_url")
-            if image_url and image_url not in seen_images:
-                seen_images.add(image_url)
-                # En lugar de un dict, creamos una instancia del nuevo DTO
-                unique_items.append(UniqueVariantItem(variant=variant, index=i))
-        return unique_items
+        # Carga los atributos guardados para esta imagen, si existen
+        if 0 <= index < len(self.new_variants):
+            variant_attrs = self.new_variants[index].get("attributes", {})
+            # Ahora asignamos un string, no una lista. Asumimos el primer color si hay varios guardados por error.
+            self.attr_colores = variant_attrs.get("Color", [""])[0] if isinstance(variant_attrs.get("Color"), list) else variant_attrs.get("Color", "")
+            if self.category == Category.ROPA.value:
+                self.attr_tallas_ropa = variant_attrs.get("Talla", [])
+            elif self.category == Category.CALZADO.value:
+                self.attr_numeros_calzado = variant_attrs.get("Número", [])
+            elif self.category == Category.MOCHILAS.value:
+                self.attr_tamanos_mochila = variant_attrs.get("Tamaño", [])
 
     def save_variant_attributes(self):
         """Guarda los atributos actuales del formulario en la variante seleccionada."""
@@ -723,43 +682,85 @@ class AppState(reflex_local_auth.LocalAuthState):
         # Actualiza el estado que controla los selectores en el modal
         self.modal_selected_attributes = new_selections
 
-    def remove_variant_attribute(self, key: str, value: str):
-        target_list_name = ""
-        if key == "Color": target_list_name = "attr_colores"
-        elif key == "Talla": target_list_name = "attr_tallas_ropa"
-        elif key == "Número": target_list_name = "attr_numeros_calzado"
-        elif key == "Tamaño": target_list_name = "attr_tamanos_mochila"
-        if not target_list_name: return
-        current_list = getattr(self, target_list_name)
-        if value in current_list:
-            current_list.remove(value)
-            setattr(self, target_list_name, current_list)
+    # --- 👇 AÑADE ESTAS LÍNEAS NUEVAS --- 👇
+    temp_talla: str = ""
+    temp_numero: str = ""
+    temp_tamano: str = ""
 
-    # ✅ FIN CORRECCIÓN 2
-
-    # ✅ INICIO CORRECCIÓN 3: Lógica de generación de variantes reescrita
-    def generate_variants(self):
-        if self.selected_variant_index < 0:
-            return rx.toast.error("Selecciona una imagen primero.")
-
-        colors = self.attr_colores
-        sizes, size_key = [], ""
-        if self.category == Category.ROPA.value: sizes, size_key = self.attr_tallas_ropa, "Talla"
-        elif self.category == Category.CALZADO.value: sizes, size_key = self.attr_numeros_calzado, "Número"
-        elif self.category == Category.MOCHILAS.value: sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
+    def set_temp_talla(self, talla: str):
+        self.temp_talla = talla
+    
+    def set_temp_numero(self, numero: str):
+        self.temp_numero = numero
         
-        if not colors or not sizes:
-            return rx.toast.error(f"Debes añadir al menos un color y una/un {size_key.lower()}.")
+    def set_temp_tamano(self, tamano: str):
+        self.temp_tamano = tamano
+    # --- FIN DE LAS LÍNEAS NUEVAS ---
 
-        generated_variants = [
-            VariantFormData(attributes={"Color": color, size_key: size})
-            for color in colors for size in sizes
-        ]
+    # Nuevas variables para el formulario de variantes
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Se añaden las variables que faltaban para el formulario de AÑADIR posts.
+    new_variants: list[dict] = []
+    selected_variant_index: int = -1 # -1 significa que no hay ninguna seleccionada
+    variant_form_data: list[VariantFormData] = []
+    # --- AÑADE ESTA LÍNEA AQUÍ ---
+    generated_variants_map: dict[int, list[VariantFormData]] = {}
+    # --- FIN DE LA CORRECCIÓN ---
+
+    # --- NUEVA PROPIEDAD COMPUTADA ---
+
+    
+    @rx.var
+    def current_variant_display_attributes(self) -> dict[str, str]:
+        """Prepara los atributos de la variante actual que son de SOLO LECTURA."""
+        variant = self.current_modal_variant
+        if not variant: return {}
+        
+        display_attrs = {}
+        attributes = variant.get("attributes", {})
+        for key, value in attributes.items():
+            if key not in self.SELECTABLE_ATTRIBUTES:
+                display_attrs[key] = ", ".join(value) if isinstance(value, list) else value
+        return display_attrs
+
+    # Método para generar las combinaciones de variantes
+    def generate_variants(self):
+        """
+        Genera variantes y las asocia con la imagen actualmente seleccionada.
+        También guarda los atributos en la variante principal para persistencia.
+        """
+        if self.selected_variant_index < 0:
+            return rx.toast.error("Por favor, selecciona una imagen primero.")
+
+        # 1. Recopila los atributos del formulario
+        color = self.attr_colores
+        sizes, size_key = [], ""
+        if self.category == Category.ROPA.value:
+            sizes, size_key = self.attr_tallas_ropa, "Talla"
+        elif self.category == Category.CALZADO.value:
+            sizes, size_key = self.attr_numeros_calzado, "Número"
+        elif self.category == Category.MOCHILAS.value:
+            sizes, size_key = self.attr_tamanos_mochila, "Tamaño"
+
+        if not color or not sizes: # Se valida el string de color
+            return rx.toast.error("Debes seleccionar un color y al menos una talla/tamaño/número.")
+
+       # Guarda los atributos en la imagen (Color ahora es un string)
+        current_attributes = {"Color": color, size_key: sizes}
+        self.new_variants[self.selected_variant_index]["attributes"] = current_attributes
+
+        # Genera las combinaciones
+        generated_variants = []
+        for size in sizes: # El bucle de colores ya no es necesario
+            generated_variants.append(
+                VariantFormData(attributes={"Color": color, size_key: size})
+            )
+        
         self.generated_variants_map[self.selected_variant_index] = generated_variants
-        return rx.toast.info(f"{len(generated_variants)} combinaciones generadas para la imagen seleccionada.")
+        return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen #{self.selected_variant_index + 1}.")
 
 
-    # ✅ INICIO DE LA CORRECCIÓN: Añade este bloque de funciones
+    # --- FUNCIONES DE STOCK MODIFICADAS ---
     def _update_variant_stock(self, group_index: int, item_index: int, new_stock: int):
         if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
             self.generated_variants_map[group_index][item_index].stock = max(0, new_stock)
@@ -783,61 +784,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     def assign_image_to_variant(self, group_index: int, item_index: int, image_url: str):
         if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
             self.generated_variants_map[group_index][item_index].image_url = image_url
-
-    def add_attribute_to_variant(self, key: str):
-        """Añade un atributo a la variante/imagen seleccionada, usando la variable temporal correspondiente."""
-        if self.selected_variant_index < 0:
-            return
-
-        value = ""
-        if key == "Color": value = self.temp_color
-        elif key == "Talla": value = self.temp_talla
-        elif key == "Número": value = self.temp_numero
-        elif key == "Tamaño": value = self.temp_tamano
-
-        if not value: return
-
-        variant = self.new_variants[self.selected_variant_index]
-        if "attributes" not in variant:
-            variant["attributes"] = {}
-
-        current_list = variant["attributes"].get(key, [])
-        if value not in current_list:
-            current_list.append(value)
-            variant["attributes"][key] = sorted(current_list)
-            self.new_variants = self.new_variants[:]
-            self.select_variant_for_editing(self.selected_variant_index)
-
-    def remove_attribute_from_variant(self, key: str, value: str):
-        """Elimina un atributo de la variante/imagen seleccionada."""
-        if self.selected_variant_index < 0: return
-            
-        variant = self.new_variants[self.selected_variant_index]
-        if "attributes" in variant and key in variant["attributes"]:
-            current_list = variant["attributes"][key]
-            if value in current_list:
-                current_list.remove(value)
-                if not current_list:
-                    del variant["attributes"][key]
-                else:
-                    variant["attributes"][key] = current_list
-                self.new_variants = self.new_variants[:]
-                self.select_variant_for_editing(self.selected_variant_index)
-
-    def select_variant_for_editing(self, index: int):
-        """Selecciona una imagen y carga sus atributos en las variables del formulario."""
-        self.selected_variant_index = index
-        if 0 <= index < len(self.new_variants):
-            variant = self.new_variants[index]
-            attributes = variant.get("attributes", {})
-            self.attr_colores = attributes.get("Color", [])
-            self.attr_tallas_ropa = attributes.get("Talla", [])
-            self.attr_numeros_calzado = attributes.get("Número", [])
-            self.attr_tamanos_mochila = attributes.get("Tamaño", [])
     
-    # ✅ FIN DE LA CORRECCIÓN
 
-    # ✅ INICIO DE LA CORRECCIÓN: Añade esta propiedad computada aquí
+
+    # --- 👇 AÑADE ESTA NUEVA FUNCIÓN AQUÍ 👇 ---
     @rx.var
     def uploaded_image_urls(self) -> list[str]:
         """
@@ -852,41 +802,46 @@ class AppState(reflex_local_auth.LocalAuthState):
             for v in self.new_variants 
             if v.get("image_url")
         ]
-    # ✅ FIN DE LA CORRECCIÓN
 
-    def _clear_add_form(self):
-        self.title = ""
-        self.content = ""
-        self.price = ""
-        self.category = ""
-        self.temp_images = []
-        self.new_variants = []
-        self.selected_variant_index = -1
-        self.attr_colores = []
-        self.attr_talla_ropa = ""
-        self.attr_material = ""
-        self.attr_numero_calzado = ""
-        self.attr_tamano_mochila = ""
-
-    # --- ✅ INICIO DE LA CORRECCIÓN: REEMPLAZA ESTA FUNCIÓN POR COMPLETO ✅ ---
     @rx.event
     def submit_and_publish(self, form_data: dict):
+        """
+        Crea y publica un nuevo producto, guardando las variantes con su stock individual.
+        """
         if not self.is_admin or not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
+        if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
+            return rx.toast.error("Título, precio y categoría son obligatorios.")
         
-        final_variants_to_save = []
-        for group_index, image_variant_group in enumerate(self.new_variants):
-            image_url = image_variant_group.get("image_url", "")
-            if group_index in self.generated_variants_map:
-                for generated_variant in self.generated_variants_map[group_index]:
-                    final_variants_to_save.append({
-                        "image_url": image_url,
-                        "stock": generated_variant.stock,
-                        "attributes": generated_variant.attributes,
-                    })
-        
-        if not final_variants_to_save:
-            return rx.toast.error("Debes generar las variantes para al menos una imagen antes de publicar.")
+        if not self.generated_variants_map:
+            return rx.toast.error("Debes generar y configurar las variantes para al menos una imagen.")
+
+        try:
+            shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
+            limit = None
+            if self.combines_shipping and self.shipping_combination_limit_str:
+                limit = int(self.shipping_combination_limit_str)
+            if self.combines_shipping and (limit is None or limit <= 0):
+                return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
+        except ValueError:
+            return rx.toast.error("Los costos y límites deben ser números válidos.")
+
+        # --- Lógica para aplanar las variantes del map a una sola lista para la BD ---
+        all_variants_for_db = []
+        for index, generated_list in self.generated_variants_map.items():
+            # Obtiene la URL de la imagen principal para este grupo de variantes
+            main_image_url_for_group = self.new_variants[index].get("image_url", "")
+            
+            for variant_data in generated_list:
+                all_variants_for_db.append({
+                    "attributes": variant_data.attributes,
+                    "stock": variant_data.stock,
+                    # Usa la imagen asignada a la variante, o la imagen principal del grupo como fallback
+                    "image_url": variant_data.image_url or main_image_url_for_group
+                })
+
+        if not all_variants_for_db:
+             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
 
         with rx.session() as session:
             new_post = BlogPostModel(
@@ -894,28 +849,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                 title=form_data["title"],
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
-                
-                # --- ✅ CORRECCIÓN CRÍTICA: Se eliminó la línea duplicada 'variants=self.new_variants' ---
-                variants=final_variants_to_save,
-                
+                price_includes_iva=self.price_includes_iva,
+                category=form_data.get("category"),
+                variants=all_variants_for_db,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                category=Category(form_data["category"]),
-                price_includes_iva=self.price_includes_iva,
-                is_imported=self.is_imported,
-                shipping_cost=float(self.shipping_cost_str) if self.shipping_cost_str else None,
+                shipping_cost=shipping_cost,
                 is_moda_completa_eligible=self.is_moda_completa,
                 combines_shipping=self.combines_shipping,
-                shipping_combination_limit=int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
+                shipping_combination_limit=limit,
+                is_imported=self.is_imported,
             )
             session.add(new_post)
             session.commit()
-        
-        self._clear_add_form()
-        yield rx.toast.success("¡Producto publicado con éxito!")
-        return rx.redirect("/blog")
+            session.refresh(new_post)
 
-    # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
+        self._clear_add_form()
+        yield rx.toast.success("Producto publicado exitosamente.")
+        return rx.redirect("/blog")
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
@@ -1038,17 +989,46 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_materiales_tela: list[str] = []
     filter_tipos_general: list[str] = []
 
-    def add_attribute_value(self, attribute_name: str, value: str):
-        current_list = getattr(self, attribute_name)
-        if value not in current_list:
-            current_list.append(value)
-            setattr(self, attribute_name, current_list)
+    def add_variant_attribute(self, key: str, value: str):
+        """
+        Añade un valor de atributo (ej: "S") a la lista de un atributo específico (ej: "Talla")
+        de la variante actualmente seleccionada.
+        """
+        if self.selected_variant_index < 0 or self.selected_variant_index >= len(self.new_variants):
+            return
 
-    def remove_attribute_value(self, attribute_name: str, value: str):
-        current_list = getattr(self, attribute_name)
-        if value in current_list:
-            current_list.remove(value)
-            setattr(self, attribute_name, current_list)
+        variant = self.new_variants[self.selected_variant_index]
+        if "attributes" not in variant:
+            variant["attributes"] = {}
+        
+        if key not in variant["attributes"]:
+            variant["attributes"][key] = []
+
+        # Evita duplicados
+        if value not in variant["attributes"][key]:
+            variant["attributes"][key].append(value)
+            # Actualiza también el "buffer" de la UI para que se refresque visualmente
+            if key == "Talla": self.attr_tallas_ropa = variant["attributes"][key]
+            elif key == "Número": self.attr_numeros_calzado = variant["attributes"][key]
+            elif key == "Tamaño": self.attr_tamanos_mochila = variant["attributes"][key]
+
+
+    def remove_variant_attribute(self, key: str, value: str):
+        """
+        Elimina un valor de atributo de la lista de un atributo específico
+        de la variante actualmente seleccionada.
+        """
+        if self.selected_variant_index < 0 or self.selected_variant_index >= len(self.new_variants):
+            return
+
+        variant = self.new_variants[self.selected_variant_index]
+        if "attributes" in variant and key in variant["attributes"]:
+            if value in variant["attributes"][key]:
+                variant["attributes"][key].remove(value)
+                # Actualiza también el "buffer" de la UI para que se refresque visualmente
+                if key == "Talla": self.attr_tallas_ropa = variant["attributes"][key]
+                elif key == "Número": self.attr_numeros_calzado = variant["attributes"][key]
+                elif key == "Tamaño": self.attr_tamanos_mochila = variant["attributes"][key]
 
     def add_filter_value(self, filter_name: str, value: str):
         current_list = getattr(self, filter_name)
@@ -1224,18 +1204,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     product_in_modal: Optional[ProductDetailData] = None
     current_image_index: int = 0
     is_editing_post: bool = False
-    # --- 👇 LÍNEA MODIFICADA 👇 ---
-    # Cambiamos de 'Optional[BlogPostModel]' a 'Optional[int]'
     post_to_edit_id: Optional[int] = None 
     post_title: str = ""
     post_content: str = ""
     price_str: str = ""
-    # --- ✨ AÑADE ESTA VARIABLE Y SU SETTER ✨ ---
     price_includes_iva: bool = True
-
     post_images_in_form: list[str] = []
 
+    
 
+    
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     def next_image(self):
         if self.product_in_modal and self.product_in_modal.image_urls:
@@ -1375,11 +1354,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
 
 
-
-    # --- Variables para el modal de producto ---
-    # Índice de la variante que el cliente está viendo en el modal
-    modal_selected_variant_index: int = 0
-
     @rx.var
     def current_modal_variant(self) -> Optional[dict]:
         """Devuelve la variante seleccionada actualmente en el modal."""
@@ -1409,6 +1383,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             value_str = ", ".join(v) if isinstance(v, list) else str(v)
             processed.append(AttributeData(key=k, value=value_str))
         return processed
+    
+    @rx.var
+    def unique_modal_variants(self) -> list[UniqueVariantItem]: # <-- Cambia el tipo de retorno
+        """
+        Devuelve una lista de DTOs con URLs de imagen únicas para las miniaturas del modal.
+        """
+        if not self.product_in_modal or not self.product_in_modal.variants:
+            return []
+        
+        unique_items = []
+        seen_images = set()
+        for i, variant in enumerate(self.product_in_modal.variants):
+            image_url = variant.get("image_url")
+            if image_url and image_url not in seen_images:
+                seen_images.add(image_url)
+                # En lugar de un dict, creamos una instancia del nuevo DTO
+                unique_items.append(UniqueVariantItem(variant=variant, index=i))
+        return unique_items
 
     cart: Dict[int, int] = {}
 
@@ -1471,7 +1463,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.toast.success("¡Ubicación de origen guardada!")
             
     # --- ✨ 1. AÑADE LAS NUEVAS VARIABLES DE ESTADO ✨ ---
-    payment_method: str = "Online" 
+    payment_method: str = "online" # Valor por defecto para el carrito
     # --- ✨ AÑADE ESTA LÍNEA AQUÍ ✨ ---
     active_purchases: List[AdminPurchaseCardData] = []
     admin_delivery_time: Dict[int, Dict[str, str]] = {}
@@ -1627,7 +1619,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                     )
             return cart_items_data
-        
+    
+    modal_selected_variant_index: int = 0
+
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
         """
@@ -1646,94 +1640,114 @@ class AppState(reflex_local_auth.LocalAuthState):
                 del self.modal_selected_attributes[next_key]
 
     @rx.var
-    def current_variant_display_attributes(self) -> dict[str, str]:
-        """Prepara los atributos de la variante actual que son de SOLO LECTURA."""
-        variant = self.current_modal_variant
-        if not variant: return {}
-        
-        display_attrs = {}
-        attributes = variant.get("attributes", {})
-        for key, value in attributes.items():
-            if key not in self.SELECTABLE_ATTRIBUTES:
-                display_attrs[key] = ", ".join(value) if isinstance(value, list) else value
-        return display_attrs
-
-    @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
-        """
-        Calcula los selectores para la variante actual. Ahora muestra
-        SOLAMENTE las opciones de la variante seleccionada.
-        """
-        # Obtiene la variante correspondiente a la imagen seleccionada
-        variant = self.current_modal_variant
-        if not variant:
-            return []
+        if not self.product_in_modal: return []
+        
+        all_variants = self.product_in_modal.variants
+        current_selection = self.modal_selected_attributes
+        
+        # 1. Obtenemos todas las claves de atributos presentes en las variantes
+        all_keys_in_variants = sorted(list(
+            {key for v in all_variants for key in v.get("attributes", {})}
+        ))
+        
+        # 2. Filtramos para quedarnos SOLO con las que son seleccionables
+        selectable_keys = [key for key in all_keys_in_variants if key in self.SELECTABLE_ATTRIBUTES]
 
         selectors = []
-        attributes = variant.get("attributes", {})
-        current_selection = self.modal_selected_attributes
-
-        # Itera sobre los atributos de la variante actual
-        for key, value in attributes.items():
-            # Si el atributo es uno de los que definimos como seleccionable...
-            if key in self.SELECTABLE_ATTRIBUTES:
-                # Crea el DTO para el selector
+        # Ahora el bucle solo se ejecutará para "Talla", "Número", o "Tamaño"
+        for i, key in enumerate(selectable_keys):
+            # ... el resto de la lógica de la función no necesita cambios ...
+            filtered_variants = all_variants
+            for prev_key in selectable_keys[:i]:
+                if prev_key in current_selection:
+                    filtered_variants = [
+                        v for v in filtered_variants 
+                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key] # [cite: 885, 886]
+                    ]
+            
+            valid_options = {
+                v.get("attributes", {}).get(key)
+                for v in filtered_variants
+                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key) # [cite: 887]
+            }
+            
+            if valid_options:
                 selectors.append(
                     ModalSelectorDTO(
                         key=key,
-                        # Las opciones son los valores de esta variante específica
-                        options=sorted(value) if isinstance(value, list) else [value],
-                        # El valor actual es el que está guardado en el estado
-                        current_value=current_selection.get(key, "")
+                        options=sorted(list(valid_options)),
+                        current_value=current_selection.get(key, "") # [cite: 888, 889]
                     )
                 )
-                
         return selectors
 
     @rx.event
     def add_to_cart(self, product_id: int):
         """
-        CORREGIDO: Añade una variante específica al carrito usando un índice verdadero
-        para una identificación robusta.
+        Añade una variante específica de un producto al carrito, validando la selección y el stock.
         """
         if not self.is_authenticated:
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
         if not self.product_in_modal or product_id != self.product_in_modal.id:
             return rx.toast.error("Error al identificar el producto.")
 
+        # --- ✨ INICIO DE LA LÓGICA DE STOCK CORREGIDA ✨ ---
+
+        # 1. Validar que se hayan seleccionado todos los atributos requeridos (Talla, Número, etc.)
         required_keys = {selector.key for selector in self.modal_attribute_selectors}
         if not all(key in self.modal_selected_attributes for key in required_keys):
             missing_keys = required_keys - set(self.modal_selected_attributes.keys())
             return rx.toast.error(f"Por favor, selecciona: {', '.join(missing_keys)}")
 
-        # Combina los atributos visuales (del thumbnail) con los seleccionados (de los menús)
-        visual_variant_attrs = self.product_in_modal.variants[self.modal_selected_variant_index].get("attributes", {})
-        non_selectable_attrs = {k: v for k, v in visual_variant_attrs.items() if k not in self.SELECTABLE_ATTRIBUTES}
-        
-        full_target_attrs = {**non_selectable_attrs, **self.modal_selected_attributes}
-
-        # Encuentra la variante exacta y su índice real
+        # 2. Encontrar la variante exacta que coincide con la selección del usuario
         variant_to_add = None
-        true_variant_index = -1
-        for i, variant in enumerate(self.product_in_modal.variants):
-            if variant.get("attributes") == full_target_attrs:
+        for variant in self.product_in_modal.variants:
+            variant_attrs = variant.get("attributes", {})
+            
+            # Compara los atributos de solo lectura (como Color) y los seleccionables (como Talla)
+            current_variant_attrs_for_comparison = self.product_in_modal.variants[self.modal_selected_variant_index].get("attributes", {})
+            
+            is_match = True
+            # Comprobar atributos de solo lectura (los de la variante visual)
+            for key, value in current_variant_attrs_for_comparison.items():
+                if key not in self.SELECTABLE_ATTRIBUTES and variant_attrs.get(key) != value:
+                    is_match = False
+                    break
+            if not is_match: continue
+
+            # Comprobar atributos seleccionables (los del estado `modal_selected_attributes`)
+            for key, value in self.modal_selected_attributes.items():
+                if variant_attrs.get(key) != value:
+                    is_match = False
+                    break
+            
+            if is_match:
                 variant_to_add = variant
-                true_variant_index = i
                 break
         
         if not variant_to_add:
             return rx.toast.error("La combinación de producto seleccionada no está disponible.")
 
-        # Construye la clave SIMPLIFICADA del carrito
-        cart_key = f"{product_id}-{true_variant_index}"
+        # 3. Construir la clave única para el carrito
+        selection_items = sorted(self.modal_selected_attributes.items())
+        selection_key_part = "-".join([f"{k}:{v}" for k, v in selection_items])
         
+        # El índice de la variante visual (thumbnail) sigue siendo parte de la clave para la imagen
+        cart_key = f"{product_id}-{self.modal_selected_variant_index}-{selection_key_part}"
+        
+        # 4. Verificar el stock de la variante encontrada
         stock_disponible = variant_to_add.get("stock", 0)
         cantidad_en_carrito = self.cart.get(cart_key, 0)
         
         if cantidad_en_carrito + 1 > stock_disponible:
             return rx.toast.error("¡Lo sentimos! No hay suficiente stock para esta combinación.")
         
+        # 5. Si hay stock, añadir al carrito
         self.cart[cart_key] = cantidad_en_carrito + 1
+        
+        # --- ✨ FIN DE LA LÓGICA DE STOCK CORREGIDA ✨ ---
+        
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido al carrito.")
 
@@ -1756,7 +1770,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_title(self, value: str): self.title = value
     def set_content(self, value: str): self.content = value
     def set_price_from_input(self, value: str): self.price = value
-    def set_category(self, value: str): self.category = value
+    def set_category(self, value: str):
+        """
+        Establece la categoría del producto y reinicia todos los estados
+        relacionados con los atributos para evitar la contaminación de datos.
+        """
+        # 1. Establecer la nueva categoría
+        self.category = value
+
+        # 2. Limpiar todas las listas y valores de atributos del formulario
+        self.attr_colores = ""
+        self.attr_tallas_ropa = []
+        self.attr_numeros_calzado = []
+        self.attr_tamanos_mochila = []
+        self.attr_material = ""
+        self.attr_tipo = ""
+
+        # 3. Limpiar las variantes ya generadas, ya que ahora son inválidas
+        self.generated_variants_map = {}
+        
+        # 4. Limpiar los atributos guardados en las imágenes subidas
+        for variant in self.new_variants:
+            if "attributes" in variant:
+                variant["attributes"] = {}
+                
+        # 5. Reiniciar la selección de la imagen a la primera (si hay alguna)
+        if self.new_variants:
+            self.selected_variant_index = 0
+        else:
+            self.selected_variant_index = -1
 
     @rx.event
     async def handle_upload(self, files: list[rx.UploadFile]):
@@ -1770,7 +1812,30 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_image(self, filename: str): self.temp_images.remove(filename)
-   
+    
+    def _clear_add_form(self):
+        self.title = ""
+        self.content = ""
+        self.price = ""
+        self.category = ""
+        self.temp_images = []
+        self.new_variants = []
+        self.selected_variant_index = -1
+        self.attr_colores = "" # Reiniciar a una cadena vacía, no una lista.
+        self.attr_tallas_ropa = []
+        self.attr_numeros_calzado = []
+        self.attr_tamanos_mochila = []
+        self.attr_material = ""
+        self.attr_tipo = ""
+        self.shipping_cost_str = ""
+        self.is_moda_completa = True
+        self.is_imported = False
+        self.combines_shipping = False
+        self.shipping_combination_limit_str = "3"
+        
+        # --- 👇 LÍNEA IMPORTANTE A AÑADIR/VERIFICAR 👇 ---
+        self.variant_form_data = [] # Asegúrate de que esta línea esté aquí
+        self.generated_variants_map = {} # Asegúrate de limpiar el map
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
@@ -1814,29 +1879,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             return admin_posts
             # --- FIN DE LA CORRECCIÓN ---
 
-    # ✅ INICIO CORRECCIÓN 5: Lógica de eliminación segura
     @rx.event
     def delete_post(self, post_id: int):
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
-        
         with rx.session() as session:
-            has_been_purchased = session.exec(
-                sqlmodel.select(PurchaseItemModel).where(PurchaseItemModel.blog_post_id == post_id)
-            ).first()
-
-            if has_been_purchased:
-                return rx.toast.error("No se puede eliminar un producto que ya ha sido vendido.")
-
             post_to_delete = session.get(BlogPostModel, post_id)
             if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
                 session.delete(post_to_delete)
                 session.commit()
-                yield AppState.on_load_admin_store
                 yield rx.toast.success("Publicación eliminada.")
             else:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
-    # ✅ FIN CORRECCIÓN 5
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
@@ -1859,10 +1913,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     default_shipping_address: Optional[ShippingAddressModel] = None
 
     @rx.event
-    def handle_checkout(self, form_data: dict):
+    def handle_checkout(self):
         """
-        CORREGIDO: Procesa la compra usando la clave simplificada para identificar
-        y verificar el stock de forma segura.
+        Procesa la compra:
+        1. Bloquea los productos en la BD para evitar sobreventas.
+        2. Verifica el stock de cada variante específica.
+        3. Si hay stock, deduce la cantidad y crea el registro de compra.
+        4. Si un producto se queda sin stock, lo desactiva automáticamente.
         """
         if not self.is_authenticated or not self.default_shipping_address:
             return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
@@ -1876,6 +1933,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
             
+            # Bloquea las filas de los productos en la BD para una transacción segura
             posts_to_update = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .where(BlogPostModel.id.in_(product_ids))
@@ -1883,22 +1941,30 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
             post_map = {p.id: p for p in posts_to_update}
 
-            # FASE 1: Verificación de Stock (Ahora mucho más simple y robusta)
+            # --- FASE 1: Verificación de Stock ---
             for cart_key, quantity_in_cart in self.cart.items():
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
-                variant_index = int(parts[1])
+                selection_parts = parts[2:]
+                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
 
                 post = post_map.get(prod_id)
-                if not post or not post.variants or not (0 <= variant_index < len(post.variants)):
-                    return rx.toast.error(f"El producto '{post.title if post else 'ID ' + str(prod_id)}' ya no está disponible. Compra cancelada.")
+                if not post:
+                    return rx.toast.error(f"El producto con ID {prod_id} ya no está disponible. Compra cancelada.")
 
-                variant_to_check = post.variants[variant_index]
-                if variant_to_check.get("stock", 0) < quantity_in_cart:
-                    attr_str = ', '.join(f"{k}: {v}" for k, v in variant_to_check.get("attributes", {}).items())
-                    return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Tu compra ha sido cancelada.")
+                variant_found = False
+                for variant in post.variants:
+                    if variant.get("attributes") == selection_attrs:
+                        if variant.get("stock", 0) < quantity_in_cart:
+                            attr_str = ', '.join(selection_attrs.values())
+                            return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Tu compra ha sido cancelada.")
+                        variant_found = True
+                        break
+                
+                if not variant_found:
+                    return rx.toast.error(f"La variante seleccionada para '{post.title}' ya no existe. Compra cancelada.")
 
-            # FASE 2: Creación de Compra y Deducción de Stock
+            # --- FASE 2: Creación de Compra y Deducción de Stock ---
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
                 total_price=summary["grand_total"],
@@ -1918,23 +1984,30 @@ class AppState(reflex_local_auth.LocalAuthState):
             for cart_key, quantity_in_cart in self.cart.items():
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
-                variant_index = int(parts[1])
+                selection_parts = parts[2:]
+                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
                 
                 post = post_map.get(prod_id)
-                variant_to_update = post.variants[variant_index]
                 
-                variant_to_update["stock"] -= quantity_in_cart
+                # Deducir el stock de la variante correcta
+                for variant in post.variants:
+                    if variant.get("attributes") == selection_attrs:
+                        variant["stock"] -= quantity_in_cart
+                        break
+                
+                # Marcar el post para ser actualizado en la sesión
                 session.add(post)
 
+                # Crear el registro del artículo comprado
                 session.add(PurchaseItemModel(
                     purchase_id=new_purchase.id,
                     blog_post_id=post.id,
                     quantity=quantity_in_cart,
                     price_at_purchase=post.price,
-                    selected_variant=variant_to_update.get("attributes", {})
+                    selected_variant=selection_attrs # Guarda la variante exacta
                 ))
 
-            # FASE 3: Verificación de Desactivación Automática
+            # --- FASE 3: Verificación de Desactivación Automática ---
             for post in post_map.values():
                 total_stock = sum(v.get("stock", 0) for v in post.variants)
                 if total_stock <= 0:
@@ -2434,8 +2507,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            # --- ✅ CORREGIDO ---
-            if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Online":
+            if purchase and purchase.status == PurchaseStatus.PENDING and purchase.payment_method == "Online":
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 session.add(purchase)
@@ -2466,7 +2538,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase = session.get(PurchaseModel, purchase_id)
             
             # La condición correcta: la orden debe ser 'Contra Entrega' y ya debe haber sido 'Enviada'.
-            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status == PurchaseStatus.SHIPPED:
+            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status in [PurchaseStatus.SHIPPED, PurchaseStatus.DELIVERED]:
                 # 1. Se registra únicamente la fecha en que se confirmó el pago.
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 session.add(purchase)
@@ -2508,8 +2580,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
-                # --- ✅ CORREGIDO ---
-                .where(PurchaseModel.status != PurchaseStatus.PENDING_CONFIRMATION)
+                .where(PurchaseModel.status != PurchaseStatus.PENDING)
                 .order_by(PurchaseModel.purchase_date.desc())
             ).unique().all()
             self.confirmed_purchases = [
@@ -2547,7 +2618,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         ]
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     
-    # ✅ INICIO CORRECCIÓN 6: Mapa de datos para la página de compras
+    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA: NUEVA PROPIEDAD COMPUTADA ✨ ---
     @rx.var
     def purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
         """
@@ -2555,7 +2626,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
         """
         return {p.id: p.items for p in self.user_purchases}
-    # ✅ FIN CORRECCIÓN 6
+    # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
 
     @rx.event
     def load_purchases(self):
