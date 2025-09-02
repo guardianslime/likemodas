@@ -630,7 +630,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     temp_tamano: str = ""
     temp_color: str = "" # Variable que faltaba
 
-    generated_variants_map: dict[int, list[VariantFormData]] = {}
+    # generated_variants_map: dict[int, list[VariantFormData]] = {}
     
     def set_temp_color(self, color: str): # Setter que faltaba
         self.temp_color = color
@@ -822,6 +822,53 @@ class AppState(reflex_local_auth.LocalAuthState):
     def assign_image_to_variant(self, group_index: int, item_index: int, image_url: str):
         if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
             self.generated_variants_map[group_index][item_index].image_url = image_url
+
+    def add_attribute_to_variant(self, key: str, value: str):
+        """Añade un atributo a la variante/imagen actualmente seleccionada."""
+        if self.selected_variant_index < 0 or not value:
+            return
+
+        variant = self.new_variants[self.selected_variant_index]
+        # Asegurarse de que el diccionario 'attributes' exista
+        if "attributes" not in variant:
+            variant["attributes"] = {}
+
+        # Obtener la lista actual para esa clave de atributo
+        current_list = variant["attributes"].get(key, [])
+        if value not in current_list:
+            current_list.append(value)
+            variant["attributes"][key] = current_list
+            # Forzar la actualización del estado
+            self.new_variants = self.new_variants[:]
+            
+    def remove_attribute_from_variant(self, key: str, value: str):
+        """Elimina un atributo de la variante/imagen actualmente seleccionada."""
+        if self.selected_variant_index < 0:
+            return
+            
+        variant = self.new_variants[self.selected_variant_index]
+        if "attributes" in variant and key in variant["attributes"]:
+            current_list = variant["attributes"][key]
+            if value in current_list:
+                current_list.remove(value)
+                if not current_list: # Si la lista queda vacía, se elimina la clave
+                    del variant["attributes"][key]
+                else:
+                    variant["attributes"][key] = current_list
+                # Forzar la actualización del estado
+                self.new_variants = self.new_variants[:]
+
+    def select_variant_for_editing(self, index: int):
+        """Selecciona una variante y carga sus atributos en el formulario."""
+        self.selected_variant_index = index
+        variant = self.new_variants[index]
+        attributes = variant.get("attributes", {})
+        
+        self.attr_colores = attributes.get("Color", [])
+        self.attr_tallas_ropa = attributes.get("Talla", [])
+        self.attr_numeros_calzado = attributes.get("Número", [])
+        self.attr_tamanos_mochila = attributes.get("Tamaño", [])
+    
     # ✅ FIN DE LA CORRECCIÓN
 
     # ✅ INICIO DE LA CORRECCIÓN: Añade esta propiedad computada aquí
@@ -859,71 +906,50 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def submit_and_publish(self, form_data: dict):
         """
-        CORREGIDO: Ensambla correctamente las variantes generadas desde 
-        `generated_variants_map` antes de guardar en la base de datos.
+        CORREGIDO: Guarda la estructura de variantes agrupadas directamente.
         """
         if not self.is_admin or not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
-        if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
-            return rx.toast.error("Título, precio y categoría son obligatorios.")
-
-        # --- Validación de datos numéricos (sin cambios) ---
-        limit = None
-        try:
-            shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
-            if self.combines_shipping and self.shipping_combination_limit_str:
-                limit = int(self.shipping_combination_limit_str)
-            if self.combines_shipping and (limit is None or limit <= 0):
-                return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
-        except ValueError:
-            return rx.toast.error("Los costos y límites deben ser números válidos.")
-
-        # --- LÓGICA CLAVE: Ensamblaje de Variantes para Guardar ---
-        final_variants_to_save = []
-        if not self.generated_variants_map:
-             return rx.toast.error("Debes generar las variantes antes de publicar el producto.")
-
-        # Itera sobre cada imagen que subiste (que actúa como un grupo de variantes)
-        for group_index, image_variant_group in enumerate(self.new_variants):
-            image_url = image_variant_group.get("image_url", "")
+        if not self.new_variants:
+            return rx.toast.error("Debes subir al menos una imagen para el producto.")
+        
+        # Validación de campos obligatorios
+        for i, variant in enumerate(self.new_variants):
+            attrs = variant.get("attributes", {})
+            category = form_data.get("category")
+            has_size = ("Talla" in attrs or "Número" in attrs or "Tamaño" in attrs)
             
-            # Revisa si se generaron combinaciones para este grupo de imágenes
-            if group_index in self.generated_variants_map:
-                # Si es así, usa las combinaciones detalladas que generaste
-                for generated_variant in self.generated_variants_map[group_index]:
-                    final_variants_to_save.append({
-                        "image_url": image_url,  # Asigna la imagen del grupo a cada combinación
-                        "stock": generated_variant.stock,
-                        "attributes": generated_variant.attributes,
-                    })
-            # Si un usuario subió una imagen pero no generó variantes para ella, no la incluimos.
+            if not attrs.get("Color"):
+                return rx.toast.error(f"La imagen #{i+1} debe tener al menos un color asignado.")
+            if not has_size:
+                 return rx.toast.error(f"La imagen #{i+1} debe tener al menos una talla, número o tamaño asignado.")
 
-        if not final_variants_to_save:
-            return rx.toast.error("No se encontraron variantes generadas para guardar. Asegúrate de hacer clic en 'Generar / Actualizar Variantes'.")
-
+        # --- Lógica de guardado simplificada ---
         with rx.session() as session:
             new_post = BlogPostModel(
                 userinfo_id=self.authenticated_user_info.id,
                 title=form_data["title"],
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
-                price_includes_iva=self.price_includes_iva,
-                category=form_data.get("category"),
-                variants=final_variants_to_save,  # <-- USA LA LISTA FINAL Y CORRECTA
+                # Se guarda directamente la estructura de 'new_variants' que ahora contiene los atributos agrupados
+                variants=self.new_variants,
+                # ... (resto de los campos como estaban)
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                shipping_cost=shipping_cost,
+                price_includes_iva=self.price_includes_iva,
+                category=form_data.get("category"),
+                shipping_cost=float(self.shipping_cost_str) if self.shipping_cost_str else None,
                 is_moda_completa_eligible=self.is_moda_completa,
                 combines_shipping=self.combines_shipping,
-                shipping_combination_limit=limit,
+                shipping_combination_limit=int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None,
                 is_imported=self.is_imported,
             )
             session.add(new_post)
             session.commit()
 
-        self._clear_add_form() # Limpia el formulario
+        self._clear_add_form()
         yield rx.toast.success("¡Producto publicado con éxito!")
-        return rx.redirect("/blog") # Redirige a la lista de publicaciones
+        return rx.redirect("/blog")
     # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
     
     @rx.var
