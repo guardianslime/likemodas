@@ -5,6 +5,7 @@ from ..state import AppState
 from ..models import Category
 from ..ui.components import searchable_select
 from ..data.product_options import (
+    LISTA_COLORES,
     LISTA_TALLAS_ROPA,
     LISTA_NUMEROS_CALZADO,
     LISTA_TAMANOS_MOCHILAS
@@ -128,20 +129,23 @@ def blog_post_add_form() -> rx.Component:
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
         filter_name="attr_material_filter",
     )
-    
-    color_selector_simple = searchable_select(
-        placeholder="Selecciona un color...",
-        options=AppState.filtered_attr_colores,
-        on_change_select=AppState.set_attr_colores,
-        value_select=AppState.attr_colores,
-        search_value=AppState.search_attr_color,
-        on_change_search=AppState.set_search_attr_color,
-        filter_name="attr_color_filter",
-    )
+
     
     caracteristicas_ropa = rx.vstack(
         rx.grid(
-            color_selector_simple,
+            # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
+            # Reemplaza el antiguo 'color_selector_simple' con este 'attribute_editor' para Color.
+            # Esto soluciona el TypeError y hace que la UI sea consistente.
+            attribute_editor(
+                title="Color",
+                options_list=LISTA_COLORES,
+                temp_value_var=AppState.temp_color,
+                temp_value_setter=AppState.set_temp_color,
+                add_handler=lambda: AppState.add_variant_attribute("Color", AppState.temp_color),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Color", val),
+                current_selections=AppState.attr_colores,
+            ),
+            # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
             attribute_editor(
                 title="Talla",
                 options_list=LISTA_TALLAS_ROPA,
@@ -159,15 +163,15 @@ def blog_post_add_form() -> rx.Component:
     
     caracteristicas_calzado = rx.vstack(
         rx.grid(
-            color_selector_simple,
+            # --- ✅ CORRECCIÓN APLICADA AQUÍ TAMBIÉN ✅ ---
             attribute_editor(
-                title="Número",
-                options_list=LISTA_NUMEROS_CALZADO,
-                temp_value_var=AppState.temp_numero,
-                temp_value_setter=AppState.set_temp_numero,
-                add_handler=lambda: AppState.add_variant_attribute("Número", AppState.temp_numero),
-                remove_handler=lambda val: AppState.remove_variant_attribute("Número", val),
-                current_selections=AppState.attr_numeros_calzado,
+                title="Color",
+                options_list=LISTA_COLORES,
+                temp_value_var=AppState.temp_color,
+                temp_value_setter=AppState.set_temp_color,
+                add_handler=lambda: AppState.add_variant_attribute("Color", AppState.temp_color),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Color", val),
+                current_selections=AppState.attr_colores,
             ),
             columns="2", spacing="3", width="100%",
         ),
@@ -177,15 +181,15 @@ def blog_post_add_form() -> rx.Component:
     
     caracteristicas_mochilas = rx.vstack(
         rx.grid(
-            color_selector_simple,
+            # --- ✅ CORRECCIÓN APLICADA AQUÍ TAMBIÉN ✅ ---
             attribute_editor(
-                title="Tamaño",
-                options_list=LISTA_TAMANOS_MOCHILAS,
-                temp_value_var=AppState.temp_tamano,
-                temp_value_setter=AppState.set_temp_tamano,
-                add_handler=lambda: AppState.add_variant_attribute("Tamaño", AppState.temp_tamano),
-                remove_handler=lambda val: AppState.remove_variant_attribute("Tamaño", val),
-                current_selections=AppState.attr_tamanos_mochila,
+                title="Color",
+                options_list=LISTA_COLORES,
+                temp_value_var=AppState.temp_color,
+                temp_value_setter=AppState.set_temp_color,
+                add_handler=lambda: AppState.add_variant_attribute("Color", AppState.temp_color),
+                remove_handler=lambda val: AppState.remove_variant_attribute("Color", val),
+                current_selections=AppState.attr_colores,
             ),
             columns="2", spacing="3", width="100%",
         ),

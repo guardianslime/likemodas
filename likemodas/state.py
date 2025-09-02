@@ -855,50 +855,52 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.attr_numero_calzado = ""
         self.attr_tamano_mochila = ""
 
+    # --- ✅ INICIO DE LA CORRECCIÓN: REEMPLAZA ESTA FUNCIÓN POR COMPLETO ✅ ---
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        if not self.is_admin:
+        """
+        CORREGIDO: Ensambla correctamente las variantes generadas desde 
+        `generated_variants_map` antes de guardar en la base de datos.
+        """
+        if not self.is_admin or not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
 
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-        
-        limit = None  # <-- 1. Inicializamos 'limit' con un valor por defecto.
-        
+        # --- Validación de datos numéricos (sin cambios) ---
+        limit = None
         try:
             shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
-            
-            # 2. Asignamos el valor a 'limit' solo si la opción está activa.
             if self.combines_shipping and self.shipping_combination_limit_str:
                 limit = int(self.shipping_combination_limit_str)
-            
-            # 3. Hacemos la validación después de definir la variable.
             if self.combines_shipping and (limit is None or limit <= 0):
                 return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
         except ValueError:
             return rx.toast.error("Los costos y límites deben ser números válidos.")
-        
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-        
-        attributes = {}
-        category = form_data.get("category")
-        if category == Category.ROPA.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            if self.attr_colores: attributes["Color"] = self.attr_colores
-            if self.attr_tallas_ropa: attributes["Talla"] = self.attr_tallas_ropa
-            if self.attr_material: attributes["Tela"] = self.attr_material
-        elif category == Category.CALZADO.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            if self.attr_colores: attributes["Color"] = self.attr_colores
-            if self.attr_numeros_calzado: attributes["Número"] = self.attr_numeros_calzado
-            if self.attr_material: attributes["Material"] = self.attr_material
-        elif category == Category.MOCHILAS.value:
-            if self.attr_tipo: attributes["Tipo"] = self.attr_tipo
-            if self.attr_colores: attributes["Color"] = self.attr_colores
-            if self.attr_tamanos_mochila: attributes["Tamaño"] = self.attr_tamanos_mochila
-            if self.attr_material: attributes["Material"] = self.attr_material
-        
+
+        # --- LÓGICA CLAVE: Ensamblaje de Variantes para Guardar ---
+        final_variants_to_save = []
+        if not self.generated_variants_map:
+             return rx.toast.error("Debes generar las variantes antes de publicar el producto.")
+
+        # Itera sobre cada imagen que subiste (que actúa como un grupo de variantes)
+        for group_index, image_variant_group in enumerate(self.new_variants):
+            image_url = image_variant_group.get("image_url", "")
+            
+            # Revisa si se generaron combinaciones para este grupo de imágenes
+            if group_index in self.generated_variants_map:
+                # Si es así, usa las combinaciones detalladas que generaste
+                for generated_variant in self.generated_variants_map[group_index]:
+                    final_variants_to_save.append({
+                        "image_url": image_url,  # Asigna la imagen del grupo a cada combinación
+                        "stock": generated_variant.stock,
+                        "attributes": generated_variant.attributes,
+                    })
+            # Si un usuario subió una imagen pero no generó variantes para ella, no la incluimos.
+
+        if not final_variants_to_save:
+            return rx.toast.error("No se encontraron variantes generadas para guardar. Asegúrate de hacer clic en 'Generar / Actualizar Variantes'.")
+
         with rx.session() as session:
             new_post = BlogPostModel(
                 userinfo_id=self.authenticated_user_info.id,
@@ -907,10 +909,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
-                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                # Se eliminaron 'image_urls' y 'attributes' de aquí.
-                # Solo se guarda el campo 'variants'.
-                variants=self.new_variants,
+                variants=final_variants_to_save,  # <-- USA LA LISTA FINAL Y CORRECTA
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost,
@@ -921,11 +920,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             session.add(new_post)
             session.commit()
-            session.refresh(new_post)
 
-        self._clear_add_form()
-        yield rx.toast.success("Producto publicado.")
-        return rx.redirect("/blog")
+        self._clear_add_form() # Limpia el formulario
+        yield rx.toast.success("¡Producto publicado con éxito!")
+        return rx.redirect("/blog") # Redirige a la lista de publicaciones
+    # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
