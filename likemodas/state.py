@@ -92,19 +92,10 @@ class ProductCardData(rx.Base):
     class Config:
         orm_mode = True
 
-    # --- INICIO DE LA CORRECCIÓN ---
-    @property
-    def full_stars(self) -> list[int]:
-        return list(range(math.floor(self.average_rating)))
-
-    @property
-    def has_half_star(self) -> bool:
-        return (self.average_rating - math.floor(self.average_rating)) >= 0.5
-
-    @property
-    def empty_stars(self) -> list[int]:
-        return list(range(5 - math.ceil(self.average_rating)))
-    # --- FIN DE LA CORRECCIÓN ---
+    # --- ELIMINA LAS SIGUIENTES 3 PROPIEDADES ---
+    # @property def full_stars...
+    # @property def has_half_star...
+    # @property def empty_stars...
 
 class ProductDetailData(rx.Base):
     id: int
@@ -126,19 +117,10 @@ class ProductDetailData(rx.Base):
     class Config:
         orm_mode = True
         
-    # --- INICIO DE LA CORRECCIÓN ---
-    @property
-    def full_stars(self) -> list[int]:
-        return list(range(math.floor(self.average_rating)))
-
-    @property
-    def has_half_star(self) -> bool:
-        return (self.average_rating - math.floor(self.average_rating)) >= 0.5
-
-    @property
-    def empty_stars(self) -> list[int]:
-        return list(range(5 - math.ceil(self.average_rating)))
-    # --- FIN DE LA CORRECCIÓN ---
+    # --- ELIMINA LAS SIGUIENTES 3 PROPIEDADES ---
+    # @property def full_stars...
+    # @property def has_half_star...
+    # @property def empty_stars...
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str

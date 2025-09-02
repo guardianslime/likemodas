@@ -1,40 +1,21 @@
 # likemodas/blog/public_page.py (Versión Definitiva Corregida)
 
 import reflex as rx
-import math
 from ..state import AppState, CommentData, ModalSelectorDTO
-from ..ui.components import product_gallery_component
+from ..ui.components import product_gallery_component, star_rating_display_safe # <-- Importa el componente seguro
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 
-def star_rating_display(rating_data: rx.Var) -> rx.Component:
-    """Muestra estrellas usando las propiedades pre-calculadas del DTO."""
-    return rx.cond(
-        rating_data.rating_count > 0,
-        rx.hstack(
-            rx.foreach(rating_data.full_stars, lambda _: rx.icon("star", color="gold", size=20)),
-            rx.cond(rating_data.has_half_star, rx.icon("star_half", color="gold", size=20)),
-            rx.foreach(rating_data.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
-            rx.text(f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)", size="3", color_scheme="gray", margin_left="0.5em"),
-            align="center", spacing="1",
-        ),
-        rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
-    )
+# Se elimina la antigua función star_rating_display de este archivo.
 
 def render_update_item(comment: CommentData) -> rx.Component:
-    """Muestra una actualización de un comentario."""
+    # ... (Esta función ya fue corregida en el paso 2, no necesita más cambios)
     return rx.box(
         rx.vstack(
             rx.hstack(
                 rx.icon("pencil", size=16, margin_right="0.5em"),
                 rx.text("Actualización:", weight="bold"),
-                rx.hstack(
-                    rx.foreach(
-                        rx.Var.range(5),
-                        lambda i: rx.icon("star", color=rx.cond(comment.rating > i, "gold", rx.color("gray", 8)), size=20)
-                    ),
-                    spacing="1"
-                ),
+                star_rating_display_safe(comment.rating, 1, size=20),
                 rx.spacer(),
                 rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%"
@@ -91,13 +72,7 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
                 rx.spacer(),
-                rx.hstack(
-                    rx.foreach(
-                        rx.Var.range(5),
-                        lambda i: rx.icon("star", color=rx.cond(comment.rating > i, "gold", rx.color("gray", 8)), size=20)
-                    ),
-                    spacing="1"
-                ),
+                star_rating_display_safe(comment.rating, 1, size=20),
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
@@ -125,8 +100,9 @@ def render_comment_item(comment: CommentData) -> rx.Component:
         padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
     )
 
+
 def product_detail_modal() -> rx.Component:
-    # (El resto del modal no necesita cambios)
+    # La única modificación es en _modal_info_section para usar el nuevo componente de estrellas.
     def _modal_image_section() -> rx.Component:
         # ... (sin cambios)
         FIXED_HEIGHT = "500px"
@@ -172,12 +148,12 @@ def product_detail_modal() -> rx.Component:
         )
 
     def _modal_info_section() -> rx.Component:
-        # ... (el único cambio es la llamada a star_rating_display)
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            star_rating_display(AppState.product_in_modal), # <-- Llamada actualizada
+            # --- Llamada al nuevo componente seguro ---
+            star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=20),
             rx.hstack(
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
@@ -198,6 +174,7 @@ def product_detail_modal() -> rx.Component:
                 spacing="4", align="center", margin_y="1em",
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
+            # ... (El resto de la función no cambia)
             rx.vstack(
                 rx.divider(margin_y="1em"),
                 rx.heading("Características", size="4"),
@@ -262,6 +239,7 @@ def product_detail_modal() -> rx.Component:
         )
     
     return rx.dialog.root(
+        # ... (sin cambios aquí)
         rx.dialog.content(
             rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
             rx.cond(
@@ -293,7 +271,7 @@ def product_detail_modal() -> rx.Component:
     )
 
 def blog_public_page_content() -> rx.Component:
-    """Página pública principal que muestra la galería y contiene el modal."""
+    # (Esta función no necesita cambios)
     return rx.center(
         rx.vstack(
             floating_filter_panel(),

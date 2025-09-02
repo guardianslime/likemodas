@@ -1,9 +1,12 @@
+# likemodas/ui/components.py (Versión Definitiva Corregida)
+
 import reflex as rx
-import math
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
+# (Las funciones searchable_select y multi_select_component no cambian)
+# ...
 def searchable_select(
     placeholder: str, 
     options: rx.Var[list[str]], 
@@ -33,7 +36,6 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
-                                # La llamada al on_change_select es directa
                                 on_click=[lambda: on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
@@ -50,33 +52,86 @@ def searchable_select(
         ),
         position="relative", width="100%",
     )
-
-def _product_card_rating(post: ProductCardData) -> rx.Component:
-    """Muestra estrellas usando las propiedades pre-calculadas del DTO."""
-    return rx.cond(
-        post.rating_count > 0,
-        rx.hstack(
-            rx.foreach(post.full_stars, lambda _: rx.icon("star", color="gold", size=18)),
-            rx.cond(post.has_half_star, rx.icon("star_half", color="gold", size=18)),
-            rx.foreach(post.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=18)),
-            rx.text(f"({post.rating_count})", size="2", color_scheme="gray", margin_left="0.25em"),
-            align="center", spacing="1",
+    
+def multi_select_component(
+    placeholder: str,
+    options: rx.Var[list[str]],
+    selected_items: rx.Var[list[str]],
+    add_handler: rx.event.EventHandler,
+    remove_handler: rx.event.EventHandler,
+    prop_name: str,
+    search_value: rx.Var[str],
+    on_change_search: rx.event.EventSpec,
+    filter_name: str,
+) -> rx.Component:
+    """Un componente para seleccionar múltiples opciones con un buscador."""
+    return rx.vstack(
+        rx.flex(
+            rx.foreach(
+                selected_items,
+                lambda item: rx.badge(
+                    item,
+                    rx.icon(
+                        "x",
+                        size=12,
+                        cursor="pointer",
+                        on_click=remove_handler(prop_name, item),
+                        margin_left="0.25em"
+                    ),
+                    variant="soft", color_scheme="gray", size="2",
+                ),
+            ),
+            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
+            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
         ),
-        rx.box(height="21px") # Placeholder para alinear verticalmente las tarjetas
+        searchable_select(
+            placeholder=placeholder,
+            options=options,
+            on_change_select=lambda val: add_handler(prop_name, val),
+            value_select="",
+            search_value=search_value,
+            on_change_search=on_change_search,
+            filter_name=filter_name,
+        ),
+        spacing="2", align_items="stretch", width="100%",
     )
 
-def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
+
+# --- INICIO DE LA CORRECCIÓN ---
+def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """
-    Galería de productos.
-    Añadimos un rx.cond para asegurar que 'posts' no sea undefined.
+    Un componente seguro para mostrar estrellas que no usa math de Python.
+    Construye las estrellas condicionalmente, lo cual es seguro para el compilador.
     """
     return rx.cond(
-        posts,  # <-- Condición de seguridad añadida
+        count > 0,
+        rx.hstack(
+            rx.foreach(
+                rx.Var.range(5),  # Itera 5 veces para crear 5 estrellas
+                lambda i: rx.icon(
+                    "star",
+                    # Colorea la estrella si el rating es mayor que su índice
+                    color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
+                    # Rellena la estrella para que sea sólida
+                    style={"fill": rx.cond(rating > i, "gold", "none")},
+                    size=size,
+                )
+            ),
+            rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
+            align="center", spacing="1",
+        ),
+        rx.box(height=f"{size+3}px")  # Placeholder para alinear tarjetas
+    )
+# --- FIN DE LA CORRECCIÓN ---
+
+def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
+    """Galería de productos que ahora usa el componente de estrellas seguro."""
+    return rx.cond(
+        posts,
         rx.flex(
             rx.foreach(
                 posts,
                 lambda post: rx.box(
-                    # ... El contenido de la tarjeta de producto no cambia ...
                     rx.vstack(
                         rx.vstack(
                             rx.box(
@@ -89,15 +144,14 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     rx.cond(post.is_imported, "Importado", "Nacional"),
                                     color_scheme=rx.cond(post.is_imported, "purple", "cyan"),
                                     variant="solid",
-                                    style={
-                                        "position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1",
-                                    }
+                                    style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                                 ),
                                 position="relative", width="260px", height="260px",
                             ),
                             rx.vstack(
                                 rx.text(post.title, weight="bold", size="6", no_of_lines=1),
-                                _product_card_rating(post),
+                                # --- Llamada al nuevo componente seguro ---
+                                star_rating_display_safe(post.average_rating, post.rating_count),
                                 rx.text(post.price_cop, size="5", weight="medium"),
                                 rx.badge(
                                     post.shipping_display_text,
@@ -134,49 +188,4 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             ),
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
-    )
-
-def multi_select_component(
-    placeholder: str,
-    options: rx.Var[list[str]],
-    selected_items: rx.Var[list[str]],
-    add_handler: rx.event.EventHandler,
-    remove_handler: rx.event.EventHandler,
-    prop_name: str,
-    search_value: rx.Var[str],
-    on_change_search: rx.event.EventSpec,
-    filter_name: str,
-) -> rx.Component:
-    """Un componente para seleccionar múltiples opciones con un buscador."""
-    return rx.vstack(
-        rx.flex(
-            rx.foreach(
-                selected_items,
-                lambda item: rx.badge(
-                    item,
-                    rx.icon(
-                        "x",
-                        size=12,
-                        cursor="pointer",
-                        # Corrección: Se simplifica la llamada al manejador
-                        on_click=lambda: remove_handler(item),
-                        margin_left="0.25em"
-                    ),
-                    variant="soft", color_scheme="gray", size="2",
-                ),
-            ),
-            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
-            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
-        ),
-        searchable_select(
-            placeholder=placeholder,
-            options=options,
-            # Corrección: El manejador se pasa directamente
-            on_change_select=add_handler,
-            value_select="",
-            search_value=search_value,
-            on_change_search=on_change_search,
-            filter_name=filter_name,
-        ),
-        spacing="2", align_items="stretch", width="100%",
     )
