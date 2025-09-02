@@ -15,10 +15,12 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
         count > 0,
         rx.hstack(
             rx.foreach(
-                rx.Var.range(5),
+                rx.Var.range(5),  # Itera 5 veces para crear 5 estrellas
                 lambda i: rx.icon(
                     "star",
+                    # Colorea la estrella si el rating es mayor que su índice
                     color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
+                    # Rellena la estrella para que sea sólida
                     style={"fill": rx.cond(rating > i, "gold", "none")},
                     size=size,
                 )
@@ -26,7 +28,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
             rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
             align="center", spacing="1",
         ),
-        rx.box(height=f"{size+3}px")
+        rx.box(height=f"{size+3}px")  # Placeholder para alinear tarjetas
     )
 
 def searchable_select(
@@ -73,6 +75,54 @@ def searchable_select(
             )
         ),
         position="relative", width="100%",
+    )
+
+def multi_select_component(
+    placeholder: str,
+    options: rx.Var[list[str]],
+    selected_items: rx.Var[list[str]],
+    add_handler: rx.event.EventHandler,
+    remove_handler: rx.event.EventHandler,
+    prop_name: str,
+    search_value: rx.Var[str],
+    on_change_search: rx.event.EventSpec,
+    filter_name: str,
+) -> rx.Component:
+    """Un componente para seleccionar múltiples opciones con un buscador."""
+    return rx.vstack(
+        rx.flex(
+            rx.foreach(
+                selected_items,
+                lambda item: rx.badge(
+                    item,
+                    rx.icon(
+                        "x",
+                        size=12,
+                        cursor="pointer",
+                        # --- CORRECCIÓN FINAL ---
+                        # Se envuelve la llamada en una lambda para que no se ejecute
+                        # hasta que el usuario haga clic.
+                        on_click=lambda: remove_handler(prop_name, item),
+                        margin_left="0.25em"
+                    ),
+                    variant="soft", color_scheme="gray", size="2",
+                ),
+            ),
+            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
+            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
+        ),
+        searchable_select(
+            placeholder=placeholder,
+            options=options,
+            # Esta llamada también usa lambda porque on_change_select (definido en searchable_select)
+            # pasa un argumento 'val'.
+            on_change_select=lambda val: add_handler(prop_name, val),
+            value_select="",
+            search_value=search_value,
+            on_change_search=on_change_search,
+            filter_name=filter_name,
+        ),
+        spacing="2", align_items="stretch", width="100%",
     )
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
@@ -138,51 +188,4 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             ),
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
-    )
-    
-def multi_select_component(
-    placeholder: str,
-    options: rx.Var[list[str]],
-    selected_items: rx.Var[list[str]],
-    add_handler: rx.event.EventHandler,
-    remove_handler: rx.event.EventHandler,
-    prop_name: str,
-    search_value: rx.Var[str],
-    on_change_search: rx.event.EventSpec,
-    filter_name: str,
-) -> rx.Component:
-    """Un componente para seleccionar múltiples opciones con un buscador."""
-    return rx.vstack(
-        rx.flex(
-            rx.foreach(
-                selected_items,
-                lambda item: rx.badge(
-                    item,
-                    rx.icon(
-                        "x",
-                        size=12,
-                        cursor="pointer",
-                        # --- CORRECCIÓN FINAL ---
-                        # Esta es la sintaxis correcta que el traceback estaba pidiendo.
-                        # Envolvemos la llamada en una lambda para diferir su ejecución.
-                        on_click=lambda: remove_handler(prop_name, item),
-                        margin_left="0.25em"
-                    ),
-                    variant="soft", color_scheme="gray", size="2",
-                ),
-            ),
-            wrap="wrap", spacing="2", min_height="36px", padding="0.5em",
-            border="1px solid", border_color=rx.color("gray", 7), border_radius="md",
-        ),
-        searchable_select(
-            placeholder=placeholder,
-            options=options,
-            # Se restaura la sintaxis original que funcionaba para este manejador.
-            on_change_select=lambda val: add_handler(prop_name, val),
-            value_select="",
-            search_value=search_value,
-            on_change_search=on_change_search,
-            filter_name=filter_name,
-        ),
-        spacing="2", align_items="stretch", width="100%",
     )
