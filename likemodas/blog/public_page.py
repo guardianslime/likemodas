@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (Corregido)
+# likemodas/blog/public_page.py (Versión Definitiva Corregida)
 
 import reflex as rx
 import math
@@ -7,19 +7,24 @@ from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 
-def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Component:
-    """Componente para mostrar estrellas de valoración de forma robusta."""
-    full_stars = rx.Var.range(rx.call_script(f"Math.floor({rating})", read_exec=True))
-    has_half_star = (rating - rx.call_script(f"Math.floor({rating})", read_exec=True)) >= 0.5
-    empty_stars = rx.Var.range(5 - rx.call_script(f"Math.ceil({rating})", read_exec=True))
-    
+def star_rating_display(rating_data: rx.Var) -> rx.Component:
+    """
+    Componente para mostrar estrellas de valoración.
+    Recibe un DTO (como ProductDetailData) que ya tiene las propiedades
+    full_stars, has_half_star, y empty_stars pre-calculadas.
+    """
     return rx.cond(
-        count > 0,
+        rating_data.rating_count > 0,
         rx.hstack(
-            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=20)),
-            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=20)),
-            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
-            rx.text(f"{rating:.1f} de 5 ({count} opiniones)", size="3", color_scheme="gray", margin_left="0.5em"),
+            rx.foreach(rating_data.full_stars, lambda _: rx.icon("star", color="gold", size=20)),
+            rx.cond(rating_data.has_half_star, rx.icon("star_half", color="gold", size=20)),
+            rx.foreach(rating_data.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
+            rx.text(
+                f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
+                size="3", 
+                color_scheme="gray", 
+                margin_left="0.5em"
+            ),
             align="center", spacing="1",
         ),
         rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
@@ -32,7 +37,18 @@ def render_update_item(comment: CommentData) -> rx.Component:
             rx.hstack(
                 rx.icon("pencil", size=16, margin_right="0.5em"),
                 rx.text("Actualización:", weight="bold"),
-                star_rating_display(comment.rating, 1), # <-- CORREGIDO
+                # Muestra estrellas estáticas para la calificación del comentario
+                rx.hstack(
+                    rx.foreach(
+                        rx.Var.range(5),
+                        lambda i: rx.icon(
+                            "star",
+                            color=rx.cond(comment.rating > i, "gold", rx.color("gray", 8)),
+                            size=20
+                        )
+                    ),
+                    spacing="1"
+                ),
                 rx.spacer(),
                 rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%"
@@ -101,7 +117,18 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
                 rx.spacer(),
-                star_rating_display(comment.rating, 1), # <-- CORREGIDO
+                # Muestra estrellas estáticas para la calificación del comentario
+                rx.hstack(
+                    rx.foreach(
+                        rx.Var.range(5),
+                        lambda i: rx.icon(
+                            "star",
+                            color=rx.cond(comment.rating > i, "gold", rx.color("gray", 8)),
+                            size=20
+                        )
+                    ),
+                    spacing="1"
+                ),
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
@@ -117,8 +144,7 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     variant="soft", size="1", margin_top="0.5em"
                 )
             ),
-            # --- BLOQUE DE CORRECCIÓN CRÍTICA ---
-            # Se asegura de que 'comment.updates' exista antes de intentar el bucle.
+            # Corrección del error 'map': se asegura que comment.updates exista antes del foreach.
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
                 rx.cond(
@@ -126,7 +152,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     rx.foreach(comment.updates, render_update_item)
                 )
             ),
-            # --- FIN DE LA CORRECCIÓN ---
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%", justify="end", spacing="1", margin_top="1em"
@@ -187,7 +212,7 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count), # <-- CORREGIDO
+            star_rating_display(AppState.product_in_modal),
             rx.hstack(
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
@@ -208,11 +233,9 @@ def product_detail_modal() -> rx.Component:
                 spacing="4", align="center", margin_y="1em",
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-            
             rx.vstack(
                 rx.divider(margin_y="1em"),
                 rx.heading("Características", size="4"),
-                
                 rx.foreach(
                     AppState.current_variant_display_attributes.items(),
                     lambda item: rx.hstack(
@@ -223,7 +246,6 @@ def product_detail_modal() -> rx.Component:
                         width="100%"
                     ),
                 ),
-
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(
@@ -243,7 +265,6 @@ def product_detail_modal() -> rx.Component:
                 ),
                 align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
-            
             rx.text(
                 "Publicado por: ",
                 rx.link(
