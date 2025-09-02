@@ -60,6 +60,7 @@ def searchable_select(
                             options,
                             lambda option: rx.button(
                                 option,
+                                # CORRECCIÓN: Se simplifica la llamada al evento
                                 on_click=[on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
                                 width="100%", variant="soft", color_scheme="gray", justify_content="start"
                             )
@@ -164,11 +165,10 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        # --- INICIO DE LA CORRECCIÓN CLAVE ---
-                        # Se envuelve la llamada en una lambda para que no se ejecute
-                        # hasta que el usuario haga clic.
-                        on_click=lambda: remove_handler(prop_name, item),
-                        # --- FIN DE LA CORRECCIÓN CLAVE ---
+                        # --- CORRECCIÓN FINAL ---
+                        # Se elimina el 'lambda:' que causaba el TypeError.
+                        # Reflex vinculará los argumentos 'prop_name' y 'item' correctamente.
+                        on_click=remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
                     variant="soft", color_scheme="gray", size="2",
@@ -180,9 +180,9 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            # Esta llamada también usa lambda porque on_change_select (definido en searchable_select)
-            # pasa un argumento 'option' o 'val'.
-            on_change_select=lambda val: add_handler(prop_name, val),
+            # --- CORRECCIÓN FINAL ---
+            # Se simplifica la llamada para que sea consistente con la de 'remove_handler'.
+            on_change_select=add_handler(prop_name),
             value_select="",
             search_value=search_value,
             on_change_search=on_change_search,
