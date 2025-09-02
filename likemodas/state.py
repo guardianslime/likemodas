@@ -3180,7 +3180,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
-        # Reseteo inicial de todas las variables del modal
+        # Reiniciar el estado inicial para el modal
         self.product_in_modal = None
         self.show_detail_modal = True
         self.modal_selected_attributes = {}
@@ -3191,6 +3191,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_content = ""
         self.show_review_form = False
         self.review_limit_reached = False
+        self.expanded_comments = {} # <-- Añade esta línea para reiniciar el estado
 
         with rx.session() as session:
             db_post = session.exec(

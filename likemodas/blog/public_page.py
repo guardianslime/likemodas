@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (CORREGIDO)
+# likemodas/blog/public_page.py (Corregido)
 
 import reflex as rx
 import math
@@ -7,19 +7,22 @@ from ..ui.components import product_gallery_component
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 
-# --- ✨ 1. AÑADE ESTA NUEVA FUNCIÓN AUXILIAR ✨ ---
-def _render_static_stars(rating: rx.Var[int]) -> rx.Component:
-    """Renders a static star rating based on a simple integer."""
-    return rx.hstack(
-        rx.foreach(
-            rx.Var.range(5),
-            lambda i: rx.icon(
-                "star",
-                color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
-                size=20
-            )
+def star_rating_display(rating: rx.Var[float], count: rx.Var[int]) -> rx.Component:
+    """Componente para mostrar estrellas de valoración de forma robusta."""
+    full_stars = rx.Var.range(rx.call_script(f"Math.floor({rating})", read_exec=True))
+    has_half_star = (rating - rx.call_script(f"Math.floor({rating})", read_exec=True)) >= 0.5
+    empty_stars = rx.Var.range(5 - rx.call_script(f"Math.ceil({rating})", read_exec=True))
+    
+    return rx.cond(
+        count > 0,
+        rx.hstack(
+            rx.foreach(full_stars, lambda _: rx.icon("star", color="gold", size=20)),
+            rx.cond(has_half_star, rx.icon("star_half", color="gold", size=20)),
+            rx.foreach(empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
+            rx.text(f"{rating:.1f} de 5 ({count} opiniones)", size="3", color_scheme="gray", margin_left="0.5em"),
+            align="center", spacing="1",
         ),
-        spacing="1"
+        rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
     )
 
 def render_update_item(comment: CommentData) -> rx.Component:
@@ -29,8 +32,7 @@ def render_update_item(comment: CommentData) -> rx.Component:
             rx.hstack(
                 rx.icon("pencil", size=16, margin_right="0.5em"),
                 rx.text("Actualización:", weight="bold"),
-                # --- ✨ 2. CORRECCIÓN AQUÍ ✨ ---
-                _render_static_stars(comment.rating), # Usa la nueva función
+                star_rating_display(comment.rating, 1), # <-- CORREGIDO
                 rx.spacer(),
                 rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%"
@@ -47,26 +49,6 @@ def render_update_item(comment: CommentData) -> rx.Component:
         margin_left="2.5em"
     )
 
-def star_rating_display(rating_data: rx.Var) -> rx.Component:
-    """Componente para mostrar estrellas de valoración (Ahora recibe el DTO)."""
-    return rx.cond(
-        rating_data.rating_count > 0,
-        rx.hstack(
-            rx.foreach(rating_data.full_stars, lambda _: rx.icon("star", color="gold", size=20)),
-            rx.cond(rating_data.has_half_star, rx.icon("star_half", color="gold", size=20)),
-            rx.foreach(rating_data.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
-            rx.text(
-                 f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
-                size="3", 
-                color_scheme="gray", 
-                margin_left="0.5em"
-            ),
-            align="center", spacing="1",
-        ),
-        rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
-    )
-
-# ... (review_submission_form sin cambios) ...
 def review_submission_form() -> rx.Component:
     """Muestra el formulario para opinar."""
     return rx.cond(
@@ -110,7 +92,6 @@ def review_submission_form() -> rx.Component:
         )
     )
 
-
 def render_comment_item(comment: CommentData) -> rx.Component:
     """Renderiza un comentario principal con su historial."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
@@ -120,8 +101,7 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
                 rx.spacer(),
-                # --- ✨ 3. CORRECCIÓN AQUÍ ✨ ---
-                _render_static_stars(comment.rating), # Usa la nueva función
+                star_rating_display(comment.rating, 1), # <-- CORREGIDO
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
@@ -137,10 +117,16 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     variant="soft", size="1", margin_top="0.5em"
                 )
             ),
+            # --- BLOQUE DE CORRECCIÓN CRÍTICA ---
+            # Se asegura de que 'comment.updates' exista antes de intentar el bucle.
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
-                rx.foreach(comment.updates, render_update_item)
+                rx.cond(
+                    comment.updates,
+                    rx.foreach(comment.updates, render_update_item)
+                )
             ),
+            # --- FIN DE LA CORRECCIÓN ---
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%", justify="end", spacing="1", margin_top="1em"
@@ -150,7 +136,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
         padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
     )
 
-# ... (resto del archivo 'public_page.py' sin cambios) ...
 def product_detail_modal() -> rx.Component:
     """El diálogo modal que muestra los detalles del producto."""
     
@@ -182,20 +167,12 @@ def product_detail_modal() -> rx.Component:
                         AppState.unique_modal_variants,
                         lambda item: rx.box(
                             rx.image(
-                                # --- CORRECCIÓN AQUÍ: item.variant en lugar de item["variant"] ---
                                 src=rx.get_upload_url(item.variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
-                            border_width=rx.cond(
-                                # --- CORRECCIÓN AQUÍ ---
-                                AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"
-                            ),
-                            border_color=rx.cond(
-                                # --- CORRECCIÓN AQUÍ ---
-                                AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"
-                            ),
+                            border_width=rx.cond(AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"),
+                            border_color=rx.cond(AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"),
                             padding="2px", border_radius="lg", cursor="pointer",
-                            # --- CORRECCIÓN AQUÍ: item.index en lugar de item["index"] ---
                             on_click=AppState.set_modal_variant_index(item.index),
                         )
                     ),
@@ -210,9 +187,7 @@ def product_detail_modal() -> rx.Component:
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            
-            star_rating_display(AppState.product_in_modal),
-            
+            star_rating_display(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count), # <-- CORREGIDO
             rx.hstack(
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
