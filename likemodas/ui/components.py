@@ -79,10 +79,15 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             posts,
             lambda post: rx.box(
                 rx.vstack(
+                    # Este vstack envuelve la imagen y el texto para el on_click
                     rx.vstack(
+                        # --- INICIO DE LA CORRECCIÓN ---
                         rx.box(
+                            # Primero van los hijos (componentes)
                             rx.cond(
+                                # --- 👇 LÍNEA CORREGIDA 👇 ---
                                 post.variants & (post.variants.length() > 0),
+                                # --- 👇 LÍNEA CORREGIDA 👇 ---
                                 rx.image(src=rx.get_upload_url(post.variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
                                 rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                             ),
@@ -97,10 +102,12 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     "z_index": "1",
                                 }
                             ),
+                            # Después van las propiedades (argumentos de palabra clave)
                             position="relative",
                             width="260px",
                             height="260px",
                         ),
+                        # --- FIN DE LA CORRECCIÓN ---
                         rx.vstack(
                             rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                             _product_card_rating(post),
@@ -128,18 +135,14 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         cursor="pointer",
                     ),
                     rx.spacer(),
-                    
-                    # ✅ INICIO DE LA CORRECCIÓN
-                    # Cambiamos el texto y el evento on_click del botón
                     rx.button(
-                        "Ver Opciones y Añadir",
+                        "Añadir al Carrito",
                         width="100%",
                         on_click=[
-                            AppState.open_product_detail_modal(post.id),
+                            AppState.add_to_cart(post.id),
                             rx.stop_propagation
                         ],
                     ),
-                    # ✅ FIN DE LA CORRECCIÓN
                 ),
                 width="290px",
                 height="520px",
