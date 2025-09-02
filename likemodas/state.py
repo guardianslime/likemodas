@@ -1499,7 +1499,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.toast.success("¡Ubicación de origen guardada!")
             
     # --- ✨ 1. AÑADE LAS NUEVAS VARIABLES DE ESTADO ✨ ---
-    payment_method: str = "online" # Valor por defecto para el carrito
+    payment_method: str = "Online" 
     # --- ✨ AÑADE ESTA LÍNEA AQUÍ ✨ ---
     active_purchases: List[AdminPurchaseCardData] = []
     admin_delivery_time: Dict[int, Dict[str, str]] = {}
