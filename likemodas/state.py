@@ -1,4 +1,4 @@
-# likemodas/state.py (Bloque de imports corregido)
+# likemodas/state.py (Corregido)
 
 from __future__ import annotations
 import reflex as rx
@@ -13,6 +13,7 @@ import re
 import asyncio
 import math
 from collections import defaultdict
+from pydantic import Field # <-- ¡CORRECCIÓN AQUÍ! Se añade la importación que faltaba.
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
 
