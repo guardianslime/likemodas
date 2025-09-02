@@ -828,10 +828,18 @@ class AppState(reflex_local_auth.LocalAuthState):
         if group_index in self.generated_variants_map and 0 <= item_index < len(self.generated_variants_map[group_index]):
             self.generated_variants_map[group_index][item_index].image_url = image_url
 
-    def add_attribute_to_variant(self, key: str, value: str):
-        """Añade un atributo (ej. Talla 'S') a la variante/imagen actualmente seleccionada."""
-        if self.selected_variant_index < 0 or not value:
+    def add_attribute_to_variant(self, key: str):
+        """Añade un atributo a la variante/imagen seleccionada, usando la variable temporal correspondiente."""
+        if self.selected_variant_index < 0:
             return
+
+        value = ""
+        if key == "Color": value = self.temp_color
+        elif key == "Talla": value = self.temp_talla
+        elif key == "Número": value = self.temp_numero
+        elif key == "Tamaño": value = self.temp_tamano
+
+        if not value: return
 
         variant = self.new_variants[self.selected_variant_index]
         if "attributes" not in variant:
@@ -840,16 +848,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         current_list = variant["attributes"].get(key, [])
         if value not in current_list:
             current_list.append(value)
-            variant["attributes"][key] = sorted(current_list) # Mantenemos la lista ordenada
-            
-            # Forzar la actualización del estado para que la UI reaccione
+            variant["attributes"][key] = sorted(current_list)
             self.new_variants = self.new_variants[:]
-            self.select_variant_for_editing(self.selected_variant_index) # Recargar la UI del formulario
+            self.select_variant_for_editing(self.selected_variant_index)
 
     def remove_attribute_from_variant(self, key: str, value: str):
-        """Elimina un atributo de la variante/imagen actualmente seleccionada."""
-        if self.selected_variant_index < 0:
-            return
+        """Elimina un atributo de la variante/imagen seleccionada."""
+        if self.selected_variant_index < 0: return
             
         variant = self.new_variants[self.selected_variant_index]
         if "attributes" in variant and key in variant["attributes"]:
@@ -860,7 +865,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     del variant["attributes"][key]
                 else:
                     variant["attributes"][key] = current_list
-                
                 self.new_variants = self.new_variants[:]
                 self.select_variant_for_editing(self.selected_variant_index)
 
@@ -870,7 +874,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if 0 <= index < len(self.new_variants):
             variant = self.new_variants[index]
             attributes = variant.get("attributes", {})
-            
             self.attr_colores = attributes.get("Color", [])
             self.attr_tallas_ropa = attributes.get("Talla", [])
             self.attr_numeros_calzado = attributes.get("Número", [])

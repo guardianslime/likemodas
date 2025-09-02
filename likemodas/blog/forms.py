@@ -17,13 +17,13 @@ def attribute_editor(
     add_handler: rx.event.EventHandler,
     remove_handler: rx.event.EventHandler,
     current_selections: rx.Var[list[str]],
+    # Se reintroducen estas propiedades para compatibilidad
+    temp_value_var: rx.Var[str],
+    temp_value_setter: rx.event.EventSpec,
 ) -> rx.Component:
     """
-    Componente para añadir y quitar atributos a la imagen seleccionada.
+    Componente para añadir y quitar atributos, usando el estado principal.
     """
-    # Se crea una variable de estado local para que cada selector tenga su propio valor temporal.
-    temp_value = rx.Var.create("", _var_name=f"temp_{title.lower().replace(' ', '_')}")
-
     return rx.vstack(
         rx.text(title, weight="bold", size="3"),
         rx.flex(
@@ -41,10 +41,11 @@ def attribute_editor(
             rx.select(
                 options_list,
                 placeholder=f"Seleccionar {title.lower()}...",
-                value=temp_value,
-                on_change=temp_value.set,
+                # Usa las propiedades pasadas
+                value=temp_value_var,
+                on_change=temp_value_setter,
             ),
-            rx.button("Añadir", on_click=lambda: add_handler(title, temp_value), type="button"),
+            rx.button("Añadir", on_click=add_handler, type="button"),
             width="100%"
         ),
         align_items="stretch",
@@ -72,16 +73,20 @@ def blog_post_add_form() -> rx.Component:
             attribute_editor(
                 title="Color",
                 options_list=LISTA_COLORES,
-                add_handler=AppState.add_attribute_to_variant,
+                add_handler=AppState.add_attribute_to_variant("Color"),
                 remove_handler=AppState.remove_attribute_from_variant,
                 current_selections=AppState.attr_colores,
+                temp_value_var=AppState.temp_color,
+                temp_value_setter=AppState.set_temp_color,
             ),
             attribute_editor(
                 title="Talla",
                 options_list=LISTA_TALLAS_ROPA,
-                add_handler=AppState.add_attribute_to_variant,
+                add_handler=AppState.add_attribute_to_variant("Talla"),
                 remove_handler=AppState.remove_attribute_from_variant,
                 current_selections=AppState.attr_tallas_ropa,
+                temp_value_var=AppState.temp_talla,
+                temp_value_setter=AppState.set_temp_talla,
             ),
             columns="2", spacing="3", width="100%",
         ),
@@ -94,16 +99,20 @@ def blog_post_add_form() -> rx.Component:
             attribute_editor(
                 title="Color",
                 options_list=LISTA_COLORES,
-                add_handler=AppState.add_attribute_to_variant,
+                add_handler=AppState.add_attribute_to_variant("Color"),
                 remove_handler=AppState.remove_attribute_from_variant,
                 current_selections=AppState.attr_colores,
+                temp_value_var=AppState.temp_color,
+                temp_value_setter=AppState.set_temp_color,
             ),
             attribute_editor(
                 title="Número",
                 options_list=LISTA_NUMEROS_CALZADO,
-                add_handler=AppState.add_attribute_to_variant,
+                add_handler=AppState.add_attribute_to_variant("Número"),
                 remove_handler=AppState.remove_attribute_from_variant,
                 current_selections=AppState.attr_numeros_calzado,
+                temp_value_var=AppState.temp_numero,
+                temp_value_setter=AppState.set_temp_numero,
             ),
             columns="2", spacing="3", width="100%",
         ),
@@ -116,16 +125,20 @@ def blog_post_add_form() -> rx.Component:
             attribute_editor(
                 title="Color",
                 options_list=LISTA_COLORES,
-                add_handler=AppState.add_attribute_to_variant,
+                add_handler=AppState.add_attribute_to_variant("Color"),
                 remove_handler=AppState.remove_attribute_from_variant,
                 current_selections=AppState.attr_colores,
+                temp_value_var=AppState.temp_color,
+                temp_value_setter=AppState.set_temp_color,
             ),
             attribute_editor(
                 title="Tamaño",
                 options_list=LISTA_TAMANOS_MOCHILAS,
-                add_handler=AppState.add_attribute_to_variant,
+                add_handler=AppState.add_attribute_to_variant("Tamaño"),
                 remove_handler=AppState.remove_attribute_from_variant,
                 current_selections=AppState.attr_tamanos_mochila,
+                temp_value_var=AppState.temp_tamano,
+                temp_value_setter=AppState.set_temp_tamano,
             ),
             columns="2", spacing="3", width="100%",
         ),
