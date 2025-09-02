@@ -2462,7 +2462,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            if purchase and purchase.status == PurchaseStatus.PENDING and purchase.payment_method == "Online":
+            # --- ✅ CORREGIDO ---
+            if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Online":
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 session.add(purchase)
@@ -2535,7 +2536,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
-                .where(PurchaseModel.status != PurchaseStatus.PENDING)
+                # --- ✅ CORREGIDO ---
+                .where(PurchaseModel.status != PurchaseStatus.PENDING_CONFIRMATION)
                 .order_by(PurchaseModel.purchase_date.desc())
             ).unique().all()
             self.confirmed_purchases = [
