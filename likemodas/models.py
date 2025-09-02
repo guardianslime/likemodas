@@ -73,18 +73,21 @@ class UserInfo(rx.Model, table=True):
     ban_expires_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
+
     user: Optional["LocalUser"] = Relationship()
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
     seller_barrio: Optional[str] = Field(default=None)
     seller_address: Optional[str] = Field(default=None)
+
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
     comments: List["CommentModel"] = Relationship(back_populates="userinfo")
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
+
     class Config:
         exclude = {"user", "posts", "verification_tokens", "shipping_addresses", "contact_entries", "purchases", "notifications", "comments", "comment_votes", "saved_posts"}
 
@@ -93,7 +96,9 @@ class VerificationToken(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
     expires_at: datetime
     created_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
+    
     userinfo: "UserInfo" = Relationship(back_populates="verification_tokens")
+    
     class Config:
         exclude = {"userinfo"}
 
@@ -114,25 +119,37 @@ class BlogPostModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
+    
     shipping_cost: Optional[float] = Field(default=None)
     is_moda_completa_eligible: bool = Field(default=True, nullable=False)
     combines_shipping: bool = Field(default=False, nullable=False)
     shipping_combination_limit: Optional[int] = Field(default=None)
     price_includes_iva: bool = Field(default=True, nullable=False)
     is_imported: bool = Field(default=False, nullable=False)
+
     userinfo: "UserInfo" = Relationship(back_populates="posts")
-    comments: List["CommentModel"] = Relationship(back_populates="blog_post", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    
+    comments: List["CommentModel"] = Relationship(
+        back_populates="blog_post",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
+    
     class Config:
         exclude = {"userinfo", "comments", "saved_by_users"}
+    
     @property
     def base_price(self) -> float:
-        if self.price_includes_iva: return (self.price or 0.0) / 1.19
+        if self.price_includes_iva:
+            return (self.price or 0.0) / 1.19
         return self.price or 0.0
+
     @property
     def rating_count(self) -> int:
         if not self.comments: return 0
         return len({c.userinfo_id for c in self.comments})
+
     @property
     def average_rating(self) -> float:
         if not self.comments: return 0.0
@@ -144,6 +161,7 @@ class BlogPostModel(rx.Model, table=True):
         latest_ratings = [review.rating for review in user_latest_reviews.values()]
         if not latest_ratings: return 0.0
         return sum(latest_ratings) / len(latest_ratings)
+    
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
     @property
@@ -157,7 +175,9 @@ class ShippingAddressModel(rx.Model, table=True):
     name: str; phone: str; city: str; neighborhood: str; address: str
     is_default: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+
     userinfo: "UserInfo" = Relationship(back_populates="shipping_addresses")
+
     class Config:
         exclude = {"userinfo"}
 
@@ -171,14 +191,18 @@ class PurchaseModel(rx.Model, table=True):
     shipping_name: Optional[str] = None; shipping_city: Optional[str] = None
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
+    
     payment_method: str = Field(default="online", nullable=False)
     estimated_delivery_date: Optional[datetime] = Field(default=None)
     delivery_confirmation_sent_at: Optional[datetime] = Field(default=None)
     user_confirmed_delivery_at: Optional[datetime] = Field(default=None)
+
     userinfo: "UserInfo" = Relationship(back_populates="purchases")
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
+
     class Config:
         exclude = {"userinfo", "items"}
+
     @property
     def purchase_date_formatted(self) -> str: return format_utc_to_local(self.purchase_date)
     @property
@@ -196,6 +220,7 @@ class PurchaseItemModel(rx.Model, table=True):
     quantity: int
     price_at_purchase: float
     selected_variant: dict = Field(default_factory=dict, sa_column=Column(JSON))
+
     purchase: "PurchaseModel" = Relationship(back_populates="items")
     blog_post: "BlogPostModel" = Relationship()
     
@@ -211,9 +236,12 @@ class NotificationModel(rx.Model, table=True):
     is_read: bool = Field(default=False)
     url: Optional[str] = None
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
+    
     userinfo: "UserInfo" = Relationship(back_populates="notifications")
+    
     class Config:
         exclude = {"userinfo"}
+    
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
@@ -224,9 +252,12 @@ class ContactEntryModel(rx.Model, table=True):
     email: Optional[str] = None
     message: str
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), nullable=False)
+
     userinfo: Optional["UserInfo"] = Relationship(back_populates="contact_entries")
+
     class Config:
         exclude = {"userinfo"}
+
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
 
@@ -240,6 +271,7 @@ class CommentModel(rx.Model, table=True):
     blog_post_id: int = Field(foreign_key="blogpostmodel.id")
     parent_comment_id: Optional[int] = Field(default=None, foreign_key="commentmodel.id")
     purchase_item_id: Optional[int] = Field(default=None, foreign_key="purchaseitemmodel.id")
+    
     parent: Optional["CommentModel"] = Relationship(back_populates="updates", sa_relationship_kwargs=dict(remote_side="CommentModel.id"))
     updates: List["CommentModel"] = Relationship(back_populates="parent")
     userinfo: "UserInfo" = Relationship(back_populates="comments")
@@ -267,8 +299,10 @@ class CommentVoteModel(rx.Model, table=True):
     vote_type: VoteType = Field(sa_column=Column(String))
     userinfo_id: int = Field(foreign_key="userinfo.id")
     comment_id: int = Field(foreign_key="commentmodel.id")
+    
     userinfo: "UserInfo" = Relationship(back_populates="comment_votes")
     comment: "CommentModel" = Relationship(back_populates="votes")
+
     class Config:
         exclude = {"userinfo", "comment"}
 
@@ -292,4 +326,5 @@ class SupportMessageModel(rx.Model, table=True):
     ticket: "SupportTicketModel" = Relationship(back_populates="messages")
     author: "UserInfo" = Relationship()
     @property
-    def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
+    def created_at_formatted(self) -> str:
+        return format_utc_to_local(self.created_at)
