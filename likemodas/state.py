@@ -615,7 +615,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.category == Category.MOCHILAS.value:
             return MATERIALES_MOCHILAS
         return []
-            
+
+    # Lista de variantes para el producto que se está creando. Cada dict es una IMAGEN con sus atributos.
+    new_variants: list[dict] = []
+    # Índice de la imagen/variante que se está editando en el formulario.
+    selected_variant_index: int = -1
+
     attr_tallas_ropa: list[str] = []
     attr_numeros_calzado: list[str] = []
     attr_tamanos_mochila: list[str] = []
@@ -824,23 +829,23 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.generated_variants_map[group_index][item_index].image_url = image_url
 
     def add_attribute_to_variant(self, key: str, value: str):
-        """Añade un atributo a la variante/imagen actualmente seleccionada."""
+        """Añade un atributo (ej. Talla 'S') a la variante/imagen actualmente seleccionada."""
         if self.selected_variant_index < 0 or not value:
             return
 
         variant = self.new_variants[self.selected_variant_index]
-        # Asegurarse de que el diccionario 'attributes' exista
         if "attributes" not in variant:
             variant["attributes"] = {}
 
-        # Obtener la lista actual para esa clave de atributo
         current_list = variant["attributes"].get(key, [])
         if value not in current_list:
             current_list.append(value)
-            variant["attributes"][key] = current_list
-            # Forzar la actualización del estado
-            self.new_variants = self.new_variants[:]
+            variant["attributes"][key] = sorted(current_list) # Mantenemos la lista ordenada
             
+            # Forzar la actualización del estado para que la UI reaccione
+            self.new_variants = self.new_variants[:]
+            self.select_variant_for_editing(self.selected_variant_index) # Recargar la UI del formulario
+
     def remove_attribute_from_variant(self, key: str, value: str):
         """Elimina un atributo de la variante/imagen actualmente seleccionada."""
         if self.selected_variant_index < 0:
@@ -851,23 +856,25 @@ class AppState(reflex_local_auth.LocalAuthState):
             current_list = variant["attributes"][key]
             if value in current_list:
                 current_list.remove(value)
-                if not current_list: # Si la lista queda vacía, se elimina la clave
+                if not current_list:
                     del variant["attributes"][key]
                 else:
                     variant["attributes"][key] = current_list
-                # Forzar la actualización del estado
+                
                 self.new_variants = self.new_variants[:]
+                self.select_variant_for_editing(self.selected_variant_index)
 
     def select_variant_for_editing(self, index: int):
-        """Selecciona una variante y carga sus atributos en el formulario."""
+        """Selecciona una imagen y carga sus atributos en las variables del formulario."""
         self.selected_variant_index = index
-        variant = self.new_variants[index]
-        attributes = variant.get("attributes", {})
-        
-        self.attr_colores = attributes.get("Color", [])
-        self.attr_tallas_ropa = attributes.get("Talla", [])
-        self.attr_numeros_calzado = attributes.get("Número", [])
-        self.attr_tamanos_mochila = attributes.get("Tamaño", [])
+        if 0 <= index < len(self.new_variants):
+            variant = self.new_variants[index]
+            attributes = variant.get("attributes", {})
+            
+            self.attr_colores = attributes.get("Color", [])
+            self.attr_tallas_ropa = attributes.get("Talla", [])
+            self.attr_numeros_calzado = attributes.get("Número", [])
+            self.attr_tamanos_mochila = attributes.get("Tamaño", [])
     
     # ✅ FIN DE LA CORRECCIÓN
 
@@ -905,44 +912,45 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✅ INICIO DE LA CORRECCIÓN: REEMPLAZA ESTA FUNCIÓN POR COMPLETO ✅ ---
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        """
-        CORREGIDO: Guarda la estructura de variantes agrupadas directamente.
-        """
-        if not self.is_admin or not self.authenticated_user_info:
+        """Guarda el nuevo producto con la estructura de variantes agrupadas."""
+        if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
         if not self.new_variants:
             return rx.toast.error("Debes subir al menos una imagen para el producto.")
         
-        # Validación de campos obligatorios
+        # Validar que cada variante (imagen) tenga los atributos necesarios
         for i, variant in enumerate(self.new_variants):
             attrs = variant.get("attributes", {})
             category = form_data.get("category")
-            has_size = ("Talla" in attrs or "Número" in attrs or "Tamaño" in attrs)
             
+            size_key = ""
+            if category == Category.ROPA.value: size_key = "Talla"
+            elif category == Category.CALZADO.value: size_key = "Número"
+            elif category == Category.MOCHILAS.value: size_key = "Tamaño"
+
             if not attrs.get("Color"):
                 return rx.toast.error(f"La imagen #{i+1} debe tener al menos un color asignado.")
-            if not has_size:
-                 return rx.toast.error(f"La imagen #{i+1} debe tener al menos una talla, número o tamaño asignado.")
+            if not attrs.get(size_key):
+                 return rx.toast.error(f"La imagen #{i+1} debe tener al menos una {size_key.lower()} asignada.")
 
-        # --- Lógica de guardado simplificada ---
         with rx.session() as session:
+            # La lógica para crear el post es la misma, pero ahora 'self.new_variants'
+            # contiene la estructura de datos correcta y agrupada.
             new_post = BlogPostModel(
                 userinfo_id=self.authenticated_user_info.id,
                 title=form_data["title"],
                 content=form_data.get("content", ""),
                 price=float(form_data.get("price", 0.0)),
-                # Se guarda directamente la estructura de 'new_variants' que ahora contiene los atributos agrupados
                 variants=self.new_variants,
-                # ... (resto de los campos como estaban)
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
+                price_includes_iva=self.price_includes_iva,
+                is_imported=self.is_imported,
                 shipping_cost=float(self.shipping_cost_str) if self.shipping_cost_str else None,
                 is_moda_completa_eligible=self.is_moda_completa,
                 combines_shipping=self.combines_shipping,
-                shipping_combination_limit=int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None,
-                is_imported=self.is_imported,
+                shipping_combination_limit=int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
             )
             session.add(new_post)
             session.commit()
@@ -950,6 +958,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self._clear_add_form()
         yield rx.toast.success("¡Producto publicado con éxito!")
         return rx.redirect("/blog")
+
     # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
     
     @rx.var
@@ -1409,26 +1418,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.post_images_in_form.remove(filename)
 
 
-    def _clear_add_form(self):
-        self.title = ""
-        self.content = ""
-        self.price = ""
-        self.category = ""
-        self.temp_images = []
-        # ... (otras variables que ya limpiabas)
-        
-        # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
-        self.shipping_cost_str = ""
-        # self.free_shipping_threshold_str = ""
 
-        self.is_moda_completa = True # Resetea a su valor por defecto
-        self.is_imported = False # <-- AÑADE ESTA LÍNEA
-    
-    # --- Variables para el formulario de variantes ---
-    # Guarda la lista de variantes que se están creando
-    new_variants: list[dict] = [] 
-    # Índice de la imagen/variante seleccionada para editar sus atributos
-    selected_variant_index: int = -1 
 
     # --- Variables para el modal de producto ---
     # Índice de la variante que el cliente está viendo en el modal
@@ -1824,7 +1814,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_image(self, filename: str): self.temp_images.remove(filename)
-    def _clear_add_form(self): self.title = ""; self.content = ""; self.price = ""; self.category = ""; self.temp_images = []
+   
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
