@@ -92,6 +92,7 @@ class ProductCardData(rx.Base):
     class Config:
         orm_mode = True
 
+    # --- INICIO DE LA CORRECCIÓN ---
     @property
     def full_stars(self) -> list[int]:
         return list(range(math.floor(self.average_rating)))
@@ -103,6 +104,7 @@ class ProductCardData(rx.Base):
     @property
     def empty_stars(self) -> list[int]:
         return list(range(5 - math.ceil(self.average_rating)))
+    # --- FIN DE LA CORRECCIÓN ---
 
 class ProductDetailData(rx.Base):
     id: int
@@ -123,7 +125,8 @@ class ProductDetailData(rx.Base):
 
     class Config:
         orm_mode = True
-
+        
+    # --- INICIO DE LA CORRECCIÓN ---
     @property
     def full_stars(self) -> list[int]:
         return list(range(math.floor(self.average_rating)))
@@ -135,6 +138,7 @@ class ProductDetailData(rx.Base):
     @property
     def empty_stars(self) -> list[int]:
         return list(range(5 - math.ceil(self.average_rating)))
+    # --- FIN DE LA CORRECCIÓN ---
 
 class AdminPurchaseCardData(rx.Base):
     id: int; customer_name: str; customer_email: str; purchase_date_formatted: str

@@ -8,44 +8,30 @@ from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 
 def star_rating_display(rating_data: rx.Var) -> rx.Component:
-    """
-    Componente para mostrar estrellas de valoración.
-    Recibe un DTO (como ProductDetailData) que ya tiene las propiedades
-    full_stars, has_half_star, y empty_stars pre-calculadas.
-    """
+    """Muestra estrellas usando las propiedades pre-calculadas del DTO."""
     return rx.cond(
         rating_data.rating_count > 0,
         rx.hstack(
             rx.foreach(rating_data.full_stars, lambda _: rx.icon("star", color="gold", size=20)),
             rx.cond(rating_data.has_half_star, rx.icon("star_half", color="gold", size=20)),
             rx.foreach(rating_data.empty_stars, lambda _: rx.icon("star", color=rx.color("gray", 8), size=20)),
-            rx.text(
-                f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)",
-                size="3", 
-                color_scheme="gray", 
-                margin_left="0.5em"
-            ),
+            rx.text(f"{rating_data.average_rating:.1f} de 5 ({rating_data.rating_count} opiniones)", size="3", color_scheme="gray", margin_left="0.5em"),
             align="center", spacing="1",
         ),
         rx.text("Aún no hay opiniones para este producto.", size="3", color_scheme="gray")
     )
 
 def render_update_item(comment: CommentData) -> rx.Component:
-    """Componente para mostrar una actualización de un comentario."""
+    """Muestra una actualización de un comentario."""
     return rx.box(
         rx.vstack(
             rx.hstack(
                 rx.icon("pencil", size=16, margin_right="0.5em"),
                 rx.text("Actualización:", weight="bold"),
-                # Muestra estrellas estáticas para la calificación del comentario
                 rx.hstack(
                     rx.foreach(
                         rx.Var.range(5),
-                        lambda i: rx.icon(
-                            "star",
-                            color=rx.cond(comment.rating > i, "gold", rx.color("gray", 8)),
-                            size=20
-                        )
+                        lambda i: rx.icon("star", color=rx.cond(comment.rating > i, "gold", rx.color("gray", 8)), size=20)
                     ),
                     spacing="1"
                 ),
@@ -54,19 +40,14 @@ def render_update_item(comment: CommentData) -> rx.Component:
                 width="100%"
             ),
             rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),
-            align_items="start",
-            spacing="1"
+            align_items="start", spacing="1"
         ),
-        padding="0.75em",
-        border="1px dashed",
-        border_color=rx.color("gray", 6),
-        border_radius="md",
-        margin_top="1em",
-        margin_left="2.5em"
+        padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),
+        border_radius="md", margin_top="1em", margin_left="2.5em"
     )
 
 def review_submission_form() -> rx.Component:
-    """Muestra el formulario para opinar."""
+    # (Esta función no necesita cambios)
     return rx.cond(
         AppState.show_review_form,
         rx.form(
@@ -77,20 +58,14 @@ def review_submission_form() -> rx.Component:
                     rx.foreach(
                         rx.Var.range(5),
                         lambda i: rx.icon(
-                            "star",
-                            color=rx.cond(AppState.review_rating > i, "gold", rx.color("gray", 8)),
-                            on_click=AppState.set_review_rating(i + 1),
-                            cursor="pointer",
-                            size=32
+                            "star", color=rx.cond(AppState.review_rating > i, "gold", rx.color("gray", 8)),
+                            on_click=AppState.set_review_rating(i + 1), cursor="pointer", size=32
                         )
                     )
                 ),
                 rx.text_area(
-                    name="review_content",
-                    placeholder="Escribe tu opinión aquí...",
-                    value=AppState.review_content,
-                    on_change=AppState.set_review_content,
-                    width="100%",
+                    name="review_content", placeholder="Escribe tu opinión aquí...", value=AppState.review_content,
+                    on_change=AppState.set_review_content, width="100%",
                 ),
                 rx.button(rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%"),
                 spacing="3", padding="1.5em", border="1px solid",
@@ -104,12 +79,11 @@ def review_submission_form() -> rx.Component:
                 "Has alcanzado el límite de actualizaciones para esta compra.",
                 icon="info", margin_top="1.5em", width="100%"
             ),
-            rx.fragment()
         )
     )
 
 def render_comment_item(comment: CommentData) -> rx.Component:
-    """Renderiza un comentario principal con su historial."""
+    """Renderiza un comentario principal y su historial."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
     return rx.box(
         rx.vstack(
@@ -117,15 +91,10 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 rx.avatar(fallback=comment.author_initial, size="2"),
                 rx.text(comment.author_username, weight="bold"),
                 rx.spacer(),
-                # Muestra estrellas estáticas para la calificación del comentario
                 rx.hstack(
                     rx.foreach(
                         rx.Var.range(5),
-                        lambda i: rx.icon(
-                            "star",
-                            color=rx.cond(comment.rating > i, "gold", rx.color("gray", 8)),
-                            size=20
-                        )
+                        lambda i: rx.icon("star", color=rx.cond(comment.rating > i, "gold", rx.color("gray", 8)), size=20)
                     ),
                     spacing="1"
                 ),
@@ -136,21 +105,16 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 comment.updates,
                 rx.button(
                     rx.cond(
-                        AppState.expanded_comments.get(comment.id, False),
-                        "Ocultar historial",
+                        AppState.expanded_comments.get(comment.id, False), "Ocultar historial",
                         rx.text("Ver historial (", rx.text(update_count, as_="span"), " actualizaciones)")
                     ),
                     on_click=AppState.toggle_comment_updates(comment.id),
                     variant="soft", size="1", margin_top="0.5em"
                 )
             ),
-            # Corrección del error 'map': se asegura que comment.updates exista antes del foreach.
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
-                rx.cond(
-                    comment.updates,
-                    rx.foreach(comment.updates, render_update_item)
-                )
+                rx.cond(comment.updates, rx.foreach(comment.updates, render_update_item))
             ),
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
@@ -162,9 +126,9 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     )
 
 def product_detail_modal() -> rx.Component:
-    """El diálogo modal que muestra los detalles del producto."""
-    
+    # (El resto del modal no necesita cambios)
     def _modal_image_section() -> rx.Component:
+        # ... (sin cambios)
         FIXED_HEIGHT = "500px"
         return rx.vstack(
             rx.box(
@@ -186,19 +150,19 @@ def product_detail_modal() -> rx.Component:
                 border_radius="var(--radius-3)", overflow="hidden",
             ),
             rx.cond(
-                AppState.unique_modal_variants.length() > 1,
+                AppState.product_in_modal.variants.length() > 1,
                 rx.hstack(
                     rx.foreach(
-                        AppState.unique_modal_variants,
-                        lambda item: rx.box(
+                        AppState.product_in_modal.variants,
+                        lambda variant, index: rx.box(
                             rx.image(
-                                src=rx.get_upload_url(item.variant.get("image_url")),
+                                src=rx.get_upload_url(variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
-                            border_width=rx.cond(AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"),
-                            border_color=rx.cond(AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"),
+                            border_width=rx.cond(AppState.modal_selected_variant_index == index, "2px", "1px"),
+                            border_color=rx.cond(AppState.modal_selected_variant_index == index, "violet", "gray"),
                             padding="2px", border_radius="lg", cursor="pointer",
-                            on_click=AppState.set_modal_variant_index(item.index),
+                            on_click=AppState.set_modal_variant_index(index),
                         )
                     ),
                     spacing="3", padding="0.5em", width="100%", overflow_x="auto",
@@ -208,11 +172,12 @@ def product_detail_modal() -> rx.Component:
         )
 
     def _modal_info_section() -> rx.Component:
+        # ... (el único cambio es la llamada a star_rating_display)
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            star_rating_display(AppState.product_in_modal),
+            star_rating_display(AppState.product_in_modal), # <-- Llamada actualizada
             rx.hstack(
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
