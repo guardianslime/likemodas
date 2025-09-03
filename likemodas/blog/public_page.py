@@ -125,7 +125,8 @@ def product_detail_modal() -> rx.Component:
                 position="relative", width="100%", height=FIXED_HEIGHT, 
                 border_radius="var(--radius-3)", overflow="hidden",
             ),
-            # Se usa la nueva propiedad computada 'unique_modal_variants'
+            # --- ✨ INICIO DE LA CORRECCIÓN DE MINIATURAS ✨ ---
+            # Se itera sobre la nueva propiedad `unique_modal_variants` para evitar duplicados.
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
@@ -136,21 +137,22 @@ def product_detail_modal() -> rx.Component:
                                 src=rx.get_upload_url(item.variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
+                            # La condición de borde ahora compara con el nombre de archivo actual
                             border_width=rx.cond(
-                                # Se compara con la imagen de la variante seleccionada actualmente
                                 AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"
                             ),
                             border_color=rx.cond(
                                 AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"
                             ),
                             padding="2px", border_radius="lg", cursor="pointer",
-                            # on_click usa el índice original del DTO para seleccionar la variante correcta
+                            # on_click usa el índice original para seleccionar la variante visual correcta
                             on_click=AppState.set_modal_variant_index(item.index),
                         )
                     ),
                     spacing="3", padding="0.5em", width="100%", overflow_x="auto",
                 )
             ),
+            # --- ✨ FIN DE LA CORRECCIÓN DE MINIATURAS ✨ ---
             spacing="3", width="100%",
         )
     # --- FIN DE LA CORRECCIÓN CLAVE ---
@@ -196,6 +198,8 @@ def product_detail_modal() -> rx.Component:
                         width="100%"
                     ),
                 ),
+                # --- ✨ INICIO DE LOS SELECTORES DINÁMICOS ✨ ---
+                # Renderiza los selectores para Talla, Número, etc. dinámicamente.
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(
@@ -208,11 +212,11 @@ def product_detail_modal() -> rx.Component:
                             on_change=lambda value: AppState.set_modal_selected_attribute(selector.key, value),
                             value=selector.current_value,
                         ),
-                        align_items="start",
-                        width="100%",
-                        spacing="2"
+                        align_items="start", width="100%", spacing="2"
                     )
                 ),
+                # --- ✨ FIN DE LOS SELECTORES DINÁMICOS ✨ ---
+
                 align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
             rx.text(

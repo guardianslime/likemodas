@@ -47,16 +47,18 @@ def display_default_address() -> rx.Component:
 
 # --- ✨ PASO 4: REEMPLAZAR LA FUNCIÓN cart_item_row ✨ ---
 def cart_item_row(item: CartItemData) -> rx.Component:
-    """Renderiza una fila en la tabla del carrito mostrando la variante."""
+    """Renderiza una fila en la tabla del carrito mostrando los detalles de la variante."""
     return rx.table.row(
         rx.table.cell(
             rx.vstack(
                 rx.text(item.title, weight="bold"),
-                # Muestra los detalles de la variante
+                # --- ✨ INICIO DE LA CORRECCIÓN DE VISUALIZACIÓN ✨ ---
+                # Itera sobre los detalles de la variante para mostrarlos
                 rx.foreach(
                     item.variant_details.items(),
-                    lambda detail: rx.text(f"{detail[0]}: {', '.join(detail[1]) if isinstance(detail[1], list) else detail[1]}", size="2", color_scheme="gray")
+                    lambda detail: rx.text(f"{detail[0]}: {detail[1]}", size="2", color_scheme="gray")
                 ),
+                # --- ✨ FIN DE LA CORRECCIÓN DE VISUALIZACIÓN ✨ ---
                 align_items="start",
                 spacing="1"
             )
@@ -66,8 +68,8 @@ def cart_item_row(item: CartItemData) -> rx.Component:
                 # El botón de eliminar ahora usa la clave única del carrito
                 rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1"),
                 rx.text(item.quantity),
-                # El botón de añadir no necesita cambios aquí
-                rx.button("+", on_click=lambda: AppState.add_to_cart(item.product_id), size="1"),
+                # El botón de añadir ahora debe abrir el modal para una nueva selección
+                rx.button("+", on_click=AppState.open_product_detail_modal(item.product_id), size="1"),
                 align="center", spacing="3"
             )
         ),

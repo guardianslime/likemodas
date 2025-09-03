@@ -237,6 +237,9 @@ class CartItemData(rx.Base):
     @property
     def subtotal_cop(self) -> str:
         return format_to_cop(self.subtotal)
+class UniqueVariantItem(rx.Base):
+    variant: dict
+    index: int
 
 class ModalSelectorDTO(rx.Base):
     key: str
@@ -247,10 +250,6 @@ class VariantFormData(rx.Base):
     attributes: dict[str, str]
     stock: int = 10
     image_url: str = ""
-
-class UniqueVariantItem(rx.Base):
-    variant: dict
-    index: int
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -1567,118 +1566,89 @@ class AppState(reflex_local_auth.LocalAuthState):
 
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
-        """Actualiza la selección de un atributo en el modal de forma segura."""
-        # GUARD CLAUSE: Previene el error si el modal no está listo.
-        if not self.product_in_modal:
-            return
-
+        """Actualiza la selección de un atributo (ej: Talla) en el modal."""
         self.modal_selected_attributes[key] = value
-
-        all_keys = sorted(list(
-            {k for variant in self.product_in_modal.variants for k in variant.get("attributes", {})}
-        ))
-        
-        if key in all_keys:
-            key_index = all_keys.index(key)
-            for next_key in all_keys[key_index + 1:]:
-                if next_key in self.modal_selected_attributes:
-                    del self.modal_selected_attributes[next_key]
 
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
-        if not self.product_in_modal: return []
+        """
+        Genera dinámicamente la lista de selectores (ej: Tallas) necesarios
+        basado en la imagen seleccionada y el stock disponible.
+        """
+        if not self.current_modal_variant or not self.product_in_modal: return []
         
-        all_variants = self.product_in_modal.variants
-        current_selection = self.modal_selected_attributes
+        current_image_url = self.current_modal_image_filename
         
-        # 1. Obtenemos todas las claves de atributos presentes en las variantes
-        all_keys_in_variants = sorted(list(
-            {key for v in all_variants for key in v.get("attributes", {})}
+        # Filtra todas las variantes que pertenecen a la misma imagen
+        variants_for_this_image = [
+            v for v in self.product_in_modal.variants 
+            if v.get("image_url") == current_image_url
+        ]
+
+        # Identifica qué atributos son seleccionables (Talla, Número, etc.)
+        selectable_keys = list(set(
+            key for v in variants_for_this_image 
+            for key in v.get("attributes", {})
+            if key in ["Talla", "Número", "Tamaño"]
         ))
         
-        # 2. Filtramos para quedarnos SOLO con las que son seleccionables
-        selectable_keys = [key for key in all_keys_in_variants if key in self.SELECTABLE_ATTRIBUTES]
+        if not selectable_keys: return []
 
-        selectors = []
-        # Ahora el bucle solo se ejecutará para "Talla", "Número", o "Tamaño"
-        for i, key in enumerate(selectable_keys):
-            # ... el resto de la lógica de la función no necesita cambios ...
-            filtered_variants = all_variants
-            for prev_key in selectable_keys[:i]:
-                if prev_key in current_selection:
-                    filtered_variants = [
-                        v for v in filtered_variants 
-                        if v.get("attributes", {}).get(prev_key) == current_selection[prev_key] # [cite: 885, 886]
-                    ]
-            
-            valid_options = {
-                v.get("attributes", {}).get(key)
-                for v in filtered_variants
-                if v.get("stock", 0) > 0 and v.get("attributes", {}).get(key) # [cite: 887]
-            }
-            
-            if valid_options:
-                selectors.append(
-                    ModalSelectorDTO(
-                        key=key,
-                        options=sorted(list(valid_options)),
-                        current_value=current_selection.get(key, "") # [cite: 888, 889]
-                    )
-                )
-        return selectors
+        key_to_select = selectable_keys[0] # Asumimos un solo tipo de selector por grupo de imagen
+        
+        # Encuentra las opciones disponibles Y con stock
+        valid_options = sorted(list({
+            v["attributes"][key_to_select]
+            for v in variants_for_this_image
+            if v.get("stock", 0) > 0 and key_to_select in v.get("attributes", {})
+        }))
+        
+        if not valid_options: return []
+        
+        return [ModalSelectorDTO(
+            key=key_to_select,
+            options=valid_options,
+            current_value=self.modal_selected_attributes.get(key_to_select, "")
+        )]
 
     @rx.event
     def add_to_cart(self, product_id: int):
         """
-        Añade una variante específica de un producto al carrito, validando la selección y el stock.
+        Lógica de añadir al carrito REESCRITA para encontrar la variante exacta
+        basada en la selección del usuario y verificar su stock específico.
         """
         if not self.is_authenticated:
             return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
-        if not self.product_in_modal or product_id != self.product_in_modal.id:
+        if not self.product_in_modal or not self.current_modal_variant:
             return rx.toast.error("Error al identificar el producto.")
 
-        # --- ✨ INICIO DE LA LÓGICA DE STOCK CORREGIDA ✨ ---
-
-        # 1. Validar que se hayan seleccionado todos los atributos requeridos (Talla, Número, etc.)
+        # 1. Validar que se hayan seleccionado todos los atributos requeridos
         required_keys = {selector.key for selector in self.modal_attribute_selectors}
         if not all(key in self.modal_selected_attributes for key in required_keys):
-            missing_keys = required_keys - set(self.modal_selected_attributes.keys())
-            return rx.toast.error(f"Por favor, selecciona: {', '.join(missing_keys)}")
+            missing = required_keys - set(self.modal_selected_attributes.keys())
+            return rx.toast.error(f"Por favor, selecciona: {', '.join(missing)}")
 
-        # 2. Encontrar la variante exacta que coincide con la selección del usuario
+        # 2. Encontrar la variante exacta que coincide con la selección completa
         variant_to_add = None
+        # Atributos de la imagen base (ej: Color)
+        base_attributes = self.current_variant_display_attributes
+        # Atributos seleccionados (ej: Talla)
+        selected_attributes = self.modal_selected_attributes
+        
+        # Combinamos ambos para la búsqueda
+        full_selection = {**base_attributes, **selected_attributes}
+        
         for variant in self.product_in_modal.variants:
-            variant_attrs = variant.get("attributes", {})
-            
-            # Compara los atributos de solo lectura (como Color) y los seleccionables (como Talla)
-            current_variant_attrs_for_comparison = self.product_in_modal.variants[self.modal_selected_variant_index].get("attributes", {})
-            
-            is_match = True
-            # Comprobar atributos de solo lectura (los de la variante visual)
-            for key, value in current_variant_attrs_for_comparison.items():
-                if key not in self.SELECTABLE_ATTRIBUTES and variant_attrs.get(key) != value:
-                    is_match = False
-                    break
-            if not is_match: continue
-
-            # Comprobar atributos seleccionables (los del estado `modal_selected_attributes`)
-            for key, value in self.modal_selected_attributes.items():
-                if variant_attrs.get(key) != value:
-                    is_match = False
-                    break
-            
-            if is_match:
+            if variant.get("attributes") == full_selection:
                 variant_to_add = variant
                 break
         
         if not variant_to_add:
-            return rx.toast.error("La combinación de producto seleccionada no está disponible.")
+            return rx.toast.error("La combinación seleccionada no está disponible.")
 
         # 3. Construir la clave única para el carrito
-        selection_items = sorted(self.modal_selected_attributes.items())
-        selection_key_part = "-".join([f"{k}:{v}" for k, v in selection_items])
-        
-        # El índice de la variante visual (thumbnail) sigue siendo parte de la clave para la imagen
+        # Usamos el índice de la variante visual para la imagen y los atributos para la unicidad
+        selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in full_selection.items()]))
         cart_key = f"{product_id}-{self.modal_selected_variant_index}-{selection_key_part}"
         
         # 4. Verificar el stock de la variante encontrada
@@ -1690,8 +1660,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         # 5. Si hay stock, añadir al carrito
         self.cart[cart_key] = cantidad_en_carrito + 1
-        
-        # --- ✨ FIN DE LA LÓGICA DE STOCK CORREGIDA ✨ ---
         
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido al carrito.")
@@ -3137,13 +3105,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- NUEVOS MANEJADORES PARA EL MODAL ---
     def set_modal_variant_index(self, index: int):
         """
-        Cambia la variante en el modal y actualiza las selecciones de atributos
-        para que coincidan con la nueva variante seleccionada.
+        Llamado al hacer clic en una miniatura. Selecciona la variante visual
+        y reinicia las selecciones de atributos.
         """
         self.modal_selected_variant_index = index
-        if self.product_in_modal and 0 <= index < len(self.product_in_modal.variants):
-            selected_variant = self.product_in_modal.variants[index]
-            self._set_default_attributes_from_variant(selected_variant)
+        self.modal_selected_attributes = {} # Limpia la selección de talla anterior
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
@@ -3171,8 +3137,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if not db_post or not db_post.publish_active:
                 self.show_detail_modal = False
-                yield rx.toast.error("Producto no encontrado o no disponible.")
-                return
+                return rx.toast.error("Producto no encontrado.")
 
             # Lógica de envío y datos del vendedor (sin cambios)
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
