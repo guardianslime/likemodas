@@ -1339,7 +1339,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         seen_images = set()
         for i, variant in enumerate(self.product_in_modal.variants):
             image_url = variant.get("image_url")
-            # Solo añade la variante a la lista de miniaturas si su imagen no se ha visto antes
             if image_url and image_url not in seen_images:
                 seen_images.add(image_url)
                 unique_items.append(UniqueVariantItem(variant=variant, index=i))
@@ -1825,18 +1824,40 @@ class AppState(reflex_local_auth.LocalAuthState):
             return admin_posts
             # --- FIN DE LA CORRECCIÓN ---
 
+    # --- INICIO DE LA CORRECCIÓN CLAVE ---
     @rx.event
     def delete_post(self, post_id: int):
+        """
+        Elimina una publicación de forma segura, solo si no tiene compras asociadas.
+        """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
+
         with rx.session() as session:
+            # 1. Verificar si existen compras para este post
+            existing_purchases = session.exec(
+                sqlmodel.select(PurchaseItemModel).where(PurchaseItemModel.blog_post_id == post_id)
+            ).first()
+
+            if existing_purchases:
+                # Si hay compras, no permitir el borrado
+                return rx.toast.error(
+                    "Esta publicación no se puede eliminar porque está asociada a compras existentes. Puedes desactivarla en su lugar."
+                )
+
+            # 2. Si no hay compras, proceder con el borrado
             post_to_delete = session.get(BlogPostModel, post_id)
-            if post_to_delete and post_to_delete.userinfo_id == self.authenticated_user_info.id:
+            if post_to_delete and (post_to_delete.userinfo_id == self.authenticated_user_info.id or self.is_admin):
+                # Gracias al 'cascade' en el modelo, esto borrará los comentarios asociados.
                 session.delete(post_to_delete)
                 session.commit()
-                yield rx.toast.success("Publicación eliminada.")
+                yield rx.toast.success("Publicación y comentarios eliminados.")
+                # Recargar las listas para que la UI se actualice
+                yield AppState.on_load_admin_store
+                yield AppState.load_main_page_data
             else:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
+    # --- FIN DE LA CORRECCIÓN CLAVE ---
 
     @rx.event
     def toggle_publish_status(self, post_id: int):

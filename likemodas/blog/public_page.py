@@ -103,8 +103,8 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 
 def product_detail_modal() -> rx.Component:
     # La única modificación es en _modal_info_section para usar el nuevo componente de estrellas.
+    # --- INICIO DE LA CORRECCIÓN CLAVE ---
     def _modal_image_section() -> rx.Component:
-        # ... (sin cambios)
         FIXED_HEIGHT = "500px"
         return rx.vstack(
             rx.box(
@@ -125,20 +125,27 @@ def product_detail_modal() -> rx.Component:
                 position="relative", width="100%", height=FIXED_HEIGHT, 
                 border_radius="var(--radius-3)", overflow="hidden",
             ),
+            # Se usa la nueva propiedad computada 'unique_modal_variants'
             rx.cond(
-                AppState.product_in_modal.variants.length() > 1,
+                AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
                     rx.foreach(
-                        AppState.product_in_modal.variants,
-                        lambda variant, index: rx.box(
+                        AppState.unique_modal_variants,
+                        lambda item: rx.box(
                             rx.image(
-                                src=rx.get_upload_url(variant.get("image_url")),
+                                src=rx.get_upload_url(item.variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
-                            border_width=rx.cond(AppState.modal_selected_variant_index == index, "2px", "1px"),
-                            border_color=rx.cond(AppState.modal_selected_variant_index == index, "violet", "gray"),
+                            border_width=rx.cond(
+                                # Se compara con la imagen de la variante seleccionada actualmente
+                                AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"
+                            ),
+                            border_color=rx.cond(
+                                AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"
+                            ),
                             padding="2px", border_radius="lg", cursor="pointer",
-                            on_click=AppState.set_modal_variant_index(index),
+                            # on_click usa el índice original del DTO para seleccionar la variante correcta
+                            on_click=AppState.set_modal_variant_index(item.index),
                         )
                     ),
                     spacing="3", padding="0.5em", width="100%", overflow_x="auto",
@@ -146,6 +153,7 @@ def product_detail_modal() -> rx.Component:
             ),
             spacing="3", width="100%",
         )
+    # --- FIN DE LA CORRECCIÓN CLAVE ---
 
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
