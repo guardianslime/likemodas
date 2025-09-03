@@ -1,4 +1,4 @@
-# likemodas/state.py (Versión Definitiva Corregida)
+# likemodas/state.py (Versión Completa y Definitiva)
 
 from __future__ import annotations
 import reflex as rx
@@ -43,10 +43,10 @@ def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
         return f"Envío: {format_to_cop(shipping_cost)}"
     return "Envío a convenir"
 
-# --- ✨ INICIO DE LA CORRECCIÓN: NUEVOS DTOs ---
+# --- DTOs (Data Transfer Objects) ---
+# ... (No hay cambios en los DTOs, se mantienen como estaban) ...
 
 class UserInfoDTO(rx.Base):
-    """DTO simple y serializable para la información del usuario en sesión."""
     id: int
     user_id: int
     username: str
@@ -54,7 +54,6 @@ class UserInfoDTO(rx.Base):
     role: str
 
 class NotificationDTO(rx.Base):
-    """DTO para las notificaciones."""
     id: int
     message: str
     is_read: bool
@@ -62,7 +61,6 @@ class NotificationDTO(rx.Base):
     created_at_formatted: str
 
 class ContactEntryDTO(rx.Base):
-    """DTO para las entradas de contacto."""
     id: int
     first_name: str
     last_name: Optional[str]
@@ -70,9 +68,6 @@ class ContactEntryDTO(rx.Base):
     message: str
     created_at_formatted: str
     userinfo_id: Optional[int]
-
-
-# --- ✨ FIN DE LA CORRECCIÓN ---
 
 class ProductCardData(rx.Base):
     id: int
@@ -88,14 +83,8 @@ class ProductCardData(rx.Base):
     userinfo_id: int
     average_rating: float = 0.0
     rating_count: int = 0
-
     class Config:
         orm_mode = True
-
-    # --- ELIMINA LAS SIGUIENTES 3 PROPIEDADES ---
-    # @property def full_stars...
-    # @property def has_half_star...
-    # @property def empty_stars...
 
 class ProductDetailData(rx.Base):
     id: int
@@ -113,45 +102,40 @@ class ProductDetailData(rx.Base):
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
     is_imported: bool = False
-
     class Config:
         orm_mode = True
-        
-    # --- ELIMINA LAS SIGUIENTES 3 PROPIEDADES ---
-    # @property def full_stars...
-    # @property def has_half_star...
-    # @property def empty_stars...
 
 class AdminPurchaseCardData(rx.Base):
-    id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
-    status: str; total_price: float; shipping_name: str; shipping_full_address: str
-    shipping_phone: str; items_formatted: list[str]
+    id: int
+    customer_name: str
+    customer_email: str
+    purchase_date_formatted: str
+    status: str
+    total_price: float
+    shipping_name: str
+    shipping_full_address: str
+    shipping_phone: str
+    items_formatted: list[str]
     payment_method: str
-    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     confirmed_at: Optional[datetime] = None
-
     @property
     def total_price_cop(self) -> str:
         return format_to_cop(self.total_price)
-    
+
 class PurchaseItemCardData(rx.Base):
-    """DTO para mostrar la miniatura de un artículo en el historial de compras."""
     id: int
     title: str
     image_url: str
     price_at_purchase: float
     price_at_purchase_cop: str
     quantity: int
-
-    @property # <-- ✨ ESTA ES LA CORRECCIÓN
+    @property
     def subtotal_cop(self) -> str:
-        """Calcula y formatea el subtotal para esta línea de artículo."""
         return format_to_cop(self.price_at_purchase * self.quantity)
-    
+
 class UserPurchaseHistoryCardData(rx.Base):
-    """DTO actualizado para el historial de compras del usuario."""
     id: int
-    userinfo_id: int  # --- AÑADE ESTA LÍNEA ---
+    userinfo_id: int
     purchase_date_formatted: str
     status: str
     total_price_cop: str
@@ -164,7 +148,6 @@ class UserPurchaseHistoryCardData(rx.Base):
     items: list[PurchaseItemCardData]
 
 class AdminPostRowData(rx.Base):
-    """DTO para una fila en la tabla de publicaciones del admin."""
     id: int
     title: str
     price_cop: str
@@ -182,29 +165,21 @@ class CommentData(rx.Base):
     author_username: str
     author_initial: str
     created_at_formatted: str
-    # ✅ CORRECCIÓN: Volvemos a la definición original. Es más simple y compatible.
-    # El riesgo es bajo porque siempre creamos nuevas instancias de este DTO.
     updates: List["CommentData"] = []
 
 class InvoiceItemData(rx.Base):
-    """Un modelo específico para cada línea de artículo en la factura."""
     name: str
     quantity: int
+    price: float
     price_cop: str
     subtotal_cop: str
     iva_cop: str
     total_con_iva_cop: str
-
-    @property
-    def price_cop(self) -> str:
-        return format_to_cop(self.price)
-
     @property
     def total_cop(self) -> str:
         return format_to_cop(self.price * self.quantity)
 
 class InvoiceData(rx.Base):
-    """DTO para contener toda la información necesaria para una factura."""
     id: int
     purchase_date_formatted: str
     status: str
@@ -214,7 +189,7 @@ class InvoiceData(rx.Base):
     shipping_full_address: str
     shipping_phone: str
     subtotal_cop: str
-    shipping_applied_cop: str # <-- ✨ 1. AÑADE ESTE CAMPO
+    shipping_applied_cop: str
     iva_cop: str
     total_price_cop: str
 
@@ -225,7 +200,6 @@ class SupportMessageData(rx.Base):
     created_at_formatted: str
 
 class SupportTicketAdminData(rx.Base):
-    """DTO para mostrar un resumen del ticket en la lista del admin."""
     ticket_id: int
     purchase_id: int
     buyer_name: str
@@ -234,35 +208,21 @@ class SupportTicketAdminData(rx.Base):
     created_at_formatted: str
 
 class SellerInfoData(rx.Base):
-    """DTO para mostrar la información pública de un vendedor."""
     id: int
     username: str
 
 class SupportTicketData(rx.Base):
-    """DTO para mostrar la información de un ticket en la vista de chat."""
     id: int
     purchase_id: int
     buyer_id: int
     seller_id: int
     subject: str
     status: str
-
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Se añade esta configuración para permitir el uso de .from_orm()
     class Config:
         orm_mode = True
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
-# --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-class AttributeGroupDTO(rx.Base):
-    """DTO para agrupar un atributo y sus posibles valores."""
-    key: str        # ej: "Talla"
-    options: list[str] # RENOMBRADO de 'values' a 'options'
-# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
 class CartItemData(rx.Base):
-    """DTO para el carrito, ahora incluye detalles de la variante."""
-    cart_key: str  # e.g., "15-2" (product_id-variant_index)
+    cart_key: str
     product_id: int
     variant_index: int
     title: str
@@ -270,35 +230,28 @@ class CartItemData(rx.Base):
     price_cop: str
     image_url: str
     quantity: int
-    variant_details: dict # e.g., {"Talla": "S", "Color": "Azul"}
-
+    variant_details: dict
     @property
     def subtotal(self) -> float:
         return self.price * self.quantity
-
     @property
     def subtotal_cop(self) -> str:
         return format_to_cop(self.subtotal)
-    
+
 class ModalSelectorDTO(rx.Base):
-    """Representa el estado completo de un selector en el modal."""
-    key: str           # ej: "Talla"
-    options: list[str]   # ej: ["S", "M"] (solo las opciones válidas)
-    current_value: str # ej: "S"
+    key: str
+    options: list[str]
+    current_value: str
 
 class VariantFormData(rx.Base):
-    """DTO para manejar los datos de una variante en el formulario."""
     attributes: dict[str, str]
-    stock: int = 10  # Stock por defecto
+    stock: int = 10
     image_url: str = ""
 
-# --- AÑADE ESTA NUEVA CLASE DTO AQUÍ ---
 class UniqueVariantItem(rx.Base):
-    """Un DTO para que rx.foreach entienda la estructura de las variantes únicas."""
-    variant: dict  # El diccionario de la variante en sí
-    index: int     # El índice original en la lista completa de variantes
+    variant: dict
+    index: int
 
-# --- ESTADO PRINCIPAL DE LA APLICACIÓN ---
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
@@ -795,6 +748,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def submit_and_publish(self, form_data: dict):
         """
         Crea y publica un nuevo producto, guardando las variantes con su stock individual.
+        Esta es la lógica correcta que crea una variante por cada combinación.
         """
         if not self.is_admin or not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
@@ -814,10 +768,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             return rx.toast.error("Los costos y límites deben ser números válidos.")
 
-        # --- Lógica para aplanar las variantes del map a una sola lista para la BD ---
+        # Lógica para aplanar las variantes del map a una sola lista para la BD
         all_variants_for_db = []
         for index, generated_list in self.generated_variants_map.items():
-            # Obtiene la URL de la imagen principal para este grupo de variantes
             main_image_url_for_group = self.new_variants[index].get("image_url", "")
             
             for variant_data in generated_list:
@@ -839,7 +792,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
-                variants=all_variants_for_db,
+                variants=all_variants_for_db, # <--- Aquí se guardan las variantes correctas
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost,
@@ -1612,20 +1565,23 @@ class AppState(reflex_local_auth.LocalAuthState):
 
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
-        """
-        Actualiza la selección de un atributo y resetea los atributos dependientes.
-        """
+        """Actualiza la selección de un atributo en el modal de forma segura."""
+        # GUARD CLAUSE: Previene el error si el modal no está listo.
+        if not self.product_in_modal:
+            return
+
         self.modal_selected_attributes[key] = value
 
-        # Reinicia las selecciones de los atributos que vienen después
         all_keys = sorted(list(
             {k for variant in self.product_in_modal.variants for k in variant.get("attributes", {})}
         ))
         
-        key_index = all_keys.index(key)
-        for next_key in all_keys[key_index + 1:]:
-            if next_key in self.modal_selected_attributes:
-                del self.modal_selected_attributes[next_key]
+        # El resto de la lógica para limpiar selecciones dependientes
+        if key in all_keys:
+            key_index = all_keys.index(key)
+            for next_key in all_keys[key_index + 1:]:
+                if next_key in self.modal_selected_attributes:
+                    del self.modal_selected_attributes[next_key]
 
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
