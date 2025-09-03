@@ -1325,10 +1325,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             processed.append(AttributeData(key=k, value=value_str))
         return processed
     
+    # --- INICIO DE LA CORRECCIÓN CLAVE ---
     @rx.var
-    def unique_modal_variants(self) -> list[UniqueVariantItem]: # <-- Cambia el tipo de retorno
+    def unique_modal_variants(self) -> list[UniqueVariantItem]:
         """
-        Devuelve una lista de DTOs con URLs de imagen únicas para las miniaturas del modal.
+        Devuelve una lista de DTOs con URLs de imagen únicas para las
+        miniaturas del modal, evitando duplicados.
         """
         if not self.product_in_modal or not self.product_in_modal.variants:
             return []
@@ -1337,11 +1339,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         seen_images = set()
         for i, variant in enumerate(self.product_in_modal.variants):
             image_url = variant.get("image_url")
+            # Solo añade la variante a la lista de miniaturas si su imagen no se ha visto antes
             if image_url and image_url not in seen_images:
                 seen_images.add(image_url)
-                # En lugar de un dict, creamos una instancia del nuevo DTO
                 unique_items.append(UniqueVariantItem(variant=variant, index=i))
         return unique_items
+    # --- FIN DE LA CORRECCIÓN CLAVE ---
 
     cart: Dict[int, int] = {}
 
@@ -1576,7 +1579,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             {k for variant in self.product_in_modal.variants for k in variant.get("attributes", {})}
         ))
         
-        # El resto de la lógica para limpiar selecciones dependientes
         if key in all_keys:
             key_index = all_keys.index(key)
             for next_key in all_keys[key_index + 1:]:

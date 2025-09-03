@@ -108,7 +108,8 @@ class PasswordResetToken(rx.Model, table=True):
 
 class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
-    title: str; content: str
+    title: str
+    content: str
     price: float = 0.0
     variants: list = Field(default_factory=list, sa_column=Column(JSON))
     publish_active: bool = False
@@ -116,35 +117,25 @@ class BlogPostModel(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"onupdate": sqlalchemy.func.now()}, nullable=False)
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
-    
-    # --- 👇 AÑADE ESTAS DOS LÍNEAS 👇 ---
     shipping_cost: Optional[float] = Field(default=None)
-    
-    #free_shipping_threshold: Optional[int] = Field(default=None) # Para "Moda Completa"
-
     is_moda_completa_eligible: bool = Field(default=True, nullable=False)
-
-    # --- ✨ AÑADE ESTOS DOS NUEVOS CAMPOS AQUÍ ✨ ---
     combines_shipping: bool = Field(default=False, nullable=False)
     shipping_combination_limit: Optional[int] = Field(default=None)
     price_includes_iva: bool = Field(default=True, nullable=False)
-    is_imported: bool = Field(default=False, nullable=False) # <-- AÑADE ESTA LÍNEA
+    is_imported: bool = Field(default=False, nullable=False)
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
-    comments: List["CommentModel"] = Relationship(back_populates="blog_post")
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     
-    class Config:
-        exclude = {"userinfo", "comments", "saved_by_users"}
-    
-    # --- ✨ AÑADE ESTA PROPIEDAD PARA ESTANDARIZAR CÁLCULOS ✨ ---
+    # --- INICIO DE LA CORRECCIÓN CLAVE ---
+    # Añadimos cascade="all, delete-orphan" para que al borrar un post, se borren sus comentarios.
+    comments: List["CommentModel"] = Relationship(back_populates="blog_post", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    # --- FIN DE LA CORRECCIÓN CLAVE ---
+
     @property
     def base_price(self) -> float:
-        """Devuelve el precio del artículo SIN IVA."""
         if self.price_includes_iva:
-            # Si el precio ya incluye IVA, lo calculamos hacia atrás
             return (self.price or 0.0) / 1.19
-        # Si no, el precio introducido es el precio base
         return self.price or 0.0
 
     @property
