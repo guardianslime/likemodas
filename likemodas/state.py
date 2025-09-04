@@ -2650,8 +2650,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         notifications_list = getattr(self, "_notifications", [])
         return sum(1 for n in notifications_list if not n.is_read)
     
-    @rx.event
-    def load_notifications(self):
+    # --- ✨ INICIO DE LA CORRECCIÓN DEL ERROR DE BACKEND ✨ ---
+
+    def _load_notifications_logic(self):
+        """
+        Función privada que contiene la lógica real para cargar notificaciones.
+        No es un manejador de eventos, por lo que puede ser llamada desde cualquier lugar.
+        """
         if not self.authenticated_user_info:
             self._notifications = []
             return
@@ -2671,18 +2676,25 @@ class AppState(reflex_local_auth.LocalAuthState):
                     created_at_formatted=n.created_at_formatted
                 ) for n in notifications_db
             ]
-    
-    # --- ✨ INICIO: CÓDIGO PARA EL SONDEO DE NOTIFICACIONES ✨ ---
+
+    @rx.event
+    def load_notifications(self):
+        """
+        Este manejador se llama cuando la página carga por primera vez (on_mount).
+        Ahora solo llama a la función de lógica central.
+        """
+        self._load_notifications_logic()
+
     @rx.event
     def poll_notifications(self):
         """
-        Este es un evento "puente" que es llamado por el temporizador de JavaScript.
-        Solo carga las notificaciones si el usuario ha iniciado sesión.
+        Este manejador es llamado por el temporizador de JavaScript.
+        Ahora solo llama a la función de lógica central.
         """
         if self.is_authenticated:
-            yield self.load_notifications
-    # --- ✨ FIN: CÓDIGO PARA EL SONDEO DE NOTIFICACIONES ✨ ---
+            self._load_notifications_logic()
 
+    # --- ✨ FIN DE LA CORRECCIÓN DEL ERROR DE BACKEND ✨ ---
     @rx.event
     def mark_all_as_read(self):
         if not self.authenticated_user_info:
