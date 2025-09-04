@@ -6,15 +6,16 @@ from ..state import AppState
 from ..models import Category
 
 def notification_icon() -> rx.Component:
-    # ... (este componente no cambia)
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
             rx.box(
                 rx.icon("bell", size=28, color=icon_color),
                 rx.cond(
+                    # --- ✅ USAMOS EL NUEVO NOMBRE ---
                     AppState.unread_count > 0,
                     rx.box(
+                        # --- ✅ USAMOS EL NUEVO NOMBRE ---
                         rx.text(AppState.unread_count, size="1", weight="bold"),
                         position="absolute", top="-5px", right="-5px",
                         padding="0 0.4em", border_radius="full",
@@ -26,9 +27,11 @@ def notification_icon() -> rx.Component:
         ),
         rx.menu.content(
             rx.cond(
-                AppState.notification_list,
+                # --- ✅ USAMOS EL NUEVO NOMBRE ---
+                AppState.user_notifications,
                 rx.foreach(
-                    AppState.notification_list,
+                    # --- ✅ USAMOS EL NUEVO NOMBRE ---
+                    AppState.user_notifications,
                     lambda n: rx.menu.item(
                         rx.box(
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),

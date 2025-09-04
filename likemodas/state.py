@@ -2681,7 +2681,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ) for n in notifications_db
             ]
 
-    # ... (load_notifications y poll_notifications no necesitan cambios) ...
+    # Los métodos load_notifications y poll_notifications no cambian,
+    # ya que simplemente llaman a _load_notifications_logic.
+    @rx.event
+    def load_notifications(self):
+        self._load_notifications_logic()
+
+    @rx.event
+    def poll_notifications(self):
+        if self.is_authenticated:
+            self._load_notifications_logic()
 
     @rx.event
     def mark_all_as_read(self):
