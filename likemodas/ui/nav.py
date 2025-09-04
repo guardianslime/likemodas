@@ -1,4 +1,4 @@
-# likemodas/ui/nav.py (CORREGIDO Y ROBUSTO)
+# likemodas/ui/nav.py (SOLUCIÓN DEFINITIVA)
 
 import reflex as rx
 from .. import navigation
@@ -6,7 +6,7 @@ from ..state import AppState
 from ..models import Category
 
 def notification_icon() -> rx.Component:
-    """Componente para el icono y menú de notificaciones."""
+    # ... (este componente no cambia)
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
@@ -50,6 +50,7 @@ def public_navbar() -> rx.Component:
     icon_color = rx.color_mode_cond("black", "white")
     
     hamburger_menu = rx.menu.root(
+        # ... (este componente no cambia)
         rx.menu.trigger(
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
         ),
@@ -71,6 +72,7 @@ def public_navbar() -> rx.Component:
     )
 
     authenticated_icons = rx.hstack(
+        # ... (este componente no cambia)
         notification_icon(),
         rx.link(
             rx.box(
@@ -93,6 +95,7 @@ def public_navbar() -> rx.Component:
     )
     
     placeholder_icons = rx.hstack(
+        # ... (este componente no cambia)
         rx.box(width="44px", height="44px", padding="0.5em"),
         rx.box(width="38px", height="44px", padding="0.5em"),
         align="center",
@@ -101,6 +104,7 @@ def public_navbar() -> rx.Component:
     )
 
     return rx.box(
+        # La parte visible de la barra de navegación
         rx.grid(
             rx.hstack(
                 hamburger_menu,
@@ -128,46 +132,39 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
-        # --- ✨ INICIO: SOLUCIÓN DE NOTIFICACIONES ROBUSTA ✨ ---
+        # --- ✨ INICIO: SOLUCIÓN DEFINITIVA CON EVENT_TRIGGER ✨ ---
+
+        # 1. El "botón invisible" que está conectado a nuestra función de Python.
+        #    Solo existe si el usuario ha iniciado sesión.
+        rx.cond(
+            AppState.is_authenticated,
+            rx.event_trigger(
+                on_click=AppState.poll_notifications,
+                id="notification_poller_trigger", # Le damos un ID único
+            ),
+        ),
+
+        # 2. El script que "pulsa" el botón invisible cada 15 segundos.
+        #    También solo se activa si el usuario ha iniciado sesión.
         rx.cond(
             AppState.is_authenticated,
             rx.box(
                 on_mount=rx.call_script(
                     """
-                    // Evita crear múltiples temporizadores si el componente se recarga.
                     if (!window.likemodas_notification_poller) {
-                        
-                        // Esta función será la que configure el temporizador principal.
-                        const startMainInterval = () => {
-                            window.likemodas_notification_poller = setInterval(() => {
-                                // Doble chequeo para asegurar que la conexión sigue activa.
-                                if (window.reflex && window.reflex.connection.readyState === 1) {
-                                    window.reflex.call('app_state.poll_notifications');
-                                }
-                            }, 15000); // El sondeo principal cada 15 segundos.
-                        };
-
-                        // Esta función verifica si Reflex está listo.
-                        const checkReflexReady = () => {
-                            // La condición clave: ¿existe el objeto y está la conexión abierta (readyState === 1)?
-                            if (window.reflex && window.reflex.connection.readyState === 1) {
-                                // ¡Sí! Está listo. Iniciamos el temporizador principal.
-                                startMainInterval();
-                            } else {
-                                // Aún no está listo. Volvemos a verificar en 200 milisegundos.
-                                setTimeout(checkReflexReady, 200);
+                        window.likemodas_notification_poller = setInterval(() => {
+                            const trigger = document.getElementById('notification_poller_trigger');
+                            if (trigger) {
+                                trigger.click(); // Simula un clic en el botón invisible
                             }
-                        };
-
-                        // Inicia la primera verificación.
-                        checkReflexReady();
+                        }, 15000);
                     }
                     """
                 ),
-                display="none",
+                display="none", # Ocultamos esta caja
             )
         ),
-        # --- ✨ FIN: SOLUCIÓN DE NOTIFICACIONES ROBUSTA ✨ ---
+        # --- ✨ FIN: SOLUCIÓN DEFINITIVA CON EVENT_TRIGGER ✨ ---
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",

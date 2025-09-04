@@ -2680,7 +2680,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         Solo carga las notificaciones si el usuario ha iniciado sesión.
         """
         if self.is_authenticated:
-            # 'yield' se asegura de que el evento load_notifications se ejecute correctamente.
             yield self.load_notifications
     # --- ✨ FIN: CÓDIGO PARA EL SONDEO DE NOTIFICACIONES ✨ ---
 
