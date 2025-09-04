@@ -261,7 +261,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Se define como una variable de estado normal, no como una propiedad computada.
     # Esto asegura que esté disponible durante la compilación para las migraciones.
     # --- ✨ INICIO DE LA CORRECCIÓN: VARIABLES DE ESTADO MODIFICADAS ---
-    notification_list: List[NotificationDTO] = []
+    user_notifications: List[NotificationDTO] = []
     contact_entries: list[ContactEntryDTO] = []
     # --- ✨ FIN DE LA CORRECCIÓN ---
     lista_de_barrios_popayan: list[str] = LISTA_DE_BARRIOS
@@ -2651,17 +2651,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         Calcula de forma segura el número de notificaciones no leídas.
         """
-        # --- ✅ SE USA LA VARIABLE PÚBLICA DIRECTAMENTE ---
-        return sum(1 for n in self.notification_list if not n.is_read)
+        # --- ✅ USAMOS EL NUEVO NOMBRE ---
+        return sum(1 for n in self.user_notifications if not n.is_read)
 
     def _load_notifications_logic(self):
         """
-        Función privada que contiene la lógica real para cargar notificaciones.
-        Ahora actualiza la variable pública 'notification_list'.
+        Lógica para cargar notificaciones. Ahora actualiza 'user_notifications'.
         """
         if not self.authenticated_user_info:
-            # --- ✅ SE ACTUALIZA LA VARIABLE PÚBLICA ---
-            self.notification_list = []
+            # --- ✅ USAMOS EL NUEVO NOMBRE ---
+            self.user_notifications = []
             return
             
         with rx.session() as session:
@@ -2671,8 +2670,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
             ).all()
             
-            # --- ✅ SE ACTUALIZA LA VARIABLE PÚBLICA ---
-            self.notification_list = [
+            # --- ✅ USAMOS EL NUEVO NOMBRE ---
+            self.user_notifications = [
                 NotificationDTO(
                     id=n.id,
                     message=n.message,
@@ -2682,24 +2681,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ) for n in notifications_db
             ]
 
-    # Los métodos load_notifications y poll_notifications no cambian,
-    # ya que simplemente llaman a _load_notifications_logic.
-    @rx.event
-    def load_notifications(self):
-        self._load_notifications_logic()
-
-    @rx.event
-    def poll_notifications(self):
-        if self.is_authenticated:
-            self._load_notifications_logic()
+    # ... (load_notifications y poll_notifications no necesitan cambios) ...
 
     @rx.event
     def mark_all_as_read(self):
         if not self.authenticated_user_info:
             return
             
-        # --- ✅ SE USA LA VARIABLE PÚBLICA DIRECTAMENTE ---
-        unread_ids = [n.id for n in self.notification_list if not n.is_read]
+        # --- ✅ USAMOS EL NUEVO NOMBRE ---
+        unread_ids = [n.id for n in self.user_notifications if not n.is_read]
         if not unread_ids:
             return
             
@@ -2707,7 +2697,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             stmt = sqlmodel.update(NotificationModel).where(NotificationModel.id.in_(unread_ids)).values(is_read=True)
             session.exec(stmt)
             session.commit()
-        # El yield a load_notifications ya es correcto.
+        
         yield self.load_notifications()
 
     form_data: dict = {}
