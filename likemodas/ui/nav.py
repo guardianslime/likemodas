@@ -106,6 +106,7 @@ def public_navbar() -> rx.Component:
     return rx.box(
         # La parte visible de la barra de navegación
         rx.grid(
+            # ... (el grid con el logo, buscador, etc., no cambia)
             rx.hstack(
                 hamburger_menu,
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
@@ -132,15 +133,16 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
-        # --- ✨ INICIO: SOLUCIÓN DEFINITIVA CON EVENT_TRIGGER ✨ ---
-
-        # 1. El "botón invisible" que está conectado a nuestra función de Python.
-        #    Solo existe si el usuario ha iniciado sesión.
+        # --- ✨ INICIO: SOLUCIÓN CON BOTÓN OCULTO ✨ ---
+        # 1. Un botón estándar de Reflex, completamente oculto, que solo existe
+        #    si el usuario ha iniciado sesión.
         rx.cond(
             AppState.is_authenticated,
-            rx.event_trigger(
+            rx.button(
+                "Polling Trigger", # El texto no importa
                 on_click=AppState.poll_notifications,
-                id="notification_poller_trigger", # Le damos un ID único
+                id="notification_poller_button", # ID único para que JS lo encuentre
+                display="none", # Lo oculta completamente
             ),
         ),
 
@@ -153,9 +155,11 @@ def public_navbar() -> rx.Component:
                     """
                     if (!window.likemodas_notification_poller) {
                         window.likemodas_notification_poller = setInterval(() => {
-                            const trigger = document.getElementById('notification_poller_trigger');
+                            // Busca el botón oculto por su ID.
+                            const trigger = document.getElementById('notification_poller_button');
+                            // Si lo encuentra, simula un clic.
                             if (trigger) {
-                                trigger.click(); // Simula un clic en el botón invisible
+                                trigger.click();
                             }
                         }, 15000);
                     }
@@ -164,7 +168,7 @@ def public_navbar() -> rx.Component:
                 display="none", # Ocultamos esta caja
             )
         ),
-        # --- ✨ FIN: SOLUCIÓN DEFINITIVA CON EVENT_TRIGGER ✨ ---
+        # --- ✨ FIN: SOLUCIÓN CON BOTÓN OCULTO ✨ ---
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
