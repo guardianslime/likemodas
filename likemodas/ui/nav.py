@@ -23,8 +23,6 @@ def notification_icon() -> rx.Component:
             ),
         ),
         rx.menu.content(
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # Ahora itera sobre una lista de DTOs, que es seguro.
             rx.cond(
                 AppState.notification_list,
                 rx.foreach(
@@ -39,7 +37,6 @@ def notification_icon() -> rx.Component:
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
             max_height="300px", overflow_y="auto"
         ),
@@ -118,21 +115,33 @@ def public_navbar() -> rx.Component:
                 on_submit=AppState.perform_search,
                 width="100%",
             ),
-            
             rx.cond(
                 AppState.is_authenticated,
                 authenticated_icons,
                 placeholder_icons
             ),
-
             columns="auto 1fr auto",
             align_items="center",
             width="100%",
             gap="1.5rem",
         ),
+        
+        # --- ✨ INICIO DE LA CORRECCIÓN PARA NOTIFICACIONES EN TIEMPO REAL ✨ ---
+        # 1. Se añade un intervalo que solo se renderiza y se ejecuta si el usuario está autenticado.
+        rx.cond(
+            AppState.is_authenticated,
+            rx.interval(
+                # 2. Cada 15 segundos (15000 ms), se volverá a ejecutar el evento `load_notifications`.
+                on_tick=AppState.load_notifications, 
+                delay=15000
+            )
+        ),
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
         bg="#2C004BF0", 
         style={"backdrop_filter": "blur(10px)"},
+        # Mantenemos `on_mount` para que las notificaciones carguen la primera vez sin esperar al intervalo.
         on_mount=[AppState.load_notifications],
     )
