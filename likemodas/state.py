@@ -261,7 +261,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Se define como una variable de estado normal, no como una propiedad computada.
     # Esto asegura que esté disponible durante la compilación para las migraciones.
     # --- ✨ INICIO DE LA CORRECCIÓN: VARIABLES DE ESTADO MODIFICADAS ---
-    _notifications: List[NotificationDTO] = []
+    notification_list: List[NotificationDTO] = []
     contact_entries: list[ContactEntryDTO] = []
     # --- ✨ FIN DE LA CORRECCIÓN ---
     lista_de_barrios_popayan: list[str] = LISTA_DE_BARRIOS
@@ -2651,29 +2651,28 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         Calcula de forma segura el número de notificaciones no leídas.
         """
-        # --- INICIO DE LA CORRECCIÓN ---
-        # Usamos getattr aquí también para acceder a la lista de forma segura
-        notifications_list = getattr(self, "_notifications", [])
-        return sum(1 for n in notifications_list if not n.is_read)
-    
-    # --- ✨ INICIO DE LA CORRECCIÓN DEL ERROR DE BACKEND ✨ ---
+        # --- ✅ SE USA LA VARIABLE PÚBLICA DIRECTAMENTE ---
+        return sum(1 for n in self.notification_list if not n.is_read)
 
     def _load_notifications_logic(self):
         """
         Función privada que contiene la lógica real para cargar notificaciones.
-        No es un manejador de eventos, por lo que puede ser llamada desde cualquier lugar.
+        Ahora actualiza la variable pública 'notification_list'.
         """
         if not self.authenticated_user_info:
-            self._notifications = []
+            # --- ✅ SE ACTUALIZA LA VARIABLE PÚBLICA ---
+            self.notification_list = []
             return
+            
         with rx.session() as session:
             notifications_db = session.exec(
                 sqlmodel.select(NotificationModel)
                 .where(NotificationModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
             ).all()
-            # Convertir a DTO
-            self._notifications = [
+            
+            # --- ✅ SE ACTUALIZA LA VARIABLE PÚBLICA ---
+            self.notification_list = [
                 NotificationDTO(
                     id=n.id,
                     message=n.message,
@@ -2683,35 +2682,32 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ) for n in notifications_db
             ]
 
+    # Los métodos load_notifications y poll_notifications no cambian,
+    # ya que simplemente llaman a _load_notifications_logic.
     @rx.event
     def load_notifications(self):
-        """
-        Este manejador se llama cuando la página carga por primera vez (on_mount).
-        Ahora solo llama a la función de lógica central.
-        """
         self._load_notifications_logic()
 
     @rx.event
     def poll_notifications(self):
-        """
-        Este manejador es llamado por el temporizador de JavaScript.
-        Ahora solo llama a la función de lógica central.
-        """
         if self.is_authenticated:
             self._load_notifications_logic()
 
-    # --- ✨ FIN DE LA CORRECCIÓN DEL ERROR DE BACKEND ✨ ---
     @rx.event
     def mark_all_as_read(self):
         if not self.authenticated_user_info:
             return
-        unread_ids = [n.id for n in self._notifications if not n.is_read] # <-- Usar el nuevo nombre
+            
+        # --- ✅ SE USA LA VARIABLE PÚBLICA DIRECTAMENTE ---
+        unread_ids = [n.id for n in self.notification_list if not n.is_read]
         if not unread_ids:
             return
+            
         with rx.session() as session:
             stmt = sqlmodel.update(NotificationModel).where(NotificationModel.id.in_(unread_ids)).values(is_read=True)
             session.exec(stmt)
             session.commit()
+        # El yield a load_notifications ya es correcto.
         yield self.load_notifications()
 
     form_data: dict = {}
