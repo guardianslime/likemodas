@@ -128,33 +128,27 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
-        # --- ✨ INICIO: SOLUCIÓN DE NOTIFICACIONES SIN rx.interval ✨ ---
-        # Este componente invisible solo se renderiza si el usuario ha iniciado sesión.
-        # Al montarse, crea un temporizador en JavaScript que llama a nuestro evento en Python.
         rx.cond(
             AppState.is_authenticated,
             rx.box(
                 on_mount=rx.call_script(
                     """
-                    // Verificamos si el temporizador ya existe para no crear duplicados
                     if (!window.likemodas_notification_poller) {
-                        // Creamos un temporizador que se ejecuta cada 15 segundos
                         window.likemodas_notification_poller = setInterval(() => {
-                            // Llama al evento 'poll_notifications' en nuestro AppState
-                            reflex.call('app_state.poll_notifications');
+                            // --- ✨ LÍNEA CORREGIDA ✨ ---
+                            // Usamos window.reflex.call en lugar de solo reflex.call
+                            window.reflex.call('app_state.poll_notifications');
                         }, 15000);
                     }
                     """
                 ),
-                display="none", # Hacemos que la caja no sea visible en la página
+                display="none",
             )
         ),
-        # --- ✨ FIN: SOLUCIÓN DE NOTIFICACIONES SIN rx.interval ✨ ---
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
         bg="#2C004BF0", 
         style={"backdrop_filter": "blur(10px)"},
-        # Mantenemos `on_mount` para que las notificaciones carguen la primera vez sin esperar al temporizador.
         on_mount=[AppState.load_notifications],
     )
