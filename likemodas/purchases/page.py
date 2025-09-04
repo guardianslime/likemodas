@@ -118,12 +118,21 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="2"
             ),
             
-            # --- ✨ INICIO DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
+            # --- ✨ INICIO DE LA LÓGICA DE ESTADO DE ENTREGA MEJORADA ✨ ---
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Tu pedido está en camino.", size="3", color_scheme="green"),
+                    
+                    # --- ✨ NUEVA LÍNEA ✨ ---
+                    # Muestra la fecha de entrega estimada que viene del estado.
+                    rx.text(
+                        f"Llegada estimada: {purchase.estimated_delivery_date_formatted}",
+                        size="2", 
+                        color_scheme="gray"
+                    ),
+
                     rx.button(
                         "Confirmar Recepción del Pedido",
                         on_click=AppState.user_confirm_delivery(purchase.id),

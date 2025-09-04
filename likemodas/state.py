@@ -146,6 +146,9 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_city: str
     shipping_phone: str
     items: list[PurchaseItemCardData]
+    # --- ✨ NUEVA LÍNEA AÑADIDA ✨ ---
+    # Se añade este campo para pasar la fecha formateada a la UI del comprador.
+    estimated_delivery_date_formatted: str
 
 class AdminPostRowData(rx.Base):
     id: int
@@ -2339,9 +2342,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ✨ NUEVA FUNCIÓN solo para notificar el envío
     @rx.event
     def ship_confirmed_online_order(self, purchase_id: int):
+        """
+        Notifica el envío de un pedido online ya confirmado.
+        """
         if not self.is_admin: 
             return rx.toast.error("Acción no permitida.")
         
+        # (La validación del tiempo es idéntica a la función anterior)
         time_data = self.admin_delivery_time.get(purchase_id, {})
         try:
             days = int(time_data.get("days", "0") or "0")
@@ -2356,12 +2363,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.CONFIRMED:
+                # Actualizar el estado y las fechas del pedido
                 purchase.status = PurchaseStatus.SHIPPED
                 purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # --- ✨ LÓGICA DE MENSAJE MEJORADA ✨ ---
+                # Crear el mensaje de notificación descriptivo
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
@@ -2369,8 +2377,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 time_str = ", ".join(time_parts) if time_parts else "pronto"
                 mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
-                # --- ✨ FIN DE LA LÓGICA MEJORADA ✨ ---
 
+                # Crear y guardar el objeto de notificación
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
                     message=mensaje,
@@ -2386,9 +2394,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def ship_pending_cod_order(self, purchase_id: int):
+        """
+        Envía un pedido Contra Entrega y notifica al cliente con el tiempo estimado.
+        """
         if not self.is_admin: 
             return rx.toast.error("Acción no permitida.")
         
+        # 1. Validar el tiempo de entrega introducido por el admin
         time_data = self.admin_delivery_time.get(purchase_id, {})
         try:
             days = int(time_data.get("days", "0") or "0")
@@ -2403,12 +2415,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Contra Entrega":
+                # 2. Actualizar el estado y las fechas del pedido
                 purchase.status = PurchaseStatus.SHIPPED
                 purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # --- ✨ LÓGICA DE MENSAJE MEJORADA ✨ ---
+                # 3. Crear un mensaje de notificación más descriptivo
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
@@ -2416,16 +2429,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 time_str = ", ".join(time_parts) if time_parts else "pronto"
                 mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
-                # --- ✨ FIN DE LA LÓGICA MEJORADA ✨ ---
 
+                # 4. Crear y guardar el objeto de notificación
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
                     message=mensaje,
                     url="/my-purchases"
                 )
-
                 session.add(notification)
                 session.commit()
+                
                 yield rx.toast.success("Pedido contra entrega en camino y notificado.")
                 yield AppState.load_active_purchases
             else:
@@ -2615,7 +2628,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_neighborhood=p.shipping_neighborhood,
                         shipping_city=p.shipping_city,
                         shipping_phone=p.shipping_phone,
-                        items=purchase_items_data
+                        items=purchase_items_data,
+                        # --- ✨ LÍNEA ACTUALIZADA ✨ ---
+                        # Formateamos y pasamos la fecha de entrega estimada al DTO.
+                        estimated_delivery_date_formatted=format_utc_to_local(p.estimated_delivery_date)
                     )
                 )
             self.user_purchases = temp_purchases
