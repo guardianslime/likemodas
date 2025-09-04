@@ -1,4 +1,4 @@
-# likemodas/ui/nav.py (CORREGIDO)
+# likemodas/ui/nav.py (CORREGIDO Y ROBUSTO)
 
 import reflex as rx
 from .. import navigation
@@ -128,23 +128,46 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
+        # --- ✨ INICIO: SOLUCIÓN DE NOTIFICACIONES ROBUSTA ✨ ---
         rx.cond(
             AppState.is_authenticated,
             rx.box(
                 on_mount=rx.call_script(
                     """
+                    // Evita crear múltiples temporizadores si el componente se recarga.
                     if (!window.likemodas_notification_poller) {
-                        window.likemodas_notification_poller = setInterval(() => {
-                            // --- ✨ LÍNEA CORREGIDA ✨ ---
-                            // Usamos window.reflex.call en lugar de solo reflex.call
-                            window.reflex.call('app_state.poll_notifications');
-                        }, 15000);
+                        
+                        // Esta función será la que configure el temporizador principal.
+                        const startMainInterval = () => {
+                            window.likemodas_notification_poller = setInterval(() => {
+                                // Doble chequeo para asegurar que la conexión sigue activa.
+                                if (window.reflex && window.reflex.connection.readyState === 1) {
+                                    window.reflex.call('app_state.poll_notifications');
+                                }
+                            }, 15000); // El sondeo principal cada 15 segundos.
+                        };
+
+                        // Esta función verifica si Reflex está listo.
+                        const checkReflexReady = () => {
+                            // La condición clave: ¿existe el objeto y está la conexión abierta (readyState === 1)?
+                            if (window.reflex && window.reflex.connection.readyState === 1) {
+                                // ¡Sí! Está listo. Iniciamos el temporizador principal.
+                                startMainInterval();
+                            } else {
+                                // Aún no está listo. Volvemos a verificar en 200 milisegundos.
+                                setTimeout(checkReflexReady, 200);
+                            }
+                        };
+
+                        // Inicia la primera verificación.
+                        checkReflexReady();
                     }
                     """
                 ),
                 display="none",
             )
         ),
+        # --- ✨ FIN: SOLUCIÓN DE NOTIFICACIONES ROBUSTA ✨ ---
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
