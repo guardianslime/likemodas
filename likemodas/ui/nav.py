@@ -148,27 +148,38 @@ def public_navbar() -> rx.Component:
 
         # 2. El script que "pulsa" el botón invisible cada 15 segundos.
         #    También solo se activa si el usuario ha iniciado sesión.
+        # --- ✨ INICIO: SOLUCIÓN DE POLLING ROBUSTA ✨ ---
         rx.cond(
             AppState.is_authenticated,
-            rx.box(
-                on_mount=rx.call_script(
-                    """
-                    if (!window.likemodas_notification_poller) {
-                        window.likemodas_notification_poller = setInterval(() => {
-                            // Busca el botón oculto por su ID.
-                            const trigger = document.getElementById('notification_poller_button');
-                            // Si lo encuentra, simula un clic.
-                            if (trigger) {
-                                trigger.click();
-                            }
-                        }, 15000);
-                    }
-                    """
+            rx.fragment(
+                # 1. Un botón de Reflex, completamente oculto.
+                rx.button(
+                    "Polling Trigger",
+                    on_click=AppState.poll_notifications,
+                    id="notification_poller_button",
+                    display="none",
                 ),
-                display="none", # Ocultamos esta caja
+
+                # 2. El script que "pulsa" el botón invisible cada 15 segundos.
+                #    Este script solo se renderizará si el usuario está autenticado.
+                rx.box(
+                    on_mount=rx.call_script(
+                        """
+                        if (!window.likemodas_notification_poller) {
+                            window.likemodas_notification_poller = setInterval(() => {
+                                const trigger = document.getElementById('notification_poller_button');
+                                if (trigger) {
+                                    trigger.click();
+                                }
+                            }, 15000);
+                        }
+                        """
+                    ),
+                    display="none",
+                )
             )
         ),
-        # --- ✨ FIN: SOLUCIÓN CON BOTÓN OCULTO ✨ ---
+        # --- ✨ FIN: SOLUCIÓN DE POLLING ROBUSTA ✨ ---
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",

@@ -2421,7 +2421,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # 3. Crear un mensaje de notificación más descriptivo
+                # --- ✨ INICIO DE LA LÓGICA DE NOTIFICACIÓN ✨ ---
+                # 3. Crear un mensaje de notificación descriptivo
                 time_parts = []
                 if days > 0: time_parts.append(f"{days} día(s)")
                 if hours > 0: time_parts.append(f"{hours} hora(s)")
@@ -2437,6 +2438,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     url="/my-purchases"
                 )
                 session.add(notification)
+                # --- ✨ FIN DE LA LÓGICA DE NOTIFICACIÓN ✨ ---
+
                 session.commit()
                 
                 yield rx.toast.success("Pedido contra entrega en camino y notificado.")
@@ -2455,11 +2458,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            if purchase and purchase.status == PurchaseStatus.PENDING and purchase.payment_method == "Online":
+            if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Online":
                 purchase.status = PurchaseStatus.CONFIRMED
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                 # Notificar al cliente que su pago fue confirmado
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
@@ -2467,12 +2471,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                     url="/my-purchases"
                 )
                 session.add(notification)
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                
                 session.commit()
-                yield rx.toast.success(f"Pago de la compra #{purchase_id} confirmado.")
+                yield rx.toast.success(f"Pago de la compra #{purchase.id} confirmado.")
                 yield AppState.load_active_purchases
             else:
                 yield rx.toast.error("Esta acción no es válida para este tipo de compra o estado.")
-
+    
     @rx.event
     def confirm_cod_payment_received(self, purchase_id: int):
         """
