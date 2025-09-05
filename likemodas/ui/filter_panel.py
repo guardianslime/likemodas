@@ -171,6 +171,7 @@ def floating_filter_panel() -> rx.Component:
     # --- Contenedor principal del panel (sin cambios) ---
     return rx.box(
         rx.hstack(
+            # El panel con el contenido de los filtros
             rx.vstack(
                 rx.hstack(
                     rx.heading("Filtros", size="6"),
@@ -179,7 +180,6 @@ def floating_filter_panel() -> rx.Component:
                     justify="between", 
                     align_items="center", 
                     width="100%",
-                    flex_shrink=0,
                 ),
                 rx.divider(),
                 rx.scroll_area(
@@ -245,10 +245,12 @@ def floating_filter_panel() -> rx.Component:
                 ),
                 spacing="4",
                 padding="1em",
-                height="100%",
+                height="95vh",
+                max_height="800px",
                 width="280px",
                 bg=rx.color("gray", 2),
             ),
+            # El botón que activa el panel
             rx.box(
                 rx.text("Filtros", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.09em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}),
                 on_click=AppState.toggle_filters, 
@@ -261,19 +263,19 @@ def floating_filter_panel() -> rx.Component:
             ),
             align_items="start", 
             spacing="0",
-            height="100%",
         ),
-        # --- ✨ INICIO DE LA CORRECCIÓN DE POSICIÓN ✨ ---
+        
+        # --- ✨ INICIO: LÓGICA DE POSICIÓN Y DESPLIEGUE CORREGIDA ✨ ---
         position="fixed",
-        top="0",                     # 1. Se ancla al borde superior
+        top="50%",  # 1. Mueve el borde superior del componente a la mitad de la pantalla.
         left="0",
-        height="100vh",              # 2. Ocupa toda la altura de la pantalla
-        display="flex",              # 3. Se usa Flexbox...
-        align_items="center",        # 4. ...para centrar verticalmente el contenido (el hstack)
+        # 2. El transform hace dos cosas:
+        #    - translateY(-50%): Sube el componente por la mitad de su propia altura para centrarlo perfectamente.
+        #    - translateX(-280px): Mueve el componente hacia la izquierda para ocultarlo.
         transform=rx.cond(
-            AppState.show_filters,
-            "translateX(0)",
-            "translateX(-280px)"     # 5. Transform simplificado solo para el movimiento horizontal
+            AppState.show_filters, 
+            "translateY(-50%)", 
+            "translate(-280px, -50%)"
         ),
         transition="transform 0.3s ease-in-out",
         z_index=1000,
