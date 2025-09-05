@@ -21,7 +21,7 @@ from .logic.shipping_calculator import calculate_dynamic_shipping
 
 from . import navigation
 from .models import (
-    UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
+    CommentVoteModel, UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
     PurchaseModel, PurchaseStatus, PurchaseItemModel, NotificationModel, Category,
     PasswordResetToken, LocalUser, ContactEntryModel, CommentModel,
     SupportTicketModel, SupportMessageModel, TicketStatus, format_utc_to_local
@@ -3062,6 +3062,53 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
+    @rx.event
+    def vote_on_comment(self, comment_id: int, vote_type: str):
+        """Handles a user's vote on a comment."""
+        if not self.is_authenticated:
+            return rx.toast.error("Debes iniciar sesión para votar.")
+
+        with rx.session() as session:
+            # Check if the user has made at least one purchase
+            first_purchase = session.exec(
+                sqlmodel.select(PurchaseModel).where(
+                    PurchaseModel.userinfo_id == self.authenticated_user_info.id
+                )
+            ).first()
+
+            if not first_purchase:
+                return rx.toast.error("Debes realizar al menos una compra para poder votar.")
+
+            # Check for an existing vote
+            existing_vote = session.exec(
+                sqlmodel.select(CommentVoteModel).where(
+                    CommentVoteModel.userinfo_id == self.authenticated_user_info.id,
+                    CommentVoteModel.comment_id == comment_id,
+                )
+            ).one_or_none()
+
+            if existing_vote:
+                if existing_vote.vote_type == vote_type:
+                    # User is clicking the same button again, so remove the vote
+                    session.delete(existing_vote)
+                else:
+                    # User is changing their vote
+                    existing_vote.vote_type = vote_type
+                    session.add(existing_vote)
+            else:
+                # New vote
+                new_vote = CommentVoteModel(
+                    userinfo_id=self.authenticated_user_info.id,
+                    comment_id=comment_id,
+                    vote_type=vote_type,
+                )
+                session.add(new_vote)
+
+            session.commit()
+
+        # Reload the comments for the current product to update the UI
+        if self.product_in_modal:
+            yield AppState.open_product_detail_modal(self.product_in_modal.id)
 
     saved_post_ids: set[int] = set()
     saved_posts_gallery: list[ProductCardData] = []

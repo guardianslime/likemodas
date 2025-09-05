@@ -1,15 +1,18 @@
-# likemodas/blog/public_page.py (Versión Definitiva Corregida)
+# likemodas/blog/public_page.py (Versión Final con Votaciones y Reputación)
 
 import reflex as rx
 from ..state import AppState, CommentData, ModalSelectorDTO
-from ..ui.components import product_gallery_component, star_rating_display_safe # <-- Importa el componente seguro
+
+# --- IMPORTS CORREGIDOS ---
+# Se añaden los componentes para la votación, reputación y puntuación del vendedor
+from ..ui.components import product_gallery_component, star_rating_display_safe
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
-
-# Se elimina la antigua función star_rating_display de este archivo.
+from ..ui.reputation_icon import reputation_icon
+from ..ui.vote_buttons import vote_buttons
+from ..ui.seller_score import seller_score_stars
 
 def render_update_item(comment: CommentData) -> rx.Component:
-    # ... (Esta función ya fue corregida en el paso 2, no necesita más cambios)
     return rx.box(
         rx.vstack(
             rx.hstack(
@@ -28,7 +31,6 @@ def render_update_item(comment: CommentData) -> rx.Component:
     )
 
 def review_submission_form() -> rx.Component:
-    # (Esta función no necesita cambios)
     return rx.cond(
         AppState.show_review_form,
         rx.form(
@@ -64,28 +66,43 @@ def review_submission_form() -> rx.Component:
     )
 
 def render_comment_item(comment: CommentData) -> rx.Component:
-    """Renderiza un comentario principal y su historial."""
+    """Renderiza un comentario principal con votaciones, reputación y su historial."""
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
     return rx.box(
         rx.vstack(
             rx.hstack(
-                rx.avatar(fallback=comment.author_initial, size="2"),
+                # --- MODIFICACIÓN: Se usa el nuevo ícono de reputación ---
+                reputation_icon(comment.author_reputation, comment.author_initial),
                 rx.text(comment.author_username, weight="bold"),
                 rx.spacer(),
                 star_rating_display_safe(comment.rating, 1, size=20),
                 width="100%",
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
-            rx.cond(
-                comment.updates,
-                rx.button(
-                    rx.cond(
-                        AppState.expanded_comments.get(comment.id, False), "Ocultar historial",
-                        rx.text("Ver historial (", rx.text(update_count, as_="span"), " actualizaciones)")
-                    ),
-                    on_click=AppState.toggle_comment_updates(comment.id),
-                    variant="soft", size="1", margin_top="0.5em"
-                )
+            rx.hstack(
+                # --- MODIFICACIÓN: Se añaden los botones de like/dislike ---
+                vote_buttons(
+                    comment.id,
+                    comment.likes,
+                    comment.dislikes,
+                    comment.user_vote,
+                ),
+                rx.spacer(),
+                rx.cond(
+                    comment.updates,
+                    rx.button(
+                        rx.cond(
+                            AppState.expanded_comments.get(comment.id, False), "Ocultar historial",
+                            rx.text("Ver historial (", rx.text(update_count, as_="span"), " actualizaciones)")
+                        ),
+                        on_click=AppState.toggle_comment_updates(comment.id),
+                        variant="soft", size="1",
+                    )
+                ),
+                width="100%",
+                justify="between",
+                align="center",
+                margin_top="0.75em",
             ),
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
@@ -102,8 +119,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 
 
 def product_detail_modal() -> rx.Component:
-    # La única modificación es en _modal_info_section para usar el nuevo componente de estrellas.
-    # --- INICIO DE LA CORRECCIÓN CLAVE ---
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
@@ -125,8 +140,6 @@ def product_detail_modal() -> rx.Component:
                 position="relative", width="100%", height=FIXED_HEIGHT, 
                 border_radius="var(--radius-3)", overflow="hidden",
             ),
-            # --- ✨ INICIO DE LA CORRECCIÓN DE MINIATURAS ✨ ---
-            # Se itera sobre la nueva propiedad `unique_modal_variants` para evitar duplicados.
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
@@ -137,7 +150,6 @@ def product_detail_modal() -> rx.Component:
                                 src=rx.get_upload_url(item.variant.get("image_url")),
                                 width="60px", height="60px", object_fit="cover", border_radius="md"
                             ),
-                            # La condición de borde ahora compara con el nombre de archivo actual
                             border_width=rx.cond(
                                 AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"
                             ),
@@ -145,25 +157,23 @@ def product_detail_modal() -> rx.Component:
                                 AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"
                             ),
                             padding="2px", border_radius="lg", cursor="pointer",
-                            # on_click usa el índice original para seleccionar la variante visual correcta
                             on_click=AppState.set_modal_variant_index(item.index),
                         )
                     ),
                     spacing="3", padding="0.5em", width="100%", overflow_x="auto",
                 )
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN DE MINIATURAS ✨ ---
             spacing="3", width="100%",
         )
-    # --- FIN DE LA CORRECCIÓN CLAVE ---
 
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
-            # --- Llamada al nuevo componente seguro ---
             star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=20),
+            # --- MODIFICACIÓN: Se añade la puntuación del vendedor ---
+            seller_score_stars(AppState.product_in_modal.seller_score),
             rx.hstack(
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
@@ -184,7 +194,6 @@ def product_detail_modal() -> rx.Component:
                 spacing="4", align="center", margin_y="1em",
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
-            # ... (El resto de la función no cambia)
             rx.vstack(
                 rx.divider(margin_y="1em"),
                 rx.heading("Características", size="4"),
@@ -198,8 +207,6 @@ def product_detail_modal() -> rx.Component:
                         width="100%"
                     ),
                 ),
-                # --- ✨ INICIO DE LOS SELECTORES DINÁMICOS ✨ ---
-                # Renderiza los selectores para Talla, Número, etc. dinámicamente.
                 rx.foreach(
                     AppState.modal_attribute_selectors,
                     lambda selector: rx.vstack(
@@ -215,8 +222,6 @@ def product_detail_modal() -> rx.Component:
                         align_items="start", width="100%", spacing="2"
                     )
                 ),
-                # --- ✨ FIN DE LOS SELECTORES DINÁMICOS ✨ ---
-
                 align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
             rx.text(
@@ -251,7 +256,6 @@ def product_detail_modal() -> rx.Component:
         )
     
     return rx.dialog.root(
-        # ... (sin cambios aquí)
         rx.dialog.content(
             rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
             rx.cond(
@@ -283,7 +287,6 @@ def product_detail_modal() -> rx.Component:
     )
 
 def blog_public_page_content() -> rx.Component:
-    # (Esta función no necesita cambios)
     return rx.center(
         rx.vstack(
             floating_filter_panel(),
