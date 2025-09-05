@@ -31,53 +31,60 @@ def notification_icon() -> rx.Component:
                         rx.icon("trash_2", size=16),
                         rx.text("Limpiar todo")
                     ),
-                    # --- ✨ CORRECCIÓN 1: Se llama a la nueva función de borrado ---
                     on_click=AppState.clear_all_notifications,
                     color_scheme="red",
                 ),
             ),
-            rx.divider(margin_y="0.5em"),
+            rx.divider(margin_y="0.25em"),
             rx.cond(
                 AppState.user_notifications,
                 rx.foreach(
                     AppState.user_notifications,
                     lambda n: rx.menu.item(
-                        # --- ✨ CORRECCIÓN 2: Nuevo diseño para cada notificación ---
+                        # --- ✨ INICIO: DISEÑO MEJORADO Y CORREGIDO ✨ ---
                         rx.vstack(
                             rx.text(
                                 n.message,
                                 weight=rx.cond(n.is_read, "regular", "bold"),
-                                white_space="normal", # Permite que el texto se ajuste
+                                white_space="normal",
                                 width="100%",
                                 size="3"
                             ),
                             rx.hstack(
-                                rx.spacer(), # Empuja la fecha hacia la derecha
+                                rx.spacer(),
                                 rx.text(
                                     n.created_at_formatted,
                                     size="2",
                                     color_scheme="gray",
-                                    margin_top="0.5em"
                                 ),
-                                width="100%"
+                                width="100%",
+                                margin_top="0.5em",
                             ),
-                            align_items="start", # Alinea el contenido a la izquierda
+                            align_items="start",
                             spacing="1",
-                            padding="0.5em 0.75em",
-                            bg=rx.cond(n.is_read, "transparent", rx.color("violet", 3)),
-                            border_radius="md",
                             width="100%",
                         ),
-                        # --- Fin del nuevo diseño ---
+                        # --- Se mueven todos los estilos al menu.item ---
                         on_click=rx.cond(n.url, rx.redirect(n.url), AppState.do_nothing),
-                        padding="0.25em",
+                        bg=rx.cond(n.is_read, rx.color("gray", 3), rx.color("violet", 4)),
+                        _hover={
+                            "background_color": rx.cond(n.is_read, rx.color("gray", 5), rx.color("violet", 5))
+                        },
+                        padding="0.75em",
+                        margin="0.25em", # Margen para separar cada notificación
+                        border_radius="md",
+                        height="auto", # Altura automática para ajustarse al texto
+                        # --- ✨ FIN DEL DISEÑO MEJORADO ✨ ---
                     )
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
-            max_height="400px", overflow_y="auto",
-            min_width="350px", # Aumentamos el ancho para más espacio
+            bg="#2C004BF0",
+            style={"backdrop_filter": "blur(10px)"},
+            max_height="400px",
+            overflow_y="auto",
+            min_width="350px",
+            padding="0.5em", # Padding general para el contenedor del menú
         ),
         on_open_change=lambda open: rx.cond(open, None, AppState.mark_all_as_read)
     )
