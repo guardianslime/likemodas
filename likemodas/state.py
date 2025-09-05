@@ -21,7 +21,7 @@ from .logic.shipping_calculator import calculate_dynamic_shipping
 
 from . import navigation
 from .models import (
-    CommentVoteModel, UserInfo, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
+    CommentVoteModel, UserInfo, UserReputation, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
     PurchaseModel, PurchaseStatus, PurchaseItemModel, NotificationModel, Category,
     PasswordResetToken, LocalUser, ContactEntryModel, CommentModel,
     SupportTicketModel, SupportMessageModel, TicketStatus, format_utc_to_local
@@ -102,6 +102,10 @@ class ProductDetailData(rx.Base):
     is_moda_completa_eligible: bool = False
     shipping_display_text: str = ""
     is_imported: bool = False
+    
+    # --- ✨ LÍNEA AÑADIDA PARA CORREGIR EL ERROR ✨ ---
+    seller_score: int = 0  # Añade este campo
+
     class Config:
         orm_mode = True
 
@@ -169,6 +173,12 @@ class CommentData(rx.Base):
     author_initial: str
     created_at_formatted: str
     updates: List["CommentData"] = []
+
+    # --- ✨ LÍNEAS AÑADIDAS PARA LAS NUEVAS FUNCIONALIDADES ✨ ---
+    likes: int = 0
+    dislikes: int = 0
+    user_vote: str = ""  # Almacenará 'like', 'dislike', o ''
+    author_reputation: str = UserReputation.NONE.value
 
 class InvoiceItemData(rx.Base):
     name: str
@@ -3206,6 +3216,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             self._product_id_to_load_on_mount = None
 
     def _convert_comment_to_dto(self, comment_model: CommentModel) -> CommentData:
+        """
+        Convierte un CommentModel de la BD a un CommentData DTO,
+        incluyendo los datos de votación y reputación.
+        """
+        user_vote = ""
+        # Verifica si el usuario actual ha votado en este comentario
+        if self.authenticated_user_info:
+            vote = next(
+                (v for v in comment_model.votes if v.userinfo_id == self.authenticated_user_info.id), 
+                None
+            )
+            if vote:
+                user_vote = vote.vote_type.value
+
         return CommentData(
             id=comment_model.id,
             content=comment_model.content,
@@ -3213,7 +3237,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             author_username=comment_model.author_username,
             author_initial=comment_model.author_initial,
             created_at_formatted=comment_model.created_at_formatted,
-            updates=[self._convert_comment_to_dto(update) for update in sorted(comment_model.updates, key=lambda u: u.created_at)]
+            updates=[self._convert_comment_to_dto(update) for update in sorted(comment_model.updates, key=lambda u: u.created_at)],
+            
+            # --- ✨ Poblando los nuevos campos ---
+            likes=comment_model.likes,
+            dislikes=comment_model.dislikes,
+            user_vote=user_vote,
+            author_reputation=comment_model.userinfo.reputation.value if comment_model.userinfo else UserReputation.NONE.value,
         )
 
     # --- NUEVOS MANEJADORES PARA EL MODAL ---
@@ -3238,12 +3268,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_content = ""
         self.show_review_form = False
         self.review_limit_reached = False
-        self.expanded_comments = {} # <-- Añade esta línea para reiniciar el estado
+        self.expanded_comments = {}
 
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.votes), # <-- Añade la carga de votos
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates),
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
                 ).where(BlogPostModel.id == post_id)
@@ -3253,7 +3284,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.show_detail_modal = False
                 return rx.toast.error("Producto no encontrado.")
 
-            # Lógica de envío y datos del vendedor (sin cambios)
+            # Lógica de envío y datos del vendedor
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
             final_shipping_cost = calculate_dynamic_shipping(base_cost=db_post.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
@@ -3261,8 +3292,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # Construimos el DTO manualmente en lugar de usar from_orm con 'update'
+            # Construimos el DTO
             self.product_in_modal = ProductDetailData(
                 id=db_post.id,
                 title=db_post.title,
@@ -3275,21 +3305,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_cost=db_post.shipping_cost,
                 is_moda_completa_eligible=db_post.is_moda_completa_eligible,
                 is_imported=db_post.is_imported,
-                # Añadimos los campos calculados
                 shipping_display_text=shipping_text,
                 seller_name=seller_name,
-                seller_id=seller_id
+                seller_id=seller_id,
+                # --- ✨ Poblando el campo que causaba el error ---
+                seller_score=db_post.seller_score,
             )
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
             if self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
-            # El resto de la función (carga de comentarios y lógica de opinión) no cambia
-            all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
+            # Lógica de comentarios usando el nuevo método
+            all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments] # <-- Llamada corregida
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
             self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
 
+            # Lógica para mostrar/ocultar el formulario de opinión (sin cambios)
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
                 purchase_count = session.exec(
@@ -3311,7 +3342,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         if current_updates_count < purchase_count:
                             self.show_review_form = True
                             latest_entry = sorted([user_original_comment] + user_original_comment.updates, key=lambda c: c.created_at, reverse=True)[0]
-                            self.my_review_for_product = self._convert_comment_to_dto(latest_entry)
+                            self.my_review_for_product = self._convert_comment_to_dto(latest_entry) # <-- Llamada corregida
                             self.review_rating = latest_entry.rating
                             self.review_content = latest_entry.content
                         else:
