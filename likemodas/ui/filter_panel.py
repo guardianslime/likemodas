@@ -261,7 +261,7 @@ def floating_filter_panel() -> rx.Component:
                 display="flex", 
                 align_items="center"
             ),
-            align_items="start", 
+            align_items="center", # Cambia "start" por "center"
             spacing="0",
         ),
         
