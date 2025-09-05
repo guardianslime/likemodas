@@ -263,12 +263,19 @@ def floating_filter_panel() -> rx.Component:
             spacing="0",
             height="100%",
         ),
-        height="95vh",
-        max_height="800px",
+        # --- ✨ INICIO DE LA CORRECCIÓN DE POSICIÓN ✨ ---
         position="fixed",
-        top="50%",
+        top="0",                     # 1. Se ancla al borde superior
         left="0",
-        transform=rx.cond(AppState.show_filters, "translateY(-50%)", "translate(-280px, -50%)"),
+        height="100vh",              # 2. Ocupa toda la altura de la pantalla
+        display="flex",              # 3. Se usa Flexbox...
+        align_items="center",        # 4. ...para centrar verticalmente el contenido (el hstack)
+        transform=rx.cond(
+            AppState.show_filters,
+            "translateX(0)",
+            "translateX(-280px)"     # 5. Transform simplificado solo para el movimiento horizontal
+        ),
         transition="transform 0.3s ease-in-out",
         z_index=1000,
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     )
