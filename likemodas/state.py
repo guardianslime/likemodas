@@ -2708,6 +2708,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         
         yield self.load_notifications()
+    
+    # --- ✨ INICIO: MÉTODO OPCIONAL PARA on_click SIN ACCIÓN ✨ ---
+    @rx.event
+    def do_nothing(self):
+        """Un evento que no hace nada, útil para condicionales."""
+        pass
+    # --- ✨ FIN: MÉTODO OPCIONAL ✨ ---
 
     form_data: dict = {}
     did_submit_contact: bool = False

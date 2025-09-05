@@ -12,10 +12,8 @@ def notification_icon() -> rx.Component:
             rx.box(
                 rx.icon("bell", size=28, color=icon_color),
                 rx.cond(
-                    # --- ✅ USAMOS EL NUEVO NOMBRE ---
                     AppState.unread_count > 0,
                     rx.box(
-                        # --- ✅ USAMOS EL NUEVO NOMBRE ---
                         rx.text(AppState.unread_count, size="1", weight="bold"),
                         position="absolute", top="-5px", right="-5px",
                         padding="0 0.4em", border_radius="full",
@@ -26,26 +24,56 @@ def notification_icon() -> rx.Component:
             ),
         ),
         rx.menu.content(
+            # --- ✨ INICIO: BOTÓN "LIMPIAR TODO" ✨ ---
             rx.cond(
-                # --- ✅ USAMOS EL NUEVO NOMBRE ---
+                AppState.user_notifications, # Solo muestra el botón si hay notificaciones
+                rx.menu.item(
+                    rx.hstack(
+                        rx.icon("x-circle", size=18),
+                        rx.text("Limpiar todo", color_scheme="red", weight="bold")
+                    ),
+                    on_click=AppState.mark_all_as_read, # Llama a la misma función que al cerrar el menú
+                    _hover={"bg": "red.800"}, # Estilo al pasar el ratón
+                ),
+            ),
+            # --- ✨ FIN: BOTÓN "LIMPIAR TODO" ✨ ---
+
+            rx.divider(), # Un separador entre el botón de limpiar y las notificaciones
+
+            rx.cond(
                 AppState.user_notifications,
                 rx.foreach(
-                    # --- ✅ USAMOS EL NUEVO NOMBRE ---
                     AppState.user_notifications,
                     lambda n: rx.menu.item(
+                        # --- ✨ INICIO: MEJORA DE ESTILO DE CADA NOTIFICACIÓN ✨ ---
                         rx.box(
                             rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
                             rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
+                            padding_y="0.5em", # Espacio vertical entre notificaciones
+                            border_bottom=rx.cond(
+                                AppState.user_notifications.index(n) < AppState.user_notifications.length() - 1,
+                                "1px solid var(--gray-6)", # Línea separadora entre notificaciones
+                                "none"
+                            ),
+                            # El color de fondo cambiará si no está leída
+                            bg=rx.cond(n.is_read, "transparent", "#3A0065"), 
+                            padding_x="0.75em", # Espacio horizontal
+                            border_radius="md", # Bordes ligeramente redondeados
                         ),
-                        on_click=rx.cond(n.url, rx.redirect(n.url), rx.toast.info("Esta notificación no tiene un enlace."))
+                        on_click=rx.cond(n.url, rx.redirect(n.url), AppState.do_nothing), # Usa do_nothing si no hay URL
+                        _hover={
+                            "background_color": rx.cond(n.is_read, "var(--gray-a3)", "#4A007F") # Cambio de color al pasar el ratón
+                        },
+                        padding="0", # Elimina el padding por defecto del menu.item para controlarlo con el box
                     )
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
             bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
-            max_height="300px", overflow_y="auto"
+            max_height="300px", overflow_y="auto",
+            min_width="300px", # Aseguramos un ancho mínimo para que se vea bien
         ),
-        on_open_change=lambda open: rx.cond(open, AppState.mark_all_as_read, None)
+        on_open_change=lambda open: rx.cond(open, None, AppState.mark_all_as_read) # Marcar como leídas solo al CERRAR el menú
     )
 
 def public_navbar() -> rx.Component:
