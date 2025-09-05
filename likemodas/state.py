@@ -2708,6 +2708,26 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         
         yield self.load_notifications()
+
+    @rx.event
+    def clear_all_notifications(self):
+        """
+        Elimina permanentemente todas las notificaciones para el usuario actual.
+        """
+        if not self.authenticated_user_info:
+            return
+
+        with rx.session() as session:
+            # Crea una declaración de borrado para todas las notificaciones del usuario
+            statement = sqlmodel.delete(NotificationModel).where(
+                NotificationModel.userinfo_id == self.authenticated_user_info.id
+            )
+            session.exec(statement)
+            session.commit()
+
+        # Vacía la lista en el estado para que la UI se actualice al instante
+        self.user_notifications = []
+        yield rx.toast.success("Notificaciones eliminadas.")
     
     # --- ✨ INICIO: MÉTODO OPCIONAL PARA on_click SIN ACCIÓN ✨ ---
     @rx.event

@@ -28,51 +28,60 @@ def notification_icon() -> rx.Component:
                 AppState.user_notifications,
                 rx.menu.item(
                     rx.hstack(
-                        # --- ✨ CORRECCIÓN 1: Se cambia el nombre del ícono ---
-                        rx.icon("trash_2", size=18),
-                        rx.text("Limpiar todo", color_scheme="red", weight="bold")
+                        rx.icon("trash_2", size=16),
+                        rx.text("Limpiar todo")
                     ),
-                    on_click=AppState.mark_all_as_read,
-                    _hover={"bg": "red.800"},
+                    # --- ✨ CORRECCIÓN 1: Se llama a la nueva función de borrado ---
+                    on_click=AppState.clear_all_notifications,
+                    color_scheme="red",
                 ),
             ),
-            rx.divider(),
-
+            rx.divider(margin_y="0.5em"),
             rx.cond(
                 AppState.user_notifications,
-                # --- ✨ CORRECCIÓN 2: Se añade 'index' a la función lambda ---
                 rx.foreach(
                     AppState.user_notifications,
-                    lambda n, index: rx.menu.item(
-                        rx.box(
-                            rx.text(n.message, weight=rx.cond(n.is_read, "regular", "bold")),
-                            rx.text(n.created_at_formatted, size="2", color_scheme="gray"),
-                            padding_y="0.5em",
-                            border_bottom=rx.cond(
-                                # --- ✨ CORRECCIÓN 3: Se usa 'index' en lugar de '.index(n)' ---
-                                index < AppState.user_notifications.length() - 1,
-                                "1px solid var(--gray-6)",
-                                "none"
+                    lambda n: rx.menu.item(
+                        # --- ✨ CORRECCIÓN 2: Nuevo diseño para cada notificación ---
+                        rx.vstack(
+                            rx.text(
+                                n.message,
+                                weight=rx.cond(n.is_read, "regular", "bold"),
+                                white_space="normal", # Permite que el texto se ajuste
+                                width="100%",
+                                size="3"
                             ),
-                            bg=rx.cond(n.is_read, "transparent", "#3A0065"), 
-                            padding_x="0.75em",
+                            rx.hstack(
+                                rx.spacer(), # Empuja la fecha hacia la derecha
+                                rx.text(
+                                    n.created_at_formatted,
+                                    size="2",
+                                    color_scheme="gray",
+                                    margin_top="0.5em"
+                                ),
+                                width="100%"
+                            ),
+                            align_items="start", # Alinea el contenido a la izquierda
+                            spacing="1",
+                            padding="0.5em 0.75em",
+                            bg=rx.cond(n.is_read, "transparent", rx.color("violet", 3)),
                             border_radius="md",
+                            width="100%",
                         ),
+                        # --- Fin del nuevo diseño ---
                         on_click=rx.cond(n.url, rx.redirect(n.url), AppState.do_nothing),
-                        _hover={
-                            "background_color": rx.cond(n.is_read, "var(--gray-a3)", "#4A007F")
-                        },
-                        padding="0",
+                        padding="0.25em",
                     )
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
             bg="#2C004BF0", style={"backdrop_filter": "blur(10px)"},
-            max_height="300px", overflow_y="auto",
-            min_width="300px",
+            max_height="400px", overflow_y="auto",
+            min_width="350px", # Aumentamos el ancho para más espacio
         ),
         on_open_change=lambda open: rx.cond(open, None, AppState.mark_all_as_read)
     )
+
 
 def public_navbar() -> rx.Component:
     """La barra de navegación pública definitiva, con menú de hamburguesa."""
