@@ -76,6 +76,12 @@ class UserInfo(rx.Model, table=True):
     email: str
     user_id: int = Field(foreign_key="localuser.id", unique=True)
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
+    
+    # --- ✨ CAMPOS NUEVOS AÑADIDOS ✨ ---
+    avatar_url: Optional[str] = Field(default=None)
+    phone: Optional[str] = Field(default=None)
+    # --- ✨ FIN DE CAMPOS NUEVOS ✨ ---
+    
     is_verified: bool = Field(default=False, nullable=False)
     is_banned: bool = Field(default=False, nullable=False)
     ban_expires_at: Optional[datetime] = Field(default=None)
@@ -84,15 +90,16 @@ class UserInfo(rx.Model, table=True):
     seller_barrio: Optional[str] = Field(default=None)
     seller_address: Optional[str] = Field(default=None)
 
-    user: Optional["LocalUser"] = Relationship()
-    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo")
+    user: Optional["LocalUser"] = Relationship(sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
-    shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo")
+    shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
-    purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo")
-    notifications: List["NotificationModel"] = Relationship(back_populates="userinfo")
-    comments: List["CommentModel"] = Relationship(back_populates="userinfo")
-    comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo")
+    purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    notifications: List["NotificationModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    comments: List["CommentModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
 
     @property
