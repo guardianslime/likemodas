@@ -2921,6 +2921,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             self._product_id_to_load_on_mount = int(product_id)
             yield self.trigger_modal_from_load
     
+     # --- ✨ INICIO: SECCIÓN DE PERFIL DE USUARIO CORREGIDA ✨ ---
+    
     # DTO para mostrar datos en el formulario de forma segura
     profile_info: UserProfileData = UserProfileData()
     
@@ -2942,15 +2944,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         with rx.session() as session:
             user_info = session.get(UserInfo, self.authenticated_user_info.id)
-            if user_info:
-                # Llenar el DTO para mostrar en la página
+            if user_info and user_info.user:
                 self.profile_info = UserProfileData(
                     username=user_info.user.username,
                     email=user_info.email,
                     phone=user_info.phone or "",
                     avatar_url=rx.get_upload_url(user_info.avatar_url) if user_info.avatar_url else ""
                 )
-                # Llenar las variables de estado para los inputs
                 self.profile_username = user_info.user.username
                 self.profile_phone = user_info.phone or ""
 
@@ -2958,7 +2958,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     async def handle_avatar_upload(self, files: list[rx.UploadFile]):
         """Maneja la subida de una nueva imagen de perfil."""
         if not self.authenticated_user_info:
-            return rx.toast.error("Debes iniciar sesión.")
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("Debes iniciar sesión.")
+            return
+
         if not files:
             return
             
@@ -2981,28 +2984,31 @@ class AppState(reflex_local_auth.LocalAuthState):
     def handle_profile_update(self, form_data: dict):
         """Actualiza el nombre de usuario y el teléfono."""
         if not self.authenticated_user_info:
-            return rx.toast.error("Debes iniciar sesión.")
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("Debes iniciar sesión.")
+            return
             
         new_username = form_data.get("username", "").strip()
         new_phone = form_data.get("phone", "").strip()
 
         if not new_username:
-            return rx.toast.error("El nombre de usuario no puede estar vacío.")
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("El nombre de usuario no puede estar vacío.")
+            return
 
         with rx.session() as session:
-            # Validar que el nuevo nombre de usuario no esté en uso por otra persona
             existing_user = session.exec(
                 sqlmodel.select(LocalUser).where(LocalUser.username == new_username)
             ).one_or_none()
             if existing_user and existing_user.id != self.authenticated_user.id:
-                return rx.toast.error("Ese nombre de usuario ya está en uso.")
+                # --- CORRECCIÓN ---
+                yield rx.toast.error("Ese nombre de usuario ya está en uso.")
+                return
 
-            # Actualizar LocalUser y UserInfo
             user_info = session.get(UserInfo, self.authenticated_user_info.id)
             local_user = session.get(LocalUser, self.authenticated_user.id)
             
             if user_info and local_user:
-                # Actualizar todos los comentarios anteriores del usuario
                 if local_user.username != new_username:
                     stmt = (
                         sqlmodel.update(CommentModel)
@@ -3024,58 +3030,73 @@ class AppState(reflex_local_auth.LocalAuthState):
     def handle_password_change(self, form_data: dict):
         """Cambia la contraseña del usuario tras verificar la actual."""
         if not self.authenticated_user:
-            return rx.toast.error("Debes iniciar sesión.")
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("Debes iniciar sesión.")
+            return
             
         current_password = form_data.get("current_password")
         new_password = form_data.get("new_password")
         confirm_password = form_data.get("confirm_password")
 
         if not all([current_password, new_password, confirm_password]):
-            return rx.toast.error("Todos los campos son obligatorios.")
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("Todos los campos son obligatorios.")
+            return
         
         if new_password != confirm_password:
-            return rx.toast.error("Las nuevas contraseñas no coinciden.")
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("Las nuevas contraseñas no coinciden.")
+            return
         
         password_errors = validate_password(new_password)
         if password_errors:
-            return rx.toast.error("\n".join(password_errors))
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("\n".join(password_errors))
+            return
             
         with rx.session() as session:
             local_user = session.get(LocalUser, self.authenticated_user.id)
             if not bcrypt.checkpw(current_password.encode("utf-8"), local_user.password_hash):
-                return rx.toast.error("La contraseña actual es incorrecta.")
+                # --- CORRECCIÓN ---
+                yield rx.toast.error("La contraseña actual es incorrecta.")
+                return
                 
             local_user.password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
             session.add(local_user)
             session.commit()
             
-        return rx.toast.success("Contraseña actualizada con éxito.")
+        yield rx.toast.success("Contraseña actualizada con éxito.")
 
     @rx.event
     def handle_account_deletion(self, form_data: dict):
         """Elimina permanentemente la cuenta del usuario."""
         if not self.authenticated_user:
-            return rx.toast.error("Debes iniciar sesión.")
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("Debes iniciar sesión.")
+            return
             
         password = form_data.get("password")
         if not password:
-            return rx.toast.error("Debes ingresar tu contraseña para eliminar la cuenta.")
+            # --- CORRECCIÓN ---
+            yield rx.toast.error("Debes ingresar tu contraseña para eliminar la cuenta.")
+            return
 
         with rx.session() as session:
             local_user = session.get(LocalUser, self.authenticated_user.id)
             if not bcrypt.checkpw(password.encode("utf-8"), local_user.password_hash):
-                return rx.toast.error("La contraseña es incorrecta.")
+                # --- CORRECCIÓN ---
+                yield rx.toast.error("La contraseña es incorrecta.")
+                return
                 
-            # Gracias al borrado en cascada, esto debería eliminar todo
             session.delete(local_user)
             session.commit()
             
         yield rx.toast.success("Tu cuenta ha sido eliminada permanentemente.")
-        # Forzar el logout y redirigir
         yield AppState.do_logout
-        return rx.redirect("/")
-    
-    # --- ✨ FIN: NUEVAS VARIABLES Y LÓGICA PARA LA PÁGINA DE PERFIL ✨ ---
+        # --- CORRECCIÓN ---
+        yield rx.redirect("/")
+
+    # --- ✨ FIN: SECCIÓN DE PERFIL DE USUARIO CORREGIDA ✨ ---
 
 
     product_comments: list[CommentData] = []
