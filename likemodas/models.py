@@ -115,6 +115,25 @@ class UserInfo(rx.Model, table=True):
             return UserReputation.WOOD
         else:
             return UserReputation.NONE
+        
+    @property
+    def overall_seller_score(self) -> int:
+        """
+        Calcula la puntuación promedio del vendedor basada en las
+        puntuaciones de todos sus productos que tienen al menos una reseña.
+        """
+        if not self.posts:
+            return 0
+        
+        # Obtenemos las puntuaciones de solo los productos que han sido calificados
+        scores = [p.seller_score for p in self.posts if p.rating_count > 0]
+        
+        if not scores:
+            return 0 # Si ninguno de sus productos tiene reseñas, la puntuación es 0
+
+        # Calculamos y redondeamos el promedio
+        return round(sum(scores) / len(scores))
+
 
     class Config:
         exclude = {"user", "posts", "verification_tokens", "shipping_addresses", "contact_entries", "purchases", "notifications", "comments", "comment_votes", "saved_posts"}

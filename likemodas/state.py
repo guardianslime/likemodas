@@ -223,6 +223,8 @@ class SupportTicketAdminData(rx.Base):
 class SellerInfoData(rx.Base):
     id: int
     username: str
+    # --- ✨ LÍNEA AÑADIDA ---
+    overall_seller_score: int = 0
 
 class SupportTicketData(rx.Base):
     id: int
@@ -3374,16 +3376,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         if seller_id_int > 0:
             with rx.session() as session:
                 seller_info_db = session.exec(
-                    sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
+                    sqlmodel.select(UserInfo).options(
+                        sqlalchemy.orm.joinedload(UserInfo.user),
+                        # --- ✨ LÍNEA AÑADIDA: Carga previa de los posts para el cálculo ---
+                        sqlalchemy.orm.selectinload(UserInfo.posts).selectinload(BlogPostModel.comments).selectinload(CommentModel.votes)
+                    )
                     .where(UserInfo.id == seller_id_int)
                 ).one_or_none()
                 
-                # --- 👇 BLOQUE CORREGIDO 👇 ---
                 if seller_info_db and seller_info_db.user:
-                    # En lugar de guardar el objeto complejo, creamos un DTO simple
                     self.seller_page_info = SellerInfoData(
                         id=seller_info_db.id,
-                        username=seller_info_db.user.username
+                        username=seller_info_db.user.username,
+                        # --- ✨ LÍNEA AÑADIDA: Se pasa la puntuación calculada al DTO ---
+                        overall_seller_score=seller_info_db.overall_seller_score
                     )
 
                     # La carga de los posts del vendedor no cambia
@@ -3396,12 +3402,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         .order_by(BlogPostModel.created_at.desc())
                     ).all()
                     
-                    # ... (el resto del bucle para crear temp_posts no cambia)
                     temp_posts = []
                     for p in posts:
                         temp_posts.append(
                             ProductCardData(
-                                # ... todos los campos como los teníamos antes
                                 id=p.id,
                                 userinfo_id=p.userinfo_id,
                                 title=p.title,

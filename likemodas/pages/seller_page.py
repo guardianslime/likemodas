@@ -5,6 +5,8 @@ from ..state import AppState
 from ..ui.components import product_gallery_component
 from ..ui.skeletons import skeleton_product_gallery
 from ..blog.public_page import product_detail_modal
+# --- ✨ IMPORT NUEVO ---
+from ..ui.seller_score import seller_score_stars
 
 def seller_page_content() -> rx.Component:
     """Página pública que muestra todos los productos de un vendedor específico."""
@@ -12,17 +14,24 @@ def seller_page_content() -> rx.Component:
         rx.vstack(
             rx.cond(
                 AppState.seller_page_info,
-                rx.heading(
-                    "Publicaciones de ",
-                    rx.text(
-                        # --- 👇 LÍNEA CORREGIDA 👇 ---
-                        # Se accede a .username directamente desde el nuevo modelo de datos.
-                        AppState.seller_page_info.username,
-                        as_="span",
-                        color_scheme="violet",
+                # --- ✨ INICIO DE LA MODIFICACIÓN: VSTACK PARA ESTRELLAS Y TÍTULO ✨ ---
+                rx.vstack(
+                    # Se muestran las estrellas permanentemente
+                    seller_score_stars(AppState.seller_page_info.overall_seller_score),
+                    # El título original
+                    rx.heading(
+                        "Publicaciones de ",
+                        rx.text(
+                            AppState.seller_page_info.username,
+                            as_="span",
+                            color_scheme="violet",
+                        ),
+                        size="8"
                     ),
-                    size="8"
+                    align="center",
+                    spacing="3",
                 ),
+                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                 rx.heading("Cargando vendedor...", size="8")
             ),
             rx.divider(margin_y="1.5em"),
