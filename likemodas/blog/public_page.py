@@ -73,8 +73,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     """
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
     
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Creamos un diccionario Var en lugar de uno de Python para que Reflex pueda usarlo en rx.cond
     crown_map_var = rx.Var.create({
         UserReputation.WOOD.value: "🪵",
         UserReputation.COPPER.value: "🥉",
@@ -83,21 +81,23 @@ def render_comment_item(comment: CommentData) -> rx.Component:
         UserReputation.DIAMOND.value: "💎",
     })
     
-    # Usamos rx.cond para determinar el STRING del fallback. 
-    # Esto asegura que siempre pasemos un string al avatar.
     fallback_str = rx.cond(
         crown_map_var.contains(comment.author_reputation),
         crown_map_var[comment.author_reputation],
         comment.author_initial
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
+    
     return rx.box(
         rx.vstack(
             rx.hstack(
-                # Pasamos el string directamente al prop fallback
+                # --- ✨ CORRECCIÓN AQUÍ: Usamos rx.get_upload_url en la interfaz ✨ ---
                 rx.avatar(
-                    src=comment.author_avatar_url, 
+                    # Construimos la URL completa solo si el nombre del archivo no está vacío
+                    src=rx.cond(
+                        comment.author_avatar_url != "",
+                        rx.get_upload_url(comment.author_avatar_url),
+                        ""
+                    ), 
                     fallback=fallback_str, 
                     size="2"
                 ),
@@ -106,6 +106,7 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 star_rating_display_safe(comment.rating, 1, size=20),
                 width="100%",
             ),
+            # ... (el resto de la función no necesita cambios)
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
             rx.hstack(
                 vote_buttons(

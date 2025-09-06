@@ -3403,10 +3403,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             if vote:
                 user_vote = vote.vote_type
 
-        # --- ✨ LÓGICA AÑADIDA PARA OBTENER EL AVATAR ✨ ---
-        avatar_url = ""
+        # --- ✨ CORRECCIÓN AQUÍ: Guardamos solo el nombre del archivo (string) ✨ ---
+        avatar_filename = ""
         if comment_model.userinfo and comment_model.userinfo.avatar_url:
-            avatar_url = rx.get_upload_url(comment_model.userinfo.avatar_url)
+            avatar_filename = comment_model.userinfo.avatar_url
 
         return CommentData(
             id=comment_model.id,
@@ -3421,8 +3421,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             user_vote=user_vote,
             author_reputation=comment_model.userinfo.reputation.value if comment_model.userinfo else UserReputation.NONE.value,
             
-            # --- ✨ Poblando el nuevo campo ---
-            author_avatar_url=avatar_url,
+            # Pasamos el nombre del archivo (string) al DTO
+            author_avatar_url=avatar_filename,
         )
 
     # --- NUEVOS MANEJADORES PARA EL MODAL ---
