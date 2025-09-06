@@ -252,6 +252,7 @@ class CartItemData(rx.Base):
     @property
     def subtotal_cop(self) -> str:
         return format_to_cop(self.subtotal)
+    
 class UniqueVariantItem(rx.Base):
     variant: dict
     index: int
@@ -265,6 +266,13 @@ class VariantFormData(rx.Base):
     attributes: dict[str, str]
     stock: int = 10
     image_url: str = ""
+
+# --- ✨ NUEVO DTO PARA EL PERFIL ✨ ---
+class UserProfileData(rx.Base):
+    username: str = ""
+    email: str = ""
+    phone: str = ""
+    avatar_url: str = ""
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -1144,8 +1152,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     price_str: str = ""
     price_includes_iva: bool = True
     post_images_in_form: list[str] = []
-
-    
 
     
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
@@ -2914,6 +2920,163 @@ class AppState(reflex_local_auth.LocalAuthState):
         if product_id is not None:
             self._product_id_to_load_on_mount = int(product_id)
             yield self.trigger_modal_from_load
+    
+    # DTO para mostrar datos en el formulario de forma segura
+    profile_info: UserProfileData = UserProfileData()
+    
+    # Variables para los campos controlados del formulario
+    profile_username: str = ""
+    profile_phone: str = ""
+
+    def set_profile_username(self, name: str):
+        self.profile_username = name
+
+    def set_profile_phone(self, phone: str):
+        self.profile_phone = phone
+
+    @rx.event
+    def on_load_profile_page(self):
+        """Carga los datos del usuario actual en el formulario de perfil."""
+        if not self.authenticated_user_info:
+            return
+        
+        with rx.session() as session:
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info:
+                # Llenar el DTO para mostrar en la página
+                self.profile_info = UserProfileData(
+                    username=user_info.user.username,
+                    email=user_info.email,
+                    phone=user_info.phone or "",
+                    avatar_url=rx.get_upload_url(user_info.avatar_url) if user_info.avatar_url else ""
+                )
+                # Llenar las variables de estado para los inputs
+                self.profile_username = user_info.user.username
+                self.profile_phone = user_info.phone or ""
+
+    @rx.event
+    async def handle_avatar_upload(self, files: list[rx.UploadFile]):
+        """Maneja la subida de una nueva imagen de perfil."""
+        if not self.authenticated_user_info:
+            return rx.toast.error("Debes iniciar sesión.")
+        if not files:
+            return
+            
+        upload_data = await files[0].read()
+        unique_filename = f"avatar-{self.authenticated_user_info.id}-{secrets.token_hex(4)}.webp"
+        outfile = rx.get_upload_dir() / unique_filename
+        outfile.write_bytes(upload_data)
+        
+        with rx.session() as session:
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info:
+                user_info.avatar_url = unique_filename
+                session.add(user_info)
+                session.commit()
+        
+        yield self.on_load_profile_page()
+        yield rx.toast.success("Imagen de perfil actualizada.")
+
+    @rx.event
+    def handle_profile_update(self, form_data: dict):
+        """Actualiza el nombre de usuario y el teléfono."""
+        if not self.authenticated_user_info:
+            return rx.toast.error("Debes iniciar sesión.")
+            
+        new_username = form_data.get("username", "").strip()
+        new_phone = form_data.get("phone", "").strip()
+
+        if not new_username:
+            return rx.toast.error("El nombre de usuario no puede estar vacío.")
+
+        with rx.session() as session:
+            # Validar que el nuevo nombre de usuario no esté en uso por otra persona
+            existing_user = session.exec(
+                sqlmodel.select(LocalUser).where(LocalUser.username == new_username)
+            ).one_or_none()
+            if existing_user and existing_user.id != self.authenticated_user.id:
+                return rx.toast.error("Ese nombre de usuario ya está en uso.")
+
+            # Actualizar LocalUser y UserInfo
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            local_user = session.get(LocalUser, self.authenticated_user.id)
+            
+            if user_info and local_user:
+                # Actualizar todos los comentarios anteriores del usuario
+                if local_user.username != new_username:
+                    stmt = (
+                        sqlmodel.update(CommentModel)
+                        .where(CommentModel.userinfo_id == user_info.id)
+                        .values(author_username=new_username, author_initial=new_username[0].upper())
+                    )
+                    session.exec(stmt)
+                
+                local_user.username = new_username
+                user_info.phone = new_phone
+                session.add(local_user)
+                session.add(user_info)
+                session.commit()
+
+        yield self.on_load_profile_page()
+        yield rx.toast.success("Perfil actualizado correctamente.")
+
+    @rx.event
+    def handle_password_change(self, form_data: dict):
+        """Cambia la contraseña del usuario tras verificar la actual."""
+        if not self.authenticated_user:
+            return rx.toast.error("Debes iniciar sesión.")
+            
+        current_password = form_data.get("current_password")
+        new_password = form_data.get("new_password")
+        confirm_password = form_data.get("confirm_password")
+
+        if not all([current_password, new_password, confirm_password]):
+            return rx.toast.error("Todos los campos son obligatorios.")
+        
+        if new_password != confirm_password:
+            return rx.toast.error("Las nuevas contraseñas no coinciden.")
+        
+        password_errors = validate_password(new_password)
+        if password_errors:
+            return rx.toast.error("\n".join(password_errors))
+            
+        with rx.session() as session:
+            local_user = session.get(LocalUser, self.authenticated_user.id)
+            if not bcrypt.checkpw(current_password.encode("utf-8"), local_user.password_hash):
+                return rx.toast.error("La contraseña actual es incorrecta.")
+                
+            local_user.password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
+            session.add(local_user)
+            session.commit()
+            
+        return rx.toast.success("Contraseña actualizada con éxito.")
+
+    @rx.event
+    def handle_account_deletion(self, form_data: dict):
+        """Elimina permanentemente la cuenta del usuario."""
+        if not self.authenticated_user:
+            return rx.toast.error("Debes iniciar sesión.")
+            
+        password = form_data.get("password")
+        if not password:
+            return rx.toast.error("Debes ingresar tu contraseña para eliminar la cuenta.")
+
+        with rx.session() as session:
+            local_user = session.get(LocalUser, self.authenticated_user.id)
+            if not bcrypt.checkpw(password.encode("utf-8"), local_user.password_hash):
+                return rx.toast.error("La contraseña es incorrecta.")
+                
+            # Gracias al borrado en cascada, esto debería eliminar todo
+            session.delete(local_user)
+            session.commit()
+            
+        yield rx.toast.success("Tu cuenta ha sido eliminada permanentemente.")
+        # Forzar el logout y redirigir
+        yield AppState.do_logout
+        return rx.redirect("/")
+    
+    # --- ✨ FIN: NUEVAS VARIABLES Y LÓGICA PARA LA PÁGINA DE PERFIL ✨ ---
+
 
     product_comments: list[CommentData] = []
     my_review_for_product: Optional[CommentData] = None

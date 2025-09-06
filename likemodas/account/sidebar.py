@@ -7,6 +7,12 @@ def account_sidebar() -> rx.Component:
     return rx.vstack(
         rx.heading("Mi Cuenta", size="6", margin_bottom="1em"),
         rx.link(
+            rx.text("Mi Perfil"),
+            href="/my-account/profile",
+            width="100%",
+            padding="0.5em",
+        ),
+        rx.link(
             rx.text("Mis Compras"),
             href=navigation.routes.PURCHASE_HISTORY_ROUTE,
             width="100%",

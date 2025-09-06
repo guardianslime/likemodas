@@ -3,6 +3,7 @@
 import reflex as rx
 import reflex_local_auth
 
+from likemodas.account import profile_page
 from likemodas.admin.profile_page import seller_profile_page
 from likemodas.admin.tickets_page import admin_tickets_page_content
 
@@ -60,6 +61,14 @@ app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-
 
 # --- Rutas de Búsqueda ---
 app.add_page(base_page(search_results.search_results_content()), route="/search-results", title="Resultados de Búsqueda")
+
+# ✨ AÑADE ESTA NUEVA RUTA ✨
+app.add_page(
+    base_page(profile_page.profile_page_content()), 
+    route="/my-account/profile", 
+    title="Mi Perfil", 
+    on_load=AppState.on_load_profile_page
+)
 
 # --- Rutas de Cuenta, Carrito y Compras ---
 app.add_page(base_page(cart_page.cart_page_content()), route="/cart", title="Mi Carrito", on_load=[AppState.on_load, AppState.load_default_shipping_info])
