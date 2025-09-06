@@ -77,34 +77,46 @@ class UserInfo(rx.Model, table=True):
     user_id: int = Field(foreign_key="localuser.id", unique=True)
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
     
-    # --- ✨ CAMPOS NUEVOS AÑADIDOS ✨ ---
+    # --- Campos del Perfil de Usuario ---
     avatar_url: Optional[str] = Field(default=None)
     phone: Optional[str] = Field(default=None)
-    # --- ✨ FIN DE CAMPOS NUEVOS ✨ ---
     
+    # --- Campos del Estado del Usuario ---
     is_verified: bool = Field(default=False, nullable=False)
     is_banned: bool = Field(default=False, nullable=False)
     ban_expires_at: Optional[datetime] = Field(default=None)
+    
+    # --- Campos de Timestamps ---
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
+    
+    # --- Campos de Vendedor ---
     seller_barrio: Optional[str] = Field(default=None)
     seller_address: Optional[str] = Field(default=None)
 
-    user: Optional["LocalUser"] = Relationship(sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    # --- Relaciones con otros Modelos ---
+    
+    # Relación corregida con LocalUser (sin cascada de este lado)
+    user: Optional["LocalUser"] = Relationship()
+
+    # Relaciones donde UserInfo es el "padre" (el lado "uno") y debe controlar el borrado
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo")
+    verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo")
+    contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     comments: List["CommentModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     
+    # Relación muchos a muchos para publicaciones guardadas
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
+
+    # --- Propiedades Calculadas (no son columnas en la BD) ---
 
     @property
     def reputation(self) -> UserReputation:
-        """Calculates user reputation based on comment votes."""
+        """Calcula la reputación del usuario basada en los votos de sus comentarios."""
         if not self.comments:
             return UserReputation.NONE
 
@@ -122,7 +134,7 @@ class UserInfo(rx.Model, table=True):
             return UserReputation.WOOD
         else:
             return UserReputation.NONE
-        
+            
     @property
     def overall_seller_score(self) -> int:
         """
@@ -132,15 +144,12 @@ class UserInfo(rx.Model, table=True):
         if not self.posts:
             return 0
         
-        # Obtenemos las puntuaciones de solo los productos que han sido calificados
         scores = [p.seller_score for p in self.posts if p.rating_count > 0]
         
         if not scores:
-            return 0 # Si ninguno de sus productos tiene reseñas, la puntuación es 0
+            return 0
 
-        # Calculamos y redondeamos el promedio
         return round(sum(scores) / len(scores))
-
 
     class Config:
         exclude = {"user", "posts", "verification_tokens", "shipping_addresses", "contact_entries", "purchases", "notifications", "comments", "comment_votes", "saved_posts"}
