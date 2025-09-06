@@ -267,27 +267,15 @@ class VariantFormData(rx.Base):
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
-    # --- 👇 INICIO DE LA CORRECCIÓN 👇 ---
-    # Se define como una variable de estado normal, no como una propiedad computada.
-    # Esto asegura que esté disponible durante la compilación para las migraciones.
-    # --- ✨ INICIO DE LA CORRECCIÓN: VARIABLES DE ESTADO MODIFICADAS ---
     user_notifications: List[NotificationDTO] = []
     contact_entries: list[ContactEntryDTO] = []
-    # --- ✨ FIN DE LA CORRECCIÓN ---
     lista_de_barrios_popayan: list[str] = LISTA_DE_BARRIOS
-    # --- FIN DE LA CORRECCIÓN ---
-
-    # --- Variables de Perfil del Vendedor ---
     seller_profile_barrio: str = ""
     seller_profile_address: str = ""
-    
     _product_id_to_load_on_mount: Optional[int] = None
     success: bool = False
     error_message: str = ""
-
-
     
-    # --- ✨ INICIO DE LA CORRECCIÓN: PROPIEDADES COMPUTADAS REFACTORIZADAS ---
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfoDTO | None:
         if not self.is_authenticated or self.authenticated_user.id < 0:
@@ -308,7 +296,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     role=user_info_db.role.value
                 )
             return None
-
+        
     @rx.var
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN.value
@@ -394,7 +382,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.success("¡Cuenta verificada! Por favor, inicia sesión.")
                     return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
             self.message = "El token de verificación es inválido o ha expirado."
-
+    
     is_success: bool = False
     token: str = ""
     is_token_valid: bool = False
@@ -416,8 +404,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.message, self.is_success = "Si una cuenta con ese correo existe, hemos enviado un enlace para restablecer la contraseña.", True
 
     def on_load_check_token(self):
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-        # Reemplazamos el método obsoleto self.router.page.params
         token = ""
         try:
             full_url = self.router.url
@@ -426,10 +412,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 params = dict(param.split("=") for param in query_string.split("&"))
                 token = params.get("token", "")
         except Exception:
-            pass  # Falla silenciosamente si la URL está mal formada
+            pass
 
         self.token = token
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         
         if not self.token:
             self.message, self.is_token_valid = "Enlace no válido. Falta el token.", False
@@ -471,7 +456,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             return None
 
         with rx.session() as session:
-            # ... (la consulta a la base de datos no cambia) ...
             purchase = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -487,18 +471,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
                 return None
 
-            # --- ✨ 2. LÓGICA DE CÁLCULO ACTUALIZADA ✨ ---
-            IVA_RATE = 0.19
-            grand_total = purchase.total_price
-            shipping_cost = purchase.shipping_applied or 0.0
-            
-            # El subtotal de los productos es el total menos el envío.
-            # --- ✨ LÓGICA DE CÁLCULO DE FACTURA TOTALMENTE NUEVA Y CONSISTENTE ✨ ---
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
             shipping_cost = purchase.shipping_applied or 0.0
             iva_amount = subtotal_base_products * 0.19
-            grand_total = purchase.total_price # Este es el valor final guardado, que debe ser la suma de las partes.
-
+            grand_total = purchase.total_price
+            
             invoice_items = []
             for item in purchase.items:
                 if item.blog_post:
@@ -509,8 +486,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         InvoiceItemData(
                             name=item.blog_post.title,
                             quantity=item.quantity,
-                            price_cop=format_to_cop(item.blog_post.base_price), # <-- Usamos precio base unitario
-                            subtotal_cop=format_to_cop(item_base_subtotal), # <-- Usamos subtotal base
+                            # --- ✨ CORRECCIÓN AQUÍ: Se añade el campo 'price' que faltaba ---
+                            price=item.blog_post.base_price,
+                            price_cop=format_to_cop(item.blog_post.base_price),
+                            subtotal_cop=format_to_cop(item_base_subtotal),
                             iva_cop=format_to_cop(item_iva),
                             total_con_iva_cop=format_to_cop(item_total_con_iva)
                         )
@@ -1380,10 +1359,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             return session.exec(query).one_or_none()
 
-    @rx.var
-    def is_admin(self) -> bool:
-        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN
-        
+    
+
     @rx.event
     def on_load_seller_profile(self):
         """Carga los datos del perfil del vendedor al entrar a la página de edición."""
@@ -3074,12 +3051,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def vote_on_comment(self, comment_id: int, vote_type: str):
-        """Handles a user's vote on a comment."""
-        if not self.is_authenticated:
+        """Maneja el voto de un usuario en un comentario, con validaciones."""
+        if not self.is_authenticated or not self.authenticated_user_info:
             return rx.toast.error("Debes iniciar sesión para votar.")
 
         with rx.session() as session:
-            # Check if the user has made at least one purchase
+            comment = session.get(CommentModel, comment_id)
+            if not comment:
+                return rx.toast.error("El comentario ya no existe.")
+
+            # --- CORRECCIÓN AQUÍ: Evitar que los usuarios voten en sus propios comentarios ---
+            if comment.userinfo_id == self.authenticated_user_info.id:
+                return rx.toast.info("No puedes votar en tu propio comentario.")
+
             first_purchase = session.exec(
                 sqlmodel.select(PurchaseModel).where(
                     PurchaseModel.userinfo_id == self.authenticated_user_info.id
@@ -3089,7 +3073,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not first_purchase:
                 return rx.toast.error("Debes realizar al menos una compra para poder votar.")
 
-            # Check for an existing vote
             existing_vote = session.exec(
                 sqlmodel.select(CommentVoteModel).where(
                     CommentVoteModel.userinfo_id == self.authenticated_user_info.id,
@@ -3099,14 +3082,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if existing_vote:
                 if existing_vote.vote_type == vote_type:
-                    # User is clicking the same button again, so remove the vote
                     session.delete(existing_vote)
                 else:
-                    # User is changing their vote
                     existing_vote.vote_type = vote_type
                     session.add(existing_vote)
             else:
-                # New vote
                 new_vote = CommentVoteModel(
                     userinfo_id=self.authenticated_user_info.id,
                     comment_id=comment_id,
@@ -3116,9 +3096,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             session.commit()
 
-        # Reload the comments for the current product to update the UI
         if self.product_in_modal:
             yield AppState.open_product_detail_modal(self.product_in_modal.id)
+            
+    # --- ✨ FIN DEL BLOQUE DE CÓDIGO CORREGIDO PARA VOTACIONES ✨ ---
+
 
     saved_post_ids: set[int] = set()
     saved_posts_gallery: list[ProductCardData] = []
@@ -3215,20 +3197,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield from self.open_product_detail_modal(self._product_id_to_load_on_mount)
             self._product_id_to_load_on_mount = None
 
+    # --- ✨ INICIO DEL BLOQUE DE CÓDIGO CORREGIDO PARA VOTACIONES ✨ ---
+
     def _convert_comment_to_dto(self, comment_model: CommentModel) -> CommentData:
         """
         Convierte un CommentModel de la BD a un CommentData DTO,
         incluyendo los datos de votación y reputación.
         """
         user_vote = ""
-        # Verifica si el usuario actual ha votado en este comentario
         if self.authenticated_user_info:
             vote = next(
                 (v for v in comment_model.votes if v.userinfo_id == self.authenticated_user_info.id), 
                 None
             )
             if vote:
-                user_vote = vote.vote_type.value
+                # --- CORRECCIÓN AQUÍ: Se accede directamente al valor que ya es un string ---
+                user_vote = vote.vote_type
 
         return CommentData(
             id=comment_model.id,
@@ -3238,8 +3222,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             author_initial=comment_model.author_initial,
             created_at_formatted=comment_model.created_at_formatted,
             updates=[self._convert_comment_to_dto(update) for update in sorted(comment_model.updates, key=lambda u: u.created_at)],
-            
-            # --- ✨ Poblando los nuevos campos ---
             likes=comment_model.likes,
             dislikes=comment_model.dislikes,
             user_vote=user_vote,
