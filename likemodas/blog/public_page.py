@@ -12,6 +12,8 @@ from ..ui.reputation_icon import reputation_icon
 from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars
 
+from ..models import UserReputation # Asegúrate de que este import esté
+
 def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(
         rx.vstack(
@@ -66,13 +68,34 @@ def review_submission_form() -> rx.Component:
     )
 
 def render_comment_item(comment: CommentData) -> rx.Component:
-    """Renderiza un comentario principal con votaciones, reputación y su historial."""
+    """
+    Renderiza un comentario principal con avatar, votaciones, reputación y su historial.
+    """
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
+    
+    # Define el ícono de reputación que se usará como fallback en el avatar
+    crown_map = {
+        UserReputation.WOOD.value: "🪵",
+        UserReputation.COPPER.value: "🥉",
+        UserReputation.SILVER.value: "🥈",
+        UserReputation.GOLD.value: "🥇",
+        UserReputation.DIAMOND.value: "💎",
+    }
+    fallback_icon = rx.text(
+        crown_map.get(comment.author_reputation, comment.author_initial),
+        font_size="1em",
+    )
+    
     return rx.box(
         rx.vstack(
             rx.hstack(
-                # --- MODIFICACIÓN: Se usa el nuevo ícono de reputación ---
-                reputation_icon(comment.author_reputation, comment.author_initial),
+                # Se usa un avatar que muestra la imagen del usuario si existe,
+                # o el ícono de reputación/inicial como alternativa.
+                rx.avatar(
+                    src=comment.author_avatar_url, 
+                    fallback=fallback_icon, 
+                    size="2"
+                ),
                 rx.text(comment.author_username, weight="bold"),
                 rx.spacer(),
                 star_rating_display_safe(comment.rating, 1, size=20),
@@ -80,7 +103,7 @@ def render_comment_item(comment: CommentData) -> rx.Component:
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
             rx.hstack(
-                # --- MODIFICACIÓN: Se añaden los botones de like/dislike ---
+                # Botones de like/dislike
                 vote_buttons(
                     comment.id,
                     comment.likes,
@@ -88,6 +111,7 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     comment.user_vote,
                 ),
                 rx.spacer(),
+                # Botón para ver/ocultar historial de actualizaciones del comentario
                 rx.cond(
                     comment.updates,
                     rx.button(
@@ -104,10 +128,12 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 align="center",
                 margin_top="0.75em",
             ),
+            # Muestra las actualizaciones si el historial está expandido
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
                 rx.cond(comment.updates, rx.foreach(comment.updates, render_update_item))
             ),
+            # Muestra la fecha de publicación
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%", justify="end", spacing="1", margin_top="1em"
