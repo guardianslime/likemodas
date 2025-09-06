@@ -166,18 +166,14 @@ def product_detail_modal() -> rx.Component:
             spacing="3", width="100%",
         )
 
+    # --- 👇 INICIO DE LA SECCIÓN CORREGIDA ---
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=20),
-            
-            # --- ✨ LÍNEA ELIMINADA: Ya no mostramos las estrellas del vendedor aquí ---
-            # seller_score_stars(AppState.product_in_modal.seller_score),
-
             rx.hstack(
-                # ... (resto del hstack de badges sin cambios)
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
                     color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
@@ -198,7 +194,6 @@ def product_detail_modal() -> rx.Component:
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.vstack(
-                # ... (resto del vstack de características sin cambios)
                 rx.divider(margin_y="1em"),
                 rx.heading("Características", size="4"),
                 rx.foreach(
@@ -229,29 +224,34 @@ def product_detail_modal() -> rx.Component:
                 align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
             
-            # --- ✨ INICIO DE LA MODIFICACIÓN CON TOOLTIP ✨ ---
+            # --- ✨ CORRECCIÓN: Se reemplaza rx.tooltip por rx.hover_card ✨ ---
             rx.text(
                 "Publicado por: ",
-                rx.tooltip(
-                    rx.link(
-                        AppState.product_in_modal.seller_name,
-                        href=f"/vendedor?id={AppState.product_in_modal.seller_id}",
-                        color_scheme="violet", font_weight="bold",
+                rx.hover_card.root(
+                    rx.hover_card.trigger(
+                        rx.link(
+                            AppState.product_in_modal.seller_name,
+                            href=f"/vendedor?id={AppState.product_in_modal.seller_id}",
+                            color_scheme="violet", font_weight="bold",
+                        )
                     ),
-                    content=rx.vstack(
-                        rx.text("Puntuación del Vendedor"),
-                        seller_score_stars(AppState.product_in_modal.seller_score),
-                        align="center",
+                    rx.hover_card.content(
+                        rx.vstack(
+                            rx.text("Puntuación del Vendedor"),
+                            seller_score_stars(AppState.product_in_modal.seller_score),
+                            align="center",
+                            spacing="2"
+                        ),
+                        padding="0.75em",
                     ),
                 ),
                 size="3", color_scheme="gray", margin_top="1.5em",
                 text_align="left", width="100%"
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN CON TOOLTIP ✨ ---
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
             rx.spacer(),
             rx.hstack(
-                # ... (resto de los botones sin cambios)
                 rx.button("Añadir al Carrito", on_click=AppState.add_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1"),
                 rx.icon_button(
                     rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
@@ -270,8 +270,10 @@ def product_detail_modal() -> rx.Component:
             ),
             align="start", height="100%",
         )
-    
+    # --- ☝️ FIN DE LA SECCIÓN CORREGIDA ---
+
     return rx.dialog.root(
+        # ... (el resto de la función no cambia)
         rx.dialog.content(
             rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
             rx.cond(
