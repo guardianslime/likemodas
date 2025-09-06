@@ -73,27 +73,32 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     """
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
     
-    # Define el ícono de reputación que se usará como fallback en el avatar
-    crown_map = {
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Creamos un diccionario Var en lugar de uno de Python para que Reflex pueda usarlo en rx.cond
+    crown_map_var = rx.Var.create({
         UserReputation.WOOD.value: "🪵",
         UserReputation.COPPER.value: "🥉",
         UserReputation.SILVER.value: "🥈",
         UserReputation.GOLD.value: "🥇",
         UserReputation.DIAMOND.value: "💎",
-    }
-    fallback_icon = rx.text(
-        crown_map.get(comment.author_reputation, comment.author_initial),
-        font_size="1em",
-    )
+    })
     
+    # Usamos rx.cond para determinar el STRING del fallback. 
+    # Esto asegura que siempre pasemos un string al avatar.
+    fallback_str = rx.cond(
+        crown_map_var.contains(comment.author_reputation),
+        crown_map_var[comment.author_reputation],
+        comment.author_initial
+    )
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
     return rx.box(
         rx.vstack(
             rx.hstack(
-                # Se usa un avatar que muestra la imagen del usuario si existe,
-                # o el ícono de reputación/inicial como alternativa.
+                # Pasamos el string directamente al prop fallback
                 rx.avatar(
                     src=comment.author_avatar_url, 
-                    fallback=fallback_icon, 
+                    fallback=fallback_str, 
                     size="2"
                 ),
                 rx.text(comment.author_username, weight="bold"),
@@ -103,7 +108,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
             ),
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
             rx.hstack(
-                # Botones de like/dislike
                 vote_buttons(
                     comment.id,
                     comment.likes,
@@ -111,7 +115,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                     comment.user_vote,
                 ),
                 rx.spacer(),
-                # Botón para ver/ocultar historial de actualizaciones del comentario
                 rx.cond(
                     comment.updates,
                     rx.button(
@@ -128,12 +131,10 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 align="center",
                 margin_top="0.75em",
             ),
-            # Muestra las actualizaciones si el historial está expandido
             rx.cond(
                 AppState.expanded_comments.get(comment.id, False),
                 rx.cond(comment.updates, rx.foreach(comment.updates, render_update_item))
             ),
-            # Muestra la fecha de publicación
             rx.hstack(
                 rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
                 width="100%", justify="end", spacing="1", margin_top="1em"
