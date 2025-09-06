@@ -2948,11 +2948,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             user_info = session.get(UserInfo, self.authenticated_user_info.id)
             if user_info and user_info.user:
+                # --- ✨ CORRECCIÓN DE ERROR: Pasamos el string del nombre de archivo directamente ✨ ---
                 self.profile_info = UserProfileData(
                     username=user_info.user.username,
                     email=user_info.email,
                     phone=user_info.phone or "",
-                    avatar_url=rx.get_upload_url(user_info.avatar_url) if user_info.avatar_url else ""
+                    avatar_url=user_info.avatar_url or "" # Pasa el nombre del archivo o un string vacío
                 )
                 self.profile_username = user_info.user.username
                 self.profile_phone = user_info.phone or ""

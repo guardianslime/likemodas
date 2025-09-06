@@ -9,7 +9,6 @@ from ..ui.password_input import password_input
 def profile_page_content() -> rx.Component:
     """Página para que el usuario gestione su información de perfil."""
     
-    # Componente para la zona de peligro (eliminar cuenta)
     danger_zone = rx.form(
         rx.vstack(
             rx.heading("Zona de Peligro", color_scheme="red", size="5"),
@@ -44,17 +43,18 @@ def profile_page_content() -> rx.Component:
         width="100%",
     )
     
-    return account_layout(
+    # --- ✨ CORRECCIÓN DE DISEÑO: Se envuelve el contenido en un rx.center ✨ ---
+    page_content = rx.center(
         rx.vstack(
             rx.heading("Mi Perfil", size="7"),
             rx.text("Gestiona tu información personal y de seguridad."),
             rx.divider(margin_y="1.5em"),
             
-            # --- Sección de Imagen de Perfil ---
             rx.heading("Imagen de Perfil", size="5"),
             rx.hstack(
+                # --- ✨ CORRECCIÓN DE ERROR: Se aplica rx.get_upload_url aquí ✨ ---
                 rx.avatar(
-                    src=AppState.profile_info.avatar_url, 
+                    src=rx.get_upload_url(AppState.profile_info.avatar_url), 
                     fallback=rx.cond(AppState.profile_info.username, AppState.profile_info.username[0].upper(), "?"), 
                     size="6"
                 ),
@@ -73,7 +73,6 @@ def profile_page_content() -> rx.Component:
 
             rx.divider(margin_y="1.5em"),
 
-            # --- Formulario de Información General ---
             rx.form(
                 rx.vstack(
                     rx.heading("Información General", size="5"),
@@ -93,7 +92,6 @@ def profile_page_content() -> rx.Component:
             
             rx.divider(margin_y="1.5em"),
 
-            # --- Formulario para Cambiar Contraseña ---
             rx.form(
                 rx.vstack(
                     rx.heading("Cambiar Contraseña", size="5"),
@@ -116,6 +114,10 @@ def profile_page_content() -> rx.Component:
 
             spacing="5",
             width="100%",
-            max_width="700px",
-        )
+            # --- ✨ CORRECCIÓN DE DISEÑO: Ancho máximo ajustado ✨ ---
+            max_width="800px",
+        ),
+        width="100%",
     )
+
+    return account_layout(page_content)
