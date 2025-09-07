@@ -1,6 +1,7 @@
 # likemodas/ui/nav.py (SOLUCIÓN DEFINITIVA)
 
 import reflex as rx
+import reflex_local_auth
 from .. import navigation
 from ..state import AppState
 from ..models import Category
@@ -94,8 +95,8 @@ def public_navbar() -> rx.Component:
     """La barra de navegación pública definitiva, con menú de hamburguesa."""
     icon_color = rx.color_mode_cond("black", "white")
     
+    # --- ✨ INICIO DE LA MODIFICACIÓN: Menú de Hamburguesa Actualizado ✨ ---
     hamburger_menu = rx.menu.root(
-        # ... (este componente no cambia)
         rx.menu.trigger(
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
         ),
@@ -111,13 +112,31 @@ def public_navbar() -> rx.Component:
                 ),
             ),
             rx.menu.separator(),
-            rx.menu.item("Mi Cuenta", on_click=lambda: rx.redirect("/my-account/shipping-info")),
-            rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases")),
+            
+            # --- Lógica Condicional para Mi Cuenta y Mis Compras (Solo si está autenticado) ---
+            rx.cond(
+                AppState.is_authenticated,
+                rx.fragment(
+                    rx.menu.item("Mi Cuenta", on_click=lambda: rx.redirect("/my-account/profile")),
+                    rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases")),
+                )
+            ),
+
+            # --- Lógica Condicional para Iniciar Sesión y Registrarse (Solo si NO está autenticado) ---
+            rx.cond(
+                ~AppState.is_authenticated,
+                rx.fragment(
+                    rx.menu.separator(),
+                    rx.menu.item("Iniciar Sesión", on_click=lambda: rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)),
+                    rx.menu.item("Registrarse", on_click=lambda: rx.redirect(reflex_local_auth.routes.REGISTER_ROUTE)),
+                )
+            ),
         ),
     )
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
     authenticated_icons = rx.hstack(
-        # ... (este componente no cambia)
+        # ... (esta sección no cambia)
         notification_icon(),
         rx.link(
             rx.box(
@@ -140,7 +159,7 @@ def public_navbar() -> rx.Component:
     )
     
     placeholder_icons = rx.hstack(
-        # ... (este componente no cambia)
+        # ... (esta sección no cambia)
         rx.box(width="44px", height="44px", padding="0.5em"),
         rx.box(width="38px", height="44px", padding="0.5em"),
         align="center",
@@ -149,7 +168,6 @@ def public_navbar() -> rx.Component:
     )
 
     return rx.box(
-        # La parte visible de la barra de navegación
         rx.grid(
             # ... (el grid con el logo, buscador, etc., no cambia)
             rx.hstack(
@@ -178,35 +196,16 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
-        # --- ✨ INICIO: SOLUCIÓN CON BOTÓN OCULTO ✨ ---
-        # 1. Un botón estándar de Reflex, completamente oculto, que solo existe
-        #    si el usuario ha iniciado sesión.
-        rx.cond(
-            AppState.is_authenticated,
-            rx.button(
-                "Polling Trigger", # El texto no importa
-                on_click=AppState.poll_notifications,
-                id="notification_poller_button", # ID único para que JS lo encuentre
-                display="none", # Lo oculta completamente
-            ),
-        ),
-
-        # 2. El script que "pulsa" el botón invisible cada 15 segundos.
-        #    También solo se activa si el usuario ha iniciado sesión.
-        # --- ✨ INICIO: SOLUCIÓN DE POLLING ROBUSTA ✨ ---
+        # ... (el resto de la función no cambia)
         rx.cond(
             AppState.is_authenticated,
             rx.fragment(
-                # 1. Un botón de Reflex, completamente oculto.
                 rx.button(
                     "Polling Trigger",
                     on_click=AppState.poll_notifications,
                     id="notification_poller_button",
                     display="none",
                 ),
-
-                # 2. El script que "pulsa" el botón invisible cada 15 segundos.
-                #    Este script solo se renderizará si el usuario está autenticado.
                 rx.box(
                     on_mount=rx.call_script(
                         """
@@ -224,7 +223,6 @@ def public_navbar() -> rx.Component:
                 )
             )
         ),
-        # --- ✨ FIN: SOLUCIÓN DE POLLING ROBUSTA ✨ ---
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
