@@ -1980,26 +1980,21 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.call_script("document.getElementById('wompi_form').submit()")
 
     
-    async def wompi_webhook(self, payload: dict):
+    async def wompi_webhook(payload: dict):
         """
-        Recibe notificaciones de Wompi. Aquí es donde se confirma la orden REAL.
+        Recibe notificaciones de Wompi. Ahora es una función independiente.
         """
-        # Marcamos esta función internamente como una ruta de API
-        self.wompi_webhook._is_api_route = True
-    # --- FIN DE LA CORRECCIÓN ✨ ---
-
+        # Obtenemos acceso al estado de la aplicación
+        state = await rx.get_state(AppState)
+        
         transaction_data = payload.get("data", {}).get("transaction", {})
         status = transaction_data.get("status")
         reference = transaction_data.get("reference")
         
-        # (Aquí puedes añadir una verificación de la firma del evento para máxima seguridad)
-
         if status == "APPROVED":
-            purchase_data = self.pending_purchase_data.pop(reference, None)
+            purchase_data = state.pending_purchase_data.pop(reference, None)
             if not purchase_data:
                 print(f"Error: Webhook para referencia {reference} no encontró datos pendientes.")
-                # --- CORRECCIÓN ---
-                # Ahora este return es válido porque no hay 'yield' en la función.
                 return {"status": "error", "message": "Reference not found"}
 
             with rx.session() as session:
@@ -2023,7 +2018,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 session.refresh(new_purchase)
                 
-                # Lógica para reducir el stock y crear los PurchaseItemModel
                 product_ids = list(set([int(key.split('-')[0]) for key in cart.keys()]))
                 posts_to_update = session.exec(
                     sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
@@ -2031,7 +2025,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_map = {p.id: p for p in posts_to_update}
 
                 for cart_key, quantity_in_cart in cart.items():
-                    # ... (la lógica interna de este bucle se mantiene igual)
                     prod_id = int(cart_key.split('-')[0])
                     selection_parts = cart_key.split('-')[2:]
                     selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
@@ -2050,14 +2043,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                             selected_variant=selection_attrs
                         ))
                 
-                # --- CORRECCIÓN ---
-                # Se llama al método directamente en lugar de usar yield.
-                self.set_new_purchase_notification(True)
-                
+                # Llamamos al método en la instancia del estado que obtuvimos
+                state.set_new_purchase_notification(True)
                 session.commit()
 
-        # --- CORRECCIÓN ---
-        # Este return ahora es válido.
         return {"status": "ok"}
 
     def toggle_form(self):

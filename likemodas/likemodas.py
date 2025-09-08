@@ -38,8 +38,12 @@ app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# 2. Se registra la ruta de la API explícitamente después de crear la app.
-app.add_api_route("/wompi/webhook", AppState.wompi_webhook)
+# --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+# 2. Se registra la ruta usando el decorador app.api() sobre la función importada.
+@app.api(methods=["POST"])
+async def wompi_webhook_endpoint(payload: dict):
+    # Esta función simplemente llama a nuestra lógica que está en state.py
+    return await wompi_webhook(payload)
 # --- FIN DE LA CORRECCIÓN ✨ ---
 
 # --- Ruta principal (la galería de productos) ---
