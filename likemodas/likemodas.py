@@ -146,8 +146,9 @@ app.add_page(
 )
 
 # --- ✨ INICIO DE LA CORRECCIÓN FINAL Y DEFINITIVA ✨ ---
-# Se define la ruta y el método directamente en el decorador app.api()
-@app.api("/wompi/webhook", methods=["POST"])
+# Se define la ruta y el método directamente en el decorador app._api()
+# que sugiere el propio mensaje de error.
+@app._api("/wompi/webhook", methods=["POST"])
 def wompi_webhook_endpoint(payload: dict):
     """
     Este es el endpoint que Wompi llamará. Se registra de la forma
