@@ -145,8 +145,6 @@ app.add_page(
     title="Devolución o Cambio",
 )
 
-# --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-# Se elimina 'async' y 'await' porque la función llamada ya no es asíncrona.
 @app.post("/api/wompi/webhook")
 def wompi_webhook_endpoint(payload: dict):
     """
