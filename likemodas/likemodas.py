@@ -32,7 +32,16 @@ from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTACIÓN
 from . import navigation
 
-app = rx.App(style={"font_family": "Arial, sans-serif"})
+# --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+# Se añade el endpoint directamente en la inicialización de la app
+app = rx.App(
+    state=AppState,
+    style={"font_family": "Arial, sans-serif"},
+    endpoints=[
+        AppState.wompi_webhook,
+    ]
+)
+# --- FIN DE LA CORRECCIÓN ✨ ---
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
