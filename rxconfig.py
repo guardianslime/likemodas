@@ -15,6 +15,7 @@ VERCEL_PREVIEW_URL = "https://full-stack-python.vercel.app"
 # --- Configuración Principal Definitiva ---
 config = rx.Config(
     app_name="likemodas",
+    show_built_with_reflex=False,
     
     # 1. La URL REAL del backend para que el frontend se pueda conectar.
     #    Esto corrige el error "Cannot connect to server".
