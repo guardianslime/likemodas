@@ -85,7 +85,6 @@ app.add_page(base_page(admin_tickets_page_content()), route=navigation.routes.SU
 # --- Otras Rutas ---
 app.add_page(invoice_page.invoice_page_content(), route="/invoice", on_load=InvoiceState.on_load_invoice_page, title="Factura")
 
-# ========= INICIO DE LA CORRECCIÓN DE WOMPI =========
 # 2. Se define el endpoint de la API con la firma ASGI correcta.
 #    Esta es la solución directa al error 'TypeError'.
 @app._api("/wompi/webhook")
@@ -103,9 +102,6 @@ async def wompi_webhook_endpoint(scope, receive, send):
         state = await rx.get_state(AppState)
         
         # Llamamos a nuestra función de lógica de negocio, pasándole los datos.
-        # Esta función ahora vive en state.py
-        # --- ✨ CORRECCIÓN CLAVE AQUÍ ✨ ---
-        # Usamos 'await' para ejecutar la función async y obtener el resultado (el diccionario).
         response_data = await wompi_webhook(payload, state)
         
         # Construimos una respuesta JSON estándar.
@@ -125,4 +121,3 @@ async def wompi_webhook_endpoint(scope, receive, send):
         
     # Enviamos la respuesta de vuelta al servidor (Wompi).
     await response(scope, receive, send)
-# ====================================================

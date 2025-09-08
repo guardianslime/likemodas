@@ -282,6 +282,117 @@ class UserProfileData(rx.Base):
     phone: str = ""
     avatar_url: str = ""
 
+# ========= INICIO DE LA LÓGICA DE WOMPI =========
+# La lógica del webhook ahora es una función 'async' separada.
+# Es más limpio y fácil de probar.
+async def wompi_webhook(payload: dict, state: AppState) -> dict:
+    """
+    Procesa la notificación de Wompi. Esta función contiene la lógica de negocio.
+    """
+    print(f"Webhook recibido: {payload}") # Útil para depurar
+
+    try:
+        transaction_data = payload.get("data", {}).get("transaction", {})
+        status = transaction_data.get("status")
+        reference = transaction_data.get("reference")
+        
+        if status == "APPROVED":
+            # Aseguramos tener el estado más reciente.
+            app_state = await rx.get_state(state)
+            
+            purchase_data = app_state.pending_purchase_data.pop(reference, None)
+            if not purchase_data:
+                print(f"Error: Webhook para referencia {reference} no encontró datos pendientes.")
+                return {"status": "error", "message": "Reference not found"}
+
+            with rx.session() as session:
+                shipping_address = purchase_data["shipping_address"]
+                summary = purchase_data["summary"]
+                cart = purchase_data["cart"]
+
+                # Verificación de stock ANTES de crear la orden
+                product_ids = [int(key.split('-')[0]) for key in cart.keys()]
+                posts_in_cart = session.exec(
+                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))
+                ).all()
+                post_map = {p.id: p for p in posts_in_cart}
+
+                for cart_key, quantity_in_cart in cart.items():
+                    prod_id, variant_index, *attrs_parts = cart_key.split('-')
+                    selection_attrs = dict(part.split(':', 1) for part in attrs_parts if ':' in part)
+                    
+                    post = post_map.get(int(prod_id))
+                    if not post or not post.variants or int(variant_index) >= len(post.variants):
+                        return {"status": "error", "message": f"Producto {prod_id} no encontrado."}
+
+                    # Encontrar la variante específica y chequear stock
+                    variant_found = False
+                    for variant in post.variants:
+                         if variant.get("attributes") == selection_attrs:
+                            if variant.get("stock", 0) < quantity_in_cart:
+                                return {"status": "error", "message": f"Stock insuficiente para {post.title}."}
+                            variant_found = True
+                            break
+                    if not variant_found:
+                        return {"status": "error", "message": f"Variante no encontrada para {post.title}."}
+
+                # Si el stock está OK, se procede a crear la compra
+                new_purchase = PurchaseModel(
+                    userinfo_id=purchase_data["user_info_id"],
+                    total_price=summary["grand_total"],
+                    shipping_applied=summary["shipping_cost"],
+                    status=PurchaseStatus.CONFIRMED, # El pago ya está confirmado
+                    confirmed_at=datetime.now(timezone.utc), # Marcamos la fecha de confirmación
+                    payment_method="Online",
+                    shipping_name=shipping_address['name'],
+                    shipping_city=shipping_address['city'],
+                    shipping_neighborhood=shipping_address['neighborhood'],
+                    shipping_address=shipping_address['address'],
+                    shipping_phone=shipping_address['phone']
+                )
+                session.add(new_purchase)
+                session.commit()
+                session.refresh(new_purchase)
+                
+                # Ahora deducimos el stock y creamos los items de compra
+                for cart_key, quantity_in_cart in cart.items():
+                    prod_id, variant_index, *attrs_parts = cart_key.split('-')
+                    selection_attrs = dict(part.split(':', 1) for part in attrs_parts if ':' in part)
+                    post = post_map.get(int(prod_id))
+
+                    if post:
+                        variant_updated = False
+                        for variant in post.variants:
+                            if variant.get("attributes") == selection_attrs:
+                                variant["stock"] = variant.get("stock", 0) - quantity_in_cart
+                                variant_updated = True
+                                break
+                        
+                        if variant_updated:
+                            # Marcar el objeto como modificado para que SQLAlchemy lo guarde
+                            sqlalchemy.orm.attributes.flag_modified(post, "variants")
+                            session.add(post)
+
+                        # Crear el item de la compra
+                        session.add(PurchaseItemModel(
+                            purchase_id=new_purchase.id,
+                            blog_post_id=post.id,
+                            quantity=quantity_in_cart,
+                            price_at_purchase=post.price,
+                            selected_variant=selection_attrs
+                        ))
+                
+                # Notificar al admin sobre la nueva venta
+                await app_state.notify_admin_of_new_purchase()
+                session.commit()
+                print(f"Compra {reference} procesada exitosamente.")
+
+    except Exception as e:
+        print(f"Excepción en el webhook: {e}")
+        return {"status": "error", "message": str(e)}
+
+    return {"status": "ok"}
+
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
@@ -1878,7 +1989,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ).all()
                 post_map = {p.id: p for p in posts_to_update}
 
-                # Fase de Verificación de Stock (igual que en el webhook)
+                # Fase de Verificación de Stock
                 for cart_key, quantity_in_cart in self.cart.items():
                     prod_id = int(cart_key.split('-')[0])
                     selection_parts = cart_key.split('-')[2:]
@@ -1978,8 +2089,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             }
             
             return rx.call_script("document.getElementById('wompi_form').submit()")
-
-    
     
 
     def toggle_form(self):
@@ -3929,117 +4038,3 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
 
-# ========= INICIO DE LA CORRECCIÓN DE WOMPI =========
-# 3. La lógica del webhook ahora es una función 'async' separada.
-#    Ya no es un método de AppState, lo que la hace más limpia y fácil de probar.
-async def wompi_webhook(payload: dict, state: AppState) -> dict:
-    """
-    Procesa la notificación de Wompi. Esta función contiene la lógica de negocio.
-    """
-    print(f"Webhook recibido: {payload}") # Útil para depurar en Railway
-
-    try:
-        transaction_data = payload.get("data", {}).get("transaction", {})
-        status = transaction_data.get("status")
-        reference = transaction_data.get("reference")
-        
-        if status == "APPROVED":
-            # Usamos el método `get_state` para asegurar que tenemos el estado más reciente.
-            app_state = await rx.get_state(state)
-            
-            purchase_data = app_state.pending_purchase_data.pop(reference, None)
-            if not purchase_data:
-                print(f"Error: Webhook para referencia {reference} no encontró datos pendientes.")
-                return {"status": "error", "message": "Reference not found"}
-
-            with rx.session() as session:
-                # La lógica de creación de la compra y deducción de stock es la misma
-                # que describiste en tu análisis.
-                shipping_address = purchase_data["shipping_address"]
-                summary = purchase_data["summary"]
-                cart = purchase_data["cart"]
-
-                # Verificación de stock ANTES de crear la orden
-                product_ids = [int(key.split('-')[0]) for key in cart.keys()]
-                posts_in_cart = session.exec(
-                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))
-                ).all()
-                post_map = {p.id: p for p in posts_in_cart}
-
-                for cart_key, quantity_in_cart in cart.items():
-                    prod_id, variant_index, *attrs_parts = cart_key.split('-')
-                    selection_attrs = dict(part.split(':', 1) for part in attrs_parts if ':' in part)
-                    
-                    post = post_map.get(int(prod_id))
-                    if not post or not post.variants or int(variant_index) >= len(post.variants):
-                        return {"status": "error", "message": f"Producto {prod_id} no encontrado."}
-
-                    # Encontrar la variante específica y chequear stock
-                    variant_found = False
-                    for variant in post.variants:
-                         if variant.get("attributes") == selection_attrs:
-                            if variant.get("stock", 0) < quantity_in_cart:
-                                return {"status": "error", "message": f"Stock insuficiente para {post.title}."}
-                            variant_found = True
-                            break
-                    if not variant_found:
-                         return {"status": "error", "message": f"Variante no encontrada para {post.title}."}
-
-
-                # Si el stock está OK, se procede a crear la compra
-                new_purchase = PurchaseModel(
-                    userinfo_id=purchase_data["user_info_id"],
-                    total_price=summary["grand_total"],
-                    shipping_applied=summary["shipping_cost"],
-                    status=PurchaseStatus.CONFIRMED, # El pago ya está confirmado
-                    confirmed_at=datetime.now(timezone.utc), # Marcamos la fecha de confirmación
-                    payment_method="Online",
-                    shipping_name=shipping_address['name'],
-                    shipping_city=shipping_address['city'],
-                    shipping_neighborhood=shipping_address['neighborhood'],
-                    shipping_address=shipping_address['address'],
-                    shipping_phone=shipping_address['phone']
-                )
-                session.add(new_purchase)
-                session.commit()
-                session.refresh(new_purchase)
-                
-                # Ahora deducimos el stock y creamos los items de compra
-                for cart_key, quantity_in_cart in cart.items():
-                    prod_id, variant_index, *attrs_parts = cart_key.split('-')
-                    selection_attrs = dict(part.split(':', 1) for part in attrs_parts if ':' in part)
-                    post = post_map.get(int(prod_id))
-
-                    if post:
-                        variant_updated = False
-                        for variant in post.variants:
-                            if variant.get("attributes") == selection_attrs:
-                                variant["stock"] = variant.get("stock", 0) - quantity_in_cart
-                                variant_updated = True
-                                break
-                        
-                        if variant_updated:
-                            # Marcar el objeto como modificado para que SQLAlchemy lo guarde
-                            sqlalchemy.orm.attributes.flag_modified(post, "variants")
-                            session.add(post)
-
-                        # Crear el item de la compra
-                        session.add(PurchaseItemModel(
-                            purchase_id=new_purchase.id,
-                            blog_post_id=post.id,
-                            quantity=quantity_in_cart,
-                            price_at_purchase=post.price,
-                            selected_variant=selection_attrs
-                        ))
-                
-                # Notificar al admin sobre la nueva venta
-                await app_state.notify_admin_of_new_purchase()
-                session.commit()
-                print(f"Compra {reference} procesada exitosamente.")
-
-    except Exception as e:
-        print(f"Excepción en el webhook: {e}")
-        return {"status": "error", "message": str(e)}
-
-    return {"status": "ok"}
-# ====================================================

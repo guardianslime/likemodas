@@ -1,4 +1,4 @@
-# likemodas/cart/page.py (CORREGIDO)
+# likemodas/cart/page.py (Versión Corregida y Completa)
 
 import reflex as rx
 import reflex_local_auth
@@ -6,7 +6,28 @@ import reflex_local_auth
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, CartItemData
 
+def wompi_redirect_form() -> rx.Component:
+    """
+    Un formulario oculto que se llenará con los datos de Wompi
+    y se enviará para redirigir al usuario al checkout.
+    """
+    return rx.form(
+        rx.foreach(
+            AppState.wompi_form_data.items(),
+            lambda item: rx.input(
+                name=item[0],
+                value=item[1],
+                type="hidden",
+            ),
+        ),
+        id="wompi_form",
+        action="https://checkout.wompi.co/p/",
+        method="get",
+        display="none",
+    )
+
 def display_default_address() -> rx.Component:
+    """Muestra la dirección de envío predeterminada del usuario."""
     return rx.vstack(
         rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
         rx.cond(
@@ -22,7 +43,6 @@ def display_default_address() -> rx.Component:
                     rx.text(f"{AppState.default_shipping_address.address}, {AppState.default_shipping_address.neighborhood}"),
                     rx.text(f"{AppState.default_shipping_address.city}"),
                     rx.text(f"Tel: {AppState.default_shipping_address.phone}"),
-                    # --- ✨ MODIFICACIÓN: Enlace a "Cambiar dirección" en tonos morados ✨ ---
                     rx.link("Cambiar dirección", href="/my-account/shipping-info", size="2", color_scheme="violet", margin_top="0.5em"),
                     align_items="start", spacing="2", width="100%"
                 ),
@@ -31,14 +51,12 @@ def display_default_address() -> rx.Component:
             rx.box(
                 rx.vstack(
                     rx.text("No tienes una dirección de envío predeterminada."),
-                    # --- ✨ MODIFICACIÓN: Botón "Añadir Dirección" en tonos morados ✨ ---
                     rx.link(rx.button("Añadir Dirección en Mi Cuenta", color_scheme="purple"), href="/my-account/shipping-info", variant="soft"),
                     spacing="3", align_items="center"
                 ),
                 border="1px dashed #ededed", border_radius="md", padding="2em", width="100%", text_align="center"
             )
         ),
-        # El botón de "Finalizar Compra" ya usa el color de acento por defecto (violet).
         rx.button(
             "Finalizar Compra", 
             on_click=AppState.handle_checkout, 
@@ -64,7 +82,6 @@ def cart_item_row(item: CartItemData) -> rx.Component:
         ),
         rx.table.cell(
             rx.hstack(
-                # Los botones de cantidad son pequeños y neutrales, se mantienen así.
                 rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1"),
                 rx.text(item.quantity),
                 rx.button("+", on_click=AppState.open_product_detail_modal(item.product_id), size="1"),
@@ -77,6 +94,7 @@ def cart_item_row(item: CartItemData) -> rx.Component:
 
 @reflex_local_auth.require_login
 def cart_page_content() -> rx.Component:
+    """Página principal del carrito de compras."""
     return rx.vstack(
         rx.heading("Mi Carrito", size="8", color_scheme="violet"),
         rx.cond(
@@ -111,28 +129,23 @@ def cart_page_content() -> rx.Component:
                         rx.heading(AppState.grand_total_cop, size="6"),
                         width="100%"
                     ),
-                    
                     rx.divider(),
                     rx.vstack(
                         rx.heading("Método de Pago", size="5", width="100%"),
-                        # Los botones de radio se mantienen con su estilo por defecto,
-                        # que se integra bien con el tema general.
                         rx.radio(
                             ["Online", "Contra Entrega"],
                             value=AppState.payment_method,
                             on_change=AppState.set_payment_method,
                             spacing="4",
                         ),
-                        # --- ✨ MODIFICACIÓN: Callout de información en tonos morados ✨ ---
                         rx.callout(
                             "Nota: En caso de devolución del pedido, se cobrará nuevamente el valor del envío para cubrir los costos logísticos del retorno.",
                             icon="info",
                             margin_top="1em",
                             width="100%",
-                            color_scheme="purple", # Color principal del callout
+                            color_scheme="purple",
                             variant="soft",
                         ),
-                        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                         spacing="3",
                         align_items="start",
                         width="100%",
@@ -147,12 +160,15 @@ def cart_page_content() -> rx.Component:
             rx.center(
                 rx.vstack(
                     rx.text("Tu carrito está vacío."),
-                    # --- ✨ MODIFICACIÓN: Enlace a "Explorar productos" en tonos morados ✨ ---
                     rx.link("Explorar productos", href="/", color_scheme="violet"),
                     spacing="3"
                 ),
                 min_height="50vh"
             )
         ),
+        
+        # El formulario oculto de Wompi se añade aquí
+        wompi_redirect_form(),
+
         align="center", width="100%", padding="2em"
     )
