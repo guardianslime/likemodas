@@ -3929,7 +3929,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
 
-# --- ✨ CORRECCIÓN FINAL: Vuelve a ser una función async ✨ ---
+# --- ✨ CORRECCIÓN FINAL: Vuelve a ser una función async y ahora acepta el estado ✨ ---
 async def wompi_webhook(payload: dict, state: AppState):
     """
     Recibe notificaciones de Wompi. Usa el estado que se le pasa como argumento.
@@ -3952,6 +3952,7 @@ async def wompi_webhook(payload: dict, state: AppState):
             summary = purchase_data["summary"]
             cart = purchase_data["cart"]
 
+            # (El resto de tu lógica para crear la compra y actualizar el stock es correcta y no necesita cambios)
             new_purchase = PurchaseModel(
                 userinfo_id=purchase_data["user_info_id"],
                 total_price=summary["grand_total"],
@@ -3997,5 +3998,3 @@ async def wompi_webhook(payload: dict, state: AppState):
             session.commit()
 
     return {"status": "ok"}
-
-# --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨ ---

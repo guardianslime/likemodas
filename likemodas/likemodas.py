@@ -152,18 +152,18 @@ async def wompi_webhook_endpoint(scope, receive, send):
     """
     Este es el endpoint que Wompi llamará, definido con la firma ASGI completa.
     """
-    # Creamos un objeto Request para extraer el payload fácilmente
+    # Creamos un objeto Request de Reflex para extraer el payload fácilmente
     request = rx.Request(scope, receive, send)
     payload = await request.json()
     
-    # Obtenemos el estado y llamamos a nuestra lógica
+    # Obtenemos el estado de la app y llamamos a nuestra función de lógica
     state = await rx.get_state(AppState)
-    response_data = wompi_webhook(payload, state)
+    response_data = await wompi_webhook(payload, state) # <-- Le pasamos el estado a tu función
     
-    # Creamos y enviamos la respuesta JSON
+    # Creamos y enviamos la respuesta JSON de vuelta a Wompi
     response = rx.Response(
         content=response_data,
         media_type="application/json"
     )
     await response(scope, receive, send)
-# --- FIN DE LA CORRECCIÓN FINAL ✨ ---
+# --- ✨ FIN DE LA CORRECCIÓN FINAL ✨ ---
