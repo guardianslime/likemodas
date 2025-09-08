@@ -5,7 +5,6 @@ from reflex.style import toggle_color_mode
 from ..state import AppState
 from .. import navigation
 
-# ... (funciones internas sin cambios) ...
 def sidebar_dark_mode_toggle_item() -> rx.Component:
     return rx.button(
         rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
@@ -26,6 +25,8 @@ def sidebar_user_item() -> rx.Component:
     )
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
+    # --- ✨ MODIFICACIÓN: Color del hover en items del sidebar ✨ ---
+    # Se ajusta para usar el color de acento (violet) en el hover.
     return rx.link(
         rx.hstack(
             rx.icon(icon),
@@ -36,7 +37,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
                 rx.box(width="8px", height="8px", bg="red", border_radius="50%")
             ),
             width="100%", padding_x="0.5rem", padding_y="0.75rem", align="center",
-            style={"_hover": {"bg": rx.color("accent", 4), "color": rx.color("accent", 11)}, "border-radius": "0.5em"},
+            style={"_hover": {"bg": rx.color("violet", 4), "color": rx.color("violet", 11)}, "border-radius": "0.5em"},
         ),
         href=href,
         underline="none",
@@ -44,6 +45,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
         width="100%",
         on_click=lambda: AppState.set_show_admin_sidebar(False),
     )
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
 def sidebar_items() -> rx.Component:
     return rx.vstack(
@@ -95,9 +97,7 @@ def sliding_admin_sidebar() -> rx.Component:
             width="100%", spacing="5",
         ),
         spacing="5", padding_x="1em", padding_y="1.5em",
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
         bg=rx.color("gray", 2),
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         align="start", height="100%", width=SIDEBAR_WIDTH,
     )
 
@@ -111,6 +111,7 @@ def sliding_admin_sidebar() -> rx.Component:
                 ),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer",
+                # Ya usa el color de acento, que es violet.
                 bg=rx.color("accent", 9),
                 border_radius="0 8px 8px 0",
                 height="150px",

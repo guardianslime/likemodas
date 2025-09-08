@@ -22,7 +22,8 @@ def display_default_address() -> rx.Component:
                     rx.text(f"{AppState.default_shipping_address.address}, {AppState.default_shipping_address.neighborhood}"),
                     rx.text(f"{AppState.default_shipping_address.city}"),
                     rx.text(f"Tel: {AppState.default_shipping_address.phone}"),
-                    rx.link("Cambiar dirección", href="/my-account/shipping-info", size="2", color_scheme="gray", margin_top="0.5em"),
+                    # --- ✨ MODIFICACIÓN: Enlace a "Cambiar dirección" en tonos morados ✨ ---
+                    rx.link("Cambiar dirección", href="/my-account/shipping-info", size="2", color_scheme="violet", margin_top="0.5em"),
                     align_items="start", spacing="2", width="100%"
                 ),
                 border="1px solid #ededed", border_radius="md", padding="1em", width="100%"
@@ -30,12 +31,14 @@ def display_default_address() -> rx.Component:
             rx.box(
                 rx.vstack(
                     rx.text("No tienes una dirección de envío predeterminada."),
-                    rx.link(rx.button("Añadir Dirección en Mi Cuenta"), href="/my-account/shipping-info", variant="soft"),
+                    # --- ✨ MODIFICACIÓN: Botón "Añadir Dirección" en tonos morados ✨ ---
+                    rx.link(rx.button("Añadir Dirección en Mi Cuenta", color_scheme="purple"), href="/my-account/shipping-info", variant="soft"),
                     spacing="3", align_items="center"
                 ),
                 border="1px dashed #ededed", border_radius="md", padding="2em", width="100%", text_align="center"
             )
         ),
+        # El botón de "Finalizar Compra" ya usa el color de acento por defecto (violet).
         rx.button(
             "Finalizar Compra", 
             on_click=AppState.handle_checkout, 
@@ -61,6 +64,7 @@ def cart_item_row(item: CartItemData) -> rx.Component:
         ),
         rx.table.cell(
             rx.hstack(
+                # Los botones de cantidad son pequeños y neutrales, se mantienen así.
                 rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1"),
                 rx.text(item.quantity),
                 rx.button("+", on_click=AppState.open_product_detail_modal(item.product_id), size="1"),
@@ -74,10 +78,7 @@ def cart_item_row(item: CartItemData) -> rx.Component:
 @reflex_local_auth.require_login
 def cart_page_content() -> rx.Component:
     return rx.vstack(
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-        # Se reemplaza "accent" por "violet" para que sea un color válido.
         rx.heading("Mi Carrito", size="8", color_scheme="violet"),
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         rx.cond(
             AppState.cart_items_count > 0,
             rx.vstack(
@@ -114,6 +115,8 @@ def cart_page_content() -> rx.Component:
                     rx.divider(),
                     rx.vstack(
                         rx.heading("Método de Pago", size="5", width="100%"),
+                        # Los botones de radio se mantienen con su estilo por defecto,
+                        # que se integra bien con el tema general.
                         rx.radio(
                             ["Online", "Contra Entrega"],
                             value=AppState.payment_method,
@@ -138,7 +141,12 @@ def cart_page_content() -> rx.Component:
                 spacing="5", width="100%", max_width="700px"
             ),
             rx.center(
-                rx.vstack(rx.text("Tu carrito está vacío."), rx.link("Explorar productos", href="/"), spacing="3"),
+                rx.vstack(
+                    rx.text("Tu carrito está vacío."),
+                    # --- ✨ MODIFICACIÓN: Enlace a "Explorar productos" en tonos morados ✨ ---
+                    rx.link("Explorar productos", href="/", color_scheme="violet"),
+                    spacing="3"
+                ),
                 min_height="50vh"
             )
         ),

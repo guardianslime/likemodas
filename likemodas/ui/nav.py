@@ -65,6 +65,7 @@ def notification_icon() -> rx.Component:
                             width="100%",
                         ),
                         on_click=rx.cond(n.url, rx.redirect(n.url), AppState.do_nothing),
+                        # El color de fondo para notificaciones no leídas usa violet.
                         bg=rx.cond(n.is_read, rx.color("gray", 3), rx.color("violet", 4)),
                         _hover={
                             "background_color": rx.cond(n.is_read, rx.color("gray", 5), rx.color("violet", 5))
@@ -77,10 +78,7 @@ def notification_icon() -> rx.Component:
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            # --- ✨ INICIO DE LA CORRECCIÓN #1 ✨ ---
-            # Se elimina el parámetro `alpha=0.8` que causaba el error.
             bg=rx.color("gray", 2),
-            # --- ✨ FIN DE LA CORRECCIÓN #1 ✨ ---
             style={"backdrop_filter": "blur(10px)"},
             max_height="400px",
             overflow_y="auto",
@@ -99,37 +97,40 @@ def public_navbar() -> rx.Component:
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
         ),
         rx.menu.content(
-            rx.menu.item("Inicio", on_click=lambda: rx.redirect("/")),
+            # --- ✨ MODIFICACIÓN: Items del menú hamburguesa usan color de acento ✨ ---
+            rx.menu.item("Inicio", on_click=lambda: rx.redirect("/"), color_scheme="violet"),
             rx.menu.sub(
-                rx.menu.sub_trigger("Categorías"),
+                rx.menu.sub_trigger("Categorías", color_scheme="violet"),
                 rx.menu.sub_content(
-                    rx.menu.item("Ropa", on_click=lambda: rx.redirect(f"/?category={Category.ROPA.value}")),
-                    rx.menu.item("Calzado", on_click=lambda: rx.redirect(f"/?category={Category.CALZADO.value}")),
-                    rx.menu.item("Mochilas", on_click=lambda: rx.redirect(f"/?category={Category.MOCHILAS.value}")),
-                    rx.menu.item("Ver Todo", on_click=lambda: rx.redirect("/")),
+                    rx.menu.item("Ropa", on_click=lambda: rx.redirect(f"/?category={Category.ROPA.value}"), color_scheme="violet"),
+                    rx.menu.item("Calzado", on_click=lambda: rx.redirect(f"/?category={Category.CALZADO.value}"), color_scheme="violet"),
+                    rx.menu.item("Mochilas", on_click=lambda: rx.redirect(f"/?category={Category.MOCHILAS.value}"), color_scheme="violet"),
+                    rx.menu.item("Ver Todo", on_click=lambda: rx.redirect("/"), color_scheme="violet"),
                 ),
             ),
             rx.menu.separator(),
             rx.cond(
                 AppState.is_authenticated,
                 rx.fragment(
-                    rx.menu.item("Mi Cuenta", on_click=lambda: rx.redirect("/my-account/profile")),
-                    rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases")),
+                    rx.menu.item("Mi Cuenta", on_click=lambda: rx.redirect("/my-account/profile"), color_scheme="violet"),
+                    rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases"), color_scheme="violet"),
                 )
             ),
             rx.cond(
                 ~AppState.is_authenticated,
                 rx.fragment(
                     rx.menu.separator(),
-                    rx.menu.item("Iniciar Sesión", on_click=lambda: rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)),
-                    rx.menu.item("Registrarse", on_click=lambda: rx.redirect(reflex_local_auth.routes.REGISTER_ROUTE)),
+                    rx.menu.item("Iniciar Sesión", on_click=lambda: rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE), color_scheme="violet"),
+                    rx.menu.item("Registrarse", on_click=lambda: rx.redirect(reflex_local_auth.routes.REGISTER_ROUTE), color_scheme="violet"),
                 )
             ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
         ),
     )
     
     authenticated_icons = rx.hstack(
         notification_icon(),
+        # El icono del carrito se mantiene neutral, su funcionalidad es clara.
         rx.link(
             rx.box(
                 rx.icon("shopping-cart", size=22, color=icon_color),
@@ -165,6 +166,7 @@ def public_navbar() -> rx.Component:
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
+            # El input de búsqueda se mantiene neutral para no sobrecargar el diseño.
             rx.form(
                 rx.input(
                     placeholder="Buscar productos...",
@@ -215,10 +217,7 @@ def public_navbar() -> rx.Component:
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
-        # --- ✨ INICIO DE LA CORRECCIÓN #2 ✨ ---
-        # Se elimina el parámetro `alpha=0.8` que causaba el error.
         bg=rx.color("gray", 2),
-        # --- ✨ FIN DE LA CORRECCIÓN #2 ✨ ---
         style={"backdrop_filter": "blur(10px)"},
         on_mount=[AppState.load_notifications],
     )

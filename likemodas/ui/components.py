@@ -120,7 +120,7 @@ def multi_select_component(
 
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
-    """Galería de productos que ahora usa el componente de estrellas seguro."""
+    """Galería de productos, ahora sin el botón "Añadir al Carrito" directamente en la tarjeta."""
     return rx.cond(
         posts,
         rx.flex(
@@ -155,6 +155,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 rx.cond(
                                     post.is_moda_completa_eligible,
                                     rx.tooltip(
+                                        # --- ✨ MODIFICACIÓN: Color del badge "Moda Completa" ✨ ---
                                         rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="1"),
                                         content="Este item cuenta para el envío gratis en compras sobre $200.000"
                                     )
@@ -166,20 +167,19 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             cursor="pointer",
                         ),
                         rx.spacer(),
-                        rx.button(
-                            "Añadir al Carrito",
-                            width="100%",
-                            on_click=[
-                                AppState.add_to_cart(post.id),
-                                rx.stop_propagation
-                            ],
-                        ),
+                        # --- ✨ MODIFICACIÓN: SE QUITA EL BOTÓN "AÑADIR AL CARRITO" ✨ ---
+                        # rx.button(
+                        #     "Añadir al Carrito",
+                        #     width="100%",
+                        #     on_click=[
+                        #         AppState.add_to_cart(post.id),
+                        #         rx.stop_propagation
+                        #     ],
+                        # ),
+                        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                     ),
-                    width="290px", height="520px",
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    # Se reemplaza "panel" por "gray", que es un color válido y adaptable.
+                    width="290px", height="520px", 
                     bg=rx.color("gray", 2),
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                     border="1px solid",
                     border_color=rx.color("gray", 5),
                     border_radius="8px", box_shadow="md", padding="1em",
