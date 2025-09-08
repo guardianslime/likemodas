@@ -1979,7 +1979,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             return rx.call_script("document.getElementById('wompi_form').submit()")
 
-    @rx.event
+    
     async def wompi_webhook(self, payload: dict):
         """
         Recibe notificaciones de Wompi. Aquí es donde se confirma la orden REAL.

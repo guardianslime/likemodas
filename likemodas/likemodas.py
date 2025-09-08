@@ -33,14 +33,13 @@ from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTA
 from . import navigation
 
 # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-# Se elimina el argumento 'state=AppState' que causaba el error.
-# El argumento 'endpoints' se mantiene.
+# 1. Se elimina el argumento 'endpoints' de la inicialización de la app.
 app = rx.App(
     style={"font_family": "Arial, sans-serif"},
-    endpoints=[
-        AppState.wompi_webhook,
-    ]
 )
+
+# 2. Se registra la ruta de la API explícitamente después de crear la app.
+app.add_api_route("/wompi/webhook", AppState.wompi_webhook)
 # --- FIN DE LA CORRECCIÓN ✨ ---
 
 # --- Ruta principal (la galería de productos) ---
