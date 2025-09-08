@@ -145,15 +145,19 @@ app.add_page(
     title="Devolución o Cambio",
 )
 
-# --- ✨ INICIO DE LA CORRECCIÓN FINAL Y DEFINITIVA ✨ ---
-# Se define la ruta y el método directamente en el decorador app._api()
-# que sugiere el propio mensaje de error.
-@app._api("/wompi/webhook", methods=["POST"])
-def wompi_webhook_endpoint(payload: dict):
+# --- ✨ INICIO DE LA CORRECCIÓN FINAL ✨ ---
+# Se elimina el argumento 'methods' y se añade un parámetro 'request'
+# para verificar el método manualmente.
+@app._api("/wompi/webhook")
+async def wompi_webhook_endpoint(payload: dict, request: rx.Request):
     """
-    Este es el endpoint que Wompi llamará. Se registra de la forma
-    compatible con la versión del usuario.
+    Este es el endpoint que Wompi llamará.
+    Verificamos que la petición sea POST dentro de la función.
     """
-    state = rx.get_state(AppState)
-    return wompi_webhook(payload, state)
-# --- FIN DE LA CORRECCIÓN FINAL Y DEFINITIVA ✨ ---
+    if request.method == "POST":
+        state = await rx.get_state(AppState)
+        return await wompi_webhook(payload, state)
+    
+    # Si la petición no es POST, devolvemos un error.
+    return {"status": "error", "message": "Method Not Allowed"}, 405
+# --- FIN DE LA CORRECCIÓN FINAL ✨ ---
