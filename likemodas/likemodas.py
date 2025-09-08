@@ -9,8 +9,8 @@ from likemodas.state import AppState
 from likemodas.invoice.state import InvoiceState
 from likemodas import navigation
 
-# Importa el nuevo módulo de la API de Wompi
-from likemodas.api import wompi_api
+# Importa el nuevo módulo de la API de Wompi para que Reflex lo detecte
+from likemodas.api import wompi_api 
 
 # Importaciones de todas las páginas
 from likemodas.account import profile_page, saved_posts, shipping_info
