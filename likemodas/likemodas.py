@@ -145,14 +145,14 @@ app.add_page(
     title="Devolución o Cambio",
 )
 
-# --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
-# Usamos el decorador .post() directamente del objeto FastAPI interno (app._api)
-# que el error anterior nos sugirió que existía.
-@app._api.post("/api/wompi/webhook")
+# --- ✨ INICIO DE LA CORRECCIÓN FINAL Y DEFINITIVA ✨ ---
+# Se define la ruta y el método directamente en el decorador app.api()
+@app.api("/wompi/webhook", methods=["POST"])
 def wompi_webhook_endpoint(payload: dict):
     """
-    Este es el endpoint que Wompi llamará. Se registra usando FastAPI directamente.
+    Este es el endpoint que Wompi llamará. Se registra de la forma
+    compatible con la versión del usuario.
     """
     state = rx.get_state(AppState)
     return wompi_webhook(payload, state)
-# --- FIN DE LA CORRECCIÓN DEFINITIVA ✨ ---
+# --- FIN DE LA CORRECCIÓN FINAL Y DEFINITIVA ✨ ---
