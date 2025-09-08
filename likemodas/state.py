@@ -3930,7 +3930,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.on_load_return_page # Recargar la página del chat
 
 # --- ✨ CORRECCIÓN: La función wompi_webhook debe estar AQUÍ, FUERA de la clase AppState ✨ ---
-async def wompi_webhook(payload: dict):
+def wompi_webhook(payload: dict, state: AppState):
     """
     Recibe notificaciones de Wompi. Es una función independiente.
     """

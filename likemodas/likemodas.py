@@ -38,13 +38,18 @@ app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-# Se registra la ruta usando el decorador app._api() que sugiere el error
-@app._api(methods=["POST"])
+# --- ✨ INICIO DE LA CORRECCIÓN FINAL ✨ ---
+# Se define la ruta de la API usando el decorador app.post() que es compatible
+# con tu versión de Reflex.
+@app.post("/api/wompi/webhook")
 async def wompi_webhook_endpoint(payload: dict):
-    # Esta función simplemente llama a nuestra lógica que está en state.py
-    return await wompi_webhook(payload)
-# --- FIN DE LA CORRECCIÓN ✨ ---
+    """
+    Este es el endpoint que Wompi llamará. Solo acepta peticiones POST.
+    """
+    # Obtenemos el estado y llamamos a nuestra lógica síncrona
+    state = await rx.get_state(AppState)
+    return wompi_webhook(payload, state)
+# --- FIN DE LA CORRECCIÓN FINAL ✨ ---
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
