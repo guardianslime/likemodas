@@ -1980,74 +1980,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.call_script("document.getElementById('wompi_form').submit()")
 
     
-    async def wompi_webhook(payload: dict):
-        """
-        Recibe notificaciones de Wompi. Ahora es una función independiente.
-        """
-        # Obtenemos acceso al estado de la aplicación
-        state = await rx.get_state(AppState)
-        
-        transaction_data = payload.get("data", {}).get("transaction", {})
-        status = transaction_data.get("status")
-        reference = transaction_data.get("reference")
-        
-        if status == "APPROVED":
-            purchase_data = state.pending_purchase_data.pop(reference, None)
-            if not purchase_data:
-                print(f"Error: Webhook para referencia {reference} no encontró datos pendientes.")
-                return {"status": "error", "message": "Reference not found"}
-
-            with rx.session() as session:
-                shipping_address = purchase_data["shipping_address"]
-                summary = purchase_data["summary"]
-                cart = purchase_data["cart"]
-
-                new_purchase = PurchaseModel(
-                    userinfo_id=purchase_data["user_info_id"],
-                    total_price=summary["grand_total"],
-                    shipping_applied=summary["shipping_cost"],
-                    status=PurchaseStatus.CONFIRMED,
-                    payment_method="Online",
-                    shipping_name=shipping_address['name'],
-                    shipping_city=shipping_address['city'],
-                    shipping_neighborhood=shipping_address['neighborhood'],
-                    shipping_address=shipping_address['address'],
-                    shipping_phone=shipping_address['phone']
-                )
-                session.add(new_purchase)
-                session.commit()
-                session.refresh(new_purchase)
-                
-                product_ids = list(set([int(key.split('-')[0]) for key in cart.keys()]))
-                posts_to_update = session.exec(
-                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
-                ).all()
-                post_map = {p.id: p for p in posts_to_update}
-
-                for cart_key, quantity_in_cart in cart.items():
-                    prod_id = int(cart_key.split('-')[0])
-                    selection_parts = cart_key.split('-')[2:]
-                    selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
-                    post = post_map.get(prod_id)
-                    if post:
-                        for variant in post.variants:
-                            if variant.get("attributes") == selection_attrs:
-                                variant["stock"] -= quantity_in_cart
-                                break
-                        session.add(post)
-                        session.add(PurchaseItemModel(
-                            purchase_id=new_purchase.id,
-                            blog_post_id=post.id,
-                            quantity=quantity_in_cart,
-                            price_at_purchase=post.price,
-                            selected_variant=selection_attrs
-                        ))
-                
-                # Llamamos al método en la instancia del estado que obtuvimos
-                state.set_new_purchase_notification(True)
-                session.commit()
-
-        return {"status": "ok"}
+    
 
     def toggle_form(self):
         self.show_form = not self.show_form
@@ -3995,3 +3928,72 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
+
+# --- ✨ CORRECCIÓN: La función wompi_webhook debe estar AQUÍ, FUERA de la clase AppState ✨ ---
+async def wompi_webhook(payload: dict):
+    """
+    Recibe notificaciones de Wompi. Es una función independiente.
+    """
+    state = await rx.get_state(AppState)
+    
+    transaction_data = payload.get("data", {}).get("transaction", {})
+    status = transaction_data.get("status")
+    reference = transaction_data.get("reference")
+    
+    if status == "APPROVED":
+        purchase_data = state.pending_purchase_data.pop(reference, None)
+        if not purchase_data:
+            print(f"Error: Webhook para referencia {reference} no encontró datos pendientes.")
+            return {"status": "error", "message": "Reference not found"}
+
+        with rx.session() as session:
+            # ... (el resto del código del webhook se mantiene igual)
+            shipping_address = purchase_data["shipping_address"]
+            summary = purchase_data["summary"]
+            cart = purchase_data["cart"]
+
+            new_purchase = PurchaseModel(
+                userinfo_id=purchase_data["user_info_id"],
+                total_price=summary["grand_total"],
+                shipping_applied=summary["shipping_cost"],
+                status=PurchaseStatus.CONFIRMED,
+                payment_method="Online",
+                shipping_name=shipping_address['name'],
+                shipping_city=shipping_address['city'],
+                shipping_neighborhood=shipping_address['neighborhood'],
+                shipping_address=shipping_address['address'],
+                shipping_phone=shipping_address['phone']
+            )
+            session.add(new_purchase)
+            session.commit()
+            session.refresh(new_purchase)
+            
+            product_ids = list(set([int(key.split('-')[0]) for key in cart.keys()]))
+            posts_to_update = session.exec(
+                sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
+            ).all()
+            post_map = {p.id: p for p in posts_to_update}
+
+            for cart_key, quantity_in_cart in cart.items():
+                prod_id = int(cart_key.split('-')[0])
+                selection_parts = cart_key.split('-')[2:]
+                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                post = post_map.get(prod_id)
+                if post:
+                    for variant in post.variants:
+                        if variant.get("attributes") == selection_attrs:
+                            variant["stock"] -= quantity_in_cart
+                            break
+                    session.add(post)
+                    session.add(PurchaseItemModel(
+                        purchase_id=new_purchase.id,
+                        blog_post_id=post.id,
+                        quantity=quantity_in_cart,
+                        price_at_purchase=post.price,
+                        selected_variant=selection_attrs
+                    ))
+            
+            state.set_new_purchase_notification(True)
+            session.commit()
+
+    return {"status": "ok"}
