@@ -166,3 +166,4 @@ async def wompi_webhook_endpoint(scope, receive, send):
         media_type="application/json"
     )
     await response(scope, receive, send)
+# --- FIN DE LA CORRECCIÓN FINAL ✨ ---
