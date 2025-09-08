@@ -145,25 +145,25 @@ app.add_page(
     title="Devolución o Cambio",
 )
 
-# --- ✨ INICIO DE LA CORRECCIÓN FINAL ✨ ---
-# Se define el endpoint con la firma completa que espera Starlette/ASGI
+# --- ✨ ESTE ES EL ENDPOINT QUE RECIBE LA PETICIÓN DE WOMPI ✨ ---
 @app._api("/wompi/webhook")
 async def wompi_webhook_endpoint(scope, receive, send):
     """
     Este es el endpoint que Wompi llamará, definido con la firma ASGI completa.
     """
-    # Creamos un objeto Request de Reflex para extraer el payload fácilmente
+    # 1. Creamos un objeto Request para poder leer los datos que vienen en la petición.
     request = rx.Request(scope, receive, send)
     payload = await request.json()
     
-    # Obtenemos el estado de la app y llamamos a nuestra función de lógica
+    # 2. Obtenemos el estado actual de la aplicación.
     state = await rx.get_state(AppState)
-    response_data = await wompi_webhook(payload, state) # <-- Le pasamos el estado a tu función
     
-    # Creamos y enviamos la respuesta JSON de vuelta a Wompi
+    # 3. Llamamos a nuestra función de lógica (la que está en state.py) y le pasamos los datos.
+    response_data = await wompi_webhook(payload, state)
+    
+    # 4. Enviamos una respuesta a Wompi para confirmar que recibimos la notificación.
     response = rx.Response(
         content=response_data,
         media_type="application/json"
     )
     await response(scope, receive, send)
-# --- ✨ FIN DE LA CORRECCIÓN FINAL ✨ ---

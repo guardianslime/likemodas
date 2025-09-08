@@ -3929,14 +3929,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
 
-# --- ✨ CORRECCIÓN FINAL: Vuelve a ser una función async y ahora acepta el estado ✨ ---
+# --- ✨ ESTA ES LA FUNCIÓN DE LÓGICA, FUERA DE LA CLASE APPSTATE ✨ ---
 async def wompi_webhook(payload: dict, state: AppState):
     """
     Recibe notificaciones de Wompi. Usa el estado que se le pasa como argumento.
     """
-    # La línea que causaba el error ha sido eliminada.
-    # Ya no se usa: state = await rx.get_state(AppState)
-    
     transaction_data = payload.get("data", {}).get("transaction", {})
     status = transaction_data.get("status")
     reference = transaction_data.get("reference")
@@ -3952,7 +3949,6 @@ async def wompi_webhook(payload: dict, state: AppState):
             summary = purchase_data["summary"]
             cart = purchase_data["cart"]
 
-            # (El resto de tu lógica para crear la compra y actualizar el stock es correcta y no necesita cambios)
             new_purchase = PurchaseModel(
                 userinfo_id=purchase_data["user_info_id"],
                 total_price=summary["grand_total"],
@@ -3969,6 +3965,7 @@ async def wompi_webhook(payload: dict, state: AppState):
             session.commit()
             session.refresh(new_purchase)
             
+            # (El resto de tu lógica para actualizar el stock y los items se mantiene igual)
             product_ids = list(set([int(key.split('-')[0]) for key in cart.keys()]))
             posts_to_update = session.exec(
                 sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
