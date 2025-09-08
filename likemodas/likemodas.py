@@ -7,7 +7,7 @@ from likemodas.account import profile_page
 from likemodas.admin.profile_page import seller_profile_page
 from likemodas.admin.tickets_page import admin_tickets_page_content
 
-from .state import AppState
+from .state import AppState, wompi_webhook
 from .ui.base import base_page
 
 from .auth import pages as auth_pages
@@ -39,8 +39,8 @@ app = rx.App(
 )
 
 # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-# 2. Se registra la ruta usando el decorador app.api() sobre la función importada.
-@app.api(methods=["POST"])
+# Se registra la ruta usando el decorador app._api() que sugiere el error
+@app._api(methods=["POST"])
 async def wompi_webhook_endpoint(payload: dict):
     # Esta función simplemente llama a nuestra lógica que está en state.py
     return await wompi_webhook(payload)
