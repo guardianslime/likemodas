@@ -7,7 +7,12 @@ import sqlmodel
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
+# --- ✨ NUEVOS IMPORTS ---
+import hashlib
+import os
 import secrets
+import json # Importa json para manejar el payload del webhook
+
 import bcrypt
 import re
 import asyncio
@@ -1848,115 +1853,214 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
 
+    # --- Variables de Estado para Wompi ---
+    wompi_form_data: dict[str, str] = {}
+    pending_purchase_data: dict[str, dict] = {} # Almacén temporal para datos de compra
+
     @rx.event
     def handle_checkout(self):
         """
-        Procesa la compra:
-        1. Bloquea los productos en la BD para evitar sobreventas.
-        2. Verifica el stock de cada variante específica.
-        3. Si hay stock, deduce la cantidad y crea el registro de compra.
-        4. Si un producto se queda sin stock, lo desactiva automáticamente.
+        Gestiona la finalización de la compra.
+        - Si es 'Contra Entrega', crea la orden localmente.
+        - Si es 'Online', redirige a Wompi para el pago.
         """
         if not self.is_authenticated or not self.default_shipping_address:
-            return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
-        if not self.authenticated_user_info:
-            return rx.toast.error("Error de sesión. Vuelve a iniciar sesión.")
-        if not self.cart:
-            return rx.toast.info("Tu carrito está vacío.")
+            yield rx.toast.error("Por favor, inicia sesión y selecciona una dirección.")
+            return
 
-        summary = self.cart_summary
+        # --- LÓGICA COMPLETA PARA PAGO CONTRA ENTREGA ---
+        if self.payment_method == "Contra Entrega":
+            summary = self.cart_summary
+            with rx.session() as session:
+                product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+                posts_to_update = session.exec(
+                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
+                ).all()
+                post_map = {p.id: p for p in posts_to_update}
 
-        with rx.session() as session:
-            product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
-            
-            # Bloquea las filas de los productos en la BD para una transacción segura
-            posts_to_update = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .where(BlogPostModel.id.in_(product_ids))
-                .with_for_update()
-            ).all()
-            post_map = {p.id: p for p in posts_to_update}
+                # Fase de Verificación de Stock (igual que en el webhook)
+                for cart_key, quantity_in_cart in self.cart.items():
+                    prod_id = int(cart_key.split('-')[0])
+                    selection_parts = cart_key.split('-')[2:]
+                    selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                    post = post_map.get(prod_id)
+                    if not post:
+                        yield rx.toast.error(f"El producto '{selection_attrs.get('title', 'Desconocido')}' ya no está disponible.")
+                        return
 
-            # --- FASE 1: Verificación de Stock ---
-            for cart_key, quantity_in_cart in self.cart.items():
-                parts = cart_key.split('-')
-                prod_id = int(parts[0])
-                selection_parts = parts[2:]
-                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                    variant_found = False
+                    for variant in post.variants:
+                        if variant.get("attributes") == selection_attrs:
+                            if variant.get("stock", 0) < quantity_in_cart:
+                                attr_str = ', '.join(selection_attrs.values())
+                                yield rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'.")
+                                return
+                            variant_found = True
+                            break
+                    if not variant_found:
+                        yield rx.toast.error(f"La variante seleccionada para '{post.title}' ya no existe.")
+                        return
 
-                post = post_map.get(prod_id)
-                if not post:
-                    return rx.toast.error(f"El producto con ID {prod_id} ya no está disponible. Compra cancelada.")
+                # Fase de Creación de Orden y Deducción de Stock
+                new_purchase = PurchaseModel(
+                    userinfo_id=self.authenticated_user_info.id,
+                    total_price=summary["grand_total"],
+                    shipping_applied=summary["shipping_cost"],
+                    status=PurchaseStatus.PENDING_CONFIRMATION,
+                    payment_method=self.payment_method,
+                    shipping_name=self.default_shipping_address.name,
+                    shipping_city=self.default_shipping_address.city,
+                    shipping_neighborhood=self.default_shipping_address.neighborhood,
+                    shipping_address=self.default_shipping_address.address,
+                    shipping_phone=self.default_shipping_address.phone,
+                )
+                session.add(new_purchase)
+                session.commit()
+                session.refresh(new_purchase)
 
-                variant_found = False
-                for variant in post.variants:
-                    if variant.get("attributes") == selection_attrs:
-                        if variant.get("stock", 0) < quantity_in_cart:
-                            attr_str = ', '.join(selection_attrs.values())
-                            return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Tu compra ha sido cancelada.")
-                        variant_found = True
-                        break
-                
-                if not variant_found:
-                    return rx.toast.error(f"La variante seleccionada para '{post.title}' ya no existe. Compra cancelada.")
+                for cart_key, quantity_in_cart in self.cart.items():
+                    prod_id = int(cart_key.split('-')[0])
+                    selection_parts = cart_key.split('-')[2:]
+                    selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                    post = post_map.get(prod_id)
 
-            # --- FASE 2: Creación de Compra y Deducción de Stock ---
-            new_purchase = PurchaseModel(
-                userinfo_id=self.authenticated_user_info.id,
-                total_price=summary["grand_total"],
-                shipping_applied=summary["shipping_cost"],
-                status=PurchaseStatus.PENDING_CONFIRMATION,
-                payment_method=self.payment_method,
-                shipping_name=self.default_shipping_address.name,
-                shipping_city=self.default_shipping_address.city,
-                shipping_neighborhood=self.default_shipping_address.neighborhood,
-                shipping_address=self.default_shipping_address.address,
-                shipping_phone=self.default_shipping_address.phone
-            )
-            session.add(new_purchase)
-            session.commit()
-            session.refresh(new_purchase)
-            
-            for cart_key, quantity_in_cart in self.cart.items():
-                parts = cart_key.split('-')
-                prod_id = int(parts[0])
-                selection_parts = parts[2:]
-                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
-                
-                post = post_map.get(prod_id)
-                
-                # Deducir el stock de la variante correcta
-                for variant in post.variants:
-                    if variant.get("attributes") == selection_attrs:
-                        variant["stock"] -= quantity_in_cart
-                        break
-                
-                # Marcar el post para ser actualizado en la sesión
-                session.add(post)
-
-                # Crear el registro del artículo comprado
-                session.add(PurchaseItemModel(
-                    purchase_id=new_purchase.id,
-                    blog_post_id=post.id,
-                    quantity=quantity_in_cart,
-                    price_at_purchase=post.price,
-                    selected_variant=selection_attrs # Guarda la variante exacta
-                ))
-
-            # --- FASE 3: Verificación de Desactivación Automática ---
-            for post in post_map.values():
-                total_stock = sum(v.get("stock", 0) for v in post.variants)
-                if total_stock <= 0:
-                    post.publish_active = False
+                    for variant in post.variants:
+                        if variant.get("attributes") == selection_attrs:
+                            variant["stock"] -= quantity_in_cart
+                            break
+                    
                     session.add(post)
+                    session.add(PurchaseItemModel(
+                        purchase_id=new_purchase.id,
+                        blog_post_id=post.id,
+                        quantity=quantity_in_cart,
+                        price_at_purchase=post.price,
+                        selected_variant=selection_attrs
+                    ))
+                
+                session.commit()
 
-            session.commit()
+            self.cart.clear()
+            yield AppState.notify_admin_of_new_purchase
+            yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+            return rx.redirect("/my-purchases")
 
-        self.cart.clear()
-        self.default_shipping_address = None
-        yield AppState.notify_admin_of_new_purchase
-        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-        return rx.redirect("/my-purchases")
+        # --- LÓGICA COMPLETA PARA PAGO ONLINE CON WOMPI ---
+        elif self.payment_method == "Online":
+            summary = self.cart_summary
+            total_cop = summary["grand_total"]
+            amount_in_cents = int(total_cop * 100)
+            
+            reference = f"likemodas-{secrets.token_hex(8)}"
+            redirect_url = f"{self.base_app_url}/my-purchases"
+            
+            wompi_integrity_secret = os.getenv("WOMPI_INTEGRITY_SECRET")
+            concatenation = f"{reference}{amount_in_cents}COP{wompi_integrity_secret}"
+            signature = hashlib.sha256(concatenation.encode("utf-8")).hexdigest()
+
+            self.wompi_form_data = {
+                "public-key": os.getenv("WOMPI_PUBLIC_KEY"),
+                "currency": "COP",
+                "amount-in-cents": str(amount_in_cents),
+                "reference": reference,
+                "signature:integrity": signature,
+                "redirect-url": redirect_url,
+                "customer-data:email": self.authenticated_user_info.email,
+                "customer-data:full-name": self.default_shipping_address.name,
+                "customer-data:phone-number": self.default_shipping_address.phone,
+            }
+            
+            self.pending_purchase_data[reference] = {
+                "user_info_id": self.authenticated_user_info.id,
+                "summary": summary,
+                "shipping_address": self.default_shipping_address.dict(),
+                "cart": self.cart.copy(),
+            }
+            
+            return rx.call_script("document.getElementById('wompi_form').submit()")
+
+    @rx.api_route("/wompi/webhook", methods=["POST"])
+    async def wompi_webhook(self, payload: dict):
+        """
+        Recibe notificaciones de Wompi. Aquí es donde se confirma la orden REAL.
+        """
+        transaction_data = payload.get("data", {}).get("transaction", {})
+        status = transaction_data.get("status")
+        reference = transaction_data.get("reference")
+
+        if status == "APPROVED":
+            purchase_data = self.pending_purchase_data.pop(reference, None)
+            if not purchase_data:
+                print(f"Error: Webhook para referencia {reference} no encontró datos pendientes.")
+                return {"status": "error", "message": "Reference not found"}
+
+            with rx.session() as session:
+                shipping_address = purchase_data["shipping_address"]
+                summary = purchase_data["summary"]
+                cart = purchase_data["cart"]
+
+                # 1. Crear el registro de la compra
+                new_purchase = PurchaseModel(
+                    userinfo_id=purchase_data["user_info_id"],
+                    total_price=summary["grand_total"],
+                    shipping_applied=summary["shipping_cost"],
+                    status=PurchaseStatus.CONFIRMED,
+                    payment_method="Online",
+                    shipping_name=shipping_address['name'],
+                    shipping_city=shipping_address['city'],
+                    shipping_neighborhood=shipping_address['neighborhood'],
+                    shipping_address=shipping_address['address'],
+                    shipping_phone=shipping_address['phone']
+                )
+                session.add(new_purchase)
+                session.commit()
+                session.refresh(new_purchase)
+                
+                # 2. Lógica para reducir el stock y crear los PurchaseItemModel
+                product_ids = list(set([int(key.split('-')[0]) for key in cart.keys()]))
+                posts_to_update = session.exec(
+                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
+                ).all()
+                post_map = {p.id: p for p in posts_to_update}
+
+                for cart_key, quantity_in_cart in cart.items():
+                    prod_id = int(cart_key.split('-')[0])
+                    selection_parts = cart_key.split('-')[2:]
+                    selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                    post = post_map.get(prod_id)
+
+                    if post:
+                        # Deducir stock de la variante correcta
+                        for variant in post.variants:
+                            if variant.get("attributes") == selection_attrs:
+                                variant["stock"] -= quantity_in_cart
+                                break
+                        
+                        # Crear el item de la compra
+                        session.add(PurchaseItemModel(
+                            purchase_id=new_purchase.id,
+                            blog_post_id=post.id,
+                            quantity=quantity_in_cart,
+                            price_at_purchase=post.price,
+                            selected_variant=selection_attrs
+                        ))
+
+                        # Desactivar si el stock total es 0 o menos
+                        total_stock = sum(v.get("stock", 0) for v in post.variants)
+                        if total_stock <= 0:
+                            post.publish_active = False
+
+                        session.add(post)
+
+                # 3. Notificar al admin
+                yield AppState.notify_admin_of_new_purchase
+                session.commit()
+
+        # Limpiar el carrito del usuario es más complejo y requeriría identificar la sesión del usuario.
+        # Por ahora, el usuario lo verá vacío la próxima vez que cargue la página del carrito.
+        # También puedes vaciar self.cart aquí si el webhook se ejecuta en el mismo proceso, pero no es garantizado.
+
+        return {"status": "ok"}
 
     def toggle_form(self):
         self.show_form = not self.show_form
