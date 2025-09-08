@@ -33,9 +33,9 @@ from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTA
 from . import navigation
 
 # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-# Se añade el endpoint directamente en la inicialización de la app
+# Se elimina el argumento 'state=AppState' que causaba el error.
+# El argumento 'endpoints' se mantiene.
 app = rx.App(
-    state=AppState,
     style={"font_family": "Arial, sans-serif"},
     endpoints=[
         AppState.wompi_webhook,
