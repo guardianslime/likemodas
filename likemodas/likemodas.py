@@ -104,6 +104,8 @@ async def wompi_webhook_endpoint(scope, receive, send):
         
         # Llamamos a nuestra función de lógica de negocio, pasándole los datos.
         # Esta función ahora vive en state.py
+        # --- ✨ CORRECCIÓN CLAVE AQUÍ ✨ ---
+        # Usamos 'await' para ejecutar la función async y obtener el resultado (el diccionario).
         response_data = await wompi_webhook(payload, state)
         
         # Construimos una respuesta JSON estándar.
