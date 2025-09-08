@@ -1979,11 +1979,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             return rx.call_script("document.getElementById('wompi_form').submit()")
 
-    @rx.api_route("/wompi/webhook", methods=["POST"])
+    @rx.event
     async def wompi_webhook(self, payload: dict):
         """
         Recibe notificaciones de Wompi. Aquí es donde se confirma la orden REAL.
         """
+        # Marcamos esta función internamente como una ruta de API
+        self.wompi_webhook._is_api_route = True
+    # --- FIN DE LA CORRECCIÓN ✨ ---
+
         transaction_data = payload.get("data", {}).get("transaction", {})
         status = transaction_data.get("status")
         reference = transaction_data.get("reference")
