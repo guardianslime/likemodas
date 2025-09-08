@@ -12,20 +12,16 @@ PRODUCTION_DOMAIN = "https://www.likemodas.com"
 # La URL de Vercel (opcional, pero bueno tenerla para CORS).
 VERCEL_PREVIEW_URL = "https://full-stack-python.vercel.app"
 
-# --- Configuración Principal Definitiva ---
+# --- ✨ INICIO DE LA MODIFICACIÓN: TEMA DE DISEÑO MEJORADO ✨ ---
 config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
-    # 1. La URL REAL del backend para que el frontend se pueda conectar.
-    #    Esto corrige el error "Cannot connect to server".
+    # URLs de despliegue
     api_url=RAILWAY_PUBLIC_URL,
-    
-    # 2. La URL PÚBLICA del frontend para generar los enlaces correctos.
-    #    Esto corrige los enlaces para compartir.
     deploy_url=PRODUCTION_DOMAIN,
     
-    # Lista blanca de dominios que tienen permiso para conectarse a tu backend.
+    # Orígenes permitidos para CORS
     cors_allowed_origins=[
         "http://localhost:3000",
         PRODUCTION_DOMAIN,
@@ -36,11 +32,14 @@ config = rx.Config(
     
     disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
 
+    # Se define un tema estético con "violet" como color de acento.
+    # Esto afectará a botones, switches, insignias y otros componentes.
     theme=rx.theme(
-        appearance="dark",
+        appearance="light", # El modo por defecto ahora es claro.
         has_background=True,
-        panel_background="solid",
         radius="medium",
-        accent_color="sky"
+        accent_color="violet", # 💜 El color principal para elementos interactivos.
+        panel_background="translucent", # Paneles con un fondo sutil.
     ),
 )
+# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---

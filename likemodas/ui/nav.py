@@ -1,4 +1,4 @@
-# likemodas/ui/nav.py (SOLUCIÓN DEFINITIVA)
+# likemodas/ui/nav.py (CORREGIDO)
 
 import reflex as rx
 import reflex_local_auth
@@ -7,6 +7,7 @@ from ..state import AppState
 from ..models import Category
 
 def notification_icon() -> rx.Component:
+    # ... (contenido de la función sin cambios) ...
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
@@ -42,7 +43,6 @@ def notification_icon() -> rx.Component:
                 rx.foreach(
                     AppState.user_notifications,
                     lambda n: rx.menu.item(
-                        # --- ✨ INICIO: DISEÑO MEJORADO Y CORREGIDO ✨ ---
                         rx.vstack(
                             rx.text(
                                 n.message,
@@ -65,27 +65,27 @@ def notification_icon() -> rx.Component:
                             spacing="1",
                             width="100%",
                         ),
-                        # --- Se mueven todos los estilos al menu.item ---
                         on_click=rx.cond(n.url, rx.redirect(n.url), AppState.do_nothing),
                         bg=rx.cond(n.is_read, rx.color("gray", 3), rx.color("violet", 4)),
                         _hover={
                             "background_color": rx.cond(n.is_read, rx.color("gray", 5), rx.color("violet", 5))
                         },
                         padding="0.75em",
-                        margin="0.25em", # Margen para separar cada notificación
+                        margin="0.25em",
                         border_radius="md",
-                        height="auto", # Altura automática para ajustarse al texto
-                        # --- ✨ FIN DEL DISEÑO MEJORADO ✨ ---
+                        height="auto",
                     )
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            bg="#2C004BF0",
+            # --- ✨ MODIFICACIÓN: Fondo del menú de notificaciones ✨ ---
+            # Se usa un color del tema para que se adapte al modo claro/oscuro
+            bg=rx.color("panel", 2, alpha=0.8),
             style={"backdrop_filter": "blur(10px)"},
             max_height="400px",
             overflow_y="auto",
             min_width="350px",
-            padding="0.5em", # Padding general para el contenedor del menú
+            padding="0.5em",
         ),
         on_open_change=lambda open: rx.cond(open, None, AppState.mark_all_as_read)
     )
@@ -95,8 +95,8 @@ def public_navbar() -> rx.Component:
     """La barra de navegación pública definitiva, con menú de hamburguesa."""
     icon_color = rx.color_mode_cond("black", "white")
     
-    # --- ✨ INICIO DE LA MODIFICACIÓN: Menú de Hamburguesa Actualizado ✨ ---
     hamburger_menu = rx.menu.root(
+        # ... (contenido del menú hamburguesa sin cambios) ...
         rx.menu.trigger(
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
         ),
@@ -112,8 +112,6 @@ def public_navbar() -> rx.Component:
                 ),
             ),
             rx.menu.separator(),
-            
-            # --- Lógica Condicional para Mi Cuenta y Mis Compras (Solo si está autenticado) ---
             rx.cond(
                 AppState.is_authenticated,
                 rx.fragment(
@@ -121,8 +119,6 @@ def public_navbar() -> rx.Component:
                     rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases")),
                 )
             ),
-
-            # --- Lógica Condicional para Iniciar Sesión y Registrarse (Solo si NO está autenticado) ---
             rx.cond(
                 ~AppState.is_authenticated,
                 rx.fragment(
@@ -133,10 +129,9 @@ def public_navbar() -> rx.Component:
             ),
         ),
     )
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-
+    
     authenticated_icons = rx.hstack(
-        # ... (esta sección no cambia)
+        # ... (contenido de iconos sin cambios) ...
         notification_icon(),
         rx.link(
             rx.box(
@@ -159,7 +154,7 @@ def public_navbar() -> rx.Component:
     )
     
     placeholder_icons = rx.hstack(
-        # ... (esta sección no cambia)
+        # ... (contenido de placeholders sin cambios) ...
         rx.box(width="44px", height="44px", padding="0.5em"),
         rx.box(width="38px", height="44px", padding="0.5em"),
         align="center",
@@ -169,7 +164,7 @@ def public_navbar() -> rx.Component:
 
     return rx.box(
         rx.grid(
-            # ... (el grid con el logo, buscador, etc., no cambia)
+            # ... (el grid con el logo, buscador, etc., no cambia) ...
             rx.hstack(
                 hamburger_menu,
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
@@ -196,7 +191,7 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
-        # ... (el resto de la función no cambia)
+        # ... (lógica de polling sin cambios) ...
         rx.cond(
             AppState.is_authenticated,
             rx.fragment(
@@ -226,7 +221,9 @@ def public_navbar() -> rx.Component:
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
-        bg="#2C004BF0", 
+        # --- ✨ MODIFICACIÓN: El fondo de la navbar ahora es translúcido y adaptable ✨ ---
+        # Se usa un color de panel del tema con transparencia para que se vea bien en ambos modos.
+        bg=rx.color("panel", 2, alpha=0.8),
         style={"backdrop_filter": "blur(10px)"},
         on_mount=[AppState.load_notifications],
     )

@@ -81,13 +81,15 @@ def cart_item_row(item: CartItemData) -> rx.Component:
 @reflex_local_auth.require_login
 def cart_page_content() -> rx.Component:
     return rx.vstack(
-        rx.heading("Mi Carrito", size="8", color_scheme="violet"),
+        # --- ✨ MODIFICACIÓN: El heading ahora usa el color de acento del tema ✨ ---
+        rx.heading("Mi Carrito", size="8", color_scheme="accent"),
         rx.cond(
             AppState.cart_items_count > 0,
             rx.vstack(
+                # ... (resto del contenido de la página sin cambios) ...
                 rx.table.root(
                     rx.table.header(rx.table.row(rx.table.column_header_cell("Producto"), rx.table.column_header_cell("Cantidad"), rx.table.column_header_cell("Precio Unitario"), rx.table.column_header_cell("Subtotal"))),
-                    rx.table.body(rx.foreach(AppState.cart_details, cart_item_row)) # Esta línea ya es correcta
+                    rx.table.body(rx.foreach(AppState.cart_details, cart_item_row))
                 ),
                 rx.divider(),
                 rx.vstack(
@@ -148,3 +150,4 @@ def cart_page_content() -> rx.Component:
         ),
         align="center", width="100%", padding="2em"
     )
+

@@ -1,13 +1,11 @@
-# likemodas/ui/sidebar.py
+# likemodas/ui/sidebar.py (CORREGIDO)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
 from ..state import AppState
 from .. import navigation
 
-# Las funciones internas como sidebar_item, etc., no necesitan cambios.
-# Las incluyo para que puedas reemplazar el archivo completo.
-
+# ... (las funciones internas como sidebar_item y sidebar_user_item no cambian) ...
 def sidebar_dark_mode_toggle_item() -> rx.Component:
     return rx.button(
         rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
@@ -80,6 +78,7 @@ def sidebar_logout_item() -> rx.Component:
         )
     )
 
+
 def sliding_admin_sidebar() -> rx.Component:
     """
     El componente principal del sidebar con la posición y altura corregidas.
@@ -99,7 +98,9 @@ def sliding_admin_sidebar() -> rx.Component:
             sidebar_user_item(),
             width="100%", spacing="5",
         ),
-        spacing="5", padding_x="1em", padding_y="1.5em", bg="#2C004B",
+        spacing="5", padding_x="1em", padding_y="1.5em",
+        # --- ✨ MODIFICACIÓN: El fondo ahora es adaptable al tema ✨ ---
+        bg=rx.color("panel", 2),
         align="start", height="100%", width=SIDEBAR_WIDTH,
     )
 
@@ -113,7 +114,8 @@ def sliding_admin_sidebar() -> rx.Component:
                 ),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer",
-                bg=rx.color("violet", 9),
+                # --- ✨ MODIFICACIÓN: El botón usa el color de acento del tema ✨ ---
+                bg=rx.color("accent", 9),
                 border_radius="0 8px 8px 0",
                 height="150px",
                 display="flex",
@@ -122,13 +124,12 @@ def sliding_admin_sidebar() -> rx.Component:
             align_items="center",
             spacing="0",
         ),
-        # --- CORRECCIONES CLAVE DE POSICIÓN ---
         position="fixed",
-        top="0",                 # Anclarlo a la parte superior
-        left="0",                # Anclarlo a la izquierda
-        height="100vh",          # Ocupar el 100% de la altura de la ventana
-        display="flex",          # Usar flexbox para centrar verticalmente
-        align_items="center",    # Centrar el hstack (panel + botón) verticalmente
+        top="0",
+        left="0",
+        height="100vh",
+        display="flex",
+        align_items="center",
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",

@@ -1,4 +1,4 @@
-# likemodas/ui/components.py (Versión Definitiva Corregida)
+# likemodas/ui/components.py (CORREGIDO)
 
 import reflex as rx
 import math
@@ -6,6 +6,7 @@ from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
+# ... (las funciones star_rating_display_safe, searchable_select y multi_select_component no tienen cambios visuales y se omiten por brevedad) ...
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """
     Un componente seguro para mostrar estrellas que no usa math de Python.
@@ -96,8 +97,6 @@ def multi_select_component(
                         "x",
                         size=12,
                         cursor="pointer",
-                        # --- CORRECCIÓN FINAL ---
-                        # Esta es la sintaxis correcta que el traceback estaba pidiendo.
                         on_click=lambda: remove_handler(prop_name, item),
                         margin_left="0.25em"
                     ),
@@ -110,8 +109,6 @@ def multi_select_component(
         searchable_select(
             placeholder=placeholder,
             options=options,
-            # Esta llamada también usa lambda porque on_change_select (definido en searchable_select)
-            # pasa un argumento 'val'.
             on_change_select=lambda val: add_handler(prop_name, val),
             value_select="",
             search_value=search_value,
@@ -120,6 +117,7 @@ def multi_select_component(
         ),
         spacing="2", align_items="stretch", width="100%",
     )
+
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
     """Galería de productos que ahora usa el componente de estrellas seguro."""
@@ -137,6 +135,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     rx.image(src=rx.get_upload_url(post.variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
                                     rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                                 ),
+                                # El badge de "Importado" se mantiene como está, ya que es funcional.
                                 rx.badge(
                                     rx.cond(post.is_imported, "Importado", "Nacional"),
                                     color_scheme=rx.cond(post.is_imported, "purple", "cyan"),
@@ -149,6 +148,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                                 star_rating_display_safe(post.average_rating, post.rating_count),
                                 rx.text(post.price_cop, size="5", weight="medium"),
+                                # Los badges de envío también se mantienen por su funcionalidad.
                                 rx.badge(
                                     post.shipping_display_text,
                                     color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
@@ -168,17 +168,23 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             cursor="pointer",
                         ),
                         rx.spacer(),
+                        # --- ✨ MODIFICACIÓN: El botón principal usa el color de acento ✨ ---
                         rx.button(
                             "Añadir al Carrito",
                             width="100%",
+                            # Se elimina el color_scheme para que herede el "violet" del tema.
                             on_click=[
                                 AppState.add_to_cart(post.id),
                                 rx.stop_propagation
                             ],
                         ),
                     ),
-                    width="290px", height="520px", bg=rx.color_mode_cond("#f9f9f9", "#111111"),
-                    border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
+                    width="290px", height="520px", 
+                    # --- ✨ MODIFICACIÓN: Fondo y borde adaptables al tema ✨ ---
+                    # Se usan colores de panel del tema en lugar de valores fijos.
+                    bg=rx.color("panel", 2),
+                    border="1px solid",
+                    border_color=rx.color("gray", 5),
                     border_radius="8px", box_shadow="md", padding="1em",
                 )
             ),
