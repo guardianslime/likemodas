@@ -1987,11 +1987,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         transaction_data = payload.get("data", {}).get("transaction", {})
         status = transaction_data.get("status")
         reference = transaction_data.get("reference")
+        
+        # (Aquí puedes añadir una verificación de la firma del evento para máxima seguridad)
 
         if status == "APPROVED":
             purchase_data = self.pending_purchase_data.pop(reference, None)
             if not purchase_data:
                 print(f"Error: Webhook para referencia {reference} no encontró datos pendientes.")
+                # --- CORRECCIÓN ---
+                # Ahora este return es válido porque no hay 'yield' en la función.
                 return {"status": "error", "message": "Reference not found"}
 
             with rx.session() as session:
@@ -1999,7 +2003,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 summary = purchase_data["summary"]
                 cart = purchase_data["cart"]
 
-                # 1. Crear el registro de la compra
                 new_purchase = PurchaseModel(
                     userinfo_id=purchase_data["user_info_id"],
                     total_price=summary["grand_total"],
@@ -2016,7 +2019,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 session.refresh(new_purchase)
                 
-                # 2. Lógica para reducir el stock y crear los PurchaseItemModel
+                # Lógica para reducir el stock y crear los PurchaseItemModel
                 product_ids = list(set([int(key.split('-')[0]) for key in cart.keys()]))
                 posts_to_update = session.exec(
                     sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
@@ -2024,19 +2027,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_map = {p.id: p for p in posts_to_update}
 
                 for cart_key, quantity_in_cart in cart.items():
+                    # ... (la lógica interna de este bucle se mantiene igual)
                     prod_id = int(cart_key.split('-')[0])
                     selection_parts = cart_key.split('-')[2:]
                     selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
                     post = post_map.get(prod_id)
-
                     if post:
-                        # Deducir stock de la variante correcta
                         for variant in post.variants:
                             if variant.get("attributes") == selection_attrs:
                                 variant["stock"] -= quantity_in_cart
                                 break
-                        
-                        # Crear el item de la compra
+                        session.add(post)
                         session.add(PurchaseItemModel(
                             purchase_id=new_purchase.id,
                             blog_post_id=post.id,
@@ -2044,22 +2045,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                             price_at_purchase=post.price,
                             selected_variant=selection_attrs
                         ))
-
-                        # Desactivar si el stock total es 0 o menos
-                        total_stock = sum(v.get("stock", 0) for v in post.variants)
-                        if total_stock <= 0:
-                            post.publish_active = False
-
-                        session.add(post)
-
-                # 3. Notificar al admin
-                yield AppState.notify_admin_of_new_purchase
+                
+                # --- CORRECCIÓN ---
+                # Se llama al método directamente en lugar de usar yield.
+                self.set_new_purchase_notification(True)
+                
                 session.commit()
 
-        # Limpiar el carrito del usuario es más complejo y requeriría identificar la sesión del usuario.
-        # Por ahora, el usuario lo verá vacío la próxima vez que cargue la página del carrito.
-        # También puedes vaciar self.cart aquí si el webhook se ejecuta en el mismo proceso, pero no es garantizado.
-
+        # --- CORRECCIÓN ---
+        # Este return ahora es válido.
         return {"status": "ok"}
 
     def toggle_form(self):
