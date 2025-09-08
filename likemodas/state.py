@@ -3929,12 +3929,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
 
-# --- ✨ CORRECCIÓN: La función wompi_webhook debe estar AQUÍ, FUERA de la clase AppState ✨ ---
 def wompi_webhook(payload: dict, state: AppState):
     """
-    Recibe notificaciones de Wompi. Es una función independiente.
+    Recibe notificaciones de Wompi. Usa el estado que se le pasa como argumento.
     """
-    state = await rx.get_state(AppState)
+    # La línea que causaba el error ha sido eliminada.
+    # Ya no se usa: state = await rx.get_state(AppState)
     
     transaction_data = payload.get("data", {}).get("transaction", {})
     status = transaction_data.get("status")
@@ -3947,7 +3947,6 @@ def wompi_webhook(payload: dict, state: AppState):
             return {"status": "error", "message": "Reference not found"}
 
         with rx.session() as session:
-            # ... (el resto del código del webhook se mantiene igual)
             shipping_address = purchase_data["shipping_address"]
             summary = purchase_data["summary"]
             cart = purchase_data["cart"]
@@ -3997,3 +3996,5 @@ def wompi_webhook(payload: dict, state: AppState):
             session.commit()
 
     return {"status": "ok"}
+
+# --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨ ---
