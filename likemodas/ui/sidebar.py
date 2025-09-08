@@ -5,7 +5,7 @@ from reflex.style import toggle_color_mode
 from ..state import AppState
 from .. import navigation
 
-# ... (las funciones internas como sidebar_item y sidebar_user_item no cambian) ...
+# ... (funciones internas sin cambios) ...
 def sidebar_dark_mode_toggle_item() -> rx.Component:
     return rx.button(
         rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
@@ -78,11 +78,7 @@ def sidebar_logout_item() -> rx.Component:
         )
     )
 
-
 def sliding_admin_sidebar() -> rx.Component:
-    """
-    El componente principal del sidebar con la posición y altura corregidas.
-    """
     SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
@@ -99,8 +95,9 @@ def sliding_admin_sidebar() -> rx.Component:
             width="100%", spacing="5",
         ),
         spacing="5", padding_x="1em", padding_y="1.5em",
-        # --- ✨ MODIFICACIÓN: El fondo ahora es adaptable al tema ✨ ---
-        bg=rx.color("panel", 2),
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+        bg=rx.color("gray", 2),
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         align="start", height="100%", width=SIDEBAR_WIDTH,
     )
 
@@ -114,7 +111,6 @@ def sliding_admin_sidebar() -> rx.Component:
                 ),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer",
-                # --- ✨ MODIFICACIÓN: El botón usa el color de acento del tema ✨ ---
                 bg=rx.color("accent", 9),
                 border_radius="0 8px 8px 0",
                 height="150px",
