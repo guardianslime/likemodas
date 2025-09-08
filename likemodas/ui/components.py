@@ -120,7 +120,7 @@ def multi_select_component(
 
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
-    """Galería de productos, ahora sin el botón "Añadir al Carrito" directamente en la tarjeta."""
+    """Galería de productos que ahora usa el componente de estrellas seguro."""
     return rx.cond(
         posts,
         rx.flex(
@@ -147,41 +147,37 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 rx.text(post.title, weight="bold", size="6", no_of_lines=1),
                                 star_rating_display_safe(post.average_rating, post.rating_count),
                                 rx.text(post.price_cop, size="5", weight="medium"),
-                                rx.badge(
-                                    post.shipping_display_text,
-                                    color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
-                                    variant="soft", margin_top="0.5em",
+                                # --- ✨ INICIO DE LA MODIFICACIÓN: Envío y Moda Completa juntos ✨ ---
+                                rx.hstack(
+                                    rx.badge(
+                                        post.shipping_display_text,
+                                        color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
+                                        variant="soft",
+                                    ),
+                                    rx.cond(
+                                        post.is_moda_completa_eligible,
+                                        rx.tooltip(
+                                            rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="1"),
+                                            content="Este item cuenta para el envío gratis en compras sobre $200.000"
+                                        )
+                                    ),
+                                    spacing="3",
+                                    align="center",
                                 ),
-                                rx.cond(
-                                    post.is_moda_completa_eligible,
-                                    rx.tooltip(
-                                        # --- ✨ MODIFICACIÓN: Color del badge "Moda Completa" ✨ ---
-                                        rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="1"),
-                                        content="Este item cuenta para el envío gratis en compras sobre $200.000"
-                                    )
-                                ),
+                                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                                 spacing="2", align_items="start", width="100%"
                             ),
                             spacing="2", width="100%",
                             on_click=AppState.open_product_detail_modal(post.id),
                             cursor="pointer",
                         ),
-                        rx.spacer(),
-                        # --- ✨ MODIFICACIÓN: SE QUITA EL BOTÓN "AÑADIR AL CARRITO" ✨ ---
-                        # rx.button(
-                        #     "Añadir al Carrito",
-                        #     width="100%",
-                        #     on_click=[
-                        #         AppState.add_to_cart(post.id),
-                        #         rx.stop_propagation
-                        #     ],
-                        # ),
-                        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+                        rx.spacer(), # Mantenemos el spacer para empujar el contenido hacia arriba.
                     ),
-                    width="290px", height="520px", 
-                    bg=rx.color("gray", 2),
-                    border="1px solid",
-                    border_color=rx.color("gray", 5),
+                    width="290px",
+                    # --- ✨ MODIFICACIÓN: Se elimina la altura fija para que se ajuste al contenido ✨ ---
+                    height="auto",
+                    bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+                    border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                     border_radius="8px", box_shadow="md", padding="1em",
                 )
             ),

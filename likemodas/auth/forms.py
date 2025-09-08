@@ -34,9 +34,10 @@ def my_register_form() -> rx.Component:
             password_input(placeholder="Password", name="password"),
             rx.text("Confirmar Contraseña"),
             password_input(placeholder="Confirm password", name="confirm_password"),
-            rx.button("Crear Cuenta", width="100%", type="submit"),
+            # --- ✨ MODIFICACIÓN: Botón de Registro en violeta ✨ ---
+            rx.button("Crear Cuenta", width="100%", type="submit", color_scheme="violet"),
             rx.center(
-                rx.link("¿Ya tienes cuenta? Inicia sesión", on_click=lambda: rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)),
+                rx.link("¿Ya tienes cuenta? Inicia sesión", on_click=lambda: rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE), color_scheme="violet"),
                 width="100%",
             ),
             min_width=MIN_WIDTH,

@@ -123,12 +123,16 @@ def cart_page_content() -> rx.Component:
                             on_change=AppState.set_payment_method,
                             spacing="4",
                         ),
+                        # --- ✨ MODIFICACIÓN: Callout de información en tonos morados ✨ ---
                         rx.callout(
                             "Nota: En caso de devolución del pedido, se cobrará nuevamente el valor del envío para cubrir los costos logísticos del retorno.",
                             icon="info",
                             margin_top="1em",
-                            width="100%"
+                            width="100%",
+                            color_scheme="purple", # Color principal del callout
+                            variant="soft",
                         ),
+                        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                         spacing="3",
                         align_items="start",
                         width="100%",

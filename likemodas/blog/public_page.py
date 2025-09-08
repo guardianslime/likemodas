@@ -210,6 +210,7 @@ def product_detail_modal() -> rx.Component:
                 rx.cond(
                     AppState.product_in_modal.is_moda_completa_eligible,
                     rx.tooltip(
+                        # --- ✨ MODIFICACIÓN: Badge en violeta ✨ ---
                         rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
                         content="Este item cuenta para el envío gratis en compras sobre $200.000"
                     ),
@@ -277,10 +278,10 @@ def product_detail_modal() -> rx.Component:
                 text_align="left", width="100%"
             ),
             # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
             rx.spacer(),
             rx.hstack(
-                rx.button("Añadir al Carrito", on_click=AppState.add_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1"),
+                # --- ✨ MODIFICACIÓN: Botón principal de compra en violeta ✨ ---
+                rx.button("Añadir al Carrito", on_click=AppState.add_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1", color_scheme="violet"),
                 rx.icon_button(
                     rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
                     on_click=AppState.toggle_save_post,

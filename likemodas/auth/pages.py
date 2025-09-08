@@ -26,17 +26,20 @@ def my_login_page_content() -> rx.Component:
                             placeholder="Password",
                             name="password"
                         ),
-                        rx.button("Iniciar Sesión", width="100%", type="submit"),
+                        # --- ✨ MODIFICACIÓN: Botón de Login en violeta ✨ ---
+                        rx.button("Iniciar Sesión", width="100%", type="submit", color_scheme="violet"),
                         spacing="4"
                     ),
                     on_submit=reflex_local_auth.LoginState.on_submit
                 ),
                 rx.link(
-                    "¿Olvidaste tu contraseña?", 
+                   "¿Olvidaste tu contraseña?", 
                     href="/forgot-password", 
                     size="2", 
                     text_align="center",
-                    margin_top="1em"
+                    margin_top="1em",
+                    # --- ✨ MODIFICACIÓN: Enlace en violeta ✨ ---
+                    color_scheme="violet"
                 )
             )
         ),
