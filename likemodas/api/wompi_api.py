@@ -1,14 +1,16 @@
-# likemodas/api/wompi_api.py
+# likemodas/api/wompi_api.py (Versión Corregida y Final)
 
 import os
 import httpx
 import reflex as rx
 import hashlib
-
 import sqlalchemy
 from fastapi import Request
 from sqlmodel import select
 from datetime import datetime, timezone
+
+# 1. Importamos el objeto 'app' desde tu archivo principal
+from likemodas.likemodas import app
 
 from ..models import PurchaseModel, PurchaseStatus, BlogPostModel, PurchaseItemModel
 from ..state import AppState
@@ -19,7 +21,8 @@ WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
 WOMPI_PRIVATE_KEY = os.getenv("WOMPI_PRIVATE_KEY")
 WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
 
-@rx.api(route="/wompi/create_checkout_session")
+# 2. Cambiamos @rx.api por @app.api_route
+@app.api_route("/wompi/create_checkout_session")
 async def create_wompi_checkout(request: Request) -> dict:
     """
     Endpoint que recibe los datos de la compra, crea la sesión en Wompi y devuelve una URL de pago.
@@ -71,7 +74,8 @@ async def create_wompi_checkout(request: Request) -> dict:
         print(f"Error interno: {e}")
         return {"error": "Error interno del servidor."}, 500
 
-@rx.api(route="/wompi/webhook")
+# 2. Cambiamos @rx.api por @app.api_route
+@app.api_route("/wompi/webhook")
 async def wompi_webhook(request: Request) -> dict:
     """
     Endpoint para recibir las notificaciones de Wompi sobre el estado del pago.
