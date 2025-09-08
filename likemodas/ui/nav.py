@@ -9,7 +9,6 @@ from ..models import Category
 def notification_icon() -> rx.Component:
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
-        # ... (contenido del trigger sin cambios) ...
         rx.menu.trigger(
             rx.box(
                 rx.icon("bell", size=28, color=icon_color),
@@ -26,7 +25,6 @@ def notification_icon() -> rx.Component:
             ),
         ),
         rx.menu.content(
-            # ... (contenido del menú sin cambios) ...
             rx.cond(
                 AppState.user_notifications,
                 rx.menu.item(
@@ -79,9 +77,10 @@ def notification_icon() -> rx.Component:
                 ),
                 rx.menu.item("No tienes notificaciones.")
             ),
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            bg=rx.color("gray", 2, alpha=0.8),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            # --- ✨ INICIO DE LA CORRECCIÓN #1 ✨ ---
+            # Se elimina el parámetro `alpha=0.8` que causaba el error.
+            bg=rx.color("gray", 2),
+            # --- ✨ FIN DE LA CORRECCIÓN #1 ✨ ---
             style={"backdrop_filter": "blur(10px)"},
             max_height="400px",
             overflow_y="auto",
@@ -93,7 +92,6 @@ def notification_icon() -> rx.Component:
 
 
 def public_navbar() -> rx.Component:
-    # ... (lógica interna sin cambios) ...
     icon_color = rx.color_mode_cond("black", "white")
     
     hamburger_menu = rx.menu.root(
@@ -217,9 +215,10 @@ def public_navbar() -> rx.Component:
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-        bg=rx.color("gray", 2, alpha=0.8),
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+        # --- ✨ INICIO DE LA CORRECCIÓN #2 ✨ ---
+        # Se elimina el parámetro `alpha=0.8` que causaba el error.
+        bg=rx.color("gray", 2),
+        # --- ✨ FIN DE LA CORRECCIÓN #2 ✨ ---
         style={"backdrop_filter": "blur(10px)"},
         on_mount=[AppState.load_notifications],
     )
