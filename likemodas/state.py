@@ -615,7 +615,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         InvoiceItemData(
                             name=item.blog_post.title,
                             quantity=item.quantity,
-                            # --- ✨ CORRECCIÓN AQUÍ: Se añade el campo 'price' que faltaba ---
+                            # --- ✨ ESTA ES LA LÍNEA CORREGIDA QUE FALTABA ✨ ---
                             price=item.blog_post.base_price,
                             price_cop=format_to_cop(item.blog_post.base_price),
                             subtotal_cop=format_to_cop(item_base_subtotal),
