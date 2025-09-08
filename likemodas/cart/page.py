@@ -4,7 +4,7 @@ import reflex as rx
 import reflex_local_auth
 
 from likemodas.utils.formatting import format_to_cop
-from ..state import AppState, CartItemData  # <-- ✨ AÑADE LA IMPORTACIÓN DE CartItemData
+from ..state import AppState, CartItemData
 
 def display_default_address() -> rx.Component:
     return rx.vstack(
@@ -45,30 +45,24 @@ def display_default_address() -> rx.Component:
         width="100%", spacing="4",
     )
 
-# --- ✨ PASO 4: REEMPLAZAR LA FUNCIÓN cart_item_row ✨ ---
 def cart_item_row(item: CartItemData) -> rx.Component:
     """Renderiza una fila en la tabla del carrito mostrando los detalles de la variante."""
     return rx.table.row(
         rx.table.cell(
             rx.vstack(
                 rx.text(item.title, weight="bold"),
-                # --- ✨ INICIO DE LA CORRECCIÓN DE VISUALIZACIÓN ✨ ---
-                # Itera sobre los detalles de la variante para mostrarlos
                 rx.foreach(
                     item.variant_details.items(),
                     lambda detail: rx.text(f"{detail[0]}: {detail[1]}", size="2", color_scheme="gray")
                 ),
-                # --- ✨ FIN DE LA CORRECCIÓN DE VISUALIZACIÓN ✨ ---
                 align_items="start",
                 spacing="1"
             )
         ),
         rx.table.cell(
             rx.hstack(
-                # El botón de eliminar ahora usa la clave única del carrito
                 rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1"),
                 rx.text(item.quantity),
-                # El botón de añadir ahora debe abrir el modal para una nueva selección
                 rx.button("+", on_click=AppState.open_product_detail_modal(item.product_id), size="1"),
                 align="center", spacing="3"
             )
@@ -76,17 +70,17 @@ def cart_item_row(item: CartItemData) -> rx.Component:
         rx.table.cell(rx.text(item.price_cop)),
         rx.table.cell(rx.text(item.subtotal_cop)),
     )
-# --- ✨ FIN DEL PASO 4 ✨ ---
 
 @reflex_local_auth.require_login
 def cart_page_content() -> rx.Component:
     return rx.vstack(
-        # --- ✨ MODIFICACIÓN: El heading ahora usa el color de acento del tema ✨ ---
-        rx.heading("Mi Carrito", size="8", color_scheme="accent"),
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+        # Se reemplaza "accent" por "violet" para que sea un color válido.
+        rx.heading("Mi Carrito", size="8", color_scheme="violet"),
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         rx.cond(
             AppState.cart_items_count > 0,
             rx.vstack(
-                # ... (resto del contenido de la página sin cambios) ...
                 rx.table.root(
                     rx.table.header(rx.table.row(rx.table.column_header_cell("Producto"), rx.table.column_header_cell("Cantidad"), rx.table.column_header_cell("Precio Unitario"), rx.table.column_header_cell("Subtotal"))),
                     rx.table.body(rx.foreach(AppState.cart_details, cart_item_row))
@@ -150,4 +144,3 @@ def cart_page_content() -> rx.Component:
         ),
         align="center", width="100%", padding="2em"
     )
-
