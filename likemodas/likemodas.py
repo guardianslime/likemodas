@@ -146,18 +146,23 @@ app.add_page(
 )
 
 # --- ✨ INICIO DE LA CORRECCIÓN FINAL ✨ ---
-# Se elimina el argumento 'methods' y se añade un parámetro 'request'
-# para verificar el método manualmente.
+# Se define el endpoint con la firma completa que espera Starlette/ASGI
 @app._api("/wompi/webhook")
-async def wompi_webhook_endpoint(payload: dict, request: rx.Request):
+async def wompi_webhook_endpoint(scope, receive, send):
     """
-    Este es el endpoint que Wompi llamará.
-    Verificamos que la petición sea POST dentro de la función.
+    Este es el endpoint que Wompi llamará, definido con la firma ASGI completa.
     """
-    if request.method == "POST":
-        state = await rx.get_state(AppState)
-        return await wompi_webhook(payload, state)
+    # Creamos un objeto Request para extraer el payload fácilmente
+    request = rx.Request(scope, receive, send)
+    payload = await request.json()
     
-    # Si la petición no es POST, devolvemos un error.
-    return {"status": "error", "message": "Method Not Allowed"}, 405
-# --- FIN DE LA CORRECCIÓN FINAL ✨ ---
+    # Obtenemos el estado y llamamos a nuestra lógica
+    state = await rx.get_state(AppState)
+    response_data = wompi_webhook(payload, state)
+    
+    # Creamos y enviamos la respuesta JSON
+    response = rx.Response(
+        content=response_data,
+        media_type="application/json"
+    )
+    await response(scope, receive, send)

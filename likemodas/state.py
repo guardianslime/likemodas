@@ -3929,7 +3929,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
 
-def wompi_webhook(payload: dict, state: AppState):
+# --- ✨ CORRECCIÓN FINAL: Vuelve a ser una función async ✨ ---
+async def wompi_webhook(payload: dict, state: AppState):
     """
     Recibe notificaciones de Wompi. Usa el estado que se le pasa como argumento.
     """
