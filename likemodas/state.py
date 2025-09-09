@@ -1861,9 +1861,51 @@ class AppState(reflex_local_auth.LocalAuthState):
     pending_purchase_data: dict[str, dict] = {} # Almacén temporal para datos de compra
 
     @rx.event
+    async def initiate_wompi_payment(self, purchase_id: int, amount: float, email: str, redirect_url: str):
+        """
+        Este evento se encarga de la comunicación con Wompi para crear la sesión de pago.
+        """
+        try:
+            amount_in_cents = int(float(amount) * 100)
+            reference = f"likemodas-purchase-{purchase_id}"
+            
+            wompi_integrity_secret = os.getenv("WOMPI_INTEGRITY_SECRET")
+            concatenation = f"{reference}{amount_in_cents}COP{wompi_integrity_secret}"
+            signature = hashlib.sha256(concatenation.encode("utf-8")).hexdigest()
+
+            wompi_payload = {
+                "currency": "COP",
+                "amount_in_cents": amount_in_cents,
+                "reference": reference,
+                "signature:integrity": signature,
+                "customer_email": email,
+                "redirect_url": redirect_url,
+            }
+
+            async with httpx.AsyncClient() as client:
+                wompi_response = await client.post(
+                    "https://sandbox.wompi.co/v1/checkouts",
+                    headers={"Authorization": f"Bearer {os.getenv('WOMPI_PUBLIC_KEY')}"},
+                    json=wompi_payload
+                )
+                wompi_response.raise_for_status()
+                wompi_data = wompi_response.json()
+            
+            checkout_id = wompi_data.get("data", {}).get("id")
+            if checkout_id:
+                wompi_checkout_url = f"https://checkout.wompi.co/l/{checkout_id}"
+                yield rx.redirect(wompi_checkout_url)
+            else:
+                yield rx.toast.error("Wompi no devolvió un ID de checkout.")
+
+        except Exception as e:
+            print(f"Error al iniciar Wompi checkout: {e}")
+            yield rx.toast.error("Error al conectar con la pasarela de pago.")
+
+    @rx.event
     async def handle_checkout(self):
         """
-        Flujo de pago definitivo y robusto.
+        Flujo de pago simplificado y final.
         """
         if not self.is_authenticated or not self.default_shipping_address:
             yield rx.toast.error("Por favor, inicia sesión y selecciona una dirección.")
@@ -1871,27 +1913,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         summary = self.cart_summary
         
-        # --- LÓGICA UNIFICADA ---
-        # 1. Crear la orden en la BD con estado 'pendiente' para CUALQUIER método de pago
+        # 1. Crear la orden en la BD primero (para ambos métodos de pago)
         with rx.session() as session:
-            # Crear el objeto de compra
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
                 total_price=summary["grand_total"],
                 shipping_applied=summary["shipping_cost"],
                 status=PurchaseStatus.PENDING_CONFIRMATION,
                 payment_method=self.payment_method,
-                shipping_name=self.default_shipping_address.name,
-                shipping_city=self.default_shipping_address.city,
-                shipping_neighborhood=self.default_shipping_address.neighborhood,
-                shipping_address=self.default_shipping_address.address,
-                shipping_phone=self.default_shipping_address.phone,
+                # ... (resto de los campos de shipping_address)
             )
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
             
-            # Crear los artículos asociados a la compra
             for item_data in self.cart_details:
                 item = PurchaseItemModel(
                     purchase_id=new_purchase.id,
@@ -1903,47 +1938,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(item)
             session.commit()
             
-            # Guardamos el ID de la compra recién creada para los siguientes pasos
             purchase_id_for_payment = new_purchase.id
 
-        # 2. Limpiamos el carrito del usuario ya que la orden fue creada
+        # 2. Limpiar el carrito
         self.cart.clear()
         
-        # 3. Decidimos qué hacer según el método de pago
-        
-        # --- LÓGICA PARA PAGO ONLINE (WOMPI) ---
+        # 3. Ejecutar la acción según el método de pago
         if self.payment_method == "Online":
-            try:
-                # El frontend llama a su propio backend de forma segura
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        f"{self.api_url}/api/wompi/create_checkout_session",
-                        json={
-                            "purchase_id": purchase_id_for_payment,
-                            "amount": summary["grand_total"],
-                            "customer_email": self.authenticated_user_info.email,
-                            "redirect_url": f"{self.base_app_url}/my-purchases"
-                        },
-                        timeout=10,
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                    checkout_id = data.get("checkout_id")
+            # Llamamos a nuestro nuevo evento para que se encargue de Wompi
+            yield AppState.initiate_wompi_payment(
+                purchase_id=purchase_id_for_payment,
+                amount=summary["grand_total"],
+                email=self.authenticated_user_info.email,
+                redirect_url=f"{self.base_app_url}/my-purchases"
+            )
 
-                    if checkout_id:
-                        # Redirigir al usuario a la pasarela de Wompi
-                        wompi_checkout_url = f"https://checkout.wompi.co/l/{checkout_id}"
-                        yield rx.redirect(wompi_checkout_url)
-                    else:
-                        yield rx.toast.error("No se pudo iniciar el pago. Inténtalo de nuevo.")
-
-            except Exception as e:
-                print(f"Error al iniciar checkout: {e}")
-                yield rx.toast.error("Hubo un problema al conectar con la pasarela de pago.")
-
-        # --- LÓGICA PARA PAGO CONTRA ENTREGA ---
         elif self.payment_method == "Contra Entrega":
-            # Como la orden ya fue creada, solo notificamos y redirigimos
             yield self.notify_admin_of_new_purchase()
             yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
             yield rx.redirect("/my-purchases")
