@@ -44,13 +44,7 @@ WOMPI_API_URL = "https://sandbox.wompi.co/v1"
 WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
 WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
 
-async def create_wompi_checkout_endpoint(scope, receive, send):
-    if scope['method'] != 'POST':
-        response = rx.Response(content="Method Not Allowed", status_code=405)
-        await response(scope, receive, send)
-        return
-
-    request = FastAPIRequest(scope, receive)
+async def create_wompi_checkout_endpoint(request: FastAPIRequest):
     try:
         body = await request.json()
         purchase_id = body.get("purchase_id")
@@ -59,9 +53,7 @@ async def create_wompi_checkout_endpoint(scope, receive, send):
         redirect_url = body.get("redirect_url")
 
         if not all([purchase_id, amount_cop, customer_email, redirect_url]):
-            response = rx.Response(content=json.dumps({"error": "Faltan datos"}), status_code=400, media_type="application/json")
-            await response(scope, receive, send)
-            return
+            return rx.JSONResponse(content={"error": "Faltan datos"}, status_code=400)
 
         amount_in_cents = int(float(amount_cop) * 100)
         reference = f"likemodas-purchase-{purchase_id}"
@@ -82,21 +74,13 @@ async def create_wompi_checkout_endpoint(scope, receive, send):
             wompi_response.raise_for_status()
             wompi_data = wompi_response.json()
         
-        response = rx.Response(content=json.dumps({"checkout_id": wompi_data.get("data", {}).get("id")}), status_code=200, media_type="application/json")
+        return rx.JSONResponse(content={"checkout_id": wompi_data.get("data", {}).get("id")}, status_code=200)
 
     except Exception as e:
         print(f"Error en create_checkout_session: {e}")
-        response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
-    
-    await response(scope, receive, send)
+        return rx.JSONResponse(content={"error": "Error interno"}, status_code=500)
 
-async def wompi_webhook_endpoint(scope, receive, send):
-    if scope['method'] != 'POST':
-        response = rx.Response(content="Method Not Allowed", status_code=405)
-        await response(scope, receive, send)
-        return
-
-    request = FastAPIRequest(scope, receive)
+async def wompi_webhook_endpoint(request: FastAPIRequest):
     try:
         payload = await request.json()
         print(f"Webhook de Wompi recibido: {payload}")
@@ -128,18 +112,15 @@ async def wompi_webhook_endpoint(scope, receive, send):
                     state = await rx.get_state(AppState)
                     await state.notify_admin_of_new_purchase()
 
-        response = rx.Response(content=json.dumps({"status": "ok"}), status_code=200, media_type="application/json")
+        return rx.JSONResponse(content={"status": "ok"}, status_code=200)
 
     except Exception as e:
         print(f"Error procesando webhook: {e}")
-        response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
+        return rx.JSONResponse(content={"error": "Error interno"}, status_code=500)
 
-    await response(scope, receive, send)
-
-# --- 3. Añadimos las rutas de la API al router interno de la app ---
-app.router.add_api_route("/api/wompi/create_checkout_session", create_wompi_checkout_endpoint, methods=["POST"])
-app.router.add_api_route("/api/wompi/webhook", wompi_webhook_endpoint, methods=["POST"])
-
+# --- 3. Añadimos las rutas de la API al objeto FastAPI INTERNO de la app ---
+app.app.add_api_route("/api/wompi/create_checkout_session", create_wompi_checkout_endpoint, methods=["POST"])
+app.app.add_api_route("/api/wompi/webhook", wompi_webhook_endpoint, methods=["POST"])
 
 # --- 4. Añadimos todas las páginas al objeto 'app' ---
 app.add_page(
