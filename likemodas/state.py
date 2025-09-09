@@ -1,19 +1,13 @@
 # likemodas/state.py (Versión Completa y Definitiva)
 
 from __future__ import annotations
-import httpx
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
-# --- ✨ NUEVOS IMPORTS ---
-import hashlib
-import os
 import secrets
-import json # Importa json para manejar el payload del webhook
-
 import bcrypt
 import re
 import asyncio
@@ -283,8 +277,6 @@ class UserProfileData(rx.Base):
     phone: str = ""
     avatar_url: str = ""
 
-
-
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
@@ -507,7 +499,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         InvoiceItemData(
                             name=item.blog_post.title,
                             quantity=item.quantity,
-                            # --- ✨ ESTA ES LA LÍNEA CORREGIDA QUE FALTABA ✨ ---
+                            # --- ✨ CORRECCIÓN AQUÍ: Se añade el campo 'price' que faltaba ---
                             price=item.blog_post.base_price,
                             price_cop=format_to_cop(item.blog_post.base_price),
                             subtotal_cop=format_to_cop(item_base_subtotal),
@@ -1856,200 +1848,115 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
 
-    wompi_form_data: dict[str, str] = {}
-    pending_purchase_data: dict[str, dict] = {}
-
     @rx.event
-    async def handle_checkout(self):
+    def handle_checkout(self):
         """
-        Flujo de pago final usando Links de Pago de Wompi (sin webhook).
+        Procesa la compra:
+        1. Bloquea los productos en la BD para evitar sobreventas.
+        2. Verifica el stock de cada variante específica.
+        3. Si hay stock, deduce la cantidad y crea el registro de compra.
+        4. Si un producto se queda sin stock, lo desactiva automáticamente.
         """
         if not self.is_authenticated or not self.default_shipping_address:
-            yield rx.toast.error("Por favor, inicia sesión y selecciona una dirección.")
-            return
+            return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
+        if not self.authenticated_user_info:
+            return rx.toast.error("Error de sesión. Vuelve a iniciar sesión.")
+        if not self.cart:
+            return rx.toast.info("Tu carrito está vacío.")
 
         summary = self.cart_summary
-        
-        # --- LÓGICA PARA PAGO ONLINE (Links de Pago de Wompi) ---
-        if self.payment_method == "Online":
-            # 1. Crear la orden en la BD primero
-            with rx.session() as session:
-                new_purchase = PurchaseModel(
-                    userinfo_id=self.authenticated_user_info.id,
-                    total_price=summary["grand_total"],
-                    shipping_applied=summary["shipping_cost"],
-                    status=PurchaseStatus.PENDING_CONFIRMATION,
-                    payment_method=self.payment_method,
-                    shipping_name=self.default_shipping_address.name,
-                    shipping_city=self.default_shipping_address.city,
-                    shipping_neighborhood=self.default_shipping_address.neighborhood,
-                    shipping_address=self.default_shipping_address.address,
-                    shipping_phone=self.default_shipping_address.phone,
-                )
-                session.add(new_purchase)
-                session.commit()
-                session.refresh(new_purchase)
-                
-                for item_data in self.cart_details:
-                    item = PurchaseItemModel(
-                        purchase_id=new_purchase.id,
-                        blog_post_id=item_data.product_id,
-                        quantity=item_data.quantity,
-                        price_at_purchase=item_data.price,
-                        selected_variant=item_data.variant_details
-                    )
-                    session.add(item)
-                session.commit()
-                
-                purchase_id = new_purchase.id
 
-            self.cart.clear()
-
-            # 2. Llamar a la API de Wompi para crear un Link de Pago
-            try:
-                wompi_private_key = os.getenv("WOMPI_PRIVATE_KEY")
-                payload = {
-                    "name": f"Compra #{purchase_id} - Likemodas",
-                    "description": f"Pedido para {self.authenticated_user_info.email}",
-                    "single_use": True,
-                    "collect_shipping": False,
-                    "currency": "COP",
-                    "amount_in_cents": int(summary["grand_total"] * 100),
-                    "redirect_url": f"{self.base_app_url}/my-purchases"
-                }
-                
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        "https://sandbox.wompi.co/v1/payment_links",
-                        headers={"Authorization": f"Bearer {wompi_private_key}"},
-                        json=payload
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                
-                payment_link_id = data.get("data", {}).get("id")
-                if payment_link_id:
-                    payment_url = f"https://checkout.wompi.co/l/{payment_link_id}"
-                    yield rx.redirect(payment_url)
-                else:
-                    yield rx.toast.error("No se pudo generar el link de pago.")
-
-            except Exception as e:
-                print(f"Error al crear link de pago: {e}")
-                yield rx.toast.error("Hubo un problema al conectar con la pasarela de pago.")
-
-        # --- LÓGICA PARA PAGO CONTRA ENTREGA ---
-        elif self.payment_method == "Contra Entrega":
-            # Tu lógica existente y correcta para Contra Entrega
-            # (crear orden, deducir stock, etc.)
-            yield self.notify_admin_of_new_purchase()
-            yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-            yield rx.redirect("/my-purchases")
-
-
-    @rx.event
-    async def verify_wompi_transaction(self):
-        """
-        Verifica el estado de una transacción en Wompi usando el ID de la URL
-        cuando el usuario es redirigido de vuelta a la página.
-        """
-        transaction_id = self.router.page.params.get("id")
-        if not transaction_id:
-            return
-
-        try:
-            wompi_public_key = os.getenv("WOMPI_PUBLIC_KEY")
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://sandbox.wompi.co/v1/transactions/{transaction_id}",
-                    headers={"Authorization": f"Bearer {wompi_public_key}"}
-                )
-                response.raise_for_status()
-                data = response.json().get("data", {})
+        with rx.session() as session:
+            product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
             
-            if data.get("status") == "APPROVED":
-                reference = data.get("reference")
-                purchase_id = int(reference.split("-")[-1])
+            # Bloquea las filas de los productos en la BD para una transacción segura
+            posts_to_update = session.exec(
+                sqlmodel.select(BlogPostModel)
+                .where(BlogPostModel.id.in_(product_ids))
+                .with_for_update()
+            ).all()
+            post_map = {p.id: p for p in posts_to_update}
 
-                with rx.session() as session:
-                    purchase = session.get(PurchaseModel, purchase_id)
-                    if purchase and purchase.status != PurchaseStatus.CONFIRMED:
-                        purchase.status = PurchaseStatus.CONFIRMED
-                        purchase.confirmed_at = datetime.now(timezone.utc)
-                        session.add(purchase)
-                        
-                        # Deducir stock
-                        for item in purchase.items:
-                            post = session.get(BlogPostModel, item.blog_post_id)
-                            if post:
-                                for variant in post.variants:
-                                    if variant.get("attributes") == item.selected_variant:
-                                        variant["stock"] -= item.quantity
-                                        sqlalchemy.orm.attributes.flag_modified(post, "variants")
-                                        session.add(post)
-                                        break
-                        session.commit()
-                        
-                        yield rx.toast.success(f"¡Pago de la compra #{purchase_id} confirmado!")
-                        yield AppState.load_purchases
-        
-        except Exception as e:
-            print(f"Error al verificar la transacción {transaction_id}: {e}")
-            yield rx.toast.error("No se pudo verificar el estado del último pago.")
-    
-    @rx.event
-    async def verify_wompi_transaction(self):
-        """
-        Verifica el estado de una transacción en Wompi usando el ID de la URL.
-        Se ejecuta al cargar la página de historial de compras.
-        """
-        transaction_id = self.router.page.params.get("id")
-        if not transaction_id:
-            return # No hay nada que verificar
+            # --- FASE 1: Verificación de Stock ---
+            for cart_key, quantity_in_cart in self.cart.items():
+                parts = cart_key.split('-')
+                prod_id = int(parts[0])
+                selection_parts = parts[2:]
+                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
 
-        try:
-            # Consultamos a Wompi por el estado de la transacción
-            wompi_public_key = os.getenv("WOMPI_PUBLIC_KEY")
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://sandbox.wompi.co/v1/transactions/{transaction_id}",
-                    headers={"Authorization": f"Bearer {wompi_public_key}"}
-                )
-                response.raise_for_status()
-                data = response.json().get("data", {})
+                post = post_map.get(prod_id)
+                if not post:
+                    return rx.toast.error(f"El producto con ID {prod_id} ya no está disponible. Compra cancelada.")
+
+                variant_found = False
+                for variant in post.variants:
+                    if variant.get("attributes") == selection_attrs:
+                        if variant.get("stock", 0) < quantity_in_cart:
+                            attr_str = ', '.join(selection_attrs.values())
+                            return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Tu compra ha sido cancelada.")
+                        variant_found = True
+                        break
+                
+                if not variant_found:
+                    return rx.toast.error(f"La variante seleccionada para '{post.title}' ya no existe. Compra cancelada.")
+
+            # --- FASE 2: Creación de Compra y Deducción de Stock ---
+            new_purchase = PurchaseModel(
+                userinfo_id=self.authenticated_user_info.id,
+                total_price=summary["grand_total"],
+                shipping_applied=summary["shipping_cost"],
+                status=PurchaseStatus.PENDING_CONFIRMATION,
+                payment_method=self.payment_method,
+                shipping_name=self.default_shipping_address.name,
+                shipping_city=self.default_shipping_address.city,
+                shipping_neighborhood=self.default_shipping_address.neighborhood,
+                shipping_address=self.default_shipping_address.address,
+                shipping_phone=self.default_shipping_address.phone
+            )
+            session.add(new_purchase)
+            session.commit()
+            session.refresh(new_purchase)
             
-            if data.get("status") == "APPROVED":
-                reference = data.get("reference")
-                purchase_id = int(reference.split("-")[-1])
+            for cart_key, quantity_in_cart in self.cart.items():
+                parts = cart_key.split('-')
+                prod_id = int(parts[0])
+                selection_parts = parts[2:]
+                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                
+                post = post_map.get(prod_id)
+                
+                # Deducir el stock de la variante correcta
+                for variant in post.variants:
+                    if variant.get("attributes") == selection_attrs:
+                        variant["stock"] -= quantity_in_cart
+                        break
+                
+                # Marcar el post para ser actualizado en la sesión
+                session.add(post)
 
-                with rx.session() as session:
-                    purchase = session.get(PurchaseModel, purchase_id)
-                    if purchase and purchase.status != PurchaseStatus.CONFIRMED:
-                        # Actualizamos el estado de la compra
-                        purchase.status = PurchaseStatus.CONFIRMED
-                        purchase.confirmed_at = datetime.now(timezone.utc)
-                        session.add(purchase)
-                        
-                        # Deducimos el stock
-                        for item in purchase.items:
-                            post = session.get(BlogPostModel, item.blog_post_id)
-                            if post:
-                                for variant in post.variants:
-                                    if variant.get("attributes") == item.selected_variant:
-                                        variant["stock"] -= item.quantity
-                                        sqlalchemy.orm.attributes.flag_modified(post, "variants")
-                                        session.add(post)
-                                        break
-                        session.commit()
-                        
-                        yield rx.toast.success(f"¡Pago de la compra #{purchase_id} confirmado!")
-                        # Recargamos las compras para que el usuario vea el estado actualizado
-                        yield AppState.load_purchases
-        
-        except Exception as e:
-            print(f"Error al verificar la transacción {transaction_id}: {e}")
-            yield rx.toast.error("No se pudo verificar el estado del último pago.")
-    
+                # Crear el registro del artículo comprado
+                session.add(PurchaseItemModel(
+                    purchase_id=new_purchase.id,
+                    blog_post_id=post.id,
+                    quantity=quantity_in_cart,
+                    price_at_purchase=post.price,
+                    selected_variant=selection_attrs # Guarda la variante exacta
+                ))
+
+            # --- FASE 3: Verificación de Desactivación Automática ---
+            for post in post_map.values():
+                total_stock = sum(v.get("stock", 0) for v in post.variants)
+                if total_stock <= 0:
+                    post.publish_active = False
+                    session.add(post)
+
+            session.commit()
+
+        self.cart.clear()
+        self.default_shipping_address = None
+        yield AppState.notify_admin_of_new_purchase
+        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+        return rx.redirect("/my-purchases")
 
     def toggle_form(self):
         self.show_form = not self.show_form
@@ -3997,4 +3904,3 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         yield rx.toast.success("La solicitud ha sido cerrada.")
         yield AppState.on_load_return_page # Recargar la página del chat
-
