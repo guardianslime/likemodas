@@ -12,6 +12,7 @@ import bcrypt
 import re
 import asyncio
 import math
+import httpx # Asegúrate de que httpx esté importado
 from collections import defaultdict
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
@@ -1848,15 +1849,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
 
+    # Variables de estado para el proceso de pago
+    checkout_url: str = ""
+    is_payment_processing: bool = False
+
+
+
+
     @rx.event
     def handle_checkout(self):
         """
-        Procesa la compra:
-        1. Bloquea los productos en la BD para evitar sobreventas.
-        2. Verifica el stock de cada variante específica.
-        3. Si hay stock, deduce la cantidad y crea el registro de compra.
-        4. Si un producto se queda sin stock, lo desactiva automáticamente.
+        Procesa la compra. Guarda la orden y, si el pago es online,
+        redirige a una página de espera para recibir el link de pago.
         """
+        # --- Validaciones iniciales ---
         if not self.is_authenticated or not self.default_shipping_address:
             return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
         if not self.authenticated_user_info:
@@ -1867,96 +1873,88 @@ class AppState(reflex_local_auth.LocalAuthState):
         summary = self.cart_summary
 
         with rx.session() as session:
+            # --- Verificación de Stock (sin cambios) ---
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
-            
-            # Bloquea las filas de los productos en la BD para una transacción segura
             posts_to_update = session.exec(
-                sqlmodel.select(BlogPostModel)
-                .where(BlogPostModel.id.in_(product_ids))
-                .with_for_update()
+                sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
             ).all()
             post_map = {p.id: p for p in posts_to_update}
 
-            # --- FASE 1: Verificación de Stock ---
             for cart_key, quantity_in_cart in self.cart.items():
+                # ... (la lógica de verificación de stock se mantiene igual)
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
                 selection_parts = parts[2:]
                 selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
-
                 post = post_map.get(prod_id)
                 if not post:
-                    return rx.toast.error(f"El producto con ID {prod_id} ya no está disponible. Compra cancelada.")
-
+                    return rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
                 variant_found = False
                 for variant in post.variants:
                     if variant.get("attributes") == selection_attrs:
                         if variant.get("stock", 0) < quantity_in_cart:
                             attr_str = ', '.join(selection_attrs.values())
-                            return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Tu compra ha sido cancelada.")
+                            return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Compra cancelada.")
                         variant_found = True
                         break
-                
                 if not variant_found:
-                    return rx.toast.error(f"La variante seleccionada para '{post.title}' ya no existe. Compra cancelada.")
+                    return rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
 
-            # --- FASE 2: Creación de Compra y Deducción de Stock ---
+            # --- Creación de la Orden ---
+            initial_status = (
+                PurchaseStatus.PENDING_PAYMENT
+                if self.payment_method == "Online"
+                else PurchaseStatus.PENDING_CONFIRMATION
+            )
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
                 total_price=summary["grand_total"],
                 shipping_applied=summary["shipping_cost"],
-                status=PurchaseStatus.PENDING_CONFIRMATION,
+                status=initial_status,
                 payment_method=self.payment_method,
                 shipping_name=self.default_shipping_address.name,
                 shipping_city=self.default_shipping_address.city,
                 shipping_neighborhood=self.default_shipping_address.neighborhood,
                 shipping_address=self.default_shipping_address.address,
-                shipping_phone=self.default_shipping_address.phone
+                shipping_phone=self.default_shipping_address.phone,
             )
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
-            
+
+            # --- Deducción de stock y creación de items (sin cambios) ---
             for cart_key, quantity_in_cart in self.cart.items():
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
                 selection_parts = parts[2:]
                 selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
-                
                 post = post_map.get(prod_id)
-                
-                # Deducir el stock de la variante correcta
                 for variant in post.variants:
                     if variant.get("attributes") == selection_attrs:
                         variant["stock"] -= quantity_in_cart
                         break
-                
-                # Marcar el post para ser actualizado en la sesión
                 session.add(post)
-
-                # Crear el registro del artículo comprado
                 session.add(PurchaseItemModel(
                     purchase_id=new_purchase.id,
                     blog_post_id=post.id,
                     quantity=quantity_in_cart,
                     price_at_purchase=post.price,
-                    selected_variant=selection_attrs # Guarda la variante exacta
+                    selected_variant=selection_attrs,
                 ))
-
-            # --- FASE 3: Verificación de Desactivación Automática ---
-            for post in post_map.values():
-                total_stock = sum(v.get("stock", 0) for v in post.variants)
-                if total_stock <= 0:
-                    post.publish_active = False
-                    session.add(post)
 
             session.commit()
 
+        # --- Lógica final (fuera de la sesión) ---
         self.cart.clear()
         self.default_shipping_address = None
-        yield AppState.notify_admin_of_new_purchase
-        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-        return rx.redirect("/my-purchases")
+
+        if self.payment_method == "Online":
+            yield rx.toast.success("¡Pedido recibido! El vendedor te contactará con el enlace de pago.")
+            return rx.redirect("/payment-pending")
+        else:
+            yield AppState.notify_admin_of_new_purchase
+            yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+            return rx.redirect("/my-purchases")
 
     def toggle_form(self):
         self.show_form = not self.show_form

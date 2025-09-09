@@ -1,0 +1,9 @@
+# .env
+
+# ... (otras variables que tengas) ...
+
+# --- Claves de Wompi (usar las de _test_ para desarrollo) ---
+WOMPI_PUBLIC_KEY="pub_test_y1wM6shCIi9verRUjFAAVfxF6cKqyDcX"
+WOMPI_PRIVATE_KEY="prv_test_1V2nRDY1cUJTkLQ2k1rXKk047"
+WOMPI_REDIRECT_URL="http://localhost:3000/payment-status"
+WOMPI_EVENTS_SECRET="test_events_uBrxthHpbDPzg4vMhrVVa7JQ"

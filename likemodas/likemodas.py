@@ -6,6 +6,7 @@ import reflex_local_auth
 from likemodas.account import profile_page
 from likemodas.admin.profile_page import seller_profile_page
 from likemodas.admin.tickets_page import admin_tickets_page_content
+from likemodas.pages import payment_pending
 
 from .state import AppState
 from .ui.base import base_page
@@ -31,6 +32,7 @@ from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTACIÓN
 from . import navigation
+from .pages import payment_status # <-- Importa la nueva página
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
 
@@ -140,3 +142,16 @@ app.add_page(
     title="Devolución o Cambio",
 )
 
+# --- AÑADE ESTA RUTA ---
+app.add_page(
+    base_page(payment_status.payment_status_page()),
+    route="/payment-status",
+    title="Estado del Pago"
+)
+
+# AÑADE ESTA RUTA NUEVA
+app.add_page(
+    base_page(payment_pending.payment_pending_page()),
+    route="/payment-pending",
+    title="Pago Pendiente"
+)

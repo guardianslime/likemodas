@@ -30,6 +30,8 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     except Exception:
         return utc_dt.strftime('%Y-%m-%d %H:%M')
     
+
+    
 class SavedPostLink(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id", primary_key=True)
     blogpostmodel_id: int = Field(foreign_key="blogpostmodel.id", primary_key=True)
@@ -40,6 +42,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
 
 class PurchaseStatus(str, enum.Enum):
+    PENDING_PAYMENT = "pending_payment"
     PENDING_CONFIRMATION = "pending_confirmation"
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
@@ -261,6 +264,10 @@ class PurchaseModel(rx.Model, table=True):
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     payment_method: str = Field(default="online", nullable=False)
+    # --- CAMPOS AÑADIDOS PARA WOMPI ---
+    wompi_transaction_id: Optional[str] = Field(default=None, index=True, unique=True)
+    wompi_events: list = Field(default_factory=list, sa_column=Column(JSON))
+    # --- FIN DE CAMPOS AÑADIDOS ---
     estimated_delivery_date: Optional[datetime] = Field(default=None)
     delivery_confirmation_sent_at: Optional[datetime] = Field(default=None)
     user_confirmed_delivery_at: Optional[datetime] = Field(default=None)
