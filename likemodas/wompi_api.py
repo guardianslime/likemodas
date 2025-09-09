@@ -9,7 +9,7 @@ from sqlmodel import select
 from .models import PurchaseModel, PurchaseStatus, UserInfo
 from .wompi_client import wompi
 
-@rx.api("/wompi/create-transaction")
+@rx.api.api("/wompi/create-transaction") # <-- ✨ CAMBIA @rx.api POR @rx.api.api ✨
 async def create_transaction(request: Request):
     """
     Crea una transacción en Wompi a partir de un ID de compra.
