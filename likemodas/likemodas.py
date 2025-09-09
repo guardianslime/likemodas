@@ -34,8 +34,8 @@ app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# 2. Montamos el grupo de rutas de la API en la aplicación principal
-app.add_api_route_group(wompi_router, prefix="/api")
+# 2. Montamos el grupo de rutas de la API con el método correcto: include_router
+app.include_router(wompi_router, prefix="/api")
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
