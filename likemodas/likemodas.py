@@ -10,9 +10,10 @@ from likemodas.invoice.state import InvoiceState
 from likemodas import navigation
 
 # Importa el nuevo módulo de la API de Wompi para que Reflex lo detecte
-from likemodas.api import wompi_api 
+from likemodas.api.wompi_api import wompi_router 
 
 # Importaciones de todas las páginas
+
 from likemodas.account import profile_page, saved_posts, shipping_info
 from likemodas.admin import page as admin_page
 from likemodas.admin.profile_page import seller_profile_page
@@ -32,6 +33,9 @@ from likemodas.returns import page as returns_page
 app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
+
+# 2. Montamos el grupo de rutas de la API en la aplicación principal
+app.add_api_route_group(wompi_router, prefix="/api")
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(

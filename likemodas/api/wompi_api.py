@@ -1,16 +1,13 @@
-# likemodas/api/wompi_api.py (Versión Corregida y Final)
+# likemodas/api/wompi_api.py (Versión Final con APIRouter)
 
 import os
 import httpx
 import reflex as rx
 import hashlib
 import sqlalchemy
-from fastapi import Request
+from fastapi import Request, APIRouter
 from sqlmodel import select
 from datetime import datetime, timezone
-
-# 1. Importamos el objeto 'app' desde tu archivo principal
-from likemodas.likemodas import app
 
 from ..models import PurchaseModel, PurchaseStatus, BlogPostModel, PurchaseItemModel
 from ..state import AppState
@@ -21,8 +18,11 @@ WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
 WOMPI_PRIVATE_KEY = os.getenv("WOMPI_PRIVATE_KEY")
 WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
 
-# 2. Cambiamos @rx.api por @app.api_route
-@app.api_route("/wompi/create_checkout_session")
+# Creamos un router independiente para las rutas de Wompi
+wompi_router = APIRouter()
+
+# Ahora las rutas se registran en el router, no en 'app'
+@wompi_router.post("/wompi/create_checkout_session")
 async def create_wompi_checkout(request: Request) -> dict:
     """
     Endpoint que recibe los datos de la compra, crea la sesión en Wompi y devuelve una URL de pago.
@@ -40,11 +40,9 @@ async def create_wompi_checkout(request: Request) -> dict:
         amount_in_cents = int(float(amount_cop) * 100)
         reference = f"likemodas-purchase-{purchase_id}"
         
-        # Calcular la firma de integridad
         concatenation = f"{reference}{amount_in_cents}COP{WOMPI_INTEGRITY_SECRET}"
         signature = hashlib.sha256(concatenation.encode("utf-8")).hexdigest()
 
-        # Datos para enviar a Wompi
         wompi_payload = {
             "currency": "COP",
             "amount_in_cents": amount_in_cents,
@@ -54,7 +52,6 @@ async def create_wompi_checkout(request: Request) -> dict:
             "redirect_url": redirect_url,
         }
 
-        # La petición a Wompi para crear el "payment link"
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{WOMPI_API_URL}/checkouts",
@@ -64,7 +61,6 @@ async def create_wompi_checkout(request: Request) -> dict:
             response.raise_for_status()
             wompi_data = response.json()
             
-            # Devolvemos el ID de la sesión de Wompi para redirigir
             return {"checkout_id": wompi_data.get("data", {}).get("id")}
 
     except httpx.HTTPStatusError as e:
@@ -74,8 +70,8 @@ async def create_wompi_checkout(request: Request) -> dict:
         print(f"Error interno: {e}")
         return {"error": "Error interno del servidor."}, 500
 
-# 2. Cambiamos @rx.api por @app.api_route
-@app.api_route("/wompi/webhook")
+# La ruta del webhook también se registra en el router
+@wompi_router.post("/wompi/webhook")
 async def wompi_webhook(request: Request) -> dict:
     """
     Endpoint para recibir las notificaciones de Wompi sobre el estado del pago.
@@ -104,7 +100,6 @@ async def wompi_webhook(request: Request) -> dict:
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 session.add(purchase)
 
-                # Deducir stock
                 for item in purchase.items:
                     post = session.get(BlogPostModel, item.blog_post_id)
                     if post:
@@ -119,13 +114,11 @@ async def wompi_webhook(request: Request) -> dict:
                             session.add(post)
 
                 session.commit()
-                
-                # Opcional: Notificar al admin usando AppState
                 state = await rx.get_state(AppState)
                 await state.notify_admin_of_new_purchase()
 
             elif status in ["DECLINED", "ERROR", "VOIDED"]:
-                purchase.status = PurchaseStatus.PENDING_CONFIRMATION # O un nuevo estado "FAILED"
+                purchase.status = PurchaseStatus.PENDING_CONFIRMATION
                 session.add(purchase)
                 session.commit()
         
