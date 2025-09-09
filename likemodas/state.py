@@ -1860,9 +1860,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_payment_processing = True
         try:
             async with httpx.AsyncClient() as client:
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-                # Se obtiene la URL de la API desde la configuración global de Reflex.
-                api_url = rx.get_config().api_url
+                # --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
+                # La ruta correcta para obtener la configuración es a través de rx.config
+                api_url = rx.config.get_config().api_url
 
                 resp = await client.post(
                     f"{api_url}/api/wompi/create-transaction",
