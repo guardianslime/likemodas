@@ -12,6 +12,7 @@ import bcrypt
 import re
 import asyncio
 import math
+import httpx # Asegúrate de que httpx esté importado
 from collections import defaultdict
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
@@ -1848,15 +1849,59 @@ class AppState(reflex_local_auth.LocalAuthState):
     search_neighborhood: str = ""
     default_shipping_address: Optional[ShippingAddressModel] = None
 
+    # Variables de estado para el proceso de pago
+    checkout_url: str = ""
+    is_payment_processing: bool = False
+
+    async def start_payment(self, purchase_id: int):
+        """
+        Llama al backend para crear una transacción en Wompi y redirige al usuario.
+        """
+        self.is_payment_processing = True
+        try:
+            async with httpx.AsyncClient() as client:
+                # --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
+                # La ruta correcta para obtener la configuración es a través de rx.config
+                api_url = rx.config.get_config().api_url
+
+                resp = await client.post(
+                    f"{api_url}/api/create_transaction", # <-- CAMBIA la ruta aquí si es necesario
+                    json={"purchase_id": purchase_id},
+                    timeout=20.0
+                )
+                
+                resp.raise_for_status() 
+                
+                data = resp.json()
+                payment_link = data.get("data", {}).get("payment_link", {}).get("href")
+                
+                if not payment_link:
+                    yield rx.toast.error("No se pudo obtener el enlace de pago. Por favor, intente de nuevo.")
+                    self.is_payment_processing = False
+                    return
+
+                self.is_payment_processing = False
+                yield rx.redirect(payment_link)
+
+        except httpx.HTTPStatusError as e:
+            error_message = f"Error al iniciar el pago: {e.response.text}"
+            print(error_message)
+            yield rx.toast.error("No se pudo iniciar el proceso de pago. Por favor, contacte a soporte.")
+        except Exception as e:
+            error_message = f"Ocurrió un error inesperado: {e}"
+            print(error_message)
+            yield rx.toast.error("Ocurrió un error inesperado. Por favor, intente de nuevo más tarde.")
+        
+        self.is_payment_processing = False
+
+
     @rx.event
     def handle_checkout(self):
         """
-        Procesa la compra:
-        1. Bloquea los productos en la BD para evitar sobreventas.
-        2. Verifica el stock de cada variante específica.
-        3. Si hay stock, deduce la cantidad y crea el registro de compra.
-        4. Si un producto se queda sin stock, lo desactiva automáticamente.
+        Procesa la compra. Si es online, crea la orden en estado PENDING_PAYMENT
+        y luego inicia la pasarela. Si es contra entrega, funciona como antes.
         """
+        # 1. Validaciones iniciales
         if not self.is_authenticated or not self.default_shipping_address:
             return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
         if not self.authenticated_user_info:
@@ -1865,11 +1910,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.info("Tu carrito está vacío.")
 
         summary = self.cart_summary
+        
+        # Variable para guardar el ID de la compra de forma segura
+        purchase_id_for_payment = None
 
         with rx.session() as session:
+            # 2. Bloqueo de productos y verificación de stock
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
             
-            # Bloquea las filas de los productos en la BD para una transacción segura
             posts_to_update = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .where(BlogPostModel.id.in_(product_ids))
@@ -1877,7 +1925,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
             post_map = {p.id: p for p in posts_to_update}
 
-            # --- FASE 1: Verificación de Stock ---
             for cart_key, quantity_in_cart in self.cart.items():
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
@@ -1886,7 +1933,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 post = post_map.get(prod_id)
                 if not post:
-                    return rx.toast.error(f"El producto con ID {prod_id} ya no está disponible. Compra cancelada.")
+                    return rx.toast.error(f"Uno de los productos ya no está disponible. Compra cancelada.")
 
                 variant_found = False
                 for variant in post.variants:
@@ -1900,12 +1947,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if not variant_found:
                     return rx.toast.error(f"La variante seleccionada para '{post.title}' ya no existe. Compra cancelada.")
 
-            # --- FASE 2: Creación de Compra y Deducción de Stock ---
+            # 3. Creación del registro de la compra
+            initial_status = (
+                PurchaseStatus.PENDING_PAYMENT
+                if self.payment_method == "Online"
+                else PurchaseStatus.PENDING_CONFIRMATION
+            )
+
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
                 total_price=summary["grand_total"],
                 shipping_applied=summary["shipping_cost"],
-                status=PurchaseStatus.PENDING_CONFIRMATION,
+                status=initial_status,
                 payment_method=self.payment_method,
                 shipping_name=self.default_shipping_address.name,
                 shipping_city=self.default_shipping_address.city,
@@ -1917,33 +1970,34 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
             
+            # Se guarda el ID de forma segura mientras la sesión está activa
+            purchase_id_for_payment = new_purchase.id
+
+            # 4. Deducción de stock y creación de los items de la compra
             for cart_key, quantity_in_cart in self.cart.items():
+                # ... (Lógica idéntica a la verificación para encontrar el post y la variante)
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
                 selection_parts = parts[2:]
                 selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
-                
                 post = post_map.get(prod_id)
                 
-                # Deducir el stock de la variante correcta
                 for variant in post.variants:
                     if variant.get("attributes") == selection_attrs:
                         variant["stock"] -= quantity_in_cart
                         break
                 
-                # Marcar el post para ser actualizado en la sesión
                 session.add(post)
 
-                # Crear el registro del artículo comprado
                 session.add(PurchaseItemModel(
                     purchase_id=new_purchase.id,
                     blog_post_id=post.id,
                     quantity=quantity_in_cart,
                     price_at_purchase=post.price,
-                    selected_variant=selection_attrs # Guarda la variante exacta
+                    selected_variant=selection_attrs
                 ))
 
-            # --- FASE 3: Verificación de Desactivación Automática ---
+            # 5. Desactivación de productos si se agota el stock
             for post in post_map.values():
                 total_stock = sum(v.get("stock", 0) for v in post.variants)
                 if total_stock <= 0:
@@ -1952,11 +2006,17 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             session.commit()
 
-        self.cart.clear()
-        self.default_shipping_address = None
-        yield AppState.notify_admin_of_new_purchase
-        yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-        return rx.redirect("/my-purchases")
+        # 6. Lógica final fuera de la sesión
+        if self.payment_method == "Online":
+            # Para pagos online, se inicia la pasarela de pago usando el ID guardado
+            yield AppState.start_payment(purchase_id_for_payment)
+        else:
+            # Para contra entrega, se limpia el carrito y se redirige
+            self.cart.clear()
+            self.default_shipping_address = None
+            yield AppState.notify_admin_of_new_purchase
+            yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+            return rx.redirect("/my-purchases")
 
     def toggle_form(self):
         self.show_form = not self.show_form

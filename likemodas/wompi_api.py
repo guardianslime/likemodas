@@ -8,14 +8,16 @@ from datetime import datetime, timezone
 from sqlmodel import select
 from .models import PurchaseModel, PurchaseStatus
 from .wompi_client import wompi
-from .app import app  # Importamos la app
 
-# --- ✨ SOLUCIÓN FINAL: Usamos el decorador nativo de FastAPI ✨ ---
-@app.add_api_route("/api/wompi/create-transaction", methods=["POST"])
+# En la versión 0.8.5, @rx.api sin argumentos crea una ruta
+# usando el nombre de la función. La ruta será /api/create_transaction
+@rx.api
 async def create_transaction(request: Request):
     """
-    Crea una transacción en Wompi a partir de un ID de compra.
+    Crea una transacción en Wompi. Espera una petición POST.
     """
+    if request.method != "POST":
+        return Response(content="Method Not Allowed", status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
     try:
         body = await request.json()
         purchase_id = body.get("purchase_id")
@@ -57,13 +59,14 @@ async def create_transaction(request: Request):
         print(f"ERROR: No se pudo crear la transacción en Wompi. Detalles: {e}")
         return Response(content="Error interno del servidor al procesar el pago.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# --- ✨ HAZ EL MISMO CAMBIO AQUÍ ✨ ---
-@app.add_api_route("/api/wompi/webhook", methods=["POST"])
+# La ruta será /api/wompi_webhook
+@rx.api
 async def wompi_webhook(request: Request):
     """
     Recibe y procesa notificaciones POST de Wompi (webhooks).
     """
+    if request.method != "POST":
+        return Response(content="Method Not Allowed", status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
     try:
         body = await request.json()
         
