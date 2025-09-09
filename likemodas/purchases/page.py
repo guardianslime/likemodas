@@ -1,3 +1,4 @@
+# likemodas/purchases/page.py
 import reflex as rx
 import reflex_local_auth
 
@@ -79,7 +80,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 rx.spacer(),
                 rx.vstack(
-                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
+                    rx.badge(purchase.status.replace("_", " ").title(), color_scheme="blue", variant="soft", size="2"),
                     align_items="end",
                 ),
                 justify="between",
@@ -118,28 +119,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="2"
             ),
             
-            # --- ✨ INICIO DEL BLOQUE A ELIMINAR ✨ ---
-            rx.cond(
-                purchase.status == PurchaseStatus.PENDING_PAYMENT.value,
-                rx.vstack(
-                    rx.divider(margin_y="1em"),
-                    rx.callout(
-                        "Tu pago anterior no pudo ser procesado.",
-                        icon="triangle_alert",
-                        color_scheme="orange",
-                        width="100%"
-                    ),
-                    rx.button(
-                        "Intentar Pagar de Nuevo",
-                        on_click=AppState.start_payment(purchase.id),
-                        is_loading=AppState.is_payment_processing,
-                        width="100%",
-                        margin_top="0.5em"
-                    ),
-                    width="100%",
-                )
-            ),
-            # --- ✨ FIN DEL BLOQUE A ELIMINAR ✨ ---
+            # --- Lógica de estado de entrega ---
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                  rx.vstack(
@@ -149,11 +129,9 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     align_items="center"
                  )
             ),
-            # --- ✨ FIN DE LA LÓGICA DE ESTADO DE ENTREGA ✨ ---
 
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
-                # --- INICIO DE LA MODIFICACIÓN ---
                 rx.hstack(
                     rx.link(
                         rx.button("Imprimir Factura", variant="outline", width="100%"),
@@ -162,7 +140,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                         target="_blank",
                         width="100%",
                     ),
-                    # --- BOTÓN NUEVO ---
                     rx.button(
                         "Devolución o Cambio",
                         on_click=AppState.go_to_return_page(purchase.id),
@@ -174,7 +151,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     margin_top="1em",
                     width="100%",
                 ),
-                # --- FIN DE LA MODIFICACIÓN ---
             ),
             spacing="4", width="100%"
         ),
@@ -205,7 +181,6 @@ def purchase_history_content() -> rx.Component:
             spacing="6", width="100%", max_width="960px", align="center"
         ),
         width="100%",
-        # ✨ Se ejecuta al cargar la página para auto-confirmar entregas antiguas
         on_mount=AppState.check_for_auto_confirmations
     )
     return account_layout(page_content)
