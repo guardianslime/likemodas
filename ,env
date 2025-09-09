@@ -1,0 +1,9 @@
+# .env
+
+# ... (otras claves existentes) ...
+
+# --- Claves de Wompi (usar las de _test_ para desarrollo) ---
+WOMPI_PUBLIC_KEY=pub_test_xxxxxxxxxxxxxxxxxxxxxxxx
+WOMPI_PRIVATE_KEY=prv_test_xxxxxxxxxxxxxxxxxxxxxxxx
+WOMPI_REDIRECT_URL="http://localhost:3000/payment-status" # URL de tu app
+WOMPI_EVENTS_SECRET=events_test_xxxxxxxxxxxxxxxxxxxxxxxx
