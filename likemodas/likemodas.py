@@ -7,7 +7,7 @@ import httpx
 import hashlib
 import os
 import sqlalchemy
-from fastapi import Request as FastAPIRequest # Usamos un alias para evitar confusión
+from fastapi import Request as FastAPIRequest
 from sqlmodel import select
 from datetime import datetime, timezone
 
@@ -18,7 +18,7 @@ from likemodas.invoice.state import InvoiceState
 from likemodas.models import PurchaseModel, PurchaseStatus, BlogPostModel, PurchaseItemModel
 from likemodas import navigation
 
-# Importaciones de todas las páginas (abreviado por claridad)
+# Importaciones de páginas (abreviado por claridad)
 from likemodas.account import profile_page, saved_posts, shipping_info
 from likemodas.admin import page as admin_page
 from likemodas.admin.profile_page import seller_profile_page
@@ -34,22 +34,24 @@ from likemodas.pages import landing, search_results, seller_page
 from likemodas.purchases import page as purchases_page
 from likemodas.returns import page as returns_page
 
-# --- 1. Definición de la App (como al principio) ---
+# --- 1. Definición de la App ---
 app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# --- 2. Lógica y Rutas de la API de Wompi (viven aquí ahora) ---
-
+# --- 2. Lógica y Rutas de la API de Wompi ---
 WOMPI_API_URL = "https://sandbox.wompi.co/v1"
 WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
 WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
 
-@app._api("/api/wompi/create_checkout_session", methods=["POST"])
+@app._api("/api/wompi/create_checkout_session")
 async def create_wompi_checkout_endpoint(scope, receive, send):
-    """
-    Este es un endpoint ASGI crudo. Envuelve la lógica de FastAPI manualmente.
-    """
+    # Verificamos que la petición sea POST
+    if scope['method'] != 'POST':
+        response = rx.Response(content="Method Not Allowed", status_code=405)
+        await response(scope, receive, send)
+        return
+
     request = FastAPIRequest(scope, receive)
     try:
         body = await request.json()
@@ -90,11 +92,14 @@ async def create_wompi_checkout_endpoint(scope, receive, send):
     
     await response(scope, receive, send)
 
-@app._api("/api/wompi/webhook", methods=["POST"])
+@app._api("/api/wompi/webhook")
 async def wompi_webhook_endpoint(scope, receive, send):
-    """
-    Endpoint para recibir las notificaciones de Wompi.
-    """
+    # Verificamos que la petición sea POST
+    if scope['method'] != 'POST':
+        response = rx.Response(content="Method Not Allowed", status_code=405)
+        await response(scope, receive, send)
+        return
+
     request = FastAPIRequest(scope, receive)
     try:
         payload = await request.json()
@@ -120,7 +125,7 @@ async def wompi_webhook_endpoint(scope, receive, send):
                                 if variant.get("attributes") == item.selected_variant:
                                     variant["stock"] -= item.quantity
                                     sqlalchemy.orm.attributes.flag_modified(post, "variants")
-                                    sessions.add(post)
+                                    session.add(post)
                                     break
                     
                     session.commit()
