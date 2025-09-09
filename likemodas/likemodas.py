@@ -31,6 +31,7 @@ from .contact import page as contact_page
 from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTACIÓN
 from . import navigation
+from .pages import payment_status # <-- Importa la nueva página
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
 
@@ -140,3 +141,9 @@ app.add_page(
     title="Devolución o Cambio",
 )
 
+# --- AÑADE ESTA RUTA ---
+app.add_page(
+    base_page(payment_status.payment_status_page()),
+    route="/payment-status",
+    title="Estado del Pago"
+)

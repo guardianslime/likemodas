@@ -118,31 +118,28 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="2"
             ),
             
-            # --- ✨ INICIO DE LA LÓGICA DE ESTADO DE ENTREGA MEJORADA ✨ ---
+            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
             rx.cond(
-                purchase.status == PurchaseStatus.SHIPPED.value,
+                purchase.status == PurchaseStatus.PENDING_PAYMENT.value,
                 rx.vstack(
                     rx.divider(margin_y="1em"),
-                    rx.text("Tu pedido está en camino.", size="3", color_scheme="green"),
-                    
-                    # --- ✨ NUEVA LÍNEA ✨ ---
-                    # Muestra la fecha de entrega estimada que viene del estado.
-                    rx.text(
-                        f"Llegada estimada: {purchase.estimated_delivery_date_formatted}",
-                        size="2", 
-                        color_scheme="gray"
+                    rx.callout(
+                        "Tu pago anterior no pudo ser procesado.",
+                        icon="alert_triangle",
+                        color_scheme="orange",
+                        width="100%"
                     ),
-
                     rx.button(
-                        "Confirmar Recepción del Pedido",
-                        on_click=AppState.user_confirm_delivery(purchase.id),
+                        "Intentar Pagar de Nuevo",
+                        on_click=AppState.start_payment(purchase.id),
+                        is_loading=AppState.is_payment_processing,
                         width="100%",
                         margin_top="0.5em"
                     ),
-                    spacing="2",
-                    width="100%"
+                    width="100%",
                 )
             ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                  rx.vstack(
