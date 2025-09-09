@@ -118,7 +118,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="2"
             ),
             
-            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+            # --- ✨ INICIO DEL BLOQUE A ELIMINAR ✨ ---
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_PAYMENT.value,
                 rx.vstack(
@@ -139,7 +139,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     width="100%",
                 )
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+            # --- ✨ FIN DEL BLOQUE A ELIMINAR ✨ ---
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                  rx.vstack(
