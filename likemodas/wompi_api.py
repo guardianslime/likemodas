@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 from sqlmodel import select
 from .models import PurchaseModel, PurchaseStatus, UserInfo
 from .wompi_client import wompi
-from .app import app  # <-- 1. IMPORTA 'app' DESDE EL NUEVO ARCHIVO
+from .app import app
 
-@app.api("/wompi/create-transaction")  # <-- 2. USA EL DECORADOR CORRECTO @app.api
+@app._api("/wompi/create-transaction")  # <-- ✨ CORRECCIÓN FINAL: USA @app._api ✨
 async def create_transaction(request: Request):
     """
     Crea una transacción en Wompi a partir de un ID de compra.
@@ -21,7 +21,6 @@ async def create_transaction(request: Request):
         purchase_id = body.get("purchase_id")
         
         with rx.session() as session:
-            # Usamos selectinload para cargar eficientemente la relación con userinfo
             purchase = session.exec(
                 select(PurchaseModel).options(rx.selectinload(PurchaseModel.userinfo)).where(PurchaseModel.id == purchase_id)
             ).first()
@@ -59,7 +58,7 @@ async def create_transaction(request: Request):
         return Response(content="Error interno del servidor al procesar el pago.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@app.api("/wompi/webhook") # <-- 3. HAZ EL MISMO CAMBIO AQUÍ
+@app._api("/wompi/webhook") # <-- ✨ HAZ EL MISMO CAMBIO AQUÍ ✨
 async def wompi_webhook(request: Request):
     """
     Recibe y procesa notificaciones de Wompi.
@@ -68,7 +67,6 @@ async def wompi_webhook(request: Request):
     try:
         body = await request.json()
         
-        # --- VALIDACIÓN DE FIRMA ---
         wompi_events_secret = os.getenv("WOMPI_EVENTS_SECRET")
         if not wompi_events_secret:
             print("FATAL: WOMPI_EVENTS_SECRET no está configurado.")
@@ -95,7 +93,6 @@ async def wompi_webhook(request: Request):
             print(f"ALERTA DE SEGURIDAD: Firma de webhook inválida. Petición rechazada.")
             return Response(content="Firma inválida", status_code=status.HTTP_403_FORBIDDEN)
         
-        # --- PROCESAMIENTO DEL EVENTO ---
         event_type = body.get("event")
         if event_type == "transaction.updated":
             transaction_id = transaction_data.get("id")
