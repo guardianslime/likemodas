@@ -30,12 +30,7 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     except Exception:
         return utc_dt.strftime('%Y-%m-%d %H:%M')
     
-class PurchaseStatus(str, enum.Enum):
-    PENDING_PAYMENT = "pending_payment"  # <-- ✨ AÑADE ESTA LÍNEA ✨
-    PENDING_CONFIRMATION = "pending_confirmation"
-    CONFIRMED = "confirmed"
-    SHIPPED = "shipped"
-    DELIVERED = "delivered"
+
     
 class SavedPostLink(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id", primary_key=True)
@@ -47,6 +42,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
 
 class PurchaseStatus(str, enum.Enum):
+    PENDING_PAYMENT = "pending_payment"
     PENDING_CONFIRMATION = "pending_confirmation"
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
