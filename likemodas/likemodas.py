@@ -33,9 +33,9 @@ from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTA
 from . import navigation
 from .pages import payment_status # <-- Importa la nueva página
 from . import wompi_api # <-- ✨ AÑADE ESTA LÍNEA AQUÍ ✨
-from .app import app # <-- ✨ 1. IMPORTA 'app' DESDE EL NUEVO ARCHIVO ✨
 
 
+app = rx.App(style={"font_family": "Arial, sans-serif"})
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
