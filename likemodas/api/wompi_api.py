@@ -1,28 +1,29 @@
-# likemodas/api/wompi_api.py (Versión Final y Corregida)
+# likemodas/api/wompi_api.py (Versión Final con FastAPI)
 
 import os
 import httpx
 import reflex as rx
 import hashlib
 import sqlalchemy
-from fastapi import Request
+from fastapi import FastAPI, Request
 from sqlmodel import select
 from datetime import datetime, timezone
 
-# 1. Importamos 'app' desde el nuevo archivo central 'app_def'
-from ..app_def import app
-
+# NO importamos 'app' de ningún lado
 from ..models import PurchaseModel, PurchaseStatus, BlogPostModel, PurchaseItemModel
 from ..state import AppState
 
-# --- Variables de Entorno de Wompi ---
+# --- Variables de Entorno ---
 WOMPI_API_URL = "https://sandbox.wompi.co/v1"
 WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
 WOMPI_PRIVATE_KEY = os.getenv("WOMPI_PRIVATE_KEY")
 WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
 
-# 2. Usamos el decorador @app.api_route, que es el correcto
-@app.api_route("/api/wompi/create_checkout_session", methods=["POST"])
+# 1. Creamos una instancia de FastAPI independiente
+wompi_api = FastAPI()
+
+# 2. Usamos el decorador de la instancia de FastAPI
+@wompi_api.post("/wompi/create_checkout_session")
 async def create_wompi_checkout(request: Request) -> dict:
     """
     Endpoint que recibe los datos de la compra, crea la sesión en Wompi y devuelve una URL de pago.
@@ -70,7 +71,7 @@ async def create_wompi_checkout(request: Request) -> dict:
         print(f"Error interno: {e}")
         return {"error": "Error interno del servidor."}, 500
 
-@app.api_route("/api/wompi/webhook", methods=["POST"])
+@wompi_api.post("/wompi/webhook")
 async def wompi_webhook(request: Request) -> dict:
     """
     Endpoint para recibir las notificaciones de Wompi sobre el estado del pago.

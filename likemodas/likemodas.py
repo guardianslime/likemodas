@@ -31,6 +31,10 @@ from likemodas.returns import page as returns_page
 
 # 3. La definición de 'app = rx.App(...)' se ELIMINÓ de este archivo.
 
+# 2. Montamos la aplicación de FastAPI en la ruta /api
+# Este es el método correcto y a prueba de versiones
+app.mount(wompi_api, "/api")
+
 # --- Añadimos todas las páginas al objeto 'app' importado ---
 app.add_page(
     base_page(landing.landing_content()),
