@@ -22,7 +22,7 @@ def wompi_redirect_form() -> rx.Component:
         ),
         id="wompi_form",
         action="https://checkout.wompi.co/p/",
-        method="get",
+        method="GET",
         display="none",
     )
 
@@ -94,7 +94,6 @@ def cart_item_row(item: CartItemData) -> rx.Component:
 
 @reflex_local_auth.require_login
 def cart_page_content() -> rx.Component:
-    """Página principal del carrito de compras."""
     return rx.vstack(
         rx.heading("Mi Carrito", size="8", color_scheme="violet"),
         rx.cond(
@@ -166,9 +165,6 @@ def cart_page_content() -> rx.Component:
                 min_height="50vh"
             )
         ),
-        
-        # El formulario oculto de Wompi se añade aquí
         wompi_redirect_form(),
-
         align="center", width="100%", padding="2em"
     )

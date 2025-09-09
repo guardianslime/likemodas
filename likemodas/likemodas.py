@@ -39,10 +39,15 @@ app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# --- Endpoint del Webhook ---
-# Esta es la sintaxis correcta para tu versión
-@app.api
-async def wompi_webhook(request: FastAPIRequest):
+# --- 2. Webhook de Wompi ---
+@app._api("/api/wompi/webhook")
+async def wompi_webhook_endpoint(scope, receive, send):
+    if scope['method'] != 'POST':
+        response = rx.Response(content="Method Not Allowed", status_code=405)
+        await response(scope, receive, send)
+        return
+
+    request = FastAPIRequest(scope, receive)
     try:
         payload = await request.json()
         print(f"Webhook de Wompi recibido: {payload}")
@@ -74,11 +79,13 @@ async def wompi_webhook(request: FastAPIRequest):
                     state = await rx.get_state(AppState)
                     await state.notify_admin_of_new_purchase()
 
-        return {"status": "ok"}
+        response = rx.Response(content=json.dumps({"status": "ok"}), status_code=200, media_type="application/json")
 
     except Exception as e:
         print(f"Error procesando webhook: {e}")
-        return {"error": "Error interno"}, 500
+        response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
+
+    await response(scope, receive, send)
 
 # --- 4. Añadimos todas las páginas al objeto 'app' ---
 app.add_page(
