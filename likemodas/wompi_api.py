@@ -10,7 +10,9 @@ from .models import PurchaseModel, PurchaseStatus, UserInfo
 from .wompi_client import wompi
 from .app import app
 
-@app._api("/wompi/create-transaction")  # <-- ✨ CORRECCIÓN FINAL: USA @app._api ✨
+# --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
+# Se envuelve la función con el decorador de método POST de la app.
+@app.post("/api/wompi/create-transaction")
 async def create_transaction(request: Request):
     """
     Crea una transacción en Wompi a partir de un ID de compra.
@@ -58,7 +60,8 @@ async def create_transaction(request: Request):
         return Response(content="Error interno del servidor al procesar el pago.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@app._api("/wompi/webhook") # <-- ✨ HAZ EL MISMO CAMBIO AQUÍ ✨
+# --- ✨ HAZ EL MISMO CAMBIO AQUÍ ✨ ---
+@app.post("/api/wompi/webhook")
 async def wompi_webhook(request: Request):
     """
     Recibe y procesa notificaciones de Wompi.
