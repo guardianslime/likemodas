@@ -6,18 +6,20 @@ import hmac
 from fastapi import Request, Response, status
 from datetime import datetime, timezone
 from sqlmodel import select
-from .models import PurchaseModel, PurchaseStatus, UserInfo
+from .models import PurchaseModel, PurchaseStatus
 from .wompi_client import wompi
-from .app import app
 
-# --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
-# Se envuelve la función con el decorador de método POST de la app.
-@app.post("/api/wompi/create-transaction")
+# El decorador @rx.api es el correcto, pero la clave es cómo la función
+# maneja la petición. FastAPI (usado por Reflex) diferencia el método
+# (GET, POST, etc.) automáticamente.
+@rx.api
 async def create_transaction(request: Request):
     """
     Crea una transacción en Wompi a partir de un ID de compra.
-    Obtiene los datos sensibles (monto, email) directamente desde la BD.
+    Espera una petición POST con un JSON que contiene 'purchase_id'.
     """
+    if request.method != "POST":
+        return Response(content="Method Not Allowed", status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
     try:
         body = await request.json()
         purchase_id = body.get("purchase_id")
@@ -59,14 +61,13 @@ async def create_transaction(request: Request):
         print(f"ERROR: No se pudo crear la transacción en Wompi. Detalles: {e}")
         return Response(content="Error interno del servidor al procesar el pago.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-# --- ✨ HAZ EL MISMO CAMBIO AQUÍ ✨ ---
-@app.post("/api/wompi/webhook")
+@rx.api
 async def wompi_webhook(request: Request):
     """
-    Recibe y procesa notificaciones de Wompi.
-    Implementa una validación de firma HMAC-SHA256 para seguridad.
+    Recibe y procesa notificaciones POST de Wompi (webhooks).
     """
+    if request.method != "POST":
+        return Response(content="Method Not Allowed", status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
     try:
         body = await request.json()
         

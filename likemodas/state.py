@@ -1865,7 +1865,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 api_url = rx.config.get_config().api_url
 
                 resp = await client.post(
-                    f"{api_url}/api/wompi/create-transaction",
+                    f"{api_url}/api/create_transaction", # <-- CAMBIA la ruta aquí si es necesario
                     json={"purchase_id": purchase_id},
                     timeout=20.0
                 )
