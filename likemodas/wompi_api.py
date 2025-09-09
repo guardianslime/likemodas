@@ -8,18 +8,14 @@ from datetime import datetime, timezone
 from sqlmodel import select
 from .models import PurchaseModel, PurchaseStatus
 from .wompi_client import wompi
+from .app import app  # Importamos la app
 
-# El decorador @rx.api es el correcto, pero la clave es cómo la función
-# maneja la petición. FastAPI (usado por Reflex) diferencia el método
-# (GET, POST, etc.) automáticamente.
-@rx.api
+# --- ✨ SOLUCIÓN FINAL: Usamos el decorador nativo de FastAPI ✨ ---
+@app.add_api_route("/api/wompi/create-transaction", methods=["POST"])
 async def create_transaction(request: Request):
     """
     Crea una transacción en Wompi a partir de un ID de compra.
-    Espera una petición POST con un JSON que contiene 'purchase_id'.
     """
-    if request.method != "POST":
-        return Response(content="Method Not Allowed", status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
     try:
         body = await request.json()
         purchase_id = body.get("purchase_id")
@@ -61,13 +57,13 @@ async def create_transaction(request: Request):
         print(f"ERROR: No se pudo crear la transacción en Wompi. Detalles: {e}")
         return Response(content="Error interno del servidor al procesar el pago.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@rx.api
+
+# --- ✨ HAZ EL MISMO CAMBIO AQUÍ ✨ ---
+@app.add_api_route("/api/wompi/webhook", methods=["POST"])
 async def wompi_webhook(request: Request):
     """
     Recibe y procesa notificaciones POST de Wompi (webhooks).
     """
-    if request.method != "POST":
-        return Response(content="Method Not Allowed", status_code=status.HTTP_405_METHOD_NOT_ALLOWED)
     try:
         body = await request.json()
         
