@@ -1,19 +1,24 @@
-# likemodas/likemodas.py (Versión Final y Corregida)
+# likemodas/likemodas.py (Versión Final y Funcional)
 
-# 1. Importamos 'app' desde el nuevo archivo central
-from .app_def import app
+import reflex as rx
+import reflex_local_auth
+import json
+import httpx
+import hashlib
+import os
+import sqlalchemy
+from fastapi import Request as FastAPIRequest # Usamos un alias para evitar confusión
+from sqlmodel import select
+from datetime import datetime, timezone
 
 # Importaciones del proyecto
-import reflex_local_auth
 from likemodas.ui.base import base_page
 from likemodas.state import AppState
 from likemodas.invoice.state import InvoiceState
+from likemodas.models import PurchaseModel, PurchaseStatus, BlogPostModel, PurchaseItemModel
 from likemodas import navigation
 
-# 2. Importamos el módulo de la API para que las rutas se registren al iniciar
-from likemodas.api import wompi_api 
-
-# Importaciones de todas las páginas
+# Importaciones de todas las páginas (abreviado por claridad)
 from likemodas.account import profile_page, saved_posts, shipping_info
 from likemodas.admin import page as admin_page
 from likemodas.admin.profile_page import seller_profile_page
@@ -29,13 +34,108 @@ from likemodas.pages import landing, search_results, seller_page
 from likemodas.purchases import page as purchases_page
 from likemodas.returns import page as returns_page
 
-# 3. La definición de 'app = rx.App(...)' se ELIMINÓ de este archivo.
+# --- 1. Definición de la App (como al principio) ---
+app = rx.App(
+    style={"font_family": "Arial, sans-serif"},
+)
 
-# 2. Montamos la aplicación de FastAPI en la ruta /api
-# Este es el método correcto y a prueba de versiones
-app.mount(wompi_api, "/api")
+# --- 2. Lógica y Rutas de la API de Wompi (viven aquí ahora) ---
 
-# --- Añadimos todas las páginas al objeto 'app' importado ---
+WOMPI_API_URL = "https://sandbox.wompi.co/v1"
+WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
+WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
+
+@app._api("/api/wompi/create_checkout_session", methods=["POST"])
+async def create_wompi_checkout_endpoint(scope, receive, send):
+    """
+    Este es un endpoint ASGI crudo. Envuelve la lógica de FastAPI manualmente.
+    """
+    request = FastAPIRequest(scope, receive)
+    try:
+        body = await request.json()
+        purchase_id = body.get("purchase_id")
+        amount_cop = body.get("amount")
+        customer_email = body.get("customer_email")
+        redirect_url = body.get("redirect_url")
+
+        if not all([purchase_id, amount_cop, customer_email, redirect_url]):
+            response = rx.Response(content=json.dumps({"error": "Faltan datos"}), status_code=400, media_type="application/json")
+            await response(scope, receive, send)
+            return
+
+        amount_in_cents = int(float(amount_cop) * 100)
+        reference = f"likemodas-purchase-{purchase_id}"
+        concatenation = f"{reference}{amount_in_cents}COP{WOMPI_INTEGRITY_SECRET}"
+        signature = hashlib.sha256(concatenation.encode("utf-8")).hexdigest()
+
+        wompi_payload = {
+            "currency": "COP", "amount_in_cents": amount_in_cents, "reference": reference,
+            "signature:integrity": signature, "customer_email": customer_email, "redirect_url": redirect_url,
+        }
+
+        async with httpx.AsyncClient() as client:
+            wompi_response = await client.post(
+                f"{WOMPI_API_URL}/checkouts",
+                headers={"Authorization": f"Bearer {WOMPI_PUBLIC_KEY}"},
+                json=wompi_payload
+            )
+            wompi_response.raise_for_status()
+            wompi_data = wompi_response.json()
+        
+        response = rx.Response(content=json.dumps({"checkout_id": wompi_data.get("data", {}).get("id")}), status_code=200, media_type="application/json")
+
+    except Exception as e:
+        print(f"Error en create_checkout_session: {e}")
+        response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
+    
+    await response(scope, receive, send)
+
+@app._api("/api/wompi/webhook", methods=["POST"])
+async def wompi_webhook_endpoint(scope, receive, send):
+    """
+    Endpoint para recibir las notificaciones de Wompi.
+    """
+    request = FastAPIRequest(scope, receive)
+    try:
+        payload = await request.json()
+        print(f"Webhook de Wompi recibido: {payload}")
+        
+        transaction_data = payload.get("data", {}).get("transaction", {})
+        status = transaction_data.get("status")
+        reference = transaction_data.get("reference")
+
+        if reference and reference.startswith("likemodas-purchase-"):
+            purchase_id = int(reference.split("-")[-1])
+            with rx.session() as session:
+                purchase = session.get(PurchaseModel, purchase_id)
+                if purchase and status == "APPROVED" and purchase.status != PurchaseStatus.CONFIRMED:
+                    purchase.status = PurchaseStatus.CONFIRMED
+                    purchase.confirmed_at = datetime.now(timezone.utc)
+                    session.add(purchase)
+
+                    for item in purchase.items:
+                        post = session.get(BlogPostModel, item.blog_post_id)
+                        if post:
+                            for variant in post.variants:
+                                if variant.get("attributes") == item.selected_variant:
+                                    variant["stock"] -= item.quantity
+                                    sqlalchemy.orm.attributes.flag_modified(post, "variants")
+                                    sessions.add(post)
+                                    break
+                    
+                    session.commit()
+                    state = await rx.get_state(AppState)
+                    await state.notify_admin_of_new_purchase()
+
+        response = rx.Response(content=json.dumps({"status": "ok"}), status_code=200, media_type="application/json")
+
+    except Exception as e:
+        print(f"Error procesando webhook: {e}")
+        response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
+
+    await response(scope, receive, send)
+
+# --- 3. Añadimos todas las páginas al objeto 'app' ---
 app.add_page(
     base_page(landing.landing_content()),
     route="/",
