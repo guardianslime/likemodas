@@ -125,7 +125,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     rx.divider(margin_y="1em"),
                     rx.callout(
                         "Tu pago anterior no pudo ser procesado.",
-                        icon="triangle_alert", # <--- ✨ Nombre correcto
+                        icon="triangle_alert",
                         color_scheme="orange",
                         width="100%"
                     ),
