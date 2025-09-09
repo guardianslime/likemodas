@@ -39,8 +39,11 @@ app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# --- 2. Webhook de Wompi ---
-@app._api("/api/wompi/webhook")
+# --- 2. Lógica de la API de Wompi (como funciones normales) ---
+WOMPI_API_URL = "https://sandbox.wompi.co/v1"
+WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
+WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
+
 async def wompi_webhook_endpoint(scope, receive, send):
     if scope['method'] != 'POST':
         response = rx.Response(content="Method Not Allowed", status_code=405)
@@ -65,6 +68,7 @@ async def wompi_webhook_endpoint(scope, receive, send):
                     purchase.confirmed_at = datetime.now(timezone.utc)
                     session.add(purchase)
 
+                    # Deducir stock
                     for item in purchase.items:
                         post = session.get(BlogPostModel, item.blog_post_id)
                         if post:
@@ -74,7 +78,6 @@ async def wompi_webhook_endpoint(scope, receive, send):
                                     sqlalchemy.orm.attributes.flag_modified(post, "variants")
                                     session.add(post)
                                     break
-                    
                     session.commit()
                     state = await rx.get_state(AppState)
                     await state.notify_admin_of_new_purchase()
@@ -86,6 +89,15 @@ async def wompi_webhook_endpoint(scope, receive, send):
         response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
 
     await response(scope, receive, send)
+
+# --- 3. Añadimos la ruta de la API al router interno de la app ---
+# Usamos try/except para compatibilidad, pero una de estas debería funcionar en un entorno limpio.
+try:
+    # Intento 1: El método más explícito de FastAPI
+    app.app.add_api_route("/api/wompi/webhook", wompi_webhook_endpoint, methods=["POST"])
+except AttributeError:
+    # Intento 2 (Fallback): El decorador interno
+    app._api("/api/wompi/webhook")(wompi_webhook_endpoint)
 
 # --- 4. Añadimos todas las páginas al objeto 'app' ---
 app.add_page(
