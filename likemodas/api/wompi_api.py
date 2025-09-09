@@ -1,13 +1,16 @@
-# likemodas/api/wompi_api.py (Versión Final con APIRouter)
+# likemodas/api/wompi_api.py (Versión Final y Corregida)
 
 import os
 import httpx
 import reflex as rx
 import hashlib
 import sqlalchemy
-from fastapi import Request, APIRouter
+from fastapi import Request
 from sqlmodel import select
 from datetime import datetime, timezone
+
+# 1. Importamos 'app' desde el nuevo archivo central 'app_def'
+from ..app_def import app
 
 from ..models import PurchaseModel, PurchaseStatus, BlogPostModel, PurchaseItemModel
 from ..state import AppState
@@ -18,11 +21,8 @@ WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
 WOMPI_PRIVATE_KEY = os.getenv("WOMPI_PRIVATE_KEY")
 WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
 
-# Creamos un router independiente para las rutas de Wompi
-wompi_router = APIRouter()
-
-# Ahora las rutas se registran en el router, no en 'app'
-@wompi_router.post("/wompi/create_checkout_session")
+# 2. Usamos el decorador @app.api_route, que es el correcto
+@app.api_route("/api/wompi/create_checkout_session", methods=["POST"])
 async def create_wompi_checkout(request: Request) -> dict:
     """
     Endpoint que recibe los datos de la compra, crea la sesión en Wompi y devuelve una URL de pago.
@@ -70,8 +70,7 @@ async def create_wompi_checkout(request: Request) -> dict:
         print(f"Error interno: {e}")
         return {"error": "Error interno del servidor."}, 500
 
-# La ruta del webhook también se registra en el router
-@wompi_router.post("/wompi/webhook")
+@app.api_route("/api/wompi/webhook", methods=["POST"])
 async def wompi_webhook(request: Request) -> dict:
     """
     Endpoint para recibir las notificaciones de Wompi sobre el estado del pago.
