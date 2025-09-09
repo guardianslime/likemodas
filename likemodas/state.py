@@ -1913,11 +1913,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.info("Tu carrito está vacío.")
 
         summary = self.cart_summary
+        
+        # Variable para guardar el ID de la compra de forma segura
+        purchase_id_for_payment = None
 
         with rx.session() as session:
+            # 2. Bloqueo de productos y verificación de stock
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
             
-            # Bloquea las filas de los productos para una transacción segura y evitar sobreventas
             posts_to_update = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .where(BlogPostModel.id.in_(product_ids))
@@ -1925,7 +1928,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
             post_map = {p.id: p for p in posts_to_update}
 
-            # 2. Fase de Verificación de Stock (antes de crear la compra)
             for cart_key, quantity_in_cart in self.cart.items():
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
@@ -1934,7 +1936,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 post = post_map.get(prod_id)
                 if not post:
-                    return rx.toast.error(f"El producto '{post.title if post else 'ID '+str(prod_id)}' ya no está disponible. Compra cancelada.")
+                    return rx.toast.error(f"Uno de los productos ya no está disponible. Compra cancelada.")
 
                 variant_found = False
                 for variant in post.variants:
@@ -1948,8 +1950,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if not variant_found:
                     return rx.toast.error(f"La variante seleccionada para '{post.title}' ya no existe. Compra cancelada.")
 
-            # 3. Fase de Creación de la Compra
-            # Determina el estado inicial basado en el método de pago
+            # 3. Creación del registro de la compra
             initial_status = (
                 PurchaseStatus.PENDING_PAYMENT
                 if self.payment_method == "Online"
@@ -1972,16 +1973,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
             
-            # 4. Fase de Deducción de Stock y Creación de Items
+            # Se guarda el ID de forma segura mientras la sesión está activa
+            purchase_id_for_payment = new_purchase.id
+
+            # 4. Deducción de stock y creación de los items de la compra
             for cart_key, quantity_in_cart in self.cart.items():
+                # ... (Lógica idéntica a la verificación para encontrar el post y la variante)
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
                 selection_parts = parts[2:]
                 selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
-                
                 post = post_map.get(prod_id)
                 
-                # Deducir el stock de la variante correcta
                 for variant in post.variants:
                     if variant.get("attributes") == selection_attrs:
                         variant["stock"] -= quantity_in_cart
@@ -1989,7 +1992,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 session.add(post)
 
-                # Crear el registro del artículo comprado
                 session.add(PurchaseItemModel(
                     purchase_id=new_purchase.id,
                     blog_post_id=post.id,
@@ -1998,7 +2000,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     selected_variant=selection_attrs
                 ))
 
-            # 5. Fase de Desactivación Automática si el stock es cero
+            # 5. Desactivación de productos si se agota el stock
             for post in post_map.values():
                 total_stock = sum(v.get("stock", 0) for v in post.variants)
                 if total_stock <= 0:
@@ -2007,12 +2009,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             session.commit()
 
-        # 6. Lógica Post-Creación (fuera de la sesión de la base de datos)
+        # 6. Lógica final fuera de la sesión
         if self.payment_method == "Online":
-            # Si es pago online, se inicia la pasarela de pago
-            yield AppState.start_payment(new_purchase.id)
+            # Para pagos online, se inicia la pasarela de pago usando el ID guardado
+            yield AppState.start_payment(purchase_id_for_payment)
         else:
-            # Si es contra entrega, se limpia el carrito y se redirige
+            # Para contra entrega, se limpia el carrito y se redirige
             self.cart.clear()
             self.default_shipping_address = None
             yield AppState.notify_admin_of_new_purchase
