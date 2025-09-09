@@ -1860,15 +1860,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_payment_processing = True
         try:
             async with httpx.AsyncClient() as client:
-                # Llama a nuestro propio endpoint de API, no directamente a Wompi
-                api_url = self.get_api_url() # Método de Reflex para obtener la URL base de la API
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                # Se obtiene la URL de la API desde la configuración global de Reflex.
+                api_url = rx.get_config().api_url
+
                 resp = await client.post(
                     f"{api_url}/api/wompi/create-transaction",
                     json={"purchase_id": purchase_id},
-                    timeout=20.0 # Aumentar el timeout por si Wompi tarda en responder
+                    timeout=20.0
                 )
                 
-                # Lanza una excepción si el backend devolvió un error (4xx o 5xx)
                 resp.raise_for_status() 
                 
                 data = resp.json()
@@ -1879,11 +1880,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     self.is_payment_processing = False
                     return
 
-                # Redirige al usuario a la pasarela de pago de Wompi
                 self.is_payment_processing = False
-                
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-                # Se cambia 'return' por 'yield' para que sea compatible con el generador asíncrono.
                 yield rx.redirect(payment_link)
 
         except httpx.HTTPStatusError as e:
