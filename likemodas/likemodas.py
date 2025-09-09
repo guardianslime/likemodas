@@ -12,6 +12,7 @@ from sqlmodel import select
 from datetime import datetime, timezone
 
 # Importaciones del proyecto
+from likemodas.api import wompi_api
 from likemodas.ui.base import base_page
 from likemodas.state import AppState
 from likemodas.invoice.state import InvoiceState
@@ -39,106 +40,7 @@ app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# --- 2. Lógica de la API de Wompi (como funciones normales, SIN decorador) ---
-WOMPI_API_URL = "https://sandbox.wompi.co/v1"
-WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
-WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
-
-async def create_wompi_checkout_endpoint(scope, receive, send):
-    if scope['method'] != 'POST':
-        response = rx.Response(content="Method Not Allowed", status_code=405)
-        await response(scope, receive, send)
-        return
-
-    request = FastAPIRequest(scope, receive)
-    try:
-        body = await request.json()
-        purchase_id = body.get("purchase_id")
-        amount_cop = body.get("amount")
-        customer_email = body.get("customer_email")
-        redirect_url = body.get("redirect_url")
-
-        if not all([purchase_id, amount_cop, customer_email, redirect_url]):
-            response = rx.Response(content=json.dumps({"error": "Faltan datos"}), status_code=400, media_type="application/json")
-            await response(scope, receive, send)
-            return
-
-        amount_in_cents = int(float(amount_cop) * 100)
-        reference = f"likemodas-purchase-{purchase_id}"
-        concatenation = f"{reference}{amount_in_cents}COP{WOMPI_INTEGRITY_SECRET}"
-        signature = hashlib.sha256(concatenation.encode("utf-8")).hexdigest()
-
-        wompi_payload = {
-            "currency": "COP", "amount_in_cents": amount_in_cents, "reference": reference,
-            "signature:integrity": signature, "customer_email": customer_email, "redirect_url": redirect_url,
-        }
-
-        async with httpx.AsyncClient() as client:
-            wompi_response = await client.post(
-                f"{WOMPI_API_URL}/checkouts",
-                headers={"Authorization": f"Bearer {WOMPI_PUBLIC_KEY}"},
-                json=wompi_payload
-            )
-            wompi_response.raise_for_status()
-            wompi_data = wompi_response.json()
-        
-        response = rx.Response(content=json.dumps({"checkout_id": wompi_data.get("data", {}).get("id")}), status_code=200, media_type="application/json")
-
-    except Exception as e:
-        print(f"Error en create_checkout_session: {e}")
-        response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
-    
-    await response(scope, receive, send)
-
-async def wompi_webhook_endpoint(scope, receive, send):
-    if scope['method'] != 'POST':
-        response = rx.Response(content="Method Not Allowed", status_code=405)
-        await response(scope, receive, send)
-        return
-
-    request = FastAPIRequest(scope, receive)
-    try:
-        payload = await request.json()
-        print(f"Webhook de Wompi recibido: {payload}")
-        
-        transaction_data = payload.get("data", {}).get("transaction", {})
-        status = transaction_data.get("status")
-        reference = transaction_data.get("reference")
-
-        if reference and reference.startswith("likemodas-purchase-"):
-            purchase_id = int(reference.split("-")[-1])
-            with rx.session() as session:
-                purchase = session.get(PurchaseModel, purchase_id)
-                if purchase and status == "APPROVED" and purchase.status != PurchaseStatus.CONFIRMED:
-                    purchase.status = PurchaseStatus.CONFIRMED
-                    purchase.confirmed_at = datetime.now(timezone.utc)
-                    session.add(purchase)
-
-                    for item in purchase.items:
-                        post = session.get(BlogPostModel, item.blog_post_id)
-                        if post:
-                            for variant in post.variants:
-                                if variant.get("attributes") == item.selected_variant:
-                                    variant["stock"] -= item.quantity
-                                    sqlalchemy.orm.attributes.flag_modified(post, "variants")
-                                    session.add(post)
-                                    break
-                    
-                    session.commit()
-                    state = await rx.get_state(AppState)
-                    await state.notify_admin_of_new_purchase()
-
-        response = rx.Response(content=json.dumps({"status": "ok"}), status_code=200, media_type="application/json")
-
-    except Exception as e:
-        print(f"Error procesando webhook: {e}")
-        response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
-
-    await response(scope, receive, send)
-
-# --- 3. Añadimos las rutas de la API explícitamente ---
-app.add_api_route("/api/wompi/create_checkout_session", create_wompi_checkout_endpoint)
-app.add_api_route("/api/wompi/webhook", wompi_webhook_endpoint)
+app.mount(wompi_api, "/api")
 
 
 # --- 4. Añadimos todas las páginas al objeto 'app' ---

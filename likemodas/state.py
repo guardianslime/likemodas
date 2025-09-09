@@ -1917,7 +1917,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # El frontend llama a su propio backend de forma segura
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
-                        f"{self.api_url}/wompi/create_checkout_session",
+                        f"{self.api_url}/api/wompi/create_checkout_session",
                         json={
                             "purchase_id": purchase_id_for_payment,
                             "amount": summary["grand_total"],
@@ -1936,7 +1936,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         yield rx.redirect(wompi_checkout_url)
                     else:
                         yield rx.toast.error("No se pudo iniciar el pago. Inténtalo de nuevo.")
-                        # Opcional: Aquí podrías querer cambiar el estado de la compra a "FALLIDO"
 
             except Exception as e:
                 print(f"Error al iniciar checkout: {e}")
