@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (Versión Final y Funcional)
+# likemodas/likemodas.py (Versión Final y Corregida)
 
 import reflex as rx
 import reflex_local_auth
@@ -39,14 +39,12 @@ app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# --- 2. Lógica y Rutas de la API de Wompi ---
+# --- 2. Lógica de la API de Wompi (como funciones normales, SIN decorador) ---
 WOMPI_API_URL = "https://sandbox.wompi.co/v1"
 WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
 WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
 
-@app._api("/api/wompi/create_checkout_session")
 async def create_wompi_checkout_endpoint(scope, receive, send):
-    # Verificamos que la petición sea POST
     if scope['method'] != 'POST':
         response = rx.Response(content="Method Not Allowed", status_code=405)
         await response(scope, receive, send)
@@ -92,9 +90,7 @@ async def create_wompi_checkout_endpoint(scope, receive, send):
     
     await response(scope, receive, send)
 
-@app._api("/api/wompi/webhook")
 async def wompi_webhook_endpoint(scope, receive, send):
-    # Verificamos que la petición sea POST
     if scope['method'] != 'POST':
         response = rx.Response(content="Method Not Allowed", status_code=405)
         await response(scope, receive, send)
@@ -140,13 +136,19 @@ async def wompi_webhook_endpoint(scope, receive, send):
 
     await response(scope, receive, send)
 
-# --- 3. Añadimos todas las páginas al objeto 'app' ---
+# --- 3. Añadimos las rutas de la API explícitamente ---
+app.add_api_route("/api/wompi/create_checkout_session", create_wompi_checkout_endpoint)
+app.add_api_route("/api/wompi/webhook", wompi_webhook_endpoint)
+
+
+# --- 4. Añadimos todas las páginas al objeto 'app' ---
 app.add_page(
     base_page(landing.landing_content()),
     route="/",
     on_load=AppState.load_main_page_data,
     title="Likemodas | Inicio"
 )
+# ... (Aquí va el resto de tus rutas app.add_page) ...
 app.add_page(
     base_page(seller_page.seller_page_content()), 
     route="/vendedor",
