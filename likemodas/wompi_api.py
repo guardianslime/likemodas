@@ -1,6 +1,5 @@
 # likemodas/wompi_api.py
 import reflex as rx
-from reflex.api import api  # <-- ✨ 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN ✨
 import os
 import hashlib
 import hmac
@@ -9,8 +8,9 @@ from datetime import datetime, timezone
 from sqlmodel import select
 from .models import PurchaseModel, PurchaseStatus, UserInfo
 from .wompi_client import wompi
+from .app import app  # <-- 1. IMPORTA 'app' DESDE EL NUEVO ARCHIVO
 
-@api("/wompi/create-transaction") # <-- ✨ 2. CAMBIA @rx.api.api POR @api ✨
+@app.api("/wompi/create-transaction")  # <-- 2. USA EL DECORADOR CORRECTO @app.api
 async def create_transaction(request: Request):
     """
     Crea una transacción en Wompi a partir de un ID de compra.
@@ -58,7 +58,8 @@ async def create_transaction(request: Request):
         print(f"ERROR: No se pudo crear la transacción en Wompi. Detalles: {e}")
         return Response(content="Error interno del servidor al procesar el pago.", status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api("/wompi/webhook") # <-- ✨ 3. HAZ EL MISMO CAMBIO AQUÍ ✨
+
+@app.api("/wompi/webhook") # <-- 3. HAZ EL MISMO CAMBIO AQUÍ
 async def wompi_webhook(request: Request):
     """
     Recibe y procesa notificaciones de Wompi.
