@@ -32,6 +32,7 @@ from .account import shipping_info as shipping_info_module
 from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTACIÓN
 from . import navigation
 from .pages import payment_status # <-- Importa la nueva página
+from . import wompi_api # <-- ✨ AÑADE ESTA LÍNEA AQUÍ ✨
 
 app = rx.App(style={"font_family": "Arial, sans-serif"})
 
