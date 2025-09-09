@@ -31,7 +31,7 @@ def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
         return utc_dt.strftime('%Y-%m-%d %H:%M')
     
 class PurchaseStatus(str, enum.Enum):
-    PENDING_PAYMENT = "pending_payment" # <-- NUEVO ESTADO
+    PENDING_PAYMENT = "pending_payment"  # <-- ✨ AÑADE ESTA LÍNEA ✨
     PENDING_CONFIRMATION = "pending_confirmation"
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
