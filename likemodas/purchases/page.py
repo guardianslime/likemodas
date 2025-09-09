@@ -211,4 +211,6 @@ def purchase_history_content() -> rx.Component:
         # ✨ Se ejecuta al cargar la página para auto-confirmar entregas antiguas
         on_mount=AppState.check_for_auto_confirmations
     )
-    return account_layout(page_content)
+    return account_layout(page_content).on_load(
+        [AppState.load_purchases, AppState.verify_wompi_transaction]
+    )
