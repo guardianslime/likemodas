@@ -4,7 +4,7 @@ import os
 import hashlib
 import hmac
 from fastapi import Request, Response, status
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import select
 from .models import PurchaseModel, PurchaseStatus, UserInfo
 from .wompi_client import wompi
