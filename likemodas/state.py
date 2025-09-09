@@ -1862,7 +1862,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_checkout(self):
         """
-        Flujo de pago final y completo usando Links de Pago de Wompi (sin webhook) 
+        Flujo de pago final y completo usando el método Web Checkout de Wompi
         y el método de Contra Entrega.
         """
         if not self.is_authenticated or not self.default_shipping_address:
@@ -1946,9 +1946,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.cart.clear()
             yield self.notify_admin_of_new_purchase()
             yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+            # Corrección del SyntaxError: se usa 'yield' en lugar de 'return'
             yield rx.redirect("/my-purchases")
         
-        # --- LÓGICA PARA PAGO ONLINE (Links de Pago de Wompi) ---
+        # --- LÓGICA COMPLETA PARA PAGO ONLINE CON WOMPI ---
         elif self.payment_method == "Online":
             # 1. Crear la orden en la BD primero
             with rx.session() as session:
@@ -1967,7 +1968,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(new_purchase)
                 session.commit()
                 session.refresh(new_purchase)
-                
+
+                # Crear los artículos de la compra
                 for item_data in self.cart_details:
                     item = PurchaseItemModel(
                         purchase_id=new_purchase.id,
@@ -1981,42 +1983,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 purchase_id = new_purchase.id
 
-            # 2. Limpiar el carrito
+            # 2. Generar los datos para el formulario de Wompi
+            amount_in_cents = int(summary["grand_total"] * 100)
+            reference = f"likemodas-purchase-{purchase_id}"
+            wompi_integrity_secret = os.getenv("WOMPI_INTEGRITY_SECRET")
+
+            concatenation = f"{reference}{amount_in_cents}COP{wompi_integrity_secret}"
+            signature = hashlib.sha256(concatenation.encode("utf-8")).hexdigest()
+
+            self.wompi_form_data = {
+                "public-key": os.getenv("WOMPI_PUBLIC_KEY"),
+                "currency": "COP",
+                "amount-in-cents": str(amount_in_cents),
+                "reference": reference,
+                "signature:integrity": signature,
+                "redirect-url": f"{self.base_app_url}/my-purchases",
+                "customer-data:email": self.authenticated_user_info.email,
+                "customer-data:full-name": self.default_shipping_address.name,
+                "customer-data:phone-number": self.default_shipping_address.phone,
+            }
+            
+            # 3. Limpiar el carrito y enviar el formulario para redirigir
             self.cart.clear()
-
-            # 3. Llamar a la API de Wompi para crear un Link de Pago
-            try:
-                wompi_private_key = os.getenv("WOMPI_PRIVATE_KEY")
-                payload = {
-                    "name": f"Compra #{purchase_id} - Likemodas",
-                    "description": f"Pedido para {self.authenticated_user_info.email}",
-                    "single_use": True, # El link solo se puede pagar una vez
-                    "collect_shipping": False,
-                    "currency": "COP",
-                    "amount_in_cents": int(summary["grand_total"] * 100),
-                    "redirect_url": f"{self.base_app_url}/my-purchases" # Wompi redirigirá aquí
-                }
-                
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        "https://sandbox.wompi.co/v1/payment_links",
-                        headers={"Authorization": f"Bearer {wompi_private_key}"},
-                        json=payload
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                
-                payment_link_id = data.get("data", {}).get("id")
-                if payment_link_id:
-                    # 4. Redirigir al usuario al link de pago de Wompi
-                    payment_url = f"https://checkout.wompi.co/l/{payment_link_id}"
-                    yield rx.redirect(payment_url)
-                else:
-                    yield rx.toast.error("No se pudo generar el link de pago.")
-
-            except Exception as e:
-                print(f"Error al crear link de pago: {e}")
-                yield rx.toast.error("Hubo un problema al conectar con la pasarela de pago.")
+            yield rx.call_script("document.getElementById('wompi_form').submit()")
     
     @rx.event
     async def verify_wompi_transaction(self):

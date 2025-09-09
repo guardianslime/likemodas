@@ -39,11 +39,9 @@ app = rx.App(
     style={"font_family": "Arial, sans-serif"},
 )
 
-# --- 2. Lógica de la API de Wompi (como funciones normales) ---
-WOMPI_API_URL = "https://sandbox.wompi.co/v1"
-WOMPI_PUBLIC_KEY = os.getenv("WOMPI_PUBLIC_KEY")
-WOMPI_INTEGRITY_SECRET = os.getenv("WOMPI_INTEGRITY_SECRET")
-
+# --- Webhook de Wompi ---
+# Esta es la única forma de crear un endpoint compatible con Reflex 0.8.5
+@app._api("/api/wompi/webhook")
 async def wompi_webhook_endpoint(scope, receive, send):
     if scope['method'] != 'POST':
         response = rx.Response(content="Method Not Allowed", status_code=405)
@@ -89,6 +87,7 @@ async def wompi_webhook_endpoint(scope, receive, send):
         response = rx.Response(content=json.dumps({"error": "Error interno"}), status_code=500, media_type="application/json")
 
     await response(scope, receive, send)
+
 
 # --- 3. Añadimos la ruta de la API al router interno de la app ---
 # Usamos try/except para compatibilidad, pero una de estas debería funcionar en un entorno limpio.
