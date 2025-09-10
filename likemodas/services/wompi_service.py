@@ -11,7 +11,7 @@ APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:3000")
 
 async def create_wompi_payment_link(purchase: PurchaseModel) -> Optional[str]:
     """
-    Crea un enlace de pago en Wompi para una compra específica[cite: 49].
+    [cite_start]Crea un enlace de pago en Wompi para una compra específica. [cite: 21]
     Devuelve la URL de checkout o None si falla.
     """
     if not WOMPI_PRIVATE_KEY:
@@ -22,13 +22,13 @@ async def create_wompi_payment_link(purchase: PurchaseModel) -> Optional[str]:
         "Authorization": f"Bearer {WOMPI_PRIVATE_KEY}"
     }
     
-    # El payload se construye siguiendo la documentación de Wompi [cite: 51]
+    # [cite_start]El payload se construye siguiendo la documentación de Wompi [cite: 22]
     payload = {
         "name": f"Compra #{purchase.id} en Likemodas",
         "single_use": True,
         "amount_in_cents": int(purchase.total_price * 100),
         "currency": "COP",
-        "redirect_url": f"{APP_BASE_URL}/my-purchases", # Página de éxito/historial
+        "redirect_url": f"{APP_BASE_URL}/my-purchases", # Página a la que vuelve el usuario
         "reference": str(purchase.id), # ¡MUY IMPORTANTE! Asociamos nuestro ID de compra
     }
 

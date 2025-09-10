@@ -1,4 +1,4 @@
-# rxconfig.py (VERSIÓN FINAL Y CORRECTA)
+# likemodas/rxconfig.py (VERSIÓN FINAL Y CORRECTA)
 
 import reflex as rx
 import os
@@ -12,9 +12,10 @@ load_dotenv()
 
 
 # --- URLs de Despliegue ---
-RAILWAY_PUBLIC_URL = "https://full-stack-python-production.up.railway.app"
-PRODUCTION_DOMAIN = "https://www.likemodas.com"
-VERCEL_PREVIEW_URL = "https://full-stack-python.vercel.app"
+# Asegúrate de que estas URLs coincidan con tus servicios desplegados
+RAILWAY_PUBLIC_URL = "https://tu-backend-en-railway.up.railway.app" # Reemplaza con tu URL de Railway
+PRODUCTION_DOMAIN = "https://www.likemodas.com" # Tu dominio final
+VERCEL_PREVIEW_URL = "https://tu-frontend-en-vercel.vercel.app" # Si usas Vercel para el frontend
 
 
 # --- Configuración Principal de la Aplicación ---
@@ -22,6 +23,7 @@ config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
+    # URLs para la comunicación entre frontend y backend
     api_url=RAILWAY_PUBLIC_URL,
     deploy_url=PRODUCTION_DOMAIN,
     

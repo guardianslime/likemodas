@@ -20,7 +20,7 @@ async def handle_wompi_webhook(request: Request):
     if not WOMPI_EVENTS_SECRET:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Webhook secret not configured.")
     
-    # 1. Validar la firma criptográfica ANTES de procesar nada [cite: 144]
+    # [cite_start]1. Validar la firma criptográfica ANTES de procesar nada [cite: 26]
     if not verify_wompi_signature(raw_body, request.headers, WOMPI_EVENTS_SECRET):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid signature.")
     
@@ -32,7 +32,7 @@ async def handle_wompi_webhook(request: Request):
         print(f"Error processing Wompi webhook: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error.")
     
-    # 3. Responder a Wompi con un 200 OK para confirmar la recepción [cite: 39]
+    # 3. Responder a Wompi con un 200 OK para confirmar la recepción
     return Response(status_code=status.HTTP_200_OK)
 
 async def process_transaction_event(event: dict):
@@ -40,7 +40,7 @@ async def process_transaction_event(event: dict):
     transaction_data = event.get("data", {}).get("transaction", {})
     wompi_id = transaction_data.get("id")
     status = transaction_data.get("status")
-    reference = transaction_data.get("reference") # Nuestro ID de compra [cite: 154]
+    reference = transaction_data.get("reference") # Nuestro ID de compra [cite: 23]
 
     if not all([wompi_id, status, reference]):
         print("Webhook recibido sin datos de transacción esenciales.")
@@ -52,7 +52,7 @@ async def process_transaction_event(event: dict):
             print(f"Compra con referencia {reference} no encontrada.")
             return
 
-        # Manejo de Idempotencia: si ya está confirmada, no hacer nada [cite: 179]
+        # Manejo de Idempotencia: si ya está confirmada, no hacer nada más
         if purchase.status == PurchaseStatus.CONFIRMED:
             print(f"Compra {purchase.id} ya está confirmada. Ignorando evento duplicado.")
             return
@@ -68,14 +68,15 @@ async def process_transaction_event(event: dict):
             purchase.status = PurchaseStatus.CONFIRMED
             purchase.confirmed_at = datetime.now(timezone.utc)
             
-            # Crear una notificación para el usuario [cite: 174]
+            # Crear una notificación para el usuario
             notification = NotificationModel(
                 userinfo_id=purchase.userinfo_id,
                 message=f"¡Tu pago para la compra #{purchase.id} ha sido confirmado!",
                 url="/my-purchases"
             )
             session.add(notification)
-        else: # DECLINED, ERROR, etc.
-            purchase.status = PurchaseStatus.PENDING_PAYMENT # O un estado FAILED
+        elif status in ["DECLINED", "ERROR", "VOIDED"]:
+            # Opcional: Podrías crear un estado 'FAILED' o regresarlo a pendiente
+            purchase.status = PurchaseStatus.PENDING_PAYMENT 
         
         session.add(purchase)
