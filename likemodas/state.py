@@ -28,6 +28,7 @@ from .models import (
     SupportTicketModel, SupportMessageModel, TicketStatus, format_utc_to_local
 )
 from .services.email_service import send_verification_email, send_password_reset_email
+from .services import wompi_service # Importar el nuevo servicio
 from .utils.formatting import format_to_cop
 from .utils.validators import validate_password
 from .data.colombia_locations import load_colombia_data
@@ -1854,15 +1855,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     is_payment_processing: bool = False
 
 
-
-
     @rx.event
-    def handle_checkout(self):
+    async def handle_checkout(self):
         """
-        Procesa la compra. Guarda la orden y, si el pago es online,
-        redirige a una página de espera para recibir el link de pago.
+        Procesa la compra de forma completa y segura.
+        1.  Valida la sesión y el carrito.
+        2.  Verifica el stock de cada variante ANTES de tocar la base de datos.
+        3.  Crea la orden de compra y sus items, y deduce el stock en una única transacción.
+        4.  Si el pago es online, genera el enlace de Wompi.
+        5.  Si es contra entrega, notifica al administrador.
         """
-        # --- Validaciones iniciales ---
+        # --- 1. Validaciones Iniciales ---
         if not self.is_authenticated or not self.default_shipping_address:
             return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
         if not self.authenticated_user_info:
@@ -1873,22 +1876,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         summary = self.cart_summary
 
         with rx.session() as session:
-            # --- Verificación de Stock (sin cambios) ---
+            # --- 2. Verificación de Stock (Paso Crítico ANTES de la transacción) ---
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
-            posts_to_update = session.exec(
+            # Bloquea las filas de los productos para evitar condiciones de carrera
+            posts_to_check = session.exec(
                 sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
             ).all()
-            post_map = {p.id: p for p in posts_to_update}
+            post_map = {p.id: p for p in posts_to_check}
 
             for cart_key, quantity_in_cart in self.cart.items():
-                # ... (la lógica de verificación de stock se mantiene igual)
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
                 selection_parts = parts[2:]
                 selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                
                 post = post_map.get(prod_id)
                 if not post:
                     return rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
+                
                 variant_found = False
                 for variant in post.variants:
                     if variant.get("attributes") == selection_attrs:
@@ -1900,12 +1905,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if not variant_found:
                     return rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
 
-            # --- Creación de la Orden ---
+            # --- 3. Creación de la Orden (Transacción Atómica) ---
             initial_status = (
                 PurchaseStatus.PENDING_PAYMENT
                 if self.payment_method == "Online"
                 else PurchaseStatus.PENDING_CONFIRMATION
             )
+            
             new_purchase = PurchaseModel(
                 userinfo_id=self.authenticated_user_info.id,
                 total_price=summary["grand_total"],
@@ -1922,36 +1928,49 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
 
-            # --- Deducción de stock y creación de items (sin cambios) ---
+            # --- 4. Creación de Items y Deducción de Stock ---
             for cart_key, quantity_in_cart in self.cart.items():
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
                 selection_parts = parts[2:]
                 selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
-                post = post_map.get(prod_id)
-                for variant in post.variants:
-                    if variant.get("attributes") == selection_attrs:
-                        variant["stock"] -= quantity_in_cart
-                        break
-                session.add(post)
-                session.add(PurchaseItemModel(
-                    purchase_id=new_purchase.id,
-                    blog_post_id=post.id,
-                    quantity=quantity_in_cart,
-                    price_at_purchase=post.price,
-                    selected_variant=selection_attrs,
-                ))
+                
+                post_to_update = post_map.get(prod_id)
+                if post_to_update:
+                    # Deduce el stock de la variante correcta
+                    for variant in post_to_update.variants:
+                        if variant.get("attributes") == selection_attrs:
+                            variant["stock"] -= quantity_in_cart
+                            break
+                    session.add(post_to_update)
+
+                    # Crea el item de la compra
+                    session.add(PurchaseItemModel(
+                        purchase_id=new_purchase.id,
+                        blog_post_id=post_to_update.id,
+                        quantity=quantity_in_cart,
+                        price_at_purchase=post_to_update.price,
+                        selected_variant=selection_attrs,
+                    ))
 
             session.commit()
 
-        # --- Lógica final (fuera de la sesión) ---
+        # --- 5. Lógica de Pago (Fuera de la sesión de la base de datos) ---
         self.cart.clear()
         self.default_shipping_address = None
 
         if self.payment_method == "Online":
-            yield rx.toast.success("¡Pedido recibido! El vendedor te contactará con el enlace de pago.")
-            return rx.redirect("/payment-pending")
-        else:
+            # Llamamos al servicio de Wompi para generar el enlace de pago
+            payment_url = await wompi_service.create_wompi_payment_link(new_purchase)
+            
+            if payment_url:
+                # Si todo es exitoso, redirigimos al usuario a la pasarela
+                return rx.redirect(payment_url, external=True)
+            else:
+                # Si falla la comunicación con Wompi, la orden ya está guardada.
+                # El usuario puede reintentar desde su historial o un admin puede intervenir.
+                return rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
+        else: # Pago Contra Entrega
             yield AppState.notify_admin_of_new_purchase
             yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
             return rx.redirect("/my-purchases")

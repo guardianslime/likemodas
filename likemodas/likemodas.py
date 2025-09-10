@@ -1,5 +1,6 @@
 # likemodas/likemodas.py (VERSIÓN FINAL)
 
+from fastapi import FastAPI
 import reflex as rx
 import reflex_local_auth
 
@@ -8,6 +9,7 @@ from likemodas.admin.profile_page import seller_profile_page
 from likemodas.admin.tickets_page import admin_tickets_page_content
 from likemodas.pages import payment_pending
 
+from .api import webhooks
 from .state import AppState
 from .ui.base import base_page
 
@@ -34,7 +36,18 @@ from .account import saved_posts as saved_posts_module # <-- AÑADE ESTA IMPORTA
 from . import navigation
 from .pages import payment_status # <-- Importa la nueva página
 
-app = rx.App(style={"font_family": "Arial, sans-serif"})
+# 1. Crear la instancia de FastAPI que extenderá el backend de Reflex
+fastapi_app = FastAPI(title="API extendida de Likemodas")
+
+# 2. Incluir el router de webhooks que crearemos en el siguiente paso
+fastapi_app.include_router(webhooks.router)
+
+# 3. Pasar la instancia de FastAPI a la aplicación Reflex
+app = rx.App(
+    style={"font_family": "Arial, sans-serif"},
+    api_transformer=fastapi_app # <--- ¡LA CLAVE ESTÁ AQUÍ!
+)
+
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(
