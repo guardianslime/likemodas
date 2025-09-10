@@ -6,14 +6,14 @@ echo "----> Instalando dependencias..."
 pip install -r requirements.txt
 
 echo "----> Aplicando migraciones a la base de datos de producción..."
-# --- COMANDO CORREGIDO ---
-# En versiones recientes de Reflex, 'upgrade' se hace a través de alembic.
-# 'head' significa "actualizar a la última versión disponible".
+# --- El comando MODERNO y CORRECTO para aplicar las migraciones ---
+# Construye los cimientos (las tablas) en tu base de datos PostgreSQL.
 reflex db alembic upgrade head
 
 echo "----> Iniciando el servidor backend..."
-# --- COMANDO CORREGIDO ---
-# La opción '--host' fue renombrada a '--backend-host'.
-# Inicia la aplicación en el puerto que Railway asigne dinámicamente.
+# --- El comando MODERNO y CORRECTO para iniciar el servidor ---
+# Pone la casa (tu app) sobre los cimientos ya construidos.
 reflex run --backend-only --env prod --backend-host 0.0.0.0 --port $PORT
+```eof
 
+**Reemplaza el contenido de tu `run.sh` con este, súbelo a GitHub y el despliegue en Railway funcionará.**
