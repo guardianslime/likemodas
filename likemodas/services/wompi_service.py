@@ -1,17 +1,18 @@
-# likemodas/services/wompi_service.py
+# likemodas/services/wompi_service.py (CORREGIDO)
+
 import os
 import httpx
 from typing import Optional
-from likemodas.models import PurchaseModel
+# Ya no necesitamos importar PurchaseModel aquí
 
-# Lee las variables de entorno configuradas
+# Las variables de entorno se mantienen igual
 WOMPI_API_BASE_URL = os.getenv("WOMPI_API_BASE_URL", "https://sandbox.wompi.co/v1")
 WOMPI_PRIVATE_KEY = os.getenv("WOMPI_PRIVATE_KEY_ACTIVE")
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:3000")
 
-async def create_wompi_payment_link(purchase: PurchaseModel) -> Optional[str]:
+async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Optional[str]:
     """
-    [cite_start]Crea un enlace de pago en Wompi para una compra específica. [cite: 21]
+    Crea un enlace de pago en Wompi usando datos simples.
     Devuelve la URL de checkout o None si falla.
     """
     if not WOMPI_PRIVATE_KEY:
@@ -22,20 +23,19 @@ async def create_wompi_payment_link(purchase: PurchaseModel) -> Optional[str]:
         "Authorization": f"Bearer {WOMPI_PRIVATE_KEY}"
     }
     
-    # [cite_start]El payload se construye siguiendo la documentación de Wompi [cite: 22]
     payload = {
-        "name": f"Compra #{purchase.id} en Likemodas",
+        "name": f"Compra #{purchase_id} en Likemodas", # Usa purchase_id
         "single_use": True,
-        "amount_in_cents": int(purchase.total_price * 100),
+        "amount_in_cents": int(total_price * 100), # Usa total_price
         "currency": "COP",
-        "redirect_url": f"{APP_BASE_URL}/my-purchases", # Página a la que vuelve el usuario
-        "reference": str(purchase.id), # ¡MUY IMPORTANTE! Asociamos nuestro ID de compra
+        "redirect_url": f"{APP_BASE_URL}/my-purchases",
+        "reference": str(purchase_id), # Usa purchase_id
     }
 
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(f"{WOMPI_API_BASE_URL}/payment_links", json=payload, headers=headers)
-            response.raise_for_status()  # Lanza una excepción para errores HTTP
+            response.raise_for_status()
             
             response_data = response.json()
             payment_link_id = response_data.get("data", {}).get("id")

@@ -1977,7 +1977,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.default_shipping_address = None
 
         if self.payment_method == "Online":
-            payment_url = await wompi_service.create_wompi_payment_link(new_purchase)
+            payment_url = await wompi_service.create_wompi_payment_link(
+                purchase_id=new_purchase.id,
+                total_price=new_purchase.total_price
+            )
             
             if payment_url:
                 # ANTES: return rx.redirect(...)
