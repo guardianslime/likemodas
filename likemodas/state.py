@@ -1978,7 +1978,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             
             if payment_url:
-                yield rx.redirect(payment_url, external=True)
+                yield rx.call_script(f"window.location.href = '{payment_url}'")
                 return
             else:
                 yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
