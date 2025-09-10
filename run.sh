@@ -1,17 +1,16 @@
 #!/bin/bash
 
-echo "----> Installing dependencies..."
+# Este script se ejecutará cada vez que Railway despliegue tu aplicación.
+
+echo "----> Instalando dependencias..."
 pip install -r requirements.txt
 
-echo "----> Running database migrations..."
-# Inicializa la configuración de Alembic (el '|| true' evita errores si ya existe)
-reflex db init || true
-# Crea un archivo de migración automático (es seguro ejecutarlo incluso si no hay cambios)
-reflex db migrate -m "auto-migration from deploy"
-# Aplica cualquier migración pendiente a la base de datos
+echo "----> Aplicando migraciones a la base de datos de producción..."
+# Este es el ÚNICO comando de base de datos necesario en producción.
+# Aplica los archivos de migración de tu repositorio a la base de datos PostgreSQL de Railway,
+# creando las tablas como 'localuser' si no existen.
 reflex db upgrade
 
-echo "----> Starting backend server..."
-# Inicia el servidor del backend para producción, escuchando en todas las interfaces
-# y en el puerto que Railway asigne dinámicamente a través de la variable $PORT.
+echo "----> Iniciando el servidor backend..."
+# Inicia la aplicación en el puerto que Railway asigne dinámicamente.
 reflex run --backend-only --env prod --host 0.0.0.0 --port $PORT
