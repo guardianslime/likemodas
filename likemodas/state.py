@@ -1858,33 +1858,27 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_checkout(self):
         """
-        Procesa la compra de forma completa y segura.
-        1.  Valida la sesión y el carrito.
-        2.  Verifica el stock de cada variante ANTES de tocar la base de datos.
-        3.  Crea la orden de compra y sus items, y deduce el stock en una única transacción.
-        4.  Si el pago es online, genera el enlace de Wompi.
-        5.  Si es contra entrega, notifica al administrador.
+        Procesa la compra, crea la orden en la base de datos y genera el enlace de pago
+        de forma segura y robusta, evitando errores de sesión.
         """
         # --- 1. Validaciones Iniciales ---
         if not self.is_authenticated or not self.default_shipping_address:
-            # ANTES: return rx.toast.error(...)
-            # AHORA:
             yield rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
             return
 
         if not self.authenticated_user_info:
-            # ANTES: return rx.toast.error(...)
-            # AHORA:
             yield rx.toast.error("Error de sesión. Vuelve a iniciar sesión.")
             return
 
         if not self.cart:
-            # ANTES: return rx.toast.info(...)
-            # AHORA:
             yield rx.toast.info("Tu carrito está vacío.")
             return
 
         summary = self.cart_summary
+
+        # --- Variables locales para guardar los datos antes de cerrar la sesión ---
+        purchase_id_for_payment = None
+        total_price_for_payment = None
 
         with rx.session() as session:
             # --- 2. Verificación de Stock (Paso Crítico ANTES de la transacción) ---
@@ -1897,13 +1891,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             for cart_key, quantity_in_cart in self.cart.items():
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
-                selection_parts = parts[2:]
-                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
                 
                 post = post_map.get(prod_id)
                 if not post:
-                    # ANTES: return rx.toast.error(...)
-                    # AHORA:
                     yield rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
                     return
                 
@@ -1912,15 +1903,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     if variant.get("attributes") == selection_attrs:
                         if variant.get("stock", 0) < quantity_in_cart:
                             attr_str = ', '.join(selection_attrs.values())
-                            # ANTES: return rx.toast.error(...)
-                            # AHORA:
                             yield rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Compra cancelada.")
                             return
                         variant_found = True
                         break
                 if not variant_found:
-                    # ANTES: return rx.toast.error(...)
-                    # AHORA:
                     yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
                     return
 
@@ -1947,12 +1934,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
 
+            # --- ¡CLAVE! Guardamos los datos en variables locales AHORA ---
+            purchase_id_for_payment = new_purchase.id
+            total_price_for_payment = new_purchase.total_price
+            # --- FIN DE LA CLAVE ---
+
             # --- 4. Creación de Items y Deducción de Stock ---
             for cart_key, quantity_in_cart in self.cart.items():
                 parts = cart_key.split('-')
                 prod_id = int(parts[0])
-                selection_parts = parts[2:]
-                selection_attrs = dict(part.split(':', 1) for part in selection_parts if ':' in part)
+                selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
                 
                 post_to_update = post_map.get(prod_id)
                 if post_to_update:
@@ -1977,26 +1968,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.default_shipping_address = None
 
         if self.payment_method == "Online":
+            if purchase_id_for_payment is None:
+                yield rx.toast.error("Error crítico: No se pudo obtener el ID de la compra.")
+                return
+
             payment_url = await wompi_service.create_wompi_payment_link(
-                purchase_id=new_purchase.id,
-                total_price=new_purchase.total_price
+                purchase_id=purchase_id_for_payment,
+                total_price=total_price_for_payment
             )
             
             if payment_url:
-                # ANTES: return rx.redirect(...)
-                # AHORA:
                 yield rx.redirect(payment_url, external=True)
                 return
             else:
-                # ANTES: return rx.toast.error(...)
-                # AHORA:
                 yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
                 return
         else: # Pago Contra Entrega
             yield AppState.notify_admin_of_new_purchase
             yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-            # ANTES: return rx.redirect(...)
-            # AHORA:
             yield rx.redirect("/my-purchases")
             return
 
