@@ -1867,18 +1867,28 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         # --- 1. Validaciones Iniciales ---
         if not self.is_authenticated or not self.default_shipping_address:
-            return rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
+            # ANTES: return rx.toast.error(...)
+            # AHORA:
+            yield rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
+            return
+
         if not self.authenticated_user_info:
-            return rx.toast.error("Error de sesión. Vuelve a iniciar sesión.")
+            # ANTES: return rx.toast.error(...)
+            # AHORA:
+            yield rx.toast.error("Error de sesión. Vuelve a iniciar sesión.")
+            return
+
         if not self.cart:
-            return rx.toast.info("Tu carrito está vacío.")
+            # ANTES: return rx.toast.info(...)
+            # AHORA:
+            yield rx.toast.info("Tu carrito está vacío.")
+            return
 
         summary = self.cart_summary
 
         with rx.session() as session:
             # --- 2. Verificación de Stock (Paso Crítico ANTES de la transacción) ---
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
-            # Bloquea las filas de los productos para evitar condiciones de carrera
             posts_to_check = session.exec(
                 sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
             ).all()
@@ -1892,18 +1902,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 post = post_map.get(prod_id)
                 if not post:
-                    return rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
+                    # ANTES: return rx.toast.error(...)
+                    # AHORA:
+                    yield rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
+                    return
                 
                 variant_found = False
                 for variant in post.variants:
                     if variant.get("attributes") == selection_attrs:
                         if variant.get("stock", 0) < quantity_in_cart:
                             attr_str = ', '.join(selection_attrs.values())
-                            return rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Compra cancelada.")
+                            # ANTES: return rx.toast.error(...)
+                            # AHORA:
+                            yield rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Compra cancelada.")
+                            return
                         variant_found = True
                         break
                 if not variant_found:
-                    return rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
+                    # ANTES: return rx.toast.error(...)
+                    # AHORA:
+                    yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
+                    return
 
             # --- 3. Creación de la Orden (Transacción Atómica) ---
             initial_status = (
@@ -1937,14 +1956,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 post_to_update = post_map.get(prod_id)
                 if post_to_update:
-                    # Deduce el stock de la variante correcta
                     for variant in post_to_update.variants:
                         if variant.get("attributes") == selection_attrs:
                             variant["stock"] -= quantity_in_cart
                             break
                     session.add(post_to_update)
 
-                    # Crea el item de la compra
                     session.add(PurchaseItemModel(
                         purchase_id=new_purchase.id,
                         blog_post_id=post_to_update.id,
@@ -1960,20 +1977,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.default_shipping_address = None
 
         if self.payment_method == "Online":
-            # Llamamos al servicio de Wompi para generar el enlace de pago
             payment_url = await wompi_service.create_wompi_payment_link(new_purchase)
             
             if payment_url:
-                # Si todo es exitoso, redirigimos al usuario a la pasarela
-                return rx.redirect(payment_url, external=True)
+                # ANTES: return rx.redirect(...)
+                # AHORA:
+                yield rx.redirect(payment_url, external=True)
+                return
             else:
-                # Si falla la comunicación con Wompi, la orden ya está guardada.
-                # El usuario puede reintentar desde su historial o un admin puede intervenir.
-                return rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
+                # ANTES: return rx.toast.error(...)
+                # AHORA:
+                yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
+                return
         else: # Pago Contra Entrega
             yield AppState.notify_admin_of_new_purchase
             yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-            return rx.redirect("/my-purchases")
+            # ANTES: return rx.redirect(...)
+            # AHORA:
+            yield rx.redirect("/my-purchases")
+            return
 
     def toggle_form(self):
         self.show_form = not self.show_form
