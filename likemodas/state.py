@@ -2477,6 +2477,60 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("Esta acción no es válida para este pedido.")
     
     @rx.event
+    def ship_confirmed_online_order(self, purchase_id: int):
+        """
+        Cambia el estado de una compra de 'CONFIRMED' a 'SHIPPED'
+        y notifica al cliente con el tiempo de entrega estimado.
+        """
+        if not self.is_admin: 
+            return rx.toast.error("Acción no permitida.")
+        
+        # 1. Validar el tiempo de entrega introducido por el admin
+        time_data = self.admin_delivery_time.get(purchase_id, {})
+        try:
+            days = int(time_data.get("days", "0") or "0")
+            hours = int(time_data.get("hours", "0") or "0")
+            minutes = int(time_data.get("minutes", "0") or "0")
+            total_delta = timedelta(days=days, hours=hours, minutes=minutes)
+            if total_delta.total_seconds() <= 0:
+                return rx.toast.error("El tiempo de entrega debe ser mayor a cero.")
+        except (ValueError, TypeError):
+            return rx.toast.error("Por favor, introduce números válidos para el tiempo de entrega.")
+
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, purchase_id)
+            # Verifica que la compra esté en el estado correcto
+            if purchase and purchase.status == PurchaseStatus.CONFIRMED:
+                # 2. Actualizar el estado y las fechas del pedido
+                purchase.status = PurchaseStatus.SHIPPED
+                purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
+                purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
+                session.add(purchase)
+
+                # 3. Crear un mensaje de notificación descriptivo para el cliente
+                time_parts = []
+                if days > 0: time_parts.append(f"{days} día(s)")
+                if hours > 0: time_parts.append(f"{hours} hora(s)")
+                if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
+                
+                time_str = ", ".join(time_parts) if time_parts else "pronto"
+                mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
+
+                # 4. Crear y guardar el objeto de notificación
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=mensaje,
+                    url="/my-purchases"
+                )
+                session.add(notification)
+                session.commit()
+                
+                yield rx.toast.success("Notificación de envío enviada al cliente.")
+                yield AppState.load_active_purchases
+            else:
+                yield rx.toast.error("Esta acción no es válida para este pedido.")
+    
+    @rx.event
     def confirm_online_payment(self, purchase_id: int):
         """
         Confirma un pago online. Cambia el estado de PENDING a CONFIRMED.
