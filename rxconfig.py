@@ -3,43 +3,50 @@
 import reflex as rx
 import os
 
-# La URL pública donde vivirá tu aplicación en Railway.
+# --- URLs de Despliegue ---
+# Estas URLs se usan para configurar correctamente CORS y las redirecciones.
+
+# La URL del backend en Railway. Reflex la necesita para que el frontend sepa a dónde conectarse.
 RAILWAY_PUBLIC_URL = "https://full-stack-python-production.up.railway.app"
 
-# La URL final para tus usuarios.
+# El dominio final que verán tus usuarios.
 PRODUCTION_DOMAIN = "https://www.likemodas.com"
 
-# La URL de Vercel (opcional, pero bueno tenerla para CORS).
+# La URL de vista previa de Vercel para el frontend.
 VERCEL_PREVIEW_URL = "https://full-stack-python.vercel.app"
 
-# --- ✨ INICIO DE LA MODIFICACIÓN: TEMA DE DISEÑO MEJORADO ✨ ---
+
+# --- Configuración Principal de la Aplicación ---
 config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
-    # URLs de despliegue
+    # Se usan las variables definidas arriba para las URLs de despliegue.
     api_url=RAILWAY_PUBLIC_URL,
     deploy_url=PRODUCTION_DOMAIN,
     
-    # Orígenes permitidos para CORS
+    # Orígenes permitidos para que el frontend pueda comunicarse con el backend.
     cors_allowed_origins=[
         "http://localhost:3000",
         PRODUCTION_DOMAIN,
         VERCEL_PREVIEW_URL,
     ],
     
-    db_url="postgresql://postgres:rszvQoEjlvQijlSTROgqCEDPiNdQqqmU@nozomi.proxy.rlwy.net:37918/railway",
+    # --- CORRECCIÓN CLAVE ---
+    # Se ha eliminado la línea `db_url`. 
+    # Reflex leerá automáticamente la URL de la base de datos desde la variable 
+    # de entorno `DATABASE_URL` proporcionada por Railway. Esto soluciona los
+    # errores de conexión al unificar la configuración.
     
+    # Se desactiva el plugin de sitemap que no es necesario para esta aplicación.
     disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
 
-    # Se define un tema estético con "violet" como color de acento.
-    # Esto afectará a botones, switches, insignias y otros componentes.
+    # Tema estético de la aplicación.
     theme=rx.theme(
-        appearance="light", # El modo por defecto ahora es claro.
+        appearance="light",
         has_background=True,
         radius="medium",
-        accent_color="violet", # 💜 El color principal para elementos interactivos.
-        panel_background="translucent", # Paneles con un fondo sutil.
+        accent_color="violet",  # Color principal para elementos interactivos.
+        panel_background="translucent",
     ),
 )
-# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---

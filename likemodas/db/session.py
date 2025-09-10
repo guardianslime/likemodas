@@ -3,9 +3,13 @@ from contextlib import contextmanager
 from sqlmodel import create_engine, Session
 import os
 
-DATABASE_URL = os.getenv("DB_URL")
+# ANTES: DATABASE_URL = os.getenv("DB_URL")
+# AHORA: Lee la misma variable que usa Reflex
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 if not DATABASE_URL:
-    raise ValueError("DB_URL environment variable not set.")
+    # Esto te avisará si la variable no está configurada por alguna razón
+    raise ValueError("La variable de entorno DATABASE_URL no está configurada.")
     
 engine = create_engine(DATABASE_URL)
 
