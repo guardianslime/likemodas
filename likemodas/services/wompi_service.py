@@ -3,7 +3,6 @@
 import os
 import httpx
 from typing import Optional
-# Ya no necesitamos importar PurchaseModel aquí
 
 # Las variables de entorno se mantienen igual
 WOMPI_API_BASE_URL = os.getenv("WOMPI_API_BASE_URL", "https://sandbox.wompi.co/v1")
@@ -12,7 +11,7 @@ APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:3000")
 
 async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Optional[str]:
     """
-    Crea un enlace de pago en Wompi usando datos simples.
+    Crea un enlace de pago en Wompi con todos los campos requeridos.
     Devuelve la URL de checkout o None si falla.
     """
     if not WOMPI_PRIVATE_KEY:
@@ -24,12 +23,14 @@ async def create_wompi_payment_link(purchase_id: int, total_price: float) -> Opt
     }
     
     payload = {
-        "name": f"Compra #{purchase_id} en Likemodas", # Usa purchase_id
+        "name": f"Compra #{purchase_id} en Likemodas",
+        "description": f"Pago por productos de la compra #{purchase_id}", # <-- CAMPO AÑADIDO
         "single_use": True,
-        "amount_in_cents": int(total_price * 100), # Usa total_price
+        "collect_shipping": False, # <-- CAMPO AÑADIDO
+        "amount_in_cents": int(total_price * 100),
         "currency": "COP",
         "redirect_url": f"{APP_BASE_URL}/my-purchases",
-        "reference": str(purchase_id), # Usa purchase_id
+        "reference": str(purchase_id),
     }
 
     async with httpx.AsyncClient() as client:
