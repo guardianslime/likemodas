@@ -1,5 +1,3 @@
-# rxconfig.py (VERSIÓN FINAL Y CORRECTA)
-
 import reflex as rx
 import os
 from dotenv import load_dotenv
