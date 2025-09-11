@@ -7,8 +7,8 @@ from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone
 
 from likemodas.services.wompi_validator import verify_wompi_signature
-# Se elimina la importación de get_db_session
-from likemodas.models import PurchaseModel, PurchaseStatus, NotificationModel, PurchaseItemModel
+# Ya no necesitamos get_db_session, usamos el de Reflex
+from likemodas.models import PurchaseModel, PurchaseStatus, NotificationModel, PurchaseItemModel, UserInfo
 
 # Carga el secreto desde las variables de entorno
 WOMPI_EVENTS_SECRET = os.getenv("WOMPI_EVENTS_SECRET_ACTIVE")
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
 def process_transaction_event_sync(event: dict):
     """
-    Procesa un evento de forma síncrona usando la sesión de base de datos de Reflex.
+    Procesa un evento de forma síncrona usando la sesión de base de datos oficial de Reflex.
     """
     transaction_data = event.get("data", {}).get("transaction", {})
     wompi_id = transaction_data.get("id")
@@ -32,7 +32,9 @@ def process_transaction_event_sync(event: dict):
     with rx.session() as session:
         purchase = session.exec(
             sqlmodel.select(PurchaseModel)
-            .options(selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
+            .options(
+                selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post).selectinload(BlogPostModel.userinfo)
+            )
             .where(PurchaseModel.wompi_payment_link_id == payment_link_id)
         ).one_or_none()
 
@@ -88,7 +90,7 @@ async def handle_wompi_webhook(request: Request):
     
     try:
         event_data = json.loads(raw_body)
-        # Llamamos a la nueva función síncrona
+        # Llamamos a la nueva función síncrona que usa rx.session()
         process_transaction_event_sync(event_data)
     except Exception as e:
         print(f"Error al procesar el webhook de Wompi: {e}")
