@@ -1,4 +1,3 @@
-# likemodas/api/webhooks.py
 import os
 import json
 import sqlmodel
@@ -49,23 +48,31 @@ async def process_transaction_event(event: dict):
         print("Webhook recibido sin datos de transacción esenciales.")
         return
 
+    # --- INICIO DE LA MODIFICACIÓN ---
+    try:
+        purchase_id = int(reference)
+    except ValueError:
+        # Si la referencia no es un número, es una prueba del debugger o un error.
+        # Lo registramos y salimos de forma segura.
+        print(f"Webhook recibido con referencia no numérica: '{reference}'. Probablemente es una prueba. Ignorando.")
+        return
+    # --- FIN DE LA MODIFICACIÓN ---
+
     with get_db_session() as session:
-        # Usamos opciones para cargar las relaciones que necesitaremos
         purchase = session.exec(
             sqlmodel.select(PurchaseModel)
             .options(selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
-            .where(PurchaseModel.id == int(reference))
+            .where(PurchaseModel.id == purchase_id) # Usamos la variable validada
         ).one_or_none()
 
         if not purchase:
-            print(f"Compra con referencia {reference} no encontrada.")
+            print(f"Compra con referencia {purchase_id} no encontrada.")
             return
 
         if purchase.status == PurchaseStatus.CONFIRMED:
             print(f"Compra {purchase.id} ya está confirmada. Ignorando evento.")
             return
 
-        # Guardar datos de auditoría
         purchase.wompi_transaction_id = wompi_id
         if purchase.wompi_events is None:
             purchase.wompi_events = []
@@ -75,7 +82,6 @@ async def process_transaction_event(event: dict):
             purchase.status = PurchaseStatus.CONFIRMED
             purchase.confirmed_at = datetime.now(timezone.utc)
             
-            # 1. Notificación para el COMPRADOR
             buyer_notification = NotificationModel(
                 userinfo_id=purchase.userinfo_id,
                 message=f"¡Tu pago para la compra #{purchase.id} ha sido confirmado!",
@@ -83,7 +89,6 @@ async def process_transaction_event(event: dict):
             )
             session.add(buyer_notification)
 
-            # 2. Notificación para el VENDEDOR/VENDEDORES
             seller_ids = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             for seller_id in seller_ids:
                 seller_notification = NotificationModel(
@@ -92,8 +97,7 @@ async def process_transaction_event(event: dict):
                     url="/admin/confirm-payments"
                 )
                 session.add(seller_notification)
-
-        else: # DECLINED, ERROR, etc.
+        else:
             purchase.status = PurchaseStatus.PENDING_PAYMENT
         
         session.add(purchase)
