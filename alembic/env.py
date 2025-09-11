@@ -22,6 +22,29 @@ from likemodas import models
 # access to the values within the .ini file in use.
 config = context.config
 
+# --- INICIO DE LA MODIFICACIÓN CLAVE ---
+# Lee la URL de la base de datos desde la variable de entorno,
+# asegurando que las migraciones y la app principal usen la misma conexión.
+# Esta es la única fuente de verdad.
+db_url = os.getenv("DATABASE_URL")
+
+# Si por alguna razón la variable de entorno no está disponible,
+# intenta usar la del archivo .ini como respaldo.
+if not db_url:
+    db_url = config.get_main_option("sqlalchemy.url")
+
+# Si después de todo no hay URL, lanza un error claro.
+if not db_url:
+    raise ValueError(
+        "La URL de la base de datos no está configurada. "
+        "Defínela en la variable de entorno DATABASE_URL o en alembic.ini."
+    )
+
+# Establece la URL correcta para que el resto del script la utilice.
+config.set_main_option("sqlalchemy.url", db_url)
+# --- FIN DE LA MODIFICACIÓN CLAVE ---
+
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
@@ -65,12 +88,9 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
-
     In this scenario we need to create an Engine
     and associate a connection with the context.
-
     """
-    # Se corrigió un typo del template original: config.config_ini_section -> config.config_main_section
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
