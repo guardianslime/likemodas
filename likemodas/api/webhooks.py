@@ -3,35 +3,33 @@ import json
 import reflex as rx
 import sqlmodel
 from fastapi import APIRouter, Request, Response, status, HTTPException
-from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone
 
 from likemodas.services.wompi_validator import verify_wompi_signature
-from likemodas.models import PurchaseModel, PurchaseStatus, NotificationModel, PurchaseItemModel, BlogPostModel
+from likemodas.models import PurchaseModel, PurchaseStatus
 
 # Carga el secreto desde las variables de entorno
 WOMPI_EVENTS_SECRET = os.getenv("WOMPI_EVENTS_SECRET_ACTIVE")
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
-def process_transaction_event_sync(event: dict):
+def process_transaction_event_simplified(event: dict):
     """
-    Procesa un evento de forma síncrona usando la sesión de base de datos oficial de Reflex.
+    Versión simplificada que SOLO actualiza el estado de la compra.
     """
     transaction_data = event.get("data", {}).get("transaction", {})
-    wompi_id = transaction_data.get("id")
     status = transaction_data.get("status")
     payment_link_id = transaction_data.get("payment_link_id")
 
-    if not all([wompi_id, status, payment_link_id]):
-        print(f"Webhook (sync) recibido sin datos esenciales. Faltó 'payment_link_id'.")
+    if status != "APPROVED" or not payment_link_id:
+        print(f"Webhook (simplified) ignorado: status={status}, link_id={payment_link_id}")
         return
 
-    # Usamos la sesión oficial de Reflex para garantizar la consistencia.
+    print(f"Procesando webhook para payment_link_id: {payment_link_id}")
     with rx.session() as session:
+        # 1. Buscar la compra (query simple, sin joins)
         purchase = session.exec(
             sqlmodel.select(PurchaseModel)
-            .options(selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
             .where(PurchaseModel.wompi_payment_link_id == payment_link_id)
         ).one_or_none()
 
@@ -39,44 +37,18 @@ def process_transaction_event_sync(event: dict):
             print(f"Compra con wompi_payment_link_id '{payment_link_id}' no encontrada.")
             return
 
-        if purchase.status == PurchaseStatus.CONFIRMED:
-            print(f"Compra {purchase.id} ya está confirmada. Ignorando evento.")
-            return
-
-        purchase.wompi_transaction_id = wompi_id
-        if purchase.wompi_events is None:
-            purchase.wompi_events = []
-        purchase.wompi_events.append(event)
-        
-        if status == "APPROVED":
-            purchase.status = PurchaseStatus.CONFIRMED
-            purchase.confirmed_at = datetime.now(timezone.utc)
-            
-            buyer_notification = NotificationModel(
-                userinfo_id=purchase.userinfo_id,
-                message=f"¡Tu pago para la compra #{purchase.id} ha sido confirmado!",
-                url="/my-purchases"
-            )
-            session.add(buyer_notification)
-
-            seller_ids = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
-            for seller_id in seller_ids:
-                seller_notification = NotificationModel(
-                    userinfo_id=seller_id,
-                    message=f"¡Venta confirmada! Gestiona el envío para la orden #{purchase.id}.",
-                    url="/admin/confirm-payments"
-                )
-                session.add(seller_notification)
-        else:
-            purchase.status = PurchaseStatus.PENDING_PAYMENT
+        # 2. Actualizar solo los campos esenciales
+        purchase.status = PurchaseStatus.CONFIRMED
+        purchase.confirmed_at = datetime.now(timezone.utc)
+        purchase.wompi_transaction_id = transaction_data.get("id")
         
         session.add(purchase)
         session.commit()
-        print(f"Webhook (sync) procesado: Compra #{purchase.id} actualizada a {purchase.status.value}")
+        print(f"¡ÉXITO! Compra #{purchase.id} actualizada a CONFIRMED.")
 
 @router.post("/wompi")
 async def handle_wompi_webhook(request: Request):
-    """Endpoint para recibir y procesar eventos de webhook de Wompi."""
+    """Endpoint que recibe el webhook y llama a la lógica simplificada."""
     raw_body = await request.body()
     
     if not WOMPI_EVENTS_SECRET:
@@ -87,10 +59,10 @@ async def handle_wompi_webhook(request: Request):
     
     try:
         event_data = json.loads(raw_body)
-        process_transaction_event_sync(event_data)
+        process_transaction_event_simplified(event_data)
     except Exception as e:
-        print(f"Error al procesar el webhook de Wompi: {e}")
-        # En caso de un error inesperado, devolvemos un 500 para que Wompi lo registre.
+        print(f"Error al procesar el webhook (simplified): {e}")
+        # Es crucial ver el traceback de este error en los logs de Railway
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
     
     return Response(status_code=200)
