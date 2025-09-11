@@ -31,8 +31,10 @@ async def handle_wompi_webhook(request: Request):
         event_data = json.loads(raw_body)
         await process_transaction_event(event_data)
     except Exception as e:
-        print(f"Error processing Wompi webhook: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error.")
+        # Imprimir el error en los logs de Railway para una mejor depuración
+        print(f"ERROR FATAL procesando el webhook de Wompi: {e}")
+        # Levantar una excepción HTTP con un detalle claro
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {e}")
     
     # 3. Responder a Wompi con un 200 OK para confirmar la recepción
     return Response(status_code=status.HTTP_200_OK)
@@ -42,16 +44,15 @@ async def process_transaction_event(event: dict):
     transaction_data = event.get("data", {}).get("transaction", {})
     wompi_id = transaction_data.get("id")
     status = transaction_data.get("status")
-    
-    # Usamos el ID del link de pago, que es el identificador consistente.
     payment_link_id = transaction_data.get("payment_link_id")
 
     if not all([wompi_id, status, payment_link_id]):
         print(f"Webhook recibido sin datos de transacción esenciales. Faltó 'payment_link_id'.")
         return
 
+    # Usamos nuestro manejador de sesión aislado para interactuar con la BD
     with get_db_session() as session:
-        # Buscamos la compra usando el nuevo campo que guardamos durante el checkout.
+        # Buscamos la compra usando el wompi_payment_link_id
         purchase = session.exec(
             sqlmodel.select(PurchaseModel)
             .options(selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
@@ -93,8 +94,8 @@ async def process_transaction_event(event: dict):
                     url="/admin/confirm-payments"
                 )
                 session.add(seller_notification)
-
-        else: # DECLINED, ERROR, etc.
+        else: 
             purchase.status = PurchaseStatus.PENDING_PAYMENT
         
         session.add(purchase)
+        # La sesión se cerrará y guardará los cambios automáticamente gracias al 'with'
