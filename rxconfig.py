@@ -2,11 +2,15 @@ import reflex as rx
 import os
 from dotenv import load_dotenv
 
-# --- CORRECCIÓN CLAVE ---
-# Carga las variables de entorno desde el archivo .env al inicio.
-# Esto asegura que DATABASE_URL y otras claves estén disponibles
-# para cualquier comando local de reflex (run, export, etc.).
+# Carga las variables de entorno desde un archivo .env si existe (para desarrollo local)
 load_dotenv()
+
+# --- MODIFICACIÓN CRÍTICA ---
+# Leemos explícitamente la variable de entorno DATABASE_URL.
+# Si no la encuentra (como en tu entorno local), usará reflex.db por defecto.
+# En Railway, SIEMPRE encontrará la variable y usará PostgreSQL.
+database_url = os.getenv("DATABASE_URL", "sqlite:///reflex.db")
+# --- FIN DE LA MODIFICACIÓN ---
 
 
 # --- URLs de Despliegue ---
@@ -20,6 +24,9 @@ config = rx.Config(
     app_name="likemodas",
     show_built_with_reflex=False,
     
+    # Asignamos explícitamente la URL de la base de datos que leímos arriba.
+    db_url=database_url,
+    
     api_url=RAILWAY_PUBLIC_URL,
     deploy_url=PRODUCTION_DOMAIN,
     
@@ -28,9 +35,6 @@ config = rx.Config(
         PRODUCTION_DOMAIN,
         VERCEL_PREVIEW_URL,
     ],
-    
-    # Ya no definimos db_url aquí. Reflex usará la variable de entorno DATABASE_URL
-    # que acabamos de cargar con load_dotenv().
     
     disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
 
