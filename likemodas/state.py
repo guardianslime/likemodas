@@ -1858,8 +1858,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_checkout(self):
         """
-        Procesa la compra, crea la orden en la base de datos y genera el enlace de pago
-        de forma segura y robusta, evitando errores de sesión.
+        Procesa la compra, crea la orden, guarda el ID del link de pago de Wompi,
+        y luego redirige al usuario para pagar.
         """
         # --- 1. Validaciones Iniciales ---
         if not self.is_authenticated or not self.default_shipping_address:
@@ -1875,13 +1875,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         summary = self.cart_summary
-
-        # --- Variables locales para guardar los datos antes de cerrar la sesión ---
         purchase_id_for_payment = None
         total_price_for_payment = None
 
         with rx.session() as session:
-            # --- 2. Verificación de Stock (Paso Crítico ANTES de la transacción) ---
+            # --- 2. Verificación de Stock ---
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
             posts_to_check = session.exec(
                 sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
@@ -1911,7 +1909,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
                     return
 
-            # --- 3. Creación de la Orden (Transacción Atómica) ---
+            # --- 3. Creación de la Orden ---
             initial_status = (
                 PurchaseStatus.PENDING_PAYMENT
                 if self.payment_method == "Online"
@@ -1934,10 +1932,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
 
-            # --- ¡CLAVE! Guardamos los datos en variables locales AHORA ---
             purchase_id_for_payment = new_purchase.id
             total_price_for_payment = new_purchase.total_price
-            # --- FIN DE LA CLAVE ---
 
             # --- 4. Creación de Items y Deducción de Stock ---
             for cart_key, quantity_in_cart in self.cart.items():
@@ -1960,30 +1956,42 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price_at_purchase=post_to_update.price,
                         selected_variant=selection_attrs,
                     ))
-
             session.commit()
 
-        # --- 5. Lógica de Pago (Fuera de la sesión de la base de datos) ---
-        self.cart.clear()
-        self.default_shipping_address = None
-
+        # --- 5. Lógica de Pago (Fuera de la sesión principal para evitar bloqueos) ---
         if self.payment_method == "Online":
             if purchase_id_for_payment is None:
                 yield rx.toast.error("Error crítico: No se pudo obtener el ID de la compra.")
                 return
 
-            payment_url = await wompi_service.create_wompi_payment_link(
+            payment_info = await wompi_service.create_wompi_payment_link(
                 purchase_id=purchase_id_for_payment,
                 total_price=total_price_for_payment
             )
             
-            if payment_url:
+            if payment_info:
+                payment_url, payment_link_id = payment_info
+                
+                # Guardamos el ID del link de pago en nuestra base de datos
+                with rx.session() as session:
+                    purchase_to_update = session.get(PurchaseModel, purchase_id_for_payment)
+                    if purchase_to_update:
+                        purchase_to_update.wompi_payment_link_id = payment_link_id
+                        session.add(purchase_to_update)
+                        session.commit()
+
+                # Limpiamos el carrito y redirigimos al usuario
+                self.cart.clear()
+                self.default_shipping_address = None
                 yield rx.call_script(f"window.location.href = '{payment_url}'")
                 return
             else:
                 yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
                 return
-        else: # Pago Contra Entrega
+                
+        else:  # Pago Contra Entrega
+            self.cart.clear()
+            self.default_shipping_address = None
             yield AppState.notify_admin_of_new_purchase
             yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
             yield rx.redirect("/my-purchases")

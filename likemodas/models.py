@@ -258,16 +258,18 @@ class PurchaseModel(rx.Model, table=True):
     purchase_date: datetime = Field(default_factory=get_utc_now, nullable=False)
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
-    status: PurchaseStatus = Field(default=PurchaseStatus.PENDING_CONFIRMATION, nullable=False)
+    status: PurchaseStatus = Field(default=PurchaseStatus.PENDING_PAYMENT, nullable=False) # CAMBIADO a PENDING_PAYMENT por defecto
     shipping_applied: Optional[float] = Field(default=None)
     shipping_name: Optional[str] = None; shipping_city: Optional[str] = None
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     payment_method: str = Field(default="online", nullable=False)
-    # --- CAMPOS AÑADIDOS PARA WOMPI ---
     wompi_transaction_id: Optional[str] = Field(default=None, index=True, unique=True)
     wompi_events: list = Field(default_factory=list, sa_column=Column(JSON))
-    # --- FIN DE CAMPOS AÑADIDOS ---
+    
+    # --- ✨ LÍNEA A AÑADIR ✨ ---
+    wompi_payment_link_id: Optional[str] = Field(default=None, index=True)
+    
     estimated_delivery_date: Optional[datetime] = Field(default=None)
     delivery_confirmation_sent_at: Optional[datetime] = Field(default=None)
     user_confirmed_delivery_at: Optional[datetime] = Field(default=None)

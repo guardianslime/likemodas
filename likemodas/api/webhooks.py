@@ -42,37 +42,31 @@ async def process_transaction_event(event: dict):
     transaction_data = event.get("data", {}).get("transaction", {})
     wompi_id = transaction_data.get("id")
     status = transaction_data.get("status")
-    reference = transaction_data.get("reference")
+    
+    # Usamos el ID del link de pago, que es el identificador consistente.
+    payment_link_id = transaction_data.get("payment_link_id")
 
-    if not all([wompi_id, status, reference]):
-        print("Webhook recibido sin datos de transacción esenciales.")
+    if not all([wompi_id, status, payment_link_id]):
+        print(f"Webhook recibido sin datos de transacción esenciales. Faltó 'payment_link_id'.")
         return
-
-    # --- INICIO DE LA MODIFICACIÓN ---
-    try:
-        purchase_id = int(reference)
-    except ValueError:
-        # Si la referencia no es un número, es una prueba del debugger o un error.
-        # Lo registramos y salimos de forma segura.
-        print(f"Webhook recibido con referencia no numérica: '{reference}'. Probablemente es una prueba. Ignorando.")
-        return
-    # --- FIN DE LA MODIFICACIÓN ---
 
     with get_db_session() as session:
+        # Buscamos la compra usando el nuevo campo que guardamos durante el checkout.
         purchase = session.exec(
             sqlmodel.select(PurchaseModel)
             .options(selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
-            .where(PurchaseModel.id == purchase_id) # Usamos la variable validada
+            .where(PurchaseModel.wompi_payment_link_id == payment_link_id)
         ).one_or_none()
 
         if not purchase:
-            print(f"Compra con referencia {purchase_id} no encontrada.")
+            print(f"Compra con wompi_payment_link_id '{payment_link_id}' no encontrada.")
             return
 
         if purchase.status == PurchaseStatus.CONFIRMED:
             print(f"Compra {purchase.id} ya está confirmada. Ignorando evento.")
             return
 
+        # Guardar datos de auditoría
         purchase.wompi_transaction_id = wompi_id
         if purchase.wompi_events is None:
             purchase.wompi_events = []
@@ -82,6 +76,7 @@ async def process_transaction_event(event: dict):
             purchase.status = PurchaseStatus.CONFIRMED
             purchase.confirmed_at = datetime.now(timezone.utc)
             
+            # Notificación para el COMPRADOR
             buyer_notification = NotificationModel(
                 userinfo_id=purchase.userinfo_id,
                 message=f"¡Tu pago para la compra #{purchase.id} ha sido confirmado!",
@@ -89,6 +84,7 @@ async def process_transaction_event(event: dict):
             )
             session.add(buyer_notification)
 
+            # Notificación para el VENDEDOR/VENDEDORES
             seller_ids = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             for seller_id in seller_ids:
                 seller_notification = NotificationModel(
@@ -97,7 +93,8 @@ async def process_transaction_event(event: dict):
                     url="/admin/confirm-payments"
                 )
                 session.add(seller_notification)
-        else:
+
+        else: # DECLINED, ERROR, etc.
             purchase.status = PurchaseStatus.PENDING_PAYMENT
         
         session.add(purchase)
