@@ -1854,7 +1854,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     checkout_url: str = ""
     is_payment_processing: bool = False
 
-
     @rx.event
     async def handle_checkout(self):
         """
@@ -1996,6 +1995,57 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
             yield rx.redirect("/my-purchases")
             return
+    
+    @rx.background
+    async def process_wompi_event_bg(self, event_data: dict):
+        """
+        Manejador en segundo plano para procesar el evento de Wompi de forma segura.
+        """
+        # Usamos 'async with self.session()'' para obtener una sesión de BD segura de Reflex
+        async with self.session() as session:
+            transaction_data = event_data.get("data", {}).get("transaction", {})
+            status = transaction_data.get("status")
+            payment_link_id = transaction_data.get("payment_link_id")
+
+            if not status or not payment_link_id:
+                print(f"[BG Task] Webhook recibido sin status o payment_link_id.")
+                return
+
+            # Buscamos la compra usando el wompi_payment_link_id
+            purchase_query = sqlmodel.select(PurchaseModel).where(
+                PurchaseModel.wompi_payment_link_id == payment_link_id
+            )
+            purchase = (await session.exec(purchase_query)).one_or_none()
+
+            if not purchase:
+                print(f"[BG Task] Compra con wompi_payment_link_id '{payment_link_id}' no encontrada.")
+                return
+
+            if purchase.status == PurchaseStatus.CONFIRMED:
+                print(f"[BG Task] Compra {purchase.id} ya está confirmada. Ignorando evento.")
+                return
+            
+            # Actualizamos el estado si el pago fue aprobado
+            if status == "APPROVED":
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                purchase.wompi_transaction_id = transaction_data.get("id")
+                
+                # Creamos las notificaciones
+                buyer_notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Tu pago para la compra #{purchase.id} ha sido confirmado!",
+                    url="/my-purchases"
+                )
+                session.add(buyer_notification)
+                # Aquí podrías añadir la notificación para el vendedor también si lo deseas
+            
+            else:
+                purchase.status = PurchaseStatus.PENDING_PAYMENT
+
+            session.add(purchase)
+            await session.commit()
+            print(f"[BG Task] Compra #{purchase.id} actualizada al estado: {purchase.status.value}")
 
     def toggle_form(self):
         self.show_form = not self.show_form
