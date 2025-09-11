@@ -1996,6 +1996,54 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.redirect("/my-purchases")
             return
     
+    @rx.api.post("/wompi_event")
+    async def process_wompi_event_api(self, event: dict) -> None:
+        """
+        Este es un EventHandler nativo de Reflex que será llamado por nuestro webhook.
+        Realiza la actualización de la base de datos de forma segura.
+        """
+        async with self.session() as session:
+            transaction_data = event.get("data", {}).get("transaction", {})
+            status = transaction_data.get("status")
+            payment_link_id = transaction_data.get("payment_link_id")
+
+            if not status or not payment_link_id:
+                print(f"[API Endpoint] Datos de webhook incompletos.")
+                return
+
+            purchase_query = sqlmodel.select(PurchaseModel).where(
+                PurchaseModel.wompi_payment_link_id == payment_link_id
+            )
+            purchase = (await session.exec(purchase_query)).one_or_none()
+
+            if not purchase:
+                print(f"[API Endpoint] Compra con wompi_payment_link_id '{payment_link_id}' no encontrada.")
+                return
+
+            if purchase.status == PurchaseStatus.CONFIRMED:
+                print(f"[API Endpoint] Compra {purchase.id} ya está confirmada.")
+                return
+            
+            if status == "APPROVED":
+                purchase.status = PurchaseStatus.CONFIRMED
+                purchase.confirmed_at = datetime.now(timezone.utc)
+                purchase.wompi_transaction_id = transaction_data.get("id")
+                
+                # Crear notificaciones
+                buyer_notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡Tu pago para la compra #{purchase.id} ha sido confirmado!",
+                    url="/my-purchases"
+                )
+                session.add(buyer_notification)
+                # Aquí puedes añadir la notificación para el vendedor
+
+            else:
+                purchase.status = PurchaseStatus.PENDING_PAYMENT
+
+            session.add(purchase)
+            await session.commit()
+            print(f"[API Endpoint] Compra #{purchase.id} actualizada a: {purchase.status.value}")
     
 
     def toggle_form(self):
