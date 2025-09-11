@@ -1,54 +1,20 @@
 import os
 import json
-import reflex as rx
-import sqlmodel
+import httpx
 from fastapi import APIRouter, Request, Response, status, HTTPException
-from datetime import datetime, timezone
+from reflex.config import get_config
 
 from likemodas.services.wompi_validator import verify_wompi_signature
-from likemodas.models import PurchaseModel, PurchaseStatus
 
-# Carga el secreto desde las variables de entorno
 WOMPI_EVENTS_SECRET = os.getenv("WOMPI_EVENTS_SECRET_ACTIVE")
-
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
-
-def process_transaction_event_simplified(event: dict):
-    """
-    Versión simplificada que SOLO actualiza el estado de la compra.
-    """
-    transaction_data = event.get("data", {}).get("transaction", {})
-    status = transaction_data.get("status")
-    payment_link_id = transaction_data.get("payment_link_id")
-
-    if status != "APPROVED" or not payment_link_id:
-        print(f"Webhook (simplified) ignorado: status={status}, link_id={payment_link_id}")
-        return
-
-    print(f"Procesando webhook para payment_link_id: {payment_link_id}")
-    with rx.session() as session:
-        # 1. Buscar la compra (query simple, sin joins)
-        purchase = session.exec(
-            sqlmodel.select(PurchaseModel)
-            .where(PurchaseModel.wompi_payment_link_id == payment_link_id)
-        ).one_or_none()
-
-        if not purchase:
-            print(f"Compra con wompi_payment_link_id '{payment_link_id}' no encontrada.")
-            return
-
-        # 2. Actualizar solo los campos esenciales
-        purchase.status = PurchaseStatus.CONFIRMED
-        purchase.confirmed_at = datetime.now(timezone.utc)
-        purchase.wompi_transaction_id = transaction_data.get("id")
-        
-        session.add(purchase)
-        session.commit()
-        print(f"¡ÉXITO! Compra #{purchase.id} actualizada a CONFIRMED.")
 
 @router.post("/wompi")
 async def handle_wompi_webhook(request: Request):
-    """Endpoint que recibe el webhook y llama a la lógica simplificada."""
+    """
+    Recibe el evento de Wompi, lo valida y lo reenvía al endpoint
+    interno de Reflex para un procesamiento seguro.
+    """
     raw_body = await request.body()
     
     if not WOMPI_EVENTS_SECRET:
@@ -59,10 +25,21 @@ async def handle_wompi_webhook(request: Request):
     
     try:
         event_data = json.loads(raw_body)
-        process_transaction_event_simplified(event_data)
+        
+        # Obtenemos la URL de nuestra propia API desde la configuración de Reflex
+        config = get_config()
+        # La URL del endpoint puente que creamos en likemodas.py
+        bridge_endpoint_url = f"{config.api_url}/internal/process_wompi"
+
+        # Hacemos una llamada interna a nuestro propio puente de Reflex
+        async with httpx.AsyncClient() as client:
+            # Aumentamos el timeout para estar seguros
+            response = await client.post(bridge_endpoint_url, json=event_data, timeout=30.0)
+            response.raise_for_status()
+
     except Exception as e:
-        print(f"Error al procesar el webhook (simplified): {e}")
-        # Es crucial ver el traceback de este error en los logs de Railway
+        print(f"Error al reenviar evento al puente de Reflex: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
     
+    # Respondemos 200 OK a Wompi inmediatamente
     return Response(status_code=200)

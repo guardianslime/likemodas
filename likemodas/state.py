@@ -1996,6 +1996,41 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.redirect("/my-purchases")
             return
     
+    async def process_wompi_confirmation(self, event_data: dict):
+        """
+        Este EventHandler recibe los datos del webhook y actualiza la BD de forma segura.
+        """
+        async with self.session() as session:
+            try:
+                transaction_data = event_data.get("data", {}).get("transaction", {})
+                status = transaction_data.get("status")
+                payment_link_id = transaction_data.get("payment_link_id")
+
+                if status != "APPROVED" or not payment_link_id:
+                    print(f"EventHandler ignorado: status={status}")
+                    return
+
+                purchase_query = sqlmodel.select(PurchaseModel).where(
+                    PurchaseModel.wompi_payment_link_id == payment_link_id
+                )
+                purchase = (await session.exec(purchase_query)).one_or_none()
+
+                if not purchase:
+                    print(f"EventHandler: Compra con link_id '{payment_link_id}' no encontrada.")
+                    return
+
+                if purchase.status != PurchaseStatus.CONFIRMED:
+                    purchase.status = PurchaseStatus.CONFIRMED
+                    purchase.confirmed_at = datetime.now(timezone.utc)
+                    purchase.wompi_transaction_id = transaction_data.get("id")
+                    session.add(purchase)
+                    await session.commit()
+                    print(f"¡ÉXITO! EventHandler actualizó la compra #{purchase.id} a CONFIRMED.")
+                else:
+                    print(f"EventHandler: Compra #{purchase.id} ya estaba confirmada.")
+
+            except Exception as e:
+                print(f"ERROR en EventHandler process_wompi_confirmation: {e}")
 
     def toggle_form(self):
         self.show_form = not self.show_form
