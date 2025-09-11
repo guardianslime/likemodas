@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Este script se ejecutará cada vez que Railway despliegue tu aplicación.
 
 echo "----> Instalando dependencias..."
@@ -14,6 +13,3 @@ echo "----> Iniciando el servidor backend..."
 # --- El comando MODERNO y CORRECTO para iniciar el servidor ---
 # Pone la casa (tu app) sobre los cimientos ya construidos.
 reflex run --backend-only --env prod --backend-host 0.0.0.0 --port $PORT
-```eof
-
-**Reemplaza el contenido de tu `run.sh` con este, súbelo a GitHub y el despliegue en Railway funcionará.**
