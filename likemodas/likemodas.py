@@ -51,16 +51,6 @@ app = rx.App(
     api_transformer=fastapi_app # <--- ¡LA CLAVE ESTÁ AQUÍ! [cite: 15]
 )
 
-# --- ✨ INICIO DEL CÓDIGO A AÑADIR ✨ ---
-
-# Este es el endpoint nativo de Reflex que actúa como puente seguro.
-async def wompi_event_bridge(event: dict):
-    state = await AppState.create()
-    await state.process_wompi_confirmation(event)
-    return {"status": "event being processed"}
-
-# Añadimos la ruta a la aplicación Reflex.
-app.add_api_route("/internal/process_wompi", wompi_event_bridge, methods=["POST"])
 
 # --- Ruta principal (la galería de productos) ---
 app.add_page(

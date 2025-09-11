@@ -1,10 +1,13 @@
 import os
 import json
-import httpx
+import sqlmodel
 from fastapi import APIRouter, Request, Response, status, HTTPException
-from reflex.config import get_config
+from datetime import datetime, timezone
 
+# Importamos nuestro conector independiente
+from likemodas.db.session import get_db_session
 from likemodas.services.wompi_validator import verify_wompi_signature
+from likemodas.models import PurchaseModel, PurchaseStatus, NotificationModel
 
 WOMPI_EVENTS_SECRET = os.getenv("WOMPI_EVENTS_SECRET_ACTIVE")
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
@@ -12,8 +15,7 @@ router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 @router.post("/wompi")
 async def handle_wompi_webhook(request: Request):
     """
-    Recibe el evento de Wompi, lo valida y lo reenvía al endpoint
-    interno de Reflex para un procesamiento seguro.
+    Recibe el webhook de Wompi y actualiza la base de datos usando una sesión independiente.
     """
     raw_body = await request.body()
     
@@ -25,21 +27,36 @@ async def handle_wompi_webhook(request: Request):
     
     try:
         event_data = json.loads(raw_body)
-        
-        # Obtenemos la URL de nuestra propia API desde la configuración de Reflex
-        config = get_config()
-        # La URL del endpoint puente que creamos en likemodas.py
-        bridge_endpoint_url = f"{config.api_url}/internal/process_wompi"
+        transaction_data = event_data.get("data", {}).get("transaction", {})
+        status = transaction_data.get("status")
+        payment_link_id = transaction_data.get("payment_link_id")
 
-        # Hacemos una llamada interna a nuestro propio puente de Reflex
-        async with httpx.AsyncClient() as client:
-            # Aumentamos el timeout para estar seguros
-            response = await client.post(bridge_endpoint_url, json=event_data, timeout=30.0)
-            response.raise_for_status()
+        if status == "APPROVED" and payment_link_id:
+            with get_db_session() as session:
+                # 1. Buscar la compra
+                purchase = session.exec(
+                    sqlmodel.select(PurchaseModel).where(PurchaseModel.wompi_payment_link_id == payment_link_id)
+                ).one_or_none()
+
+                if purchase and purchase.status != PurchaseStatus.CONFIRMED:
+                    # 2. Actualizar la compra
+                    purchase.status = PurchaseStatus.CONFIRMED
+                    purchase.confirmed_at = datetime.now(timezone.utc)
+                    purchase.wompi_transaction_id = transaction_data.get("id")
+                    session.add(purchase)
+                    
+                    # 3. (Opcional) Crear notificación
+                    # Por ahora lo dejamos simple para asegurar que funcione.
+                    # Podemos añadir notificaciones después.
+                    
+                    print(f"ÉXITO: Compra #{purchase.id} actualizada a CONFIRMED vía webhook independiente.")
+                else:
+                    print(f"Webhook ignorado: Compra no encontrada o ya confirmada.")
+        else:
+            print(f"Webhook ignorado: El estado no es 'APPROVED'.")
 
     except Exception as e:
-        print(f"Error al reenviar evento al puente de Reflex: {e}")
+        print(f"Error fatal en el webhook independiente: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {e}")
     
-    # Respondemos 200 OK a Wompi inmediatamente
     return Response(status_code=200)
