@@ -40,13 +40,16 @@ from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
 from .returns import page as returns_page
 
+from .api import webhooks
+from .api import tasks as api_tasks # <-- 1. Le damos un apodo único: "api_tasks"
+
 # 1. Crear la instancia de FastAPI que extenderá el backend de Reflex
 fastapi_app = FastAPI(title="API extendida de Likemodas")
 
 # 2. Incluir el router de webhooks
 fastapi_app.include_router(webhooks.router)
 
-fastapi_app.include_router(tasks.router) # <-- AÑADE ESTA LÍNEA
+fastapi_app.include_router(api_tasks.router) # <-- 2. Usamos el apodo para ser específicos
 
 # 3. Pasar la instancia de FastAPI a la aplicación Reflex
 app = rx.App(
