@@ -2035,7 +2035,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def confirm_payment_on_redirect(self, wompi_tx_id: str):
         """
-        Verifica una transacción con Wompi y actualiza la orden si fue aprobada.
+        Verifica una transacción con Wompi al ser redirigido y actualiza la orden si fue aprobada.
+        Esta versión es robusta y maneja referencias de pago no numéricas.
         """
         yield rx.toast.info(f"Verificando estado del pago...")
         
@@ -2048,25 +2049,35 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return
 
             with rx.session() as session:
-                purchase_to_update = session.exec(
-                    sqlmodel.select(PurchaseModel).where(PurchaseModel.id == int(purchase_ref))
-                ).one_or_none()
-
-                if purchase_to_update and purchase_to_update.status == PurchaseStatus.PENDING_PAYMENT:
-                    purchase_to_update.status = PurchaseStatus.CONFIRMED
-                    purchase_to_update.confirmed_at = datetime.now(timezone.utc)
-                    purchase_to_update.wompi_transaction_id = wompi_tx_id
-                    session.add(purchase_to_update)
-                    session.commit()
+                try:
+                    # Intentamos convertir la referencia a un número entero
+                    purchase_id = int(purchase_ref)
                     
-                    yield rx.toast.success("¡Tu pago ha sido confirmado!")
-                    yield AppState.load_purchases # Recarga la lista de compras
-                elif purchase_to_update:
-                    yield rx.toast.info("Este pago ya había sido confirmado.")
-                else:
-                    yield rx.toast.error(f"No se encontró la compra con referencia: {purchase_ref}")
+                    purchase_to_update = session.exec(
+                        sqlmodel.select(PurchaseModel).where(PurchaseModel.id == purchase_id)
+                    ).one_or_none()
+
+                    if purchase_to_update and purchase_to_update.status == PurchaseStatus.PENDING_PAYMENT:
+                        # Si la compra existe y está pendiente, la actualizamos
+                        purchase_to_update.status = PurchaseStatus.CONFIRMED
+                        purchase_to_update.confirmed_at = datetime.now(timezone.utc)
+                        purchase_to_update.wompi_transaction_id = wompi_tx_id
+                        session.add(purchase_to_update)
+                        session.commit()
+                        
+                        yield rx.toast.success("¡Tu pago ha sido confirmado!")
+                        yield AppState.load_purchases # Recarga la lista de compras para el usuario
+                    elif purchase_to_update:
+                        yield rx.toast.info("Este pago ya había sido confirmado anteriormente.")
+                    else:
+                        yield rx.toast.error(f"No se encontró la compra con la referencia: {purchase_ref}")
+
+                except ValueError:
+                    # Si la referencia no es un número (como en el error anterior),
+                    # atrapamos el error aquí y mostramos un mensaje claro.
+                    yield rx.toast.error(f"La referencia del pago ({purchase_ref}) no es un ID de compra válido.")
         else:
-            yield rx.toast.warning("El pago aún no ha sido aprobado. Se actualizará pronto.")
+            yield rx.toast.warning("El pago aún no ha sido aprobado por Wompi. El estado se actualizará automáticamente pronto.")
 
     @rx.event
     async def on_load_purchases_page(self):
