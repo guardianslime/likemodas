@@ -82,3 +82,26 @@ async def get_wompi_transaction_details(transaction_id: str) -> Optional[dict]:
         except Exception as e:
             print(f"Error inesperado al consultar transacción Wompi: {e}")
             return None
+        
+async def get_transaction_by_reference(reference: str) -> Optional[dict]:
+    """
+    Busca la primera transacción de Wompi que coincida con una referencia dada.
+    """
+    if not WOMPI_PRIVATE_KEY:
+        print("Error: WOMPI_PRIVATE_KEY_ACTIVE no está configurada.")
+        return None
+
+    headers = {"Authorization": f"Bearer {WOMPI_PRIVATE_KEY}"}
+    url = f"{WOMPI_API_BASE_URL}/transactions"
+    params = {"reference": reference}
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            transactions = response.json().get("data", [])
+            # Devuelve la primera transacción encontrada, si existe
+            return transactions[0] if transactions else None
+        except Exception as e:
+            print(f"Error al buscar transacción por referencia {reference}: {e}")
+            return None
