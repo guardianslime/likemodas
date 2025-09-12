@@ -4,6 +4,7 @@ from __future__ import annotations
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
+from sqlmodel import select # <-- AÑADE ESTA LÍNEA
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
