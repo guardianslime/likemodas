@@ -402,6 +402,43 @@ class AppState(reflex_local_auth.LocalAuthState):
     token: str = ""
     is_token_valid: bool = False
 
+    # --- INICIO DE LA NUEVA FUNCIÓN DE LOGIN ---
+    @rx.event
+    def handle_login_with_verification(self, form_data: dict):
+        """
+        Manejador de login personalizado que requiere que la cuenta esté verificada.
+        """
+        self.error_message = ""
+        username = form_data.get("username", "").strip()
+        password = form_data.get("password", "").strip()
+
+        if not username or not password:
+            self.error_message = "Usuario y contraseña son requeridos."
+            return
+
+        with rx.session() as session:
+            # 1. Verificar si el usuario y la contraseña son correctos
+            user = session.exec(
+                select(LocalUser).where(LocalUser.username == username)
+            ).one_or_none()
+
+            if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
+                self.error_message = "Usuario o contraseña inválidos."
+                return
+
+            # 2. Si son correctos, AHORA verificamos si la cuenta está activada
+            user_info = session.exec(
+                select(UserInfo).where(UserInfo.user_id == user.id)
+            ).one_or_none()
+
+            if not user_info or not user_info.is_verified:
+                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo electrónico."
+                return
+
+            # 3. Si todo está en orden, procedemos con el login normal
+            return self.on_login(user)
+    # --- FIN DE LA NUEVA FUNCIÓN DE LOGIN ---
+
     def handle_forgot_password(self, form_data: dict):
         email = form_data.get("email", "")
         if not email:

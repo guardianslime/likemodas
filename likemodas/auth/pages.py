@@ -30,7 +30,7 @@ def my_login_page_content() -> rx.Component:
                         rx.button("Iniciar Sesión", width="100%", type="submit", color_scheme="violet"),
                         spacing="4"
                     ),
-                    on_submit=reflex_local_auth.LoginState.on_submit
+                    on_submit=AppState.handle_login_with_verification
                 ),
                 rx.link(
                    "¿Olvidaste tu contraseña?", 
