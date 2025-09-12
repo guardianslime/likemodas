@@ -80,7 +80,14 @@ app.add_page(base_page(seller_page.seller_page_content()), route="/vendedor", on
 # --- Rutas de Cuenta, Carrito y Compras ---
 app.add_page(base_page(profile_page.profile_page_content()), route="/my-account/profile", title="Mi Perfil", on_load=AppState.on_load_profile_page)
 app.add_page(base_page(cart_page.cart_page_content()), route="/cart", title="Mi Carrito", on_load=[AppState.on_load, AppState.load_default_shipping_info])
-app.add_page(base_page(purchases_page.purchase_history_content()), route="/my-purchases", title="Mis Compras", on_load=AppState.load_purchases)
+
+app.add_page(
+    base_page(purchases_page.purchase_history_content()), 
+    route="/my-purchases", 
+    title="Mis Compras", 
+    on_load=AppState.on_load_purchases_page  # <-- ¡Asegúrate de que use el nuevo manejador!
+)
+
 app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
 app.add_page(base_page(saved_posts_module.saved_posts_content()), route="/my-account/saved-posts", title="Publicaciones Guardadas", on_load=AppState.on_load_saved_posts_page)
 
