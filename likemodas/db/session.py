@@ -11,7 +11,7 @@ if not DATABASE_URL:
 
 # Se añade pool_recycle para mejorar la resiliencia en entornos de producción.
 # Este valor debe ser menor que el timeout de inactividad de tu proveedor de BD.
-engine = create_engine(DATABASE_URL, connect_args={"options": "-c timezone=utc"}, pool_recycle=3600)
+engine = create_engine(DATABASE_URL, connect_args={"options": "-c timezone=utc"}, pool_recycle=300)
 
 @contextmanager
 def get_db_session():

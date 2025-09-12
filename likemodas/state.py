@@ -1967,10 +1967,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase_id=purchase_id_for_payment,
                 total_price=total_price_for_payment
             )
-            
+
             if payment_info:
                 payment_url, payment_link_id = payment_info
-                
+
                 # Guardamos el ID del link de pago en nuestra base de datos
                 with rx.session() as session:
                     purchase_to_update = session.get(PurchaseModel, purchase_id_for_payment)
@@ -1987,7 +1987,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:
                 yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
                 return
-                
+
         else:  # Pago Contra Entrega
             self.cart.clear()
             self.default_shipping_address = None

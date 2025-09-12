@@ -50,7 +50,7 @@ async def handle_wompi_webhook(request: Request):
     try:
         event_data = json.loads(raw_body)
         transaction_data = event_data.get("data", {}).get("transaction", {})
-        
+
         transaction_status = transaction_data.get("status")
         payment_link_id = transaction_data.get("payment_link_id")
         transaction_id = transaction_data.get("id")
