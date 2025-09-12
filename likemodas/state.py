@@ -2299,18 +2299,23 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def user_confirm_delivery(self, purchase_id: int):
-        """El usuario confirma que ha recibido el pedido."""
+        """
+        Permite al usuario confirmar que ha recibido un pedido.
+        Cambia el estado de SHIPPED a DELIVERED.
+        """
         if not self.authenticated_user_info:
-            return
+            return rx.toast.error("Debes iniciar sesión.")
 
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
+            
+            # Doble chequeo de seguridad: el usuario debe ser el dueño y la compra debe estar en estado "Enviado"
             if purchase and purchase.userinfo_id == self.authenticated_user_info.id and purchase.status == PurchaseStatus.SHIPPED:
                 purchase.status = PurchaseStatus.DELIVERED
                 purchase.user_confirmed_delivery_at = datetime.now(timezone.utc)
                 session.add(purchase)
                 
-                # Notifica al usuario que ya puede calificar el producto
+                # Opcional: Notificar al usuario que ya puede calificar el producto
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
                     message=f"¡Gracias por confirmar! Ya puedes calificar los productos de tu compra #{purchase.id}.",
@@ -2318,7 +2323,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 session.add(notification)
                 session.commit()
+
+                # Recargamos la lista de compras para que la UI se actualice al instante
                 yield AppState.load_purchases
+                yield rx.toast.success("¡Entrega confirmada! Gracias por tu compra.")
+            else:
+                yield rx.toast.error("No se pudo confirmar la entrega para esta compra.")
 
     @rx.event
     def check_for_auto_confirmations(self):

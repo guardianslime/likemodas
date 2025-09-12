@@ -72,6 +72,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """Componente principal que muestra una tarjeta de compra en el historial."""
     return rx.card(
         rx.vstack(
+            # ... (La sección superior con el ID y la fecha se mantiene igual) ...
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -87,6 +88,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 width="100%",
             ),
             rx.divider(),
+            # ... (La sección de detalles de envío y artículos se mantiene igual) ...
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -95,63 +97,85 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
-            
             purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
             
+            # ... (La sección de totales se mantiene igual) ...
             rx.vstack(
                 rx.hstack(
                     rx.spacer(),
                     rx.text("Envío:", size="4", weight="medium"),
                     rx.text(purchase.shipping_applied_cop, size="4"),
-                    align="center",
-                    spacing="3",
+                    align="center", spacing="3",
                 ),
                 rx.hstack(
                     rx.spacer(),
                     rx.heading("Total Compra:", size="5", weight="medium"),
                     rx.heading(purchase.total_price_cop, size="6"),
-                    align="center",
-                    spacing="3",
+                    align="center", spacing="3",
                 ),
-                align_items="end",
-                width="100%",
-                margin_top="1em",
-                spacing="2"
+                align_items="end", width="100%", margin_top="1em", spacing="2"
             ),
             
-            # --- Lógica de estado de entrega ---
+            # --- INICIO DE LA LÓGICA DE ACCIONES MEJORADA ---
+            rx.divider(margin_y="1em"),
+
+            # Caso 1: El pedido ha sido ENVIADO
+            rx.cond(
+                purchase.status == PurchaseStatus.SHIPPED.value,
+                rx.vstack(
+                    rx.callout(
+                        f"Tu pedido llegará aproximadamente el: {purchase.estimated_delivery_date_formatted}",
+                        icon="truck",
+                        color_scheme="blue",
+                        width="100%"
+                    ),
+                    rx.button(
+                        "He Recibido mi Pedido",
+                        on_click=AppState.user_confirm_delivery(purchase.id),
+                        width="100%",
+                        margin_top="0.5em",
+                        color_scheme="green",
+                    ),
+                    spacing="3",
+                    width="100%",
+                )
+            ),
+
+            # Caso 2: El pedido ha sido ENTREGADO
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                  rx.vstack(
-                    rx.divider(margin_y="1em"),
-                    rx.text("¡Pedido entregado! Gracias por tu compra.", size="3", color_scheme="violet"),
+                    rx.callout(
+                        "¡Pedido entregado! Gracias por tu compra.",
+                        icon="check_check",
+                        color_scheme="violet",
+                        width="100%",
+                    ),
+                    rx.hstack(
+                        rx.link(
+                            rx.button("Imprimir Factura", variant="outline", width="100%"),
+                            href=f"/invoice?id={purchase.id}",
+                            is_external=False, # Abre en la misma app
+                            target="_blank",   # Abre en una nueva pestaña
+                            width="100%",
+                        ),
+                        rx.button(
+                            "Devolución o Cambio",
+                            on_click=AppState.go_to_return_page(purchase.id),
+                            variant="solid",
+                            color_scheme="orange",
+                            width="100%",
+                        ),
+                        spacing="3",
+                        margin_top="1em",
+                        width="100%",
+                    ),
                     width="100%",
                     align_items="center"
                  )
             ),
+            # --- FIN DE LA LÓGICA DE ACCIONES MEJORADA ---
 
-            rx.cond(
-                purchase.status == PurchaseStatus.DELIVERED.value,
-                rx.hstack(
-                    rx.link(
-                        rx.button("Imprimir Factura", variant="outline", width="100%"),
-                        href=f"/invoice?id={purchase.id}",
-                        is_external=False,
-                        target="_blank",
-                        width="100%",
-                    ),
-                    rx.button(
-                        "Devolución o Cambio",
-                        on_click=AppState.go_to_return_page(purchase.id),
-                        variant="solid",
-                        color_scheme="orange",
-                        width="100%",
-                    ),
-                    spacing="3",
-                    margin_top="1em",
-                    width="100%",
-                ),
-            ),
             spacing="4", width="100%"
         ),
         width="100%", padding="1.5em",
