@@ -1,5 +1,6 @@
 # likemodas/likemodas.py (VERSIÓN FINAL)
 
+from asyncio import tasks
 from fastapi import FastAPI
 import reflex as rx
 import reflex_local_auth
@@ -44,6 +45,8 @@ fastapi_app = FastAPI(title="API extendida de Likemodas")
 
 # 2. Incluir el router de webhooks
 fastapi_app.include_router(webhooks.router)
+
+fastapi_app.include_router(tasks.router) # <-- AÑADE ESTA LÍNEA
 
 # 3. Pasar la instancia de FastAPI a la aplicación Reflex
 app = rx.App(

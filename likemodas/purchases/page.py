@@ -183,4 +183,12 @@ def purchase_history_content() -> rx.Component:
         width="100%",
         on_mount=AppState.check_for_auto_confirmations
     )
-    return account_layout(page_content)
+    # CAMBIA ESTA LÍNEA
+    return account_layout(
+        rx.box(
+            page_content,
+            # ANTES: on_mount=AppState.check_for_auto_confirmations
+            # AHORA:
+            on_load=AppState.on_load_purchases_page,
+        )
+    )

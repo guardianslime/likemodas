@@ -2032,6 +2032,64 @@ class AppState(reflex_local_auth.LocalAuthState):
             except Exception as e:
                 print(f"ERROR en EventHandler process_wompi_confirmation: {e}")
 
+    @rx.event
+    async def confirm_payment_on_redirect(self, wompi_tx_id: str):
+        """
+        Verifica una transacción con Wompi y actualiza la orden si fue aprobada.
+        """
+        yield rx.toast.info(f"Verificando estado del pago...")
+        
+        transaction_details = await wompi_service.get_wompi_transaction_details(wompi_tx_id)
+        
+        if transaction_details and transaction_details.get("status") == "APPROVED":
+            purchase_ref = transaction_details.get("reference")
+            if not purchase_ref:
+                yield rx.toast.error("La transacción no tiene una referencia de compra.")
+                return
+
+            with rx.session() as session:
+                purchase_to_update = session.exec(
+                    sqlmodel.select(PurchaseModel).where(PurchaseModel.id == int(purchase_ref))
+                ).one_or_none()
+
+                if purchase_to_update and purchase_to_update.status == PurchaseStatus.PENDING_PAYMENT:
+                    purchase_to_update.status = PurchaseStatus.CONFIRMED
+                    purchase_to_update.confirmed_at = datetime.now(timezone.utc)
+                    purchase_to_update.wompi_transaction_id = wompi_tx_id
+                    session.add(purchase_to_update)
+                    session.commit()
+                    
+                    yield rx.toast.success("¡Tu pago ha sido confirmado!")
+                    yield AppState.load_purchases # Recarga la lista de compras
+                elif purchase_to_update:
+                    yield rx.toast.info("Este pago ya había sido confirmado.")
+                else:
+                    yield rx.toast.error(f"No se encontró la compra con referencia: {purchase_ref}")
+        else:
+            yield rx.toast.warning("El pago aún no ha sido aprobado. Se actualizará pronto.")
+
+    @rx.event
+    async def on_load_purchases_page(self):
+        """
+        Se ejecuta al cargar la página de compras. Carga el historial
+        y verifica si viene de una redirección de Wompi.
+        """
+        # Primero, intenta verificar un pago si la URL contiene el ID
+        try:
+            full_url = self.router.url
+            if full_url and "?" in full_url:
+                query_params = parse_qs(full_url.split("?")[1])
+                wompi_id = query_params.get("id", [None])[0]
+                if wompi_id:
+                    # Llama a la lógica de confirmación
+                    yield AppState.confirm_payment_on_redirect(wompi_id)
+        except Exception as e:
+            print(f"Error al parsear la URL de redirección: {e}")
+
+        # Luego, carga el historial de compras como lo hacía antes
+        yield AppState.load_purchases
+        yield AppState.check_for_auto_confirmations # Mantenemos esta lógica por si acaso
+
     def toggle_form(self):
         self.show_form = not self.show_form
     def set_city(self, city: str): self.city = city; self.neighborhood = ""
