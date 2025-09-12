@@ -1,6 +1,5 @@
-# likemodas/db/session.py (Versión Mejorada)
+# likemodas/db/session.py (Versión Definitiva con Dependencia de FastAPI)
 
-from contextlib import contextmanager
 from sqlmodel import create_engine, Session
 import os
 
@@ -9,19 +8,22 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("La variable de entorno DATABASE_URL no está configurada.")
 
-# Se añade pool_recycle para mejorar la resiliencia en entornos de producción.
-# Este valor debe ser menor que el timeout de inactividad de tu proveedor de BD.
+# Mantenemos el pool_recycle como una buena práctica de defensa
 engine = create_engine(DATABASE_URL, connect_args={"options": "-c timezone=utc"}, pool_recycle=300)
 
-@contextmanager
-def get_db_session():
-    """Provee una sesión de base de datos cruda y se asegura de que se cierre."""
-    session = Session(engine)
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+# --- INICIO DE LA MODIFICACIÓN CRÍTICA ---
+# Esta función ahora es un generador que FastAPI usará para inyectar la sesión.
+def get_session():
+    """
+    Provee una sesión de base de datos a través de la inyección de dependencias de FastAPI.
+    Esto asegura un ciclo de vida de sesión limpio para cada petición.
+    """
+    with Session(engine) as session:
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
