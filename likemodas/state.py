@@ -443,7 +443,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return
 
             # 3. Si todo está en orden, procedemos con el login normal
-            return self.on_login(user)
+            return self._login(user) # Se añade el guion bajo al principio
     # --- FIN DE LA NUEVA FUNCIÓN DE LOGIN ---
 
     def handle_forgot_password(self, form_data: dict):
