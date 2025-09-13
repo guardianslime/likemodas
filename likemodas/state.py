@@ -413,18 +413,24 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
         """
-        Manejador de login personalizado que requiere que la cuenta esté verificada.
+        [VERSIÓN FINAL] Manejador de login personalizado que requiere que la
+        cuenta esté verificada y maneja correctamente los tipos de datos.
         """
         self.error_message = ""
-        username = form_data.get("username", "").strip()
-        password = form_data.get("password", "").strip()
+        
+        # --- INICIO DE LA CORRECCIÓN 1: Manejo de valores nulos ---
+        # Nos aseguramos de que username y password sean cadenas de texto antes de usar .strip()
+        username = form_data.get("username") or ""
+        password = form_data.get("password") or ""
+        username = username.strip()
+        password = password.strip()
+        # --- FIN DE LA CORRECCIÓN 1 ---
 
         if not username or not password:
             self.error_message = "Usuario y contraseña son requeridos."
             return
 
         with rx.session() as session:
-            # 1. Verificar si el usuario y la contraseña son correctos
             user = session.exec(
                 select(LocalUser).where(LocalUser.username == username)
             ).one_or_none()
@@ -433,7 +439,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = "Usuario o contraseña inválidos."
                 return
 
-            # 2. Si son correctos, AHORA verificamos si la cuenta está activada
             user_info = session.exec(
                 select(UserInfo).where(UserInfo.user_id == user.id)
             ).one_or_none()
@@ -442,9 +447,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo electrónico."
                 return
 
-            # 3. Si todo está en orden, procedemos con el login normal
-            return self._login(user) # Se añade el guion bajo al principio
-    # --- FIN DE LA NUEVA FUNCIÓN DE LOGIN ---
+            # --- INICIO DE LA CORRECCIÓN 2: Pasar el ID del usuario ---
+            # La función _login espera el ID del usuario (un número), no el objeto completo.
+            return self._login(user.id)
+            # --- FIN DE LA CORRECCIÓN 2 ---
 
     def handle_forgot_password(self, form_data: dict):
         email = form_data.get("email", "").strip().lower()
