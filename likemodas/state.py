@@ -325,6 +325,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         password = form_data.get("password")
         confirm_password = form_data.get("confirm_password")
 
+        # --- INICIO DE LA MODIFICACIÓN ---
+        if not email or not email.strip().lower().endswith("@gmail.com"):
+            self.error_message = "Correo inválido. Solo se permiten direcciones @gmail.com."
+            return
+        # --- FIN DE LA MODIFICACIÓN ---
+
         if not all([username, email, password, confirm_password]):
             self.error_message = "Todos los campos son obligatorios."
             return
@@ -441,10 +447,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- FIN DE LA NUEVA FUNCIÓN DE LOGIN ---
 
     def handle_forgot_password(self, form_data: dict):
-        email = form_data.get("email", "")
+        email = form_data.get("email", "").strip().lower()
+        
+        # --- INICIO DE LA MODIFICACIÓN ---
         if not email:
             self.message, self.is_success = "Por favor, introduce tu correo electrónico.", False
             return
+            
+        if not email.endswith("@gmail.com"):
+            self.message, self.is_success = "Correo inválido. Solo se permiten direcciones @gmail.com.", False
+            return
+        # --- FIN DE LA MODIFICACIÓN ---
+
         with rx.session() as session:
             user_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == email)).one_or_none()
             if user_info:
@@ -3016,6 +3030,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     async def handle_contact_submit(self, form_data: dict):
         self.form_data = form_data
+        
+        # --- INICIO DE LA MODIFICACIÓN ---
+        email = form_data.get("email", "").strip().lower()
+        if not email.endswith("@gmail.com"):
+            # Usamos un toast para mostrar el error en este formulario
+            yield rx.toast.error("Correo inválido. Solo se permiten direcciones @gmail.com.")
+            return
+        # --- FIN DE LA MODIFICACIÓN ---
+
         with rx.session() as session:
             user_info = self.authenticated_user_info
             entry = ContactEntryModel(
