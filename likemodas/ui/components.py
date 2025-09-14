@@ -9,7 +9,8 @@ from reflex.event import EventSpec
 # ... (las funciones star_rating_display_safe, searchable_select y multi_select_component no tienen cambios visuales y se omiten por brevedad) ...
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """
-    Un componente seguro para mostrar estrellas que no usa math de Python.
+    Un componente seguro para mostrar estrellas.
+    ✨ CORREGIDO: Ahora siempre muestra las 5 estrellas, llenas o vacías.
     """
     return rx.hstack(
         # El bucle que dibuja las 5 estrellas se mantiene igual.
@@ -29,7 +30,8 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
             count > 0,
             rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
         ),
-        rx.box(height=f"{size+3}px")
+        align="center",
+        spacing="1",
     )
 
 def searchable_select(
@@ -148,7 +150,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             ),
                             rx.vstack(
                                 rx.text(post.title, weight="bold", size="6", no_of_lines=1),
-                                star_rating_display_safe(post.average_rating, post.rating_count),
+                                star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(post.price_cop, size="5", weight="medium"),
                                 # --- ✨ INICIO DE LA MODIFICACIÓN: Envío y Moda Completa juntos ✨ ---
                                 rx.hstack(
