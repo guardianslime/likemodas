@@ -9,8 +9,7 @@ from reflex.event import EventSpec
 # ... (las funciones star_rating_display_safe, searchable_select y multi_select_component no tienen cambios visuales y se omiten por brevedad) ...
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """
-    Un componente seguro para mostrar estrellas.
-    ✨ CORREGIDO: Ahora siempre muestra las 5 estrellas, llenas o vacías.
+    Un componente seguro para mostrar estrellas que no usa math de Python.
     """
     return rx.hstack(
         # El bucle que dibuja las 5 estrellas se mantiene igual.
@@ -30,8 +29,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
             count > 0,
             rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
         ),
-        align="center",
-        spacing="1",
+        rx.box(height=f"{size+3}px")
     )
 
 def searchable_select(
