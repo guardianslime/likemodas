@@ -1920,7 +1920,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_checkout(self):
         """
-        [VERSIÓN COMPLETA Y CORREGIDA] Procesa la compra, enrutando a Sistecredito, 
+        [VERSIÓN FINAL CORREGIDA] Procesa la compra, enrutando a Sistecredito, 
         Wompi (Online) o Contra Entrega según la selección del usuario.
         """
         # --- 1. Validaciones Iniciales ---
@@ -2002,7 +2002,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 variant["stock"] -= quantity_in_cart
                                 break
                         session.add(post_to_update)
-
                         session.add(PurchaseItemModel(
                             purchase_id=new_purchase.id,
                             blog_post_id=post_to_update.id,
@@ -2018,7 +2017,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "total_price": new_purchase.total_price * 100,
                     "tax": summary.get("iva", 0) * 100,
                     "tax_base": summary.get("subtotal", 0) * 100,
-                    "client_document": "1061796101", # ¡IMPORTANTE! Reemplazar con el documento real del cliente
+                    "client_document": "1061796101",
                     "client_name": self.default_shipping_address.name.split(' ')[0],
                     "client_lastname": ' '.join(self.default_shipping_address.name.split(' ')[1:]),
                     "client_email": self.authenticated_user_info.email,
@@ -2035,10 +2034,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     new_purchase.sistecredito_transaction_id = sistecredito_id
                     session.add(new_purchase)
                     session.commit()
-
                     self.sistecredito_polling_purchase_id = new_purchase.id
-                    self.cart.clear() # Limpiar carrito antes de redirigir
-                    return rx.redirect("/processing-payment")
+                    self.cart.clear()
+                    # --- ✨ CORRECCIÓN AQUÍ ---
+                    yield rx.redirect("/processing-payment")
+                    return
                 else:
                     new_purchase.status = PurchaseStatus.FAILED
                     session.add(new_purchase)
@@ -2155,7 +2155,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                     self.cart.clear()
                     self.default_shipping_address = None
-                    return rx.redirect(payment_url, external=True)
+                    # --- ✨ CORRECCIÓN AQUÍ ---
+                    yield rx.redirect(payment_url, external=True)
+                    return
                 else:
                     yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
                     return
@@ -2165,23 +2167,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.default_shipping_address = None
                 yield AppState.notify_admin_of_new_purchase
                 yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+                # --- ✨ CORRECCIÓN AQUÍ ---
                 yield rx.redirect("/my-purchases")
                 return
             # --- FIN: LÓGICA EXISTENTE ---
         
-    # --- ✨ AÑADE ESTE NUEVO EVENT HANDLER COMPLETO ---
     @rx.event
     async def start_sistecredito_polling(self):
-        """Inicia el proceso de sondeo al cargar la página de procesamiento."""
+        """
+        [CORREGIDO] Inicia el proceso de sondeo al cargar la página de procesamiento.
+        """
         if not self.sistecredito_polling_purchase_id:
             yield rx.toast.error("Error: No se encontró una compra para procesar.")
-            return rx.redirect("/cart")
+            # --- ✨ CORRECCIÓN AQUÍ ---
+            yield rx.redirect("/cart")
+            return
 
         with rx.session() as session:
             purchase = session.get(PurchaseModel, self.sistecredito_polling_purchase_id)
             if not purchase or not purchase.sistecredito_transaction_id:
                 yield rx.toast.error("Error de consistencia de datos.")
-                return rx.redirect("/cart")
+                # --- ✨ CORRECCIÓN AQUÍ ---
+                yield rx.redirect("/cart")
+                return
             
             transaction_id = purchase.sistecredito_transaction_id
 
@@ -2192,11 +2200,14 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         if redirect_url:
             # Éxito: redirigir al usuario a Sistecredito
-            return rx.redirect(redirect_url, external=True)
+            # --- ✨ CORRECCIÓN AQUÍ ---
+            yield rx.redirect(redirect_url, external=True)
         else:
             # Falla: notificar y redirigir de vuelta al carrito
             yield rx.toast.error("Sistecredito no pudo procesar tu solicitud. Por favor, intenta de nuevo.")
-            return rx.redirect("/cart")
+            # --- ✨ CORRECCIÓN AQUÍ ---
+            yield rx.redirect("/cart")
+
 
     # --- ✨ AÑADE ESTE NUEVO EVENT HANDLER COMPLETO ---
     @rx.event
