@@ -89,7 +89,8 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
                     "Hacer Predeterminada",
                     on_click=lambda: AppState.set_as_default(address.id),
                     is_disabled=address.is_default,
-                    variant="outline", size="2"
+                    variant="outline", size="2",
+                    color_scheme="violet" # Se añade el color del tema
                 ),
                 justify="end", width="100%"
             ),

@@ -1861,6 +1861,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_is_moda_completa(self, value: bool):
         self.is_moda_completa = value
 
+    @rx.var
+    def current_path(self) -> str:
+        """Devuelve la ruta de la página actual."""
+        return self.router.page.path
+
     # --- 👇 AÑADE ESTAS VARIABLES PARA LOS FILTROS 👇 ---
     filter_free_shipping: bool = False
     filter_complete_fashion: bool = False
