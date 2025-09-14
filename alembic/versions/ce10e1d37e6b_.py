@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: ced42742a461
+Revision ID: ce10e1d37e6b
 Revises: 
-Create Date: 2025-09-12 22:59:59.826065
+Create Date: 2025-09-14 12:33:20.038896
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 import sqlmodel
 
 # revision identifiers, used by Alembic.
-revision: str = 'ced42742a461'
+revision: str = 'ce10e1d37e6b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -120,7 +120,7 @@ def upgrade() -> None:
     sa.Column('purchase_date', sa.DateTime(), nullable=False),
     sa.Column('confirmed_at', sa.DateTime(), nullable=True),
     sa.Column('total_price', sa.Float(), nullable=False),
-    sa.Column('status', sa.Enum('PENDING_PAYMENT', 'PENDING_CONFIRMATION', 'CONFIRMED', 'SHIPPED', 'DELIVERED', name='purchasestatus'), nullable=False),
+    sa.Column('status', sa.Enum('PENDING_PAYMENT', 'PENDING_SISTECREDITO_URL', 'PENDING_CONFIRMATION', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'FAILED', name='purchasestatus'), nullable=False),
     sa.Column('shipping_applied', sa.Float(), nullable=True),
     sa.Column('shipping_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('shipping_city', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
@@ -131,6 +131,9 @@ def upgrade() -> None:
     sa.Column('wompi_transaction_id', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('wompi_events', sa.JSON(), nullable=True),
     sa.Column('wompi_payment_link_id', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('sistecredito_transaction_id', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('sistecredito_authorization_code', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('sistecredito_invoice', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('estimated_delivery_date', sa.DateTime(), nullable=True),
     sa.Column('delivery_confirmation_sent_at', sa.DateTime(), nullable=True),
     sa.Column('user_confirmed_delivery_at', sa.DateTime(), nullable=True),
@@ -138,6 +141,9 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('purchasemodel', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_purchasemodel_sistecredito_authorization_code'), ['sistecredito_authorization_code'], unique=False)
+        batch_op.create_index(batch_op.f('ix_purchasemodel_sistecredito_invoice'), ['sistecredito_invoice'], unique=False)
+        batch_op.create_index(batch_op.f('ix_purchasemodel_sistecredito_transaction_id'), ['sistecredito_transaction_id'], unique=True)
         batch_op.create_index(batch_op.f('ix_purchasemodel_wompi_payment_link_id'), ['wompi_payment_link_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_purchasemodel_wompi_transaction_id'), ['wompi_transaction_id'], unique=True)
 
@@ -255,6 +261,9 @@ def downgrade() -> None:
     with op.batch_alter_table('purchasemodel', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_purchasemodel_wompi_transaction_id'))
         batch_op.drop_index(batch_op.f('ix_purchasemodel_wompi_payment_link_id'))
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_sistecredito_transaction_id'))
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_sistecredito_invoice'))
+        batch_op.drop_index(batch_op.f('ix_purchasemodel_sistecredito_authorization_code'))
 
     op.drop_table('purchasemodel')
     op.drop_table('notificationmodel')
