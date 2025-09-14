@@ -43,10 +43,14 @@ class UserRole(str, enum.Enum):
 
 class PurchaseStatus(str, enum.Enum):
     PENDING_PAYMENT = "pending_payment"
+    # --- ✨ NUEVO ESTADO AÑADIDO ---
+    PENDING_SISTECREDITO_URL = "pending_sistecredito_url"
     PENDING_CONFIRMATION = "pending_confirmation"
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
     DELIVERED = "delivered"
+    # --- ✨ NUEVO ESTADO AÑADIDO ---
+    FAILED = "failed"
 
 class VoteType(str, enum.Enum):
     LIKE = "like"
@@ -266,10 +270,14 @@ class PurchaseModel(rx.Model, table=True):
     payment_method: str = Field(default="online", nullable=False)
     wompi_transaction_id: Optional[str] = Field(default=None, index=True, unique=True)
     wompi_events: list = Field(default_factory=list, sa_column=Column(JSON))
-    
-    # --- ✨ LÍNEA A AÑADIR ✨ ---
     wompi_payment_link_id: Optional[str] = Field(default=None, index=True)
-    
+
+    # --- INICIO: NUEVOS CAMPOS PARA SISTECREDITO ---
+    sistecredito_transaction_id: Optional[str] = Field(default=None, index=True, unique=True)
+    sistecredito_authorization_code: Optional[str] = Field(default=None, index=True)
+    sistecredito_invoice: Optional[str] = Field(default=None, index=True)
+    # --- FIN: NUEVOS CAMPOS PARA SISTECREDITO ---
+
     estimated_delivery_date: Optional[datetime] = Field(default=None)
     delivery_confirmation_sent_at: Optional[datetime] = Field(default=None)
     user_confirmed_delivery_at: Optional[datetime] = Field(default=None)
