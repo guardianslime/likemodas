@@ -81,7 +81,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 rx.spacer(),
                 rx.vstack(
-                    rx.badge(purchase.status.replace("_", " ").title(), color_scheme="blue", variant="soft", size="2"),
+                    rx.badge(purchase.status.replace("_", " ").title(), color_scheme="violet", variant="soft", size="2"),
                     align_items="end",
                 ),
                 justify="between",
@@ -175,7 +175,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                  )
             ),
             # --- FIN DE LA LÓGICA DE ACCIONES MEJORADA ---
-
             spacing="4", width="100%"
         ),
         width="100%", padding="1.5em",

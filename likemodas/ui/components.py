@@ -9,24 +9,29 @@ from reflex.event import EventSpec
 # ... (las funciones star_rating_display_safe, searchable_select y multi_select_component no tienen cambios visuales y se omiten por brevedad) ...
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     """
-    Un componente seguro para mostrar estrellas que no usa math de Python.
+    Un componente seguro para mostrar estrellas.
+    ✨ CORREGIDO: Ahora siempre muestra las 5 estrellas, llenas o vacías.
     """
-    return rx.cond(
-        count > 0,
-        rx.hstack(
-            rx.foreach(
-                rx.Var.range(5),
-                lambda i: rx.icon(
-                    "star",
-                    color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
-                    style={"fill": rx.cond(rating > i, "gold", "none")},
-                    size=size,
-                )
-            ),
-            rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
-            align="center", spacing="1",
+    return rx.hstack(
+        # El bucle que dibuja las 5 estrellas se mantiene igual.
+        # Su lógica interna ya decide si la estrella está rellena o no.
+        rx.foreach(
+            rx.Var.range(5),
+            lambda i: rx.icon(
+                "star",
+                color=rx.cond(rating > i, "gold", rx.color("gray", 8)),
+                style={"fill": rx.cond(rating > i, "gold", "none")},
+                size=size,
+            )
         ),
-        rx.box(height=f"{size+3}px")
+        # ✨ CORRECCIÓN: El contador de reseñas ahora es condicional.
+        # Solo se mostrará el texto "(#)" si hay más de 0 reseñas.
+        rx.cond(
+            count > 0,
+            rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
+        ),
+        align="center",
+        spacing="1",
     )
 
 def searchable_select(

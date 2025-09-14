@@ -3555,6 +3555,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ FIN: SECCIÓN DE PERFIL DE USUARIO CORREGIDA ✨ ---
 
+    @rx.event
+    def do_logout(self):
+        """Cierra la sesión del usuario y lo redirige a la página de login."""
+        # Esta es la acción original que cierra la sesión
+        yield self._logout()
+        
+        # ✨ AÑADE ESTA LÍNEA ✨
+        # Redirige explícitamente a la ruta de login después de que la sesión se ha cerrado.
+        yield rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+
 
     product_comments: list[CommentData] = []
     my_review_for_product: Optional[CommentData] = None

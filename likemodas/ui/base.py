@@ -16,7 +16,9 @@ def fixed_color_mode_button() -> rx.Component:
             ),
             on_click=toggle_color_mode,
             variant="soft",
-            radius="full"
+            radius="full",
+            # ✨ AÑADE ESTA LÍNEA ✨
+            color_scheme="violet"
         ),
         position="fixed", bottom="1.5rem", right="1.5rem", z_index="1000",
     )

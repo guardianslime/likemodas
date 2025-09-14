@@ -49,24 +49,49 @@ def display_default_address() -> rx.Component:
     )
 
 def cart_item_row(item: CartItemData) -> rx.Component:
-    """Renderiza una fila en la tabla del carrito mostrando los detalles de la variante."""
+    """Renderiza una fila en la tabla del carrito.
+    ✨ CORREGIDO: Ahora incluye una miniatura clickeable del producto.
+    """
     return rx.table.row(
         rx.table.cell(
-            rx.vstack(
-                rx.text(item.title, weight="bold"),
-                rx.foreach(
-                    item.variant_details.items(),
-                    lambda detail: rx.text(f"{detail[0]}: {detail[1]}", size="2", color_scheme="gray")
+            # Usamos un hstack para alinear la imagen y el texto horizontalmente
+            rx.hstack(
+                # Lógica de la miniatura (similar a la del historial de compras)
+                rx.box(
+                    rx.image(
+                        src=rx.get_upload_url(item.image_url),
+                        alt=item.title,
+                        width="60px",
+                        height="60px",
+                        object_fit="cover",
+                        border_radius="md",
+                    ),
+                    # Al hacer clic, se abre el modal del producto
+                    on_click=AppState.open_product_detail_modal(item.product_id),
+                    cursor="pointer",
+                    _hover={"transform": "scale(1.05)"},
+                    transition="transform 0.2s",
                 ),
-                align_items="start",
-                spacing="1"
+                # Mantenemos la información de texto original
+                rx.vstack(
+                    rx.text(item.title, weight="bold"),
+                    rx.foreach(
+                        item.variant_details.items(),
+                        lambda detail: rx.text(f"{detail[0]}: {detail[1]}", size="2", color_scheme="gray")
+                    ),
+                    align_items="start",
+                    spacing="1"
+                ),
+                spacing="4",
+                align="center",
             )
         ),
         rx.table.cell(
             rx.hstack(
-                # Los botones de cantidad son pequeños y neutrales, se mantienen así.
                 rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1"),
                 rx.text(item.quantity),
+                # Cambiamos el botón "+" para que también abra el modal,
+                # permitiendo al usuario añadir otra variante si lo desea.
                 rx.button("+", on_click=AppState.open_product_detail_modal(item.product_id), size="1"),
                 align="center", spacing="3"
             )
