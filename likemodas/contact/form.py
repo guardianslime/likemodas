@@ -14,7 +14,7 @@ def contact_form() -> rx.Component:
             ),
             rx.input(name="email", placeholder="Tu Email", type="email", width="100%", required=True),
             rx.text_area(name="message", placeholder="Tu mensaje", required=True, width="100%"),
-            rx.button("Enviar", type="submit"),
+            rx.button("Enviar", type="submit", color_scheme="violet"),
         ),
         # CAMBIO CLAVE: El on_submit ahora apunta al método en AppState.
         on_submit=AppState.handle_contact_submit,

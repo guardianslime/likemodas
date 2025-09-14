@@ -91,11 +91,10 @@ def cart_item_row(item: CartItemData) -> rx.Component:
         ),
         rx.table.cell(
             rx.hstack(
-                rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1"),
+                # ✨ LÍNEAS CORREGIDAS ✨
+                rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1", color_scheme="violet", variant="soft"),
                 rx.text(item.quantity),
-                # Cambiamos el botón "+" para que también abra el modal,
-                # permitiendo al usuario añadir otra variante si lo desea.
-                rx.button("+", on_click=lambda: AppState.increase_cart_quantity(item.cart_key), size="1"),
+                rx.button("+", on_click=lambda: AppState.increase_cart_quantity(item.cart_key), size="1", color_scheme="violet", variant="soft"),
                 align="center", spacing="3"
             )
         ),

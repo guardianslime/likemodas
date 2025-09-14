@@ -96,7 +96,7 @@ def blog_admin_page() -> rx.Component:
                 rx.hstack(
                     rx.heading("Mis Publicaciones", size="7"),
                     rx.spacer(),
-                    rx.button("Crear Nueva Publicación", on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE)),
+                    rx.button("Crear Nueva Publicación", on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE), color_scheme="violet"),
                     justify="between", align="center", width="100%",
                 ),
                 rx.divider(margin_y="1.5em"),

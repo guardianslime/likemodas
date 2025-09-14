@@ -52,7 +52,7 @@ def review_submission_form() -> rx.Component:
                     name="review_content", placeholder="Escribe tu opinión aquí...", value=AppState.review_content,
                     on_change=AppState.set_review_content, width="100%",
                 ),
-                rx.button(rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%"),
+                rx.button(rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%", color_scheme="violet"),
                 spacing="3", padding="1.5em", border="1px solid",
                 border_color=rx.color("gray", 6), border_radius="md", width="100%",
             ),

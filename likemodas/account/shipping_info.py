@@ -60,7 +60,7 @@ def address_form() -> rx.Component:
             ),
             rx.hstack(
                 rx.button("Cancelar", on_click=AppState.toggle_form, color_scheme="gray"),
-                rx.button("Guardar Dirección", type="submit", width="auto"),
+                rx.button("Guardar Dirección", type="submit", width="auto", color_scheme="violet"),
                 justify="end", width="100%", margin_top="1em"
             ),
             spacing="4", width="100%",
@@ -108,7 +108,7 @@ def shipping_info_content() -> rx.Component:
             rx.foreach(AppState.addresses, address_card),
             rx.cond(
                 ~AppState.show_form,
-                rx.button("Crear Nueva Dirección", on_click=AppState.toggle_form, margin_top="2em"),
+                rx.button("Crear Nueva Dirección", on_click=AppState.toggle_form, margin_top="2em", color_scheme="violet"),
             ),
             rx.cond(AppState.show_form, address_form()),
             align_items="start", width="100%", max_width="700px"

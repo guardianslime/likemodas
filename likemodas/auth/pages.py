@@ -80,7 +80,7 @@ def forgot_password_page_content() -> rx.Component:
                     rx.heading("Recuperar Contraseña", size="7"),
                     rx.text("Introduce tu correo y te enviaremos un enlace."),
                     rx.input(placeholder="Email", name="email", type="email", width="100%"),
-                    rx.button("Enviar Enlace", type="submit", width="100%"),
+                    rx.button("Enviar Enlace", type="submit", width="100%", color_scheme="violet"),
                     rx.cond(
                         AppState.message,
                         rx.callout(
@@ -108,7 +108,7 @@ def reset_password_page_content() -> rx.Component:
                         rx.heading("Nueva Contraseña", size="7"),
                         password_input(placeholder="Nueva contraseña", name="password"),
                         password_input(placeholder="Confirmar nueva contraseña", name="confirm_password"),
-                        rx.button("Guardar Contraseña", type="submit", width="100%"),
+                        rx.button("Guardar Contraseña", type="submit", width="100%", color_scheme="violet"),
                         rx.cond(
                             AppState.message,
                             rx.callout(

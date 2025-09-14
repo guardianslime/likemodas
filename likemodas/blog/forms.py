@@ -48,7 +48,8 @@ def attribute_editor(
                 value=temp_value_var,
                 on_change=temp_value_setter,
             ),
-            rx.button("Añadir", on_click=add_handler, type="button"), # type="button" para no enviar el form
+            rx.button("Añadir", on_click=add_handler, type="button", color_scheme="violet", variant="soft"),
+
             width="100%"
         ),
         align_items="stretch",
@@ -63,12 +64,7 @@ def variant_stock_manager() -> rx.Component:
         rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
         rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
         
-        rx.button(
-            "Generar / Actualizar Variantes", 
-            on_click=AppState.generate_variants, 
-            margin_y="1em", 
-            type="button" 
-        ),
+        rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants, margin_y="1em", type="button", color_scheme="violet"),
         
         # --- CORRECCIÓN CLAVE AQUÍ ---
         # Se usa .contains() para verificar la existencia de la clave de forma segura.
@@ -316,7 +312,7 @@ def blog_post_add_form() -> rx.Component:
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(placeholder="Detalles del producto...", name="content", required=True, size="2", style={"height": "150px"}),
                     rx.hstack(
-                        rx.button("Publicar Ahora", type="submit", color_scheme="green", size="3"),
+                        rx.button("Publicar Ahora", type="submit", color_scheme="violet", size="3"),
                         width="100%", justify="end",
                     ),
                     spacing="3", align_items="stretch", width="100%",
@@ -372,7 +368,7 @@ def blog_post_edit_form() -> rx.Component:
                 rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price, type="number", required=True, width="100%", style={"text_align": "center"}),
                 width="100%"
             ),
-            rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3"),
+            rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3", color_scheme="violet"),
             spacing="4", width="100%"
         ),
         on_submit=AppState.save_edited_post,
