@@ -1726,6 +1726,44 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido al carrito.")
+    
+    @rx.event
+    def increase_cart_quantity(self, cart_key: str):
+        """
+        Aumenta la cantidad de un artículo en el carrito, verificando el stock disponible.
+        """
+        if cart_key not in self.cart:
+            return
+
+        # Extraer la información de la clave para encontrar el producto y la variante
+        parts = cart_key.split('-')
+        product_id = int(parts[0])
+        selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
+        
+        with rx.session() as session:
+            post = session.get(BlogPostModel, product_id)
+            if not post:
+                return rx.toast.error("El producto ya no existe.")
+
+            # Encontrar la variante específica para verificar su stock
+            variant_to_check = None
+            for variant in post.variants:
+                if variant.get("attributes") == selection_attrs:
+                    variant_to_check = variant
+                    break
+            
+            if not variant_to_check:
+                return rx.toast.error("La variante seleccionada ya no está disponible.")
+
+            stock_disponible = variant_to_check.get("stock", 0)
+            cantidad_actual = self.cart[cart_key]
+
+            # La verificación clave: no permitir añadir más del stock
+            if cantidad_actual + 1 > stock_disponible:
+                return rx.toast.error("¡No hay más stock disponible para esta variante!")
+            
+            # Si hay stock, aumentar la cantidad
+            self.cart[cart_key] += 1
 
     @rx.event
     def remove_from_cart(self, cart_key: str):

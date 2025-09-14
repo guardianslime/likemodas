@@ -43,7 +43,10 @@ def display_default_address() -> rx.Component:
             "Finalizar Compra", 
             on_click=AppState.handle_checkout, 
             width="100%", size="3", margin_top="1em",
-            is_disabled=~AppState.default_shipping_address 
+            is_disabled=~AppState.default_shipping_address,
+            
+            # ✨ AÑADE ESTA LÍNEA ✨
+            color_scheme="violet" 
         ),
         width="100%", spacing="4",
     )
@@ -92,7 +95,7 @@ def cart_item_row(item: CartItemData) -> rx.Component:
                 rx.text(item.quantity),
                 # Cambiamos el botón "+" para que también abra el modal,
                 # permitiendo al usuario añadir otra variante si lo desea.
-                rx.button("+", on_click=AppState.open_product_detail_modal(item.product_id), size="1"),
+                rx.button("+", on_click=lambda: AppState.increase_cart_quantity(item.cart_key), size="1"),
                 align="center", spacing="3"
             )
         ),
