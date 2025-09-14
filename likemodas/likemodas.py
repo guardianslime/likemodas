@@ -34,6 +34,8 @@ from .pages import landing, search_results, seller_page
 from .cart import page as cart_page
 from .purchases import page as purchases_page
 from .pages import payment_status, payment_pending
+# --- ✨ AÑADE EL IMPORT DE LA NUEVA PÁGINA ---
+from .pages import processing_payment
 
 # Otras páginas y módulos
 from .invoice import page as invoice_page
@@ -106,3 +108,10 @@ app.add_page(invoice_page.invoice_page_content(), route="/invoice", on_load=Invo
 app.add_page(base_page(returns_page.return_exchange_page_content()), route=navigation.routes.RETURN_EXCHANGE_ROUTE, on_load=AppState.on_load_return_page, title="Devolución o Cambio")
 app.add_page(base_page(payment_status.payment_status_page()), route="/payment-status", title="Estado del Pago")
 app.add_page(base_page(payment_pending.payment_pending_page()), route="/payment-pending", title="Pago Pendiente")
+# --- ✨ AÑADE ESTA NUEVA RUTA ---
+app.add_page(
+    processing_payment.processing_payment_page(),
+    route="/processing-payment",
+    on_load=AppState.start_sistecredito_polling,
+    title="Procesando Pago"
+)

@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 # 3. IMPORTAR LA NUEVA FUNCIÓN DE SESIÓN
 from likemodas.db.session import get_session
 from likemodas.services.wompi_validator import verify_wompi_signature
+from likemodas.services import sistecredito_service # ✨ AÑADE ESTE IMPORT
 from likemodas.models import PurchaseModel, PurchaseStatus
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -79,3 +80,53 @@ async def handle_wompi_webhook(request: Request, session: Session = Depends(get_
         # Devolver un 500 para indicar a Wompi que hubo un problema.
         # El session.rollback() se hará automáticamente por el generador `get_session`.
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='{"error": "internal server error processing webhook"}', media_type="application/json")
+    
+
+# --- ✨ AÑADE ESTE NUEVO ENDPOINT COMPLETO ---
+@router.post("/sistecredito")
+async def handle_sistecredito_webhook(request: Request, session: Session = Depends(get_session)):
+    """Recibe y procesa de forma segura los webhooks de Sistecredito."""
+    try:
+        payload = await request.json()
+        transaction_id = payload.get("_id")
+
+        if not transaction_id:
+            logger.warning("Webhook de Sistecredito recibido sin _id.")
+            return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
+        # Verificación por Callback - La única fuente de verdad
+        verified_data = await sistecredito_service.verify_transaction_status(transaction_id)
+        if not verified_data:
+            logger.error(f"No se pudo verificar la transacción {transaction_id} de Sistecredito.")
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        status_final = verified_data.get("transactionStatus")
+        
+        purchase = session.exec(
+            sqlmodel.select(PurchaseModel).where(PurchaseModel.sistecredito_transaction_id == transaction_id)
+        ).one_or_none()
+
+        if not purchase:
+            logger.warning(f"Webhook recibido para transacción Sistecredito no encontrada en BD: {transaction_id}")
+            return Response(status_code=status.HTTP_404_NOT_FOUND)
+
+        if status_final == "Approved" and purchase.status != PurchaseStatus.CONFIRMED:
+            purchase.status = PurchaseStatus.CONFIRMED
+            purchase.confirmed_at = datetime.now(timezone.utc)
+            purchase.sistecredito_authorization_code = verified_data.get("paymentMethodResponse", {}).get("authorizationCode")
+            purchase.sistecredito_invoice = verified_data.get("invoice")
+            session.add(purchase)
+            session.commit()
+            logger.info(f"ÉXITO: Compra #{purchase.id} (Sistecredito) actualizada a CONFIRMED vía webhook.")
+        
+        elif status_final in ["Rejected", "Canceled", "Failed"] and purchase.status != PurchaseStatus.FAILED:
+            purchase.status = PurchaseStatus.FAILED
+            session.add(purchase)
+            session.commit()
+            logger.info(f"Compra #{purchase.id} (Sistecredito) marcada como FAILED vía webhook.")
+            
+        return Response(status_code=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.error(f"Error fatal en webhook de Sistecredito: {e}", exc_info=True)
+        return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

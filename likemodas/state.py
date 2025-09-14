@@ -30,6 +30,8 @@ from .models import (
 )
 from .services.email_service import send_verification_email, send_password_reset_email
 from .services import wompi_service # Importar el nuevo servicio
+# --- ✨ AÑADE ESTE IMPORT NUEVO ---
+from .services import sistecredito_service
 from .utils.formatting import format_to_cop
 from .utils.validators import validate_password
 from .data.colombia_locations import load_colombia_data
@@ -1912,11 +1914,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     checkout_url: str = ""
     is_payment_processing: bool = False
 
+    # --- ✨ AÑADE ESTA NUEVA VARIABLE DE ESTADO ---
+    sistecredito_polling_purchase_id: Optional[int] = None
+
     @rx.event
     async def handle_checkout(self):
         """
-        Procesa la compra, crea la orden, guarda el ID del link de pago de Wompi,
-        y luego redirige al usuario para pagar.
+        [VERSIÓN COMPLETA Y CORREGIDA] Procesa la compra, enrutando a Sistecredito, 
+        Wompi (Online) o Contra Entrega según la selección del usuario.
         """
         # --- 1. Validaciones Iniciales ---
         if not self.is_authenticated or not self.default_shipping_address:
@@ -1932,127 +1937,290 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         summary = self.cart_summary
-        purchase_id_for_payment = None
-        total_price_for_payment = None
 
-        with rx.session() as session:
-            # --- 2. Verificación de Stock ---
-            product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
-            posts_to_check = session.exec(
-                sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
-            ).all()
-            post_map = {p.id: p for p in posts_to_check}
+        # --- 2. Enrutamiento basado en el método de pago ---
+        if self.payment_method == "Sistecredito":
+            # --- INICIO: LÓGICA PARA SISTECREDITO ---
+            with rx.session() as session:
+                # Verificación de Stock
+                product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+                posts_to_check = session.exec(
+                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
+                ).all()
+                post_map = {p.id: p for p in posts_to_check}
 
-            for cart_key, quantity_in_cart in self.cart.items():
-                parts = cart_key.split('-')
-                prod_id = int(parts[0])
-                selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
-                
-                post = post_map.get(prod_id)
-                if not post:
-                    yield rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
-                    return
-                
-                variant_found = False
-                for variant in post.variants:
-                    if variant.get("attributes") == selection_attrs:
-                        if variant.get("stock", 0) < quantity_in_cart:
-                            attr_str = ', '.join(selection_attrs.values())
-                            yield rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Compra cancelada.")
-                            return
-                        variant_found = True
-                        break
-                if not variant_found:
-                    yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
-                    return
-
-            # --- 3. Creación de la Orden ---
-            initial_status = (
-                PurchaseStatus.PENDING_PAYMENT
-                if self.payment_method == "Online"
-                else PurchaseStatus.PENDING_CONFIRMATION
-            )
-            
-            new_purchase = PurchaseModel(
-                userinfo_id=self.authenticated_user_info.id,
-                total_price=summary["grand_total"],
-                shipping_applied=summary["shipping_cost"],
-                status=initial_status,
-                payment_method=self.payment_method,
-                shipping_name=self.default_shipping_address.name,
-                shipping_city=self.default_shipping_address.city,
-                shipping_neighborhood=self.default_shipping_address.neighborhood,
-                shipping_address=self.default_shipping_address.address,
-                shipping_phone=self.default_shipping_address.phone,
-            )
-            session.add(new_purchase)
-            session.commit()
-            session.refresh(new_purchase)
-
-            purchase_id_for_payment = new_purchase.id
-            total_price_for_payment = new_purchase.total_price
-
-            # --- 4. Creación de Items y Deducción de Stock ---
-            for cart_key, quantity_in_cart in self.cart.items():
-                parts = cart_key.split('-')
-                prod_id = int(parts[0])
-                selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
-                
-                post_to_update = post_map.get(prod_id)
-                if post_to_update:
-                    for variant in post_to_update.variants:
+                for cart_key, quantity_in_cart in self.cart.items():
+                    parts = cart_key.split('-')
+                    prod_id = int(parts[0])
+                    selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
+                    
+                    post = post_map.get(prod_id)
+                    if not post:
+                        yield rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
+                        return
+                    
+                    variant_found = False
+                    for variant in post.variants:
                         if variant.get("attributes") == selection_attrs:
-                            variant["stock"] -= quantity_in_cart
+                            if variant.get("stock", 0) < quantity_in_cart:
+                                attr_str = ', '.join(selection_attrs.values())
+                                yield rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Compra cancelada.")
+                                return
+                            variant_found = True
                             break
-                    session.add(post_to_update)
+                    if not variant_found:
+                        yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
+                        return
 
-                    session.add(PurchaseItemModel(
-                        purchase_id=new_purchase.id,
-                        blog_post_id=post_to_update.id,
-                        quantity=quantity_in_cart,
-                        price_at_purchase=post_to_update.price,
-                        selected_variant=selection_attrs,
-                    ))
-            session.commit()
+                # Creación de la Orden para Sistecredito
+                new_purchase = PurchaseModel(
+                    userinfo_id=self.authenticated_user_info.id,
+                    total_price=summary["grand_total"],
+                    status=PurchaseStatus.PENDING_SISTECREDITO_URL,
+                    payment_method=self.payment_method,
+                    shipping_applied=summary["shipping_cost"],
+                    shipping_name=self.default_shipping_address.name,
+                    shipping_city=self.default_shipping_address.city,
+                    shipping_neighborhood=self.default_shipping_address.neighborhood,
+                    shipping_address=self.default_shipping_address.address,
+                    shipping_phone=self.default_shipping_address.phone,
+                )
+                session.add(new_purchase)
+                session.commit()
+                session.refresh(new_purchase)
 
-        # --- 5. Lógica de Pago (Fuera de la sesión principal para evitar bloqueos) ---
-        if self.payment_method == "Online":
-            if purchase_id_for_payment is None:
-                yield rx.toast.error("Error crítico: No se pudo obtener el ID de la compra.")
-                return
+                # Creación de Items y Deducción de Stock
+                for cart_key, quantity_in_cart in self.cart.items():
+                    parts = cart_key.split('-')
+                    prod_id = int(parts[0])
+                    selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
+                    
+                    post_to_update = post_map.get(prod_id)
+                    if post_to_update:
+                        for variant in post_to_update.variants:
+                            if variant.get("attributes") == selection_attrs:
+                                variant["stock"] -= quantity_in_cart
+                                break
+                        session.add(post_to_update)
 
-            payment_info = await wompi_service.create_wompi_payment_link(
-                purchase_id=purchase_id_for_payment,
-                total_price=total_price_for_payment
-            )
+                        session.add(PurchaseItemModel(
+                            purchase_id=new_purchase.id,
+                            blog_post_id=post_to_update.id,
+                            quantity=quantity_in_cart,
+                            price_at_purchase=post_to_update.price,
+                            selected_variant=selection_attrs,
+                        ))
+                session.commit()
 
-            if payment_info:
-                payment_url, payment_link_id = payment_info
+                # Preparar y enviar la solicitud a la API de Sistecredito
+                purchase_data_for_api = {
+                    "purchase_id": new_purchase.id,
+                    "total_price": new_purchase.total_price * 100,
+                    "tax": summary.get("iva", 0) * 100,
+                    "tax_base": summary.get("subtotal", 0) * 100,
+                    "client_document": "1061796101", # ¡IMPORTANTE! Reemplazar con el documento real del cliente
+                    "client_name": self.default_shipping_address.name.split(' ')[0],
+                    "client_lastname": ' '.join(self.default_shipping_address.name.split(' ')[1:]),
+                    "client_email": self.authenticated_user_info.email,
+                    "client_phone": self.default_shipping_address.phone,
+                    "shipping_city": self.default_shipping_address.city,
+                    "shipping_address": self.default_shipping_address.address,
+                    "url_response": f"{self.base_app_url}/my-purchases",
+                    "url_confirmation": f"{get_config().api_url}/webhooks/sistecredito",
+                }
 
-                # Guardamos el ID del link de pago en nuestra base de datos
-                with rx.session() as session:
-                    purchase_to_update = session.get(PurchaseModel, purchase_id_for_payment)
-                    if purchase_to_update:
-                        purchase_to_update.wompi_payment_link_id = payment_link_id
-                        session.add(purchase_to_update)
-                        session.commit()
+                sistecredito_id = await sistecredito_service.create_sistecredito_transaction(purchase_data_for_api)
 
-                # Limpiamos el carrito y redirigimos al usuario
+                if sistecredito_id:
+                    new_purchase.sistecredito_transaction_id = sistecredito_id
+                    session.add(new_purchase)
+                    session.commit()
+
+                    self.sistecredito_polling_purchase_id = new_purchase.id
+                    self.cart.clear() # Limpiar carrito antes de redirigir
+                    return rx.redirect("/processing-payment")
+                else:
+                    new_purchase.status = PurchaseStatus.FAILED
+                    session.add(new_purchase)
+                    session.commit()
+                    yield rx.toast.error("No se pudo iniciar el pago con Sistecredito. Inténtalo de nuevo.")
+                    return
+            # --- FIN: LÓGICA PARA SISTECREDITO ---
+        
+        else:
+            # --- INICIO: LÓGICA EXISTENTE PARA WOMPI Y CONTRA ENTREGA ---
+            purchase_id_for_payment = None
+            total_price_for_payment = None
+
+            with rx.session() as session:
+                # Verificación de Stock
+                product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+                posts_to_check = session.exec(
+                    sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
+                ).all()
+                post_map = {p.id: p for p in posts_to_check}
+
+                for cart_key, quantity_in_cart in self.cart.items():
+                    parts = cart_key.split('-')
+                    prod_id = int(parts[0])
+                    selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
+                    
+                    post = post_map.get(prod_id)
+                    if not post:
+                        yield rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
+                        return
+                    
+                    variant_found = False
+                    for variant in post.variants:
+                        if variant.get("attributes") == selection_attrs:
+                            if variant.get("stock", 0) < quantity_in_cart:
+                                attr_str = ', '.join(selection_attrs.values())
+                                yield rx.toast.error(f"Stock insuficiente para '{post.title} ({attr_str})'. Compra cancelada.")
+                                return
+                            variant_found = True
+                            break
+                    if not variant_found:
+                        yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
+                        return
+
+                # Creación de la Orden
+                initial_status = (
+                    PurchaseStatus.PENDING_PAYMENT
+                    if self.payment_method == "Online"
+                    else PurchaseStatus.PENDING_CONFIRMATION
+                )
+                
+                new_purchase = PurchaseModel(
+                    userinfo_id=self.authenticated_user_info.id,
+                    total_price=summary["grand_total"],
+                    shipping_applied=summary["shipping_cost"],
+                    status=initial_status,
+                    payment_method=self.payment_method,
+                    shipping_name=self.default_shipping_address.name,
+                    shipping_city=self.default_shipping_address.city,
+                    shipping_neighborhood=self.default_shipping_address.neighborhood,
+                    shipping_address=self.default_shipping_address.address,
+                    shipping_phone=self.default_shipping_address.phone,
+                )
+                session.add(new_purchase)
+                session.commit()
+                session.refresh(new_purchase)
+
+                purchase_id_for_payment = new_purchase.id
+                total_price_for_payment = new_purchase.total_price
+
+                # Creación de Items y Deducción de Stock
+                for cart_key, quantity_in_cart in self.cart.items():
+                    parts = cart_key.split('-')
+                    prod_id = int(parts[0])
+                    selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
+                    
+                    post_to_update = post_map.get(prod_id)
+                    if post_to_update:
+                        for variant in post_to_update.variants:
+                            if variant.get("attributes") == selection_attrs:
+                                variant["stock"] -= quantity_in_cart
+                                break
+                        session.add(post_to_update)
+
+                        session.add(PurchaseItemModel(
+                            purchase_id=new_purchase.id,
+                            blog_post_id=post_to_update.id,
+                            quantity=quantity_in_cart,
+                            price_at_purchase=post_to_update.price,
+                            selected_variant=selection_attrs,
+                        ))
+                session.commit()
+
+            # Lógica de Pago (Fuera de la sesión)
+            if self.payment_method == "Online":
+                if purchase_id_for_payment is None:
+                    yield rx.toast.error("Error crítico: No se pudo obtener el ID de la compra.")
+                    return
+
+                payment_info = await wompi_service.create_wompi_payment_link(
+                    purchase_id=purchase_id_for_payment,
+                    total_price=total_price_for_payment
+                )
+
+                if payment_info:
+                    payment_url, payment_link_id = payment_info
+
+                    with rx.session() as session:
+                        purchase_to_update = session.get(PurchaseModel, purchase_id_for_payment)
+                        if purchase_to_update:
+                            purchase_to_update.wompi_payment_link_id = payment_link_id
+                            session.add(purchase_to_update)
+                            session.commit()
+
+                    self.cart.clear()
+                    self.default_shipping_address = None
+                    return rx.redirect(payment_url, external=True)
+                else:
+                    yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
+                    return
+
+            else:  # Pago Contra Entrega
                 self.cart.clear()
                 self.default_shipping_address = None
-                yield rx.call_script(f"window.location.href = '{payment_url}'")
+                yield AppState.notify_admin_of_new_purchase
+                yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
+                yield rx.redirect("/my-purchases")
                 return
-            else:
-                yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
-                return
+            # --- FIN: LÓGICA EXISTENTE ---
+        
+    # --- ✨ AÑADE ESTE NUEVO EVENT HANDLER COMPLETO ---
+    @rx.event
+    async def start_sistecredito_polling(self):
+        """Inicia el proceso de sondeo al cargar la página de procesamiento."""
+        if not self.sistecredito_polling_purchase_id:
+            yield rx.toast.error("Error: No se encontró una compra para procesar.")
+            return rx.redirect("/cart")
 
-        else:  # Pago Contra Entrega
-            self.cart.clear()
-            self.default_shipping_address = None
-            yield AppState.notify_admin_of_new_purchase
-            yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-            yield rx.redirect("/my-purchases")
-            return
+        with rx.session() as session:
+            purchase = session.get(PurchaseModel, self.sistecredito_polling_purchase_id)
+            if not purchase or not purchase.sistecredito_transaction_id:
+                yield rx.toast.error("Error de consistencia de datos.")
+                return rx.redirect("/cart")
+            
+            transaction_id = purchase.sistecredito_transaction_id
+
+        # Limpiar el ID del estado para que no se reutilice
+        self.sistecredito_polling_purchase_id = None
+
+        redirect_url = await sistecredito_service.poll_for_redirect_url(transaction_id)
+
+        if redirect_url:
+            # Éxito: redirigir al usuario a Sistecredito
+            return rx.redirect(redirect_url, external=True)
+        else:
+            # Falla: notificar y redirigir de vuelta al carrito
+            yield rx.toast.error("Sistecredito no pudo procesar tu solicitud. Por favor, intenta de nuevo.")
+            return rx.redirect("/cart")
+
+    # --- ✨ AÑADE ESTE NUEVO EVENT HANDLER COMPLETO ---
+    @rx.event
+    async def confirm_sistecredito_on_redirect(self, transaction_id: str):
+        """Verifica el estado de una transacción de Sistecredito cuando el usuario regresa al sitio."""
+        yield rx.toast.info("Verificando estado del pago con Sistecredito...")
+        verified_data = await sistecredito_service.verify_transaction_status(transaction_id)
+        
+        if verified_data and verified_data.get("transactionStatus") == "Approved":
+            with rx.session() as session:
+                purchase = session.exec(
+                    sqlmodel.select(PurchaseModel).where(PurchaseModel.sistecredito_transaction_id == transaction_id)
+                ).one_or_none()
+                if purchase and purchase.status != PurchaseStatus.CONFIRMED:
+                    purchase.status = PurchaseStatus.CONFIRMED
+                    purchase.confirmed_at = datetime.now(timezone.utc)
+                    purchase.sistecredito_authorization_code = verified_data.get("paymentMethodResponse", {}).get("authorizationCode")
+                    purchase.sistecredito_invoice = verified_data.get("invoice")
+                    session.add(purchase)
+                    session.commit()
+                    yield self.load_purchases # Recarga la vista
+                    yield rx.toast.success("¡Tu pago con Sistecredito ha sido confirmado!")
+        else:
+            yield rx.toast.warning("El pago aún no ha sido aprobado. El estado se actualizará automáticamente.")
     
     async def process_wompi_confirmation(self, event_data: dict):
         """
@@ -2143,9 +2311,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             if full_url and "?" in full_url:
                 query_params = parse_qs(full_url.split("?")[1])
                 wompi_id = query_params.get("id", [None])[0]
+                # Lógica para Wompi (existente)
+                wompi_id = query_params.get("id", [None])[0]
                 if wompi_id:
-                    # Llama a la lógica de confirmación
                     yield AppState.confirm_payment_on_redirect(wompi_id)
+
+                # --- ✨ NUEVA LÓGICA PARA SISTECREDITO ---
+                sistecredito_id = query_params.get("paymentRef", [None])[0]
+                if sistecredito_id:
+                    yield AppState.confirm_sistecredito_on_redirect(sistecredito_id)
         except Exception as e:
             print(f"Error al parsear la URL de redirección: {e}")
 
