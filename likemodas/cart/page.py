@@ -145,7 +145,7 @@ def cart_page_content() -> rx.Component:
                         # Los botones de radio se mantienen con su estilo por defecto,
                         # que se integra bien con el tema general.
                         rx.radio(
-                            ["Online", "Contra Entrega", "Sistecredito"], # Añade Sistecredito
+                            ["Online", "Contra Entrega", ], # Añade "Sistecredito"
                             value=AppState.payment_method,
                             on_change=AppState.set_payment_method,
                             spacing="4",
