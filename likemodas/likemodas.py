@@ -28,7 +28,7 @@ from .admin.users_page import user_management_page
 
 # Páginas de la Tienda y Blog
 from .blog import blog_admin_page, blog_post_add_content
-from .pages import landing, search_results, seller_page
+from .pages import landing, seller_page
 
 # Páginas de Proceso de Compra
 from .cart import page as cart_page
