@@ -74,14 +74,16 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                rx.text(address.name, weight="bold"),
+                # --- Aumentamos el tamaño del nombre a "5" ---
+                rx.text(address.name, weight="bold", size="5"),
                 rx.spacer(),
                 rx.cond(address.is_default, rx.badge("Predeterminada", color_scheme="green")),
                 width="100%"
             ),
-            rx.text(f"{address.address}, {address.neighborhood}"),
-            rx.text(f"{address.city}"),
-            rx.text(f"Tel: {address.phone}"),
+            # --- Aumentamos el tamaño de los detalles a "4" ---
+            rx.text(f"{address.address}, {address.neighborhood}", size="4"),
+            rx.text(f"{address.city}", size="4"),
+            rx.text(f"Tel: {address.phone}", size="4"),
             rx.divider(),
             rx.hstack(
                 rx.button("Eliminar", on_click=lambda: AppState.delete_address(address.id), variant="soft", color_scheme="red", size="2"),
@@ -90,24 +92,24 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
                     on_click=lambda: AppState.set_as_default(address.id),
                     is_disabled=address.is_default,
                     variant="outline", size="2",
-                    color_scheme="violet" # Se añade el color del tema
+                    color_scheme="violet"
                 ),
                 justify="end", width="100%"
             ),
-            align_items="start", spacing="2"
+            # --- Aumentamos el espaciado para que el texto respire mejor ---
+            align_items="start", spacing="3"
         ),
-        border="1px solid #ededed", border_radius="md", padding="1em", width="100%"
+        # --- Aumentamos el padding para dar más margen interno ---
+        border="1px solid #ededed", border_radius="md", padding="1.5em", width="100%"
     )
 
 @reflex_local_auth.require_login
 def shipping_info_content() -> rx.Component:
     """Página para gestionar las direcciones de envío."""
-    
-    # --- INICIO DE LA CORRECCIÓN ---
-    # Envolvemos todo el contenido en una tarjeta (rx.card) para darle más cuerpo y presencia
     page_content = rx.card(
         rx.vstack(
-            rx.heading("Mi Información para Envíos", size="7"),
+            # ... (el contenido interno del vstack no cambia aquí) ...
+            rx.heading("Mi Información para Eníos", size="7"),
             rx.text("Aquí puedes gestionar tus direcciones de envío.", margin_bottom="1.5em"),
             rx.foreach(AppState.addresses, address_card),
             rx.cond(
@@ -115,22 +117,21 @@ def shipping_info_content() -> rx.Component:
                 rx.button(
                     "Crear Nueva Dirección", 
                     on_click=AppState.toggle_form, 
-                    margin_top="1.5em", # Ajuste de margen
+                    margin_top="1.5em",
                     color_scheme="violet"
                 ),
              ),
             rx.cond(AppState.show_form, address_form()),
-            
-            # Las propiedades de alineación y espaciado ahora van en este vstack interno
             align_items="start", 
             width="100%",
-            spacing="5", # Aumentamos el espaciado vertical interno
+            spacing="5",
         ),
-        # Le damos un tamaño máximo a la tarjeta para que se vea bien en pantallas grandes
+        
+        # --- INICIO DE LA CORRECCIÓN ---
+        variant="ghost",  # Esta línea hace que el fondo sea transparente
+        # --- FIN DE LA CORRECCIÓN ---
+
         width="100%",
         max_width="960px",
     )
-    
-    # El layout ahora simplemente envuelve nuestro contenido ya estructurado en la tarjeta
     return account_layout(page_content)
-    # --- FIN DE LA CORRECCIÓN ---
