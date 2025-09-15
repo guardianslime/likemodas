@@ -76,7 +76,6 @@ app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgo
 app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-password", on_load=AppState.on_load_check_token, title="Restablecer Contraseña")
 
 # --- Rutas de Vistas Públicas ---
-app.add_page(base_page(search_results.search_results_content()), route="/search-results", title="Resultados de Búsqueda")
 app.add_page(base_page(seller_page.seller_page_content()), route="/vendedor", on_load=AppState.on_load_seller_page, title="Publicaciones del Vendedor")
 
 # --- Rutas de Cuenta, Carrito y Compras ---

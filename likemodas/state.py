@@ -877,8 +877,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
-        posts_to_filter = self.posts
+        """
+        [VERSIÓN COMPLETA Y CORREGIDA]
+        Variable computada que filtra y busca en tiempo real.
+        Es la única fuente de verdad para la galería de productos.
+        """
+        # Se inicia con la lista completa de todos los posts
+        source_posts = self.posts
 
+        # 1. APLICA LA BÚSQUEDA EN TIEMPO REAL
+        # Si hay algo escrito en la barra de búsqueda, se filtra la lista primero por el título.
+        if self.search_term.strip():
+            query = self.search_term.strip().lower()
+            source_posts = [
+                p for p in source_posts if query in p.title.lower()
+            ]
+
+        # 2. APLICA LOS FILTROS DEL PANEL LATERAL
+        # El resto de la lógica de filtrado se aplica sobre la lista
+        # que ya ha sido (o no) acotada por la búsqueda.
+        posts_to_filter = source_posts
+        
+        # Filtro por Rango de Precios
         if self.min_price:
             try:
                 min_p = float(self.min_price)
@@ -892,19 +912,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             except ValueError:
                 pass
 
+        # Filtro por Colores
         if self.filter_colors:
             posts_to_filter = [
                 p for p in posts_to_filter 
                 if p.attributes.get("Color") in self.filter_colors
             ]
-            
+
+        # Filtro por Material o Tela
         if self.filter_materiales_tela:
             posts_to_filter = [
                 p for p in posts_to_filter 
                 if (p.attributes.get("Material") in self.filter_materiales_tela) or 
-                (p.attributes.get("Tela") in self.filter_materiales_tela)
+                   (p.attributes.get("Tela") in self.filter_materiales_tela)
             ]
 
+        # Filtro por Tallas
         if self.filter_tallas:
             posts_to_filter = [
                 p for p in posts_to_filter
@@ -914,25 +937,26 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             ]
 
+        # Filtro por Tipo de Prenda/Calzado (General)
         if self.filter_tipos_general:
             posts_to_filter = [
                 p for p in posts_to_filter
                 if p.attributes.get("Tipo") in self.filter_tipos_general
             ]
 
+        # Filtro de Envío Gratis
         if self.filter_free_shipping:
             posts_to_filter = [
                 p for p in posts_to_filter 
                 if p.shipping_cost == 0.0
             ]
 
-        # --- 👇 LÓGICA DEL FILTRO CORREGIDA AQUÍ 👇 ---
+        # Filtro de Moda Completa
         if self.filter_complete_fashion:
             posts_to_filter = [
                 p for p in posts_to_filter 
                 if p.is_moda_completa_eligible
             ]
-        # --- FIN DE LA CORRECCIÓN ---
 
         return posts_to_filter
     
@@ -2647,7 +2671,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield AppState.load_purchases
 
     search_term: str = ""
-    search_results: List[ProductCardData] = []
+
     def set_search_term(self, term: str): self.search_term = term
 
     @rx.event

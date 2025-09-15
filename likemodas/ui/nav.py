@@ -178,6 +178,7 @@ def public_navbar() -> rx.Component:
                     value=AppState.search_term,
                     on_change=AppState.set_search_term,
                     width="100%",
+                    variant="soft", # Un estilo más suave que se integra con el tema
                 ),
                 on_submit=AppState.perform_search,
                 width="100%",
