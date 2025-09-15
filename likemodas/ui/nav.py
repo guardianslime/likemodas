@@ -167,14 +167,33 @@ def public_navbar() -> rx.Component:
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
-            # ✨ CORRECCIÓN CLAVE 1: Búsqueda en vivo ✨
-            # Se elimina el rx.form. La búsqueda ahora es instantánea al escribir.
             rx.input(
                 placeholder="Buscar productos...",
                 value=AppState.search_term,
                 on_change=AppState.set_search_term,
                 width="100%",
-                variant="soft",
+                radius="medium",  # Para los bordes un poco redondeados
+                style={
+                    # Color de fondo que se adapta al modo claro/oscuro
+                    "background_color": rx.color_mode_cond(
+                        light=rx.color("gray", 3),
+                        dark=rx.color("gray", 2)
+                    ),
+                    # Borde sutil por defecto
+                    "border": f"1.5px solid {rx.color('gray', 6)}",
+                    # Transición suave para los cambios de color
+                    "transition": "border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                    # Estilo al pasar el mouse por encima
+                    "_hover": {
+                        "border_color": rx.color("violet", 7),
+                    },
+                    # Estilo al hacer clic (focus), aquí aplicamos el color morado
+                    "_focus": {
+                        "border_color": rx.color("violet", 9),
+                        "box_shadow": f"0 0 0 1px {rx.color('violet', 9)}",
+                        "outline": "none",  # Quita el borde azul por defecto del navegador
+                    },
+                },
             ),
             rx.cond(
                 AppState.is_authenticated,
