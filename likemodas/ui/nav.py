@@ -172,9 +172,19 @@ def public_navbar() -> rx.Component:
                 value=AppState.search_term,
                 on_change=AppState.set_search_term,
                 width="100%",
-                radius="medium",  # Para los bordes un poco redondeados
+                radius="medium",
+                
+                # --- INICIO DE LA CORRECCIÓN ---
+
+                # 1. Usamos una variante neutral que se adapta bien al fondo.
+                variant="surface", 
+                
+                # 2. ¡ESTA ES LA LÍNEA CLAVE!
+                # Le decimos al componente que use "violet" para todos sus estados interactivos.
+                color_scheme="violet",
+
+                # 3. Mantenemos el estilo de fondo para que coincida con la barra
                 style={
-                    # Color de fondo que se adapta al modo claro/oscuro
                     "background_color": rx.color_mode_cond(
                         light=rx.color("gray", 3),
                         dark=rx.color("gray", 2)
