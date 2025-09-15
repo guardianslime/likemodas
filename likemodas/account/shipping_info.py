@@ -112,6 +112,11 @@ def shipping_info_content() -> rx.Component:
                 rx.button("Crear Nueva Dirección", on_click=AppState.toggle_form, margin_top="2em", color_scheme="violet"),
             ),
             rx.cond(AppState.show_form, address_form()),
-            align_items="start", width="100%", max_width="700px"
+            align_items="start", 
+            width="100%", 
+            
+            # --- LÍNEA CORREGIDA ---
+            # Cambiamos 700px por 960px para un diseño más amplio
+            max_width="960px"
         )
     )

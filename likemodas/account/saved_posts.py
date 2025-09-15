@@ -23,15 +23,19 @@ def saved_posts_content() -> rx.Component:
                 product_gallery_component(posts=AppState.saved_posts_gallery),
                 rx.center(
                     rx.text("Aún no has guardado ninguna publicación."),
-                    min_height="40vh"
+                    
+                    # --- LÍNEA CORREGIDA ---
+                    # Reemplazamos min_height por un padding para un espacio controlado
+                    padding_y="5em",
                 )
             )
         ),
         
-        # --- AÑADE ESTA LÍNEA PARA INCLUIR EL MODAL ---
         product_detail_modal(),
 
-        align_items="start", 
+        # --- LÍNEA CORREGIDA ---
+        # Cambiamos "start" por "center" para centrar todo el contenido
+        align="center", 
         width="100%",
     )
     return account_layout(page_content)
