@@ -93,13 +93,6 @@ def sliding_admin_sidebar() -> rx.Component:
                     ),
                 ),
                 rx.spacer(),
-                # El botón de modo oscuro ahora tiene mejor estilo y está aquí
-                rx.button(
-                    rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
-                    on_click=toggle_color_mode,
-                    variant="soft", # Variante más estética
-                    color_scheme="gray",
-                ),
                 width="100%",
                 justify="between",
             ),
