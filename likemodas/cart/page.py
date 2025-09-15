@@ -149,6 +149,7 @@ def cart_page_content() -> rx.Component:
                             value=AppState.payment_method,
                             on_change=AppState.set_payment_method,
                             spacing="4",
+                            color_scheme="violet",
                         ),
                         # --- ✨ MODIFICACIÓN: Callout de información en tonos morados ✨ ---
                         rx.callout(

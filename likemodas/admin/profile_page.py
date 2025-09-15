@@ -34,7 +34,7 @@ def seller_profile_page() -> rx.Component:
                         on_change=AppState.set_seller_profile_address,
                         required=True
                     ),
-                    rx.button("Guardar Mi Ubicación", type="submit", margin_top="2em"),
+                    rx.button("Guardar Mi Ubicación", type="submit", margin_top="2em", color_scheme="violet"),
                     spacing="3",
                     align_items="stretch"
                 ),
