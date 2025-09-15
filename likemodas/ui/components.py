@@ -158,11 +158,13 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         post.shipping_display_text,
                                         color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
                                         variant="soft",
+                                        size="2", # ✨ AÑADE ESTA LÍNEA
                                     ),
                                     rx.cond(
                                         post.is_moda_completa_eligible,
                                         rx.tooltip(
-                                            rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="1"),
+                                            # ✨ CAMBIA size="1" por size="2" aquí 👇
+                                            rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
                                             content="Este item cuenta para el envío gratis en compras sobre $200.000"
                                         )
                                     ),
