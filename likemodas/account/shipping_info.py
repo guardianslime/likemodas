@@ -102,21 +102,35 @@ def address_card(address: ShippingAddressModel) -> rx.Component:
 @reflex_local_auth.require_login
 def shipping_info_content() -> rx.Component:
     """Página para gestionar las direcciones de envío."""
-    return account_layout(
+    
+    # --- INICIO DE LA CORRECCIÓN ---
+    # Envolvemos todo el contenido en una tarjeta (rx.card) para darle más cuerpo y presencia
+    page_content = rx.card(
         rx.vstack(
             rx.heading("Mi Información para Envíos", size="7"),
             rx.text("Aquí puedes gestionar tus direcciones de envío.", margin_bottom="1.5em"),
             rx.foreach(AppState.addresses, address_card),
             rx.cond(
                 ~AppState.show_form,
-                rx.button("Crear Nueva Dirección", on_click=AppState.toggle_form, margin_top="2em", color_scheme="violet"),
-            ),
+                rx.button(
+                    "Crear Nueva Dirección", 
+                    on_click=AppState.toggle_form, 
+                    margin_top="1.5em", # Ajuste de margen
+                    color_scheme="violet"
+                ),
+             ),
             rx.cond(AppState.show_form, address_form()),
-            align_items="start", 
-            width="100%", 
             
-            # --- LÍNEA CORREGIDA ---
-            # Cambiamos 700px por 960px para un diseño más amplio
-            max_width="960px"
-        )
+            # Las propiedades de alineación y espaciado ahora van en este vstack interno
+            align_items="start", 
+            width="100%",
+            spacing="5", # Aumentamos el espaciado vertical interno
+        ),
+        # Le damos un tamaño máximo a la tarjeta para que se vea bien en pantallas grandes
+        width="100%",
+        max_width="960px",
     )
+    
+    # El layout ahora simplemente envuelve nuestro contenido ya estructurado en la tarjeta
+    return account_layout(page_content)
+    # --- FIN DE LA CORRECCIÓN ---
