@@ -1,5 +1,3 @@
-# likemodas/ui/nav.py (CORREGIDO)
-
 import reflex as rx
 import reflex_local_auth
 from .. import navigation
@@ -7,6 +5,7 @@ from ..state import AppState
 from ..models import Category
 
 def notification_icon() -> rx.Component:
+    """Componente para el icono y menú de notificaciones."""
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
@@ -65,7 +64,6 @@ def notification_icon() -> rx.Component:
                             width="100%",
                         ),
                         on_click=rx.cond(n.url, rx.redirect(n.url), AppState.do_nothing),
-                        # El color de fondo para notificaciones no leídas usa violet.
                         bg=rx.cond(n.is_read, rx.color("gray", 3), rx.color("violet", 4)),
                         _hover={
                             "background_color": rx.cond(n.is_read, rx.color("gray", 5), rx.color("violet", 5))
@@ -90,6 +88,7 @@ def notification_icon() -> rx.Component:
 
 
 def public_navbar() -> rx.Component:
+    """La barra de navegación pública, corregida para búsqueda en vivo y sin bugs de diseño."""
     icon_color = rx.color_mode_cond("black", "white")
     
     hamburger_menu = rx.menu.root(
@@ -97,7 +96,6 @@ def public_navbar() -> rx.Component:
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
         ),
         rx.menu.content(
-            # --- ✨ MODIFICACIÓN: Items del menú hamburguesa usan color de acento ✨ ---
             rx.menu.item("Inicio", on_click=lambda: rx.redirect("/"), color_scheme="violet"),
             rx.menu.sub(
                 rx.menu.sub_trigger("Categorías", color_scheme="violet"),
@@ -129,13 +127,11 @@ def public_navbar() -> rx.Component:
                     rx.menu.item("Registrarse", on_click=lambda: rx.redirect(reflex_local_auth.routes.REGISTER_ROUTE), color_scheme="violet"),
                 )
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
         ),
     )
     
     authenticated_icons = rx.hstack(
         notification_icon(),
-        # El icono del carrito se mantiene neutral, su funcionalidad es clara.
         rx.link(
             rx.box(
                 rx.icon("shopping-cart", size=22, color=icon_color),
@@ -171,17 +167,14 @@ def public_navbar() -> rx.Component:
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
-            # El input de búsqueda se mantiene neutral para no sobrecargar el diseño.
-            rx.form(
-                rx.input(
-                    placeholder="Buscar productos...",
-                    value=AppState.search_term,
-                    on_change=AppState.set_search_term,
-                    width="100%",
-                    variant="soft", # Un estilo más suave que se integra con el tema
-                ),
-                on_submit=AppState.perform_search,
+            # ✨ CORRECCIÓN CLAVE 1: Búsqueda en vivo ✨
+            # Se elimina el rx.form. La búsqueda ahora es instantánea al escribir.
+            rx.input(
+                placeholder="Buscar productos...",
+                value=AppState.search_term,
+                on_change=AppState.set_search_term,
                 width="100%",
+                variant="soft",
             ),
             rx.cond(
                 AppState.is_authenticated,
@@ -194,6 +187,9 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
+        # ✨ CORRECCIÓN CLAVE 2: Lógica de polling oculta ✨
+        # Esta sección ahora está correctamente estructurada para ser invisible
+        # y no afectar el diseño de la página.
         rx.cond(
             AppState.is_authenticated,
             rx.fragment(

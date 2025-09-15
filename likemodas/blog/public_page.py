@@ -334,31 +334,22 @@ def product_detail_modal() -> rx.Component:
     )
 
 def blog_public_page_content() -> rx.Component:
-    """
-    ✨ VERSIÓN CORREGIDA ✨
-    Estructura la página para que los componentes flotantes (filtros y modal)
-    no sean afectados por los contenedores de diseño del contenido principal.
-    """
-    # 1. Definimos el contenido principal de la página por separado.
+    # Contenido principal de la página (la galería de productos)
     main_content = rx.center(
         rx.vstack(
-            # El panel de filtros y el modal YA NO ESTÁN AQUÍ DENTRO
             rx.cond(
                 AppState.is_loading,
                 skeleton_product_gallery(),
                 product_gallery_component(posts=AppState.displayed_posts)
             ),
-            spacing="6", 
-            width="100%", 
-            padding="2em", 
-            align="center"
+            spacing="6", width="100%", padding="2em", align="center"
         ),
         width="100%"
     )
 
-    # 2. Devolvemos un fragmento que contiene todo en el orden correcto.
+    # ✨ Devolvemos todo dentro de un fragmento para mantener la estructura correcta ✨
     return rx.fragment(
-        floating_filter_panel(),  # El panel de filtros ahora está en la raíz
-        main_content,             # El contenido de la página
-        product_detail_modal(),   # El modal también está en la raíz
+        floating_filter_panel(), # El panel de filtros ahora está fuera del center
+        main_content,
+        product_detail_modal(),  # El modal también está fuera
     )
