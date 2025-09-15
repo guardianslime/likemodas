@@ -194,7 +194,6 @@ def product_detail_modal() -> rx.Component:
             spacing="3", width="100%",
         )
 
-    # --- 👇 INICIO DE LA SECCIÓN CORREGIDA ---
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
@@ -210,7 +209,6 @@ def product_detail_modal() -> rx.Component:
                 rx.cond(
                     AppState.product_in_modal.is_moda_completa_eligible,
                     rx.tooltip(
-                        # --- ✨ MODIFICACIÓN: Badge en violeta ✨ ---
                         rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
                         content="Este item cuenta para el envío gratis en compras sobre $200.000"
                     ),
@@ -252,8 +250,6 @@ def product_detail_modal() -> rx.Component:
                 ),
                 align_items="start", width="100%", spacing="3", margin_top="0.5em",
             ),
-            
-            # --- ✨ CORRECCIÓN: Se reemplaza rx.tooltip por rx.hover_card ✨ ---
             rx.text(
                 "Publicado por: ",
                 rx.hover_card.root(
@@ -277,34 +273,50 @@ def product_detail_modal() -> rx.Component:
                 size="3", color_scheme="gray", margin_top="1.5em",
                 text_align="left", width="100%"
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             rx.spacer(),
             rx.hstack(
-                # --- ✨ MODIFICACIÓN: Botón principal de compra en violeta ✨ ---
                 rx.button("Añadir al Carrito", on_click=AppState.add_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1", color_scheme="violet"),
+                
+                # --- BOTÓN DE GUARDAR CORREGIDO ---
                 rx.icon_button(
                     rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
                     on_click=AppState.toggle_save_post,
-                    size="3", variant="outline",
+                    size="3", 
+                    variant="outline",
+                    color_scheme="violet", # Se añade para el color morado
                 ),
+                # --- BOTÓN DE COMPARTIR CORREGIDO ---
                 rx.icon_button(
                     rx.icon(tag="share-2"),
                     on_click=[
                         rx.set_clipboard(AppState.base_app_url + "/?product=" + AppState.product_in_modal.id.to_string()),
                         rx.toast.success("¡Enlace para compartir copiado!")
                     ],
-                    size="3", variant="outline",
+                    size="3", 
+                    variant="outline",
+                    color_scheme="violet", # Se añade para el color morado
                 ),
                 spacing="3", width="100%", margin_top="1.5em",
             ),
             align="start", height="100%",
         )
-    # --- ☝️ FIN DE LA SECCIÓN CORREGIDA ---
 
     return rx.dialog.root(
-        # ... (el resto de la función no cambia)
         rx.dialog.content(
-            rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", style={"position": "absolute", "top": "1rem", "right": "1rem"})),
+            # --- BOTÓN DE CERRAR CORREGIDO ---
+            rx.dialog.close(
+                rx.icon_button(
+                    rx.icon("x"),
+                    variant="soft",
+                    color_scheme="gray",
+                    style={
+                        "position": "absolute",
+                        "top": "1rem",
+                        "right": "1rem",
+                        "z_index": "10", # Se añade para que esté siempre encima
+                    },
+                )
+            ),
             rx.cond(
                 AppState.product_in_modal,
                 rx.vstack(
