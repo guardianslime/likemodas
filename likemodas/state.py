@@ -1969,68 +1969,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.info(f"Estado de publicación cambiado.")
 
-    @rx.event
-    async def on_load_main_page_data(self):
-        """
-        ✨ VERSIÓN CORREGIDA ✨
-        Orquestador principal: ahora lee la categoría de la URL antes de cargar los productos.
-        """
-        self.is_loading = True
-        yield
-        yield AppState.load_default_shipping_info
-
-        # --- INICIO DE LA LÓGICA AÑADIDA ---
-        # 1. Leer la categoría desde la URL
-        category = None
-        try:
-            full_url = self.router.url
-            if full_url and "?" in full_url:
-                parsed_url = urlparse(full_url)
-                query_params = parse_qs(parsed_url.query)
-                category_list = query_params.get("category")
-                if category_list:
-                    category = category_list[0]
-        except Exception:
-            pass # Si hay un error, simplemente no se filtra por categoría
-
-        self.current_category = category if category else "todos"
-        # --- FIN DE LA LÓGICA AÑADIDA ---
-
-        with rx.session() as session:
-            # 2. Construir la consulta a la base de datos
-            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
-            
-            # 3. Añadir el filtro de categoría a la consulta SI existe uno en la URL
-            if self.current_category and self.current_category != "todos":
-                query = query.where(BlogPostModel.category == self.current_category)
-
-            # 4. Ejecutar la consulta final
-            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-            
-            # El resto del código para procesar los resultados se mantiene igual...
-            temp_posts = []
-            for p in results:
-                temp_posts.append(
-                    ProductCardData(
-                        id=p.id, 
-                        userinfo_id=p.userinfo_id, 
-                        title=p.title, 
-                        price=p.price,
-                        price_cop=p.price_cop,
-                        variants=p.variants or [],
-                        attributes={},
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count,
-                        shipping_cost=p.shipping_cost,
-                        is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported
-                    )
-                )
-            self._raw_posts = temp_posts
-        
-        yield AppState.recalculate_all_shipping_costs
-        self.is_loading = False
+    
                 
     addresses: List[ShippingAddressModel] = []
     show_form: bool = False
@@ -2551,15 +2490,47 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def load_main_page_data(self):
         """
-        Orquestador principal: carga la dirección y LUEGO los productos y recalcula.
+        [VERSIÓN CORREGIDA]
+        Orquestador principal: Lee la categoría de la URL, carga la dirección,
+        filtra los productos y luego recalcula los costos de envío.
         """
         self.is_loading = True
         yield
+        
+        # --- INICIO DE LA CORRECCIÓN ---
+
+        # 1. Leer la categoría desde la URL y actualizar el estado
+        category_from_url = None
+        try:
+            full_url = self.router.url
+            if full_url and "?" in full_url:
+                parsed_url = urlparse(full_url)
+                query_params = parse_qs(parsed_url.query)
+                category_list = query_params.get("category")
+                if category_list:
+                    category_from_url = category_list[0]
+        except Exception as e:
+            print(f"Error parsing category from URL: {e}")
+
+        # Actualizamos la variable de estado que controla los filtros
+        self.current_category = category_from_url if category_from_url else "todos"
+        
+        # --- FIN DE LA CORRECCIÓN ---
+
         yield AppState.load_default_shipping_info
 
         with rx.session() as session:
-            results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True).order_by(BlogPostModel.created_at.desc())).all()
+            # 2. Construir la consulta a la base de datos (query)
+            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
             
+            # 3. Aplicar el filtro de categoría a la consulta SI existe
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
+
+            # Ejecutamos la consulta ya filtrada
+            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+            
+            # El resto de la lógica para procesar los resultados no cambia
             temp_posts = []
             for p in results:
                 temp_posts.append(
@@ -2569,7 +2540,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title, 
                         price=p.price,
                         price_cop=p.price_cop,
-                        # --- 👇 LÍNEA CORREGIDA 👇 ---
                         variants=p.variants or [],
                         attributes={},
                         average_rating=p.average_rating,
