@@ -3456,6 +3456,29 @@ class AppState(reflex_local_auth.LocalAuthState):
     def toggle_admin_sidebar(self):
         self.show_admin_sidebar = not self.show_admin_sidebar
 
+    # 1. Nueva variable de estado para el campo de búsqueda del vendedor
+    search_seller_barrio: str = ""
+
+    # 2. Nuevo manejador de eventos para actualizar esa variable
+    def set_search_seller_barrio(self, query: str):
+        self.search_seller_barrio = query
+
+    # 3. Nueva propiedad computada que filtra los barrios para el vendedor
+    @rx.var
+    def filtered_seller_barrios(self) -> list[str]:
+        """
+        Devuelve una lista de barrios de Popayán filtrada por el término de 
+        búsqueda del vendedor.
+        """
+        source_list = self.lista_de_barrios_popayan
+        if not self.search_seller_barrio.strip():
+            return source_list  # Devuelve la lista completa si no hay búsqueda
+
+        query = self.search_seller_barrio.lower()
+        return [
+            barrio for barrio in source_list if query in barrio.lower()
+        ]
+
     @rx.event
     def on_load_main_page(self):
         if self.is_admin:
