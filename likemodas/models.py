@@ -99,7 +99,10 @@ class UserInfo(rx.Model, table=True):
     
     # --- Campos de Vendedor ---
     seller_barrio: Optional[str] = Field(default=None)
+    # --- ✨ ASEGÚRATE DE AÑADIR ESTA LÍNEA SI FALTA ✨ ---
+    seller_city: Optional[str] = Field(default=None) 
     seller_address: Optional[str] = Field(default=None)
+
 
     # --- Relaciones con otros Modelos ---
     
