@@ -1460,10 +1460,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_seller_profile(self):
-        """Carga los datos del perfil del vendedor al entrar a la página de edición."""
+        """Carga la ciudad y el barrio guardados del vendedor."""
         if self.is_admin and self.authenticated_user_info:
-            self.seller_profile_barrio = self.authenticated_user_info.seller_barrio or ""
-            self.seller_profile_address = self.authenticated_user_info.seller_address or ""
+            with rx.session() as session:
+                user_info = session.get(UserInfo, self.authenticated_user_info.id)
+                if user_info:
+                    # Carga ambos campos
+                    self.seller_profile_city = user_info.seller_city or ""
+                    self.seller_profile_barrio = user_info.seller_barrio or ""
+                    self.seller_profile_address = user_info.seller_address or ""
 
     def set_seller_profile_barrio(self, barrio: str):
         """Actualiza el barrio seleccionado en el formulario de perfil."""
@@ -1474,18 +1479,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def save_seller_profile(self, form_data: dict):
-        """Guarda la información de ubicación del vendedor en la base de datos."""
+        """Guarda la ciudad, el barrio y la dirección del vendedor."""
         if not self.is_admin or not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
+             return rx.toast.error("Acción no permitida.")
 
         address = form_data.get("seller_address", "")
-        if not self.seller_profile_barrio or not address:
-            return rx.toast.error("Debes seleccionar un barrio y escribir una dirección.")
+        # Validar que tanto la ciudad como el barrio estén seleccionados
+        if not self.seller_profile_city or not self.seller_profile_barrio or not address:
+            return rx.toast.error("Debes seleccionar ciudad, barrio y escribir una dirección.")
 
         with rx.session() as session:
             user_info_to_update = session.get(UserInfo, self.authenticated_user_info.id)
             if user_info_to_update:
-                user_info_to_update.seller_barrio = self.seller_profile_barrio
+                user_info_to_update.seller_city = self.seller_profile_city # Guardar ciudad
+                user_info_to_update.seller_barrio = self.seller_profile_barrio # Guardar barrio
                 user_info_to_update.seller_address = address
                 session.add(user_info_to_update)
                 session.commit()
@@ -3463,21 +3470,43 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_seller_barrio(self, query: str):
         self.search_seller_barrio = query
 
-    # 3. Nueva propiedad computada que filtra los barrios para el vendedor
+    # Nuevas variables de estado
+    seller_profile_city: str = ""
+    search_seller_city: str = ""
+
+    # Setter para la ciudad
+    def set_seller_profile_city(self, city: str):
+        self.seller_profile_city = city
+        self.seller_profile_barrio = "" # Limpiar el barrio al cambiar de ciudad
+
+    # Setter para la búsqueda de ciudad
+    def set_search_seller_city(self, query: str):
+        self.search_seller_city = query
+
+    @rx.var
+    def filtered_seller_cities(self) -> list[str]:
+        """Filtra la lista de todas las ciudades para el selector de búsqueda."""
+        if not self.search_seller_city.strip():
+            return ALL_CITIES
+        query = self.search_seller_city.lower()
+        return [city for city in ALL_CITIES if query in city.lower()]
+
     @rx.var
     def filtered_seller_barrios(self) -> list[str]:
         """
-        Devuelve una lista de barrios de Popayán filtrada por el término de 
-        búsqueda del vendedor.
+        Devuelve dinámicamente los barrios de la ciudad seleccionada por el vendedor.
         """
-        source_list = self.lista_de_barrios_popayan
+        if not self.seller_profile_city:
+            return [] # No mostrar barrios si no se ha seleccionado una ciudad
+        
+        # Obtiene la lista de barrios del diccionario maestro
+        all_hoods = COLOMBIA_LOCATIONS.get(self.seller_profile_city, [])
+        
+        # Aplica el filtro de búsqueda (lógica que ya tenías para barrios)
         if not self.search_seller_barrio.strip():
-            return source_list  # Devuelve la lista completa si no hay búsqueda
-
+            return sorted(all_hoods)
         query = self.search_seller_barrio.lower()
-        return [
-            barrio for barrio in source_list if query in barrio.lower()
-        ]
+        return sorted([n for n in all_hoods if query in n.lower()])
 
     @rx.event
     def on_load_main_page(self):
