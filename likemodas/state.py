@@ -383,6 +383,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def verify_token(self):
         token = ""
         try:
+            # --- CORRECCIÓN ---
             full_url = self.router.url
             if "?" in full_url:
                 query_string = full_url.split("?")[1]
@@ -390,6 +391,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 token = params.get("token", "")
         except Exception:
             pass
+
 
         if not token:
             self.message = "Error: No se proporcionó un token de verificación."
@@ -482,6 +484,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def on_load_check_token(self):
         token = ""
         try:
+            # --- CORRECCIÓN ---
             full_url = self.router.url
             if "?" in full_url:
                 query_string = full_url.split("?")[1]
@@ -1518,7 +1521,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def cart_summary(self) -> dict:
         """
-        Calcula el resumen del carrito usando el precio base para consistencia.
+        Calcula el resumen del carrito, ahora pasando la ciudad del vendedor y comprador
+        para un cálculo de envío preciso.
         """
         if not self.cart:
             return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
@@ -1528,11 +1532,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not cart_items_details:
                 return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
 
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # Usamos 'item.product_id' en lugar de 'item.id'
             post_ids = [item.product_id for item in cart_items_details]
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
             db_posts = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(post_ids))).all()
             post_map = {p.id: p for p in db_posts}
 
@@ -1543,7 +1543,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             final_shipping_cost = 0.0
             if not free_shipping_achieved and self.default_shipping_address:
+                # --- INICIO DE LA MODIFICACIÓN ---
+                buyer_city = self.default_shipping_address.city
                 buyer_barrio = self.default_shipping_address.neighborhood
+                # --- FIN DE LA MODIFICACIÓN ---
+
                 seller_groups = defaultdict(list)
                 for item in cart_items_details:
                     db_post = post_map.get(item.product_id)
@@ -1553,19 +1557,31 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 seller_ids = list(seller_groups.keys())
                 sellers_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
-                seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
+                # --- INICIO DE LA MODIFICACIÓN ---
+                # Ahora obtenemos tanto la ciudad como el barrio del vendedor
+                seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
+                # --- FIN DE LA MODIFICACIÓN ---
 
                 for seller_id, items_from_seller in seller_groups.items():
                     combinable_items = [p for p in items_from_seller if p.combines_shipping]
                     individual_items = [p for p in items_from_seller if not p.combines_shipping]
-                    seller_barrio = seller_barrio_map.get(seller_id)
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    seller_data = seller_data_map.get(seller_id)
+                    seller_city = seller_data.get("city") if seller_data else None
+                    seller_barrio = seller_data.get("barrio") if seller_data else None
+                    # --- FIN DE LA MODIFICACIÓN ---
+
                     for individual_item in individual_items:
                         cost = calculate_dynamic_shipping(
                             base_cost=individual_item.shipping_cost or 0.0,
                             seller_barrio=seller_barrio,
-                            buyer_barrio=buyer_barrio
+                            buyer_barrio=buyer_barrio,
+                            # --- Pasamos los nuevos argumentos ---
+                            seller_city=seller_city,
+                            buyer_city=buyer_city
                         )
                         final_shipping_cost += cost
+                    
                     if combinable_items:
                         valid_limits = [p.shipping_combination_limit for p in combinable_items if p.shipping_combination_limit and p.shipping_combination_limit > 0] or [1]
                         limit = min(valid_limits)
@@ -1574,19 +1590,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                         group_shipping_fee = calculate_dynamic_shipping(
                             base_cost=highest_base_cost,
                             seller_barrio=seller_barrio,
-                            buyer_barrio=buyer_barrio
+                            buyer_barrio=buyer_barrio,
+                            # --- Pasamos los nuevos argumentos ---
+                            seller_city=seller_city,
+                            buyer_city=buyer_city
                         )
                         final_shipping_cost += (group_shipping_fee * num_fees)
             
             grand_total = subtotal_con_iva + final_shipping_cost
             
-            return {
-                "subtotal": subtotal_base,
-                "shipping_cost": final_shipping_cost,
-                "iva": iva,
-                "grand_total": grand_total,
-                "free_shipping_achieved": free_shipping_achieved,
-            }
+            return { "subtotal": subtotal_base, "shipping_cost": final_shipping_cost, "iva": iva, "grand_total": grand_total, "free_shipping_achieved": free_shipping_achieved }
     # --- ✨ FIN DEL PASO 3 ✨ ---
         
     # --- 👇 AÑADE ESTAS TRES NUEVAS PROPIEDADES 👇 ---
@@ -1896,7 +1909,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def current_path(self) -> str:
         """Devuelve la ruta de la página actual."""
-        return self.router.page.path
+        # --- CORRECCIÓN ---
+        return self.router.url
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA LOS FILTROS 👇 ---
     filter_free_shipping: bool = False
@@ -2395,25 +2409,22 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         # Primero, intenta verificar un pago si la URL contiene el ID
         try:
+            # --- CORRECCIÓN ---
             full_url = self.router.url
             if full_url and "?" in full_url:
                 query_params = parse_qs(full_url.split("?")[1])
                 wompi_id = query_params.get("id", [None])[0]
-                # Lógica para Wompi (existente)
-                wompi_id = query_params.get("id", [None])[0]
                 if wompi_id:
                     yield AppState.confirm_payment_on_redirect(wompi_id)
 
-                # --- ✨ NUEVA LÓGICA PARA SISTECREDITO ---
                 sistecredito_id = query_params.get("paymentRef", [None])[0]
                 if sistecredito_id:
                     yield AppState.confirm_sistecredito_on_redirect(sistecredito_id)
         except Exception as e:
             print(f"Error al parsear la URL de redirección: {e}")
 
-        # Luego, carga el historial de compras como lo hacía antes
         yield AppState.load_purchases
-        yield AppState.check_for_auto_confirmations # Mantenemos esta lógica por si acaso
+        yield AppState.check_for_auto_confirmations
 
     def toggle_form(self):
         self.show_form = not self.show_form
@@ -2450,38 +2461,50 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def recalculate_all_shipping_costs(self):
         """
-        Toma la lista de productos cruda y recalcula el costo de envío para cada uno
-        basado en la dirección actual del comprador.
+        Recalcula el costo de envío para cada producto basado en la dirección
+        del comprador y la ciudad/barrio del vendedor.
         """
         if not self._raw_posts:
             self.posts = []
             return
 
+        # Si no hay dirección, los costos vuelven a ser los base
         if not self.default_shipping_address:
-            # Si no hay dirección, los costos vuelven a ser los base.
             self.posts = self._raw_posts
             return
 
+        # --- INICIO DE LA MODIFICACIÓN ---
+        buyer_city = self.default_shipping_address.city
         buyer_barrio = self.default_shipping_address.neighborhood
+        # --- FIN DE LA MODIFICACIÓN ---
         
         with rx.session() as session:
             seller_ids = {p.userinfo_id for p in self._raw_posts}
             sellers_info = session.exec(
                 sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
             ).all()
-            seller_barrio_map = {info.id: info.seller_barrio for info in sellers_info}
+            # --- INICIO DE LA MODIFICACIÓN ---
+            # Obtenemos un mapa con la ciudad y el barrio de cada vendedor
+            seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
+            # --- FIN DE LA MODIFICACIÓN ---
 
             recalculated_posts = []
             for post in self._raw_posts:
-                seller_barrio = seller_barrio_map.get(post.userinfo_id)
+                # --- INICIO DE LA MODIFICACIÓN ---
+                seller_data = seller_data_map.get(post.userinfo_id)
+                seller_city = seller_data.get("city") if seller_data else None
+                seller_barrio = seller_data.get("barrio") if seller_data else None
                 
                 final_shipping_cost = calculate_dynamic_shipping(
                     base_cost=post.shipping_cost or 0.0,
                     seller_barrio=seller_barrio,
-                    buyer_barrio=buyer_barrio
+                    buyer_barrio=buyer_barrio,
+                    # Pasamos los nuevos argumentos a la llamada
+                    seller_city=seller_city,
+                    buyer_city=buyer_city
                 )
+                # --- FIN DE LA MODIFICACIÓN ---
 
-                # Creamos una copia del post para no modificar el original
                 updated_post = post.copy()
                 updated_post.shipping_display_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
                 
@@ -4163,6 +4186,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         seller_id_str = "0"
         try:
+            # --- CORRECCIÓN ---
             full_url = self.router.url
             if full_url and "?" in full_url:
                 parsed_url = urlparse(full_url)
@@ -4268,6 +4292,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         purchase_id_str = "0"
         try:
+            # --- CORRECCIÓN ---
             full_url = self.router.url
             if "?" in full_url:
                 query_params = parse_qs(full_url.split("?")[1])
