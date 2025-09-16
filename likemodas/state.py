@@ -4086,7 +4086,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.votes), # <-- Añade la carga de votos
+                    sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.votes),
                     sqlalchemy.orm.joinedload(BlogPostModel.comments).joinedload(CommentModel.updates),
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
                 ).where(BlogPostModel.id == post_id)
@@ -4096,15 +4096,32 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.show_detail_modal = False
                 return rx.toast.error("Producto no encontrado.")
 
-            # Lógica de envío y datos del vendedor
+            # --- INICIO DE LA CORRECCIÓN ---
+
+            # 1. Obtenemos los datos del comprador y vendedor, incluyendo la CIUDAD
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
+            buyer_city = self.default_shipping_address.city if self.default_shipping_address else None
+            
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
-            final_shipping_cost = calculate_dynamic_shipping(base_cost=db_post.shipping_cost or 0.0, seller_barrio=seller_barrio, buyer_barrio=buyer_barrio)
+            seller_city = db_post.userinfo.seller_city if db_post.userinfo else None
+
+            # 2. Llamamos a la función con TODOS los argumentos requeridos
+            final_shipping_cost = calculate_dynamic_shipping(
+                base_cost=db_post.shipping_cost or 0.0,
+                seller_barrio=seller_barrio,
+                buyer_barrio=buyer_barrio,
+                seller_city=seller_city,
+                buyer_city=buyer_city
+            )
+            
             shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
+            
+            # --- FIN DE LA CORRECCIÓN ---
+            
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             
-            # Construimos el DTO
+            # El resto de la función para construir el DTO y cargar comentarios no cambia...
             self.product_in_modal = ProductDetailData(
                 id=db_post.id,
                 title=db_post.title,
@@ -4117,10 +4134,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_cost=db_post.shipping_cost,
                 is_moda_completa_eligible=db_post.is_moda_completa_eligible,
                 is_imported=db_post.is_imported,
-                shipping_display_text=shipping_text,
+                shipping_display_text=shipping_text, # Usamos el costo calculado
                 seller_name=seller_name,
                 seller_id=seller_id,
-                # --- ✨ Poblando el campo que causaba el error ---
                 seller_score=db_post.seller_score,
             )
             
