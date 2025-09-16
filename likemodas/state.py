@@ -18,7 +18,8 @@ from collections import defaultdict
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
 
-from likemodas.data.geography_data import LISTA_DE_BARRIOS
+
+from .data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 from .logic.shipping_calculator import calculate_dynamic_shipping
 
 from . import navigation
@@ -287,7 +288,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     user_notifications: List[NotificationDTO] = []
     contact_entries: list[ContactEntryDTO] = []
-    lista_de_barrios_popayan: list[str] = LISTA_DE_BARRIOS
+    # lista_de_barrios_popayan: list[str] = LISTA_DE_BARRIOS
     seller_profile_barrio: str = ""
     seller_profile_address: str = ""
     _product_id_to_load_on_mount: Optional[int] = None
@@ -2430,27 +2431,21 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def neighborhoods(self) -> List[str]:
         """
-        Devuelve la lista de barrios para el selector de dirección.
-        CORREGIDO: Ahora usa la lista completa de barrios de Popayán.
+        Devuelve dinámicamente los barrios de la ciudad seleccionada en el
+        formulario de dirección de envío.
         """
-        # --- INICIO DE LA CORRECCIÓN ---
-        # Antes usaba un archivo incorrecto. Ahora usamos la lista completa.
-        from .data.geography_data import LISTA_DE_BARRIOS
+        if not self.city:
+            return []
 
-        if self.city != "Popayán":
-             # Mantenemos la lógica anterior por si se añaden otras ciudades
-            data = load_colombia_data()
-            all_hoods = data.get(self.city, [])
-        else:
-            # Si la ciudad es Popayán, usamos nuestra lista maestra.
-            all_hoods = LISTA_DE_BARRIOS
-        # --- FIN DE LA CORRECCIÓN ---
+        all_hoods = COLOMBIA_LOCATIONS.get(self.city, [])
 
         if not self.search_neighborhood.strip():
             return sorted(all_hoods)
-        return sorted([
-            n for n in all_hoods if self.search_neighborhood.lower() in n.lower()
-        ])
+
+        query = self.search_neighborhood.lower()
+        return sorted([n for n in all_hoods if query in n.lower()])
+
+    # --- FIN DE LA CORRECIÓN ---
 
     @rx.event
     def recalculate_all_shipping_costs(self):
