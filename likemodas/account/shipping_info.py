@@ -108,8 +108,7 @@ def shipping_info_content() -> rx.Component:
     """Página para gestionar las direcciones de envío."""
     page_content = rx.card(
         rx.vstack(
-            # ... (el contenido interno del vstack no cambia aquí) ...
-            rx.heading("Mi Información para Eníos", size="7"),
+            rx.heading("Mi Información para Envíos", size="7"),
             rx.text("Aquí puedes gestionar tus direcciones de envío.", margin_bottom="1.5em"),
             rx.foreach(AppState.addresses, address_card),
             rx.cond(
@@ -128,7 +127,9 @@ def shipping_info_content() -> rx.Component:
         ),
         
         # --- INICIO DE LA CORRECCIÓN ---
-        variant="ghost",  # Esta línea hace que el fondo sea transparente
+        # Esta simple línea hace que el fondo de la tarjeta sea transparente
+        # y evita que recorte el menú desplegable.
+        variant="ghost",
         # --- FIN DE LA CORRECCIÓN ---
 
         width="100%",

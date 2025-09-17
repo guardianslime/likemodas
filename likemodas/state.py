@@ -2435,24 +2435,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.var
     def cities(self) -> List[str]:
-        data = load_colombia_data()
-        if not self.search_city.strip(): return sorted(list(data.keys()))
-        return [c for c in data if self.search_city.lower() in c.lower()]
+        """
+        CORREGIDO: Ahora usa la lista completa de TODAS las ciudades.
+        """
+        if not self.search_city.strip():
+            return ALL_CITIES # Usa la lista completa
+        
+        query = self.search_city.lower()
+        return [c for c in ALL_CITIES if query in c.lower()]
 
     @rx.var
     def neighborhoods(self) -> List[str]:
         """
-        Devuelve dinámicamente los barrios de la ciudad seleccionada en el
-        formulario de dirección de envío.
+        CORREGIDO: Ahora usa el diccionario maestro para obtener los barrios
+        de CUALQUIER ciudad seleccionada.
         """
         if not self.city:
-            return []
-
+            return []  # Si no hay ciudad, no hay barrios
+        
+        # Busca en nuestro gran diccionario la lista de barrios para la ciudad actual
         all_hoods = COLOMBIA_LOCATIONS.get(self.city, [])
-
+        
         if not self.search_neighborhood.strip():
             return sorted(all_hoods)
-
+        
         query = self.search_neighborhood.lower()
         return sorted([n for n in all_hoods if query in n.lower()])
 
