@@ -33,10 +33,10 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
         align="center",
         spacing="1",
     )
-
 def searchable_select(
     placeholder: str, 
-    options: rx.Var[list[str]], 
+    # La variable ahora puede ser una lista de strings o una lista de tuplas
+    options: rx.Var[list], 
     on_change_select: EventSpec,
     value_select: rx.Var[str],
     search_value: rx.Var[str],
@@ -45,6 +45,17 @@ def searchable_select(
     is_disabled: rx.Var[bool] = False,
 ) -> rx.Component:
     is_open = AppState.open_filter_name == filter_name
+    
+    def render_option(option: rx.Var):
+        """Función interna para renderizar un botón de opción."""
+        label = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[0], option)
+        value = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[1], option)
+        return rx.button(
+            label,
+            on_click=[on_change_select(value), AppState.toggle_filter_dropdown(filter_name)],
+            width="100%", variant="soft", color_scheme="gray", justify_content="start"
+        )
+
     return rx.box(
         rx.button(
             rx.cond(value_select, value_select, placeholder),
@@ -59,14 +70,9 @@ def searchable_select(
                 rx.input(placeholder="Buscar...", value=search_value, on_change=on_change_search),
                 rx.scroll_area(
                     rx.vstack(
-                        rx.foreach(
-                            options,
-                            lambda option: rx.button(
-                                option,
-                                on_click=[on_change_select(option), AppState.toggle_filter_dropdown(filter_name)],
-                                width="100%", variant="soft", color_scheme="gray", justify_content="start"
-                            )
-                        ),
+                        # --- MODIFICACIÓN CLAVE AQUÍ ---
+                        # Usamos la nueva función interna para renderizar cada opción
+                        rx.foreach(options, render_option),
                         spacing="1", width="100%",
                     ),
                     max_height="200px", width="100%", type="auto", scrollbars="vertical",

@@ -20,14 +20,14 @@ def direct_sale_cart_component() -> rx.Component:
             # Selector de Comprador
             rx.vstack(
                 rx.text("Seleccionar Comprador:", weight="bold"),
+                # --- CORRECCIÓN CLAVE ---
+                # Ahora pasamos la variable computada que ya tiene el formato correcto.
+                # Ya no usamos rx.foreach aquí.
                 searchable_select(
                     placeholder="Buscar por usuario o email...",
-                    options=rx.foreach(
-                        AppState.filtered_all_users_for_sale,
-                        lambda user: (user.user.username + f" ({user.email})", user.id.to_string())
-                    ),
+                    options=AppState.buyer_options_for_select,
                     on_change_select=AppState.set_direct_sale_buyer,
-                    value_select="", # No necesitamos mantener el valor aquí
+                    value_select="",
                     search_value=AppState.search_query_all_buyers,
                     on_change_search=AppState.set_search_query_all_buyers,
                     filter_name="buyer_filter",

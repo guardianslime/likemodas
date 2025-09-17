@@ -580,6 +580,23 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                     )
             return cart_items_data
+        
+    @rx.var
+    def buyer_options_for_select(self) -> list[tuple[str, str]]:
+        """
+        Prepara la lista de usuarios en el formato (label, value)
+        requerido por el componente `searchable_select`.
+        """
+        if not self.filtered_all_users_for_sale:
+            return []
+        
+        options = []
+        for user in self.filtered_all_users_for_sale:
+            if user.user:  # Chequeo de seguridad
+                label = f"{user.user.username} ({user.email})"
+                value = str(user.id)
+                options.append((label, value))
+        return options
 
     @rx.var
     def filtered_all_users_for_sale(self) -> list[UserInfo]:
