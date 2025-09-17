@@ -539,8 +539,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Almacena el ID del UserInfo del comprador seleccionado para la venta.
     direct_sale_buyer_id: Optional[int] = None
 
+    # --- INICIO: NUEVAS VARIABLES PARA SIDEBAR DE VENTA ---
+    show_direct_sale_sidebar: bool = False
+
     # Término de búsqueda para encontrar al comprador en la lista.
     search_query_all_buyers: str = ""
+
+    # --- INICIO: NUEVO EVENT HANDLER ---
+    def toggle_direct_sale_sidebar(self):
+        """Muestra u oculta el sidebar de venta directa."""
+        self.show_direct_sale_sidebar = not self.show_direct_sale_sidebar
+    # --- FIN: NUEVO EVENT HANDLER ---
 
     @rx.var
     def direct_sale_cart_details(self) -> List[CartItemData]:
@@ -693,45 +702,54 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def handle_direct_sale_checkout(self):
-        """Procesa y finaliza una venta directa."""
+        """
+        Procesa y finaliza una venta directa, manejando tanto a compradores 
+        registrados como anónimos. Si no se selecciona un comprador, la venta 
+        se registra a nombre del propio vendedor como una venta de "mostrador".
+        """
+        # 1. Validaciones iniciales de permisos y estado del carrito
         if not self.is_admin or not self.authenticated_user_info:
-            return rx.toast.error("No tienes permisos.")
+            return rx.toast.error("No tienes permisos para realizar esta acción.")
         if not self.direct_sale_cart:
-            return rx.toast.error("El carrito está vacío.")
-        if self.direct_sale_buyer_id is None:
-            return rx.toast.error("Debes seleccionar un comprador.")
+            return rx.toast.error("El carrito de venta está vacío.")
 
         with rx.session() as session:
-            # 1. Validar que el comprador existe
-            buyer_info = session.get(UserInfo, self.direct_sale_buyer_id)
-            if not buyer_info:
+            # 2. Determinar el comprador
+            # Si no se ha seleccionado un comprador (`direct_sale_buyer_id` es None),
+            # la venta se asocia al propio vendedor (venta anónima/invitado).
+            buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else self.authenticated_user_info.id
+            buyer_info = session.get(UserInfo, buyer_id)
+
+            if not buyer_info or not buyer_info.user:
                 return rx.toast.error("El comprador seleccionado no es válido.")
 
-            # 2. Calcular totales (reutilizando la lógica que ya tienes)
-            # Nota: El envío para ventas directas es 0.
+            # 3. Calcular totales y preparar la orden
+            # Para ventas directas, el envío es 0 y el subtotal es el total.
             subtotal = sum(item.subtotal for item in self.direct_sale_cart_details)
-            
-            # 3. Verificar stock y preparar items (muy importante)
             items_to_create = []
+
+            # 4. Verificar stock y preparar los items para la base de datos
             for item in self.direct_sale_cart_details:
                 post = session.get(BlogPostModel, item.product_id)
                 if not post:
-                    return rx.toast.error(f"El producto '{item.title}' ya no existe.")
-                
-                # Encontrar la variante específica y decrementar el stock
+                    return rx.toast.error(f"El producto '{item.title}' ya no existe. Venta cancelada.")
+
                 variant_updated = False
                 for variant in post.variants:
+                    # Encuentra la variante exacta que coincide con la selección
                     if variant.get("attributes") == item.variant_details:
                         if variant.get("stock", 0) < item.quantity:
-                            return rx.toast.error(f"Stock insuficiente para '{item.title}'.")
+                            return rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
+                        
+                        # Descuenta el stock
                         variant["stock"] -= item.quantity
                         variant_updated = True
                         break
                 
                 if not variant_updated:
-                    return rx.toast.error(f"La variante de '{item.title}' no fue encontrada.")
+                    return rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
                 
-                session.add(post) # Guardar el cambio de stock
+                session.add(post)  # Marca el post para ser actualizado con el nuevo stock
                 items_to_create.append(
                     PurchaseItemModel(
                         blog_post_id=item.product_id,
@@ -741,36 +759,39 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
 
-            # 4. Crear la orden de compra
+            # 5. Crear el registro de la compra (PurchaseModel)
             now = datetime.now(timezone.utc)
             new_purchase = PurchaseModel(
                 userinfo_id=buyer_info.id,
                 total_price=subtotal,
-                status=PurchaseStatus.DELIVERED, # Se entrega inmediatamente
-                payment_method="Venta Directa", # Nuevo método de pago
+                status=PurchaseStatus.DELIVERED,  # Se considera entregada inmediatamente
+                payment_method="Venta Directa",
                 confirmed_at=now,
                 purchase_date=now,
                 user_confirmed_delivery_at=now,
                 shipping_applied=0,
-                shipping_name=buyer_info.user.username, # O de su dirección
+                # Si es una venta anónima, se usa un texto genérico.
+                shipping_name=buyer_info.user.username if self.direct_sale_buyer_id is not None else "Cliente Venta Directa",
+                is_direct_sale=True,  # Marca esta compra como una venta directa
             )
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
 
-            # 5. Asociar los items a la nueva orden
+            # 6. Vincular los items creados con la compra recién guardada
             for purchase_item in items_to_create:
                 purchase_item.purchase_id = new_purchase.id
                 session.add(purchase_item)
             
             session.commit()
 
-        # 6. Limpiar el estado y notificar
-        self.direct_sale_cart = {}
+        # 7. Limpiar el estado de la UI y notificar el éxito
+        self.direct_sale_cart.clear()
         self.direct_sale_buyer_id = None
+        self.show_direct_sale_sidebar = False  # Oculta el sidebar
         
-        yield rx.toast.success(f"Venta #{new_purchase.id} confirmada para {buyer_info.user.username}.")
-        yield AppState.load_purchase_history # Actualizar el historial del vendedor
+        yield rx.toast.success(f"Venta #{new_purchase.id} confirmada exitosamente.")
+        yield AppState.load_purchase_history  # Actualiza el historial de ventas del vendedor
 
     # --- FIN: NUEVOS EVENT HANDLERS ---
     

@@ -271,6 +271,7 @@ class PurchaseModel(rx.Model, table=True):
     shipping_neighborhood: Optional[str] = None; shipping_address: Optional[str] = None
     shipping_phone: Optional[str] = None
     payment_method: str = Field(default="online", nullable=False)
+    is_direct_sale: bool = Field(default=False, nullable=False)
     wompi_transaction_id: Optional[str] = Field(default=None, index=True, unique=True)
     wompi_events: list = Field(default_factory=list, sa_column=Column(JSON))
     wompi_payment_link_id: Optional[str] = Field(default=None, index=True)
