@@ -43,14 +43,14 @@ class UserRole(str, enum.Enum):
 
 class PurchaseStatus(str, enum.Enum):
     PENDING_PAYMENT = "pending_payment"
-    # --- ✨ NUEVO ESTADO AÑADIDO ---
     PENDING_SISTECREDITO_URL = "pending_sistecredito_url"
     PENDING_CONFIRMATION = "pending_confirmation"
     CONFIRMED = "confirmed"
     SHIPPED = "shipped"
     DELIVERED = "delivered"
-    # --- ✨ NUEVO ESTADO AÑADIDO ---
     FAILED = "failed"
+    # --- AÑADE ESTA NUEVA OPCIÓN ---
+    DIRECT_SALE = "Venta Directa" 
 
 class VoteType(str, enum.Enum):
     LIKE = "like"

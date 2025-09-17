@@ -275,7 +275,19 @@ def product_detail_modal() -> rx.Component:
             ),
             rx.spacer(),
             rx.hstack(
-                rx.button("Añadir al Carrito", on_click=AppState.add_to_cart(AppState.product_in_modal.id), size="3", flex_grow="1", color_scheme="violet"),
+                rx.button(
+                    "Añadir al Carrito",
+                    # Lógica condicional: elige el event handler según la página actual
+                    on_click=rx.cond(
+                        AppState.current_path == "/admin/store",
+                        AppState.add_to_direct_sale_cart(AppState.product_in_modal.id),
+                        AppState.add_to_cart(AppState.product_in_modal.id)
+                    ),
+                    size="3",
+                    flex_grow="1",
+                    color_scheme="violet"
+                ),
+                # --- FIN DE LA MODIFICACIÓN ---
                 
                 # --- BOTÓN DE GUARDAR CORREGIDO ---
                 rx.icon_button(
