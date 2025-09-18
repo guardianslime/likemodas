@@ -98,11 +98,7 @@ def direct_sale_cart_component() -> rx.Component:
 @require_admin
 def admin_store_page() -> rx.Component:
     return rx.fragment(
-        # --- 👇 INICIO DE LA CORRECCIÓN CLAVE ---
-        # El evento on_load ahora se declara DIRECTAMENTE en el componente.
-        on_load=AppState.on_load_main_page_data,
-        # --- 👆 FIN DE LA CORRECCIÓN CLAVE ---
-
+        # Primero van todos los componentes hijos (argumentos posicionales)
         rx.box(
             rx.grid(
                 rx.vstack(
@@ -136,6 +132,11 @@ def admin_store_page() -> rx.Component:
         ),
         product_detail_modal(),
         sliding_direct_sale_cart(),
+
+        # --- 👇 CORRECCIÓN CLAVE ---
+        # El argumento de palabra clave `on_load` ahora está al final.
+        on_load=AppState.load_main_page_data,
+        # --- 👆 FIN DE LA CORRECCIÓN ---
     )
     # --- 👆 FIN DE LA CORRECCIÓN ---
 
