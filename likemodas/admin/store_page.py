@@ -4,7 +4,7 @@ import reflex as rx
 from ..auth.admin_auth import require_admin
 from ..ui.components import product_gallery_component, searchable_select
 from ..blog.public_page import product_detail_modal
-from ..state import AppState
+from ..state import AppState, DirectSaleGroupDTO, DirectSaleVariantDTO
 
 # ✨ --- REEMPLAZA TODA ESTA FUNCIÓN --- ✨
 def sliding_direct_sale_cart() -> rx.Component:
