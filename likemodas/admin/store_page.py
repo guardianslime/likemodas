@@ -12,7 +12,7 @@ def sliding_direct_sale_cart() -> rx.Component:
     Sidebar deslizable para el carrito de venta directa, con el nuevo diseño
     de productos agrupados y controles de cantidad por variante.
     """
-    SIDEBAR_WIDTH = "24em" # Un poco más ancho para la nueva información
+    SIDEBAR_WIDTH = "16em" # Un poco más ancho para la nueva información
 
     def render_variant_row(variant: DirectSaleVariantDTO) -> rx.Component:
         """Componente para renderizar una fila de variante con sus controles."""
