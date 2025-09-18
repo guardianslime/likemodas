@@ -101,8 +101,7 @@ app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confir
 app.add_page(
     base_page(admin_store_page()), 
     route="/admin/store", 
-    # ✅ ESTA ES LA UBICACIÓN CORRECTA PARA EL EVENTO
-    on_load=AppState.load_main_page_data,
+    on_load=AppState.on_load_admin_store, # <--- ¡Corrección aplicada!
     title="Admin | Tienda"
 )
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_purchase_history)

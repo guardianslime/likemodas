@@ -98,8 +98,6 @@ def direct_sale_cart_component() -> rx.Component:
 @require_admin
 def admin_store_page() -> rx.Component:
     return rx.fragment(
-        # --- 👇 INICIO DE LA CORRECCIÓN ---
-        # Primero van todos los componentes hijos (argumentos posicionales)
         rx.box(
             rx.grid(
                 rx.vstack(
@@ -116,10 +114,10 @@ def admin_store_page() -> rx.Component:
                         color_scheme="violet"
                     ),
                     rx.cond(
-                        # ✨ CORRECCIÓN CLAVE: Usamos la nueva variable de estado ✨
+                        # ✨ CORRECCIÓN 1: Usar la variable correcta para los posts del admin
                         AppState.admin_store_posts,
-                        # Usamos la galería de admin que ya tenías
-                        admin_store_gallery_component(posts=AppState.admin_store_posts),
+                        # ✨ CORRECCIÓN 2: Usar el componente de galería público
+                        product_gallery_component(posts=AppState.admin_store_posts),
                         rx.center(rx.text("No se encontraron productos."), padding="4em")
                     ),
                     spacing="5",
@@ -133,6 +131,7 @@ def admin_store_page() -> rx.Component:
             padding="2em",
             width="100%",
         ),
+        # El modal y el carrito deslizable se mantienen igual
         product_detail_modal(),
         sliding_direct_sale_cart(),
     )
