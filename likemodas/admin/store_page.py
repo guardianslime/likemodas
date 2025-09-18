@@ -98,6 +98,8 @@ def direct_sale_cart_component() -> rx.Component:
 @require_admin
 def admin_store_page() -> rx.Component:
     return rx.fragment(
+        # --- 👇 INICIO DE LA CORRECCIÓN ---
+        # Primero van todos los componentes hijos (argumentos posicionales)
         rx.box(
             rx.grid(
                 rx.vstack(
@@ -121,7 +123,6 @@ def admin_store_page() -> rx.Component:
                     spacing="5",
                     width="100%",
                 ),
-                # Este box vacío ayuda a que el grid mantenga la primera columna a la izquierda
                 rx.box(),
                 columns="auto 0fr",
                 spacing="6",
@@ -131,40 +132,17 @@ def admin_store_page() -> rx.Component:
             width="100%",
         ),
         product_detail_modal(),
-        # ✅ ESTA ES LA LÍNEA CORRECTA
-        responsive_direct_sale_cart(),
-        mobile_cart_trigger(),
-        # ...
+        sliding_direct_sale_cart(),
     )
 
-def responsive_direct_sale_cart() -> rx.Component:
-    """
-    CORREGIDO: Un componente de carrito que es un sidebar en desktop
-    y un panel deslizable desde abajo (bottom sheet) en móviles.
-    """
-    SIDEBAR_WIDTH = "24em"
-    SHEET_HEIGHT = "85vh"
+def sliding_direct_sale_cart() -> rx.Component:
+    """El sidebar deslizable para el carrito de venta directa."""
+    SIDEBAR_WIDTH = "24em" # Ancho del sidebar
 
-    cart_content = rx.vstack(
-        # --- El "tirador" para cerrar en móviles ---
-        rx.box(
-            rx.box(
-                width="40px",
-                height="6px",
-                bg=rx.color("gray", 6),
-                border_radius="full",
-                on_click=AppState.toggle_direct_sale_sidebar,
-                cursor="pointer",
-            ),
-            display={"initial": "flex", "md": "none"}, # Solo visible en móviles
-            width="100%",
-            justify_content="center",
-            padding_top="0.5em",
-            padding_bottom="1em",
-        ),
+    # El contenido del sidebar (lo que antes era direct_sale_cart_component)
+    sidebar_content = rx.vstack(
         rx.heading("Venta Directa", size="6"),
         rx.divider(),
-        # ... (El resto del contenido del vstack se mantiene igual que antes) ...
         rx.vstack(
             rx.text("Seleccionar Comprador (Opcional):", weight="bold"),
             searchable_select(
@@ -206,8 +184,7 @@ def responsive_direct_sale_cart() -> rx.Component:
                 ),
                 spacing="3", width="100%",
             ),
-            max_height={"initial": f"calc({SHEET_HEIGHT} - 280px)", "md": "calc(100vh - 280px)"},
-            type="auto", scrollbars="vertical"
+            max_height="calc(100vh - 280px)", type="auto", scrollbars="vertical"
         ),
         rx.spacer(),
         rx.divider(),
@@ -216,48 +193,30 @@ def responsive_direct_sale_cart() -> rx.Component:
             on_click=AppState.handle_direct_sale_checkout,
             width="100%", color_scheme="violet", size="3"
         ),
-        spacing="4",
-        height="100%",
-        padding="1em",
-        align="start",
-        width={"initial": "100%", "md": SIDEBAR_WIDTH} # Ancho responsivo
+        spacing="4", height="100%", padding="1em",
+        bg=rx.color("gray", 2), align="start", width=SIDEBAR_WIDTH,
     )
 
-    # --- El "mango" para abrir/cerrar en DESKTOP ---
-    desktop_handle = rx.box(
-        rx.icon("shopping-cart", color="white"),
-        on_click=AppState.toggle_direct_sale_sidebar,
-        cursor="pointer", bg=rx.color("violet", 9),
-        border_radius="8px 0 0 8px", height="60px", width="40px",
-        display={"initial": "none", "md": "flex"}, # Solo visible en desktop
-        align_items="center", justify_content="center",
-    )
-
+    # El contenedor principal que controla la animación de deslizamiento
     return rx.box(
         rx.hstack(
-            desktop_handle,
-            cart_content,
-            align_items={"initial": "end", "md": "center"}, # Alinear al final en móvil
-            spacing="0",
-            height="100%",
-            width="100%",
+            # El "mango" para abrir/cerrar el sidebar
+            rx.box(
+                rx.icon("shopping-cart", color="white"),
+                on_click=AppState.toggle_direct_sale_sidebar,
+                cursor="pointer", bg=rx.color("violet", 9),
+                border_radius="8px 0 0 8px", height="60px", width="40px",
+                display="flex", align_items="center", justify_content="center",
+            ),
+            sidebar_content,
+            align_items="center", spacing="0",
         ),
-        # --- Lógica de Posición y Animación Responsiva ---
-        position="fixed",
-        top={"initial": "auto", "md": "0"},
-        bottom={"initial": "0", "md": "auto"},
-        left={"initial": "0", "md": "auto"},
-        right="0",
-        width={"initial": "100%", "md": SIDEBAR_WIDTH},
-        height={"initial": "auto", "md": "100vh"},
-        max_height={"initial": SHEET_HEIGHT, "md": "100vh"},
-        bg=rx.color("gray", 2),
-        border_radius={"initial": "1.5em 1.5em 0 0", "md": "0"},
-        box_shadow="0 -4px 20px rgba(0, 0, 0, 0.2)",
+        position="fixed", top="0", right="0", height="100vh",
+        display="flex", align_items="center",
         transform=rx.cond(
             AppState.show_direct_sale_sidebar,
-            "translate(0, 0)", # Posición visible
-            {"initial": "translateY(100%)", "md": f"translateX({SIDEBAR_WIDTH})"} # Posición oculta
+            "translateX(0)",
+            f"translateX({SIDEBAR_WIDTH})" # Se esconde hacia la derecha
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
