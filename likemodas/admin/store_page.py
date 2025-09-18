@@ -97,53 +97,50 @@ def direct_sale_cart_component() -> rx.Component:
 
 @require_admin
 def admin_store_page() -> rx.Component:
-    """Página de Tienda/POS que ahora usa los componentes públicos."""
-    return rx.box(
-        rx.grid(
-            # Columna Izquierda: Galería y Búsqueda
-            rx.vstack(
-                rx.heading("Tienda (Punto de Venta)", size="8"),
-                rx.text("Busca productos y añádelos al carrito de Venta Directa."),
-                # Aquí va la barra de búsqueda para los productos
-                rx.input(
-                    placeholder="Buscar productos por nombre...",
-                    value=AppState.search_term,
-                    on_change=AppState.set_search_term,
+    # --- 👇 INICIO DE LA CORRECCIÓN ---
+    # Envolvemos todo en un rx.fragment. Es invisible pero puede recibir el evento on_load.
+    return rx.fragment(
+        rx.box(
+            rx.grid(
+                # Columna Izquierda: Galería y Búsqueda
+                rx.vstack(
+                    rx.heading("Tienda (Punto de Venta)", size="8"),
+                    rx.text("Busca productos y añádelos al carrito de Venta Directa."),
+                    rx.input(
+                        placeholder="Buscar productos por nombre...",
+                        value=AppState.search_term,
+                        on_change=AppState.set_search_term,
+                        width="100%",
+                        max_width="500px",
+                        margin_y="1.5em",
+                        variant="surface",
+                        color_scheme="violet"
+                    ),
+                    rx.cond(
+                        AppState.displayed_posts,
+                        product_gallery_component(posts=AppState.displayed_posts),
+                        rx.center(rx.text("No se encontraron productos."), padding="4em")
+                    ),
+                    spacing="5",
                     width="100%",
-                    max_width="500px",
-                    margin_y="1.5em",
-                    variant="surface",
-                    color_scheme="violet"
                 ),
-                rx.cond(
-                    # --- 👇 2. USA EL COMPONENTE DE GALERÍA PÚBLICO ---
-                    # Usamos `displayed_posts` que ya tiene la lógica de búsqueda
-                    AppState.displayed_posts,
-                    product_gallery_component(posts=AppState.displayed_posts),
-                    rx.center(rx.text("No se encontraron productos."), padding="4em")
-                ),
-                spacing="5",
+                # Espacio vacío para la segunda columna de la grilla
+                rx.box(),
+                columns="auto 0fr",
+                spacing="6",
                 width="100%",
             ),
-            # Dejamos un espacio vacío por ahora, aquí irá el nuevo sidebar
-            rx.box(),
-            columns="auto 0fr", # La segunda columna no ocupa espacio
-            spacing="6",
+            padding="2em",
             width="100%",
         ),
         
-        # --- 👇 3. AÑADE EL MODAL PÚBLICO A LA PÁGINA ---
-        # La lógica dentro del botón "Añadir al Carrito" del modal ya es
-        # condicional, por lo que funcionará correctamente aquí.
+        # Estos componentes van fuera del box pero dentro del fragment
         product_detail_modal(),
-
-        # El nuevo sidebar de venta directa se añadirá aquí
         sliding_direct_sale_cart(),
-
-        padding="2em",
-        width="100%",
-        on_load=AppState.load_main_page_data # Reutilizamos el on_load para la búsqueda
+        # El on_load se aplicará correctamente al rx.fragment
+        on_load=AppState.load_main_page_data 
     )
+    # --- 👆 FIN DE LA CORRECCIÓN ---
 
 
 def sliding_direct_sale_cart() -> rx.Component:
