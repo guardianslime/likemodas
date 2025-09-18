@@ -131,7 +131,10 @@ def admin_store_page() -> rx.Component:
             width="100%",
         ),
         product_detail_modal(),
-        sliding_direct_sale_cart(),
+        # ✅ ESTA ES LA LÍNEA CORRECTA
+        responsive_direct_sale_cart(),
+        mobile_cart_trigger(),
+        # ...
     )
 
 def responsive_direct_sale_cart() -> rx.Component:
