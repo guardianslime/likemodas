@@ -101,7 +101,7 @@ app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confir
 app.add_page(
     base_page(admin_store_page()), 
     route="/admin/store", 
-    # ✅ ADD THE on_load EVENT HANDLER HERE
+    # ✅ ESTA ES LA UBICACIÓN CORRECTA PARA EL EVENTO
     on_load=AppState.load_main_page_data,
     title="Admin | Tienda"
 )

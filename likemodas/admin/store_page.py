@@ -131,11 +131,7 @@ def admin_store_page() -> rx.Component:
             width="100%",
         ),
         product_detail_modal(),
-        # --- Usa los nuevos componentes ---
-        responsive_direct_sale_cart(),
-        mobile_cart_trigger(),
-        
-        on_load=AppState.load_main_page_data,
+        sliding_direct_sale_cart(),
     )
 
 def responsive_direct_sale_cart() -> rx.Component:
