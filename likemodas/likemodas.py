@@ -98,7 +98,12 @@ app.add_page(base_page(user_management_page()), route="/admin/users", on_load=Ap
 app.add_page(base_page(blog_post_add_content()), route=navigation.routes.BLOG_POST_ADD_ROUTE, title="Añadir Producto")
 app.add_page(base_page(seller_profile_page()), route="/admin/my-location", on_load=AppState.on_load_seller_profile, title="Mi Ubicación de Origen")
 app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Gestionar Órdenes", on_load=AppState.load_active_purchases)
-app.add_page(base_page(admin_store_page()), route="/admin/store", on_load=AppState.on_load_admin_store, title="Admin | Tienda")
+app.add_page(
+    base_page(admin_store_page()), 
+    route="/admin/store", 
+    # on_load ya no es necesario aquí, lo hemos movido a la propia página
+    title="Admin | Tienda"
+)
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_purchase_history)
 app.add_page(base_page(admin_tickets_page_content()), route=navigation.routes.SUPPORT_TICKETS_ROUTE, on_load=AppState.on_load_admin_tickets_page, title="Solicitudes de Soporte")
 

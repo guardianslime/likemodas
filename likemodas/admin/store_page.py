@@ -97,12 +97,14 @@ def direct_sale_cart_component() -> rx.Component:
 
 @require_admin
 def admin_store_page() -> rx.Component:
-    # --- 👇 INICIO DE LA CORRECCIÓN ---
-    # Envolvemos todo en un rx.fragment. Es invisible pero puede recibir el evento on_load.
     return rx.fragment(
+        # --- 👇 INICIO DE LA CORRECCIÓN CLAVE ---
+        # El evento on_load ahora se declara DIRECTAMENTE en el componente.
+        on_load=AppState.on_load_main_page_data,
+        # --- 👆 FIN DE LA CORRECCIÓN CLAVE ---
+
         rx.box(
             rx.grid(
-                # Columna Izquierda: Galería y Búsqueda
                 rx.vstack(
                     rx.heading("Tienda (Punto de Venta)", size="8"),
                     rx.text("Busca productos y añádelos al carrito de Venta Directa."),
@@ -124,7 +126,6 @@ def admin_store_page() -> rx.Component:
                     spacing="5",
                     width="100%",
                 ),
-                # Espacio vacío para la segunda columna de la grilla
                 rx.box(),
                 columns="auto 0fr",
                 spacing="6",
@@ -133,12 +134,8 @@ def admin_store_page() -> rx.Component:
             padding="2em",
             width="100%",
         ),
-        
-        # Estos componentes van fuera del box pero dentro del fragment
         product_detail_modal(),
         sliding_direct_sale_cart(),
-        # El on_load se aplicará correctamente al rx.fragment
-        on_load=AppState.load_main_page_data 
     )
     # --- 👆 FIN DE LA CORRECCIÓN ---
 
