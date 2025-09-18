@@ -3728,10 +3728,18 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_admin_store(self):
+        """
+        Carga todas las publicaciones del usuario admin Y la lista de todos los
+        usuarios para la búsqueda de compradores.
+        """
         if not self.is_admin:
             return rx.redirect("/")
 
+        # ✨ LÍNEA AÑADIDA: Llama al evento que carga todos los usuarios ✨
+        yield AppState.load_all_users
+
         with rx.session() as session:
+            # ... (el resto de la lógica para cargar posts se mantiene igual) ...
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
@@ -3747,7 +3755,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
-                        # --- 👇 LÍNEA CORREGIDA 👇 ---
                         variants=p.variants or [],
                         attributes={},
                         average_rating=p.average_rating,

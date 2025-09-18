@@ -279,10 +279,11 @@ def product_detail_modal() -> rx.Component:
                     "Añadir al Carrito",
                     # Lógica condicional: elige el event handler según la página actual
                     on_click=rx.cond(
-                        AppState.current_path == "/admin/store",
-                        AppState.add_to_direct_sale_cart(AppState.product_in_modal.id),
-                        AppState.add_to_cart(AppState.product_in_modal.id)
-                    ),
+                    # ✨ CORRECCIÓN: Comprueba si la ruta EMPIEZA con /admin/store
+                    AppState.current_path.startswith("/admin/store"), 
+                    AppState.add_to_direct_sale_cart(AppState.product_in_modal.id),
+                    AppState.add_to_cart(AppState.product_in_modal.id)
+                ),
                     size="3",
                     flex_grow="1",
                     color_scheme="violet"
