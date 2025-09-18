@@ -1,4 +1,4 @@
-# likemodas/admin/store_page.py (VERSIÓN FINAL, COMPLETA Y SIN DUPLICADOS)
+# likemodas/admin/store_page.py (VERSIÓN FINAL CON ANCHO SIMÉTRICO)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
@@ -8,13 +8,14 @@ from ..state import AppState
 
 def sliding_direct_sale_cart() -> rx.Component:
     """
-    Sidebar deslizable para el carrito de venta directa con las dimensiones
-    y posición del diseño original que te gustaba.
+    Sidebar deslizable para el carrito de venta directa, con el mismo ancho
+    que el sidebar principal de administración.
     """
-    SIDEBAR_WIDTH = "380px"
+    # ✨ CORRECCIÓN: Se ajusta el ancho para que sea idéntico al sidebar principal
+    SIDEBAR_WIDTH = "16em"
 
-    # El contenido interno del carrito
-    sidebar_content = rx.vstack(
+    sidebar_panel = rx.vstack(
+        # Contenido del carrito (esto no cambia)
         rx.heading("Venta Directa", size="6"),
         rx.divider(),
         rx.vstack(
@@ -76,7 +77,6 @@ def sliding_direct_sale_cart() -> rx.Component:
     # El contenedor principal que controla la animación y el estilo
     return rx.box(
         rx.hstack(
-            # El "mango" para abrir/cerrar
             rx.box(
                 rx.icon("shopping-cart", color="white"),
                 on_click=AppState.toggle_direct_sale_sidebar,
@@ -85,24 +85,20 @@ def sliding_direct_sale_cart() -> rx.Component:
                 height="60px", width="40px",
                 display="flex", align_items="center", justify_content="center",
             ),
-            # Se envuelve el contenido en una 'card' para restaurar el estilo
             rx.card(
-                sidebar_content,
-                # Se define la altura fija que te gustaba
+                sidebar_panel,
                 height="85vh",
                 width=SIDEBAR_WIDTH,
             ),
             align_items="center", spacing="0",
         ),
         position="fixed",
-        # Se centra verticalmente en la pantalla
         top="50%",
         right="0",
-        # Se usa 'transform' para centrar y para deslizar
         transform=rx.cond(
             AppState.show_direct_sale_sidebar,
-            "translate(0, -50%)", # Centrado y visible
-            f"translate({SIDEBAR_WIDTH}, -50%)" # Centrado y oculto a la derecha
+            "translate(0, -50%)",
+            f"translate({SIDEBAR_WIDTH}, -50%)"
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
@@ -110,7 +106,7 @@ def sliding_direct_sale_cart() -> rx.Component:
 
 @require_admin
 def admin_store_page() -> rx.Component:
-    """Página de la tienda de admin con el carrito deslizable correcto."""
+    """Página de la tienda de admin."""
     main_content = rx.vstack(
         rx.vstack(
             rx.heading("Tienda (Punto de Venta)", size="8"),
