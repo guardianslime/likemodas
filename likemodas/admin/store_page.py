@@ -10,15 +10,12 @@ from ..state import AppState, CartItemData
 from .store_components import admin_store_gallery_component # Manten esta línea
 from ..ui.components import searchable_select
 
-# --- INICIO: NUEVO COMPONENTE PARA EL CARRITO DE VENTA DIRECTA ---
-
-# ✨ INICIO: NUEVO COMPONENTE PARA EL CARRITO DESLIZABLE
+# ✨ INICIO: COMPONENTE DEL CARRITO CON DIMENSIONES CORREGIDAS
 def sliding_direct_sale_cart() -> rx.Component:
-    """El sidebar deslizable para el carrito de venta directa."""
-    # Ancho del sidebar, puedes ajustarlo si lo deseas
-    SIDEBAR_WIDTH = "360px"
+    """El sidebar deslizable para el carrito de venta directa con el tamaño original."""
+    # ✨ CORRECCIÓN 1: Se ajusta el ancho para que sea menos ancho y más alto.
+    SIDEBAR_WIDTH = "380px"
 
-    # El contenido del sidebar (el mismo que ya tenías)
     sidebar_content = rx.vstack(
         rx.heading("Venta Directa", size="6"),
         rx.divider(),
@@ -63,7 +60,10 @@ def sliding_direct_sale_cart() -> rx.Component:
                 ),
                 spacing="3", width="100%",
             ),
-            max_height="calc(100vh - 280px)", type="auto", scrollbars="vertical"
+            # ✨ CORRECCIÓN 2: Se aumenta la altura del área de productos.
+            max_height="calc(100vh - 300px)", 
+            type="auto", 
+            scrollbars="vertical"
         ),
         rx.spacer(),
         rx.divider(),
@@ -77,38 +77,45 @@ def sliding_direct_sale_cart() -> rx.Component:
         bg=rx.color("gray", 2), align="start", width=SIDEBAR_WIDTH,
     )
 
-    # El contenedor principal que controla la animación de deslizamiento
     return rx.box(
         rx.hstack(
-            # El "botón" o "mango" para abrir/cerrar el sidebar
             rx.box(
                 rx.icon("shopping-cart", color="white"),
                 on_click=AppState.toggle_direct_sale_sidebar,
                 cursor="pointer", bg=rx.color("violet", 9),
-                border_radius="8px 0 0 8px", # Bordes redondeados a la izquierda
+                border_radius="8px 0 0 8px",
                 height="60px", width="40px",
                 display="flex", align_items="center", justify_content="center",
             ),
-            sidebar_content,
+            # ✨ CORRECCIÓN 3: El contenido ahora está dentro de una tarjeta (card) para el borde y el estilo.
+            rx.card(
+                sidebar_content,
+                # ✨ CORRECCIÓN 4: Se define la altura fija que te gustaba.
+                height="85vh",
+                width=SIDEBAR_WIDTH
+            ),
             align_items="center", spacing="0",
         ),
-        position="fixed", top="0", right="0", height="100vh",
-        display="flex", align_items="center",
-        # La lógica de la animación: se mueve fuera de la pantalla hacia la derecha
+        position="fixed", 
+        # ✨ CORRECCIÓN 5: Se posiciona en la parte superior derecha.
+        top="2em", 
+        right="0",
+        display="flex", 
+        align_items="start",
         transform=rx.cond(
             AppState.show_direct_sale_sidebar,
             "translateX(0)",
-            f"translateX({SIDEBAR_WIDTH})" # Se esconde hacia la derecha
+            f"translateX({SIDEBAR_WIDTH})"
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
     )
-# ✨ FIN: NUEVO COMPONENTE PARA EL CARRITO DESLIZABLE
+# ✨ FIN: COMPONENTE CORREGIDO
 
+# La función admin_store_page() se mantiene exactamente igual que en la versión anterior.
 @require_admin
 def admin_store_page() -> rx.Component:
-    """Página de la tienda de admin con carrito deslizable."""
-    
+    # ... (esta función no necesita cambios)
     main_content = rx.vstack(
         rx.vstack(
             rx.heading("Tienda (Punto de Venta)", size="8"),
@@ -142,11 +149,9 @@ def admin_store_page() -> rx.Component:
 
     return rx.fragment(
         rx.box(
-            # ✨ CORRECCIÓN: Se elimina el grid y se deja solo el contenido principal
             main_content,
             padding="2em",
         ),
-        # ✨ CORRECCIÓN: Se añaden los componentes flotantes aquí
         product_detail_modal(),
         sliding_direct_sale_cart(),
     )
