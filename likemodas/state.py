@@ -534,6 +534,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Un carrito separado para las ventas directas del admin.
     # La clave es el identificador único del item (ej: "product_id-variant_index-Color:Rojo-Talla:M")
     # El valor es la cantidad.
+    # --- ✨ INICIO: LÓGICA DEL CARRITO DE VENTA DIRECTA ✨ ---
     direct_sale_cart: dict[str, int] = {}
     direct_sale_buyer_id: Optional[int] = None
     show_direct_sale_sidebar: bool = False
@@ -541,7 +542,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def toggle_direct_sale_sidebar(self):
         self.show_direct_sale_sidebar = not self.show_direct_sale_sidebar
-        
+
     @rx.var
     def direct_sale_cart_details(self) -> List[CartItemData]:
         if not self.direct_sale_cart:
@@ -730,8 +731,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO: CÓDIGO NUEVO Y MODIFICADO ---
 
     # --- La nueva propiedad computada ---
+    # --- ✨ INICIO: PROPIEDAD COMPUTADA CORREGIDA ✨ ---
     @rx.var
-    def direct_sale_grouped_cart(self) -> list["DirectSaleGroupDTO"]: # <-- CORRECCIÓN: Comillas
+    def direct_sale_grouped_cart(self) -> list["DirectSaleGroupDTO"]: # <-- PISTA DE TIPO COMO STRING
         """
         Procesa el carrito de venta directa y agrupa las variantes por producto.
         """
@@ -759,6 +761,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             grouped[product_id].subtotal += item.subtotal
             
         return list(grouped.values())
+    # --- ✨ FIN: PROPIEDAD COMPUTADA CORREGIDA ✨ ---
 
     # --- El nuevo manejador de evento ---
     @rx.event
@@ -3770,29 +3773,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.admin_store_posts = temp_posts
     
     # --- ✨ INICIO: NUEVOS DTOs PARA AGRUPAR EL CARRITO DE VENTA DIRECTA ✨ ---
+# --- ✨ INICIO: DTOs SIMPLIFICADOS PARA EVITAR ERRORES DE COMPILACIÓN ✨ ---
 class DirectSaleVariantDTO(rx.Base):
-    """Representa una variante específica dentro de un grupo de producto en el carrito."""
+    """Representa una variante específica (SOLO DATOS)."""
     cart_key: str
     quantity: int
     attributes: dict[str, str]
 
-    @property
-    def attributes_str(self) -> str:
-        """Convierte los atributos en un texto legible como 'Talla: M, Color: Rojo'."""
-        return ", ".join([f"{k}: {v}" for k, v in self.attributes.items()])
-
 class DirectSaleGroupDTO(rx.Base):
-    """Representa un producto agrupado en el carrito de venta directa."""
+    """Representa un producto agrupado (SOLO DATOS)."""
     product_id: int
     title: str
     image_url: str
     subtotal: float
     variants: list[DirectSaleVariantDTO]
+# --- ✨ FIN: DTOs SIMPLIFICADOS ✨ ---
 
-    @property
-    def subtotal_cop(self) -> str:
-        """Formatea el subtotal del grupo a pesos colombianos."""
-        return format_to_cop(self.subtotal)
 
 # ... (dentro de la clase AppState) ...
 
