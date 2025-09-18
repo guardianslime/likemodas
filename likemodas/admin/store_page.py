@@ -1,10 +1,10 @@
-# likemodas/admin/store_page.py (VERSIÓN FINAL CON ANCHO SIMÉTRICO)
+# likemodas/admin/store_page.py (CORREGIDO)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from ..ui.components import product_gallery_component, searchable_select
 from ..blog.public_page import product_detail_modal
-from ..state import AppState, DirectSaleGroupDTO, DirectSaleVariantDTO
+from ..state import AppState, DirectSaleGroupDTO, DirectSaleVariantDTO # 👈 Asegúrate de importar los DTOs
 
 # ✨ --- REEMPLAZA TODA ESTA FUNCIÓN --- ✨
 def sliding_direct_sale_cart() -> rx.Component:
@@ -12,7 +12,7 @@ def sliding_direct_sale_cart() -> rx.Component:
     Sidebar deslizable para el carrito de venta directa, con el nuevo diseño
     de productos agrupados y controles de cantidad por variante.
     """
-    SIDEBAR_WIDTH = "16em"
+    SIDEBAR_WIDTH = "24em" # Un poco más ancho para la nueva información
 
     def render_variant_row(variant: DirectSaleVariantDTO) -> rx.Component:
         """Componente para renderizar una fila de variante con sus controles."""
@@ -149,9 +149,10 @@ def sliding_direct_sale_cart() -> rx.Component:
         z_index="1000",
     )
 
+# La función admin_store_page() no necesita cambios, ya que llama a la función de arriba.
 @require_admin
 def admin_store_page() -> rx.Component:
-    """Página de la tienda de admin."""
+    # ... (código existente de admin_store_page) ...
     main_content = rx.vstack(
         rx.vstack(
             rx.heading("Tienda (Punto de Venta)", size="8"),
@@ -188,7 +189,7 @@ def admin_store_page() -> rx.Component:
             main_content,
             padding="2em",
         ),
-        # 3. PASA EL PARÁMETRO AQUÍ
+        # Pasa el parámetro para indicar que el modal es para venta directa
         product_detail_modal(is_for_direct_sale=True),
         sliding_direct_sale_cart(),
     )
