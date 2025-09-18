@@ -133,12 +133,7 @@ def admin_store_page() -> rx.Component:
         ),
         product_detail_modal(),
         sliding_direct_sale_cart(),
-
-        # El argumento de palabra clave `on_load` ahora está al FINAL.
-        on_load=AppState.load_main_page_data,
-        # --- 👆 FIN DE LA CORRECCIÓN ---
     )
-
 
 def sliding_direct_sale_cart() -> rx.Component:
     """El sidebar deslizable para el carrito de venta directa."""
