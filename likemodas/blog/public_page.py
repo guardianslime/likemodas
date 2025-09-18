@@ -277,28 +277,25 @@ def product_detail_modal() -> rx.Component:
             rx.hstack(
                 rx.button(
                     "Añadir al Carrito",
-                    # Lógica condicional: elige el event handler según la página actual
+                    # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
+                    # Esta condición ahora es más robusta y funcionará correctamente.
                     on_click=rx.cond(
-                    # ✨ CORRECCIÓN: Comprueba si la ruta EMPIEZA con /admin/store
-                    AppState.current_path.startswith("/admin/store"), 
-                    AppState.add_to_direct_sale_cart(AppState.product_in_modal.id),
-                    AppState.add_to_cart(AppState.product_in_modal.id)
-                ),
+                        (AppState.is_admin) & (AppState.current_path.startswith("/admin/store")),
+                        AppState.add_to_direct_sale_cart(AppState.product_in_modal.id),
+                        AppState.add_to_cart(AppState.product_in_modal.id)
+                    ),
+                    # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
                     size="3",
                     flex_grow="1",
                     color_scheme="violet"
                 ),
-                # --- FIN DE LA MODIFICACIÓN ---
-                
-                # --- BOTÓN DE GUARDAR CORREGIDO ---
                 rx.icon_button(
                     rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
                     on_click=AppState.toggle_save_post,
                     size="3", 
                     variant="outline",
-                    color_scheme="violet", # Se añade para el color morado
+                    color_scheme="violet",
                 ),
-                # --- BOTÓN DE COMPARTIR CORREGIDO ---
                 rx.icon_button(
                     rx.icon(tag="share-2"),
                     on_click=[
@@ -307,12 +304,13 @@ def product_detail_modal() -> rx.Component:
                     ],
                     size="3", 
                     variant="outline",
-                    color_scheme="violet", # Se añade para el color morado
+                    color_scheme="violet",
                 ),
                 spacing="3", width="100%", margin_top="1.5em",
             ),
             align="start", height="100%",
         )
+
 
     return rx.dialog.root(
         rx.dialog.content(
