@@ -3766,6 +3766,103 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
             self.admin_store_posts = temp_posts
+    
+    # --- ✨ INICIO: NUEVOS DTOs PARA AGRUPAR EL CARRITO DE VENTA DIRECTA ✨ ---
+class DirectSaleVariantDTO(rx.Base):
+    """Representa una variante específica dentro de un grupo de producto en el carrito."""
+    cart_key: str
+    quantity: int
+    attributes: dict[str, str]
+
+    @property
+    def attributes_str(self) -> str:
+        """Convierte los atributos en un texto legible como 'Talla: M, Color: Rojo'."""
+        return ", ".join([f"{k}: {v}" for k, v in self.attributes.items()])
+
+class DirectSaleGroupDTO(rx.Base):
+    """Representa un producto agrupado en el carrito de venta directa."""
+    product_id: int
+    title: str
+    image_url: str
+    subtotal: float
+    variants: list[DirectSaleVariantDTO]
+
+    @property
+    def subtotal_cop(self) -> str:
+        """Formatea el subtotal del grupo a pesos colombianos."""
+        return format_to_cop(self.subtotal)
+
+# ... (dentro de la clase AppState) ...
+
+    # --- ✨ INICIO: NUEVA PROPIEDAD COMPUTADA PARA AGRUPAR EL CARRITO ✨ ---
+    @rx.var
+    def direct_sale_grouped_cart(self) -> list[DirectSaleGroupDTO]:
+        """
+        Procesa el carrito de venta directa y agrupa las variantes por producto.
+        """
+        grouped: dict[int, DirectSaleGroupDTO] = {}
+        
+        for item in self.direct_sale_cart_details:
+            product_id = item.product_id
+            
+            # Si el producto no está en nuestro diccionario agrupado, lo creamos.
+            if product_id not in grouped:
+                grouped[product_id] = DirectSaleGroupDTO(
+                    product_id=product_id,
+                    title=item.title,
+                    image_url=item.image_url,
+                    subtotal=0,
+                    variants=[]
+                )
+            
+            # Añadimos la variante actual a la lista de variantes del producto.
+            grouped[product_id].variants.append(
+                DirectSaleVariantDTO(
+                    cart_key=item.cart_key,
+                    quantity=item.quantity,
+                    attributes=item.variant_details
+                )
+            )
+            # Actualizamos el subtotal del grupo.
+            grouped[product_id].subtotal += item.subtotal
+            
+        return list(grouped.values())
+
+    # --- ✨ INICIO: NUEVO MANEJADOR DE EVENTO PARA INCREMENTAR CANTIDAD ✨ ---
+    @rx.event
+    def increase_direct_sale_cart_quantity(self, cart_key: str):
+        """
+        Incrementa la cantidad de una variante específica en el carrito de venta directa,
+        verificando el stock disponible.
+        """
+        if cart_key not in self.direct_sale_cart:
+            return
+
+        parts = cart_key.split('-')
+        product_id = int(parts[0])
+        selection_attrs = {part.split(':', 1)[0]: part.split(':', 1)[1] for part in parts[2:] if ':' in part}
+        
+        with rx.session() as session:
+            post = session.get(BlogPostModel, product_id)
+            if not post:
+                return rx.toast.error("El producto ya no existe.")
+
+            variant_to_check = None
+            for variant in post.variants:
+                if variant.get("attributes") == selection_attrs:
+                    variant_to_check = variant
+                    break
+            
+            if not variant_to_check:
+                return rx.toast.error("La variante seleccionada ya no está disponible.")
+
+            available_stock = variant_to_check.get("stock", 0)
+            current_quantity = self.direct_sale_cart[cart_key]
+
+            if current_quantity + 1 > available_stock:
+                return rx.toast.info("No hay más stock disponible para esta variante.")
+            
+            self.direct_sale_cart[cart_key] += 1
 
     show_admin_sidebar: bool = False
 

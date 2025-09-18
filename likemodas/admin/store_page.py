@@ -6,16 +6,76 @@ from ..ui.components import product_gallery_component, searchable_select
 from ..blog.public_page import product_detail_modal
 from ..state import AppState
 
+# ✨ --- REEMPLAZA TODA ESTA FUNCIÓN --- ✨
 def sliding_direct_sale_cart() -> rx.Component:
     """
-    Sidebar deslizable para el carrito de venta directa, con el mismo ancho
-    que el sidebar principal de administración.
+    Sidebar deslizable para el carrito de venta directa, con el nuevo diseño
+    de productos agrupados y controles de cantidad por variante.
     """
-    # ✨ CORRECCIÓN: Se ajusta el ancho para que sea idéntico al sidebar principal
     SIDEBAR_WIDTH = "16em"
 
+    def render_variant_row(variant: DirectSaleVariantDTO) -> rx.Component:
+        """Componente para renderizar una fila de variante con sus controles."""
+        return rx.hstack(
+            rx.text(variant.attributes_str, size="2", no_of_lines=1),
+            rx.spacer(),
+            rx.hstack(
+                rx.icon_button(
+                    rx.icon("minus", size=12),
+                    on_click=AppState.remove_from_direct_sale_cart(variant.cart_key),
+                    size="1",
+                    variant="soft",
+                ),
+                rx.text(variant.quantity, size="2", width="20px", text_align="center"),
+                rx.icon_button(
+                    rx.icon("plus", size=12),
+                    on_click=AppState.increase_direct_sale_cart_quantity(variant.cart_key),
+                    size="1",
+                    variant="soft",
+                ),
+                spacing="2",
+                align="center"
+            ),
+            width="100%",
+            justify="between",
+            align="center",
+        )
+
+    def render_product_group(group: DirectSaleGroupDTO) -> rx.Component:
+        """Componente para renderizar un grupo de producto en el carrito."""
+        return rx.vstack(
+            rx.hstack(
+                rx.image(
+                    src=rx.get_upload_url(group.image_url),
+                    width="50px",
+                    height="50px",
+                    object_fit="cover",
+                    border_radius="sm"
+                ),
+                rx.vstack(
+                    rx.text(group.title, size="3", weight="bold", no_of_lines=1),
+                    rx.text(group.subtotal_cop, size="2", color_scheme="gray"),
+                    align_items="start",
+                    spacing="0"
+                ),
+                width="100%",
+                align="center",
+                spacing="3",
+            ),
+            rx.vstack(
+                rx.foreach(group.variants, render_variant_row),
+                spacing="2",
+                width="100%",
+                padding_left="1em",
+                margin_top="0.5em"
+            ),
+            rx.divider(margin_y="0.75em"),
+            spacing="2",
+            width="100%",
+            align_items="start",
+        )
+
     sidebar_panel = rx.vstack(
-        # Contenido del carrito (esto no cambia)
         rx.heading("Venta Directa", size="6"),
         rx.divider(),
         rx.vstack(
@@ -35,29 +95,15 @@ def sliding_direct_sale_cart() -> rx.Component:
         rx.scroll_area(
             rx.vstack(
                 rx.cond(
-                    AppState.direct_sale_cart_details,
+                    AppState.direct_sale_grouped_cart,
                     rx.foreach(
-                        AppState.direct_sale_cart_details,
-                        lambda item: rx.hstack(
-                            rx.image(src=rx.get_upload_url(item.image_url), width="40px", height="40px", object_fit="cover", border_radius="sm"),
-                            rx.vstack(
-                                rx.text(item.title, size="2", weight="bold"),
-                                rx.text(f"Cant: {item.quantity}", size="1"),
-                                align_items="start", spacing="0"
-                            ),
-                            rx.spacer(),
-                            rx.text(item.subtotal_cop, size="2"),
-                            rx.icon_button(
-                                rx.icon("minus", size=12),
-                                on_click=AppState.remove_from_direct_sale_cart(item.cart_key),
-                                size="1"
-                            ),
-                            width="100%", align="center"
-                        )
+                        AppState.direct_sale_grouped_cart,
+                        render_product_group
                     ),
                     rx.center(rx.text("El carrito está vacío."), padding="2em")
                 ),
-                spacing="3", width="100%",
+                spacing="3",
+                width="100%",
             ),
             max_height="calc(85vh - 250px)",
             type="auto",
@@ -68,13 +114,12 @@ def sliding_direct_sale_cart() -> rx.Component:
         rx.button(
             "Confirmar Venta Directa",
             on_click=AppState.handle_direct_sale_checkout,
-            is_disabled=~(AppState.direct_sale_buyer_id),
+            is_disabled=~(AppState.direct_sale_cart), # Deshabilitado si el carrito está vacío
             width="100%", color_scheme="violet", size="3"
         ),
         spacing="4", height="100%",
     )
 
-    # El contenedor principal que controla la animación y el estilo
     return rx.box(
         rx.hstack(
             rx.box(
