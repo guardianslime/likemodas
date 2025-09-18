@@ -116,8 +116,10 @@ def admin_store_page() -> rx.Component:
                         color_scheme="violet"
                     ),
                     rx.cond(
-                        AppState.displayed_posts,
-                        product_gallery_component(posts=AppState.displayed_posts),
+                        # ✨ CORRECCIÓN CLAVE: Usamos la nueva variable de estado ✨
+                        AppState.admin_store_posts,
+                        # Usamos la galería de admin que ya tenías
+                        admin_store_gallery_component(posts=AppState.admin_store_posts),
                         rx.center(rx.text("No se encontraron productos."), padding="4em")
                     ),
                     spacing="5",
