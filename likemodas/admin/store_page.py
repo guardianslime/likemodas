@@ -10,6 +10,7 @@ from ..blog.public_page import product_detail_modal
 from ..state import AppState, CartItemData
 from .store_components import admin_store_gallery_component # Reutilizamos la galería
 from ..ui.components import searchable_select # Reutilizamos el selector
+from .store_components import sliding_direct_sale_cart # Asegúrate de importar tu carrito deslizable
 
 # --- INICIO: NUEVO COMPONENTE PARA EL CARRITO DE VENTA DIRECTA ---
 
