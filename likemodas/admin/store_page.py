@@ -12,19 +12,14 @@ from ..ui.components import searchable_select
 
 # --- INICIO: NUEVO COMPONENTE PARA EL CARRITO DE VENTA DIRECTA ---
 
-def direct_sale_cart_component() -> rx.Component:
-    """Componente de UI para el carrito de venta directa."""
+def direct_sale_cart() -> rx.Component:
+    """Componente de UI para el carrito de Venta Directa."""
     return rx.card(
         rx.vstack(
             rx.heading("Venta Directa", size="6"),
             rx.divider(),
-            
-            # Selector de Comprador
             rx.vstack(
-                rx.text("Seleccionar Comprador:", weight="bold"),
-                # --- CORRECCIÓN CLAVE ---
-                # Ahora pasamos la variable computada que ya tiene el formato correcto.
-                # Ya no usamos rx.foreach aquí.
+                rx.text("Seleccionar Comprador (Opcional):", weight="bold"),
                 searchable_select(
                     placeholder="Buscar por usuario o email...",
                     options=AppState.buyer_options_for_select,
@@ -37,107 +32,109 @@ def direct_sale_cart_component() -> rx.Component:
                 align_items="start",
                 width="100%"
             ),
-            
             rx.divider(),
-            
-            # Lista de Items en el Carrito
             rx.scroll_area(
                 rx.vstack(
-                    rx.foreach(
+                    rx.cond(
                         AppState.direct_sale_cart_details,
-                        lambda item: rx.hstack(
-                            rx.image(src=rx.get_upload_url(item.image_url), width="40px", height="40px", object_fit="cover", border_radius="sm"),
-                            rx.vstack(
-                                rx.text(item.title, size="2", weight="bold"),
-                                rx.text(f"Cantidad: {item.quantity}", size="1"),
-                                align_items="start", spacing="0"
-                            ),
-                            rx.spacer(),
-                            rx.text(item.subtotal_cop, size="2"),
-                            rx.icon_button(
-                                rx.icon("minus", size=12),
-                                on_click=AppState.remove_from_direct_sale_cart(item.cart_key),
-                                size="1"
-                            ),
-                            width="100%",
-                            align="center"
-                        )
+                        rx.foreach(
+                            AppState.direct_sale_cart_details,
+                            lambda item: rx.hstack(
+                                rx.image(src=rx.get_upload_url(item.image_url), width="40px", height="40px", object_fit="cover", border_radius="sm"),
+                                rx.vstack(
+                                    rx.text(item.title, size="2", weight="bold"),
+                                    rx.text(f"Cant: {item.quantity}", size="1"),
+                                    align_items="start", spacing="0"
+                                ),
+                                rx.spacer(),
+                                rx.text(item.subtotal_cop, size="2"),
+                                rx.icon_button(
+                                    rx.icon("minus", size=12),
+                                    on_click=AppState.remove_from_direct_sale_cart(item.cart_key),
+                                    size="1"
+                                ),
+                                width="100%", align="center"
+                            )
+                        ),
+                        rx.center(rx.text("El carrito está vacío."), padding="2em")
                     ),
-                    spacing="2",
-                    width="100%"
+                    spacing="3", width="100%",
                 ),
-                max_height="40vh",
-                type="auto",
-                scrollbars="vertical"
+                max_height="calc(100vh - 280px)", type="auto", scrollbars="vertical"
             ),
-            
             rx.spacer(),
             rx.divider(),
-            
-            # Botón de Confirmación
             rx.button(
                 "Confirmar Venta Directa",
                 on_click=AppState.handle_direct_sale_checkout,
-                is_disabled=~(AppState.direct_sale_buyer_id), # Deshabilitado si no hay comprador
+                is_disabled=~(AppState.direct_sale_buyer_id),
                 width="100%",
                 color_scheme="violet",
                 size="3"
             ),
-            
             spacing="4",
             height="100%",
         ),
         width="100%",
-        max_width="400px",
+        # ✨ CORRECCIÓN 1: Ancho del carrito reducido
+        max_width="360px", 
         height="85vh",
     )
 
-# --- FIN: NUEVO COMPONENTE ---
-
 @require_admin
 def admin_store_page() -> rx.Component:
-    """Página de la tienda de admin con encabezado centrado y búsqueda funcional."""
+    """Página de la tienda de admin con diseño de dos columnas."""
     
-    # Bloque de encabezado que ahora estará centrado
-    header_section = rx.vstack(
-        rx.heading("Tienda (Punto de Venta)", size="8"),
-        rx.text("Busca productos y añádelos al carrito de Venta Directa."),
-        rx.input(
-            placeholder="Buscar productos por nombre...",
-            value=AppState.search_term,
-            on_change=AppState.set_search_term,
+    main_content = rx.vstack(
+        # Encabezado de la página
+        rx.vstack(
+            rx.heading("Tienda (Punto de Venta)", size="8"),
+            rx.text("Busca productos y añádelos al carrito de Venta Directa."),
+            rx.input(
+                placeholder="Buscar productos por nombre...",
+                value=AppState.search_term,
+                on_change=AppState.set_search_term,
+                width="100%",
+                max_width="500px",
+                margin_y="1.5em",
+                variant="surface",
+                color_scheme="violet"
+            ),
+            # ✨ CORRECCIÓN 2: Se añade 'align' para centrar este bloque
+            align="center",
             width="100%",
-            max_width="500px", # Evita que la barra de búsqueda sea demasiado ancha
-            margin_y="1.5em",
-            variant="surface",
-            color_scheme="violet"
+            spacing="4",
         ),
-        align="center", # Centra todos los elementos del vstack
+        # Galería de productos o mensaje "No encontrado"
+        rx.cond(
+            AppState.filtered_admin_store_posts,
+            product_gallery_component(posts=AppState.filtered_admin_store_posts),
+            # ✨ CORRECCIÓN 3: El 'rx.center' ahora funcionará correctamente
+            rx.center(
+                rx.text("No se encontraron productos."), 
+                padding="4em", 
+                width="100%"
+            )
+        ),
         width="100%",
-        spacing="4",
+        spacing="5"
     )
 
     return rx.fragment(
         rx.box(
-            rx.vstack(
-                # 1. Añadimos el encabezado centrado
-                header_section,
-                
-                # 2. La galería ahora usa la nueva variable filtrada
-                rx.cond(
-                    AppState.filtered_admin_store_posts,
-                    product_gallery_component(posts=AppState.filtered_admin_store_posts),
-                    rx.center(rx.text("No se encontraron productos."), padding="4em")
-                ),
-                
-                spacing="5",
+            # ✨ CORRECCIÓN 4: Se crea el grid para el diseño de dos columnas
+            rx.grid(
+                main_content,
+                direct_sale_cart(),
+                # La primera columna ocupa el espacio restante, la segunda se ajusta al carrito
+                columns="1fr auto",
+                spacing="6",
                 width="100%",
+                align_items="start", # Alinea los items en la parte superior del grid
             ),
             padding="2em",
         ),
-        # Estos componentes se mantienen fuera para su correcto funcionamiento
         product_detail_modal(),
-        sliding_direct_sale_cart(),
     )
 
 def sliding_direct_sale_cart() -> rx.Component:
@@ -198,7 +195,7 @@ def sliding_direct_sale_cart() -> rx.Component:
             on_click=AppState.handle_direct_sale_checkout,
             width="100%", color_scheme="violet", size="3"
         ),
-        spacing="4", height="100%", padding="1em",
+        spacing="4", height="100%",  padding="1em",
         bg=rx.color("gray", 2), align="start", width=SIDEBAR_WIDTH,
     )
 
