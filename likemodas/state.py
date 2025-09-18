@@ -675,31 +675,36 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def direct_sale_grouped_cart(self) -> list[DirectSaleGroupDTO]:
         """
+        [VERSIÓN CORREGIDA]
         Transforma el carrito plano `direct_sale_cart` en una estructura
-        agrupada por producto, ideal para la nueva interfaz de usuario.
+        agrupada por producto Y POR IMAGEN, para diferenciar los colores.
         """
         if not self.direct_sale_cart_details:
             return []
 
+        # Usaremos una tupla (product_id, image_url) como clave única para cada grupo
         grouped_products = defaultdict(lambda: {
             "product_id": 0, "title": "", "image_url": "", "subtotal": 0.0, "variants": []
         })
 
         for item in self.direct_sale_cart_details:
-            group = grouped_products[item.product_id]
-            if not group["title"]:  # Si es la primera vez que vemos este producto
+            # --- ✨ CAMBIO CLAVE: La nueva clave de agrupación --- ✨
+            group_key = (item.product_id, item.image_url)
+            # --- ✨ FIN DEL CAMBIO CLAVE --- ✨
+            
+            group = grouped_products[group_key]
+
+            if not group["title"]:  # Si es la primera vez que vemos este grupo (producto + color)
                 group["product_id"] = item.product_id
                 group["title"] = item.title
                 group["image_url"] = item.image_url
             
             group["subtotal"] += item.subtotal
             
-            # Crea el string de atributos para la variante
-            # Ej: "Talla: M, Color: Rojo" -> "Talla: M" (asumiendo color es por imagen)
             variant_attrs_str = ", ".join(
                 f"{k}: {v}" for k, v in item.variant_details.items() if k != "Color"
             )
-            if not variant_attrs_str: # Si solo tiene color
+            if not variant_attrs_str:
                 variant_attrs_str = "Variante única"
 
             group["variants"].append(
@@ -712,17 +717,18 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         # Convertir el diccionario a la lista final de DTOs
         final_list = []
-        for product_id, data in grouped_products.items():
+        for key, data in grouped_products.items():
             final_list.append(
                 DirectSaleGroupDTO(
-                    product_id=product_id,
+                    product_id=data["product_id"],
                     title=data["title"],
                     image_url=data["image_url"],
                     subtotal_cop=format_to_cop(data["subtotal"]),
-                    variants=sorted(data["variants"], key=lambda v: v.attributes_str) # Ordenar variantes alfabéticamente
+                    variants=sorted(data["variants"], key=lambda v: v.attributes_str)
                 )
             )
-        return sorted(final_list, key=lambda g: g.title) # Ordenar productos alfabéticamente
+        return sorted(final_list, key=lambda g: g.title)
+
 
     @rx.event
     def increase_direct_sale_cart_quantity(self, cart_key: str):
