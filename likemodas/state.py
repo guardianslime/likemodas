@@ -3713,6 +3713,18 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.load_all_users
     
     admin_store_posts: list[ProductCardData] = []
+    
+    # --- 👇 AÑADE ESTA NUEVA PROPIEDAD COMPUTADA AQUÍ 👇 ---
+    @rx.var
+    def filtered_admin_store_posts(self) -> list[ProductCardData]:
+        """Filtra los productos de la tienda de admin según el término de búsqueda."""
+        if not self.search_term.strip():
+            return self.admin_store_posts  # Devuelve todos si no hay búsqueda
+        
+        query = self.search_term.strip().lower()
+        return [
+            p for p in self.admin_store_posts if query in p.title.lower()
+        ]
 
     @rx.event
     def on_load_admin_store(self):

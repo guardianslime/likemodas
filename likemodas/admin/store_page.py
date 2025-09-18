@@ -2,13 +2,11 @@
 
 import reflex as rx
 
-from likemodas.blog.admin_page import edit_post_dialog
 from ..auth.admin_auth import require_admin
-# --- 👇 1. IMPORTA LOS COMPONENTES PÚBLICOS ---
 from ..ui.components import product_gallery_component
 from ..blog.public_page import product_detail_modal
-from ..state import AppState, CartItemData
-from .store_components import admin_store_gallery_component # Reutilizamos la galería
+from ..state import AppState
+from .store_components import sliding_direct_sale_cart # Asegúrate de importar tu carrito deslizable
 from ..ui.components import searchable_select # Reutilizamos el selector
 
 # --- INICIO: NUEVO COMPONENTE PARA EL CARRITO DE VENTA DIRECTA ---
@@ -97,41 +95,46 @@ def direct_sale_cart_component() -> rx.Component:
 
 @require_admin
 def admin_store_page() -> rx.Component:
+    """Página de la tienda de admin con encabezado centrado y búsqueda funcional."""
+    
+    # Bloque de encabezado que ahora estará centrado
+    header_section = rx.vstack(
+        rx.heading("Tienda (Punto de Venta)", size="8"),
+        rx.text("Busca productos y añádelos al carrito de Venta Directa."),
+        rx.input(
+            placeholder="Buscar productos por nombre...",
+            value=AppState.search_term,
+            on_change=AppState.set_search_term,
+            width="100%",
+            max_width="500px", # Evita que la barra de búsqueda sea demasiado ancha
+            margin_y="1.5em",
+            variant="surface",
+            color_scheme="violet"
+        ),
+        align="center", # Centra todos los elementos del vstack
+        width="100%",
+        spacing="4",
+    )
+
     return rx.fragment(
         rx.box(
-            rx.grid(
-                rx.vstack(
-                    rx.heading("Tienda (Punto de Venta)", size="8"),
-                    rx.text("Busca productos y añádelos al carrito de Venta Directa."),
-                    rx.input(
-                        placeholder="Buscar productos por nombre...",
-                        value=AppState.search_term,
-                        on_change=AppState.set_search_term,
-                        width="100%",
-                        max_width="500px",
-                        margin_y="1.5em",
-                        variant="surface",
-                        color_scheme="violet"
-                    ),
-                    rx.cond(
-                        # ✨ CORRECCIÓN 1: Usar la variable correcta para los posts del admin
-                        AppState.admin_store_posts,
-                        # ✨ CORRECCIÓN 2: Usar el componente de galería público
-                        product_gallery_component(posts=AppState.admin_store_posts),
-                        rx.center(rx.text("No se encontraron productos."), padding="4em")
-                    ),
-                    spacing="5",
-                    width="100%",
+            rx.vstack(
+                # 1. Añadimos el encabezado centrado
+                header_section,
+                
+                # 2. La galería ahora usa la nueva variable filtrada
+                rx.cond(
+                    AppState.filtered_admin_store_posts,
+                    product_gallery_component(posts=AppState.filtered_admin_store_posts),
+                    rx.center(rx.text("No se encontraron productos."), padding="4em")
                 ),
-                rx.box(),
-                columns="auto 0fr",
-                spacing="6",
+                
+                spacing="5",
                 width="100%",
             ),
             padding="2em",
-            width="100%",
         ),
-        # El modal y el carrito deslizable se mantienen igual
+        # Estos componentes se mantienen fuera para su correcto funcionamiento
         product_detail_modal(),
         sliding_direct_sale_cart(),
     )
