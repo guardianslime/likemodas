@@ -4,13 +4,11 @@ import reflex as rx
 
 from likemodas.blog.admin_page import edit_post_dialog
 from ..auth.admin_auth import require_admin
-# --- 👇 1. IMPORTA LOS COMPONENTES PÚBLICOS ---
 from ..ui.components import product_gallery_component
 from ..blog.public_page import product_detail_modal
 from ..state import AppState, CartItemData
-from .store_components import admin_store_gallery_component # Reutilizamos la galería
-from ..ui.components import searchable_select # Reutilizamos el selector
-from .store_components import sliding_direct_sale_cart # Asegúrate de importar tu carrito deslizable
+from .store_components import admin_store_gallery_component # Manten esta línea
+from ..ui.components import searchable_select
 
 # --- INICIO: NUEVO COMPONENTE PARA EL CARRITO DE VENTA DIRECTA ---
 
