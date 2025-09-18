@@ -535,34 +535,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     # La clave es el identificador único del item (ej: "product_id-variant_index-Color:Rojo-Talla:M")
     # El valor es la cantidad.
     direct_sale_cart: dict[str, int] = {}
-
-    # Almacena el ID del UserInfo del comprador seleccionado para la venta.
     direct_sale_buyer_id: Optional[int] = None
-
-    # --- INICIO: NUEVAS VARIABLES PARA SIDEBAR DE VENTA ---
     show_direct_sale_sidebar: bool = False
-
-    # Término de búsqueda para encontrar al comprador en la lista.
     search_query_all_buyers: str = ""
 
-    # --- INICIO: NUEVO EVENT HANDLER ---
     def toggle_direct_sale_sidebar(self):
-        """Muestra u oculta el sidebar de venta directa."""
         self.show_direct_sale_sidebar = not self.show_direct_sale_sidebar
-    # --- FIN: NUEVO EVENT HANDLER ---
-
+        
     @rx.var
     def direct_sale_cart_details(self) -> List[CartItemData]:
-        """
-        Calcula y devuelve los detalles de los items en el carrito de venta directa.
-        Reutilizamos el DTO `CartItemData` que ya tienes.
-        """
-        # Esta lógica es muy similar a tu `cart_details` existente,
-        # pero opera sobre `self.direct_sale_cart`.
         if not self.direct_sale_cart:
             return []
         with rx.session() as session:
-            # Extraer IDs de producto y construir un mapa para eficiencia
             product_ids = list(set([int(key.split('-')[0]) for key in self.direct_sale_cart.keys()]))
             if not product_ids:
                 return []
@@ -592,16 +576,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         
     @rx.var
     def buyer_options_for_select(self) -> list[tuple[str, str]]:
-        """
-        Prepara la lista de usuarios en el formato (label, value)
-        requerido por el componente `searchable_select`.
-        """
         if not self.filtered_all_users_for_sale:
             return []
         
         options = []
         for user in self.filtered_all_users_for_sale:
-            if user.user:  # Chequeo de seguridad
+            if user.user:
                 label = f"{user.user.username} ({user.email})"
                 value = str(user.id)
                 options.append((label, value))
@@ -609,7 +589,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def filtered_all_users_for_sale(self) -> list[UserInfo]:
-        """Filtra la lista de todos los usuarios para el selector de comprador."""
         if not self.search_query_all_buyers.strip():
             return self.all_users
         q = self.search_query_all_buyers.lower()
@@ -618,14 +597,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             if u.user and (q in u.user.username.lower() or q in u.email.lower())
         ]      
     
-    # --- INICIO: NUEVOS EVENT HANDLERS PARA VENTA DIRECTA ---
-
     def set_search_query_all_buyers(self, query: str):
-        """Actualiza el término de búsqueda para los compradores."""
         self.search_query_all_buyers = query
 
     def set_direct_sale_buyer(self, user_info_id: str):
-        """Establece el comprador seleccionado para la venta."""
         try:
             self.direct_sale_buyer_id = int(user_info_id)
         except (ValueError, TypeError):
@@ -633,38 +608,22 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def add_to_direct_sale_cart(self, product_id: int):
-        """
-        Añade un producto al carrito de venta directa del administrador.
-
-        Esta función valida que se hayan seleccionado todas las opciones
-        necesarias (como talla o número), encuentra la variante de producto exacta
-        que coincide con la selección, verifica su stock específico y, si hay
-        disponibilidad, la añade al `direct_sale_cart`.
-        """
-        # 1. Validaciones iniciales de permisos y estado del modal
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
         if not self.product_in_modal or not self.current_modal_variant:
             return rx.toast.error("Error al identificar el producto.")
 
-        # 2. Validar que se hayan seleccionado todos los atributos requeridos
         required_keys = {selector.key for selector in self.modal_attribute_selectors}
         if not all(key in self.modal_selected_attributes for key in required_keys):
             missing = required_keys - set(self.modal_selected_attributes.keys())
             return rx.toast.error(f"Por favor, selecciona: {', '.join(missing)}")
 
-        # 3. Encontrar la variante exacta que coincide con la selección completa
         variant_to_add = None
-        # Atributos fijos de la imagen (ej: Color)
         base_attributes = self.current_variant_display_attributes
-        # Atributos seleccionables (ej: Talla)
         selected_attributes = self.modal_selected_attributes
-        
-        # Combinamos ambos para tener la descripción completa de la variante
         full_selection = {**base_attributes, **selected_attributes}
         
         for variant in self.product_in_modal.variants:
-            # Comparamos si los atributos de la variante en la BD son idénticos a la selección
             if variant.get("attributes") == full_selection:
                 variant_to_add = variant
                 break
@@ -672,29 +631,22 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not variant_to_add:
             return rx.toast.error("La combinación seleccionada no está disponible o no existe.")
 
-        # 4. Construir la clave única para el carrito de venta directa
-        # Esto asegura que "Camisa Roja Talla M" y "Camisa Roja Talla L" sean items distintos.
         selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in full_selection.items()]))
         cart_key = f"{product_id}-{self.modal_selected_variant_index}-{selection_key_part}"
         
-        # 5. Verificar el stock específico de la variante encontrada
         available_stock = variant_to_add.get("stock", 0)
         quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
         
         if quantity_in_cart + 1 > available_stock:
             return rx.toast.error("¡Lo sentimos! No hay suficiente stock para esta combinación.")
         
-        # 6. Si hay stock, añadir al carrito de venta directa
         self.direct_sale_cart[cart_key] = quantity_in_cart + 1
         
-        # 7. Cerrar el modal y notificar al vendedor
         self.show_detail_modal = False
         return rx.toast.success("Producto añadido a la venta.")
 
-
     @rx.event
     def remove_from_direct_sale_cart(self, cart_key: str):
-        """Reduce o elimina un item del carrito de venta directa."""
         if cart_key in self.direct_sale_cart:
             self.direct_sale_cart[cart_key] -= 1
             if self.direct_sale_cart[cart_key] <= 0:
@@ -702,33 +654,21 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def handle_direct_sale_checkout(self):
-        """
-        Procesa y finaliza una venta directa, manejando tanto a compradores 
-        registrados como anónimos. Si no se selecciona un comprador, la venta 
-        se registra a nombre del propio vendedor como una venta de "mostrador".
-        """
-        # 1. Validaciones iniciales de permisos y estado del carrito
         if not self.is_admin or not self.authenticated_user_info:
             return rx.toast.error("No tienes permisos para realizar esta acción.")
         if not self.direct_sale_cart:
             return rx.toast.error("El carrito de venta está vacío.")
 
         with rx.session() as session:
-            # 2. Determinar el comprador
-            # Si no se ha seleccionado un comprador (`direct_sale_buyer_id` es None),
-            # la venta se asocia al propio vendedor (venta anónima/invitado).
             buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else self.authenticated_user_info.id
             buyer_info = session.get(UserInfo, buyer_id)
 
             if not buyer_info or not buyer_info.user:
                 return rx.toast.error("El comprador seleccionado no es válido.")
 
-            # 3. Calcular totales y preparar la orden
-            # Para ventas directas, el envío es 0 y el subtotal es el total.
             subtotal = sum(item.subtotal for item in self.direct_sale_cart_details)
             items_to_create = []
 
-            # 4. Verificar stock y preparar los items para la base de datos
             for item in self.direct_sale_cart_details:
                 post = session.get(BlogPostModel, item.product_id)
                 if not post:
@@ -736,12 +676,10 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 variant_updated = False
                 for variant in post.variants:
-                    # Encuentra la variante exacta que coincide con la selección
                     if variant.get("attributes") == item.variant_details:
                         if variant.get("stock", 0) < item.quantity:
                             return rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
                         
-                        # Descuenta el stock
                         variant["stock"] -= item.quantity
                         variant_updated = True
                         break
@@ -749,7 +687,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if not variant_updated:
                     return rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
                 
-                session.add(post)  # Marca el post para ser actualizado con el nuevo stock
+                session.add(post)
                 items_to_create.append(
                     PurchaseItemModel(
                         blog_post_id=item.product_id,
@@ -759,41 +697,105 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
 
-            # 5. Crear el registro de la compra (PurchaseModel)
             now = datetime.now(timezone.utc)
             new_purchase = PurchaseModel(
                 userinfo_id=buyer_info.id,
                 total_price=subtotal,
-                status=PurchaseStatus.DELIVERED,  # Se considera entregada inmediatamente
+                status=PurchaseStatus.DELIVERED,
                 payment_method="Venta Directa",
                 confirmed_at=now,
                 purchase_date=now,
                 user_confirmed_delivery_at=now,
                 shipping_applied=0,
-                # Si es una venta anónima, se usa un texto genérico.
                 shipping_name=buyer_info.user.username if self.direct_sale_buyer_id is not None else "Cliente Venta Directa",
-                is_direct_sale=True,  # Marca esta compra como una venta directa
+                is_direct_sale=True,
             )
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
 
-            # 6. Vincular los items creados con la compra recién guardada
             for purchase_item in items_to_create:
                 purchase_item.purchase_id = new_purchase.id
                 session.add(purchase_item)
             
             session.commit()
 
-        # 7. Limpiar el estado de la UI y notificar el éxito
         self.direct_sale_cart.clear()
         self.direct_sale_buyer_id = None
-        self.show_direct_sale_sidebar = False  # Oculta el sidebar
+        self.show_direct_sale_sidebar = False
         
         yield rx.toast.success(f"Venta #{new_purchase.id} confirmada exitosamente.")
-        yield AppState.load_purchase_history  # Actualiza el historial de ventas del vendedor
+        yield AppState.load_purchase_history
 
-    # --- FIN: NUEVOS EVENT HANDLERS ---
+    # --- ✨ INICIO: CÓDIGO NUEVO Y MODIFICADO ---
+
+    # --- La nueva propiedad computada ---
+    @rx.var
+    def direct_sale_grouped_cart(self) -> list["DirectSaleGroupDTO"]: # <-- CORRECCIÓN: Comillas
+        """
+        Procesa el carrito de venta directa y agrupa las variantes por producto.
+        """
+        grouped: dict[int, DirectSaleGroupDTO] = {}
+        
+        for item in self.direct_sale_cart_details:
+            product_id = item.product_id
+            
+            if product_id not in grouped:
+                grouped[product_id] = DirectSaleGroupDTO(
+                    product_id=product_id,
+                    title=item.title,
+                    image_url=item.image_url,
+                    subtotal=0,
+                    variants=[]
+                )
+            
+            grouped[product_id].variants.append(
+                DirectSaleVariantDTO(
+                    cart_key=item.cart_key,
+                    quantity=item.quantity,
+                    attributes=item.variant_details
+                )
+            )
+            grouped[product_id].subtotal += item.subtotal
+            
+        return list(grouped.values())
+
+    # --- El nuevo manejador de evento ---
+    @rx.event
+    def increase_direct_sale_cart_quantity(self, cart_key: str):
+        """
+        Incrementa la cantidad de una variante específica en el carrito de venta directa,
+        verificando el stock disponible.
+        """
+        if cart_key not in self.direct_sale_cart:
+            return
+
+        parts = cart_key.split('-')
+        product_id = int(parts[0])
+        selection_attrs = {part.split(':', 1)[0]: part.split(':', 1)[1] for part in parts[2:] if ':' in part}
+        
+        with rx.session() as session:
+            post = session.get(BlogPostModel, product_id)
+            if not post:
+                return rx.toast.error("El producto ya no existe.")
+
+            variant_to_check = None
+            for variant in post.variants:
+                if variant.get("attributes") == selection_attrs:
+                    variant_to_check = variant
+                    break
+            
+            if not variant_to_check:
+                return rx.toast.error("La variante seleccionada ya no está disponible.")
+
+            available_stock = variant_to_check.get("stock", 0)
+            current_quantity = self.direct_sale_cart[cart_key]
+
+            if current_quantity + 1 > available_stock:
+                return rx.toast.info("No hay más stock disponible para esta variante.")
+            
+            self.direct_sale_cart[cart_key] += 1
+    # --- ✨ FIN: CÓDIGO NUEVO Y MODIFICADO ---
     
     @rx.event
     def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
