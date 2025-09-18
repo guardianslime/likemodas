@@ -12,10 +12,14 @@ from ..ui.components import searchable_select
 
 # ✨ INICIO: COMPONENTE DEL CARRITO CON DIMENSIONES CORREGIDAS
 def sliding_direct_sale_cart() -> rx.Component:
-    """El sidebar deslizable para el carrito de venta directa con el tamaño original."""
-    # ✨ CORRECCIÓN 1: Se ajusta el ancho para que sea menos ancho y más alto.
-    SIDEBAR_WIDTH = "380px"
+    """
+    Sidebar deslizable para el carrito de venta directa con las dimensiones
+    y posición del diseño original.
+    """
+    # Ancho del sidebar, como te gustaba.
+    SIDEBAR_WIDTH = "360px"
 
+    # El contenido interno del carrito (la lógica no cambia)
     sidebar_content = rx.vstack(
         rx.heading("Venta Directa", size="6"),
         rx.divider(),
@@ -60,8 +64,8 @@ def sliding_direct_sale_cart() -> rx.Component:
                 ),
                 spacing="3", width="100%",
             ),
-            # ✨ CORRECCIÓN 2: Se aumenta la altura del área de productos.
-            max_height="calc(100vh - 300px)", 
+            # Se ajusta la altura del scroll para el nuevo alto total
+            max_height="calc(85vh - 250px)", 
             type="auto", 
             scrollbars="vertical"
         ),
@@ -73,12 +77,13 @@ def sliding_direct_sale_cart() -> rx.Component:
             is_disabled=~(AppState.direct_sale_buyer_id),
             width="100%", color_scheme="violet", size="3"
         ),
-        spacing="4", height="100%", padding="1em",
-        bg=rx.color("gray", 2), align="start", width=SIDEBAR_WIDTH,
+        spacing="4", height="100%",
     )
 
+    # El contenedor principal que controla la animación y el estilo
     return rx.box(
         rx.hstack(
+            # El "mango" para abrir/cerrar
             rx.box(
                 rx.icon("shopping-cart", color="white"),
                 on_click=AppState.toggle_direct_sale_sidebar,
@@ -87,35 +92,34 @@ def sliding_direct_sale_cart() -> rx.Component:
                 height="60px", width="40px",
                 display="flex", align_items="center", justify_content="center",
             ),
-            # ✨ CORRECCIÓN 3: El contenido ahora está dentro de una tarjeta (card) para el borde y el estilo.
+            # ✨ CORRECCIÓN 1: Se envuelve el contenido en una 'card' para restaurar el estilo
             rx.card(
                 sidebar_content,
-                # ✨ CORRECCIÓN 4: Se define la altura fija que te gustaba.
+                # ✨ CORRECCIÓN 2: Se define la altura fija que te gustaba
                 height="85vh",
-                width=SIDEBAR_WIDTH
+                width=SIDEBAR_WIDTH,
             ),
             align_items="center", spacing="0",
         ),
-        position="fixed", 
-        # ✨ CORRECCIÓN 5: Se posiciona en la parte superior derecha.
-        top="2em", 
+        position="fixed",
+        # ✨ CORRECCIÓN 3: Se centra verticalmente en la pantalla
+        top="50%",
         right="0",
-        display="flex", 
-        align_items="start",
+        # ✨ CORRECCIÓN 4: Se usa 'transform' para centrar y para deslizar
         transform=rx.cond(
             AppState.show_direct_sale_sidebar,
-            "translateX(0)",
-            f"translateX({SIDEBAR_WIDTH})"
+            "translate(0, -50%)", # Centrado y visible
+            f"translate({SIDEBAR_WIDTH}, -50%)" # Centrado y oculto a la derecha
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
     )
-# ✨ FIN: COMPONENTE CORREGIDO
+# ✨ FIN: VERSIÓN FINAL DEL SIDEBAR DESLIZABLE
 
-# La función admin_store_page() se mantiene exactamente igual que en la versión anterior.
 @require_admin
 def admin_store_page() -> rx.Component:
-    # ... (esta función no necesita cambios)
+    # Esta función se mantiene exactamente igual que en la versión anterior.
+    # NO necesitas cambiarla.
     main_content = rx.vstack(
         rx.vstack(
             rx.heading("Tienda (Punto de Venta)", size="8"),
@@ -155,6 +159,7 @@ def admin_store_page() -> rx.Component:
         product_detail_modal(),
         sliding_direct_sale_cart(),
     )
+
 
 def sliding_direct_sale_cart() -> rx.Component:
     """El sidebar deslizable para el carrito de venta directa."""
