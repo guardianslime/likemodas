@@ -1,5 +1,3 @@
-# likemodas/blog/public_page.py (Versión Final con Votaciones y Reputación)
-
 import reflex as rx
 from ..state import AppState, CommentData, ModalSelectorDTO
 
@@ -90,9 +88,7 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     return rx.box(
         rx.vstack(
             rx.hstack(
-                # --- ✨ CORRECCIÓN AQUÍ: Usamos rx.get_upload_url en la interfaz ✨ ---
                 rx.avatar(
-                    # Construimos la URL completa solo si el nombre del archivo no está vacío
                     src=rx.cond(
                         comment.author_avatar_url != "",
                         rx.get_upload_url(comment.author_avatar_url),
@@ -106,7 +102,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
                 star_rating_display_safe(comment.rating, 1, size=20),
                 width="100%",
             ),
-            # ... (el resto de la función no necesita cambios)
             rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
             rx.hstack(
                 vote_buttons(
@@ -146,7 +141,8 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     )
 
 
-def product_detail_modal() -> rx.Component:
+# ✨ PASO 1: AÑADIR EL NUEVO PARÁMETRO A LA FUNCIÓN
+def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
@@ -277,14 +273,12 @@ def product_detail_modal() -> rx.Component:
             rx.hstack(
                 rx.button(
                     "Añadir al Carrito",
-                    # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
-                    # Esta condición ahora es más robusta y funcionará correctamente.
+                    # ✨ PASO 2: USAR EL NUEVO PARÁMETRO EN LA CONDICIÓN
                     on_click=rx.cond(
-                        (AppState.is_admin) & (AppState.current_path.startswith("/admin/store")),
+                        is_for_direct_sale,
                         AppState.add_to_direct_sale_cart(AppState.product_in_modal.id),
                         AppState.add_to_cart(AppState.product_in_modal.id)
                     ),
-                    # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
                     size="3",
                     flex_grow="1",
                     color_scheme="violet"
@@ -311,10 +305,8 @@ def product_detail_modal() -> rx.Component:
             align="start", height="100%",
         )
 
-
     return rx.dialog.root(
         rx.dialog.content(
-            # --- BOTÓN DE CERRAR CORREGIDO ---
             rx.dialog.close(
                 rx.icon_button(
                     rx.icon("x"),
@@ -324,7 +316,7 @@ def product_detail_modal() -> rx.Component:
                         "position": "absolute",
                         "top": "1rem",
                         "right": "1rem",
-                        "z_index": "10", # Se añade para que esté siempre encima
+                        "z_index": "10",
                     },
                 )
             ),
@@ -357,7 +349,6 @@ def product_detail_modal() -> rx.Component:
     )
 
 def blog_public_page_content() -> rx.Component:
-    # Contenido principal de la página (la galería de productos)
     main_content = rx.center(
         rx.vstack(
             rx.cond(
@@ -370,9 +361,9 @@ def blog_public_page_content() -> rx.Component:
         width="100%"
     )
 
-    # ✨ Devolvemos todo dentro de un fragmento para mantener la estructura correcta ✨
     return rx.fragment(
-        floating_filter_panel(), # El panel de filtros ahora está fuera del center
+        floating_filter_panel(),
         main_content,
-        product_detail_modal(),  # El modal también está fuera
+        # ✨ PASO 3: ASEGURARSE DE QUE LA PÁGINA PÚBLICA LLAME AL MODAL EN MODO PÚBLICO
+        product_detail_modal(is_for_direct_sale=False),
     )

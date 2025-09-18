@@ -143,6 +143,7 @@ def admin_store_page() -> rx.Component:
             main_content,
             padding="2em",
         ),
-        product_detail_modal(),
+        # 3. PASA EL PARÁMETRO AQUÍ
+        product_detail_modal(is_for_direct_sale=True),
         sliding_direct_sale_cart(),
     )
