@@ -1,16 +1,11 @@
-# likemodas/admin/store_page.py
+# likemodas/admin/store_page.py (VERSIÓN FINAL, COMPLETA Y SIN DUPLICADOS)
 
 import reflex as rx
-
-from likemodas.blog.admin_page import edit_post_dialog
 from ..auth.admin_auth import require_admin
-from ..ui.components import product_gallery_component
+from ..ui.components import product_gallery_component, searchable_select
 from ..blog.public_page import product_detail_modal
-from ..state import AppState, CartItemData
-from .store_components import admin_store_gallery_component # Manten esta línea
-from ..ui.components import searchable_select
+from ..state import AppState
 
-# ✨ INICIO: COMPONENTE DEL CARRITO CON DIMENSIONES CORREGIDAS
 def sliding_direct_sale_cart() -> rx.Component:
     """
     Sidebar deslizable para el carrito de venta directa con las dimensiones
@@ -18,6 +13,7 @@ def sliding_direct_sale_cart() -> rx.Component:
     """
     SIDEBAR_WIDTH = "380px"
 
+    # El contenido interno del carrito
     sidebar_content = rx.vstack(
         rx.heading("Venta Directa", size="6"),
         rx.divider(),
@@ -62,8 +58,8 @@ def sliding_direct_sale_cart() -> rx.Component:
                 ),
                 spacing="3", width="100%",
             ),
-            max_height="calc(85vh - 250px)", 
-            type="auto", 
+            max_height="calc(85vh - 250px)",
+            type="auto",
             scrollbars="vertical"
         ),
         rx.spacer(),
@@ -77,8 +73,10 @@ def sliding_direct_sale_cart() -> rx.Component:
         spacing="4", height="100%",
     )
 
+    # El contenedor principal que controla la animación y el estilo
     return rx.box(
         rx.hstack(
+            # El "mango" para abrir/cerrar
             rx.box(
                 rx.icon("shopping-cart", color="white"),
                 on_click=AppState.toggle_direct_sale_sidebar,
@@ -87,20 +85,24 @@ def sliding_direct_sale_cart() -> rx.Component:
                 height="60px", width="40px",
                 display="flex", align_items="center", justify_content="center",
             ),
+            # Se envuelve el contenido en una 'card' para restaurar el estilo
             rx.card(
                 sidebar_content,
+                # Se define la altura fija que te gustaba
                 height="85vh",
                 width=SIDEBAR_WIDTH,
             ),
             align_items="center", spacing="0",
         ),
         position="fixed",
+        # Se centra verticalmente en la pantalla
         top="50%",
         right="0",
+        # Se usa 'transform' para centrar y para deslizar
         transform=rx.cond(
             AppState.show_direct_sale_sidebar,
-            "translate(0, -50%)",
-            f"translate({SIDEBAR_WIDTH}, -50%)"
+            "translate(0, -50%)", # Centrado y visible
+            f"translate({SIDEBAR_WIDTH}, -50%)" # Centrado y oculto a la derecha
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
@@ -147,114 +149,4 @@ def admin_store_page() -> rx.Component:
         ),
         product_detail_modal(),
         sliding_direct_sale_cart(),
-    )
-
-
-def sliding_direct_sale_cart() -> rx.Component:
-    """El sidebar deslizable para el carrito de venta directa."""
-    SIDEBAR_WIDTH = "24em" # Ancho del sidebar
-
-    # El contenido del sidebar (lo que antes era direct_sale_cart_component)
-    sidebar_content = rx.vstack(
-        rx.heading("Venta Directa", size="6"),
-        rx.divider(),
-        rx.vstack(
-            rx.text("Seleccionar Comprador (Opcional):", weight="bold"),
-            searchable_select(
-                placeholder="Buscar por usuario o email...",
-                options=AppState.buyer_options_for_select,
-                on_change_select=AppState.set_direct_sale_buyer,
-                value_select="",
-                search_value=AppState.search_query_all_buyers,
-                on_change_search=AppState.set_search_query_all_buyers,
-                filter_name="buyer_filter",
-            ),
-            align_items="start", width="100%"
-        ),
-        rx.divider(),
-        rx.scroll_area(
-            rx.vstack(
-                rx.cond(
-                    AppState.direct_sale_cart_details,
-                    rx.foreach(
-                        AppState.direct_sale_cart_details,
-                        lambda item: rx.hstack(
-                            rx.image(src=rx.get_upload_url(item.image_url), width="40px", height="40px", object_fit="cover", border_radius="sm"),
-                            rx.vstack(
-                                rx.text(item.title, size="2", weight="bold"),
-                                rx.text(f"Cant: {item.quantity}", size="1"),
-                                align_items="start", spacing="0"
-                            ),
-                            rx.spacer(),
-                            rx.text(item.subtotal_cop, size="2"),
-                            rx.icon_button(
-                                rx.icon("minus", size=12),
-                                on_click=AppState.remove_from_direct_sale_cart(item.cart_key),
-                                size="1"
-                            ),
-                            width="100%", align="center"
-                        )
-                    ),
-                    rx.center(rx.text("El carrito está vacío."), padding="2em")
-                ),
-                spacing="3", width="100%",
-            ),
-            max_height="calc(100vh - 280px)", type="auto", scrollbars="vertical"
-        ),
-        rx.spacer(),
-        rx.divider(),
-        rx.button(
-            "Confirmar Venta Directa",
-            on_click=AppState.handle_direct_sale_checkout,
-            width="100%", color_scheme="violet", size="3"
-        ),
-        spacing="4", height="100%",  padding="1em",
-        bg=rx.color("gray", 2), align="start", width=SIDEBAR_WIDTH,
-    )
-
-    # El contenedor principal que controla la animación de deslizamiento
-    return rx.box(
-        rx.hstack(
-            # El "mango" para abrir/cerrar el sidebar
-            rx.box(
-                rx.icon("shopping-cart", color="white"),
-                on_click=AppState.toggle_direct_sale_sidebar,
-                cursor="pointer", bg=rx.color("violet", 9),
-                border_radius="8px 0 0 8px", height="60px", width="40px",
-                display="flex", align_items="center", justify_content="center",
-            ),
-            sidebar_content,
-            align_items="center", spacing="0",
-        ),
-        position="fixed", top="0", right="0", height="100vh",
-        display="flex", align_items="center",
-        transform=rx.cond(
-            AppState.show_direct_sale_sidebar,
-            "translateX(0)",
-            f"translateX({SIDEBAR_WIDTH})" # Se esconde hacia la derecha
-        ),
-        transition="transform 0.4s ease-in-out",
-        z_index="1000",
-    )
-
-def mobile_cart_trigger() -> rx.Component:
-    """
-    Un botón flotante que solo aparece en móviles para abrir el carrito de venta.
-    """
-    return rx.box(
-        rx.icon_button(
-            rx.icon("shopping-cart", color="white"),
-            on_click=AppState.toggle_direct_sale_sidebar,
-            size="3",
-            radius="full",
-            color_scheme="violet",
-            shadow="lg",
-        ),
-        # --- Lógica de Responsividad ---
-        # "flex" en pantallas pequeñas (initial), "none" en medianas (md) y grandes
-        display={"initial": "flex", "md": "none"},
-        position="fixed",
-        bottom="2rem",
-        right="2rem",
-        z_index="1001", # Un z-index alto para que esté por encima de otros elementos
     )
