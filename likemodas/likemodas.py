@@ -43,7 +43,7 @@ fastapi_app.include_router(api_endpoints.router) # <--- La línea clave del QR
 #    pasando el FastAPI ya configurado.
 app = rx.App(
     style={"font_family": "Arial, sans-serif"},
-    [cite_start]api_transformer=fastapi_app  # <--- ¡LA CLAVE ESTÁ AQUÍ! [cite: 15]
+    api_transformer=fastapi_app  # <--- ¡LA CLAVE ESTÁ AQUÍ! [cite: 15]
 )
 
 # ======================================================================
