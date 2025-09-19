@@ -1,4 +1,4 @@
-# likemodas/ui/qr_scanner.py (CORRECCIÓN FINAL)
+# likemodas/ui/qr_scanner.py (CORREGIDO)
 import reflex as rx
 from reflex.vars import Var
 
@@ -7,8 +7,8 @@ class QRScannerComponent(rx.Component):
     Un componente de Reflex que envuelve la biblioteca 'html5-qrcode'
     para proporcionar un escáner de QR funcional.
     """
-    # --- CORRECCIÓN: Se elimina la siguiente línea ---
-    # library = "html5-qrcode" 
+    # Se elimina la línea 'library' para que Reflex no intente importar
+    # el componente desde el paquete de node.
     
     # El tag debe coincidir con el nombre del componente que exportamos en el código JS.
     tag = "Html5QrcodeScannerComponent"
@@ -26,9 +26,9 @@ class QRScannerComponent(rx.Component):
         Genera el código JS/React necesario para inicializar el escáner.
         Este código es ahora la única fuente de definición del componente.
         """
+        # --- CORRECCIÓN: Se ha eliminado la línea "import React, { useEffect } from 'react';" ---
         return """
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { useEffect } from 'react';
 
 const Html5QrcodeScannerComponent = (props) => {
   const qrcodeRegionId = "html5qr-code-full-region";
