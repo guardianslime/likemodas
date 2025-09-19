@@ -3231,9 +3231,12 @@ def update_edit_form_state(self, form_data: dict):
             # ✨ CORRECCIÓN AQUÍ
             yield AppState.load_purchases
 
+    # 1. La variable para el término de búsqueda de la tienda de administración.
     search_term: str = ""
 
-    def set_search_term(self, term: str): self.search_term = term
+    # 2. La función para actualizar la variable (setter).
+    def set_search_term(self, term: str):
+        self.search_term = term
 
     @rx.event
     def perform_search(self):
