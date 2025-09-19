@@ -37,7 +37,6 @@ fastapi_app = FastAPI(title="API extendida de Likemodas")
 # 2. Incluir TODOS los routers necesarios en la instancia de FastAPI
 fastapi_app.include_router(webhooks.router)
 fastapi_app.include_router(api_tasks.router)
-fastapi_app.include_router(api_endpoints.router) # <--- La línea clave del QR
 
 # 3. Crear la instancia de la aplicación Reflex UNA SOLA VEZ,
 #    pasando el FastAPI ya configurado.

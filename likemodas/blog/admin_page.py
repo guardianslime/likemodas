@@ -5,6 +5,7 @@ from ..state import AppState
 from .. import navigation
 from .forms import blog_post_edit_form
 from ..state import AppState, AdminPostRowData 
+from ..ui.qr_display import qr_code_display
 
 def edit_post_dialog() -> rx.Component:
     """El diálogo modal que contiene el formulario de edición."""
@@ -47,9 +48,8 @@ def qr_display_modal() -> rx.Component:
     }
 
     def render_variant_qr(variant: dict) -> rx.Component:
-        """Renderiza la fila para una sola variante con su QR."""
-
-        qr_image_url = f"{AppState.backend_api_url}/api/qr/{variant.get('vuid')}"
+        """Renderiza la fila para una sola variante con su QR usando el componente personalizado."""
+        vuid = variant.get("vuid", "")
 
         return rx.box(
             rx.hstack(
@@ -63,22 +63,23 @@ def qr_display_modal() -> rx.Component:
                         )
                     ),
                     rx.text(f"Stock: {variant.get('stock', 0)}"),
-                    # VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
-                    # LÍNEA CORREGIDA: Se elimina el recorte [:8]
-                    rx.text(f"VUID: {variant.get('vuid', 'N/A')}", size="1", color_scheme="gray"),
-                    # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    rx.text(f"VUID: {vuid}", size="1", color_scheme="gray"),
                     align_items="start",
                     spacing="1",
                 ),
                 rx.spacer(),
                 rx.cond(
-                    variant.get("vuid"),
-                    rx.image(
-                        src=f"/api/qr/{variant.get('vuid')}",
-                        width="100px",
-                        height="100px",
+                    vuid != "",
+                    # --- 👇 AQUI ESTÁ LA MAGIA 👇 ---
+                    # Usamos nuestro nuevo componente 'qr_code_display'
+                    qr_code_display(
+                        value=vuid,
+                        size=100,
+                        fgColor="#4F46E5",  # El color violeta de tu marca
+                        bgColor="#FFFFFF",
                     ),
-                    rx.center(rx.text("Sin QR", size="2", color_scheme="gray"), width="100px", height="100px")
+                    # --- 👆 FIN DEL CAMBIO 👆 ---
+                    rx.center(rx.text("Sin QR"), width="100px", height="100px")
                 ),
                 spacing="4",
                 align="center",

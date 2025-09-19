@@ -202,12 +202,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     _product_id_to_load_on_mount: Optional[int] = None
     success: bool = False
     error_message: str = ""
-
-    @rx.var
-    def backend_api_url(self) -> str:
-        """Devuelve la URL base de la API configurada en rxconfig."""
-        # get_config() lee el rxconfig.py del backend en ejecución
-        return get_config().api_url
     
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfoDTO | None:
