@@ -41,24 +41,26 @@ def post_admin_row(post: AdminPostRowData) -> rx.Component:
                 rx.box(rx.icon("image_off", size=24), width="var(--avatar-size-4)", height="var(--avatar-size-4)", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center", border_radius="100%")
             )
         ),
-        # ... el resto de la función no necesita cambios, ya que usa los mismos nombres de campo (title, price_cop, etc.)
+        # --- INICIO DE LA CORRECCIÓN ---
         rx.table.cell(
             rx.hstack(
                 rx.switch(
                     is_checked=post.publish_active,
                     on_change=lambda checked: AppState.toggle_publish_status(post.id),
                 ),
+                # Se reemplaza el texto estático con una condición
                 rx.text(rx.cond(post.publish_active, "Visible", "Oculto")),
                 spacing="2",
                 align="center",
             )
         ),
+        # --- FIN DE LA CORRECCIÓN ---
         rx.table.cell(post.title),
         rx.table.cell(post.price_cop),
         rx.table.cell(
             rx.hstack(
                 rx.button(
-                    "Editar", 
+                    "Editar",
                     on_click=lambda: AppState.start_editing_post(post.id),
                     variant="outline",
                     size="2"
