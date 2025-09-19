@@ -1,4 +1,4 @@
-# likemodas/ui/qr_scanner.py (CORREGIDO)
+# likemodas/ui/qr_scanner.py (CORRECCIÓN FINAL)
 import reflex as rx
 from reflex.vars import Var
 
@@ -7,26 +7,34 @@ class QRScannerComponent(rx.Component):
     Un componente de Reflex que envuelve la biblioteca 'html5-qrcode'
     para proporcionar un escáner de QR funcional.
     """
-    library = "html5-qrcode"
+    # --- CORRECCIÓN: Se elimina la siguiente línea ---
+    # library = "html5-qrcode" 
+    
+    # El tag debe coincidir con el nombre del componente que exportamos en el código JS.
     tag = "Html5QrcodeScannerComponent"
 
+    # Props que pasamos a la biblioteca JS
     fps: Var[int]
     qrbox: Var[int]
     verbose: Var[bool]
+
+    # El manejador de eventos que envía los datos de vuelta a Python
     on_scan_success: rx.EventHandler[lambda decoded_text: [decoded_text]]
 
     def _get_custom_code(self) -> str:
         """
         Genera el código JS/React necesario para inicializar el escáner.
+        Este código es ahora la única fuente de definición del componente.
         """
-        # --- CORRECCIÓN: Se ha eliminado la línea "import React, { useEffect } from 'react';" ---
         return """
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { useEffect } from 'react';
 
 const Html5QrcodeScannerComponent = (props) => {
   const qrcodeRegionId = "html5qr-code-full-region";
 
   useEffect(() => {
+    // Esta sección solo se ejecuta una vez cuando el componente se monta
     const html5QrcodeScanner = new Html5QrcodeScanner(
       qrcodeRegionId,
       {
@@ -37,6 +45,7 @@ const Html5QrcodeScannerComponent = (props) => {
     );
 
     const successCallback = (decodedText, decodedResult) => {
+      // Llama al event handler de Reflex cuando el escaneo es exitoso
       if (props.on_scan_success) {
         props.on_scan_success(decodedText);
       }
@@ -48,11 +57,14 @@ const Html5QrcodeScannerComponent = (props) => {
 
     html5QrcodeScanner.render(successCallback, errorCallback);
 
+    // Función de limpieza para detener la cámara cuando el componente se desmonte
     return () => {
-      // Detiene la cámara cuando el componente se desmonta
-      html5QrcodeScanner.clear().catch(error => {
-        console.error("Failed to clear html5QrcodeScanner.", error);
-      });
+      // Asegurarse de que el scanner todavía existe antes de llamar a clear
+      if (html5QrcodeScanner && html5QrcodeScanner.getState() !== 2) { // 2 es NOT_STARTED
+          html5QrcodeScanner.clear().catch(error => {
+            console.error("Failed to clear html5QrcodeScanner.", error);
+          });
+      }
     };
   }, []);
 
