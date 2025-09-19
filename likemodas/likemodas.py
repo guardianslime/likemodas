@@ -1,4 +1,4 @@
-# likemodas/likemodas.py (VERSIÓN FINAL Y CORREGIDA)
+# likemodas/likemodas.py (VERSIÓN FINAL Y LIMPIA)
 
 from fastapi import FastAPI
 import reflex as rx
@@ -10,7 +10,7 @@ from .state import AppState
 from .ui.base import base_page
 from . import navigation
 
-# --- Importaciones de todas tus páginas (sin cambios) ---
+# --- Importaciones de todas tus páginas ---
 from .auth import pages as auth_pages
 from .account import profile_page, shipping_info as shipping_info_module, saved_posts as saved_posts_module
 from .admin import page as admin_page
@@ -43,14 +43,14 @@ fastapi_app.include_router(api_endpoints.router) # <--- La línea clave del QR
 #    pasando el FastAPI ya configurado.
 app = rx.App(
     style={"font_family": "Arial, sans-serif"},
-    api_transformer=fastapi_app  # <--- ¡LA CLAVE ESTÁ AQUÍ! [cite: 15]
+    api_transformer=fastapi_app
 )
 
 # ======================================================================
-# DEFINICIÓN DE RUTAS DE LA PÁGINA (sin cambios)
+# DEFINICIÓN DE RUTAS DE LA PÁGINA
 # ======================================================================
 
-# --- Ruta principal (la galería de productos) ---
+# --- Ruta principal ---
 app.add_page(
     base_page(landing.landing_content()),
     route="/",
@@ -65,7 +65,7 @@ app.add_page(base_page(auth_pages.verification_page_content()), route="/verify-e
 app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgot-password", title="Recuperar Contraseña")
 app.add_page(base_page(auth_pages.reset_password_page_content()), route="/reset-password", on_load=AppState.on_load_check_token, title="Restablecer Contraseña")
 
-# --- Rutas de Vistas Públicas ---
+# --- Rutas Públicas ---
 app.add_page(base_page(seller_page.seller_page_content()), route="/vendedor", on_load=AppState.on_load_seller_page, title="Publicaciones del Vendedor")
 
 # --- Rutas de Cuenta, Carrito y Compras ---
@@ -85,7 +85,7 @@ app.add_page(base_page(admin_store_page()), route="/admin/store", on_load=AppSta
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_purchase_history)
 app.add_page(base_page(admin_tickets_page_content()), route=navigation.routes.SUPPORT_TICKETS_ROUTE, on_load=AppState.on_load_admin_tickets_page, title="Solicitudes de Soporte")
 
-# --- Rutas de Proceso de Compra y Post-Compra ---
+# --- Rutas Post-Compra ---
 app.add_page(invoice_page.invoice_page_content(), route="/invoice", on_load=InvoiceState.on_load_invoice_page, title="Factura")
 app.add_page(base_page(returns_page.return_exchange_page_content()), route=navigation.routes.RETURN_EXCHANGE_ROUTE, on_load=AppState.on_load_return_page, title="Devolución o Cambio")
 app.add_page(base_page(payment_status.payment_status_page()), route="/payment-status", title="Estado del Pago")
