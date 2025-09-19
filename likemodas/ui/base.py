@@ -4,7 +4,7 @@ import reflex as rx
 from reflex.style import toggle_color_mode
 from ..state import AppState
 from .nav import public_navbar
-from .sidebar import admin_sidebar, admin_mobile_sidebar
+from .sidebar import sliding_admin_sidebar
 
 def fixed_color_mode_button() -> rx.Component:
     """Botón flotante para cambiar el modo de color."""
@@ -23,7 +23,7 @@ def fixed_color_mode_button() -> rx.Component:
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    """Estructura de página base que ahora incluye el layout de admin responsivo."""
+    """Estructura de página base que ahora incluye el botón flotante en ambas vistas."""
     loading_screen = rx.center(
         rx.spinner(size="3"),
         height="100vh",
@@ -36,19 +36,21 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         loading_screen,
         rx.cond(
             AppState.is_admin,
-            # --- LAYOUT DE ADMIN RESPONSIVO ---
+            # --- LAYOUT DE ADMIN ---
             rx.box(
-                admin_sidebar(),          # Sidebar para escritorio (se oculta solo en móvil)
-                admin_mobile_sidebar(),   # Botón y drawer para móvil (se oculta solo en escritorio)
+                sliding_admin_sidebar(),
                 rx.box(
                     child,
-                    # Margen izquierdo responsivo: 0 en móvil, ancho del sidebar en escritorio
-                    margin_left=["0", "0", "16em"],
+                    padding_x="4em",
                     padding_y="2em",
-                    padding_x=["1em", "1em", "4em"], # Menos padding en móvil
-                    width="100%",
+                    width="100%"
                 ),
+                
+                # --- CORRECCIÓN: AÑADIMOS EL BOTÓN FLOTANTE AQUÍ ---
                 fixed_color_mode_button(),
+
+                width="100%",
+                min_height="100vh",
             ),
             # --- LAYOUT PÚBLICO (sin cambios) ---
             rx.box(
