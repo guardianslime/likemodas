@@ -45,6 +45,34 @@ from .returns import page as returns_page
 from .api import webhooks
 from .api import tasks as api_tasks # <-- 1. Le damos un apodo único: "api_tasks"
 
+# --- TUS OTRAS IMPORTACIONES ---
+from .api import webhooks
+from .api import tasks as api_tasks
+# VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+# 1. AÑADE LA IMPORTACIÓN PARA TU API DE QR [cite: 54]
+from .api import endpoints as api_endpoints
+
+# 1. Crear la instancia de FastAPI que extenderá el backend de Reflex
+fastapi_app = FastAPI(title="API extendida de Likemodas")
+
+# 2. Incluir el router de webhooks
+fastapi_app.include_router(webhooks.router)
+
+# 3. Incluir el router de tareas
+fastapi_app.include_router(api_tasks.router)
+
+# VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+# 4. AÑADE ESTA LÍNEA PARA REGISTRAR EL ROUTER DEL QR [cite: 54]
+fastapi_app.include_router(api_endpoints.router)
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+# Pasar la instancia de FastAPI a la aplicación Reflex
+app = rx.App(
+    style={"font_family": "Arial, sans-serif"},
+    api_transformer=fastapi_app
+)
+
 # 1. Crear la instancia de FastAPI que extenderá el backend de Reflex
 fastapi_app = FastAPI(title="API extendida de Likemodas")
 
