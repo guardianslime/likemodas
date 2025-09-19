@@ -116,14 +116,25 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_phone: str; items: list[PurchaseItemCardData]
     estimated_delivery_date_formatted: str
 
+# --- PASO 1: AÑADIR ESTE NUEVO DTO ANTES DE AppState ---
+class AdminVariantData(rx.Base):
+    """DTO para mostrar una variante con su QR en el modal de admin."""
+    vuid: str = ""
+    stock: int = 0
+    attributes_str: str = "" # String de atributos pre-formateado
+    # Mantenemos los atributos originales por si se necesitan en el futuro
+    attributes: dict = {}
+
+# --- PASO 2: MODIFICAR EL DTO AdminPostRowData ---
 class AdminPostRowData(rx.Base):
     id: int
     title: str
     price_cop: str
     publish_active: bool
     main_image_url: str = ""
-    # --- AÑADE ESTA LÍNEA ---
-    variants: list[dict] = [] # El modal necesita esta lista
+    # --- LÍNEA MODIFICADA: Ahora usa nuestro nuevo DTO ---
+    variants: list[AdminVariantData] = []
+
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -2540,7 +2551,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_complete_fashion: bool = False
         
     @rx.var
-    def my_admin_posts(self) -> list[AdminPostRowData]: # <-- Cambia el tipo de retorno
+    def my_admin_posts(self) -> list[AdminPostRowData]:
         if not self.authenticated_user_info:
             return []
         with rx.session() as session:
@@ -2550,11 +2561,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
-            # --- INICIO DE LA CORRECCIÓN ---
-            # Convertir los modelos de la BD al DTO simple
             admin_posts = []
             for p in posts_from_db:
                 main_image = p.variants[0].get("image_url", "") if p.variants else ""
+                
+                # --- INICIO DE LA LÓGICA DE PRE-PROCESAMIENTO ---
+                variants_dto_list = []
+                if p.variants:
+                    for v in p.variants:
+                        attrs = v.get("attributes", {})
+                        # Creamos el string de atributos aquí, en Python
+                        attrs_str = ", ".join(f"{k}: {val}" for k, val in attrs.items())
+                        variants_dto_list.append(
+                            AdminVariantData(
+                                vuid=v.get("vuid", ""),
+                                stock=v.get("stock", 0),
+                                attributes_str=attrs_str,
+                                attributes=attrs
+                            )
+                        )
+                # --- FIN DE LA LÓGICA DE PRE-PROCESAMIENTO ---
+                
                 admin_posts.append(
                     AdminPostRowData(
                         id=p.id,
@@ -2562,10 +2589,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price_cop=p.price_cop,
                         publish_active=p.publish_active,
                         main_image_url=main_image,
-                        variants=p.variants or [],
+                        variants=variants_dto_list, # Pasamos la lista pre-procesada
                     )
                 )
             return admin_posts
+
             # --- FIN DE LA CORRECCIÓN ---
 
     # --- INICIO DE LA CORRECCIÓN CLAVE ---
