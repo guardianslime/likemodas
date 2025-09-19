@@ -117,7 +117,13 @@ class UserPurchaseHistoryCardData(rx.Base):
     estimated_delivery_date_formatted: str
 
 class AdminPostRowData(rx.Base):
-    id: int; title: str; price_cop: str; publish_active: bool; main_image_url: str = ""
+    id: int
+    title: str
+    price_cop: str
+    publish_active: bool
+    main_image_url: str = ""
+    # --- AÑADE ESTA LÍNEA ---
+    variants: list[dict] = [] # El modal necesita esta lista
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -2556,6 +2562,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price_cop=p.price_cop,
                         publish_active=p.publish_active,
                         main_image_url=main_image,
+                        variants=p.variants or [],
                     )
                 )
             return admin_posts
