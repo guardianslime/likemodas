@@ -51,8 +51,6 @@ def qr_display_modal() -> rx.Component:
         return rx.box(
             rx.hstack(
                 rx.vstack(
-                    # --- INICIO DE LA CORRECCIÓN ---
-                    # Usamos un rx.foreach para iterar sobre los atributos de forma segura
                     rx.foreach(
                         variant.get("attributes", {}),
                         lambda item: rx.hstack(
@@ -61,9 +59,11 @@ def qr_display_modal() -> rx.Component:
                             spacing="2",
                         )
                     ),
-                    # --- FIN DE LA CORRECCIÓN ---
                     rx.text(f"Stock: {variant.get('stock', 0)}"),
-                    rx.text(f"VUID: {variant.get('vuid', 'N/A')[:8]}...", size="1", color_scheme="gray"),
+                    # VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+                    # LÍNEA CORREGIDA: Se elimina el recorte [:8]
+                    rx.text(f"VUID: {variant.get('vuid', 'N/A')}", size="1", color_scheme="gray"),
+                    # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                     align_items="start",
                     spacing="1",
                 ),
@@ -75,7 +75,7 @@ def qr_display_modal() -> rx.Component:
                         width="100px",
                         height="100px",
                     ),
-                    rx.text("Sin QR", size="2")
+                    rx.center(rx.text("Sin QR", size="2", color_scheme="gray"), width="100px", height="100px")
                 ),
                 spacing="4",
                 align="center",
