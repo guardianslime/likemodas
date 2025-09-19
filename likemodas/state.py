@@ -4,6 +4,7 @@ import reflex as rx
 import reflex_local_auth
 import sqlmodel
 from sqlmodel import select
+from sqlmodel import text # Importar text
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,8 @@ import re
 import asyncio
 import math
 import httpx 
+import uuid # Asegúrate de importar la biblioteca uuid
+
 from collections import defaultdict
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
@@ -1073,14 +1076,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         all_variants_for_db = []
         for index, generated_list in self.generated_variants_map.items():
             main_image_url_for_group = self.new_variants[index].get("image_url", "")
-            
             for variant_data in generated_list:
-                all_variants_for_db.append({
+                # --- INICIO DE LA MODIFICACIÓN ---
+                # Asegura que cada variante tenga un VUID
+                variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
-                    # Usa la imagen asignada a la variante, o la imagen principal del grupo como fallback
-                    "image_url": variant_data.image_url or main_image_url_for_group
-                })
+                    "image_url": variant_data.image_url or main_image_url_for_group,
+                    "vuid": str(uuid.uuid4()) # Genera un nuevo VUID
+                }
+                all_variants_for_db.append(variant_dict)
 
         if not all_variants_for_db:
              return rx.toast.error("No se encontraron variantes configuradas para guardar.")
@@ -1109,6 +1114,29 @@ class AppState(reflex_local_auth.LocalAuthState):
         self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
+    
+    def find_variant_by_vuid(self, vuid: str) -> Optional[Tuple[BlogPostModel, dict]]:
+        """
+        Busca un producto y su variante específica usando un VUID.
+        Utiliza una consulta SQL optimizada para buscar dentro del campo JSON.
+        """
+        with rx.session() as session:
+            # Consulta SQL para buscar en un array de objetos JSONB en PostgreSQL
+            sql_query = text("""
+                SELECT bp.*, v as variant_data
+                FROM blogpostmodel AS bp, jsonb_array_elements(bp.variants) AS v
+                WHERE v->>'vuid' = :vuid_param
+            """)
+            
+            result = session.exec(sql_query, {"vuid_param": vuid}).first()
+
+            if result:
+                # El resultado es una tupla, donde el primer elemento es el BlogPostModel
+                # y el segundo es el diccionario de la variante.
+                post = session.get(BlogPostModel, result.id)
+                variant_dict = result.variant_data
+                return post, variant_dict
+            return None
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
@@ -1240,6 +1268,59 @@ class AppState(reflex_local_auth.LocalAuthState):
             o for o in self.available_types 
             if self.search_attr_tipo.lower() in o.lower()
         ]
+    
+    show_qr_scanner_modal: bool = False
+
+def toggle_qr_scanner_modal(self):
+    self.show_qr_scanner_modal = not self.show_qr_scanner_modal
+
+def set_show_qr_scanner_modal(self, state: bool):
+    self.show_qr_scanner_modal = state
+
+@rx.event
+def handle_qr_scan_result(self, decoded_text: str):
+    """
+    Manejador que se activa tras un escaneo QR exitoso.
+    Busca la variante y la añade al carrito de venta directa.
+    """
+    # 1. Cerrar inmediatamente el modal del escáner
+    self.show_qr_scanner_modal = False
+
+    # 2. Buscar la variante en la base de datos
+    result = self.find_variant_by_vuid(decoded_text)
+    
+    if not result:
+        return rx.toast.error("Código QR no válido o producto no encontrado.")
+        
+    post, variant = result
+
+    # 3. Construir la clave única para el carrito de venta directa
+    attributes = variant.get("attributes", {})
+    selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
+    
+    # Necesitamos el índice de la variante dentro de la lista del producto
+    variant_index = -1
+    for i, v in enumerate(post.variants):
+        if v.get("vuid") == decoded_text:
+            variant_index = i
+            break
+            
+    if variant_index == -1:
+        return rx.toast.error("Error de consistencia de datos. No se pudo encontrar el índice de la variante.")
+        
+    cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+
+    # 4. Verificar stock y añadir al carrito
+    available_stock = variant.get("stock", 0)
+    quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+    
+    if quantity_in_cart + 1 > available_stock:
+        return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
+        
+    self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+
+    # 5. Notificar al usuario
+    return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
 
     min_price: str = ""
     max_price: str = ""

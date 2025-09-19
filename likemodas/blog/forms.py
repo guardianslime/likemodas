@@ -509,7 +509,7 @@ def blog_post_edit_form() -> rx.Component:
                     ),
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(name="content", value=AppState.edit_post_content, on_change=AppState.set_edit_post_content, required=True, size="2", style={"height": "120px"}),
-                    spacing="3", align_items="stretch"
+                    spacing="3", align_itemsa="stretch"
                 ),
                 columns={"initial": "1", "md": "2"}, spacing="6", width="100%",
             ),
