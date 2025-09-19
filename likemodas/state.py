@@ -1271,56 +1271,63 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     show_qr_scanner_modal: bool = False
 
-def toggle_qr_scanner_modal(self):
-    self.show_qr_scanner_modal = not self.show_qr_scanner_modal
+    def toggle_qr_scanner_modal(self):
+        self.show_qr_scanner_modal = not self.show_qr_scanner_modal
 
-def set_show_qr_scanner_modal(self, state: bool):
-    self.show_qr_scanner_modal = state
+    def set_show_qr_scanner_modal(self, state: bool):
+        self.show_qr_scanner_modal = state
 
-@rx.event
-def handle_qr_scan_result(self, decoded_text: str):
-    """
-    Manejador que se activa tras un escaneo QR exitoso.
-    Busca la variante y la añade al carrito de venta directa.
-    """
-    # 1. Cerrar inmediatamente el modal del escáner
-    self.show_qr_scanner_modal = False
+    # 1. La variable para el término de búsqueda de la tienda de administración.
+    search_term: str = ""
 
-    # 2. Buscar la variante en la base de datos
-    result = self.find_variant_by_vuid(decoded_text)
-    
-    if not result:
-        return rx.toast.error("Código QR no válido o producto no encontrado.")
+    # 2. La función para actualizar la variable (setter).
+    def set_search_term(self, term: str):
+        self.search_term = term
+
+    @rx.event
+    def handle_qr_scan_result(self, decoded_text: str):
+        """
+        Manejador que se activa tras un escaneo QR exitoso.
+        Busca la variante y la añade al carrito de venta directa.
+        """
+        # 1. Cerrar inmediatamente el modal del escáner
+        self.show_qr_scanner_modal = False
+
+        # 2. Buscar la variante en la base de datos
+        result = self.find_variant_by_vuid(decoded_text)
         
-    post, variant = result
-
-    # 3. Construir la clave única para el carrito de venta directa
-    attributes = variant.get("attributes", {})
-    selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
-    
-    # Necesitamos el índice de la variante dentro de la lista del producto
-    variant_index = -1
-    for i, v in enumerate(post.variants):
-        if v.get("vuid") == decoded_text:
-            variant_index = i
-            break
+        if not result:
+            return rx.toast.error("Código QR no válido o producto no encontrado.")
             
-    if variant_index == -1:
-        return rx.toast.error("Error de consistencia de datos. No se pudo encontrar el índice de la variante.")
-        
-    cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+        post, variant = result
 
-    # 4. Verificar stock y añadir al carrito
-    available_stock = variant.get("stock", 0)
-    quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
-    
-    if quantity_in_cart + 1 > available_stock:
-        return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
+        # 3. Construir la clave única para el carrito de venta directa
+        attributes = variant.get("attributes", {})
+        selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
         
-    self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+        # Necesitamos el índice de la variante dentro de la lista del producto
+        variant_index = -1
+        for i, v in enumerate(post.variants):
+            if v.get("vuid") == decoded_text:
+                variant_index = i
+                break
+                
+        if variant_index == -1:
+            return rx.toast.error("Error de consistencia de datos. No se pudo encontrar el índice de la variante.")
+            
+        cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
 
-    # 5. Notificar al usuario
-    return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
+        # 4. Verificar stock y añadir al carrito
+        available_stock = variant.get("stock", 0)
+        quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+        
+        if quantity_in_cart + 1 > available_stock:
+            return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
+            
+        self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+
+        # 5. Notificar al usuario
+        return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
 
     min_price: str = ""
     max_price: str = ""
