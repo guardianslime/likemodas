@@ -48,11 +48,20 @@ def qr_display_modal() -> rx.Component:
 
     def render_variant_qr(variant: dict) -> rx.Component:
         """Renderiza la fila para una sola variante con su QR."""
-        attributes_str = ", ".join(f"{k}: {v}" for k, v in variant.get("attributes", {}).items())
         return rx.box(
             rx.hstack(
                 rx.vstack(
-                    rx.text(attributes_str, weight="bold"),
+                    # --- INICIO DE LA CORRECCIÓN ---
+                    # Usamos un rx.foreach para iterar sobre los atributos de forma segura
+                    rx.foreach(
+                        variant.get("attributes", {}),
+                        lambda item: rx.hstack(
+                            rx.text(f"{item[0]}:", weight="medium"),
+                            rx.text(item[1], weight="bold"),
+                            spacing="2",
+                        )
+                    ),
+                    # --- FIN DE LA CORRECCIÓN ---
                     rx.text(f"Stock: {variant.get('stock', 0)}"),
                     rx.text(f"VUID: {variant.get('vuid', 'N/A')[:8]}...", size="1", color_scheme="gray"),
                     align_items="start",
