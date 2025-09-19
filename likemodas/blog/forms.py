@@ -72,13 +72,15 @@ def variant_stock_manager() -> rx.Component:
                                 align_items="start", flex_grow=1,
                             ),
                             rx.hstack(
-                                rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_variant_index, index)),
+                                # <-- CORRECCIÓN AQUÍ -->
+                                rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_variant_index, index), type="button"),
                                 rx.input(
                                     value=variant.stock.to_string(),
                                     on_change=lambda val: AppState.set_variant_stock(AppState.selected_variant_index, index, val),
                                     text_align="center", max_width="70px",
                                 ),
-                                rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_variant_index, index)),
+                                # <-- CORRECCIÓN AQUÍ -->
+                                rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_variant_index, index), type="button"),
                                 align="center", spacing="2",
                             ),
                             rx.select(
@@ -122,16 +124,17 @@ def variant_stock_manager_edit() -> rx.Component:
                                 align_items="start", flex_grow=1,
                             ),
                             rx.hstack(
-                                rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_edit_variant_stock(AppState.edit_selected_image_index, index)),
+                                # <-- CORRECCIÓN AQUÍ -->
+                                rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_edit_variant_stock(AppState.edit_selected_image_index, index), type="button"),
                                 rx.input(
                                     value=variant.stock.to_string(),
                                     on_change=lambda val: AppState.set_edit_variant_stock(AppState.edit_selected_image_index, index, val),
                                     text_align="center", max_width="70px",
                                 ),
-                                rx.icon_button(rx.icon("plus"), on_click=AppState.increment_edit_variant_stock(AppState.edit_selected_image_index, index)),
+                                # <-- CORRECCIÓN AQUÍ -->
+                                rx.icon_button(rx.icon("plus"), on_click=AppState.increment_edit_variant_stock(AppState.edit_selected_image_index, index), type="button"),
                                 align="center", spacing="2",
                             ),
-                            # <-- CORRECCIÓN: SE HA ELIMINADO EL rx.select DE IMAGEN DE AQUÍ -->
                             spacing="4", align="center", width="100%",
                         ),
                         padding="0.75em", border="1px solid",
