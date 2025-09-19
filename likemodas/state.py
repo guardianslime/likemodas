@@ -4,6 +4,7 @@ import reflex as rx
 import reflex_local_auth
 import sqlmodel
 from sqlmodel import select
+from sqlmodel import text # Importar text
 import sqlalchemy
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
@@ -13,6 +14,8 @@ import re
 import asyncio
 import math
 import httpx 
+import uuid # Asegúrate de importar la biblioteca uuid
+
 from collections import defaultdict
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
@@ -113,8 +116,25 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_phone: str; items: list[PurchaseItemCardData]
     estimated_delivery_date_formatted: str
 
+# --- PASO 1: AÑADIR ESTE NUEVO DTO ANTES DE AppState ---
+class AdminVariantData(rx.Base):
+    """DTO para mostrar una variante con su QR en el modal de admin."""
+    vuid: str = ""
+    stock: int = 0
+    attributes_str: str = "" # String de atributos pre-formateado
+    # Mantenemos los atributos originales por si se necesitan en el futuro
+    attributes: dict = {}
+
+# --- PASO 2: MODIFICAR EL DTO AdminPostRowData ---
 class AdminPostRowData(rx.Base):
-    id: int; title: str; price_cop: str; publish_active: bool; main_image_url: str = ""
+    id: int
+    title: str
+    price_cop: str
+    publish_active: bool
+    main_image_url: str = ""
+    # --- LÍNEA MODIFICADA: Ahora usa nuestro nuevo DTO ---
+    variants: list[AdminVariantData] = []
+
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -182,6 +202,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     _product_id_to_load_on_mount: Optional[int] = None
     success: bool = False
     error_message: str = ""
+
+    @rx.var
+    def backend_api_url(self) -> str:
+        """Devuelve la URL base de la API configurada en rxconfig."""
+        # get_config() lee el rxconfig.py del backend en ejecución
+        return get_config().api_url
     
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfoDTO | None:
@@ -1073,14 +1099,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         all_variants_for_db = []
         for index, generated_list in self.generated_variants_map.items():
             main_image_url_for_group = self.new_variants[index].get("image_url", "")
-            
             for variant_data in generated_list:
-                all_variants_for_db.append({
+                # --- INICIO DE LA MODIFICACIÓN ---
+                # Asegura que cada variante tenga un VUID
+                variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
-                    # Usa la imagen asignada a la variante, o la imagen principal del grupo como fallback
-                    "image_url": variant_data.image_url or main_image_url_for_group
-                })
+                    "image_url": variant_data.image_url or main_image_url_for_group,
+                    "vuid": str(uuid.uuid4()) # Genera un nuevo VUID
+                }
+                all_variants_for_db.append(variant_dict)
 
         if not all_variants_for_db:
              return rx.toast.error("No se encontraron variantes configuradas para guardar.")
@@ -1109,6 +1137,29 @@ class AppState(reflex_local_auth.LocalAuthState):
         self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
+    
+    def find_variant_by_vuid(self, vuid: str) -> Optional[Tuple[BlogPostModel, dict]]:
+        """
+        Busca un producto y su variante específica usando un VUID.
+        Utiliza una consulta SQL optimizada para buscar dentro del campo JSON.
+        """
+        with rx.session() as session:
+            # Consulta SQL para buscar en un array de objetos JSONB en PostgreSQL
+            sql_query = text("""
+                SELECT bp.*, v as variant_data
+                FROM blogpostmodel AS bp, jsonb_array_elements(bp.variants) AS v
+                WHERE v->>'vuid' = :vuid_param
+            """)
+            
+            result = session.exec(sql_query, {"vuid_param": vuid}).first()
+
+            if result:
+                # El resultado es una tupla, donde el primer elemento es el BlogPostModel
+                # y el segundo es el diccionario de la variante.
+                post = session.get(BlogPostModel, result.id)
+                variant_dict = result.variant_data
+                return post, variant_dict
+            return None
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
@@ -1240,6 +1291,96 @@ class AppState(reflex_local_auth.LocalAuthState):
             o for o in self.available_types 
             if self.search_attr_tipo.lower() in o.lower()
         ]
+    
+    show_qr_scanner_modal: bool = False
+
+    def toggle_qr_scanner_modal(self):
+        self.show_qr_scanner_modal = not self.show_qr_scanner_modal
+
+    def set_show_qr_scanner_modal(self, state: bool):
+        self.show_qr_scanner_modal = state
+
+    # --- INICIO: AÑADIR ESTA SECCIÓN PARA EL MODAL DE QR ---
+
+    # Variable para controlar la visibilidad del modal de visualización de QR
+    show_qr_display_modal: bool = False
+
+    # Variable para almacenar los datos del post cuyos QR se están mostrando
+    post_for_qr_display: Optional[AdminPostRowData] = None
+
+    @rx.event
+    def open_qr_modal(self, post_id: int):
+        """
+        Busca un post por su ID y lo carga en el estado para mostrar sus QR en el modal.
+        """
+        # Buscamos el post en la lista que ya tenemos cargada en el estado
+        post_data = next((p for p in self.my_admin_posts if p.id == post_id), None)
+        
+        if post_data:
+            self.post_for_qr_display = post_data
+            self.show_qr_display_modal = True
+        else:
+            return rx.toast.error("No se pudo encontrar la publicación.")
+
+    def set_show_qr_display_modal(self, state: bool):
+        """Controla la apertura y cierre del modal desde la UI."""
+        self.show_qr_display_modal = state
+        if not state:
+            self.post_for_qr_display = None # Limpia el estado al cerrar
+
+    # --- FIN DE LA SECCIÓN PARA EL MODAL DE QR ---
+
+    # 1. La variable para el término de búsqueda de la tienda de administración.
+    search_term: str = ""
+
+    # 2. La función para actualizar la variable (setter).
+    def set_search_term(self, term: str):
+        self.search_term = term
+
+    @rx.event
+    def handle_qr_scan_result(self, decoded_text: str):
+        """
+        Manejador que se activa tras un escaneo QR exitoso.
+        Busca la variante y la añade al carrito de venta directa.
+        """
+        # 1. Cerrar inmediatamente el modal del escáner
+        self.show_qr_scanner_modal = False
+
+        # 2. Buscar la variante en la base de datos
+        result = self.find_variant_by_vuid(decoded_text)
+        
+        if not result:
+            return rx.toast.error("Código QR no válido o producto no encontrado.")
+            
+        post, variant = result
+
+        # 3. Construir la clave única para el carrito de venta directa
+        attributes = variant.get("attributes", {})
+        selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
+        
+        # Necesitamos el índice de la variante dentro de la lista del producto
+        variant_index = -1
+        for i, v in enumerate(post.variants):
+            if v.get("vuid") == decoded_text:
+                variant_index = i
+                break
+                
+        if variant_index == -1:
+            return rx.toast.error("Error de consistencia de datos. No se pudo encontrar el índice de la variante.")
+            
+        cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+
+        # 4. Verificar stock y añadir al carrito
+        available_stock = variant.get("stock", 0)
+        quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+        
+        if quantity_in_cart + 1 > available_stock:
+            return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
+            
+        self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+
+        # 5. Notificar al usuario
+        return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
 
     min_price: str = ""
     max_price: str = ""
@@ -1670,16 +1811,14 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # ✨ --- REEMPLAZA POR COMPLETO LA FUNCIÓN `save_edited_post` --- ✨
     @rx.event
-    def save_edited_post(self): # <-- CAMBIO CLAVE: Se elimina el parámetro form_data
+    def save_edited_post(self):
         """
-        [VERSIÓN FINAL Y ROBUSTA]
-        Guarda todos los cambios del modal leyendo TODOS los valores directamente desde el estado,
-        ignorando el diccionario form_data para máxima consistencia.
+        [VERSIÓN FINAL CON BACKFILL DE VUID]
+        Guarda los cambios del modal y añade VUIDs a las variantes antiguas que no lo tengan.
         """
         if not self.is_admin or self.post_to_edit_id is None:
             return rx.toast.error("No se pudo guardar la publicación.")
 
-        # Se leen los valores numéricos desde el estado
         try:
             price = float(self.edit_price_str or 0.0)
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
@@ -1687,16 +1826,30 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             return rx.toast.error("Precio, costo de envío y límite deben ser números válidos.")
 
-        # La lógica para aplanar las variantes no cambia y es correcta
         all_variants_for_db = []
         for image_group_index, variant_list in self.edit_variants_map.items():
             main_image_for_group = self.unique_edit_form_images[image_group_index]
             for variant_form_data in variant_list:
-                all_variants_for_db.append({
+                
+                # --- INICIO DE LA LÓGICA DE ACTUALIZACIÓN DE VUID ---
+                new_variant_dict = {
                     "attributes": variant_form_data.attributes,
                     "stock": variant_form_data.stock,
                     "image_url": variant_form_data.image_url or main_image_for_group,
-                })
+                }
+                
+                # Si la variante ya tiene un VUID, lo conservamos.
+                # Si no lo tiene, generamos uno nuevo.
+                if "vuid" in variant_form_data.attributes:
+                     # Esto es un fallback por si el vuid se guardó dentro de attributes por error
+                    new_variant_dict["vuid"] = variant_form_data.attributes["vuid"]
+                elif hasattr(variant_form_data, 'vuid') and variant_form_data.vuid:
+                     new_variant_dict["vuid"] = variant_form_data.vuid
+                else:
+                    new_variant_dict["vuid"] = str(uuid.uuid4())
+                
+                all_variants_for_db.append(new_variant_dict)
+                # --- FIN DE LA LÓGICA DE ACTUALIZACIÓN DE VUID ---
 
         if not all_variants_for_db:
             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
@@ -1704,12 +1857,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
             if post_to_update:
-                # <-- CAMBIO CLAVE: Ahora todo se lee desde `self` -->
-                # Los campos de texto también se leen desde el estado, que ya fue actualizado por su `on_change`.
                 post_to_update.title = self.edit_post_title
                 post_to_update.content = self.edit_post_content
-                
-                # El resto de los campos, incluyendo los switches, se leen desde el estado.
                 post_to_update.price = price
                 post_to_update.category = self.edit_category
                 post_to_update.price_includes_iva = self.edit_price_includes_iva
@@ -2416,7 +2565,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     filter_complete_fashion: bool = False
         
     @rx.var
-    def my_admin_posts(self) -> list[AdminPostRowData]: # <-- Cambia el tipo de retorno
+    def my_admin_posts(self) -> list[AdminPostRowData]:
         if not self.authenticated_user_info:
             return []
         with rx.session() as session:
@@ -2426,11 +2575,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
-            # --- INICIO DE LA CORRECCIÓN ---
-            # Convertir los modelos de la BD al DTO simple
             admin_posts = []
             for p in posts_from_db:
                 main_image = p.variants[0].get("image_url", "") if p.variants else ""
+                
+                # --- INICIO DE LA LÓGICA DE PRE-PROCESAMIENTO ---
+                variants_dto_list = []
+                if p.variants:
+                    for v in p.variants:
+                        attrs = v.get("attributes", {})
+                        # Creamos el string de atributos aquí, en Python
+                        attrs_str = ", ".join(f"{k}: {val}" for k, val in attrs.items())
+                        variants_dto_list.append(
+                            AdminVariantData(
+                                vuid=v.get("vuid", ""),
+                                stock=v.get("stock", 0),
+                                attributes_str=attrs_str,
+                                attributes=attrs
+                            )
+                        )
+                # --- FIN DE LA LÓGICA DE PRE-PROCESAMIENTO ---
+                
                 admin_posts.append(
                     AdminPostRowData(
                         id=p.id,
@@ -2438,9 +2603,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price_cop=p.price_cop,
                         publish_active=p.publish_active,
                         main_image_url=main_image,
+                        variants=variants_dto_list, # Pasamos la lista pre-procesada
                     )
                 )
             return admin_posts
+
             # --- FIN DE LA CORRECCIÓN ---
 
     # --- INICIO DE LA CORRECCIÓN CLAVE ---

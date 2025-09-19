@@ -1,0 +1,10 @@
+# nixpacks.toml
+
+[phases.setup]
+# aptPkgs son paquetes del sistema para entornos Debian/Ubuntu, que usa Railway.
+# Estos son necesarios para que la librería Pillow funcione correctamente con imágenes.
+aptPkgs = ["libjpeg-dev", "zlib1g-dev"]
+
+[start]
+# Le decimos a Nixpacks que use el mismo comando de inicio que ya tienes.
+cmd = "sh ./start.sh"
