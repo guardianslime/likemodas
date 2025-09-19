@@ -1670,11 +1670,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # ✨ --- REEMPLAZA POR COMPLETO LA FUNCIÓN `save_edited_post` --- ✨
     @rx.event
-    def save_edited_post(self, form_data: dict):
+    def save_edited_post(self): # <-- CORRECCIÓN: Se elimina el parámetro form_data
         """
-        [VERSIÓN CORREGIDA]
-        Guarda todos los cambios del modal, leyendo los valores de los switches
-        directamente desde el estado y aplanando correctamente las variantes.
+        [VERSIÓN FINAL Y ROBUSTA]
+        Guarda todos los cambios del modal leyendo TODOS los valores directamente desde el estado,
+        ignorando el diccionario form_data para máxima consistencia.
         """
         if not self.is_admin or self.post_to_edit_id is None:
             return rx.toast.error("No se pudo guardar la publicación.")
@@ -1686,20 +1686,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             return rx.toast.error("Precio, costo de envío y límite deben ser números válidos.")
 
-        # <-- INICIO: LÓGICA DE "APLANAMIENTO" CORREGIDA -->
-        # Convierte el mapa de variantes de vuelta a una lista simple para la BD.
         all_variants_for_db = []
         for image_group_index, variant_list in self.edit_variants_map.items():
-            # Obtenemos la URL de la imagen principal de este grupo
             main_image_for_group = self.unique_edit_form_images[image_group_index]
             for variant_form_data in variant_list:
                 all_variants_for_db.append({
                     "attributes": variant_form_data.attributes,
                     "stock": variant_form_data.stock,
-                    # CRÍTICO: Se asegura de que cada variante tenga su URL de imagen
                     "image_url": variant_form_data.image_url or main_image_for_group,
                 })
-        # <-- FIN: LÓGICA DE "APLANAMIENTO" CORREGIDA -->
 
         if not all_variants_for_db:
             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
@@ -1707,11 +1702,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
             if post_to_update:
-                # Actualizar campos de texto desde form_data
-                post_to_update.title = form_data.get("title", self.edit_post_title)
-                post_to_update.content = form_data.get("content", self.edit_post_content)
-                
-                # <-- CORRECCIÓN: Se leen los valores desde el estado, no desde form_data -->
+                # <-- CORRECCIÓN: Se leen todos los valores desde `self` en lugar de `form_data` -->
+                post_to_update.title = self.edit_post_title
+                post_to_update.content = self.edit_post_content
                 post_to_update.price = price
                 post_to_update.category = self.edit_category
                 post_to_update.price_includes_iva = self.edit_price_includes_iva
@@ -1720,15 +1713,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_to_update.is_moda_completa_eligible = self.edit_is_moda_completa
                 post_to_update.combines_shipping = self.edit_combines_shipping
                 post_to_update.shipping_combination_limit = limit
-
-                # Actualizar el campo complejo de variantes con la lista aplanada
                 post_to_update.variants = all_variants_for_db
                 
                 session.add(post_to_update)
                 session.commit()
 
                 yield self.cancel_editing_post(False)
-                yield AppState.on_load_admin_store # Recarga la lista de publicaciones
+                yield AppState.on_load_admin_store
                 yield rx.toast.success("Publicación actualizada correctamente.")
 
     # --- ⚙️ INICIO: NUEVOS HELPERS Y PROPIEDADES PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
