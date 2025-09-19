@@ -1533,6 +1533,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_temp_tamano: str = ""
     edit_variants_map: dict[int, list[VariantFormData]] = {}
 
+
+
     @rx.event
     def start_editing_post(self, post_id: int):
         """
@@ -1590,6 +1592,70 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield self.select_edit_image_for_editing(0)
 
             self.is_editing_post = True
+    
+    # --- ⚙️ INICIO: LÓGICA FALTANTE PARA GESTIONAR VARIANTES EN EL FORMULARIO DE EDICIÓN ⚙️ ---
+
+    @rx.event
+    def generate_edit_variants(self):
+        """
+        Genera variantes para la imagen seleccionada en el formulario de EDICIÓN.
+        """
+        if self.edit_selected_image_index < 0:
+            return rx.toast.error("Por favor, selecciona una imagen primero.")
+
+        # Recopila los atributos del formulario de edición
+        color = self.edit_attr_colores
+        sizes, size_key = [], ""
+        if self.edit_category == Category.ROPA.value:
+            sizes, size_key = self.edit_attr_tallas_ropa, "Talla"
+        elif self.edit_category == Category.CALZADO.value:
+            sizes, size_key = self.edit_attr_numeros_calzado, "Número"
+        elif self.edit_category == Category.MOCHILAS.value:
+            sizes, size_key = self.edit_attr_tamanos_mochila, "Tamaño"
+
+        if not color or not sizes:
+            return rx.toast.error("Debes seleccionar un color y al menos una talla/tamaño/número.")
+
+        # Genera las combinaciones
+        generated_variants = []
+        for size in sizes:
+            generated_variants.append(
+                VariantFormData(attributes={"Color": color, size_key: size})
+            )
+        
+        self.edit_variants_map[self.edit_selected_image_index] = generated_variants
+        return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen seleccionada.")
+
+    def _update_edit_variant_stock(self, group_index: int, item_index: int, new_stock: int):
+        """Función auxiliar para actualizar el stock en el mapa de edición."""
+        if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
+            self.edit_variants_map[group_index][item_index].stock = max(0, new_stock)
+
+    def set_edit_variant_stock(self, group_index: int, item_index: int, stock_str: str):
+        """Establece el stock para una variante en el formulario de edición."""
+        try:
+            self._update_edit_variant_stock(group_index, item_index, int(stock_str))
+        except (ValueError, TypeError):
+            pass
+
+    def increment_edit_variant_stock(self, group_index: int, item_index: int):
+        """Incrementa el stock de una variante en el formulario de edición."""
+        if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
+            current_stock = self.edit_variants_map[group_index][item_index].stock
+            self._update_edit_variant_stock(group_index, item_index, current_stock + 1)
+            
+    def decrement_edit_variant_stock(self, group_index: int, item_index: int):
+        """Decrementa el stock de una variante en el formulario de edición."""
+        if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
+            current_stock = self.edit_variants_map[group_index][item_index].stock
+            self._update_edit_variant_stock(group_index, item_index, current_stock - 1)
+
+    def assign_image_to_edit_variant(self, group_index: int, item_index: int, image_url: str):
+        """Asigna una imagen a una variante específica en el formulario de edición."""
+        if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
+            self.edit_variants_map[group_index][item_index].image_url = image_url
+
+    # --- ⚙️ FIN: LÓGICA FALTANTE ⚙️ ---
 
     @rx.event
     def cancel_editing_post(self, open_state: bool):
