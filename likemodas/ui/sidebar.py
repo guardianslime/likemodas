@@ -1,26 +1,24 @@
-# likemodas/ui/sidebar.py (CORREGIDO Y MEJORADO)
+# likemodas/ui/sidebar.py (CORREGIDO Y RESPONSIVO)
 
 import reflex as rx
-from reflex.style import toggle_color_mode
 from ..state import AppState
 from .. import navigation
 
-def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Un componente de enlace de sidebar rediseñado que resalta la página activa."""
-    
-    # --- LÓGICA PARA SABER SI EL ENLACE ESTÁ ACTIVO ---
-    is_active = (AppState.current_path == href)
+# La constante para el ancho del sidebar
+SIDEBAR_WIDTH = "16em"
 
+def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
+    """Componente de enlace de sidebar que resalta la página activa."""
+    is_active = (AppState.current_path == href)
     return rx.link(
         rx.hstack(
             rx.icon(icon, size=20),
-            rx.text(text, size="3"), # Tamaño de texto ajustado
+            rx.text(text, size="3"),
             rx.spacer(),
             rx.cond(
                 has_notification,
                 rx.box(width="8px", height="8px", bg="red", border_radius="50%")
             ),
-            # --- ESTILOS MEJORADOS ---
             bg=rx.cond(is_active, rx.color("violet", 4), "transparent"),
             color=rx.cond(is_active, rx.color("violet", 11), rx.color_mode_cond("black", "white")),
             font_weight=rx.cond(is_active, "bold", "normal"),
@@ -35,14 +33,11 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
         href=href,
         underline="none",
         width="100%",
-        # --- CORRECCIÓN CLAVE: SE ELIMINA EL ON_CLICK PARA QUE EL SIDEBAR NO SE CIERRE ---
-        # on_click=lambda: AppState.set_show_admin_sidebar(False), # <--- LÍNEA ELIMINADA
     )
 
 def sidebar_items() -> rx.Component:
     """La lista de vínculos del sidebar."""
     return rx.vstack(
-        # La sección de admin sigue igual
         rx.cond(
             AppState.is_admin,
             rx.fragment(
@@ -54,99 +49,120 @@ def sidebar_items() -> rx.Component:
                     sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
                     sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
                     sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
-                    spacing="2", 
+                    spacing="2",
                     width="100%"
                 ),
                 rx.divider(margin_y="1em"),
             )
         ),
         sidebar_item("Tienda", "store", "/admin/store"),
-        # --- CORRECCIÓN: SE ELIMINA EL VÍNCULO DE CONTACTO ---
-        # sidebar_item("Contacto", "mail", navigation.routes.CONTACT_US_ROUTE),
-        spacing="2", 
+        spacing="2",
         width="100%",
     )
 
-def sliding_admin_sidebar() -> rx.Component:
-    """El componente completo del sidebar con el nuevo diseño."""
-    SIDEBAR_WIDTH = "16em"
-
-    sidebar_panel = rx.vstack(
-        rx.hstack(
-            rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
-            align="center", justify="center", width="100%", margin_bottom="1.5em",
-        ),
-        sidebar_items(),
-        rx.spacer(),
-        
-        # --- SECCIÓN INFERIOR REDISEÑADA ---
+def admin_sidebar() -> rx.Component:
+    """
+    El componente del sidebar de administrador rediseñado para ser responsivo.
+    Se comporta como un panel fijo en escritorio y un cajón deslizable en móvil.
+    """
+    return rx.box(
         rx.vstack(
-            rx.divider(),
             rx.hstack(
+                rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
+                align="center", justify="center", width="100%", margin_bottom="1.5em",
+            ),
+            sidebar_items(),
+            rx.spacer(),
+            rx.vstack(
+                rx.divider(),
+                rx.hstack(
+                    rx.cond(
+                        AppState.is_authenticated,
+                        rx.hstack(
+                            rx.avatar(fallback=AppState.authenticated_user.username[0].upper(), size="2"),
+                            rx.text(AppState.authenticated_user.username, size="3", weight="medium"),
+                            align="center",
+                            spacing="3",
+                        ),
+                    ),
+                    rx.spacer(),
+                    width="100%",
+                    justify="between",
+                ),
                 rx.cond(
                     AppState.is_authenticated,
-                    rx.hstack(
-                        rx.avatar(fallback=AppState.authenticated_user.username[0].upper(), size="2"),
-                        rx.text(AppState.authenticated_user.username, size="3", weight="medium"),
-                        align="center",
-                        spacing="3",
-                    ),
+                    rx.button(
+                        "Logout",
+                        rx.icon(tag="log-out", margin_left="0.5em"),
+                        on_click=AppState.do_logout,
+                        width="100%",
+                        variant="soft",
+                        color_scheme="red"
+                    )
                 ),
-                rx.spacer(),
                 width="100%",
-                justify="between",
+                spacing="3",
             ),
-            rx.cond(
-                AppState.is_authenticated,
-                rx.button(
-                    "Logout", 
-                    rx.icon(tag="log-out", margin_left="0.5em"),
-                    on_click=AppState.do_logout,
-                    width="100%", 
-                    variant="soft", 
-                    color_scheme="red"
-                )
-            ),
-            width="100%", 
-            spacing="3",
+            spacing="5", padding="1em",
+            align="start", height="100vh",
         ),
-        # --- FIN DE LA SECCIÓN REDISEÑADA ---
-
-        spacing="5", padding="1em",
+        # --- LÓGICA RESPONSIVA ---
+        display=["none", "none", "block"],  # Oculto en pantallas pequeñas y medianas, visible en grandes
+        position="fixed",
+        left="0",
+        top="0",
+        height="100%",
+        width=SIDEBAR_WIDTH,
+        z_index="1000",
         bg=rx.color("gray", 2),
-        align="start", height="100%", width=SIDEBAR_WIDTH,
     )
 
-    return rx.box(
-        rx.hstack(
-            sidebar_panel,
-            rx.box(
-                rx.text(
-                    "LIKEMODAS",
-                    style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.2em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}
+def admin_mobile_sidebar() -> rx.Component:
+    """
+    El cajón (drawer) que se desliza desde la izquierda en pantallas pequeñas.
+    """
+    return rx.drawer.root(
+        rx.drawer.content(
+            rx.vstack(
+                rx.hstack(
+                    rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
+                    align="center", justify="center", width="100%", margin_bottom="1.5em",
                 ),
-                on_click=AppState.toggle_admin_sidebar,
-                cursor="pointer",
-                bg=rx.color("violet", 9), # Color morado
-                border_radius="0 8px 8px 0",
-                height="150px",
-                display="flex",
-                align_items="center"
+                sidebar_items(),
+                rx.spacer(),
+                rx.vstack(
+                    rx.divider(),
+                    rx.hstack(
+                        rx.cond(
+                            AppState.is_authenticated,
+                            rx.hstack(
+                                rx.avatar(fallback=AppState.authenticated_user.username[0].upper(), size="2"),
+                                rx.text(AppState.authenticated_user.username, size="3", weight="medium"),
+                                align="center", spacing="3",
+                            ),
+                        ),
+                        rx.spacer(), width="100%", justify="between",
+                    ),
+                    rx.cond(
+                        AppState.is_authenticated,
+                        rx.button(
+                            "Logout", rx.icon(tag="log-out", margin_left="0.5em"),
+                            on_click=AppState.do_logout, width="100%", variant="soft", color_scheme="red"
+                        )
+                    ),
+                    width="100%", spacing="3",
+                ),
+                spacing="5", padding="1em",
+                align="start", height="100%",
             ),
-            align_items="center",
-            spacing="0",
+            top="auto",
+            right="auto",
+            height="100%",
+            width=SIDEBAR_WIDTH,
+            padding="2em",
+            bg=rx.color("gray", 2),
         ),
-        position="fixed",
-        top="0",
-        left="0",
-        height="100vh",
-        display="flex",
-        align_items="center",
-        transform=rx.cond(
-            AppState.show_admin_sidebar,
-            "translateX(0)",
-            f"translateX(-{SIDEBAR_WIDTH})"
-        ),
-        transition="transform 0.4s ease-in-out",
-        z_index="1000",
+        direction="left",
+        open=AppState.show_admin_sidebar,
+        on_open_change=AppState.set_show_admin_sidebar,
     )
