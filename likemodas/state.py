@@ -1502,25 +1502,94 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_imported = value
     # --- FIN ---
 
+    # --- ⚙️ INICIO: NUEVAS VARIABLES DE ESTADO PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
+    
+    # Datos básicos del post en edición
+    post_to_edit_id: Optional[int] = None
+    edit_post_title: str = ""
+    edit_post_content: str = ""
+    edit_price_str: str = ""
+    edit_category: str = ""
+    
+    # Imágenes
+    edit_post_images_in_form: list[str] = []
+    edit_selected_image_index: int = -1
+
+    # Opciones de envío
+    edit_shipping_cost_str: str = ""
+    edit_is_moda_completa: bool = True
+    edit_combines_shipping: bool = False
+    edit_shipping_combination_limit_str: str = "3"
+    edit_is_imported: bool = False
+    edit_price_includes_iva: bool = True
+    
+    # Atributos y Variantes para el formulario de EDICIÓN
+    edit_attr_colores: str = ""
+    edit_attr_tallas_ropa: list[str] = []
+    edit_attr_numeros_calzado: list[str] = []
+    edit_attr_tamanos_mochila: list[str] = []
+    edit_temp_talla: str = ""
+    edit_temp_numero: str = ""
+    edit_temp_tamano: str = ""
+    edit_variants_map: dict[int, list[VariantFormData]] = {}
+
     @rx.event
     def start_editing_post(self, post_id: int):
+        """
+        Carga TODOS los datos de un producto en las variables de estado
+        del formulario de edición, incluyendo la reconstrucción de sus variantes.
+        """
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
+
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id)
-            if db_post and (db_post.userinfo_id == self.authenticated_user_info.id or self.is_admin):
-                # --- 👇 LÍNEAS CORREGIDAS 👇 ---
-                # Guardamos solo el ID
-                self.post_to_edit_id = db_post.id
-                # El resto de los campos se llenan como antes
-                self.post_title = db_post.title
-                self.post_content = db_post.content
-                self.price_str = str(db_post.price or 0.0)
-                # Obtenemos las imágenes de los variants
-                self.post_images_in_form = [v.get("image_url", "") for v in (db_post.variants or [])]
-                self.is_editing_post = True
-            else:
-                yield rx.toast.error("No se encontró la publicación o no tienes permisos.")
+            if not db_post or (db_post.userinfo_id != self.authenticated_user_info.id and not self.is_admin):
+                return rx.toast.error("No se encontró la publicación o no tienes permisos.")
+
+            # 1. Cargar datos básicos
+            self.post_to_edit_id = db_post.id
+            self.edit_post_title = db_post.title
+            self.edit_post_content = db_post.content
+            self.edit_price_str = str(db_post.price or 0.0)
+            self.edit_category = db_post.category.value
+
+            # 2. Cargar opciones de envío y producto
+            self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
+            self.edit_is_moda_completa = db_post.is_moda_completa_eligible
+            self.edit_combines_shipping = db_post.combines_shipping
+            self.edit_shipping_combination_limit_str = str(db_post.shipping_combination_limit or "3")
+            self.edit_is_imported = db_post.is_imported
+            self.edit_price_includes_iva = db_post.price_includes_iva
+
+            # 3. Reconstruir la estructura de variantes para el formulario
+            self.edit_post_images_in_form = sorted(list(set(v.get("image_url", "") for v in (db_post.variants or []) if v.get("image_url"))))
+            
+            reconstructed_map = defaultdict(list)
+            for variant_db in (db_post.variants or []):
+                img_url = variant_db.get("image_url")
+                if not img_url: continue
+
+                try:
+                    # Encontrar el índice de la imagen única para usar como clave del mapa
+                    image_group_index = self.edit_post_images_in_form.index(img_url)
+                    reconstructed_map[image_group_index].append(
+                        VariantFormData(
+                            attributes=variant_db.get("attributes", {}),
+                            stock=variant_db.get("stock", 0),
+                            image_url=img_url
+                        )
+                    )
+                except ValueError:
+                    continue # Ignorar variantes cuya imagen no está en la lista principal
+
+            self.edit_variants_map = dict(reconstructed_map)
+            
+            # 4. Seleccionar la primera imagen por defecto
+            if self.edit_post_images_in_form:
+                yield self.select_edit_image_for_editing(0)
+
+            self.is_editing_post = True
 
     @rx.event
     def cancel_editing_post(self, open_state: bool):
@@ -1535,49 +1604,115 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def save_edited_post(self, form_data: dict):
-        # 1. Se comprueba 'post_to_edit_id' en lugar de 'post_to_edit'
+        """
+        Guarda todos los cambios del modal de edición en la base de datos,
+        incluida la compleja estructura de variantes.
+        """
         if not self.is_admin or self.post_to_edit_id is None:
             return rx.toast.error("No se pudo guardar la publicación.")
-        
+
+        # Validaciones de números (similar al formulario de añadir)
+        try:
+            price = float(self.edit_price_str or 0.0)
+            shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
+            limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
+        except ValueError:
+            return rx.toast.error("Precio, costo de envío y límite deben ser números válidos.")
+
+        # Aplanar las variantes del mapa a una sola lista para la BD
+        all_variants_for_db = []
+        for index, generated_list in self.edit_variants_map.items():
+            main_image_url_for_group = self.edit_post_images_in_form[index]
+            for variant_data in generated_list:
+                all_variants_for_db.append({
+                    "attributes": variant_data.attributes,
+                    "stock": variant_data.stock,
+                    "image_url": variant_data.image_url or main_image_url_for_group
+                })
+
         with rx.session() as session:
-            # 2. Se carga el post desde la base de datos usando el ID
             post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
             if post_to_update:
-                post_to_update.title = form_data.get("title", post_to_update.title)
-                post_to_update.content = form_data.get("content", post_to_update.content)
-                try:
-                    price_val = form_data.get("price", post_to_update.price)
-                    post_to_update.price = float(price_val) if price_val else 0.0
-                except (ValueError, TypeError):
-                    return rx.toast.error("El precio debe ser un número válido.")
+                # Actualizar campos simples
+                post_to_update.title = self.edit_post_title
+                post_to_update.content = self.edit_post_content
+                post_to_update.price = price
+                post_to_update.category = self.edit_category
+                post_to_update.price_includes_iva = self.edit_price_includes_iva
+                post_to_update.is_imported = self.edit_is_imported
+                post_to_update.shipping_cost = shipping_cost
+                post_to_update.is_moda_completa_eligible = self.edit_is_moda_completa
+                post_to_update.combines_shipping = self.edit_combines_shipping
+                post_to_update.shipping_combination_limit = limit
 
-                # --- 3. Lógica para actualizar 'variants' preservando atributos ---
-                
-                # Mapea las URLs originales a sus atributos para no perderlos
-                existing_variants_map = {
-                    v.get("image_url"): v.get("attributes", {}) 
-                    for v in (post_to_update.variants or [])
-                }
-                
-                new_variants_list = []
-                for image_url in self.post_images_in_form:
-                    # Si la imagen ya existía, se conservan sus atributos.
-                    # Si es nueva, se le asignan atributos vacíos.
-                    new_variants_list.append({
-                        "image_url": image_url,
-                        "attributes": existing_variants_map.get(image_url, {})
-                    })
-                
-                post_to_update.variants = new_variants_list
+                # Actualizar el campo complejo de variantes
+                post_to_update.variants = all_variants_for_db
                 
                 session.add(post_to_update)
                 session.commit()
-                
-                # El resto de la lógica para cerrar el modal y notificar es correcta
-                yield AppState.cancel_editing_post(False)
-                yield AppState.on_load_admin_store
+
+                yield self.cancel_editing_post(False)
+                yield AppState.on_load_admin_store # Recarga la lista de posts en la página principal
                 yield rx.toast.success("Publicación actualizada correctamente.")
                 # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
+    # --- ⚙️ INICIO: NUEVOS HELPERS Y PROPIEDADES PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
+
+    @rx.var
+    def unique_edit_form_images(self) -> list[str]:
+        """Devuelve una lista de URLs de imagen únicas para las miniaturas del modal de edición."""
+        return self.edit_post_images_in_form
+
+    def select_edit_image_for_editing(self, index: int):
+        """Selecciona una imagen en el form de EDICIÓN y carga sus atributos."""
+        self.edit_selected_image_index = index
+        self.edit_attr_colores = ""
+        self.edit_attr_tallas_ropa = []
+        self.edit_attr_numeros_calzado = []
+        self.edit_attr_tamanos_mochila = []
+
+        # Cargar los atributos de la PRIMERA variante asociada a esta imagen para pre-llenar el form
+        variants_in_group = self.edit_variants_map.get(index, [])
+        if variants_in_group:
+            first_variant_attrs = variants_in_group[0].attributes
+            self.edit_attr_colores = first_variant_attrs.get("Color", "")
+            
+            all_tallas = sorted(list(set(v.attributes.get("Talla") for v in variants_in_group if v.attributes.get("Talla"))))
+            all_numeros = sorted(list(set(v.attributes.get("Número") for v in variants_in_group if v.attributes.get("Número"))))
+            all_tamanos = sorted(list(set(v.attributes.get("Tamaño") for v in variants_in_group if v.attributes.get("Tamaño"))))
+
+            self.edit_attr_tallas_ropa = all_tallas
+            self.edit_attr_numeros_calzado = all_numeros
+            self.edit_attr_tamanos_mochila = all_tamanos
+    
+    # Setters para los campos del formulario de edición
+    def set_edit_post_title(self, title: str): self.edit_post_title = title
+    def set_edit_post_content(self, content: str): self.edit_post_content = content
+    def set_edit_price_str(self, price: str): self.edit_price_str = price
+    def set_edit_category(self, cat: str): self.edit_category = cat # Resto de la lógica de limpieza irá aquí si es necesaria
+    def set_edit_shipping_cost_str(self, cost: str): self.edit_shipping_cost_str = cost
+    def set_edit_is_moda_completa(self, val: bool): self.edit_is_moda_completa = val
+    def set_edit_combines_shipping(self, val: bool): self.edit_combines_shipping = val
+    def set_edit_shipping_combination_limit_str(self, val: str): self.edit_shipping_combination_limit_str = val
+    def set_edit_is_imported(self, val: bool): self.edit_is_imported = val
+    def set_edit_price_includes_iva(self, val: bool): self.edit_price_includes_iva = val
+    def set_edit_attr_colores(self, val: str): self.edit_attr_colores = val
+    def set_edit_temp_talla(self, val: str): self.edit_temp_talla = val
+    def set_edit_temp_numero(self, val: str): self.edit_temp_numero = val
+    def set_edit_temp_tamano(self, val: str): self.edit_temp_tamano = val
+
+    # Lógica para añadir/quitar atributos en el formulario de EDICIÓN
+    def add_edit_variant_attribute(self, key: str, value: str):
+        target_list = getattr(self, f"edit_attr_{key.lower()}s_ropa" if key == "Talla" else (f"edit_attr_numeros_calzado" if key == "Número" else "edit_attr_tamanos_mochila"))
+        if value not in target_list:
+            target_list.append(value)
+            target_list.sort()
+
+    def remove_edit_variant_attribute(self, key: str, value: str):
+        target_list = getattr(self, f"edit_attr_{key.lower()}s_ropa" if key == "Talla" else (f"edit_attr_numeros_calzado" if key == "Número" else "edit_attr_tamanos_mochila"))
+        if value in target_list:
+            target_list.remove(value)
+
 
     temp_images: list[str] = []
 
