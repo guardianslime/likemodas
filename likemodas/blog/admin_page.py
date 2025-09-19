@@ -48,6 +48,9 @@ def qr_display_modal() -> rx.Component:
 
     def render_variant_qr(variant: dict) -> rx.Component:
         """Renderiza la fila para una sola variante con su QR."""
+
+        qr_image_url = f"{AppState.backend_api_url}/api/qr/{variant.get('vuid')}"
+
         return rx.box(
             rx.hstack(
                 rx.vstack(
