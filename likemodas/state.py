@@ -1552,7 +1552,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_post_title = db_post.title
             self.edit_post_content = db_post.content
             self.edit_price_str = str(db_post.price or 0.0)
-            self.edit_category = db_post.category.value
+            self.edit_category = db_post.category # ANTES: db_post.category.value
 
             # 2. Cargar opciones de envío y producto
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
