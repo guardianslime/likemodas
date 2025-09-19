@@ -1670,7 +1670,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # ✨ --- REEMPLAZA POR COMPLETO LA FUNCIÓN `save_edited_post` --- ✨
     @rx.event
-    def save_edited_post(self): # <-- CORRECCIÓN: Se elimina el parámetro form_data
+    def save_edited_post(self): # <-- CAMBIO CLAVE: Se elimina el parámetro form_data
         """
         [VERSIÓN FINAL Y ROBUSTA]
         Guarda todos los cambios del modal leyendo TODOS los valores directamente desde el estado,
@@ -1679,6 +1679,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.is_admin or self.post_to_edit_id is None:
             return rx.toast.error("No se pudo guardar la publicación.")
 
+        # Se leen los valores numéricos desde el estado
         try:
             price = float(self.edit_price_str or 0.0)
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
@@ -1686,6 +1687,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             return rx.toast.error("Precio, costo de envío y límite deben ser números válidos.")
 
+        # La lógica para aplanar las variantes no cambia y es correcta
         all_variants_for_db = []
         for image_group_index, variant_list in self.edit_variants_map.items():
             main_image_for_group = self.unique_edit_form_images[image_group_index]
@@ -1702,9 +1704,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
             if post_to_update:
-                # <-- CORRECCIÓN: Se leen todos los valores desde `self` en lugar de `form_data` -->
+                # <-- CAMBIO CLAVE: Ahora todo se lee desde `self` -->
+                # Los campos de texto también se leen desde el estado, que ya fue actualizado por su `on_change`.
                 post_to_update.title = self.edit_post_title
                 post_to_update.content = self.edit_post_content
+                
+                # El resto de los campos, incluyendo los switches, se leen desde el estado.
                 post_to_update.price = price
                 post_to_update.category = self.edit_category
                 post_to_update.price_includes_iva = self.edit_price_includes_iva
