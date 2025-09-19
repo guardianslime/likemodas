@@ -131,13 +131,7 @@ def variant_stock_manager_edit() -> rx.Component:
                                 rx.icon_button(rx.icon("plus"), on_click=AppState.increment_edit_variant_stock(AppState.edit_selected_image_index, index)),
                                 align="center", spacing="2",
                             ),
-                            rx.select(
-                                AppState.unique_edit_form_images,
-                                placeholder="Imagen...",
-                                value=variant.image_url,
-                                on_change=lambda url: AppState.assign_image_to_edit_variant(AppState.edit_selected_image_index, index, url),
-                                max_width="150px",
-                            ),
+                            # <-- CORRECCIÓN: SE HA ELIMINADO EL rx.select DE IMAGEN DE AQUÍ -->
                             spacing="4", align="center", width="100%",
                         ),
                         padding="0.75em", border="1px solid",
