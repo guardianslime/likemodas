@@ -1806,27 +1806,29 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.selected_variant_index = 0
     
     # AÑADE ESTA NUEVA FUNCIÓN DENTRO DE LA CLASE AppState
-def update_edit_form_state(self, form_data: dict):
-    """
-    Manejador centralizado que actualiza TODO el estado del formulario de edición
-    cada vez que cualquier campo cambia. Esta es la solución robusta.
-    """
-    # Actualiza los campos de texto y numéricos
-    self.edit_post_title = form_data.get("title", "")
-    self.edit_post_content = form_data.get("content", "")
-    self.edit_price_str = form_data.get("price", "")
-    self.edit_shipping_cost_str = form_data.get("edit_shipping_cost_str", "")
-    self.edit_shipping_combination_limit_str = form_data.get("edit_shipping_combination_limit_str", "")
-    
-    # Actualiza los campos de selección (select)
-    self.edit_category = form_data.get("category", "")
-    
-    # Actualiza los interruptores (switches)
-    # El .get(..., False) asegura que si el switch está desactivado, se asigne un valor booleano False.
-    self.edit_price_includes_iva = form_data.get("price_includes_iva", False)
-    self.edit_is_imported = form_data.get("is_imported", False)
-    self.edit_is_moda_completa = form_data.get("edit_is_moda_completa", False)
-    self.edit_combines_shipping = form_data.get("combines_shipping", False)
+    def update_edit_form_state(self, form_data: dict):
+        """
+        [VERSIÓN CORREGIDA Y FINAL]
+        Manejador centralizado que actualiza TODO el estado del formulario de edición.
+        Se corrigen los nombres de las claves para que coincidan con los `name` del formulario.
+        """
+        # Actualiza los campos de texto y numéricos
+        self.edit_post_title = form_data.get("title", "")
+        self.edit_post_content = form_data.get("content", "")
+        self.edit_price_str = form_data.get("price", "")
+        self.edit_shipping_cost_str = form_data.get("edit_shipping_cost_str", "")
+        self.edit_shipping_combination_limit_str = form_data.get("edit_shipping_combination_limit_str", "")
+        
+        # Actualiza los campos de selección (select)
+        self.edit_category = form_data.get("category", "")
+        
+        # <-- INICIO DE LA CORRECCIÓN CLAVE -->
+        # Se usan los nombres correctos que coinciden con la propiedad `name` en el formulario.
+        self.edit_price_includes_iva = form_data.get("price_includes_iva", False)
+        self.edit_is_imported = form_data.get("is_imported", False)
+        self.edit_is_moda_completa = form_data.get("edit_is_moda_completa", False)
+        self.edit_combines_shipping = form_data.get("combines_shipping", False)
+        # <-- FIN DE LA CORRECCIÓN CLAVE -->
 
     @rx.event
     def remove_temp_image(self, filename: str):
