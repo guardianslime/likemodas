@@ -1,15 +1,15 @@
-# likemodas/blog/forms.py (VERSIÓN COMPLETA Y CORREGIDA)
+# likemodas/blog/forms.py (CORREGIDO)
 
 import reflex as rx
 from ..state import AppState
 from ..models import Category
 from ..ui.components import searchable_select
 from ..data.product_options import (
-    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, 
+    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO,
     LISTA_TAMANOS_MOCHILAS
 )
 
-# --- Componente reutilizable para editar atributos ---
+# --- Componente reutilizable para editar atributos (Sin cambios) ---
 def attribute_editor(
     title: str,
     options_list: list[str],
@@ -50,7 +50,7 @@ def attribute_editor(
         align_items="stretch", width="100%", spacing="2"
     )
 
-# --- Gestor de Stock para el formulario de AÑADIR ---
+# --- Gestor de Stock para el formulario de AÑADIR (Sin cambios) ---
 def variant_stock_manager() -> rx.Component:
     """Componente para gestionar el stock de las variantes generadas en el form de AÑADIR."""
     return rx.vstack(
@@ -72,14 +72,12 @@ def variant_stock_manager() -> rx.Component:
                                 align_items="start", flex_grow=1,
                             ),
                             rx.hstack(
-                                # <-- CORRECCIÓN AQUÍ -->
                                 rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_variant_index, index), type="button"),
                                 rx.input(
                                     value=variant.stock.to_string(),
                                     on_change=lambda val: AppState.set_variant_stock(AppState.selected_variant_index, index, val),
                                     text_align="center", max_width="70px",
                                 ),
-                                # <-- CORRECCIÓN AQUÍ -->
                                 rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_variant_index, index), type="button"),
                                 align="center", spacing="2",
                             ),
@@ -102,7 +100,7 @@ def variant_stock_manager() -> rx.Component:
         align_items="stretch", width="100%",
     )
 
-# --- Gestor de Stock para el formulario de EDICIÓN ---
+# --- Gestor de Stock para el formulario de EDICIÓN (Sin cambios) ---
 def variant_stock_manager_edit() -> rx.Component:
     """Componente para gestionar el stock de las variantes generadas en el form de EDICIÓN."""
     return rx.vstack(
@@ -124,14 +122,12 @@ def variant_stock_manager_edit() -> rx.Component:
                                 align_items="start", flex_grow=1,
                             ),
                             rx.hstack(
-                                # <-- CORRECCIÓN AQUÍ -->
                                 rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_edit_variant_stock(AppState.edit_selected_image_index, index), type="button"),
                                 rx.input(
                                     value=variant.stock.to_string(),
                                     on_change=lambda val: AppState.set_edit_variant_stock(AppState.edit_selected_image_index, index, val),
                                     text_align="center", max_width="70px",
                                 ),
-                                # <-- CORRECCIÓN AQUÍ -->
                                 rx.icon_button(rx.icon("plus"), on_click=AppState.increment_edit_variant_stock(AppState.edit_selected_image_index, index), type="button"),
                                 align="center", spacing="2",
                             ),
@@ -147,8 +143,7 @@ def variant_stock_manager_edit() -> rx.Component:
         align_items="stretch", width="100%",
     )
 
-
-# --- Formulario para AÑADIR un producto ---
+# --- Formulario para AÑADIR un producto (Sin cambios) ---
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     tipo_selector = searchable_select(
@@ -163,7 +158,7 @@ def blog_post_add_form() -> rx.Component:
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
         filter_name="attr_material_filter",
     )
-    
+
     color_selector_simple = searchable_select(
         placeholder="Selecciona un color...",
         options=AppState.filtered_attr_colores,
@@ -173,7 +168,7 @@ def blog_post_add_form() -> rx.Component:
         on_change_search=AppState.set_search_attr_color,
         filter_name="attr_color_filter",
     )
-    
+
     caracteristicas_ropa = rx.vstack(
         rx.grid(
             color_selector_simple,
@@ -190,7 +185,7 @@ def blog_post_add_form() -> rx.Component:
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
-    
+
     caracteristicas_calzado = rx.vstack(
         rx.grid(
             color_selector_simple,
@@ -207,7 +202,7 @@ def blog_post_add_form() -> rx.Component:
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
-    
+
     caracteristicas_mochilas = rx.vstack(
         rx.grid(
             color_selector_simple,
@@ -224,7 +219,7 @@ def blog_post_add_form() -> rx.Component:
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
-    
+
     return rx.form(
         rx.vstack(
             rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
@@ -266,7 +261,7 @@ def blog_post_add_form() -> rx.Component:
                     rx.select(
                         AppState.categories, placeholder="Selecciona una categoría...", name="category",
                         required=True, size="3", on_change=AppState.set_category,
-                    ),
+                     ),
                     rx.grid(
                         rx.vstack(
                             rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
@@ -307,7 +302,7 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Envío gratis en compras > $200.000.", size="1", color_scheme="gray"),
                             align_items="stretch",
                         ),
-                        rx.vstack(
+                         rx.vstack(
                             rx.text("Envío Combinado", as_="div", size="2", weight="bold"),
                             rx.hstack(
                                 rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping, size="2"),
@@ -358,10 +353,10 @@ def blog_post_add_form() -> rx.Component:
         width="100%", max_width="1024px",
     )
 
-# --- Formulario para EDITAR un producto ---
+# --- Formulario para EDITAR un producto (CON CORRECCIONES) ---
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar una publicación, ahora con estado centralizado y robusto."""
-    
+
     caracteristicas_ropa_edit = attribute_editor(
         title="Talla", options_list=LISTA_TALLAS_ROPA,
         temp_value_var=AppState.edit_temp_talla,
@@ -411,9 +406,9 @@ def blog_post_edit_form() -> rx.Component:
                             rx.text("Color", size="3"),
                             rx.select(
                                 LISTA_COLORES, placeholder="Seleccionar color...",
-                                name="color", # <-- AÑADIDO: name
+                                name="color",
                                 value=AppState.edit_attr_colores,
-                                on_change=AppState.set_edit_attr_colores, # Mantenemos este para la lógica de variantes
+                                on_change=AppState.set_edit_attr_colores,
                             ),
                             rx.cond(AppState.edit_category == Category.ROPA.value, caracteristicas_ropa_edit),
                             rx.divider(margin_y="1em"),
@@ -427,26 +422,28 @@ def blog_post_edit_form() -> rx.Component:
                 # --- COLUMNA DERECHA: DETALLES DEL PRODUCTO ---
                 rx.vstack(
                     rx.text("Título del Producto", as_="div", size="2", weight="bold"),
-                    rx.input(name="title", value=AppState.edit_post_title, required=True, size="3"),
-                    
+                    rx.input(name="title", value=AppState.edit_post_title, on_change=AppState.set_edit_post_title, required=True, size="3"),
+
                     rx.text("Categoría", as_="div", size="2", weight="bold"),
                     rx.select(
                         AppState.categories, placeholder="Selecciona una categoría...",
-                        name="category", # <-- AÑADIDO: name
+                        name="category",
                         value=AppState.edit_category,
+                        on_change=AppState.set_edit_category,
                         required=True, size="3",
                     ),
                     rx.grid(
                         rx.vstack(
                             rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
-                            rx.input(name="price", value=AppState.edit_price_str, type="number", required=True, size="3"),
+                            rx.input(name="price", value=AppState.edit_price_str, on_change=AppState.set_edit_price_str, type="number", required=True, size="3"),
                         ),
                         rx.vstack(
                             rx.text("Incluye IVA", as_="div", size="2", weight="bold"),
                             rx.hstack(
                                 rx.switch(
-                                    name="price_includes_iva", # <-- AÑADIDO: name
-                                    is_checked=AppState.edit_price_includes_iva
+                                    name="price_includes_iva",
+                                    is_checked=AppState.edit_price_includes_iva,
+                                    on_change=AppState.set_edit_price_includes_iva,
                                 ),
                                 rx.text(rx.cond(AppState.edit_price_includes_iva, "Sí", "No")),
                                 align="center", spacing="3", height="100%",
@@ -456,8 +453,9 @@ def blog_post_edit_form() -> rx.Component:
                             rx.text("Origen", as_="div", size="2", weight="bold"),
                             rx.hstack(
                                 rx.switch(
-                                    name="is_imported", # <-- AÑADIDO: name
-                                    is_checked=AppState.edit_is_imported
+                                    name="is_imported",
+                                    is_checked=AppState.edit_is_imported,
+                                    on_change=AppState.set_edit_is_imported,
                                 ),
                                 rx.text(rx.cond(AppState.edit_is_imported, "Importado", "Nacional")),
                                 align="center", spacing="3", height="100%",
@@ -465,21 +463,21 @@ def blog_post_edit_form() -> rx.Component:
                         ),
                         columns="3", spacing="3", width="100%",
                     ),
-                    
                     rx.grid(
                         rx.vstack(
                             rx.text("Costo de Envío Mínimo", as_="div", size="2", weight="bold"),
-                            rx.input(name="edit_shipping_cost_str", value=AppState.edit_shipping_cost_str, size="3"), # <-- AÑADIDO: name
+                            rx.input(name="edit_shipping_cost_str", value=AppState.edit_shipping_cost_str, on_change=AppState.set_edit_shipping_cost_str, size="3"),
                             align_items="stretch",
                         ),
                         rx.vstack(
                             rx.text("Moda Completa", as_="div", size="2", weight="bold"),
                             rx.hstack(
                                 rx.switch(
-                                    name="edit_is_moda_completa", # <-- AÑADIDO: name
-                                    is_checked=AppState.edit_is_moda_completa
+                                    name="edit_is_moda_completa",
+                                    is_checked=AppState.edit_is_moda_completa,
+                                    on_change=AppState.set_edit_is_moda_completa,
                                 ),
-                                rx.text("Activo"),
+                                rx.text(rx.cond(AppState.edit_is_moda_completa, "Activo", "Inactivo")),
                                 align="center", spacing="3", height="100%",
                             ),
                             align_items="stretch",
@@ -488,10 +486,11 @@ def blog_post_edit_form() -> rx.Component:
                             rx.text("Envío Combinado", as_="div", size="2", weight="bold"),
                             rx.hstack(
                                 rx.switch(
-                                    name="combines_shipping", # <-- AÑADIDO: name
-                                    is_checked=AppState.edit_combines_shipping
+                                    name="combines_shipping",
+                                    is_checked=AppState.edit_combines_shipping,
+                                    on_change=AppState.set_edit_combines_shipping,
                                 ),
-                                rx.text("Activo"),
+                                rx.text(rx.cond(AppState.edit_combines_shipping, "Activo", "Inactivo")),
                                 align="center", spacing="3", height="100%",
                             ),
                             align_items="stretch",
@@ -499,26 +498,23 @@ def blog_post_edit_form() -> rx.Component:
                         rx.vstack(
                             rx.text("Límite Combinado", as_="div", size="2", weight="bold"),
                             rx.input(
-                                name="edit_shipping_combination_limit_str", # <-- AÑADIDO: name
+                                name="edit_shipping_combination_limit_str",
                                 value=AppState.edit_shipping_combination_limit_str,
+                                on_change=AppState.set_edit_shipping_combination_limit_str,
                                 size="3", is_disabled=~AppState.edit_combines_shipping,
                             ),
                             align_items="stretch",
                         ),
                         columns="2", spacing="4", width="100%",
                     ),
-                    
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
-                    rx.text_area(name="content", value=AppState.edit_post_content, required=True, size="2", style={"height": "120px"}),
-
+                    rx.text_area(name="content", value=AppState.edit_post_content, on_change=AppState.set_edit_post_content, required=True, size="2", style={"height": "120px"}),
                     spacing="3", align_items="stretch"
                 ),
                 columns={"initial": "1", "md": "2"}, spacing="6", width="100%",
             ),
             rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3", color_scheme="violet"),
         ),
-        # <-- CAMBIO CLAVE: Se añade on_change y se elimina on_change de los inputs individuales -->
-        on_change=AppState.update_edit_form_state,
         on_submit=AppState.save_edited_post,
         width="100%",
     )
