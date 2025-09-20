@@ -49,6 +49,7 @@ def qr_display_modal() -> rx.Component:
         Renderiza la fila para una sola variante con su QR.
         Ahora recibe un DTO con los atributos ya pre-formateados.
         """
+        
         return rx.box(
             rx.hstack(
                 rx.vstack(

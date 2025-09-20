@@ -1334,55 +1334,51 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_qr_scan_result(self, decoded_text: str):
         """
-        Manejador que se activa tras un escaneo QR exitoso.
-        Busca la variante y la añade al carrito de venta directa.
+        [VERSIÓN ROBUSTA] Manejador que se activa tras un escaneo QR exitoso,
+        con logging y manejo de excepciones.
         """
-        # --- MENSAJE DE DEPURACIÓN EN LA TERMINAL ---
-        print(f"✅ [DEBUG] Evento handle_qr_scan_result RECIBIDO. VUID: {decoded_text}")
+        try:
+            print(f"✅ [DEBUG] Evento handle_qr_scan_result RECIBIDO. VUID: {decoded_text}")
+            self.show_qr_scanner_modal = False
 
-        # 1. Cerrar inmediatamente el modal del escáner
-        self.show_qr_scanner_modal = False
-
-        # 2. Buscar la variante en la base de datos
-        result = self.find_variant_by_vuid(decoded_text)
-        print(f"🕵️  [DEBUG] Resultado de la búsqueda en BD: {result}")
-        
-        if not result:
-            print(f"❌ [DEBUG] VUID '{decoded_text}' no encontrado en la base de datos.")
-            return rx.toast.error("Código QR no válido o producto no encontrado.")
-        
-        post, variant = result
-
-        # 3. Construir la clave única para el carrito de venta directa
-        attributes = variant.get("attributes", {})
-        selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
-        
-        variant_index = -1
-        for i, v in enumerate(post.variants):
-            if v.get("vuid") == decoded_text:
-                variant_index = i
-                break
+            result = self.find_variant_by_vuid(decoded_text)
+            print(f"🕵️  [DEBUG] Resultado de la búsqueda en BD: {result}")
+            
+            if not result:
+                print(f"❌ [DEBUG] VUID '{decoded_text}' no encontrado en la base de datos.")
+                return rx.toast.error("Código QR no válido o producto no encontrado.")
+            
+            post, variant = result
+            attributes = variant.get("attributes", {})
+            selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
+            
+            variant_index = -1
+            for i, v in enumerate(post.variants):
+                if v.get("vuid") == decoded_text:
+                    variant_index = i
+                    break
+                    
+            if variant_index == -1:
+                print("❌ [DEBUG] Error de consistencia: No se encontró el índice de la variante.")
+                return rx.toast.error("Error de consistencia de datos.")
                 
-        if variant_index == -1:
-            print("❌ [DEBUG] Error de consistencia: No se encontró el índice de la variante.")
-            return rx.toast.error("Error de consistencia de datos. No se pudo encontrar el índice de la variante.")
+            cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+            available_stock = variant.get("stock", 0)
+            quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+            print(f"📦 [DEBUG] Stock disponible: {available_stock}, Cantidad en carrito: {quantity_in_cart}")
             
-        cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+            if quantity_in_cart + 1 > available_stock:
+                print(f"🚫 [DEBUG] Stock insuficiente para '{post.title}'.")
+                return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
+                
+            self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+            print(f"🛒 [DEBUG] Carrito actualizado: {self.direct_sale_cart}")
 
-        # 4. Verificar stock y añadir al carrito
-        available_stock = variant.get("stock", 0)
-        quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
-        print(f"📦 [DEBUG] Stock disponible: {available_stock}, Cantidad en carrito: {quantity_in_cart}")
-        
-        if quantity_in_cart + 1 > available_stock:
-            print(f"🚫 [DEBUG] Stock insuficiente para '{post.title}'.")
-            return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
-            
-        self.direct_sale_cart[cart_key] = quantity_in_cart + 1
-        print(f"🛒 [DEBUG] Carrito actualizado: {self.direct_sale_cart}")
+            return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
 
-        # 5. Notificar al usuario
-        return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
+        except Exception as e:
+            print(f"❌ ERROR CATASTRÓFICO en handle_qr_scan_result: {e}")
+            return rx.toast.error("Ocurrió un error inesperado al procesar el QR.")
 
     min_price: str = ""
     max_price: str = ""
