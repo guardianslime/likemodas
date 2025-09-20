@@ -2560,8 +2560,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         
     @rx.var
     def my_admin_posts(self) -> list[AdminPostRowData]:
+        """
+        [VERSIÓN CORREGIDA]
+        Propiedad computada que devuelve los posts del admin, pre-procesando
+        los datos de las variantes para evitar errores en el frontend.
+        """
         if not self.authenticated_user_info:
             return []
+        
         with rx.session() as session:
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -2579,7 +2585,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     for v in p.variants:
                         attrs = v.get("attributes", {})
                         # Creamos el string de atributos aquí, en Python
-                        attrs_str = ", ".join(f"{k}: {val}" for k, val in attrs.items())
+                        attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
+                        
                         variants_dto_list.append(
                             AdminVariantData(
                                 vuid=v.get("vuid", ""),
@@ -2601,6 +2608,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
             return admin_posts
+
 
             # --- FIN DE LA CORRECCIÓN ---
 

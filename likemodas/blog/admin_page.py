@@ -1,8 +1,9 @@
+# Pega este código completo en tu archivo likemodas/blog/admin_page.py
 import reflex as rx
 from ..state import AppState
 from .. import navigation
 from .forms import blog_post_edit_form
-from ..state import AppState, AdminPostRowData
+from ..state import AppState, AdminPostRowData, AdminVariantData # Asegúrate de importar AdminVariantData
 from ..ui.qr_display import qr_code_display
 
 def edit_post_dialog() -> rx.Component:
@@ -42,29 +43,31 @@ def qr_display_modal() -> rx.Component:
         },
     }
 
-    def render_variant_qr(variant: dict) -> rx.Component:
-        """Renderiza la fila para una sola variante con su QR."""
-        vuid = variant.get("vuid", "")
-        attributes_str = ", ".join([f"{k}: {v}" for k, v in variant.get("attributes", {}).items()])
-
+    def render_variant_qr(variant: AdminVariantData) -> rx.Component:
+        """
+        [FUNCIÓN CORREGIDA]
+        Renderiza la fila para una sola variante con su QR.
+        Ahora recibe un DTO con los atributos ya pre-formateados.
+        """
         return rx.box(
             rx.hstack(
                 rx.vstack(
-                    rx.text(attributes_str, weight="bold"),
-                    rx.text(f"Stock: {variant.get('stock', 0)}"),
-                    rx.text(f"VUID: {vuid}", size="1", color_scheme="gray"),
+                    # --- CAMBIO CLAVE: Usa el string pre-formateado ---
+                    rx.text(variant.attributes_str, weight="bold"),
+                    rx.text(f"Stock: {variant.stock}"),
+                    rx.text(f"VUID: {variant.vuid}", size="1", color_scheme="gray"),
                     align_items="start",
                     spacing="1",
                 ),
                 rx.spacer(),
                 rx.cond(
-                    vuid != "",
+                    variant.vuid != "",
                     qr_code_display(
-                        value=vuid,
+                        value=variant.vuid,
                         size=100,
                         fgColor="#000000",
                         bgColor="#FFFFFF",
-                        level="Q"  # <-- Nivel de corrección de errores AUMENTADO
+                        level="Q"
                     ),
                     rx.center(rx.text("Sin QR"), width="100px", height="100px")
                 ),
