@@ -1,5 +1,3 @@
-# likemodas/ui/qr_scanner.py
-
 import reflex as rx
 from reflex.vars import Var
 
@@ -24,7 +22,6 @@ class QRScannerComponent(rx.Component):
         """
         return """
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import React, { useEffect } from 'react';
 
 const Html5QrcodeScannerComponent = (props) => {
   const qrcodeRegionId = "html5qr-code-full-region";
