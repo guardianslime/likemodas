@@ -18,16 +18,16 @@ class QRScannerComponent(rx.Component):
 
     def _get_custom_code(self) -> str:
         """
-        [VERSIÓN FINAL CORREGIDA]
+        [VERSIÓN FINAL DEFINITIVA]
         Genera el código JS/React necesario para inicializar el escáner.
-        Se ha eliminado la importación de 'React' y 'useEffect' para evitar
-        el conflicto de declaración duplicada durante la compilación de Reflex.
+        Soluciona la condición de carrera (race condition) añadiendo un
+        pequeño retraso antes de limpiar el escáner, asegurando que el
+        evento se envíe correctamente al backend.
         """
         return """
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
-// Se ha eliminado la línea "import React, { useEffect } from 'react';"
-// Reflex ya provee estas dependencias en el entorno de compilación.
+// No se importa React ni useEffect, ya que Reflex los provee.
 
 const Html5QrcodeScannerComponent = (props) => {
   const qrcodeRegionId = "html5qr-code-full-region";
@@ -47,10 +47,17 @@ const Html5QrcodeScannerComponent = (props) => {
 
     const successCallback = (decodedText, decodedResult) => {
       if (props.on_scan_success) {
+        // 1. Envía el dato a Python.
         props.on_scan_success(decodedText);
-        html5QrcodeScanner.clear().catch(error => {
-          console.error("Fallo al limpiar el escáner tras el éxito.", error);
-        });
+
+        // 2. SOLUCIÓN DEFINITIVA: Espera 100ms antes de limpiar.
+        // Esto le da tiempo al WebSocket de Reflex para procesar el evento
+        // antes de que el componente se desmonte.
+        setTimeout(() => {
+          html5QrcodeScanner.clear().catch(error => {
+            console.error("Fallo al limpiar el escáner tras el éxito.", error);
+          });
+        }, 100);
       }
     };
 
