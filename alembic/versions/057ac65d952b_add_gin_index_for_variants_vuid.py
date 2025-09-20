@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+import sqlmodel
 
 
 # revision identifiers, used by Alembic.
@@ -19,10 +20,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Upgrade schema."""
-    pass
+    """Crea un índice GIN en la columna 'variants' para optimizar la búsqueda de vuid."""
+    op.execute("""
+        CREATE INDEX ix_blogpostmodel_variants_vuid
+        ON blogpostmodel
+        USING GIN ((variants -> 'vuid'));
+    """)
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
-    paass
+    """Elimina el índice GIN en caso de querer revertir la migración."""
+    op.drop_index('ix_blogpostmodel_variants_vuid', table_name='blogpostmodel')
