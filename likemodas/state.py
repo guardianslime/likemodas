@@ -1337,22 +1337,26 @@ class AppState(reflex_local_auth.LocalAuthState):
         Manejador que se activa tras un escaneo QR exitoso.
         Busca la variante y la añade al carrito de venta directa.
         """
+        # --- MENSAJE DE DEPURACIÓN EN LA TERMINAL ---
+        print(f"✅ [DEBUG] Evento handle_qr_scan_result RECIBIDO. VUID: {decoded_text}")
+
         # 1. Cerrar inmediatamente el modal del escáner
         self.show_qr_scanner_modal = False
 
         # 2. Buscar la variante en la base de datos
         result = self.find_variant_by_vuid(decoded_text)
+        print(f"🕵️  [DEBUG] Resultado de la búsqueda en BD: {result}")
         
         if not result:
+            print(f"❌ [DEBUG] VUID '{decoded_text}' no encontrado en la base de datos.")
             return rx.toast.error("Código QR no válido o producto no encontrado.")
-            
+        
         post, variant = result
 
         # 3. Construir la clave única para el carrito de venta directa
         attributes = variant.get("attributes", {})
         selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
         
-        # Necesitamos el índice de la variante dentro de la lista del producto
         variant_index = -1
         for i, v in enumerate(post.variants):
             if v.get("vuid") == decoded_text:
@@ -1360,6 +1364,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 break
                 
         if variant_index == -1:
+            print("❌ [DEBUG] Error de consistencia: No se encontró el índice de la variante.")
             return rx.toast.error("Error de consistencia de datos. No se pudo encontrar el índice de la variante.")
             
         cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
@@ -1367,11 +1372,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         # 4. Verificar stock y añadir al carrito
         available_stock = variant.get("stock", 0)
         quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+        print(f"📦 [DEBUG] Stock disponible: {available_stock}, Cantidad en carrito: {quantity_in_cart}")
         
         if quantity_in_cart + 1 > available_stock:
+            print(f"🚫 [DEBUG] Stock insuficiente para '{post.title}'.")
             return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
             
         self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+        print(f"🛒 [DEBUG] Carrito actualizado: {self.direct_sale_cart}")
 
         # 5. Notificar al usuario
         return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
