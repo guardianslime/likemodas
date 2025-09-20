@@ -16,6 +16,9 @@ import math
 import httpx 
 import uuid # Asegúrate de importar la biblioteca uuid
 
+import logging
+import sys
+
 from collections import defaultdict
 from reflex.config import get_config
 from urllib.parse import urlparse, parse_qs
@@ -41,6 +44,19 @@ from .data.product_options import (
     MATERIALES_ROPA, MATERIALES_CALZADO, MATERIALES_MOCHILAS, LISTA_TIPOS_ROPA, LISTA_TIPOS_ZAPATOS, LISTA_TIPOS_MOCHILAS, LISTA_TAMANOS_MOCHILAS, LISTA_TIPOS_GENERAL,
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
+
+# --- AÑADE ESTA CONFIGURACIÓN DE LOGGING AQUÍ ---
+# Esto configura el logger para que escriba directamente en la salida estándar,
+# lo que Railway capturará de forma fiable.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+# --- FIN DE LA CONFIGURACIÓN ---
 
 def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
     """Genera el texto de envío basado en el costo."""
@@ -1334,50 +1350,51 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_qr_scan_result(self, decoded_text: str):
         """
-        [VERSIÓN ROBUSTA] Manejador que se activa tras un escaneo QR exitoso,
-        con logging y manejo de excepciones.
+        [VERSIÓN CON LOGGING PROFESIONAL]
+        Manejador que se activa tras un escaneo QR exitoso.
         """
         try:
-            print(f"✅ [DEBUG] Evento handle_qr_scan_result RECIBIDO. VUID: {decoded_text}")
+            logger.info(f"✅ [LOG] Evento handle_qr_scan_result RECIBIDO. VUID: {decoded_text}")
             self.show_qr_scanner_modal = False
 
             result = self.find_variant_by_vuid(decoded_text)
-            print(f"🕵️  [DEBUG] Resultado de la búsqueda en BD: {result}")
-            
+            logger.info(f"🕵️  [LOG] Resultado de la búsqueda en BD: {result}")
+
             if not result:
-                print(f"❌ [DEBUG] VUID '{decoded_text}' no encontrado en la base de datos.")
+                logger.warning(f"❌ [LOG] VUID '{decoded_text}' no encontrado en la base de datos.")
                 return rx.toast.error("Código QR no válido o producto no encontrado.")
-            
+
             post, variant = result
             attributes = variant.get("attributes", {})
             selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
-            
+
             variant_index = -1
             for i, v in enumerate(post.variants):
                 if v.get("vuid") == decoded_text:
                     variant_index = i
                     break
-                    
+
             if variant_index == -1:
-                print("❌ [DEBUG] Error de consistencia: No se encontró el índice de la variante.")
+                logger.error("❌ [LOG] Error de consistencia: No se encontró el índice de la variante.")
                 return rx.toast.error("Error de consistencia de datos.")
-                
+
             cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
             available_stock = variant.get("stock", 0)
             quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
-            print(f"📦 [DEBUG] Stock disponible: {available_stock}, Cantidad en carrito: {quantity_in_cart}")
-            
+            logger.info(f"📦 [LOG] Stock disponible: {available_stock}, Cantidad en carrito: {quantity_in_cart}")
+
             if quantity_in_cart + 1 > available_stock:
-                print(f"🚫 [DEBUG] Stock insuficiente para '{post.title}'.")
+                logger.warning(f"🚫 [LOG] Stock insuficiente para '{post.title}'.")
                 return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
-                
+
             self.direct_sale_cart[cart_key] = quantity_in_cart + 1
-            print(f"🛒 [DEBUG] Carrito actualizado: {self.direct_sale_cart}")
+            logger.info(f"🛒 [LOG] Carrito actualizado: {self.direct_sale_cart}")
 
             return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
 
         except Exception as e:
-            print(f"❌ ERROR CATASTRÓFICO en handle_qr_scan_result: {e}")
+            # Esta es la gran ventaja: logger.error puede registrar el traceback completo del error.
+            logger.error(f"❌ ERROR CATASTRÓFICO en handle_qr_scan_result: {e}", exc_info=True)
             return rx.toast.error("Ocurrió un error inesperado al procesar el QR.")
 
     min_price: str = ""
