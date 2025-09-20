@@ -18,13 +18,16 @@ class QRScannerComponent(rx.Component):
 
     def _get_custom_code(self) -> str:
         """
+        [VERSIÓN FINAL CORREGIDA]
         Genera el código JS/React necesario para inicializar el escáner.
-        Esta es la versión corregida que soluciona la condición de carrera
-        y restaura la funcionalidad de subir archivos de imagen.
+        Se ha eliminado la importación de 'React' y 'useEffect' para evitar
+        el conflicto de declaración duplicada durante la compilación de Reflex.
         """
         return """
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import React, { useEffect } from 'react';
+
+// Se ha eliminado la línea "import React, { useEffect } from 'react';"
+// Reflex ya provee estas dependencias en el entorno de compilación.
 
 const Html5QrcodeScannerComponent = (props) => {
   const qrcodeRegionId = "html5qr-code-full-region";
@@ -44,10 +47,7 @@ const Html5QrcodeScannerComponent = (props) => {
 
     const successCallback = (decodedText, decodedResult) => {
       if (props.on_scan_success) {
-        // 1. Enviar el dato a Python.
         props.on_scan_success(decodedText);
-        // 2. Limpiar el escáner DESPUÉS de enviar el dato.
-        // Esto da tiempo suficiente al WebSocket de Reflex para procesar el evento.
         html5QrcodeScanner.clear().catch(error => {
           console.error("Fallo al limpiar el escáner tras el éxito.", error);
         });
