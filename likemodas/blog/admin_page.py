@@ -1,10 +1,8 @@
-# likemodas/blog/admin_page.py (Versión Final Corregida y con Modal de QR)
-
 import reflex as rx
 from ..state import AppState
 from .. import navigation
 from .forms import blog_post_edit_form
-from ..state import AppState, AdminPostRowData 
+from ..state import AppState, AdminPostRowData
 from ..ui.qr_display import qr_code_display
 
 def edit_post_dialog() -> rx.Component:
@@ -28,11 +26,8 @@ def edit_post_dialog() -> rx.Component:
         on_open_change=AppState.cancel_editing_post,
     )
 
-# --- INICIO: NUEVO MODAL PARA MOSTRAR CÓDIGOS QR ---
 def qr_display_modal() -> rx.Component:
     """El diálogo modal que muestra los códigos QR para cada variante."""
-    
-    # Estilos para que la impresión se vea bien
     printable_area_style = {
         "id": "printable-qr-area",
         "@media print": {
@@ -48,20 +43,14 @@ def qr_display_modal() -> rx.Component:
     }
 
     def render_variant_qr(variant: dict) -> rx.Component:
-        """Renderiza la fila para una sola variante con su QR usando el componente personalizado."""
+        """Renderiza la fila para una sola variante con su QR."""
         vuid = variant.get("vuid", "")
+        attributes_str = ", ".join([f"{k}: {v}" for k, v in variant.get("attributes", {}).items()])
 
         return rx.box(
             rx.hstack(
                 rx.vstack(
-                    rx.foreach(
-                        variant.get("attributes", {}),
-                        lambda item: rx.hstack(
-                            rx.text(f"{item[0]}:", weight="medium"),
-                            rx.text(item[1], weight="bold"),
-                            spacing="2",
-                        )
-                    ),
+                    rx.text(attributes_str, weight="bold"),
                     rx.text(f"Stock: {variant.get('stock', 0)}"),
                     rx.text(f"VUID: {vuid}", size="1", color_scheme="gray"),
                     align_items="start",
@@ -70,17 +59,13 @@ def qr_display_modal() -> rx.Component:
                 rx.spacer(),
                 rx.cond(
                     vuid != "",
-                    # --- 👇 AQUÍ ESTÁ LA MAGIA 👇 ---
-                    # Usamos nuestro nuevo componente 'qr_code_display'
                     qr_code_display(
                         value=vuid,
                         size=100,
-                        # --- CORRECCIÓN AQUÍ ---
-                        # Cambiamos el color a negro para asegurar el máximo contraste.
                         fgColor="#000000",
                         bgColor="#FFFFFF",
+                        level="Q"  # <-- Nivel de corrección de errores AUMENTADO
                     ),
-                    # --- 👆 FIN DEL CAMBIO 👆 ---
                     rx.center(rx.text("Sin QR"), width="100px", height="100px")
                 ),
                 spacing="4",
@@ -135,17 +120,16 @@ def qr_display_modal() -> rx.Component:
                 ),
                 align_items="stretch",
                 spacing="4",
-                style=printable_area_style, # Aplicar estilos de impresión
+                style=printable_area_style,
             ),
             style={"max_width": "720px"},
         ),
         open=AppState.show_qr_display_modal,
         on_open_change=AppState.set_show_qr_display_modal,
     )
-# --- FIN: NUEVO MODAL PARA MOSTRAR CÓDIGOS QR ---
 
 def post_admin_row(post: AdminPostRowData) -> rx.Component:
-    """Componente para una fila de la tabla de administración (MODIFICADO)."""
+    """Componente para una fila de la tabla de administración."""
     return rx.table.row(
         rx.table.cell(
             rx.cond(
@@ -189,7 +173,6 @@ def post_admin_row(post: AdminPostRowData) -> rx.Component:
                 spacing="3",
             )
         ),
-        # --- INICIO DE LA MODIFICACIÓN: NUEVA CELDA PARA EL BOTÓN DE QR ---
         rx.table.cell(
             rx.icon_button(
                 rx.icon("qr-code"),
@@ -198,12 +181,11 @@ def post_admin_row(post: AdminPostRowData) -> rx.Component:
                 size="2"
             )
         ),
-        # --- FIN DE LA MODIFICACIÓN ---
         align="center",
     )
 
 def blog_admin_page() -> rx.Component:
-    """Página de 'Mis Publicaciones' para el vendedor (MODIFICADA)."""
+    """Página de 'Mis Publicaciones' para el vendedor."""
     return rx.center(
         rx.container(
             rx.vstack(
@@ -224,9 +206,7 @@ def blog_admin_page() -> rx.Component:
                                 rx.table.column_header_cell("Título"),
                                 rx.table.column_header_cell("Precio"),
                                 rx.table.column_header_cell("Acciones"),
-                                # --- INICIO DE LA MODIFICACIÓN: NUEVO ENCABEZADO DE TABLA ---
                                 rx.table.column_header_cell("QR"),
-                                # --- FIN DE LA MODIFICACIÓN ---
                             )
                         ),
                         rx.table.body(
@@ -237,7 +217,6 @@ def blog_admin_page() -> rx.Component:
                     rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
                 ),
                 edit_post_dialog(),
-                # --- AÑADIMOS EL NUEVO MODAL A LA PÁGINA ---
                 qr_display_modal(),
                 spacing="5", width="100%",
             ),
