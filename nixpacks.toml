@@ -1,14 +1,19 @@
-# nixpacks.toml (CORREGIDO)
+# nixpacks.toml (VERSIÓN CORREGIDA Y FINAL)
 
+# 1. Especifica la versión de Python que necesita tu proyecto.
+#    Esto le indica a Nixpacks que debe preparar un entorno de Python.
+[providers]
+python = "3.11"
+
+# 2. Define la fase de configuración para paquetes del sistema (esto está bien como lo tenías).
 [phases.setup]
-# Mantenemos los paquetes del sistema que necesita la librería Pillow.
 aptPkgs = ["libjpeg-dev", "zlib1g-dev"]
 
+# 3. Define la fase de instalación para las dependencias de Python.
+#    Estos comandos se ejecutarán DESPUÉS de que el entorno de Python esté listo.
 [phases.install]
-# ESTA ES LA SECCIÓN CLAVE QUE FALTABA.
-# Le decimos a Nixpacks que instale tus dependencias de Python.
-cmds = ["pip install --upgrade pip", "pip install -r requirements.txt"]
+cmds = ["pip install -r requirements.txt"]
 
+# 4. Define el comando de inicio de la aplicación.
 [start]
-# El comando de inicio no cambia, seguirá ejecutando tu script.
 cmd = "sh ./start.sh"
