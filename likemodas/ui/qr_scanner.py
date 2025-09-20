@@ -21,18 +21,19 @@ class QRScannerComponent(rx.Component):
     def _get_custom_code(self) -> str:
         """
         Genera el código JS/React necesario para inicializar el escáner.
-        [VERSIÓN MEJORADA CON CONFIGURACIÓN EXPLÍCITA DE VIDEO]
+        Esta versión mejorada soluciona el error de redeclaración de 'useEffect'
+        y añade una configuración más robusta para la cámara.
         """
         return """
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { useEffect } from 'react';
+// La importación de 'useEffect' se ha eliminado para evitar el conflicto con Reflex.
 
 const Html5QrcodeScannerComponent = (props) => {
   // Un ID único para el elemento donde se renderizará el escáner.
   const qrcodeRegionId = "html5qr-code-full-region";
 
   useEffect(() => {
-    // --- INICIO DE LA CORRECCIÓN ---
+    // --- INICIO DE LA CORRECCIÓN DE LA CÁMARA ---
     // Una configuración más detallada para mayor compatibilidad con diversas cámaras.
     const config = {
       fps: props.fps || 10,
@@ -40,10 +41,10 @@ const Html5QrcodeScannerComponent = (props) => {
       qrbox: { width: 250, height: 250 },
       // Recuerda la última cámara utilizada para mejorar la experiencia.
       rememberLastUsedCamera: true,
-      // Especifica que solo queremos usar la cámara y no la subida de archivos.
+      // Especifica que solo queremos usar la cámara.
       supportedScanTypes: [0] // 0 = Html5QrcodeScanType.SCAN_TYPE_CAMERA
     };
-    // --- FIN DE LA CORRECCIÓN ---
+    // --- FIN DE LA CORRECCIÓN DE LA CÁMARA ---
 
     const html5QrcodeScanner = new Html5QrcodeScanner(
       qrcodeRegionId,
@@ -62,7 +63,7 @@ const Html5QrcodeScannerComponent = (props) => {
     };
 
     const errorCallback = (errorMessage) => {
-      // Manejo de errores (opcional, se puede dejar vacío).
+      // Manejo de errores (opcional).
     };
 
     html5QrcodeScanner.render(successCallback, errorCallback);
