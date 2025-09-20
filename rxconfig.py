@@ -27,7 +27,7 @@ config = rx.Config(
     # Asignamos explícitamente la URL de la base de datos que leímos arriba.
     db_url=database_url,
     
-    api_url=PRODUCTION_DOMAIN,
+    api_url=RAILWAY_PUBLIC_URL,
     deploy_url=PRODUCTION_DOMAIN,
     
     cors_allowed_origins=[
