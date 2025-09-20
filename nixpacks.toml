@@ -1,19 +1,19 @@
-# nixpacks.toml (VERSIÓN FINAL CORREGIDA)
+# nixpacks.toml (VERSIÓN SIMPLIFICADA Y DEFINITIVA)
 
-# 1. Define la LISTA de proveedores que usará tu proyecto.
-#    La sintaxis correcta es una variable (clave = valor), no una tabla.
+# 1. Le decimos a Nixpacks que use el entorno de Python.
+#    Esto es lo que "enciende la estufa".
 providers = ["python"]
-
-# 2. Configura la versión específica para el proveedor 'python'.
 [python]
 version = "3.11"
 
-# 3. El resto de las fases se mantiene igual.
+# 2. Añadimos los paquetes del sistema que necesita Pillow.
 [phases.setup]
 aptPkgs = ["libjpeg-dev", "zlib1g-dev"]
 
-[phases.install]
-cmds = ["pip install -r requirements.txt"]
+# 3. NO DEFINIMOS LA FASE DE INSTALACIÓN.
+#    Al eliminar esta sección, el "provider" de Python se encargará
+#    automáticamente de ejecutar "pip install -r requirements.txt" de la forma correcta.
 
+# 4. Definimos el comando de inicio, que se ejecuta al final de todo.
 [start]
 cmd = "sh ./start.sh"
