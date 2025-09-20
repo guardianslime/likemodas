@@ -1,15 +1,10 @@
 #!/bin/bash
-# Este script se ejecutará cada vez que Railway despliegue tu aplicación.
-
-echo "----> Instalando dependencias..."
-pip install -r requirements.txt
+# start.sh (SIMPLIFICADO)
 
 echo "----> Aplicando migraciones a la base de datos de producción..."
-# --- El comando MODERNO y CORRECTO para aplicar las migraciones ---
-# Construye los cimientos (las tablas) en tu base de datos PostgreSQL.
+# Este comando ahora funcionará porque reflex ya fue instalado por Nixpacks.
 reflex db alembic upgrade head
 
 echo "----> Iniciando el servidor backend..."
-# --- El comando MODERNO y CORRECTO para iniciar el servidor ---
-# Pone la casa (tu app) sobre los cimientos ya construidos.
+# Este comando también funcionará.
 reflex run --backend-only --env prod --backend-host 0.0.0.0 --port $PORT

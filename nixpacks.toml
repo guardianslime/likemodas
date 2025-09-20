@@ -1,10 +1,14 @@
-# nixpacks.toml
+# nixpacks.toml (CORREGIDO)
 
 [phases.setup]
-# aptPkgs son paquetes del sistema para entornos Debian/Ubuntu, que usa Railway.
-# Estos son necesarios para que la librería Pillow funcione correctamente con imágenes.
+# Mantenemos los paquetes del sistema que necesita la librería Pillow.
 aptPkgs = ["libjpeg-dev", "zlib1g-dev"]
 
+[phases.install]
+# ESTA ES LA SECCIÓN CLAVE QUE FALTABA.
+# Le decimos a Nixpacks que instale tus dependencias de Python.
+cmds = ["pip install --upgrade pip", "pip install -r requirements.txt"]
+
 [start]
-# Le decimos a Nixpacks que use el mismo comando de inicio que ya tienes.
+# El comando de inicio no cambia, seguirá ejecutando tu script.
 cmd = "sh ./start.sh"
