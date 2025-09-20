@@ -168,17 +168,42 @@ def public_navbar() -> rx.Component:
                 align="center", spacing="4", justify="start",
             ),
             rx.input(
-                # ... (propiedades) ...
-                variant="surface",
-                color_scheme="violet", # <-- Corrección de estilo
-                style={ # <-- Estilos detallados
-                    "background_color": rx.color_mode_cond(...),
+                placeholder="Buscar productos...",
+                value=AppState.search_term,
+                on_change=AppState.set_search_term,
+                width="100%",
+                radius="medium",
+                
+                # --- INICIO DE LA CORRECCIÓN ---
+                # La causa del error está aquí. Tu código local probablemente tiene "..."
+                # en lugar de los valores correctos de rx.color(...).
+                
+                # 1. Usamos una variante neutral que se adapta bien al fondo.
+                variant="surface", 
+                
+                # 2. ¡ESTA ES LA LÍNEA CLAVE!
+                # Le decimos al componente que use "violet" para todos sus estados interactivos.
+                color_scheme="violet",
+
+                # 3. Mantenemos el estilo de fondo para que coincida con la barra
+                style={
+                    "background_color": rx.color_mode_cond(
+                        light=rx.color("gray", 3),
+                        dark=rx.color("gray", 2)
+                    ),
+                    # Borde sutil por defecto
                     "border": f"1.5px solid {rx.color('gray', 6)}",
-                    "_hover": {"border_color": rx.color("violet", 7)},
+                    # Transición suave para los cambios de color
+                    "transition": "border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                    # Estilo al pasar el mouse por encima
+                    "_hover": {
+                        "border_color": rx.color("violet", 7),
+                    },
+                    # Estilo al hacer clic (focus), aquí aplicamos el color morado
                     "_focus": {
                         "border_color": rx.color("violet", 9),
                         "box_shadow": f"0 0 0 1px {rx.color('violet', 9)}",
-                        "outline": "none",
+                        "outline": "none",  # Quita el borde azul por defecto del navegador
                     },
                 },
             ),
