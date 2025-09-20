@@ -1,25 +1,25 @@
-# likemodas/ui/qr_display.py
-
+# likemodas/ui/qr_display.py (COMPLETO Y CORREGIDO)
 import reflex as rx
 
 class QRCodeDisplay(rx.Component):
     """Un componente que envuelve la librería de React 'qrcode.react'."""
 
-    # El nombre del paquete en npm que se instalará en el frontend.
     library = "qrcode.react"
+    tag = "QRCode"  # El nombre que le daremos después de importar
 
-    # El nombre de la etiqueta del componente en React.
-    tag = "QRCode"
-
-    # Las propiedades que acepta el componente.
-    # 'value' es el texto que se convertirá en QR (tu VUID).
+    # Props que acepta el componente.
     value: rx.Var[str]
-
-    # Propiedades opcionales para personalizar el estilo.
     size: rx.Var[int] = 128
     bgColor: rx.Var[str] = "#FFFFFF"
     fgColor: rx.Var[str] = "#000000"
     level: rx.Var[str] = "L"
 
-# Creamos un alias para que sea más fácil de usar en nuestras páginas.
+    # --- 👇 MÉTODO AÑADIDO PARA CORREGIR LA IMPORTACIÓN 👇 ---
+    def _get_imports(self) -> dict[str, str]:
+        # Le decimos a Reflex: "De 'qrcode.react', importa la exportación
+        # por defecto (default) y llámala 'QRCode'".
+        return {"qrcode.react": ["default as QRCode"]}
+    # --- 👆 FIN DE LA CORRECCIÓN 👆 ---
+
+# Creamos un alias para que sea más fácil de usar.
 qr_code_display = QRCodeDisplay.create
