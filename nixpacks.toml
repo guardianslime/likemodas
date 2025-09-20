@@ -1,19 +1,19 @@
-# nixpacks.toml (VERSIÓN CORREGIDA Y FINAL)
+# nixpacks.toml (VERSIÓN FINAL CORREGIDA)
 
-# 1. Especifica la versión de Python que necesita tu proyecto.
-#    Esto le indica a Nixpacks que debe preparar un entorno de Python.
-[providers]
-python = "3.11"
+# 1. Define la LISTA de proveedores que usará tu proyecto.
+#    La sintaxis correcta es una variable (clave = valor), no una tabla.
+providers = ["python"]
 
-# 2. Define la fase de configuración para paquetes del sistema (esto está bien como lo tenías).
+# 2. Configura la versión específica para el proveedor 'python'.
+[python]
+version = "3.11"
+
+# 3. El resto de las fases se mantiene igual.
 [phases.setup]
 aptPkgs = ["libjpeg-dev", "zlib1g-dev"]
 
-# 3. Define la fase de instalación para las dependencias de Python.
-#    Estos comandos se ejecutarán DESPUÉS de que el entorno de Python esté listo.
 [phases.install]
 cmds = ["pip install -r requirements.txt"]
 
-# 4. Define el comando de inicio de la aplicación.
 [start]
 cmd = "sh ./start.sh"
