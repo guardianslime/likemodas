@@ -70,12 +70,14 @@ def qr_display_modal() -> rx.Component:
                 rx.spacer(),
                 rx.cond(
                     vuid != "",
-                    # --- 👇 AQUI ESTÁ LA MAGIA 👇 ---
+                    # --- 👇 AQUÍ ESTÁ LA MAGIA 👇 ---
                     # Usamos nuestro nuevo componente 'qr_code_display'
                     qr_code_display(
                         value=vuid,
                         size=100,
-                        fgColor="#4F46E5",  # El color violeta de tu marca
+                        # --- CORRECCIÓN AQUÍ ---
+                        # Cambiamos el color a negro para asegurar el máximo contraste.
+                        fgColor="#000000",
                         bgColor="#FFFFFF",
                     ),
                     # --- 👆 FIN DEL CAMBIO 👆 ---
