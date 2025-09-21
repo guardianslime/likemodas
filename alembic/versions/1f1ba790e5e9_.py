@@ -1,9 +1,7 @@
 """empty message
-
 Revision ID: 1f1ba790e5e9
 Revises: 
 Create Date: 2025-09-21 17:00:37.023504
-
 """
 from typing import Sequence, Union
 
@@ -95,6 +93,16 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['userinfo_id'], ['userinfo.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    # ### INICIO DE LA MODIFICACIÓN PARA EL QR ###
+    # Esta es la línea clave que crea el índice para acelerar las búsquedas del QR.
+    op.create_index(
+        'ix_blogpostmodel_variants',
+        'blogpostmodel',
+        ['variants'],
+        unique=False,
+        postgresql_using='gin'
+    )
+    # ### FIN DE LA MODIFICACIÓN PARA EL QR ###
     op.create_table('contactentrymodel',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('userinfo_id', sa.Integer(), nullable=True),
@@ -271,6 +279,10 @@ def downgrade() -> None:
     op.drop_table('purchasemodel')
     op.drop_table('notificationmodel')
     op.drop_table('contactentrymodel')
+    # ### INICIO DE LA MODIFICACIÓN PARA EL QR (DOWNGRADE) ###
+    # Elimina el índice al hacer downgrade, antes de eliminar la tabla.
+    op.drop_index('ix_blogpostmodel_variants', table_name='blogpostmodel')
+    # ### FIN DE LA MODIFICACIÓN PARA EL QR (DOWNGRADE) ###
     op.drop_table('blogpostmodel')
     op.drop_table('userinfo')
     with op.batch_alter_table('passwordresettoken', schema=None) as batch_op:
