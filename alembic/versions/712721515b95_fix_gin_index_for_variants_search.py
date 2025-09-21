@@ -1,4 +1,4 @@
-"""fix_gin_index_for_variants_search
+"""fix_gin_index_for_variants_search_and_change_type_to_jsonb
 
 Revision ID: 712721515b95
 Revises: 057ac65d952b
@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-import sqlmodel
+from sqlalchemy.dialects import postgresql
 
 
 # revision identifiers, used by Alembic.
@@ -20,15 +20,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """
-    Elimina el índice GIN incorrecto y crea uno nuevo y optimizado sobre
-    toda la columna 'variants' para acelerar las búsquedas de VUID.
-    """
-    # Usamos "DROP INDEX IF EXISTS". Este comando nunca fallará,
-    # por lo que la transacción no se abortará.
+    # Paso 1: Cambiar el tipo de la columna de JSON a JSONB.
+    # El 'USING variants::text::jsonb' es crucial para que PostgreSQL convierta los datos existentes.
+    op.alter_column('blogpostmodel', 'variants',
+               existing_type=postgresql.JSON(),
+               type_=postgresql.JSONB(),
+               postgresql_using='variants::text::jsonb')
+
+    # Paso 2: Intentar eliminar el índice antiguo e incorrecto, si es que existe.
     op.execute("DROP INDEX IF EXISTS ix_blogpostmodel_variants_vuid")
 
-    # Ahora que la transacción está segura, creamos el nuevo índice.
+    # Paso 3: Crear el nuevo y correcto índice GIN sobre la columna ya convertida a JSONB.
     op.create_index(
         'ix_blogpostmodel_variants',
         'blogpostmodel',
@@ -39,16 +41,19 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """
-    Revierte los cambios: elimina el nuevo índice GIN y recrea el
-    antiguo e incorrecto, para mantener la reversibilidad.
-    """
-    # También usamos "IF EXISTS" aquí por seguridad.
+    # Para revertir, hacemos los pasos en orden inverso.
+    # Paso 1: Eliminar el nuevo índice GIN.
     op.execute("DROP INDEX IF EXISTS ix_blogpostmodel_variants")
-
-    # Recrea el índice antiguo que existía antes
+    
+    # Paso 2: Recrear el índice antiguo (aunque sea incorrecto, es para reversibilidad).
     op.execute("""
         CREATE INDEX ix_blogpostmodel_variants_vuid
         ON blogpostmodel
         USING GIN ((variants -> 'vuid'));
     """)
+
+    # Paso 3: Cambiar el tipo de la columna de vuelta a JSON.
+    op.alter_column('blogpostmodel', 'variants',
+               existing_type=postgresql.JSONB(),
+               type_=postgresql.JSON(),
+               postgresql_using='variants::text::json')
