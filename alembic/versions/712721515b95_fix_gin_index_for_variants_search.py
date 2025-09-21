@@ -24,13 +24,11 @@ def upgrade() -> None:
     Elimina el índice GIN incorrecto y crea uno nuevo y optimizado sobre
     toda la columna 'variants' para acelerar las búsquedas de VUID.
     """
-    # Intentamos eliminar el índice antiguo. Si no existe, no hay problema.
-    try:
-        op.drop_index('ix_blogpostmodel_variants_vuid', table_name='blogpostmodel')
-    except Exception as e:
-        print(f"INFO: No se pudo eliminar el índice 'ix_blogpostmodel_variants_vuid', puede que no exista. Error: {e}")
+    # Usamos "DROP INDEX IF EXISTS". Este comando nunca fallará,
+    # por lo que la transacción no se abortará.
+    op.execute("DROP INDEX IF EXISTS ix_blogpostmodel_variants_vuid")
 
-    # Creamos el nuevo índice GIN correcto, que indexa todo el contenido de la columna 'variants'.
+    # Ahora que la transacción está segura, creamos el nuevo índice.
     op.create_index(
         'ix_blogpostmodel_variants',
         'blogpostmodel',
@@ -45,8 +43,8 @@ def downgrade() -> None:
     Revierte los cambios: elimina el nuevo índice GIN y recrea el
     antiguo e incorrecto, para mantener la reversibilidad.
     """
-    # Elimina el nuevo índice que creamos en upgrade()
-    op.drop_index('ix_blogpostmodel_variants', table_name='blogpostmodel')
+    # También usamos "IF EXISTS" aquí por seguridad.
+    op.execute("DROP INDEX IF EXISTS ix_blogpostmodel_variants")
 
     # Recrea el índice antiguo que existía antes
     op.execute("""
