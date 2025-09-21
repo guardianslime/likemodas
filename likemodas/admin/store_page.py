@@ -212,7 +212,6 @@ def admin_store_page() -> rx.Component:
                     "Apunta la cámara al código QR o sube una imagen para añadir el producto a la venta."
                 ),
                 qr_scanner_component(
-                    on_scan_success=AppState.handle_qr_scan_result,
                     fps=10,
                     qrbox=250,
                     verbose=False

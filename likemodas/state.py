@@ -1399,6 +1399,72 @@ class AppState(reflex_local_auth.LocalAuthState):
         except Exception as e:
             logger.error(f"❌ ERROR CATASTRÓFICO en handle_qr_scan_result: {e}", exc_info=True)
             return rx.toast.error("Ocurrió un error inesperado al procesar el código QR.")
+        
+    @rx.event
+    def process_qr_url_on_load(self):
+        """
+        Se ejecuta al cargar /admin/store, procesa el VUID de la URL,
+        añade el item al carrito de venta directa y limpia la URL.
+        """
+        full_url = ""
+        try:
+            # 1. Obtener la URL completa desde el router de Reflex
+            full_url = self.router.url
+        except Exception:
+            # Si el router aún no está listo, simplemente retornamos
+            return
+
+        # Si no hay URL o no contiene parámetros, no hacer nada.
+        if not full_url or "?" not in full_url:
+            return
+
+        # 2. Parsear la URL para extraer los parámetros de forma segura
+        try:
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+        except Exception:
+            # En caso de una URL malformada, simplemente ignorar.
+            return
+
+        # 3. Buscar el parámetro específico 'qr_vuid'
+        vuid_list = query_params.get("qr_vuid")
+        if not vuid_list:
+            return  # No es un escaneo de QR, no hacer nada.
+
+        vuid = vuid_list[0]
+
+        # --- Lógica de negocio (reutilizada de handle_qr_scan_result) ---
+        result = self.find_variant_by_vuid(vuid)
+
+        if not result:
+            yield rx.toast.error("Código QR no válido o producto no encontrado.")
+            return rx.redirect("/admin/store") # Redirigir para limpiar URL incluso en error
+
+        post, variant = result
+        attributes = variant.get("attributes", {})
+
+        # Reconstruir la clave del carrito para consistencia
+        selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
+        variant_index = next((i for i, v in enumerate(post.variants) if v.get("vuid") == vuid), -1)
+
+        if variant_index == -1:
+            yield rx.toast.error("Error de consistencia de datos.")
+            return rx.redirect("/admin/store")
+
+        cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+
+        # Verificar stock
+        available_stock = variant.get("stock", 0)
+        quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+
+        if quantity_in_cart + 1 > available_stock:
+            yield rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
+        else:
+            self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+            yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
+
+        # --- Paso final y crucial: Redirigir para limpiar la URL ---
+        return rx.redirect("/admin/store")
 
     min_price: str = ""
     max_price: str = ""

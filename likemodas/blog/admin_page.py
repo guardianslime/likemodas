@@ -47,13 +47,17 @@ def qr_display_modal() -> rx.Component:
         """
         [FUNCIÓN CORREGIDA]
         Renderiza la fila para una sola variante con su QR.
-        Ahora recibe un DTO con los atributos ya pre-formateados.
+        Ahora genera una URL completa para el código QR.
         """
+        # 1. Construir la URL completa concatenando la URL base de la app
+        #    con la ruta y el parámetro qr_vuid.
+        qr_url = rx.Var.create(
+            AppState.base_app_url + "/admin/store?qr_vuid=" + variant.vuid
+        )
         
         return rx.box(
             rx.hstack(
                 rx.vstack(
-                    # --- CAMBIO CLAVE: Usa el string pre-formateado ---
                     rx.text(variant.attributes_str, weight="bold"),
                     rx.text(f"Stock: {variant.stock}"),
                     rx.text(f"VUID: {variant.vuid}", size="1", color_scheme="gray"),
@@ -63,8 +67,9 @@ def qr_display_modal() -> rx.Component:
                 rx.spacer(),
                 rx.cond(
                     variant.vuid != "",
+                    # 2. Pasar la variable qr_url completa al componente.
                     qr_code_display(
-                        value=variant.vuid,
+                        value=qr_url, # ANTES: value=variant.vuid
                         size=100,
                         fgColor="#000000",
                         bgColor="#FFFFFF",
