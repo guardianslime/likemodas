@@ -139,9 +139,9 @@ class AdminVariantData(rx.Base):
     """DTO para mostrar una variante con su QR en el modal de admin."""
     vuid: str = ""
     stock: int = 0
-    attributes_str: str = "" # String de atributos pre-formateado
-    # Mantenemos los atributos originales por si se necesitan en el futuro
+    attributes_str: str = ""
     attributes: dict = {}
+    qr_url: str = "" # <-- ✨ AÑADE ESTA LÍNEA ✨
 
 # --- PASO 2: MODIFICAR EL DTO AdminPostRowData ---
 class AdminPostRowData(rx.Base):
@@ -2644,13 +2644,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def my_admin_posts(self) -> list[AdminPostRowData]:
         """
-        [VERSIÓN CORREGIDA]
-        Propiedad computada que devuelve los posts del admin, pre-procesando
-        los datos de las variantes para evitar errores en el frontend.
+        [VERSIÓN FINAL Y CORREGIDA]
+        Propiedad que devuelve los posts del admin, pre-procesando
+        la URL completa del QR en el backend para máxima fiabilidad.
         """
         if not self.authenticated_user_info:
             return []
-        
+
+        # Obtenemos la URL base de la aplicación una sola vez.
+        base_url = get_config().deploy_url
+
         with rx.session() as session:
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -2661,25 +2664,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             admin_posts = []
             for p in posts_from_db:
                 main_image = p.variants[0].get("image_url", "") if p.variants else ""
-                
-                # --- INICIO DE LA LÓGICA DE PRE-PROCESAMIENTO ---
+
                 variants_dto_list = []
                 if p.variants:
                     for v in p.variants:
                         attrs = v.get("attributes", {})
-                        # Creamos el string de atributos aquí, en Python
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
-                        
+
+                        # ✨ LÓGICA CLAVE: Construimos la URL completa aquí en el backend ✨
+                        vuid = v.get("vuid", "")
+                        full_qr_url = f"{base_url}/admin/store?qr_vuid={vuid}" if vuid else ""
+
                         variants_dto_list.append(
                             AdminVariantData(
-                                vuid=v.get("vuid", ""),
+                                vuid=vuid,
                                 stock=v.get("stock", 0),
                                 attributes_str=attrs_str,
-                                attributes=attrs
+                                attributes=attrs,
+                                qr_url=full_qr_url  # <-- ✨ Poblamos el nuevo campo ✨
                             )
                         )
-                # --- FIN DE LA LÓGICA DE PRE-PROCESAMIENTO ---
-                
+
                 admin_posts.append(
                     AdminPostRowData(
                         id=p.id,
@@ -2687,11 +2692,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price_cop=p.price_cop,
                         publish_active=p.publish_active,
                         main_image_url=main_image,
-                        variants=variants_dto_list, # Pasamos la lista pre-procesada
+                        variants=variants_dto_list,
                     )
                 )
             return admin_posts
-
 
             # --- FIN DE LA CORRECCIÓN ---
 

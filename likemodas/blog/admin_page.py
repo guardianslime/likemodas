@@ -45,31 +45,35 @@ def qr_display_modal() -> rx.Component:
 
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         """
-        [FUNCIÓN CORREGIDA]
-        Renderiza la fila para una sola variante con su QR.
-        Ahora genera una URL completa para el código QR.
+        [FUNCIÓN FINAL]
+        Renderiza la fila para una variante. Ahora usa la URL pre-construida
+        desde el backend y la muestra como texto para verificación.
         """
-        # 1. Construir la URL completa concatenando la URL base de la app
-        #    con la ruta y el parámetro qr_vuid.
-        qr_url = rx.Var.create(
-            AppState.base_app_url + "/admin/store?qr_vuid=" + variant.vuid
-        )
-        
         return rx.box(
             rx.hstack(
                 rx.vstack(
                     rx.text(variant.attributes_str, weight="bold"),
                     rx.text(f"Stock: {variant.stock}"),
-                    rx.text(f"VUID: {variant.vuid}", size="1", color_scheme="gray"),
+                    # ✨ CAMBIO 1: Mostramos la URL para que la puedas ver ✨
+                    rx.text(
+                        rx.cond(
+                            variant.qr_url,
+                            f"URL: {variant.qr_url}",
+                            "VUID no generado"
+                        ), 
+                        size="1", 
+                        color_scheme="gray",
+                        no_of_lines=1 # Evita que la URL larga rompa el diseño
+                    ),
                     align_items="start",
                     spacing="1",
                 ),
                 rx.spacer(),
                 rx.cond(
                     variant.vuid != "",
-                    # 2. Pasar la variable qr_url completa al componente.
+                    # ✨ CAMBIO 2: Pasamos la URL directamente al componente QR ✨
                     qr_code_display(
-                        value=qr_url, # ANTES: value=variant.vuid
+                        value=variant.qr_url, # <-- Aquí está la magia
                         size=100,
                         fgColor="#000000",
                         bgColor="#FFFFFF",
