@@ -6,6 +6,7 @@ import sqlmodel
 from sqlmodel import select
 from sqlmodel import text # Importar text
 import sqlalchemy
+from sqlalchemy.dialects.postgresql import JSONB
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 import secrets
@@ -48,6 +49,7 @@ from .data.product_options import (
 # --- AÑADE ESTA CONFIGURACIÓN DE LOGGING AQUÍ ---
 # Esto configura el logger para que escriba directamente en la salida estándar,
 # lo que Railway capturará de forma fiable.
+# Esto configura el logger para que escriba directamente en la consola.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -1083,15 +1085,10 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        """
-        Crea y publica un nuevo producto, guardando las variantes con su stock individual.
-        Esta es la lógica correcta que crea una variante por cada combinación.
-        """
         if not self.is_admin or not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         if not all([form_data.get("title"), form_data.get("price"), form_data.get("category")]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
-        
         if not self.generated_variants_map:
             return rx.toast.error("Debes generar y configurar las variantes para al menos una imagen.")
 
@@ -1105,13 +1102,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             return rx.toast.error("Los costos y límites deben ser números válidos.")
 
-        # Lógica para aplanar las variantes del map a una sola lista para la BD
         all_variants_for_db = []
         for index, generated_list in self.generated_variants_map.items():
             main_image_url_for_group = self.new_variants[index].get("image_url", "")
             for variant_data in generated_list:
-                # --- INICIO DE LA MODIFICACIÓN ---
-                # Asegura que cada variante tenga un VUID
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
@@ -1121,7 +1115,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 all_variants_for_db.append(variant_dict)
 
         if not all_variants_for_db:
-             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
+            return rx.toast.error("No se encontraron variantes configuradas para guardar.")
 
         with rx.session() as session:
             new_post = BlogPostModel(
@@ -1131,7 +1125,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 price=float(form_data.get("price", 0.0)),
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
-                variants=all_variants_for_db, # <--- Aquí se guardan las variantes correctas
+                variants=all_variants_for_db,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost,
@@ -1151,25 +1145,33 @@ class AppState(reflex_local_auth.LocalAuthState):
     def find_variant_by_vuid(self, vuid: str) -> Optional[Tuple[BlogPostModel, dict]]:
         """
         Busca un producto y su variante específica usando un VUID.
-        Utiliza una consulta SQL optimizada para buscar dentro del campo JSON.
+        Utiliza una consulta optimizada con el operador de contención (@>) de JSONB
+        y un índice GIN para un rendimiento máximo.
         """
         with rx.session() as session:
-            # Consulta SQL para buscar en un array de objetos JSONB en PostgreSQL
-            sql_query = text("""
-                SELECT bp.*, v as variant_data
-                FROM blogpostmodel AS bp, jsonb_array_elements(bp.variants) AS v
-                WHERE v->>'vuid' = :vuid_param
-            """)
-            
-            result = session.exec(sql_query, {"vuid_param": vuid}).first()
+            # 1. Construir el payload JSON para la consulta de contención.
+            #    Esto busca un array que contenga un objeto con el VUID especificado.
+            containment_payload = [{"vuid": vuid}]
 
-            if result:
-                # El resultado es una tupla, donde el primer elemento es el BlogPostModel
-                # y el segundo es el diccionario de la variante.
-                post = session.get(BlogPostModel, result.id)
-                variant_dict = result.variant_data
-                return post, variant_dict
-            return None
+            # 2. Ejecutar la consulta utilizando el operador @> de PostgreSQL
+            #    a través del ORM de SQLAlchemy/SQLModel.
+            post = session.exec(
+                sqlmodel.select(BlogPostModel).where(
+                    BlogPostModel.variants.op("@>")(containment_payload, type_=JSONB)
+                )
+            ).first()
+
+            if not post:
+                return None
+
+            # 3. Una vez encontrada la fila del producto, iterar en Python para
+            #    extraer el diccionario de la variante específica. Esta operación es
+            #    muy rápida ya que solo se realiza sobre un único registro.
+            for variant in post.variants:
+                if variant.get("vuid") == vuid:
+                    return post, variant
+
+            return None # En el caso improbable de que el VUID exista pero no se encuentre la variante.
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
@@ -1350,15 +1352,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_qr_scan_result(self, decoded_text: str):
         """
-        [VERSIÓN CON LOGGING PROFESIONAL]
         Manejador que se activa tras un escaneo QR exitoso.
+        Utiliza una búsqueda indexada y eficiente por VUID.
         """
         try:
             logger.info(f"✅ [LOG] Evento handle_qr_scan_result RECIBIDO. VUID: {decoded_text}")
             self.show_qr_scanner_modal = False
 
+            # Llama al nuevo método de búsqueda optimizado.
             result = self.find_variant_by_vuid(decoded_text)
-            logger.info(f"🕵️  [LOG] Resultado de la búsqueda en BD: {result}")
+            logger.info(f"🕵️  [LOG] Resultado de la búsqueda en BD: {'Encontrado' if result else 'No encontrado'}")
 
             if not result:
                 logger.warning(f"❌ [LOG] VUID '{decoded_text}' no encontrado en la base de datos.")
@@ -1366,8 +1369,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             post, variant = result
             attributes = variant.get("attributes", {})
-            selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
 
+            # Reconstruir la clave del carrito para la consistencia.
+            selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
             variant_index = -1
             for i, v in enumerate(post.variants):
                 if v.get("vuid") == decoded_text:
@@ -1381,21 +1385,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
             available_stock = variant.get("stock", 0)
             quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
-            logger.info(f"📦 [LOG] Stock disponible: {available_stock}, Cantidad en carrito: {quantity_in_cart}")
+            logger.info(f"📦 [LOG] Stock disponible para '{post.title}': {available_stock}, Cantidad en carrito: {quantity_in_cart}")
 
             if quantity_in_cart + 1 > available_stock:
                 logger.warning(f"🚫 [LOG] Stock insuficiente para '{post.title}'.")
                 return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
 
             self.direct_sale_cart[cart_key] = quantity_in_cart + 1
-            logger.info(f"🛒 [LOG] Carrito actualizado: {self.direct_sale_cart}")
+            logger.info(f"🛒 [LOG] Carrito de venta directa actualizado: {self.direct_sale_cart}")
 
             return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
 
         except Exception as e:
-            # Esta es la gran ventaja: logger.error puede registrar el traceback completo del error.
             logger.error(f"❌ ERROR CATASTRÓFICO en handle_qr_scan_result: {e}", exc_info=True)
-            return rx.toast.error("Ocurrió un error inesperado al procesar el QR.")
+            return rx.toast.error("Ocurrió un error inesperado al procesar el código QR.")
 
     min_price: str = ""
     max_price: str = ""
@@ -1828,7 +1831,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def save_edited_post(self):
         """
-        [VERSIÓN FINAL CON BACKFILL DE VUID]
         Guarda los cambios del modal y añade VUIDs a las variantes antiguas que no lo tengan.
         """
         if not self.is_admin or self.post_to_edit_id is None:
@@ -1845,26 +1847,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         for image_group_index, variant_list in self.edit_variants_map.items():
             main_image_for_group = self.unique_edit_form_images[image_group_index]
             for variant_form_data in variant_list:
-                
-                # --- INICIO DE LA LÓGICA DE ACTUALIZACIÓN DE VUID ---
                 new_variant_dict = {
                     "attributes": variant_form_data.attributes,
                     "stock": variant_form_data.stock,
                     "image_url": variant_form_data.image_url or main_image_for_group,
                 }
-                
-                # Si la variante ya tiene un VUID, lo conservamos.
-                # Si no lo tiene, generamos uno nuevo.
-                if "vuid" in variant_form_data.attributes:
-                     # Esto es un fallback por si el vuid se guardó dentro de attributes por error
-                    new_variant_dict["vuid"] = variant_form_data.attributes["vuid"]
-                elif hasattr(variant_form_data, 'vuid') and variant_form_data.vuid:
-                     new_variant_dict["vuid"] = variant_form_data.vuid
+
+                # Si la variante ya tiene un VUID, lo conservamos. Si no, generamos uno nuevo.
+                existing_vuid = getattr(variant_form_data, 'vuid', None) or variant_form_data.attributes.get('vuid')
+                if existing_vuid:
+                    new_variant_dict["vuid"] = existing_vuid
                 else:
                     new_variant_dict["vuid"] = str(uuid.uuid4())
-                
+
                 all_variants_for_db.append(new_variant_dict)
-                # --- FIN DE LA LÓGICA DE ACTUALIZACIÓN DE VUID ---
 
         if not all_variants_for_db:
             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
@@ -1883,7 +1879,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_to_update.combines_shipping = self.edit_combines_shipping
                 post_to_update.shipping_combination_limit = limit
                 post_to_update.variants = all_variants_for_db
-                
+
                 session.add(post_to_update)
                 session.commit()
 
