@@ -7,6 +7,7 @@ import pytz
 import reflex as rx
 import sqlalchemy
 from sqlmodel import Field, Relationship, Column, JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import String
 from reflex_local_auth.user import LocalUser
 from .utils.timing import get_utc_now
