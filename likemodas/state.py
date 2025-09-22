@@ -1349,57 +1349,88 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_term(self, term: str):
         self.search_term = term
 
+    def find_variant_by_uuid(self, uuid_to_find: str) -> Optional[Tuple[BlogPostModel, dict]]:
+        """
+        Busca un producto y su variante específica usando un variant_uuid.
+        Utiliza una consulta optimizada con el operador de contención (@>) de JSONB
+        y un índice GIN para un rendimiento máximo.
+        """
+        with rx.session() as session:
+            # Construye el payload para buscar un objeto dentro del array JSON
+            containment_payload = [{"variant_uuid": uuid_to_find}]
+            
+            # Ejecuta la consulta optimizada
+            post = session.exec(
+                sqlmodel.select(BlogPostModel).where(
+                    BlogPostModel.variants.op("@>")(containment_payload, type_=JSONB)
+                )
+            ).first()
+
+            if not post:
+                return None
+
+            # Una vez encontrado el producto, localiza la variante exacta en la lista
+            for variant in post.variants:
+                if variant.get("variant_uuid") == uuid_to_find:
+                    return post, variant
+
+            return None
+
     @rx.event
-    def handle_qr_scan_result(self, decoded_text: str):
+    def process_qr_url_on_load(self):
         """
-        Manejador que se activa tras un escaneo QR exitoso.
-        Utiliza una búsqueda indexada y eficiente por VUID.
+        Se ejecuta al cargar /admin/store, procesa el variant_uuid de la URL,
+        añade el item al carrito de venta directa y limpia la URL.
         """
+        full_url = ""
         try:
-            logger.info(f"✅ [LOG] Evento handle_qr_scan_result RECIBIDO. VUID: {decoded_text}")
-            self.show_qr_scanner_modal = False
+            full_url = self.router.page.full_raw_path
+        except Exception:
+            return
 
-            # Llama al nuevo método de búsqueda optimizado.
-            result = self.find_variant_by_vuid(decoded_text)
-            logger.info(f"🕵️  [LOG] Resultado de la búsqueda en BD: {'Encontrado' if result else 'No encontrado'}")
+        if not full_url or "?" not in full_url:
+            return
 
-            if not result:
-                logger.warning(f"❌ [LOG] VUID '{decoded_text}' no encontrado en la base de datos.")
-                return rx.toast.error("Código QR no válido o producto no encontrado.")
+        try:
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+        except Exception:
+            return
 
-            post, variant = result
-            attributes = variant.get("attributes", {})
+        variant_uuid_list = query_params.get("variant_uuid")
+        if not variant_uuid_list:
+            return
 
-            # Reconstruir la clave del carrito para la consistencia.
-            selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
-            variant_index = -1
-            for i, v in enumerate(post.variants):
-                if v.get("vuid") == decoded_text:
-                    variant_index = i
-                    break
+        variant_uuid = variant_uuid_list[0]
+        result = self.find_variant_by_uuid(variant_uuid)
 
-            if variant_index == -1:
-                logger.error("❌ [LOG] Error de consistencia: No se encontró el índice de la variante.")
-                return rx.toast.error("Error de consistencia de datos.")
+        if not result:
+            yield rx.toast.error("Código QR no válido o producto no encontrado.")
+            return rx.redirect("/admin/store")
 
-            cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
-            available_stock = variant.get("stock", 0)
-            quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
-            logger.info(f"📦 [LOG] Stock disponible para '{post.title}': {available_stock}, Cantidad en carrito: {quantity_in_cart}")
+        post, variant = result
+        attributes = variant.get("attributes", {})
 
-            if quantity_in_cart + 1 > available_stock:
-                logger.warning(f"🚫 [LOG] Stock insuficiente para '{post.title}'.")
-                return rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
+        selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
+        variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
 
+        if variant_index == -1:
+            yield rx.toast.error("Error de consistencia de datos.")
+            return rx.redirect("/admin/store")
+
+        cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+        available_stock = variant.get("stock", 0)
+        quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+
+        if quantity_in_cart + 1 > available_stock:
+            yield rx.toast.error(f"¡Sin stock! No quedan unidades de '{post.title}'.")
+        else:
             self.direct_sale_cart[cart_key] = quantity_in_cart + 1
-            logger.info(f"🛒 [LOG] Carrito de venta directa actualizado: {self.direct_sale_cart}")
+            yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
 
-            return rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
-
-        except Exception as e:
-            logger.error(f"❌ ERROR CATASTRÓFICO en handle_qr_scan_result: {e}", exc_info=True)
-            return rx.toast.error("Ocurrió un error inesperado al procesar el código QR.")
-        
+        # Redirección final para limpiar la URL
+        return rx.redirect("/admin/store")
+    
     @rx.event
     def process_qr_url_on_load(self):
         """
@@ -2651,7 +2682,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.authenticated_user_info:
             return []
 
-        # Obtenemos la URL base de la aplicación una sola vez.
         base_url = get_config().deploy_url
 
         with rx.session() as session:
@@ -2671,17 +2701,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attrs = v.get("attributes", {})
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
 
-                        # ✨ LÓGICA CLAVE: Construimos la URL completa aquí en el backend ✨
-                        vuid = v.get("vuid", "")
-                        full_qr_url = f"{base_url}/admin/store?qr_vuid={vuid}" if vuid else ""
+                        # LÓGICA CLAVE: Construimos la URL completa aquí en el backend
+                        variant_uuid = v.get("variant_uuid", "")
+                        full_qr_url = f"{base_url}/admin/store?variant_uuid={variant_uuid}" if variant_uuid else ""
 
                         variants_dto_list.append(
                             AdminVariantData(
-                                vuid=vuid,
+                                vuid=v.get("vuid", ""), # Conservamos el vuid antiguo por si acaso
                                 stock=v.get("stock", 0),
                                 attributes_str=attrs_str,
                                 attributes=attrs,
-                                qr_url=full_qr_url  # <-- ✨ Poblamos el nuevo campo ✨
+                                qr_url=full_qr_url  # Poblamos el nuevo campo
                             )
                         )
 
@@ -3276,19 +3306,44 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def load_main_page_data(self):
         """
-        [VERSIÓN CORREGIDA]
-        Orquestador principal: Lee la categoría de la URL, carga la dirección,
-        filtra los productos y luego recalcula los costos de envío.
+        [VERSIÓN FINAL]
+        Orquestador principal que ahora también intercepta URLs de QR para usuarios públicos,
+        lee la categoría de la URL, carga la dirección del usuario, filtra los productos
+        y finalmente recalcula los costos de envío.
         """
+        # --- INICIO: Lógica para QR de Flujo Público ---
+        # Esta sección se ejecuta primero para ver si la URL contiene un QR.
+        full_url = ""
+        try:
+            # Usamos self.router.url que es el método más fiable en versiones recientes de Reflex.
+            full_url = self.router.url
+        except Exception:
+            pass
+
+        if full_url and "variant_uuid=" in full_url:
+            try:
+                parsed_url = urlparse(full_url)
+                query_params = parse_qs(parsed_url.query)
+                variant_uuid_list = query_params.get("variant_uuid")
+                if variant_uuid_list:
+                    variant_uuid = variant_uuid_list[0]
+                    # Llama a la función de búsqueda que debes añadir a AppState
+                    result = self.find_variant_by_uuid(variant_uuid)
+                    if result:
+                        post, variant = result
+                        # Si se encuentra, abre el modal y detiene la ejecución normal de esta función.
+                        yield self.open_product_detail_modal(post.id)
+                        return # Importante: salimos para no cargar toda la galería después.
+            except Exception as e:
+                logger.error(f"Error procesando URL de QR para el flujo público: {e}")
+        # --- FIN: Lógica para QR de Flujo Público ---
+
         self.is_loading = True
         yield
-        
-        # --- INICIO DE LA CORRECCIÓN ---
 
-        # 1. Leer la categoría desde la URL y actualizar el estado
+        # 1. Leer la categoría desde la URL para filtrar la galería principal
         category_from_url = None
         try:
-            full_url = self.router.url
             if full_url and "?" in full_url:
                 parsed_url = urlparse(full_url)
                 query_params = parse_qs(parsed_url.query)
@@ -3296,34 +3351,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if category_list:
                     category_from_url = category_list[0]
         except Exception as e:
-            print(f"Error parsing category from URL: {e}")
+            logger.error(f"Error al parsear la categoría desde la URL: {e}")
 
-        # Actualizamos la variable de estado que controla los filtros
         self.current_category = category_from_url if category_from_url else "todos"
-        
-        # --- FIN DE LA CORRECCIÓN ---
 
+        # 2. Cargar la dirección de envío por defecto del usuario
         yield AppState.load_default_shipping_info
 
+        # 3. Cargar los productos desde la base de datos aplicando el filtro de categoría
         with rx.session() as session:
-            # 2. Construir la consulta a la base de datos (query)
             query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
-            
-            # 3. Aplicar el filtro de categoría a la consulta SI existe
+
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
-            # Ejecutamos la consulta ya filtrada
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-            
-            # El resto de la lógica para procesar los resultados no cambia
+
             temp_posts = []
             for p in results:
                 temp_posts.append(
                     ProductCardData(
-                        id=p.id, 
-                        userinfo_id=p.userinfo_id, 
-                        title=p.title, 
+                        id=p.id,
+                        userinfo_id=p.userinfo_id,
+                        title=p.title,
                         price=p.price,
                         price_cop=p.price_cop,
                         variants=p.variants or [],
@@ -3337,7 +3387,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
             self._raw_posts = temp_posts
-        
+
+        # 4. Recalcular los costos de envío y finalizar la carga
         yield AppState.recalculate_all_shipping_costs
         self.is_loading = False
 

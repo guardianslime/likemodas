@@ -82,9 +82,9 @@ app.add_page(base_page(seller_profile_page()), route="/admin/my-location", on_lo
 app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confirm-payments", title="Gestionar Órdenes", on_load=AppState.load_active_purchases)
 
 app.add_page(
-    base_page(admin_store_page()), 
-    route="/admin/store", 
-    # Aquí vinculamos el nuevo manejador de eventos. Se ejecutará después del original.
+    base_page(admin_store_page()),
+    route="/admin/store",
+    # CAMBIO CLAVE: on_load ahora es una lista de eventos
     on_load=[AppState.on_load_admin_store, AppState.process_qr_url_on_load],
     title="Admin | Tienda"
 )
