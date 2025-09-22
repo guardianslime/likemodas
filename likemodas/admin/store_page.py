@@ -214,7 +214,9 @@ def admin_store_page() -> rx.Component:
                 qr_scanner_component(
                     fps=10,
                     qrbox=250,
-                    verbose=False
+                    verbose=False,
+                    # --- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ ASÍ ---
+                    on_scan_success=AppState.handle_qr_scan_result,
                 ),
                 rx.flex(
                     rx.dialog.close(

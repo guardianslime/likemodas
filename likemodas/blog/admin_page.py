@@ -45,42 +45,45 @@ def qr_display_modal() -> rx.Component:
 
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
         """
-        [FUNCIÓN FINAL]
-        Renderiza la fila para una variante. Ahora usa la URL pre-construida
-        desde el backend y la muestra como texto para verificación.
+        Renderiza la fila para una variante, mostrando dos códigos QR distintos:
+        uno para el público y otro para el uso interno del punto de venta.
         """
         return rx.box(
             rx.hstack(
                 rx.vstack(
                     rx.text(variant.attributes_str, weight="bold"),
                     rx.text(f"Stock: {variant.stock}"),
-                    # ✨ CAMBIO 1: Mostramos la URL para que la puedas ver ✨
-                    rx.text(
-                        rx.cond(
-                            variant.qr_url,
-                            f"URL: {variant.qr_url}",
-                            "VUID no generado"
-                        ), 
-                        size="1", 
-                        color_scheme="gray",
-                        no_of_lines=1 # Evita que la URL larga rompa el diseño
-                    ),
                     align_items="start",
                     spacing="1",
+                    flex_grow="1",
                 ),
                 rx.spacer(),
-                rx.cond(
-                    variant.qr_url != "", # <--- LÍNEA CORREGIDA
-                    qr_code_display(
-                        value=variant.qr_url,
-                        size=100,
-                        fgColor="#000000",
-                        bgColor="#FFFFFF",
-                        level="Q"
+                
+                # QR para Clientes (Público)
+                rx.vstack(
+                    rx.text("Para Clientes", size="2", weight="medium"),
+                    rx.cond(
+                        variant.public_qr_url != "",
+                        qr_code_display(value=variant.public_qr_url, size=100),
+                        rx.center(rx.text("Sin QR"), width="100px", height="100px")
                     ),
-                    rx.center(rx.text("Sin QR"), width="100px", height="100px")
+                    rx.text(variant.public_qr_url, size="1", color_scheme="gray", no_of_lines=1, max_width="120px"),
+                    align="center",
                 ),
-                spacing="4",
+                
+                # QR para Venta Interna (POS)
+                rx.vstack(
+                    rx.text("Para Venta Interna", size="2", weight="medium"),
+                    rx.cond(
+                        variant.admin_qr_url != "",
+                        qr_code_display(value=variant.admin_qr_url, size=100),
+                        rx.center(rx.text("Sin QR"), width="100px", height="100px")
+                    ),
+                    rx.text(variant.admin_qr_url, size="1", color_scheme="gray", no_of_lines=1, max_width="120px"),
+                    align="center",
+                ),
+                
+                spacing="6",
                 align="center",
                 width="100%"
             ),
