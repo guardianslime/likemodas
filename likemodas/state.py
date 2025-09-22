@@ -9,6 +9,7 @@ import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime, timedelta, timezone
+from sqlalchemy import cast
 import secrets
 import bcrypt
 import re
@@ -1406,11 +1407,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         with rx.session() as session:
             containment_payload = [{"variant_uuid": uuid_to_find}]
+            
+            # --- INICIO DE LA CORRECCIÓN ---
+            # La forma correcta de hacer la conversión es usando cast() sobre el payload,
+            # en lugar de pasar el argumento type_ a la operación.
             post = session.exec(
                 sqlmodel.select(BlogPostModel).where(
-                    BlogPostModel.variants.op("@>")(containment_payload, type_=JSONB)
+                    BlogPostModel.variants.op("@>")(cast(containment_payload, JSONB))
                 )
             ).first()
+            # --- FIN DE LA CORRECCIÓN ---
 
             if not post:
                 return None
