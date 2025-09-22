@@ -1144,37 +1144,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
     
-    def find_variant_by_vuid(self, vuid: str) -> Optional[Tuple[BlogPostModel, dict]]:
-        """
-        Busca un producto y su variante específica usando un VUID.
-        Utiliza una consulta optimizada con el operador de contención (@>) de JSONB
-        y un índice GIN para un rendimiento máximo.
-        """
-        with rx.session() as session:
-            # 1. Construir el payload JSON para la consulta de contención.
-            #    Esto busca un array que contenga un objeto con el VUID especificado.
-            containment_payload = [{"vuid": vuid}]
-
-            # 2. Ejecutar la consulta utilizando el operador @> de PostgreSQL
-            #    a través del ORM de SQLAlchemy/SQLModel.
-            post = session.exec(
-                sqlmodel.select(BlogPostModel).where(
-                    BlogPostModel.variants.op("@>")(containment_payload, type_=JSONB)
-                )
-            ).first()
-
-            if not post:
-                return None
-
-            # 3. Una vez encontrada la fila del producto, iterar en Python para
-            #    extraer el diccionario de la variante específica. Esta operación es
-            #    muy rápida ya que solo se realiza sobre un único registro.
-            for variant in post.variants:
-                if variant.get("vuid") == vuid:
-                    return post, variant
-
-            return None # En el caso improbable de que el VUID exista pero no se encuentre la variante.
-    
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
         """
@@ -1407,16 +1376,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         with rx.session() as session:
             containment_payload = [{"variant_uuid": uuid_to_find}]
-            
-            # --- INICIO DE LA CORRECCIÓN ---
-            # La forma correcta de hacer la conversión es usando cast() sobre el payload,
-            # en lugar de pasar el argumento type_ a la operación.
+
+            # Se usa cast() para la conversión a JSONB, compatible con tu entorno
             post = session.exec(
                 sqlmodel.select(BlogPostModel).where(
                     BlogPostModel.variants.op("@>")(cast(containment_payload, JSONB))
                 )
             ).first()
-            # --- FIN DE LA CORRECCIÓN ---
 
             if not post:
                 return None
@@ -1424,7 +1390,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             for variant in post.variants:
                 if variant.get("variant_uuid") == uuid_to_find:
                     return post, variant
-            
+
             return None
 
     # --- REEMPLAZA TU FUNCIÓN process_qr_url_on_load POR ESTA ---
@@ -1463,7 +1429,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         attributes = variant.get("attributes", {})
         selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
         variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
-        
+
         if variant_index == -1:
             yield rx.toast.error("Error de consistencia de datos.")
             return rx.redirect("/admin/store")
@@ -1480,6 +1446,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         return rx.redirect("/admin/store")
     
+
+    
     # --- AÑADE ESTA PRIMERA NUEVA FUNCIÓN ---
     @rx.event
     def handle_public_qr_load(self, variant_uuid: str):
@@ -1490,22 +1458,18 @@ class AppState(reflex_local_auth.LocalAuthState):
         result = self.find_variant_by_uuid(variant_uuid)
         if result:
             post, variant = result
-            # Un manejador síncrono (def) PUEDE y DEBE llamar a un manejador 
-            # asíncrono (async def) usando yield. Esto es correcto.
             yield self.open_product_detail_modal(post.id)
         else:
             yield rx.toast.error("El producto del código QR no fue encontrado.")
-        
+
         self.is_loading = False
 
-
-    # --- AÑADE ESTA SEGUNDA NUEVA FUNCIÓN ---
     @rx.event
     def load_gallery_and_shipping(self):
         """Manejador específico para la carga normal de la galería y el cálculo de envíos."""
         self.is_loading = True
         yield
-        
+
         yield AppState.load_default_shipping_info
 
         with rx.session() as session:
@@ -1514,31 +1478,48 @@ class AppState(reflex_local_auth.LocalAuthState):
                 query = query.where(BlogPostModel.category == self.current_category)
 
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
-            
+
             temp_posts = []
             for p in results:
                 temp_posts.append(
-                    ProductCardData(
-                        id=p.id,
-                        userinfo_id=p.userinfo_id,
-                        title=p.title,
-                        price=p.price,
-                        price_cop=p.price_cop,
-                        variants=p.variants or [],
-                        attributes={},
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count,
-                        shipping_cost=p.shipping_cost,
-                        is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported
-                    )
+                    ProductCardData.from_orm(p) # Usamos from_orm para simplificar
                 )
             self._raw_posts = temp_posts
-            
+
         yield AppState.recalculate_all_shipping_costs
         self.is_loading = False
     
+    @rx.event
+    def load_main_page_data(self):
+        """
+        Actúa como un 'router'. Lee la URL y decide qué manejador de eventos
+        (para QR o para carga normal) debe ejecutarse a continuación.
+        """
+        full_url = ""
+        try:
+            full_url = self.router.url
+        except Exception:
+            pass
+
+        if full_url and "variant_uuid=" in full_url:
+            try:
+                parsed_url = urlparse(full_url)
+                query_params = parse_qs(parsed_url.query)
+                variant_uuid_list = query_params.get("variant_uuid")
+                if variant_uuid_list:
+                    return AppState.handle_public_qr_load(variant_uuid_list[0])
+            except Exception as e:
+                logging.error(f"Error parseando URL de QR: {e}")
+
+        try:
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+            category_list = query_params.get("category")
+            self.current_category = category_list[0] if category_list else "todos"
+        except Exception:
+            self.current_category = "todos"
+
+        return AppState.load_gallery_and_shipping
 
 
     min_price: str = ""
@@ -2725,9 +2706,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         if not self.authenticated_user_info:
             return []
-        
+
         base_url = get_config().deploy_url
-        
+
         with rx.session() as session:
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
@@ -2738,17 +2719,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             admin_posts = []
             for p in posts_from_db:
                 main_image = p.variants[0].get("image_url", "") if p.variants else ""
-                
+
                 variants_dto_list = []
                 if p.variants:
                     for v in p.variants:
                         attrs = v.get("attributes", {})
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
                         variant_uuid = v.get("variant_uuid", "")
-                        
+
                         public_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else ""
                         admin_url = f"{base_url}/admin/store?variant_uuid={variant_uuid}" if variant_uuid else ""
-                        
+
                         variants_dto_list.append(
                             AdminVariantData(
                                 variant_uuid=variant_uuid,
@@ -2759,7 +2740,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 admin_qr_url=admin_url
                             )
                         )
-                
+
                 admin_posts.append(
                     AdminPostRowData(
                         id=p.id,
@@ -3348,43 +3329,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         self.posts = recalculated_posts
 
-    # --- REEMPLAZA TU FUNCIÓN load_main_page_data POR ESTA ---
-    @rx.event
-    def load_main_page_data(self):
-        """
-        Actúa como un 'router'. Lee la URL y decide qué manejador de eventos
-        (para QR o para carga normal) debe ejecutarse a continuación.
-        NO es async y NO usa yield para evitar el error de generador.
-        """
-        full_url = ""
-        try:
-            full_url = self.router.url
-        except Exception:
-            pass
-
-        # Lógica para QR de Flujo Público
-        if full_url and "variant_uuid=" in full_url:
-            try:
-                parsed_url = urlparse(full_url)
-                query_params = parse_qs(parsed_url.query)
-                variant_uuid_list = query_params.get("variant_uuid")
-                if variant_uuid_list:
-                    # Si encuentra un QR, devuelve el manejador de QR
-                    return AppState.handle_public_qr_load(variant_uuid_list[0])
-            except Exception as e:
-                logging.error(f"Error parseando URL de QR: {e}")
-        
-        # Lógica para Carga Normal
-        try:
-            parsed_url = urlparse(full_url)
-            query_params = parse_qs(parsed_url.query)
-            category_list = query_params.get("category")
-            self.current_category = category_list[0] if category_list else "todos"
-        except Exception:
-            self.current_category = "todos"
-            
-        # Si no hay QR, devuelve el manejador de carga de galería
-        return AppState.load_gallery_and_shipping
 
     @rx.event
     def load_addresses(self):
@@ -4354,26 +4298,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         query = self.search_seller_barrio.lower()
         return sorted([n for n in all_hoods if query in n.lower()])
 
-    @rx.event
-    def on_load_main_page(self):
-        if self.is_admin:
-            return rx.redirect("/admin/store")
-
-        yield AppState.on_load
-
-        full_url = self.router.url
-        product_id = None
-
-        if full_url and "?" in full_url:
-            parsed_url = urlparse(full_url)
-            query_params = parse_qs(parsed_url.query)
-            product_id_list = query_params.get("product")
-            if product_id_list:
-                product_id = product_id_list[0]
-
-        if product_id is not None:
-            self._product_id_to_load_on_mount = int(product_id)
-            yield self.trigger_modal_from_load
+    
     
      # --- ✨ INICIO: SECCIÓN DE PERFIL DE USUARIO CORREGIDA ✨ ---
     

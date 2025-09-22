@@ -53,8 +53,8 @@ app = rx.App(
 app.add_page(
     base_page(landing.landing_content()),
     route="/",
-    # --- ASEGÚRATE DE QUE ESTA LÍNEA APUNTE A LA NUEVA FUNCIÓN ---
-    on_load=AppState.load_main_page_data,
+    # Esta línea debe apuntar a la nueva función "router"
+    on_load=AppState.load_main_page_data, 
     title="Likemodas | Inicio"
 )
 
