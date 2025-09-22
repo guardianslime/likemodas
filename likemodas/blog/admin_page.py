@@ -70,10 +70,9 @@ def qr_display_modal() -> rx.Component:
                 ),
                 rx.spacer(),
                 rx.cond(
-                    variant.vuid != "",
-                    # ✨ CAMBIO 2: Pasamos la URL directamente al componente QR ✨
+                    variant.qr_url != "", # <--- LÍNEA CORREGIDA
                     qr_code_display(
-                        value=variant.qr_url, # <-- Aquí está la magia
+                        value=variant.qr_url,
                         size=100,
                         fgColor="#000000",
                         bgColor="#FFFFFF",
