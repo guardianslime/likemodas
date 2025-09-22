@@ -1480,6 +1480,66 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         return rx.redirect("/admin/store")
     
+    # --- AÑADE ESTA PRIMERA NUEVA FUNCIÓN ---
+    @rx.event
+    async def handle_public_qr_load(self, variant_uuid: str):
+        """Manejador específico para procesar un QR público y abrir el modal."""
+        self.is_loading = True
+        yield
+
+        result = self.find_variant_by_uuid(variant_uuid)
+        if result:
+            post, variant = result
+            yield self.open_product_detail_modal(post.id)
+        else:
+            yield rx.toast.error("El producto del código QR no fue encontrado.")
+        
+        self.is_loading = False
+
+
+    # --- AÑADE ESTA SEGUNDA NUEVA FUNCIÓN ---
+    @rx.event
+    async def load_gallery_and_shipping(self):
+        """Manejador específico para la carga normal de la galería y el cálculo de envíos."""
+        self.is_loading = True
+        yield
+        
+        # Esta es la lógica que ya tenías para cargar la galería
+        yield AppState.load_default_shipping_info
+
+        with rx.session() as session:
+            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+
+            # Asumimos que self.current_category ya fue establecido por el router
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
+
+            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+            
+            temp_posts = []
+            for p in results:
+                temp_posts.append(
+                    ProductCardData(
+                        id=p.id,
+                        userinfo_id=p.userinfo_id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=p.price_cop,
+                        variants=p.variants or [],
+                        attributes={},
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        shipping_cost=p.shipping_cost,
+                        is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        is_imported=p.is_imported
+                    )
+                )
+            self._raw_posts = temp_posts
+            
+        yield AppState.recalculate_all_shipping_costs
+        self.is_loading = False
+    
 
 
     min_price: str = ""
@@ -3291,44 +3351,41 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- REEMPLAZA TU FUNCIÓN load_main_page_data POR ESTA ---
     @rx.event
-    async def load_main_page_data(self):
+    def load_main_page_data(self):
         """
-        Orquestador que intercepta URLs de QR para usuarios públicos,
-        lee la categoría, carga la dirección, filtra productos y recalcula envíos.
+        Actúa como un 'router'. Lee la URL y decide qué manejador de eventos
+        (para QR o para carga normal) debe ejecutarse a continuación.
+        NO es async y NO usa yield para evitar el error de generador.
         """
-        # --- Lógica para QR de Flujo Público ---
         full_url = ""
         try:
             full_url = self.router.url
         except Exception:
             pass
 
+        # Lógica para QR de Flujo Público
         if full_url and "variant_uuid=" in full_url:
             try:
                 parsed_url = urlparse(full_url)
                 query_params = parse_qs(parsed_url.query)
                 variant_uuid_list = query_params.get("variant_uuid")
                 if variant_uuid_list:
-                    variant_uuid = variant_uuid_list[0]
-                    result = self.find_variant_by_uuid(variant_uuid)
-                    
-                    if result:
-                        post, variant = result
-                        # Abre el modal y detiene la carga normal de la galería
-                        yield self.open_product_detail_modal(post.id)
-                        return
+                    # Si encuentra un QR, devuelve el manejador de QR
+                    return AppState.handle_public_qr_load(variant_uuid_list[0])
             except Exception as e:
-                logging.error(f"Error procesando URL de QR para flujo público: {e}")
-        # --- FIN Lógica para QR ---
-
-        # Carga normal de la página si no era una URL de QR
-        self.is_loading = True
-        yield
+                logging.error(f"Error parseando URL de QR: {e}")
         
-        # Aquí va tu lógica original para cargar los productos de la galería
-        yield AppState.on_load() # Reutiliza tu lógica de carga existente si la tienes
-        
-        self.is_loading = False
+        # Lógica para Carga Normal
+        try:
+            parsed_url = urlparse(full_url)
+            query_params = parse_qs(parsed_url.query)
+            category_list = query_params.get("category")
+            self.current_category = category_list[0] if category_list else "todos"
+        except Exception:
+            self.current_category = "todos"
+            
+        # Si no hay QR, devuelve el manejador de carga de galería
+        return AppState.load_gallery_and_shipping
 
     @rx.event
     def load_addresses(self):
