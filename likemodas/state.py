@@ -1482,7 +1482,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     # --- AÑADE ESTA PRIMERA NUEVA FUNCIÓN ---
     @rx.event
-    async def handle_public_qr_load(self, variant_uuid: str):
+    def handle_public_qr_load(self, variant_uuid: str):
         """Manejador específico para procesar un QR público y abrir el modal."""
         self.is_loading = True
         yield
@@ -1490,6 +1490,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         result = self.find_variant_by_uuid(variant_uuid)
         if result:
             post, variant = result
+            # Un manejador síncrono (def) PUEDE y DEBE llamar a un manejador 
+            # asíncrono (async def) usando yield. Esto es correcto.
             yield self.open_product_detail_modal(post.id)
         else:
             yield rx.toast.error("El producto del código QR no fue encontrado.")
@@ -1499,18 +1501,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- AÑADE ESTA SEGUNDA NUEVA FUNCIÓN ---
     @rx.event
-    async def load_gallery_and_shipping(self):
+    def load_gallery_and_shipping(self):
         """Manejador específico para la carga normal de la galería y el cálculo de envíos."""
         self.is_loading = True
         yield
         
-        # Esta es la lógica que ya tenías para cargar la galería
         yield AppState.load_default_shipping_info
 
         with rx.session() as session:
             query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
-
-            # Asumimos que self.current_category ya fue establecido por el router
             if self.current_category and self.current_category != "todos":
                 query = query.where(BlogPostModel.category == self.current_category)
 
