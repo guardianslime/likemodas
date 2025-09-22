@@ -1451,18 +1451,20 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- AÑADE ESTA PRIMERA NUEVA FUNCIÓN ---
     @rx.event
     def handle_public_qr_load(self, variant_uuid: str):
-        """Manejador específico para procesar un QR público y abrir el modal."""
-        self.is_loading = True
-        yield
-
+        """
+        Manejador que recibe un UUID, busca el producto y RETORNA
+        el evento para abrir el modal. No usa yield para evitar el error.
+        """
         result = self.find_variant_by_uuid(variant_uuid)
+        
         if result:
             post, variant = result
-            yield self.open_product_detail_modal(post.id)
+            # En lugar de usar 'yield', ahora simplemente retornamos el siguiente
+            # evento que Reflex debe ejecutar.
+            return AppState.open_product_detail_modal(post.id)
         else:
-            yield rx.toast.error("El producto del código QR no fue encontrado.")
-
-        self.is_loading = False
+            # También retornamos el evento de notificación de error.
+            return rx.toast.error("El producto del código QR no fue encontrado.")
 
     @rx.event
     def load_gallery_and_shipping(self):
