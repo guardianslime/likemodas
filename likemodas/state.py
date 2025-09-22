@@ -1110,7 +1110,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
                     "image_url": variant_data.image_url or main_image_url_for_group,
-                    "vuid": str(uuid.uuid4()) # Genera un nuevo VUID
+                    "variant_uuid": str(uuid.uuid4())
                 }
                 all_variants_for_db.append(variant_dict)
 
@@ -1951,11 +1951,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 }
 
                 # Si la variante ya tiene un VUID, lo conservamos. Si no, generamos uno nuevo.
-                existing_vuid = getattr(variant_form_data, 'vuid', None) or variant_form_data.attributes.get('vuid')
-                if existing_vuid:
-                    new_variant_dict["vuid"] = existing_vuid
+                existing_uuid = getattr(variant_form_data, 'variant_uuid', None)
+                if existing_uuid:
+                    new_variant_dict["variant_uuid"] = existing_uuid
                 else:
-                    new_variant_dict["vuid"] = str(uuid.uuid4())
+                    new_variant_dict["variant_uuid"] = str(uuid.uuid4())
 
                 all_variants_for_db.append(new_variant_dict)
 
