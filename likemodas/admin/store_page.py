@@ -211,11 +211,25 @@ def admin_store_page() -> rx.Component:
                 rx.dialog.description(
                     "Apunta la cámara al código QR o sube una imagen para añadir el producto a la venta."
                 ),
+                # Pega este bloque completo justo después de qr_scanner_component
                 qr_scanner_component(
                     on_result=AppState.handle_qr_scan_result,
-                    constraints={"facingMode": "environment"},
                     scan_delay=300
                 ),
+                # --- INICIO DEL BLOQUE A AÑADIR ---
+                rx.vstack(
+                    rx.divider(margin_y="1em"),
+                    rx.text("Última URL Escaneada (para depuración):"),
+                    rx.text(
+                        AppState.last_scanned_url, 
+                        weight="bold", 
+                        color_scheme="green",
+                        word_wrap="break-word",
+                    ),
+                    align_items="start",
+                    width="100%",
+                ),
+                # --- FIN DEL BLOQUE A AÑADIR ---
                 rx.flex(
                     rx.dialog.close(
                         rx.button("Cancelar", variant="soft", color_scheme="gray")

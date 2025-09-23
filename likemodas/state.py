@@ -216,6 +216,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     user_notifications: List[NotificationDTO] = []
     contact_entries: list[ContactEntryDTO] = []
+    last_scanned_url: str = "" # Añade esta línea
     # lista_de_barrios_popayan: list[str] = LISTA_DE_BARRIOS
     seller_profile_barrio: str = ""
     seller_profile_address: str = ""
@@ -1288,6 +1289,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         Procesa la URL escaneada por el componente de escáner del punto de venta.
         """
+        self.last_scanned_url = scanned_url 
+
+        # LÍNEA A AÑADIR: Si la URL está vacía, simplemente no hagas nada.
+        if not scanned_url:
+            return
+
+        # El resto de tu función permanece igual...
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
         
