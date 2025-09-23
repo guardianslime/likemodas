@@ -14,7 +14,7 @@ class QrReader(rx.Component):
     tag = "QrReader"
     
     # El manejador de eventos que se llamará en AppState con el resultado
-    on_result: rx.EventHandler[lambda result, error: [result.text if result else ""]]
+    on_result: rx.EventHandler[lambda result, error: [rx.cond(result, result.text, "")]]
     
     # Propiedades para configurar el comportamiento de la cámara
     constraints: Var[dict]
