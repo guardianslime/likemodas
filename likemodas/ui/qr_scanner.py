@@ -14,11 +14,11 @@ class QrReader(rx.Component):
     tag = "QrReader"
     
     # El manejador de eventos que se llamará en AppState con el resultado
-    on_result: rx.EventHandler[lambda result, error: [rx.cond(result, result.text, "")]]
-    
+    on_scan: rx.EventHandler[lambda data: [data]]
+
     # Propiedades para configurar el comportamiento de la cámara
     constraints: Var[dict]
-    scan_delay: Var[int]
+    delay: Var[int] # La propiedad se llama 'delay' en esta versión
 
 # Alias para facilitar la creación del componente
 qr_scanner_component = QrReader.create

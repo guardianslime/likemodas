@@ -1285,13 +1285,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_qr_scanner_modal = state
 
     @rx.event
-    def handle_qr_scan_result(self, scanned_url: str):
+    def handle_qr_scan_result(self, data: str):
         """
         Procesa la URL escaneada por el componente de escáner del punto de venta.
         """
+        scanned_url = data
         self.last_scanned_url = scanned_url 
-
-        # LÍNEA A AÑADIR: Si la URL está vacía, simplemente no hagas nada.
+        
         if not scanned_url:
             return
 

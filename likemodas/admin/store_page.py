@@ -213,8 +213,8 @@ def admin_store_page() -> rx.Component:
                 ),
                 # Pega este bloque completo justo después de qr_scanner_component
                 qr_scanner_component(
-                    on_result=AppState.handle_qr_scan_result,
-                    scan_delay=300
+                    on_scan=AppState.handle_qr_scan_result,
+                    delay=300
                 ),
                 # --- INICIO DEL BLOQUE A AÑADIR ---
                 rx.vstack(
