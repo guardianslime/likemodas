@@ -1285,23 +1285,27 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_qr_scanner_modal = state
 
     @rx.event
-    def handle_qr_scan_result(self, data: str):
+    def handle_qr_scan_result(self, scanned_url: str):
         """
-        Procesa la URL escaneada por el componente de escáner del punto de venta.
+        [VERSIÓN FINAL] Procesa la URL escaneada por el lector de QR.
+        Esta función es llamada por el componente de frontend cada vez que
+        detecta un código QR.
         """
-        scanned_url = data
-        self.last_scanned_url = scanned_url 
-        
+        # Paso 1: Actualiza la variable de depuración para la UI.
+        self.last_scanned_url = scanned_url
+
+        # Paso 2: Ignora los resultados vacíos para no mostrar errores innecesarios.
         if not scanned_url:
             return
 
-        # El resto de tu función permanece igual...
+        # Paso 3: Validaciones de seguridad y formato del QR.
         if not self.is_admin:
             return rx.toast.error("Acción no permitida.")
-        
-        if not scanned_url or "variant_uuid=" not in scanned_url:
+
+        if "variant_uuid=" not in scanned_url:
             return rx.toast.error("El código QR no contiene una URL de producto válida.")
 
+        # Paso 4: Extrae el identificador (UUID) de la URL escaneada.
         try:
             parsed_url = urlparse(scanned_url)
             query_params = parse_qs(parsed_url.query)
@@ -1312,11 +1316,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not variant_uuid:
             return rx.toast.error("No se encontró un identificador en el QR.")
 
+        # Paso 5: Busca el producto y la variante en la base de datos.
         result = self.find_variant_by_uuid(variant_uuid)
         
         if not result:
             return rx.toast.error("Producto no encontrado para este QR.")
 
+        # Paso 6: Si se encuentra, añade el producto al carrito de venta directa.
         post, variant = result
         
         attributes = variant.get("attributes", {})
@@ -1330,12 +1336,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         available_stock = variant.get("stock", 0)
         quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
 
+        # Paso 7: Verifica el stock y notifica al usuario.
         if quantity_in_cart + 1 > available_stock:
             yield rx.toast.error(f"¡Sin stock para '{post.title}'!")
         else:
             self.direct_sale_cart[cart_key] = quantity_in_cart + 1
             yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
-            
+        
+        # Paso 8: Cierra el modal del escáner.
         self.show_qr_scanner_modal = False
 
     # --- INICIO: AÑADIR ESTA SECCIÓN PARA EL MODAL DE QR ---
