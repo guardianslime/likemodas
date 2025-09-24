@@ -13,7 +13,7 @@ class JsQrScanner(rx.Component):
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
 
     def _get_custom_code(self) -> str:
-        return \"\"\"
+        return """
 const JsQrScannerComponent = (props) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -31,7 +31,6 @@ const JsQrScannerComponent = (props) => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
-      // La función jsQR está disponible aquí gracias a la propiedad 'library' en Python
       const code = jsQR(imageData.data, imageData.width, imageData.height);
 
       if (code) {
@@ -81,7 +80,7 @@ const JsQrScannerComponent = (props) => {
     </div>
   );
 };
-\"\"\"
+"""
 
 # Alias para facilitar la creación del componente
 qr_scanner_component = JsQrScanner.create
