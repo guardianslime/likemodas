@@ -1,4 +1,4 @@
-# likemodas/ui/qr_scanner.py (CORREGIDO)
+# likemodas/ui/qr_scanner.py (VERSIÓN FINAL Y LIMPIA)
 import reflex as rx
 
 class JsQrScanner(rx.Component):
@@ -6,20 +6,12 @@ class JsQrScanner(rx.Component):
     Un componente de Reflex que envuelve la librería 'jsqr' usando una
     implementación de React personalizada para un control total.
     """
-    # La librería de bajo nivel que usará nuestro código JS.
     library = "jsqr"
-    
-    # El nombre del componente que definimos en el código JS de abajo.
     tag = "JsQrScannerComponent"
     
-    # --- MANEJADORES DE EVENTOS ---
-    # Evento para cuando un QR se decodifica con éxito.
     on_scan_success: rx.EventHandler[lambda decoded_text: [decoded_text]]
-    
-    # Evento para cuando la cámara no puede iniciarse.
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
 
-    # Esta función inyecta tu lógica de React directamente.
     def _get_custom_code(self) -> str:
         return """
 const JsQrScannerComponent = (props) => {
@@ -28,7 +20,6 @@ const JsQrScannerComponent = (props) => {
   const streamRef = useRef(null);
   const requestRef = useRef(null);
 
-  // Función para procesar los fotogramas del video
   const scanVideoFrame = () => {
     if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
       const canvas = canvasRef.current;
@@ -40,24 +31,20 @@ const JsQrScannerComponent = (props) => {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
+      // La función jsQR está disponible aquí gracias a la propiedad 'library' en Python
       const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-      // --- ¡ESTA ES LA CONEXIÓN CLAVE! ---
       if (code) {
-        // Si se encuentra un código, se detiene el escaneo...
         stopWebcamScan();
-        // ...y se llama al evento de Python con el resultado.
         if (props.on_scan_success) {
           props.on_scan_success(code.data);
         }
-        return; // Salir del bucle
+        return;
       }
     }
-    // Si no se encuentra, seguir escaneando el siguiente fotograma.
     requestRef.current = requestAnimationFrame(scanVideoFrame);
   };
 
-  // Función para iniciar la cámara
   const startWebcamScan = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
@@ -66,14 +53,12 @@ const JsQrScannerComponent = (props) => {
       videoRef.current.play();
       requestRef.current = requestAnimationFrame(scanVideoFrame);
     } catch (error) {
-      // Si hay un error, se llama al otro evento de Python.
       if (props.on_camera_error) {
         props.on_camera_error(`No se puede acceder a la cámara: ${error.message}`);
       }
     }
   };
 
-  // Función para detener la cámara
   const stopWebcamScan = () => {
     if (requestRef.current) {
       cancelAnimationFrame(requestRef.current);
@@ -84,14 +69,11 @@ const JsQrScannerComponent = (props) => {
     }
   };
 
-  // Efecto para iniciar y detener la cámara con el ciclo de vida del componente
   useEffect(() => {
     startWebcamScan();
-    // Esto se ejecuta cuando el modal se cierra, deteniendo la cámara.
     return () => stopWebcamScan();
   }, []);
 
-  // El HTML que se renderiza: un video y un canvas oculto.
   return (
     <div>
       <video ref={videoRef} style={{ width: '100%' }} playsInline muted />
