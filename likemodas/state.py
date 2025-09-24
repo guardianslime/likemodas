@@ -1289,13 +1289,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         Se ejecuta SOLO cuando un QR se lee correctamente.
         """
-        # Actualiza la UI de depuración
-        self.last_scanned_url = decoded_text 
+        self.last_scanned_url = decoded_text # Para depuración
         
-        # El resto de tu lógica para procesar la URL es correcta.
         if not decoded_text or "variant_uuid=" not in decoded_text:
             return rx.toast.error("El código QR no es válido.")
 
+        # ... (el resto de la lógica que ya tienes)
         try:
             parsed_url = urlparse(decoded_text)
             query_params = parse_qs(parsed_url.query)
@@ -1311,6 +1310,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Producto no encontrado para este QR.")
 
         post, variant = result
+        
+        # ... (resto de la lógica para añadir al carrito) ...
         attributes = variant.get("attributes", {})
         selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
         variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
@@ -1328,6 +1329,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
         
         self.show_qr_scanner_modal = False
+
+
+    # --- ¡AÑADE ESTA FUNCIÓN FALTANTE! ---
+    @rx.event
+    def handle_camera_error(self, error_message: str):
+        """
+        Se ejecuta si la cámara no se puede iniciar.
+        """
+        return rx.toast.error(f"Error de cámara: {error_message}", duration=5000)
 
     # --- INICIO: AÑADIR ESTA SECCIÓN PARA EL MODAL DE QR ---
 
