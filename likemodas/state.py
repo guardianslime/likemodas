@@ -17,6 +17,10 @@ import asyncio
 import math
 import httpx 
 import uuid # Asegúrate de importar la biblioteca uuid
+from pyzbar.pyzbar import decode
+from PIL import Image
+import io
+from urllib.parse import urlparse, parse_qs
 
 import logging
 import sys
@@ -1492,6 +1496,97 @@ class AppState(reflex_local_auth.LocalAuthState):
         else:
             # También retornamos el evento de notificación de error.
             return rx.toast.error("El producto del código QR no fue encontrado.")
+        
+    # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
+    def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
+        """
+        Utiliza Pillow y pyzbar para decodificar un código QR a partir de bytes de imagen.
+        Devuelve la URL decodificada o None si no se encuentra ningún QR.
+        """
+        try:
+            # Abre la imagen desde los bytes en memoria usando Pillow
+            image = Image.open(io.BytesIO(image_bytes))
+            # Intenta decodificar la imagen usando pyzbar
+            decoded_objects = decode(image)
+            if not decoded_objects:
+                return None
+            # Devuelve los datos del primer código QR encontrado, decodificados como UTF-8
+            return decoded_objects[0].data.decode("utf-8")
+        except Exception as e:
+            # Registra cualquier error durante el proceso para depuración
+            logger.error(f"Error decodificando imagen QR con pyzbar: {e}")
+            return None
+
+    # --- 3. AÑADIR EL NUEVO MANEJADOR DE EVENTOS COMPLETO ---
+    async def handle_qr_image_upload(self, files: list[rx.UploadFile]):
+        """
+        Manejador para procesar la imagen de un QR subida por el administrador.
+        Decodifica la imagen en el backend y añade el producto a la venta directa.
+        """
+        if not files:
+            return rx.toast.error("No se ha subido ningún archivo.")
+
+        # Cierra el modal de inmediato para que el usuario vea que la acción fue recibida.
+        self.show_qr_scanner_modal = False
+        
+        try:
+            # Lee los datos binarios del archivo de imagen.
+            upload_data = await files[0].read()
+            # Llama a la función de utilidad para obtener la URL del QR.
+            decoded_url = self._decode_qr_from_image(upload_data)
+            
+            if not decoded_url:
+                return rx.toast.error("No se pudo encontrar un código QR en la imagen.")
+
+            # --- INICIO DE LA INTEGRACIÓN DE LÓGICA DE NEGOCIO ---
+            
+            # 1. Parsear la URL para obtener el variant_uuid
+            if "variant_uuid=" not in decoded_url:
+                return rx.toast.error("El código QR no es válido para esta aplicación.")
+            
+            try:
+                parsed_url = urlparse(decoded_url)
+                query_params = parse_qs(parsed_url.query)
+                variant_uuid = query_params.get("variant_uuid", [None])[0]
+            except Exception:
+                return rx.toast.error("URL malformada en el código QR.")
+
+            if not variant_uuid:
+                return rx.toast.error("No se encontró un identificador de producto en el QR.")
+
+            # 2. Reutilizar la lógica de búsqueda existente
+            result = self.find_variant_by_uuid(variant_uuid)
+            
+            if not result:
+                return rx.toast.error("Producto no encontrado para este código QR.")
+                
+            post, variant = result
+            
+            # 3. Reutilizar la lógica de añadir al carrito de venta directa
+            attributes = variant.get("attributes", {})
+            selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
+            
+            variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
+            
+            if variant_index == -1:
+                return rx.toast.error("Error de consistencia de datos de la variante.")
+
+            cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+            available_stock = variant.get("stock", 0)
+            quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
+            
+            # Añade al carrito si hay stock y notifica al usuario.
+            if quantity_in_cart + 1 > available_stock:
+                yield rx.toast.error(f"¡Sin stock para '{post.title}'!")
+            else:
+                self.direct_sale_cart[cart_key] = quantity_in_cart + 1
+                yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
+                
+            # --- FIN DE LA INTEGRACIÓN ---
+
+        except Exception as e:
+            logger.error(f"Error fatal al procesar la imagen del QR: {e}")
+            return rx.toast.error("Ocurrió un error inesperado al procesar la imagen.")
 
     @rx.event
     def load_gallery_and_shipping(self):

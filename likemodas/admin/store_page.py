@@ -1,20 +1,21 @@
+# likemodas/admin/store_page.py
+
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from ..ui.components import product_gallery_component, searchable_select
 from ..blog.public_page import product_detail_modal
 from ..state import AppState, DirectSaleGroupDTO, DirectSaleVariantDTO
-# Importa el nuevo componente de escáner QR que creaste
-from ..ui.qr_scanner import qr_scanner_component
 
+# La función sliding_direct_sale_cart() no cambia y se omite por brevedad...
 def sliding_direct_sale_cart() -> rx.Component:
     """
     Sidebar deslizable para el carrito de venta directa, con el nuevo diseño
-    [cite_start]de productos agrupados y controles de cantidad por variante[cite: 307].
+    de productos agrupados y controles de cantidad por variante.
     """
     SIDEBAR_WIDTH = "16em"
 
     def render_variant_row(variant: DirectSaleVariantDTO) -> rx.Component:
-        """Componente para renderizar una fila de variante con sus controles[cite: 307]."""
+        """Componente para renderizar una fila de variante con sus controles."""
         return rx.hstack(
             rx.text(variant.attributes_str, size="2", no_of_lines=1),
             rx.spacer(),
@@ -41,7 +42,7 @@ def sliding_direct_sale_cart() -> rx.Component:
         )
 
     def render_product_group(group: DirectSaleGroupDTO) -> rx.Component:
-        """Componente para renderizar un grupo de producto en el carrito[cite: 312]."""
+        """Componente para renderizar un grupo de producto en el carrito."""
         return rx.vstack(
             rx.hstack(
                 rx.image(
@@ -148,6 +149,7 @@ def sliding_direct_sale_cart() -> rx.Component:
         z_index="1000",
     )
 
+
 @require_admin
 def admin_store_page() -> rx.Component:
     """Página de Tienda para el administrador, incluyendo el activador del escáner QR."""
@@ -155,7 +157,6 @@ def admin_store_page() -> rx.Component:
         rx.vstack(
             rx.heading("Tienda (Punto de Venta)", size="8"),
             rx.text("Busca productos y añádelos al carrito de Venta Directa."),
-            # --- SECCIÓN MODIFICADA PARA INCLUIR EL BOTÓN QR ---
             rx.hstack(
                 rx.input(
                     placeholder="Buscar productos por nombre...",
@@ -204,35 +205,37 @@ def admin_store_page() -> rx.Component:
         product_detail_modal(is_for_direct_sale=True),
         sliding_direct_sale_cart(),
 
-        # --- MODAL DE ESCANEO QR ---
+        # --- MODAL DE ESCANEO QR (NUEVA VERSIÓN) ---
+        # Este es el nuevo modal que reemplaza al anterior.
         rx.dialog.root(
             rx.dialog.content(
                 rx.dialog.title("Escanear Código QR del Producto"),
                 rx.dialog.description(
-                    "Apunta la cámara al código QR para añadir el producto a la venta."
+                    "Sube una imagen del código QR para añadir el producto a la venta. "
+                    "En tu teléfono, puedes tomar una foto directamente."
                 ),
                 
-                # Aquí se instancia el nuevo componente y se conectan sus eventos
-                # a los manejadores definidos en AppState.
-                qr_scanner_component(
-                    on_scan_success=AppState.handle_qr_scan_success,
-                    on_camera_error=AppState.handle_camera_error,
-                ),
-                
-                # Bloque de depuración para visualizar el último resultado
-                rx.vstack(
-                    rx.divider(margin_y="1em"),
-                    rx.text("Última URL Escaneada (para depuración):"),
-                    rx.text(
-                        AppState.last_scanned_url,
-                        weight="bold",
-                        color_scheme="green",
-                        word_wrap="break-word",
+                # Componente de subida de archivos. Es el único elemento interactivo.
+                rx.upload(
+                    rx.vstack(
+                        rx.icon("upload", size=32),
+                        rx.text("Haz clic o arrastra una imagen aquí."),
+                        rx.text("Tamaño máximo: 5MB", size="2", color_scheme="gray"),
+                        spacing="3",
                     ),
-                    align_items="start",
+                    id="qr_upload",
+                    border="2px dashed #ccc",
+                    padding="3em",
+                    border_radius="var(--radius-3)",
+                    
+                    # El evento 'on_drop' es la clave. Se conecta al nuevo manejador en AppState
+                    # que procesará la imagen en el backend.
+                    on_drop=AppState.handle_qr_image_upload(rx.upload_files("qr_upload")),
                     width="100%",
+                    margin_y="1em",
                 ),
                 
+                # El botón de cancelar para cerrar el modal.
                 rx.flex(
                     rx.dialog.close(
                         rx.button("Cancelar", variant="soft", color_scheme="gray")
@@ -242,7 +245,7 @@ def admin_store_page() -> rx.Component:
                     justify="end",
                 ),
             ),
-            # La visibilidad del diálogo está controlada por la variable de estado
+            # La visibilidad del diálogo sigue siendo controlada por la misma variable de estado.
             open=AppState.show_qr_scanner_modal,
             on_open_change=AppState.set_show_qr_scanner_modal,
         )

@@ -1,19 +1,18 @@
-# nixpacks.toml (VERSIÓN SIMPLIFICADA Y DEFINITIVA)
+# nixpacks.toml (VERSIÓN CORREGIDA)
 
-# 1. Le decimos a Nixpacks que use el entorno de Python.
-#    Esto es lo que "enciende la estufa".
+# 1. Define el entorno de Python.
 providers = ["python"]
 [python]
 version = "3.11"
 
-# 2. Añadimos los paquetes del sistema que necesita Pillow.
+# 2. Añade los paquetes del sistema necesarios.
+#    libzbar0 es crucial para que pyzbar funcione.
 [phases.setup]
-aptPkgs = ["libjpeg-dev", "zlib1g-dev"]
+aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libzbar0"]
 
-# 3. NO DEFINIMOS LA FASE DE INSTALACIÓN.
-#    Al eliminar esta sección, el "provider" de Python se encargará
-#    automáticamente de ejecutar "pip install -r requirements.txt" de la forma correcta.
+# 3. NO se define la fase de instalación. Nixpacks usará
+#    "pip install -r requirements.txt" por defecto.
 
-# 4. Definimos el comando de inicio, que se ejecuta al final de todo.
+# 4. Define el comando de inicio.
 [start]
 cmd = "sh ./start.sh"
