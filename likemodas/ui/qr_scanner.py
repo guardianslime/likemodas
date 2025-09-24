@@ -1,4 +1,4 @@
-# likemodas/ui/qr_scanner.py (VERSIÓN FINAL CON REACT IMPORTADO)
+# likemodas/ui/qr_scanner.py (VERSIÓN FINAL Y DEFINITIVA)
 import reflex as rx
 
 class JsQrScanner(rx.Component):
@@ -12,17 +12,19 @@ class JsQrScanner(rx.Component):
     on_scan_success: rx.EventHandler[lambda decoded_text: [decoded_text]]
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
 
-    # --- INICIO DE LA CORRECCIÓN ---
-    # Añadimos la importación de 'react' para que esté disponible en nuestro código.
     def _get_imports(self) -> dict[str, str | list[str]]:
+        """
+        Especifica las importaciones de JavaScript necesarias.
+        - "react": Importa la exportación por defecto de React y la renombra como 'React'.
+        - "jsqr": Importa la exportación por defecto de jsqr y la renombra como 'jsQR'.
+        """
         return {
-            "react": "React", # <-- LÍNEA AÑADIDA Y CRÍTICA
+            "react": ["default as React"],
             "jsqr": ["default as jsQR"]
         }
-    # --- FIN DE LA CORRECCIÓN ---
 
     def _get_custom_code(self) -> str:
-        # El código JavaScript no cambia, pero lo incluyo completo para claridad.
+        # Este código no necesita cambios.
         return """
 const JsQrScannerComponent = (props) => {
     const { on_scan_success, on_camera_error } = props;
@@ -87,7 +89,7 @@ const JsQrScannerComponent = (props) => {
         return () => {
             stopWebcamScan();
         };
-    }, []); // <-- Pequeña corrección aquí para asegurar que solo se ejecute una vez.
+    }, []);
 
     return (
         React.createElement("div", null,
