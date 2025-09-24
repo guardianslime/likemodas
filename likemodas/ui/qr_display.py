@@ -9,34 +9,31 @@ class QrCodeComponent(rx.Component):
     library = "react-qr-code"
     tag = "QRCode"
 
-    # El valor (la URL) que se codificará en el QR.
+    # Parámetros que el componente de React espera.
     value: rx.Var[str]
-    
-    # El tamaño del QR en píxeles.
-    size: rx.Var[int] = 256
-    
-    # Nivel de corrección de errores. 'H' (High) es el más robusto.
-    # Esto hace que el QR sea mucho más fácil de leer para la cámara.
-    level: rx.Var[str] = "H"
-    
-    # Color de fondo.
-    bgColor: rx.Var[str] = "#FFFFFF"
-    
-    # Color de los módulos del QR.
-    fgColor: rx.Var[str] = "#000000"
+    size: rx.Var[int]
+    level: rx.Var[str]
+    bgColor: rx.Var[str]
+    fgColor: rx.Var[str]
 
 # Crea una instancia para un uso más sencillo
 qr_code_component = QrCodeComponent.create
 
-def qr_code_display(url: rx.Var[str]) -> rx.Component: # <--- NOMBRE CORREGIDO AQUÍ
+def qr_code_display(value: rx.Var[str], size: rx.Var[int] = 180) -> rx.Component:
     """
-    Muestra un código QR para la URL dada con una configuración robusta.
+    Muestra un código QR para el valor (URL) dado con una configuración robusta.
+    
+    Args:
+        value: La URL o texto a codificar en el QR.
+        size: El tamaño en píxeles del QR.
     """
     return rx.box(
         qr_code_component(
-            value=url,
-            size=180,
-            level="H", # Nivel de corrección de errores ALTO.
+            value=value,
+            size=size,
+            level="H",  # Nivel de corrección de errores ALTO.
+            bgColor="#FFFFFF",
+            fgColor="#000000",
         ),
         padding="1em",
         border="1px solid #EAEAEA",
