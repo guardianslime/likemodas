@@ -1,19 +1,18 @@
-# likemodas/ui/qr_scanner.py (VERSIÓN FINAL Y CORRECTA)
+# likemodas/ui/qr_scanner.py (VERSIÓN FINAL CON rx.Box)
 import reflex as rx
 
-# --- INICIO DE LA CORRECCIÓN CLAVE ---
-# Heredamos de rx.Div en lugar de rx.Component.
-# Esto le dice a Reflex que nuestro componente ES un div.
-class Html5QrCodeScanner(rx.Div):
-# --- FIN DE LA CORRECCIÓN CLAVE ---
+# --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
+# Heredamos de rx.Box, que es el componente de Reflex para crear contenedores <div>.
+# Esta es la clase correcta y existente.
+class Html5QrCodeScanner(rx.Box):
+# --- FIN DE LA CORRECCIÓN DEFINITIVA ---
     """
     Un componente robusto que envuelve la librería 'html5-qrcode' para un escaneo
     de QR simple y efectivo, manejando la cámara internamente.
     """
     
-    # La propiedad 'tag' se elimina porque ya no es necesaria.
-    # Al heredar de rx.Div, la etiqueta ya está definida como 'div'.
-
+    # La propiedad 'tag' se elimina, ya que rx.Box es un <div> por defecto.
+    
     # Los EventHandlers se mantienen igual.
     on_scan_success: rx.EventHandler[lambda decoded_text: [decoded_text]]
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
