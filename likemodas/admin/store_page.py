@@ -213,10 +213,11 @@ def admin_store_page() -> rx.Component:
                 ),
                 # Pega este bloque completo justo después de qr_scanner_component
                 qr_scanner_component(
-                    on_scan=AppState.handle_qr_scan_result,
-                    delay=300
+                    on_scan_success=AppState.handle_qr_scan_success,
+                    on_camera_error=AppState.handle_camera_error,
                 ),
-                # --- INICIO DEL BLOQUE A AÑADIR ---
+
+                # Mantenemos el bloque de depuración, que ahora funcionará
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Última URL Escaneada (para depuración):"),
