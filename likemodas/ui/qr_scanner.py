@@ -1,4 +1,4 @@
-# likemodas/ui/qr_scanner.py (VERSIÓN FINAL CON CÓDIGO JS INTEGRADO)
+# likemodas/ui/qr_scanner.py (CORREGIDO)
 import reflex as rx
 
 class JsQrScanner(rx.Component):
@@ -22,9 +22,6 @@ class JsQrScanner(rx.Component):
     # Esta función inyecta tu lógica de React directamente.
     def _get_custom_code(self) -> str:
         return """
-import React, { useRef, useEffect } from 'react';
-import jsQR from 'jsqr';
-
 const JsQrScannerComponent = (props) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
