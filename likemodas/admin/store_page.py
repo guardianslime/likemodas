@@ -209,28 +209,30 @@ def admin_store_page() -> rx.Component:
             rx.dialog.content(
                 rx.dialog.title("Escanear Código QR del Producto"),
                 rx.dialog.description(
-                    "Apunta la cámara al código QR o sube una imagen para añadir el producto a la venta."
+                    "Apunta la cámara al código QR para añadir el producto a la venta."
                 ),
-                # Pega este bloque completo justo después de qr_scanner_component
+                
+                # Aquí se instancia el nuevo componente y se conectan sus eventos
+                # a los manejadores definidos en AppState.
                 qr_scanner_component(
                     on_scan_success=AppState.handle_qr_scan_success,
                     on_camera_error=AppState.handle_camera_error,
                 ),
-
-                # Mantenemos el bloque de depuración, que ahora funcionará
+                
+                # Bloque de depuración para visualizar el último resultado
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Última URL Escaneada (para depuración):"),
                     rx.text(
-                        AppState.last_scanned_url, 
-                        weight="bold", 
+                        AppState.last_scanned_url,
+                        weight="bold",
                         color_scheme="green",
                         word_wrap="break-word",
                     ),
                     align_items="start",
                     width="100%",
                 ),
-                # --- FIN DEL BLOQUE A AÑADIR ---
+                
                 rx.flex(
                     rx.dialog.close(
                         rx.button("Cancelar", variant="soft", color_scheme="gray")
@@ -240,6 +242,7 @@ def admin_store_page() -> rx.Component:
                     justify="end",
                 ),
             ),
+            # La visibilidad del diálogo está controlada por la variable de estado
             open=AppState.show_qr_scanner_modal,
             on_open_change=AppState.set_show_qr_scanner_modal,
         )

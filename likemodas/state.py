@@ -1286,15 +1286,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def handle_qr_scan_success(self, decoded_text: str):
-        """
-        Se ejecuta SOLO cuando un QR se lee correctamente.
-        """
-        self.last_scanned_url = decoded_text # Para depuración
-        
+        self.last_scanned_url = decoded_text  # Guardar para depuración
+    
         if not decoded_text or "variant_uuid=" not in decoded_text:
-            return rx.toast.error("El código QR no es válido.")
-
-        # ... (el resto de la lógica que ya tienes)
+            return rx.toast.error("El código QR no es válido para esta aplicación.")
+        
         try:
             parsed_url = urlparse(decoded_text)
             query_params = parse_qs(parsed_url.query)
@@ -1303,49 +1299,41 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("URL malformada en el código QR.")
 
         if not variant_uuid:
-            return rx.toast.error("No se encontró un identificador en el QR.")
-
+            return rx.toast.error("No se encontró un identificador de producto en el QR.")
+        
+        # Reutilizar la lógica de búsqueda ya existente en AppState
         result = self.find_variant_by_uuid(variant_uuid)
+        
         if not result:
-            return rx.toast.error("Producto no encontrado para este QR.")
-
+            return rx.toast.error("Producto no encontrado para este código QR.")
+        
         post, variant = result
         
-        # ... (resto de la lógica para añadir al carrito) ...
         attributes = variant.get("attributes", {})
         selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
         variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
-        
-        if variant_index == -1: return rx.toast.error("Error de consistencia de datos.")
+
+        if variant_index == -1:
+            return rx.toast.error("Error de consistencia de datos de la variante.")
 
         cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
+        
         available_stock = variant.get("stock", 0)
         quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
-
+        
         if quantity_in_cart + 1 > available_stock:
             yield rx.toast.error(f"¡Sin stock para '{post.title}'!")
         else:
             self.direct_sale_cart[cart_key] = quantity_in_cart + 1
             yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
-        
-        self.show_qr_scanner_modal = False
+            self.show_qr_scanner_modal = False
 
-
-    # --- ¡AÑADE ESTA FUNCIÓN FALTANTE! ---
+    # --- Manejador para errores de la cámara ---
     @rx.event
     def handle_camera_error(self, error_message: str):
-        """
-        Se ejecuta si la cámara no se puede iniciar.
-        """
-        return rx.toast.error(f"Error de cámara: {error_message}", duration=5000)
-
-    # --- INICIO: AÑADIR ESTA SECCIÓN PARA EL MODAL DE QR ---
-
-    # Variable para controlar la visibilidad del modal de visualización de QR
-    show_qr_display_modal: bool = False
-
-    # Variable para almacenar los datos del post cuyos QR se están mostrando
-    post_for_qr_display: Optional[AdminPostRowData] = None
+        """ Se ejecuta si la cámara no se puede iniciar o hay un error. """
+        self.show_qr_scanner_modal = False   # Cierra el modal si hay un error
+        return rx.toast.error(f"Error de cámara: {error_message}", duration=6000)
 
     @rx.event
     def open_qr_modal(self, post_id: int):
