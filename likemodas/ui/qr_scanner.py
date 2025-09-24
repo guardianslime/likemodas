@@ -1,4 +1,4 @@
-# likemodas/ui/qr_scanner.py (VERSIÓN DEFINITIVA con html5-qrcode)
+# likemodas/ui/qr_scanner.py (VERSIÓN CANÓNICA Y FINAL)
 import reflex as rx
 
 class Html5QrCodeScanner(rx.Component):
@@ -6,13 +6,13 @@ class Html5QrCodeScanner(rx.Component):
     Un componente robusto que envuelve la librería 'html5-qrcode' para un escaneo
     de QR simple y efectivo, manejando la cámara internamente.
     """
-    # 1. Cambiamos la librería a la nueva que instalamos.
-    library = "html5-qrcode"
-    
-    # 2. El tag ahora es un simple div que la librería usará.
+    # 1. El tag es un 'div' normal de HTML. No se importa de ninguna librería.
     tag = "div"
     
-    # 3. Mantenemos los mismos EventHandlers para no tener que cambiar el backend.
+    # 2. ELIMINAMOS la propiedad `library`. Esto evita que Reflex intente
+    #    importar el 'div' desde 'html5-qrcode'.
+    
+    # 3. Mantenemos los mismos EventHandlers.
     on_scan_success: rx.EventHandler[lambda decoded_text: [decoded_text]]
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
     
@@ -20,18 +20,22 @@ class Html5QrCodeScanner(rx.Component):
     def get_custom_attrs(self) -> dict:
         return {"id": "qr-reader"}
 
-    # 4. Inyectamos un script mucho más simple usando _get_hooks.
+    # 4. Usamos _get_imports para importar la CLASE que necesitamos en nuestro script.
+    def _get_imports(self) -> dict[str, str | list[str]]:
+        return {"html5-qrcode": ["Html5Qrcode"]}
+
+    # 5. El script en _get_hooks ahora tendrá acceso a la clase Html5Qrcode.
     def _get_hooks(self) -> str | None:
         return """
         React.useEffect(() => {
+            // Esta variable ahora está definida gracias a _get_imports.
             const qrScanner = new Html5Qrcode("qr-reader");
             let isScanning = true;
 
             const qrCodeSuccessCallback = (decodedText, decodedResult) => {
                 if (isScanning) {
-                    isScanning = false; // Evita escanear múltiples veces
+                    isScanning = false;
                     qrScanner.stop().then(() => {
-                        // Enviamos el resultado a Python
                         if (props.on_scan_success) {
                             props.on_scan_success(decodedText);
                         }
@@ -41,18 +45,16 @@ class Html5QrCodeScanner(rx.Component):
 
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-            // Iniciar la cámara
             qrScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
                 .catch(err => {
-                    // Si hay un error, lo enviamos a Python
                     if (props.on_camera_error) {
                         props.on_camera_error(`No se pudo iniciar la cámara: ${err}`);
                     }
                 });
 
-            // Función de limpieza para cuando el componente se cierra
             return () => {
-                if (qrScanner.isScanning) {
+                // Verificamos si qrScanner se inicializó y si está escaneando antes de detener.
+                if (qrScanner && qrScanner.isScanning) {
                     qrScanner.stop().catch(err => console.error("Error al limpiar:", err));
                 }
             };
