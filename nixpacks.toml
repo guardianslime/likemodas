@@ -5,8 +5,9 @@ version = "3.11"
 
 # 2. Define la fase de 'setup' para instalar paquetes del sistema (Apt).
 [phases.setup]
-# Añade "libzbar0" a la lista. Este es el paso crucial.
-aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libzbar0"]
+# AÑADIMOS libzbar-dev. Esto proporciona los archivos de cabecera
+# necesarios para que pip compile pyzbar correctamente.
+aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libzbar0", "libzbar-dev"]
 
 # 3. Define el comando para iniciar tu aplicación.
 [start]
