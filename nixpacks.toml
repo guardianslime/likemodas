@@ -1,18 +1,13 @@
-# nixpacks.toml (VERSIÓN CORREGIDA)
-
-# 1. Define el entorno de Python.
+# 1. Define el proveedor de lenguaje como Python.
 providers = ["python"]
 [python]
 version = "3.11"
 
-# 2. Añade los paquetes del sistema necesarios.
-#    libzbar0 es crucial para que pyzbar funcione.
+# 2. Define la fase de 'setup' para instalar paquetes del sistema (Apt).
 [phases.setup]
+# Añade "libzbar0" a la lista. Este es el paso crucial.
 aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libzbar0"]
 
-# 3. NO se define la fase de instalación. Nixpacks usará
-#    "pip install -r requirements.txt" por defecto.
-
-# 4. Define el comando de inicio.
+# 3. Define el comando para iniciar tu aplicación.
 [start]
 cmd = "sh ./start.sh"
