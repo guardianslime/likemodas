@@ -1284,6 +1284,36 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_show_qr_scanner_modal(self, state: bool):
         self.show_qr_scanner_modal = state
 
+    # --- INICIO: SECCIÓN PARA EL MODAL DE VISUALIZACIÓN DE QR ---
+
+    # Variable para controlar la visibilidad del modal de visualización de QR
+    show_qr_display_modal: bool = False
+
+    # Variable para almacenar los datos del post cuyos QR se están mostrando
+    post_for_qr_display: Optional[AdminPostRowData] = None
+
+    @rx.event
+    def open_qr_modal(self, post_id: int):
+        """
+        Busca un post por su ID y lo carga en el estado para mostrar sus QR en el modal.
+        """
+        # Buscamos el post en la lista que ya tenemos cargada en el estado
+        post_data = next((p for p in self.my_admin_posts if p.id == post_id), None)
+        
+        if post_data:
+            self.post_for_qr_display = post_data
+            self.show_qr_display_modal = True
+        else:
+            return rx.toast.error("No se pudo encontrar la publicación.")
+
+    def set_show_qr_display_modal(self, state: bool):
+        """Controla la apertura y cierre del modal desde la UI."""
+        self.show_qr_display_modal = state
+        if not state:
+            self.post_for_qr_display = None # Limpia el estado al cerrar
+
+    # --- FIN DE LA SECCIÓN PARA EL MODAL DE VISUALIZACIÓN DE QR --
+
     @rx.event
     def handle_qr_scan_success(self, decoded_text: str):
         self.last_scanned_url = decoded_text  # Guardar para depuración
