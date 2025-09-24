@@ -1,13 +1,12 @@
-# Configuración del proveedor de lenguaje
+# likemodas/nixpacks.toml (CORREGIDO Y SIMPLIFICADO)
+
 providers = ["python"]
 [python]
 version = "3.11"
 
-# Fase de 'setup' para instalar paquetes del sistema
 [phases.setup]
-# Se instalan las bibliotecas de sistema necesarias, incluyendo ZBar.
-aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libzbar0", "libzbar-dev"]
+# Mantenemos las dependencias para la librería Pillow, pero quitamos las de zbar.
+aptPkgs = ["libjpeg-dev", "zlib1g-dev"]
 
-# Comando para iniciar la aplicación en producción
 [start]
 cmd = "sh ./start.sh"
