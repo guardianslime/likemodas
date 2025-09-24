@@ -17,7 +17,7 @@ import asyncio
 import math
 import httpx 
 import uuid # Asegúrate de importar la biblioteca uuid
-from pyzbar.pyzbar import decode
+# from pyzbar.pyzbar import decode
 from PIL import Image
 import io
 from urllib.parse import urlparse, parse_qs
@@ -1503,17 +1503,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         Utiliza Pillow y pyzbar para decodificar un código QR a partir de bytes de imagen.
         Devuelve la URL decodificada o None si no se encuentra ningún QR.
         """
+        # --- ¡LA SOLUCIÓN ESTÁ AQUÍ! ---
+        # Importamos la función JUSTO ANTES de usarla.
+        from pyzbar.pyzbar import decode
+
         try:
-            # Abre la imagen desde los bytes en memoria usando Pillow
             image = Image.open(io.BytesIO(image_bytes))
-            # Intenta decodificar la imagen usando pyzbar
             decoded_objects = decode(image)
             if not decoded_objects:
                 return None
-            # Devuelve los datos del primer código QR encontrado, decodificados como UTF-8
             return decoded_objects[0].data.decode("utf-8")
         except Exception as e:
-            # Registra cualquier error durante el proceso para depuración
             logger.error(f"Error decodificando imagen QR con pyzbar: {e}")
             return None
 
