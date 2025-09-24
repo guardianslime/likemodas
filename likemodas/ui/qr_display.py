@@ -28,14 +28,14 @@ class QrCodeComponent(rx.Component):
 # Crea una instancia para un uso más sencillo
 qr_code_component = QrCodeComponent.create
 
-def qr_display_component(url: rx.Var[str]) -> rx.Component:
+def qr_code_display(url: rx.Var[str]) -> rx.Component: # <--- NOMBRE CORREGIDO AQUÍ
     """
     Muestra un código QR para la URL dada con una configuración robusta.
     """
     return rx.box(
         qr_code_component(
             value=url,
-            size=180,  # Un tamaño adecuado para la mayoría de las pantallas.
+            size=180,
             level="H", # Nivel de corrección de errores ALTO.
         ),
         padding="1em",
