@@ -1,11 +1,9 @@
-# likemodas/nixpacks.toml (CORREGIDO Y SIMPLIFICADO)
-
 providers = ["python"]
 [python]
 version = "3.11"
 
 [phases.setup]
-# Mantenemos las dependencias para la librería Pillow, pero quitamos las de zbar.
+# Mantenemos solo las dependencias básicas para Pillow, que son inofensivas.
 aptPkgs = ["libjpeg-dev", "zlib1g-dev"]
 
 [start]

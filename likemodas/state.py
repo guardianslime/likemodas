@@ -21,7 +21,8 @@ import uuid # Asegúrate de importar la biblioteca uuid
 from PIL import Image
 import io
 from urllib.parse import urlparse, parse_qs
-from zbarlight import scan_codes # <-- AÑADE ESTA IMPORTACIÓN ARRIBA
+import cv2  # <-- AÑADE ESTA IMPORTACIÓN
+import numpy as np # <-- AÑADE ESTA IMPORTACIÓN
 
 import logging
 import sys
@@ -1501,17 +1502,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
     def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
         """
-        [VERSIÓN FINAL] Utiliza Pillow y zbarlight para decodificar un código QR.
+        [VERSIÓN FINAL CON OPENCV] Utiliza OpenCV para decodificar un código QR.
+        Este método es robusto y no requiere compilación local en Windows.
         """
         try:
-            image = Image.open(io.BytesIO(image_bytes)).convert('L') # Convertir a escala de grises
-            codes = scan_codes(['qrcode'], image)
-            if not codes:
+            # Convierte los bytes de la imagen a un array que OpenCV pueda leer
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+            if image is None:
+                logger.error("No se pudo decodificar la imagen con OpenCV.")
                 return None
-            # zbarlight devuelve los datos en bytes, hay que decodificarlos
-            return codes[0].decode('utf-8')
+
+            # Inicializa el detector de QR y decodifica
+            detector = cv2.QRCodeDetector()
+            decoded_text, points, _ = detector.detectAndDecode(image)
+
+            if points is not None and decoded_text:
+                return decoded_text
+            else:
+                return None
         except Exception as e:
-            logger.error(f"Error decodificando imagen QR con zbarlight: {e}")
+            logger.error(f"Error decodificando imagen QR con OpenCV: {e}")
             return None
 
     # --- 3. AÑADIR EL NUEVO MANEJADOR DE EVENTOS COMPLETO ---

@@ -1,7 +1,6 @@
 #!/bin/bash
-# start.sh (CORREGIDO Y SIMPLIFICADO)
 
-echo "----> Aplicando migraciones a la base de datos de producción..."
+echo "----> Aplicando migraciones a la base de datos..."
 alembic upgrade head
 
 echo "----> Iniciando el servidor backend..."
