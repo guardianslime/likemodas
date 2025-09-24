@@ -1,28 +1,35 @@
-# likemodas/ui/qr_scanner.py (VERSIÓN FINAL CON TODAS LAS IMPORTACIONES)
+# likemodas/ui/qr_scanner.py (VERSIÓN FINAL Y CORRECTA)
 import reflex as rx
 
-class Html5QrCodeScanner(rx.Component):
+# --- INICIO DE LA CORRECCIÓN CLAVE ---
+# Heredamos de rx.Div en lugar de rx.Component.
+# Esto le dice a Reflex que nuestro componente ES un div.
+class Html5QrCodeScanner(rx.Div):
+# --- FIN DE LA CORRECCIÓN CLAVE ---
     """
     Un componente robusto que envuelve la librería 'html5-qrcode' para un escaneo
     de QR simple y efectivo, manejando la cámara internamente.
     """
-    tag = "div"
     
+    # La propiedad 'tag' se elimina porque ya no es necesaria.
+    # Al heredar de rx.Div, la etiqueta ya está definida como 'div'.
+
+    # Los EventHandlers se mantienen igual.
     on_scan_success: rx.EventHandler[lambda decoded_text: [decoded_text]]
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
     
+    # El ID para que el script encuentre el elemento se mantiene.
     def get_custom_attrs(self) -> dict:
         return {"id": "qr-reader"}
 
-    # --- INICIO DE LA CORRECCIÓN ---
-    # Añadimos de nuevo la importación de React que se había perdido.
+    # Las importaciones de JS siguen siendo necesarias.
     def _get_imports(self) -> dict[str, str | list[str]]:
         return {
-            "react": ["default as React"],  # <-- ¡ESTA LÍNEA ES LA QUE FALTABA!
+            "react": ["default as React"],
             "html5-qrcode": ["Html5Qrcode"]
         }
-    # --- FIN DE LA CORRECCIÓN ---
 
+    # El script que se ejecuta en el navegador se mantiene igual.
     def _get_hooks(self) -> str | None:
         return """
         React.useEffect(() => {
@@ -57,4 +64,5 @@ class Html5QrCodeScanner(rx.Component):
         }, []);
         """
 
+# El alias se mantiene igual.
 qr_scanner_component = Html5QrCodeScanner.create
