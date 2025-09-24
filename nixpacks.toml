@@ -1,3 +1,5 @@
+# likemodas/nixpacks.toml (CORREGIDO)
+
 # 1. Define el proveedor de lenguaje como Python.
 providers = ["python"]
 [python]
@@ -6,8 +8,8 @@ version = "3.11"
 # 2. Define la fase de 'setup' para instalar paquetes del sistema (Apt).
 [phases.setup]
 # AÑADIMOS libzbar-dev. Esto proporciona los archivos de cabecera
-# necesarios para que pip compile pyzbar correctamente.
-aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libzbar0", "libzbar-dev"]
+# y las bibliotecas compartidas necesarias para que pip compile pyzbar correctamente.
+aptPkgs = ["libjpeg-dev", "zlib1g-dev", "libzbar0", "libzbar-dev"] [cite: 1757, 1822]
 
 # 3. Define el comando para iniciar tu aplicación.
 [start]
