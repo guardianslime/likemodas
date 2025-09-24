@@ -21,6 +21,7 @@ import uuid # Asegúrate de importar la biblioteca uuid
 from PIL import Image
 import io
 from urllib.parse import urlparse, parse_qs
+from zbarlight import scan_codes # <-- AÑADE ESTA IMPORTACIÓN ARRIBA
 
 import logging
 import sys
@@ -1500,21 +1501,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
     def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
         """
-        Utiliza Pillow y pyzbar para decodificar un código QR a partir de bytes de imagen.
-        Devuelve la URL decodificada o None si no se encuentra ningún QR.
+        [VERSIÓN FINAL] Utiliza Pillow y zbarlight para decodificar un código QR.
         """
-        # --- ¡LA SOLUCIÓN ESTÁ AQUÍ! ---
-        # Importamos la función JUSTO ANTES de usarla.
-        from pyzbar.pyzbar import decode
-
         try:
-            image = Image.open(io.BytesIO(image_bytes))
-            decoded_objects = decode(image)
-            if not decoded_objects:
+            image = Image.open(io.BytesIO(image_bytes)).convert('L') # Convertir a escala de grises
+            codes = scan_codes(['qrcode'], image)
+            if not codes:
                 return None
-            return decoded_objects[0].data.decode("utf-8")
+            # zbarlight devuelve los datos en bytes, hay que decodificarlos
+            return codes[0].decode('utf-8')
         except Exception as e:
-            logger.error(f"Error decodificando imagen QR con pyzbar: {e}")
+            logger.error(f"Error decodificando imagen QR con zbarlight: {e}")
             return None
 
     # --- 3. AÑADIR EL NUEVO MANEJADOR DE EVENTOS COMPLETO ---
