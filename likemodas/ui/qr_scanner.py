@@ -1,17 +1,15 @@
-# likemodas/ui/qr_scanner.py (VERSIÓN FINAL CON rx.Box)
+# likemodas/ui/qr_scanner.py (VERSIÓN FINAL, CORRECTA Y CANÓNICA)
 import reflex as rx
 
-# --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
-# Heredamos de rx.Box, que es el componente de Reflex para crear contenedores <div>.
-# Esta es la clase correcta y existente.
-class Html5QrCodeScanner(rx.Box):
-# --- FIN DE LA CORRECCIÓN DEFINITIVA ---
+# 1. Volvemos a heredar de rx.Component. Esta es la base correcta para TODOS los componentes personalizados.
+class Html5QrCodeScanner(rx.Component):
     """
     Un componente robusto que envuelve la librería 'html5-qrcode' para un escaneo
     de QR simple y efectivo, manejando la cámara internamente.
     """
     
-    # La propiedad 'tag' se elimina, ya que rx.Box es un <div> por defecto.
+    # 2. Especificamos que este componente debe renderizar una etiqueta <div> de HTML.
+    tag = "div"
     
     # Los EventHandlers se mantienen igual.
     on_scan_success: rx.EventHandler[lambda decoded_text: [decoded_text]]
@@ -21,14 +19,14 @@ class Html5QrCodeScanner(rx.Box):
     def get_custom_attrs(self) -> dict:
         return {"id": "qr-reader"}
 
-    # Las importaciones de JS siguen siendo necesarias.
+    # 3. Mantenemos las importaciones que resuelven los errores de JavaScript.
     def _get_imports(self) -> dict[str, str | list[str]]:
         return {
             "react": ["default as React"],
             "html5-qrcode": ["Html5Qrcode"]
         }
 
-    # El script que se ejecuta en el navegador se mantiene igual.
+    # 4. El script que se ejecuta en el navegador se mantiene igual.
     def _get_hooks(self) -> str | None:
         return """
         React.useEffect(() => {
