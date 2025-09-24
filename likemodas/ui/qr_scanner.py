@@ -13,7 +13,7 @@ class JsQrScanner(rx.Component):
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
 
     def _get_custom_code(self) -> str:
-        return """
+        return \"\"\"
 const JsQrScannerComponent = (props) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -81,7 +81,7 @@ const JsQrScannerComponent = (props) => {
     </div>
   );
 };
-"""
+\"\"\"
 
 # Alias para facilitar la creación del componente
 qr_scanner_component = JsQrScanner.create
