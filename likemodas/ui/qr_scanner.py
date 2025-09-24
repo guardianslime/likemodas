@@ -1,4 +1,4 @@
-# likemodas/ui/qr_scanner.py (VERSIÓN FINAL Y DEFINITIVA)
+# likemodas/ui/qr_scanner.py (VERSIÓN FINAL Y ROBUSTA)
 import reflex as rx
 
 class JsQrScanner(rx.Component):
@@ -13,21 +13,14 @@ class JsQrScanner(rx.Component):
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
 
     def _get_imports(self) -> dict[str, str | list[str]]:
-        """
-        Especifica las importaciones de JavaScript necesarias.
-        - "react": Importa la exportación por defecto de React y la renombra como 'React'.
-        - "jsqr": Importa la exportación por defecto de jsqr y la renombra como 'jsQR'.
-        """
         return {
             "react": ["default as React"],
             "jsqr": ["default as jsQR"]
         }
 
     def _get_custom_code(self) -> str:
-        # Este código no necesita cambios.
         return """
 const JsQrScannerComponent = (props) => {
-    const { on_scan_success, on_camera_error } = props;
     const videoRef = React.useRef(null);
     const canvasRef = React.useRef(null);
     const streamRef = React.useRef(null);
@@ -57,13 +50,17 @@ const JsQrScannerComponent = (props) => {
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const code = jsQR(imageData.data, imageData.width, imageData.height);
 
+            // --- INICIO DE LA CORRECCIÓN DE LÓGICA ---
             if (code) {
-                stopWebcamScan();
-                if (on_scan_success) {
-                    on_scan_success(code.data);
+                // 1. Enviamos el evento PRIMERO, usando props directamente.
+                if (props.on_scan_success) {
+                    props.on_scan_success(code.data);
                 }
-                return;
+                // 2. DESPUÉS, detenemos la cámara.
+                stopWebcamScan();
+                return; // Detenemos el bucle de escaneo.
             }
+            // --- FIN DE LA CORRECCIÓN DE LÓGICA ---
         }
         requestRef.current = requestAnimationFrame(scanVideoFrame);
     };
@@ -78,8 +75,8 @@ const JsQrScannerComponent = (props) => {
                 requestRef.current = requestAnimationFrame(scanVideoFrame);
             }
         } catch (error) {
-            if (on_camera_error) {
-                on_camera_error(`No se puede acceder a la cámara: ${error.message}`);
+            if (props.on_camera_error) {
+                props.on_camera_error(`No se puede acceder a la cámara: ${error.message}`);
             }
         }
     };
