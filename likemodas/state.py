@@ -1520,11 +1520,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- 3. AÑADIR EL NUEVO MANEJADOR DE EVENTOS COMPLETO ---
     async def handle_qr_image_upload(self, files: list[rx.UploadFile]):
         """
+        [VERSIÓN CORREGIDA]
         Manejador para procesar la imagen de un QR subida por el administrador.
         Decodifica la imagen en el backend y añade el producto a la venta directa.
         """
         if not files:
-            return rx.toast.error("No se ha subido ningún archivo.")
+            # CORRECCIÓN: Se cambia 'return' por 'yield'
+            yield rx.toast.error("No se ha subido ningún archivo.")
+            return
 
         # Cierra el modal de inmediato para que el usuario vea que la acción fue recibida.
         self.show_qr_scanner_modal = False
@@ -1536,29 +1539,37 @@ class AppState(reflex_local_auth.LocalAuthState):
             decoded_url = self._decode_qr_from_image(upload_data)
             
             if not decoded_url:
-                return rx.toast.error("No se pudo encontrar un código QR en la imagen.")
+                # CORRECCIÓN: Se cambia 'return' por 'yield'
+                yield rx.toast.error("No se pudo encontrar un código QR en la imagen.")
+                return
 
-            # --- INICIO DE LA INTEGRACIÓN DE LÓGICA DE NEGOCIO ---
-            
             # 1. Parsear la URL para obtener el variant_uuid
             if "variant_uuid=" not in decoded_url:
-                return rx.toast.error("El código QR no es válido para esta aplicación.")
+                # CORRECCIÓN: Se cambia 'return' por 'yield'
+                yield rx.toast.error("El código QR no es válido para esta aplicación.")
+                return
             
             try:
                 parsed_url = urlparse(decoded_url)
                 query_params = parse_qs(parsed_url.query)
                 variant_uuid = query_params.get("variant_uuid", [None])[0]
             except Exception:
-                return rx.toast.error("URL malformada en el código QR.")
+                # CORRECCIÓN: Se cambia 'return' por 'yield'
+                yield rx.toast.error("URL malformada en el código QR.")
+                return
 
             if not variant_uuid:
-                return rx.toast.error("No se encontró un identificador de producto en el QR.")
+                # CORRECCIÓN: Se cambia 'return' por 'yield'
+                yield rx.toast.error("No se encontró un identificador de producto en el QR.")
+                return
 
             # 2. Reutilizar la lógica de búsqueda existente
             result = self.find_variant_by_uuid(variant_uuid)
             
             if not result:
-                return rx.toast.error("Producto no encontrado para este código QR.")
+                # CORRECCIÓN: Se cambia 'return' por 'yield'
+                yield rx.toast.error("Producto no encontrado para este código QR.")
+                return
                 
             post, variant = result
             
@@ -1569,7 +1580,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
             
             if variant_index == -1:
-                return rx.toast.error("Error de consistencia de datos de la variante.")
+                # CORRECCIÓN: Se cambia 'return' por 'yield'
+                yield rx.toast.error("Error de consistencia de datos de la variante.")
+                return
 
             cart_key = f"{post.id}-{variant_index}-{selection_key_part}"
             available_stock = variant.get("stock", 0)
@@ -1582,11 +1595,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.direct_sale_cart[cart_key] = quantity_in_cart + 1
                 yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
                 
-            # --- FIN DE LA INTEGRACIÓN ---
-
         except Exception as e:
             logger.error(f"Error fatal al procesar la imagen del QR: {e}")
-            return rx.toast.error("Ocurrió un error inesperado al procesar la imagen.")
+            # CORRECCIÓN: Se cambia 'return' por 'yield'
+            yield rx.toast.error("Ocurrió un error inesperado al procesar la imagen.")
 
     @rx.event
     def load_gallery_and_shipping(self):
