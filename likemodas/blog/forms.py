@@ -143,7 +143,7 @@ def variant_stock_manager_edit() -> rx.Component:
         align_items="stretch", width="100%",
     )
 
-# --- Formulario para AÑADIR un producto (Sin cambios) ---
+# --- Formulario para AÑADIR un producto (CON BOTÓN DE ELIMINAR) ---
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     tipo_selector = searchable_select(
@@ -158,7 +158,6 @@ def blog_post_add_form() -> rx.Component:
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
         filter_name="attr_material_filter",
     )
-
     color_selector_simple = searchable_select(
         placeholder="Selecciona un color...",
         options=AppState.filtered_attr_colores,
@@ -185,7 +184,6 @@ def blog_post_add_form() -> rx.Component:
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
-
     caracteristicas_calzado = rx.vstack(
         rx.grid(
             color_selector_simple,
@@ -202,7 +200,6 @@ def blog_post_add_form() -> rx.Component:
         rx.grid(tipo_selector, material_selector, columns="2", spacing="3", width="100%"),
         spacing="3", width="100%",
     )
-
     caracteristicas_mochilas = rx.vstack(
         rx.grid(
             color_selector_simple,
@@ -241,10 +238,29 @@ def blog_post_add_form() -> rx.Component:
                                     AppState.new_variants,
                                     lambda variant, index: rx.box(
                                         rx.image(src=rx.get_upload_url(variant.get("image_url", "")), width="80px", height="80px", object_fit="cover", border_radius="md"),
+                                        
+                                        # --- INICIO DE LA MODIFICACIÓN: BOTÓN DE ELIMINAR ---
+                                        rx.icon_button(
+                                            rx.icon("trash-2", size=12),
+                                            on_click=AppState.remove_add_image(index),
+                                            color_scheme="red",
+                                            variant="soft",
+                                            size="1",
+                                            style={
+                                                "position": "absolute",
+                                                "top": "2px",
+                                                "right": "2px",
+                                                "cursor": "pointer",
+                                                "z_index": "10"
+                                            }
+                                        ),
+                                        # --- FIN DE LA MODIFICACIÓN ---
+                                        
                                         border_width=rx.cond(AppState.selected_variant_index == index, "3px", "1px"),
                                         border_color=rx.cond(AppState.selected_variant_index == index, "violet", "gray"),
                                         padding="2px", border_radius="lg", cursor="pointer",
                                         on_click=AppState.select_variant_for_editing(index),
+                                        position="relative", # <-- Necesario para el botón
                                     )
                                 ),
                                 wrap="wrap", spacing="3", margin_top="0.5em"
@@ -261,7 +277,7 @@ def blog_post_add_form() -> rx.Component:
                     rx.select(
                         AppState.categories, placeholder="Selecciona una categoría...", name="category",
                         required=True, size="3", on_change=AppState.set_category,
-                     ),
+                    ),
                     rx.grid(
                         rx.vstack(
                             rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
@@ -302,7 +318,7 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Envío gratis en compras > $200.000.", size="1", color_scheme="gray"),
                             align_items="stretch",
                         ),
-                         rx.vstack(
+                        rx.vstack(
                             rx.text("Envío Combinado", as_="div", size="2", weight="bold"),
                             rx.hstack(
                                 rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping, size="2"),
@@ -353,10 +369,9 @@ def blog_post_add_form() -> rx.Component:
         width="100%", max_width="1024px",
     )
 
-# --- Formulario para EDITAR un producto (CON CORRECCIONES) ---
+# --- Formulario para EDITAR un producto (CON BOTÓN DE ELIMINAR CORREGIDO) ---
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar una publicación, ahora con estado centralizado y robusto."""
-
     caracteristicas_ropa_edit = attribute_editor(
         title="Talla", options_list=LISTA_TALLAS_ROPA,
         temp_value_var=AppState.edit_temp_talla,
@@ -377,17 +392,26 @@ def blog_post_edit_form() -> rx.Component:
                             AppState.unique_edit_form_images,
                             lambda img_url, index: rx.box(
                                 rx.image(src=rx.get_upload_url(img_url), width="80px", height="80px", object_fit="cover", border_radius="md"),
+                                # --- CORRECCIÓN: Se asegura que el botón de eliminar sea visible ---
                                 rx.icon_button(
                                     rx.icon("trash-2", size=14),
                                     on_click=AppState.remove_edit_image(img_url),
-                                    color_scheme="red", variant="soft", size="1",
-                                    style={"position": "absolute", "top": "2px", "right": "2px", "cursor": "pointer"}
+                                    color_scheme="red", 
+                                    variant="soft", 
+                                    size="1",
+                                    style={
+                                        "position": "absolute", 
+                                        "top": "2px", 
+                                        "right": "2px", 
+                                        "cursor": "pointer",
+                                        "z_index": "10"
+                                    }
                                 ),
                                 border_width=rx.cond(AppState.edit_selected_image_index == index, "3px", "1px"),
                                 border_color=rx.cond(AppState.edit_selected_image_index == index, "violet", "gray"),
                                 padding="2px", border_radius="lg", cursor="pointer",
                                 on_click=AppState.select_edit_image_for_editing(index),
-                                position="relative",
+                                position="relative", # <-- Crucial para que el botón se posicione correctamente
                             )
                         ),
                         wrap="wrap", spacing="3",
@@ -419,11 +443,10 @@ def blog_post_edit_form() -> rx.Component:
                     spacing="2", align_items="stretch",
                 ),
 
-                # --- COLUMNA DERECHA: DETALLES DEL PRODUCTO ---
+                # --- COLUMNA DERECHA: DETALLES DEL PRODUCTO (Sin cambios) ---
                 rx.vstack(
                     rx.text("Título del Producto", as_="div", size="2", weight="bold"),
                     rx.input(name="title", value=AppState.edit_post_title, on_change=AppState.set_edit_post_title, required=True, size="3"),
-
                     rx.text("Categoría", as_="div", size="2", weight="bold"),
                     rx.select(
                         AppState.categories, placeholder="Selecciona una categoría...",
@@ -509,7 +532,7 @@ def blog_post_edit_form() -> rx.Component:
                     ),
                     rx.text("Descripción", as_="div", size="2", weight="bold"),
                     rx.text_area(name="content", value=AppState.edit_post_content, on_change=AppState.set_edit_post_content, required=True, size="2", style={"height": "120px"}),
-                    spacing="3", align_itemsa="stretch"
+                    spacing="3", align_items="stretch"
                 ),
                 columns={"initial": "1", "md": "2"}, spacing="6", width="100%",
             ),
