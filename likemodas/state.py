@@ -1560,40 +1560,124 @@ class AppState(reflex_local_auth.LocalAuthState):
         except Exception as e:
             logger.error(f"Error fatal durante la decodificación del QR: {e}")
             return None
+        
+    # --- INICIA EL NUEVO BLOQUE DE CÓDIGO ---
+
+    def _apply_clahe_color(self, image):
+        """Aplica mejora de contraste a una imagen a color sin distorsionar los colores."""
+        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cl = clahe.apply(l)
+        limg = cv2.merge((cl, a, b))
+        return cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+
+    def _unsharp_mask(self, image, sigma=1.0, strength=1.5):
+        """Aplica un filtro de nitidez para corregir desenfoques leves."""
+        blurred = cv2.GaussianBlur(image, (0, 0), sigma)
+        return cv2.addWeighted(image, 1.0 + strength, blurred, -strength, 0)
+
+    def _apply_morphological_cleanup(self, binary_image):
+        """Elimina ruido y pequeños imperfectos de la imagen binarizada."""
+        kernel = np.ones((3, 3), np.uint8)
+        # Elimina ruido blanco (puntos pequeños)
+        opened = cv2.morphologyEx(binary_image, cv2.MORPH_OPEN, kernel)
+        # Rellena agujeros negros dentro del QR
+        closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
+        return closed
+
+    def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
+        """
+        [VERSIÓN 2.0 - MÁS INTELIGENTE]
+        Utiliza OpenCV con un pipeline secuencial y robusto de técnicas de mejora de imagen.
+        """
+        try:
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            image_orig = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            if image_orig is None:
+                logger.error("No se pudo decodificar la imagen con OpenCV.")
+                return None
+
+            detector = cv2.QRCodeDetector()
+
+            # --- Pipeline de Detección Secuencial ---
+
+            # Intento 1: Imagen Original (para casos fáciles y rápidos)
+            logger.info("Intento de decodificación QR - Etapa 1: Imagen Original")
+            decoded_text, points, _ = detector.detectAndDecode(image_orig)
+            if points is not None and decoded_text:
+                logger.info("ÉXITO en Etapa 1.")
+                return decoded_text
+
+            # Intento 2: Con mejora de contraste (CLAHE)
+            logger.info("Intento de decodificación QR - Etapa 2: Mejora de Contraste (CLAHE)")
+            image_clahe = self._apply_clahe_color(image_orig)
+            decoded_text, points, _ = detector.detectAndDecode(image_clahe)
+            if points is not None and decoded_text:
+                logger.info("ÉXITO en Etapa 2.")
+                return decoded_text
+
+            # Intento 3: Con mejora de nitidez sobre la imagen ya contrastada
+            logger.info("Intento de decodificación QR - Etapa 3: Aumento de Nitidez")
+            image_sharp = self._unsharp_mask(image_clahe, strength=1.2)
+            decoded_text, points, _ = detector.detectAndDecode(image_sharp)
+            if points is not None and decoded_text:
+                logger.info("ÉXITO en Etapa 3.")
+                return decoded_text
+
+            # Intento 4: Con limpieza morfológica sobre una imagen binarizada
+            logger.info("Intento de decodificación QR - Etapa 4: Limpieza Morfológica")
+            gray_sharp = cv2.cvtColor(image_sharp, cv2.COLOR_BGR2GRAY)
+            _, thresh_image = cv2.threshold(gray_sharp, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            image_morph = self._apply_morphological_cleanup(thresh_image)
+            decoded_text, points, _ = detector.detectAndDecode(image_morph)
+            if points is not None and decoded_text:
+                logger.info("ÉXITO en Etapa 4.")
+                return decoded_text
+
+            logger.error("El QR no pudo ser detectado después de aplicar el pipeline de pre-procesamiento avanzado.")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error fatal durante la decodificación del QR: {e}")
+            return None
+
+    # --- FIN DEL NUEVO BLOQUE DE CÓDIGO ---
 
     # --- 3. AÑADIR EL NUEVO MANEJADOR DE EVENTOS COMPLETO ---
     async def handle_qr_image_upload(self, files: list[rx.UploadFile]):
         """
-        Manejador para procesar la imagen de un QR.
-        Utiliza la nueva función _decode_qr_from_image para una detección robusta.
+        [VERSIÓN CORREGIDA Y COMPLETA]
+        Manejador para procesar la imagen de un QR subida por el administrador.
+        Decodifica la imagen en el backend y añade el producto a la venta directa.
         """
         if not files:
+            # Se notifica al usuario si no se subió ningún archivo
             yield rx.toast.error("No se ha subido ningún archivo.")
             return
 
+        # Se cierra el modal inmediatamente para una mejor experiencia de usuario
         self.show_qr_scanner_modal = False
         
         try:
+            # Se leen los datos binarios de la imagen subida
             upload_data = await files[0].read()
             
-            # --- CAMBIO CLAVE: Llamada a la nueva función inteligente ---
+            # Se llama a la función de decodificación mejorada que aplica el pipeline de pre-procesamiento
             decoded_url = self._decode_qr_from_image(upload_data)
             
             if not decoded_url:
-                yield rx.toast.error(
-                    "No se pudo leer el código QR. Intenta con una foto más nítida y bien iluminada.", 
-                    duration=6000
-                )
+                # Si no se encuentra un QR, se notifica al usuario con un mensaje claro
+                yield rx.toast.error("No se pudo encontrar un código QR en la imagen.", duration=6000)
                 return
 
-            # El resto de tu lógica para parsear la URL y añadir al carrito permanece igual
+            # Se valida que la URL decodificada contenga el parámetro esperado
             if "variant_uuid=" not in decoded_url:
                 yield rx.toast.error("El código QR no es válido para esta aplicación.")
                 return
             
-            # ... (tu lógica existente para encontrar el producto y añadirlo al carrito) ...
-            # Esta parte ya es correcta y no necesita cambios.
             try:
+                # Se extrae el 'variant_uuid' de la URL
                 parsed_url = urlparse(decoded_url)
                 query_params = parse_qs(parsed_url.query)
                 variant_uuid = query_params.get("variant_uuid", [None])[0]
@@ -1604,7 +1688,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not variant_uuid:
                 yield rx.toast.error("No se encontró un identificador de producto en el QR.")
                 return
-            
+
+            # Se busca el producto y la variante en la base de datos usando el UUID
             result = self.find_variant_by_uuid(variant_uuid)
             
             if not result:
@@ -1612,10 +1697,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return
                 
             post, variant = result
+            
+            # Se reconstruye la clave del carrito y se verifica el stock
             attributes = variant.get("attributes", {})
             selection_key_part = "-".join(sorted([f"{k}:{v}" for k, v in attributes.items()]))
             variant_index = next((i for i, v in enumerate(post.variants) if v.get("variant_uuid") == variant_uuid), -1)
-
+            
             if variant_index == -1:
                 yield rx.toast.error("Error de consistencia de datos de la variante.")
                 return
@@ -1624,16 +1711,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             available_stock = variant.get("stock", 0)
             quantity_in_cart = self.direct_sale_cart.get(cart_key, 0)
             
+            # Se añade el producto al carrito si hay stock disponible
             if quantity_in_cart + 1 > available_stock:
                 yield rx.toast.error(f"¡Sin stock para '{post.title}'!")
             else:
                 self.direct_sale_cart[cart_key] = quantity_in_cart + 1
                 yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
-                self.show_qr_scanner_modal = False
                 
         except Exception as e:
             logger.error(f"Error fatal al procesar la imagen del QR: {e}")
             yield rx.toast.error("Ocurrió un error inesperado al procesar la imagen.")
+
 
     @rx.event
     def load_gallery_and_shipping(self):
