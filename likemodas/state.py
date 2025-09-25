@@ -1502,11 +1502,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- 2. AÑADIR LA FUNCIÓN DE UTILIDAD PARA DECODIFICAR ---
     def _decode_qr_from_image(self, image_bytes: bytes) -> Optional[str]:
         """
-        [VERSIÓN FINAL CON OPENCV] Utiliza OpenCV para decodificar un código QR.
-        Este método es robusto y no requiere compilación local en Windows.
+        [VERSIÓN MEJORADA CON PRE-PROCESAMIENTO]
+        Utiliza OpenCV para decodificar un QR, aplicando varias técnicas de 
+        mejora de imagen para aumentar la tasa de éxito en fotos imperfectas.
         """
         try:
-            # Convierte los bytes de la imagen a un array que OpenCV pueda leer
+            # 1. Cargar la imagen
             np_arr = np.frombuffer(image_bytes, np.uint8)
             image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
@@ -1514,16 +1515,55 @@ class AppState(reflex_local_auth.LocalAuthState):
                 logger.error("No se pudo decodificar la imagen con OpenCV.")
                 return None
 
-            # Inicializa el detector de QR y decodifica
             detector = cv2.QRCodeDetector()
-            decoded_text, points, _ = detector.detectAndDecode(image)
 
+            # 2. PRIMER INTENTO: Con la imagen original
+            # A menudo, la imagen original es suficiente y la más rápida de procesar.
+            decoded_text, points, _ = detector.detectAndDecode(image)
             if points is not None and decoded_text:
+                logger.info("QR detectado en el primer intento (imagen original).")
                 return decoded_text
-            else:
-                return None
+
+            # --- SI EL PRIMER INTENTO FALLA, COMENZAMOS EL PRE-PROCESAMIENTO ---
+            logger.warning("El primer intento falló. Iniciando pre-procesamiento de imagen...")
+
+            # 3. Convertir a escala de grises
+            gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            # 4. SEGUNDO INTENTO: Con la imagen en escala de grises
+            decoded_text, points, _ = detector.detectAndDecode(gray_image)
+            if points is not None and decoded_text:
+                logger.info("QR detectado en el segundo intento (escala de grises).")
+                return decoded_text
+                
+            # 5. TERCER INTENTO: Aplicar un umbral adaptativo
+            # Esto convierte la imagen a blanco y negro puro, eliminando sombras y brillos.
+            # Es muy efectivo para códigos QR.
+            thresh_image = cv2.adaptiveThreshold(
+                gray_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+            decoded_text, points, _ = detector.detectAndDecode(thresh_image)
+            if points is not None and decoded_text:
+                logger.info("QR detectado en el tercer intento (con umbral adaptativo).")
+                return decoded_text
+            
+            # 6. CUARTO INTENTO (opcional pero potente): Aplicar un ligero desenfoque y luego umbral
+            # A veces, un desenfoque suave elimina el "ruido" de la cámara antes de aplicar el umbral.
+            blur_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
+            thresh_blur_image = cv2.adaptiveThreshold(
+                blur_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+            decoded_text, points, _ = detector.detectAndDecode(thresh_blur_image)
+            if points is not None and decoded_text:
+                logger.info("QR detectado en el cuarto intento (desenfoque + umbral).")
+                return decoded_text
+
+            # Si después de todos los intentos no se encuentra, la imagen es ilegible.
+            logger.error("El QR no pudo ser detectado después de varios intentos de pre-procesamiento.")
+            return None
+
         except Exception as e:
-            logger.error(f"Error decodificando imagen QR con OpenCV: {e}")
+            logger.error(f"Error fatal durante el pre-procesamiento y decodificación del QR: {e}")
             return None
 
     # --- 3. AÑADIR EL NUEVO MANEJADOR DE EVENTOS COMPLETO ---
