@@ -209,50 +209,57 @@ def admin_store_page() -> rx.Component:
         # Este es el nuevo modal que reemplaza al anterior.
         rx.dialog.root(
             rx.dialog.content(
-                rx.dialog.title("Escanear Código QR del Producto"),
+                rx.dialog.title("Añadir Producto por QR"),
                 rx.dialog.description(
-                    "Usa la cámara de tu teléfono o sube una imagen para añadir el producto a la venta."
+                    "Selecciona una opción para escanear el código QR del producto."
                 ),
                 
-                # Este es el componente de subida que ahora envuelve dos vistas diferentes.
-                rx.upload(
-                    # 1. VISTA PARA ESCRITORIO (md y superior)
-                    # Es la misma que ya tienes, pero solo se mostrará en pantallas medianas y grandes.
-                    rx.box(
-                        rx.vstack(
-                            rx.icon("upload", size=32),
-                            rx.text("Haz clic o arrastra la imagen del QR aquí."),
-                            rx.text("Tamaño máximo: 5MB", size="2", color_scheme="gray"),
-                            spacing="3",
-                        ),
-                        display=["none", "none", "flex"], # Oculto en móvil, visible en escritorio
-                    ),
-
-                    # 2. VISTA PARA MÓVIL (la vista por defecto)
-                    # Un botón grande y claro que invita a usar la cámara.
-                    rx.box(
+                # Usamos un Vstack para organizar los dos botones de acción
+                rx.vstack(
+                    # --- Botón 1: Abrir la cámara directamente ---
+                    rx.upload(
                         rx.button(
-                            rx.hstack(rx.icon("camera"), rx.text("Escanear con la Cámara")),
+                            rx.hstack(rx.icon("camera"), rx.text("Tomar Foto con la Cámara")),
                             size="3",
                             width="100%",
-                            height="8em",
+                            height="5em",
                             color_scheme="violet",
                         ),
-                        display=["flex", "flex", "none"], # Visible en móvil, oculto en escritorio
+                        id="qr_upload_camera",
+                        # La propiedad 'capture' le dice al navegador que abra la cámara
+                        capture="environment", 
+                        # MEJORA 1: Cerramos el modal inmediatamente al recibir el archivo
+                        on_drop=[
+                            AppState.set_show_qr_scanner_modal(False), 
+                            AppState.handle_qr_image_upload(rx.upload_files("qr_upload_camera"))
+                        ],
+                        width="100%",
+                    ),
+
+                    # --- Botón 2: Subir desde la galería ---
+                    rx.upload(
+                        rx.button(
+                            rx.hstack(rx.icon("image"), rx.text("Subir desde Galería")),
+                            size="3",
+                            width="100%",
+                            height="5em",
+                            variant="outline",
+                        ),
+                        id="qr_upload_gallery",
+                        # MEJORA 1: También cerramos el modal aquí
+                        on_drop=[
+                            AppState.set_show_qr_scanner_modal(False),
+                            AppState.handle_qr_image_upload(rx.upload_files("qr_upload_gallery"))
+                        ],
+                        width="100%",
                     ),
                     
-                    id="qr_upload",
-                    border="2px dashed #ccc",
-                    padding="2em",
-                    border_radius="var(--radius-3)",
+                    spacing="4",
                     width="100%",
                     margin_y="1em",
-                    cursor="pointer",
-                    # El manejador de eventos no cambia en absoluto.
-                    on_drop=AppState.handle_qr_image_upload(rx.upload_files("qr_upload")),
                 ),
                 
-                # El botón de cancelar no cambia.
+                # Botón de cancelar
                 rx.flex(
                     rx.dialog.close(
                         rx.button("Cancelar", variant="soft", color_scheme="gray")
