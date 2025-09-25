@@ -1151,6 +1151,29 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.success("Producto publicado exitosamente.")
         return rx.redirect("/blog")
     
+    @rx.event
+    def remove_add_image(self, index: int):
+        """
+        Elimina una imagen y sus datos asociados del formulario para AÑADIR productos.
+        """
+        if 0 <= index < len(self.new_variants):
+            # Elimina la variante (que contiene la imagen) de la lista principal
+            self.new_variants.pop(index)
+            
+            # Si había un mapa de variantes generado para esta imagen, lo eliminamos
+            if index in self.generated_variants_map:
+                del self.generated_variants_map[index]
+            
+            # Reajusta el índice de la imagen seleccionada si es necesario
+            if self.selected_variant_index == index:
+                # Si se eliminó la imagen seleccionada, deseleccionamos
+                self.selected_variant_index = -1
+            elif self.selected_variant_index > index:
+                # Si se eliminó una imagen anterior a la seleccionada, ajustamos el índice
+                self.selected_variant_index -= 1
+            
+            yield rx.toast.info("Imagen eliminada del formulario.")
+    
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
         """
