@@ -211,41 +211,56 @@ def admin_store_page() -> rx.Component:
             rx.dialog.content(
                 rx.dialog.title("Escanear Código QR del Producto"),
                 rx.dialog.description(
-                    "Sube una imagen del código QR para añadir el producto a la venta. "
-                    "En tu teléfono, puedes tomar una foto directamente."
+                    "Usa la cámara de tu teléfono o sube una imagen para añadir el producto a la venta."
                 ),
                 
-                # Componente de subida de archivos. Es el único elemento interactivo.
+                # Este es el componente de subida que ahora envuelve dos vistas diferentes.
                 rx.upload(
-                    rx.vstack(
-                        rx.icon("upload", size=32),
-                        rx.text("Haz clic o arrastra una imagen aquí."),
-                        rx.text("Tamaño máximo: 5MB", size="2", color_scheme="gray"),
-                        spacing="3",
+                    # 1. VISTA PARA ESCRITORIO (md y superior)
+                    # Es la misma que ya tienes, pero solo se mostrará en pantallas medianas y grandes.
+                    rx.box(
+                        rx.vstack(
+                            rx.icon("upload", size=32),
+                            rx.text("Haz clic o arrastra la imagen del QR aquí."),
+                            rx.text("Tamaño máximo: 5MB", size="2", color_scheme="gray"),
+                            spacing="3",
+                        ),
+                        display=["none", "none", "flex"], # Oculto en móvil, visible en escritorio
                     ),
+
+                    # 2. VISTA PARA MÓVIL (la vista por defecto)
+                    # Un botón grande y claro que invita a usar la cámara.
+                    rx.box(
+                        rx.button(
+                            rx.hstack(rx.icon("camera"), rx.text("Escanear con la Cámara")),
+                            size="3",
+                            width="100%",
+                            height="8em",
+                            color_scheme="violet",
+                        ),
+                        display=["flex", "flex", "none"], # Visible en móvil, oculto en escritorio
+                    ),
+                    
                     id="qr_upload",
                     border="2px dashed #ccc",
-                    padding="3em",
+                    padding="2em",
                     border_radius="var(--radius-3)",
-                    
-                    # El evento 'on_drop' es la clave. Se conecta al nuevo manejador en AppState
-                    # que procesará la imagen en el backend.
-                    on_drop=AppState.handle_qr_image_upload(rx.upload_files("qr_upload")),
                     width="100%",
                     margin_y="1em",
+                    cursor="pointer",
+                    # El manejador de eventos no cambia en absoluto.
+                    on_drop=AppState.handle_qr_image_upload(rx.upload_files("qr_upload")),
                 ),
                 
-                # El botón de cancelar para cerrar el modal.
+                # El botón de cancelar no cambia.
                 rx.flex(
                     rx.dialog.close(
                         rx.button("Cancelar", variant="soft", color_scheme="gray")
                     ),
-                    spacing="3",
-                    margin_top="1em",
                     justify="end",
+                    margin_top="1em",
                 ),
             ),
-            # La visibilidad del diálogo sigue siendo controlada por la misma variable de estado.
             open=AppState.show_qr_scanner_modal,
             on_open_change=AppState.set_show_qr_scanner_modal,
         )
