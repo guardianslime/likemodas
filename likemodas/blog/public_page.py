@@ -348,6 +348,55 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         on_open_change=AppState.close_product_detail_modal,
     )
 
+# --- AÑADE ESTA NUEVA FUNCIÓN ---
+def public_qr_scanner_modal() -> rx.Component:
+    """Modal de escaneo QR para clientes."""
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.dialog.title("Buscar Producto por QR"),
+            rx.dialog.description(
+                "Usa la cámara de tu celular para escanear el código y ver los detalles del producto."
+            ),
+            rx.vstack(
+                # Botón para abrir la cámara
+                rx.upload(
+                    rx.button(
+                        rx.hstack(rx.icon("camera"), rx.text("Escanear con la Cámara")),
+                        size="3", width="100%", height="5em", color_scheme="violet",
+                    ),
+                    id="public_qr_camera",
+                    capture="environment",
+                    on_drop=[
+                        AppState.set_show_public_qr_scanner_modal(False), 
+                        AppState.handle_public_qr_scan(rx.upload_files("public_qr_camera"))
+                    ],
+                    width="100%",
+                ),
+                # Botón para subir desde galería
+                rx.upload(
+                    rx.button(
+                        rx.hstack(rx.icon("image"), rx.text("Subir desde Galería")),
+                        size="3", width="100%", height="5em", variant="outline",
+                    ),
+                    id="public_qr_gallery",
+                    on_drop=[
+                        AppState.set_show_public_qr_scanner_modal(False),
+                        AppState.handle_public_qr_scan(rx.upload_files("public_qr_gallery"))
+                    ],
+                    width="100%",
+                ),
+                spacing="4", width="100%", margin_y="1em",
+            ),
+            rx.flex(
+                rx.dialog.close(rx.button("Cancelar", variant="soft", color_scheme="gray")),
+                justify="end", margin_top="1em",
+            ),
+        ),
+        open=AppState.show_public_qr_scanner_modal,
+        on_open_change=AppState.set_show_public_qr_scanner_modal,
+    )
+# --- FIN DE LA NUEVA FUNCIÓN ---
+
 def blog_public_page_content() -> rx.Component:
     main_content = rx.center(
         rx.vstack(
@@ -366,4 +415,7 @@ def blog_public_page_content() -> rx.Component:
         main_content,
         # ✨ PASO 3: ASEGURARSE DE QUE LA PÁGINA PÚBLICA LLAME AL MODAL EN MODO PÚBLICO
         product_detail_modal(is_for_direct_sale=False),
+        # --- AÑADE ESTA LÍNEA AL FINAL ---
+        public_qr_scanner_modal(),
     )
+

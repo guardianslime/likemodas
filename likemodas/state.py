@@ -148,8 +148,7 @@ class AdminVariantData(rx.Base):
     stock: int = 0
     attributes_str: str = ""
     attributes: dict = {}
-    public_qr_url: str = ""  # URL para clientes
-    admin_qr_url: str = ""   # URL para POS interno
+    qr_url: str = ""  # <-- REEMPLAZA las dos variables anteriores por esta
 
 # --- PASO 2: MODIFICAR EL DTO AdminPostRowData ---
 class AdminPostRowData(rx.Base):
@@ -1386,6 +1385,61 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.direct_sale_cart[cart_key] = quantity_in_cart + 1
             yield rx.toast.success(f"'{post.title}' añadido a la Venta Directa.")
             self.show_qr_scanner_modal = False
+
+    # --- Añade estas nuevas variables de estado ---
+    show_public_qr_scanner_modal: bool = False
+
+    def toggle_public_qr_scanner_modal(self):
+        """Muestra u oculta el modal del escáner QR público."""
+        self.show_public_qr_scanner_modal = not self.show_public_qr_scanner_modal
+
+    def set_show_public_qr_scanner_modal(self, state: bool):
+        self.show_public_qr_scanner_modal = state
+
+    # --- Añade este nuevo manejador de eventos ---
+    async def handle_public_qr_scan(self, files: list[rx.UploadFile]):
+        """
+        Manejador para el escáner público. Decodifica el QR y abre el modal del producto.
+        """
+        if not files:
+            yield rx.toast.error("No se ha subido ningún archivo.")
+            return
+
+        self.show_public_qr_scanner_modal = False
+
+        try:
+            upload_data = await files[0].read()
+            decoded_url = self._decode_qr_from_image(upload_data)
+
+            if not decoded_url:
+                yield rx.toast.error("No se pudo leer el código QR.", duration=6000)
+                return
+
+            if "variant_uuid=" not in decoded_url:
+                yield rx.toast.error("El código QR no es válido.")
+                return
+
+            parsed_url = urlparse(decoded_url)
+            query_params = parse_qs(parsed_url.query)
+            variant_uuid = query_params.get("variant_uuid", [None])[0]
+
+            if not variant_uuid:
+                yield rx.toast.error("QR sin identificador de producto.")
+                return
+
+            result = self.find_variant_by_uuid(variant_uuid)
+
+            if not result:
+                yield rx.toast.error("Producto no encontrado para este código QR.")
+                return
+
+            post, _ = result
+            # En lugar de añadir al carrito, llamamos al evento que abre el modal
+            yield AppState.open_product_detail_modal(post.id)
+
+        except Exception as e:
+            logger.error(f"Error fatal al procesar el QR público: {e}")
+            yield rx.toast.error("Ocurrió un error inesperado al procesar la imagen.")
 
     # --- Manejador para errores de la cámara ---
     @rx.event
@@ -2984,7 +3038,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def my_admin_posts(self) -> list[AdminPostRowData]:
         """
         Propiedad que devuelve los posts del admin, pre-procesando
-        ambas URLs (pública y de admin) en el backend.
+        una URL única para el QR.
         """
         if not self.authenticated_user_info:
             return []
@@ -3009,8 +3063,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
                         variant_uuid = v.get("variant_uuid", "")
 
-                        public_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else ""
-                        admin_url = f"{base_url}/admin/store?variant_uuid={variant_uuid}" if variant_uuid else ""
+                        # --- INICIO DE LA MODIFICACIÓN ---
+                        # Generamos una única URL pública.
+                        unified_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else ""
+                        # --- FIN DE LA MODIFICACIÓN ---
 
                         variants_dto_list.append(
                             AdminVariantData(
@@ -3018,8 +3074,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 stock=v.get("stock", 0),
                                 attributes_str=attrs_str,
                                 attributes=attrs,
-                                public_qr_url=public_url,
-                                admin_qr_url=admin_url
+                                qr_url=unified_url # <-- Usamos la nueva variable
                             )
                         )
 
@@ -3034,6 +3089,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
             return admin_posts
+
 
             # --- FIN DE LA CORRECCIÓN ---
 

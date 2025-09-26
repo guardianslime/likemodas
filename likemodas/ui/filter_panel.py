@@ -243,6 +243,18 @@ def floating_filter_panel() -> rx.Component:
                     type="auto", 
                     scrollbars="vertical",
                 ),
+                # --- INICIO DE LA MODIFICACIÓN: AÑADIR BOTÓN DE ESCÁNER ---
+                rx.divider(),
+                rx.button(
+                    "Escanear Producto",
+                    rx.icon("qr-code"),
+                    on_click=AppState.toggle_public_qr_scanner_modal, # <-- Nueva función de estado
+                    width="100%",
+                    variant="soft",
+                    color_scheme="violet",
+                    margin_top="0.5em"
+                ),
+                # --- FIN DE LA MODIFICACIÓN ---
                 spacing="4",
                 padding="1em",
                 height="95vh",

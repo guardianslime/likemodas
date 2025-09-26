@@ -44,45 +44,27 @@ def qr_display_modal() -> rx.Component:
     }
 
     def render_variant_qr(variant: AdminVariantData) -> rx.Component:
-        """
-        Renderiza la fila para una variante, mostrando dos códigos QR distintos:
-        uno para el público y otro para el uso interno del punto de venta.
-        """
+        """Renderiza la fila para una variante, mostrando un único código QR."""
         return rx.box(
             rx.hstack(
                 rx.vstack(
-                    rx.text(variant.attributes_str, weight="bold"),
+                    rx.text(variant.attributes_str, weight="bold", size="4"),
                     rx.text(f"Stock: {variant.stock}"),
                     align_items="start",
                     spacing="1",
                     flex_grow="1",
                 ),
                 rx.spacer(),
-                
-                # QR para Clientes (Público)
                 rx.vstack(
-                    rx.text("Para Clientes", size="2", weight="medium"),
+                    rx.text("Código QR Único", size="2", weight="medium"),
                     rx.cond(
-                        variant.public_qr_url != "",
-                        qr_code_display(value=variant.public_qr_url, size=100),
-                        rx.center(rx.text("Sin QR"), width="100px", height="100px")
+                        variant.qr_url != "",
+                        qr_code_display(value=variant.qr_url, size=120),
+                        rx.center(rx.text("Sin QR"), width="120px", height="120px")
                     ),
-                    rx.text(variant.public_qr_url, size="1", color_scheme="gray", no_of_lines=1, max_width="120px"),
+                    rx.text(variant.variant_uuid, size="1", color_scheme="gray", no_of_lines=1, max_width="140px"),
                     align="center",
                 ),
-                
-                # QR para Venta Interna (POS)
-                rx.vstack(
-                    rx.text("Para Venta Interna", size="2", weight="medium"),
-                    rx.cond(
-                        variant.admin_qr_url != "",
-                        qr_code_display(value=variant.admin_qr_url, size=100),
-                        rx.center(rx.text("Sin QR"), width="100px", height="100px")
-                    ),
-                    rx.text(variant.admin_qr_url, size="1", color_scheme="gray", no_of_lines=1, max_width="120px"),
-                    align="center",
-                ),
-                
                 spacing="6",
                 align="center",
                 width="100%"
