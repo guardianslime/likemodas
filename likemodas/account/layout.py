@@ -20,6 +20,9 @@ def account_layout(child: rx.Component) -> rx.Component:
                 width="100%",
             ),
             align_items="start",
+            # --- MODIFICACIÓN CLAVE ---
+            # Asegura que el contenedor tenga al menos el 85% de la altura de la vista.
+            # Esto le da espacio al sidebar para que se muestre completo.
             min_height="85vh",
             width="100%"
         )

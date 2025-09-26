@@ -33,6 +33,7 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
         align="center",
         spacing="1",
     )
+
 def searchable_select(
     placeholder: str, 
     # La variable ahora puede ser una lista de strings o una lista de tuplas
@@ -155,21 +156,30 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px",
                             ),
                             rx.vstack(
-                                rx.text(post.title, weight="bold", size="6", no_of_lines=1),
+                                # --- MODIFICACIÓN CLAVE AQUÍ ---
+                                # Se reemplaza no_of_lines=1 por estilos que permiten que el texto se ajuste.
+                                rx.text(
+                                    post.title, 
+                                    weight="bold", 
+                                    size="6", 
+                                    white_space="normal",
+                                    text_overflow="initial",
+                                    overflow="visible",
+                                    min_height="3.5em", # Asegura un espacio mínimo para dos líneas
+                                ),
+                                # --- FIN DE LA MODIFICACIÓN ---
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(post.price_cop, size="5", weight="medium"),
-                                # --- ✨ INICIO DE LA MODIFICACIÓN: Envío y Moda Completa juntos ✨ ---
                                 rx.hstack(
                                     rx.badge(
                                         post.shipping_display_text,
                                         color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
                                         variant="soft",
-                                        size="2", # ✨ AÑADE ESTA LÍNEA
+                                        size="2",
                                     ),
                                     rx.cond(
                                         post.is_moda_completa_eligible,
                                         rx.tooltip(
-                                            # ✨ CAMBIA size="1" por size="2" aquí 👇
                                             rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
                                             content="Este item cuenta para el envío gratis en compras sobre $200.000"
                                         )
@@ -177,17 +187,15 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     spacing="3",
                                     align="center",
                                 ),
-                                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                                 spacing="2", align_items="start", width="100%"
                             ),
                             spacing="2", width="100%",
                             on_click=AppState.open_product_detail_modal(post.id),
                             cursor="pointer",
                         ),
-                        rx.spacer(), # Mantenemos el spacer para empujar el contenido hacia arriba.
+                        rx.spacer(),
                     ),
                     width="290px",
-                    # --- ✨ MODIFICACIÓN: Se elimina la altura fija para que se ajuste al contenido ✨ ---
                     height="auto",
                     bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                     border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),

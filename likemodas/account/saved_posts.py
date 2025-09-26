@@ -1,4 +1,4 @@
-# likemodas/account/saved_posts.py (NUEVO ARCHIVO)
+# likemodas/account/saved_posts.py (VERSIÓN FINAL)
 
 import reflex as rx
 import reflex_local_auth
@@ -6,7 +6,6 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..ui.components import product_gallery_component
 from ..ui.skeletons import skeleton_product_gallery
-# --- AÑADE ESTA LÍNEA DE IMPORTACIÓN ---
 from ..blog.public_page import product_detail_modal
 
 @reflex_local_auth.require_login
@@ -23,18 +22,11 @@ def saved_posts_content() -> rx.Component:
                 product_gallery_component(posts=AppState.saved_posts_gallery),
                 rx.center(
                     rx.text("Aún no has guardado ninguna publicación."),
-                    
-                    # --- LÍNEA CORREGIDA ---
-                    # Reemplazamos min_height por un padding para un espacio controlado
                     padding_y="5em",
                 )
             )
         ),
-        
         product_detail_modal(),
-
-        # --- LÍNEA CORREGIDA ---
-        # Cambiamos "start" por "center" para centrar todo el contenido
         align="center", 
         width="100%",
     )
