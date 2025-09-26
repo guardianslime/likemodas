@@ -50,22 +50,28 @@ def user_management_page() -> rx.Component:
             rx.heading("Gestión de Usuarios", size="7"),
             rx.text("Administra los roles y el estado de todos los usuarios registrados."),
             rx.divider(margin_y="1.5em"),
-            rx.table.root(
-                rx.table.header(
-                    rx.table.row(
-                        rx.table.column_header_cell("Usuario"),
-                        rx.table.column_header_cell("Email"),
-                        rx.table.column_header_cell("Rol"),
-                        rx.table.column_header_cell("Estado"),
-                        rx.table.column_header_cell("Acciones"),
-                    )
+            # --- INICIO DE LA MODIFICACIÓN ---
+            rx.scroll_area(
+                rx.table.root(
+                    rx.table.header(
+                        rx.table.row(
+                            rx.table.column_header_cell("Usuario"),
+                            rx.table.column_header_cell("Email"),
+                            rx.table.column_header_cell("Rol"),
+                            rx.table.column_header_cell("Estado"),
+                            rx.table.column_header_cell("Acciones"),
+                        )
+                    ),
+                    rx.table.body(
+                        rx.foreach(AppState.all_users, user_row)
+                    ),
+                    variant="surface",
+                    width="100%",
                 ),
-                rx.table.body(
-                    rx.foreach(AppState.all_users, user_row)
-                ),
-                variant="surface",
-                width="100%",
+                type="auto",
+                scrollbars="horizontal"
             ),
+            # --- FIN DE LA MODIFICACIÓN ---
             align="stretch",
             width="100%",
         ),

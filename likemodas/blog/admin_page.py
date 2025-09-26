@@ -195,22 +195,28 @@ def blog_admin_page() -> rx.Component:
                 rx.divider(margin_y="1.5em"),
                 rx.cond(
                     AppState.my_admin_posts,
-                    rx.table.root(
-                        rx.table.header(
-                            rx.table.row(
-                                rx.table.column_header_cell("Imagen"),
-                                rx.table.column_header_cell("Estado"),
-                                rx.table.column_header_cell("Título"),
-                                rx.table.column_header_cell("Precio"),
-                                rx.table.column_header_cell("Acciones"),
-                                rx.table.column_header_cell("QR"),
-                            )
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    rx.scroll_area(
+                        rx.table.root(
+                            rx.table.header(
+                                rx.table.row(
+                                    rx.table.column_header_cell("Imagen"),
+                                    rx.table.column_header_cell("Estado"),
+                                    rx.table.column_header_cell("Título"),
+                                    rx.table.column_header_cell("Precio"),
+                                    rx.table.column_header_cell("Acciones"),
+                                    rx.table.column_header_cell("QR"),
+                                )
+                            ),
+                            rx.table.body(
+                                rx.foreach(AppState.my_admin_posts, post_admin_row)
+                            ),
+                            variant="surface", width="100%",
                         ),
-                        rx.table.body(
-                            rx.foreach(AppState.my_admin_posts, post_admin_row)
-                        ),
-                        variant="surface", width="100%",
+                        type="auto",
+                        scrollbars="horizontal"
                     ),
+                    # --- FIN DE LA MODIFICACIÓN ---
                     rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
                 ),
                 edit_post_dialog(),

@@ -78,8 +78,6 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         sidebar_items(),
         rx.spacer(),
-        
-        # --- SECCIÓN INFERIOR REDISEÑADA ---
         rx.vstack(
             rx.divider(),
             rx.hstack(
@@ -110,11 +108,12 @@ def sliding_admin_sidebar() -> rx.Component:
             width="100%", 
             spacing="3",
         ),
-        # --- FIN DE LA SECCIÓN REDISEÑADA ---
-
-        spacing="5", padding="1em",
+        spacing="5", 
+        padding="1em",
         bg=rx.color("gray", 2),
-        align="start", height="100%", width=SIDEBAR_WIDTH,
+        align="start", 
+        height="100vh", # Asegura que el panel ocupe toda la altura
+        width=SIDEBAR_WIDTH,
     )
 
     return rx.box(
@@ -127,21 +126,25 @@ def sliding_admin_sidebar() -> rx.Component:
                 ),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer",
-                bg=rx.color("violet", 9), # Color morado
+                bg=rx.color("violet", 9),
                 border_radius="0 8px 8px 0",
                 height="150px",
                 display="flex",
                 align_items="center"
             ),
-            align_items="center",
+            # --- INICIO DE LA CORRECCIÓN CLAVE ---
+            # Se quita la alineación vertical para que el hstack ocupe toda la altura
+            align_items="start", 
             spacing="0",
+            height="100%",
+            # --- FIN DE LA CORRECCIÓN CLAVE ---
         ),
         position="fixed",
         top="0",
         left="0",
         height="100vh",
         display="flex",
-        align_items="center",
+        # Se elimina 'align_items="center"' que causaba el corte vertical
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
