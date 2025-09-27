@@ -77,41 +77,40 @@ def post_preview() -> rx.Component:
 @require_admin
 def blog_post_add_content() -> rx.Component:
     """
-    Página para añadir una nueva publicación, con un layout centrado
-    y un ancho máximo generoso para una mejor proporción en pantallas grandes.
+    Página para añadir una nueva publicación, con un vstack que fuerza
+    el centrado horizontal de su contenido.
     """
-    # Usamos rx.center para asegurar que el contenido esté siempre centrado.
-    return rx.center(
-        # A este rx.box le damos un ancho máximo para que no se vea demasiado angosto.
-        rx.box(
-            rx.grid(
-                # Columna izquierda (Formulario)
-                rx.vstack(
-                    rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                    blog_post_add_form(),
-                    width="100%",
-                    spacing="4",
-                ),
-                # Columna derecha (Previsualización)
-                rx.vstack(
-                    rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                    post_preview(),
-                    display=["none", "none", "flex", "flex"],
-                    width="100%",
-                    spacing="4",
-                    position="sticky",
-                    top="2em",
-                ),
-                columns={"initial": "1", "lg": "2"},
-                gap="2.5em", # Aumentamos un poco el espacio entre columnas
+    # --- AJUSTE CLAVE DE LAYOUT ---
+    # Usamos un vstack que ocupa todo el ancho y le pedimos que
+    # alinee su contenido (el grid) en el centro.
+    return rx.vstack(
+        rx.grid(
+            # Columna izquierda (Formulario)
+            rx.vstack(
+                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                blog_post_add_form(),
                 width="100%",
+                spacing="4",
             ),
-            # --- AJUSTE CLAVE ---
-            # Le damos el 100% del ancho disponible pero lo limitamos a 1800px.
-            # Esto lo hace más ancho que antes pero evita que se estire demasiado.
+            # Columna derecha (Previsualización)
+            rx.vstack(
+                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                post_preview(),
+                display=["none", "none", "flex", "flex"],
+                width="100%",
+                spacing="4",
+                position="sticky",
+                top="2em",
+            ),
+            columns={"initial": "1", "lg": "2"},
+            gap="2.5em",
             width="100%",
+            # Mantenemos el ancho generoso que te gustó
             max_width="1800px",
-            padding_x=["1em", "2em", "3em"],
-            padding_y="2em",
-        )
+        ),
+        # --- PROPIEDADES DE CENTRADO ---
+        align="center",      # <-- ESTA LÍNEA CENTRA HORIZONTALMENTE EL GRID
+        justify="center",    # Esto ayuda con el centrado vertical
+        width="100%",        # El vstack debe ocupar todo el ancho para poder centrar
+        padding_y="2em",
     )
