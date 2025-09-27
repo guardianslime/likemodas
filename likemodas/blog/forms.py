@@ -561,7 +561,39 @@ def blog_post_edit_form() -> rx.Component:
                 ),
                 columns={"initial": "1", "md": "2"}, spacing="6", width="100%",
             ),
-            rx.button("Guardar Cambios", type="submit", width="100%", margin_top="1em", size="3", color_scheme="violet"),
+            
+            # --- SECCIÓN DE BOTONES MODIFICADA ---
+            rx.divider(margin_y="1.5em"),
+            rx.hstack(
+                # Botón de Eliminar con diálogo de confirmación
+                rx.alert_dialog.root(
+                    rx.alert_dialog.trigger(
+                        rx.button("Eliminar Publicación", color_scheme="red", variant="soft", type="button")
+                    ),
+                    rx.alert_dialog.content(
+                        rx.alert_dialog.title("Confirmar Eliminación"),
+                        rx.alert_dialog.description(
+                            "¿Estás absolutamente seguro? Esta acción no se puede deshacer y eliminará el producto permanentemente."
+                        ),
+                        rx.flex(
+                            rx.alert_dialog.cancel(
+                                rx.button("Cancelar", variant="soft", color_scheme="gray")
+                            ),
+                            rx.alert_dialog.action(
+                                # Llama al evento de borrado existente
+                                rx.button("Sí, Eliminar Permanentemente", on_click=AppState.delete_post(AppState.post_to_edit_id), color_scheme="red")
+                            ),
+                            spacing="3", margin_top="1em", justify="end",
+                        ),
+                    ),
+                ),
+                rx.spacer(),
+                # Botón de Guardar Cambios
+                rx.button("Guardar Cambios", type="submit", size="3", color_scheme="violet"),
+                justify="between",
+                align="center",
+                width="100%",
+            ),
         ),
         on_submit=AppState.save_edited_post,
         width="100%",

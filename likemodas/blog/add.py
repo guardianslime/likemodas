@@ -75,38 +75,35 @@ def post_preview() -> rx.Component:
 
 @require_admin
 def blog_post_add_content() -> rx.Component:
-    """Página para añadir una nueva publicación con un layout centrado y responsivo."""
-    # Envolvemos todo en un rx.center para lograr el efecto deseado.
-    return rx.center(
-        rx.box(
-            rx.grid(
-                # Columna izquierda (Formulario)
-                rx.vstack(
-                    rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                    blog_post_add_form(),
-                    width="100%",
-                    spacing="4",
-                ),
-                # Columna derecha (Previsualización)
-                rx.vstack(
-                    rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                    post_preview(),
-                    display=["none", "none", "flex", "flex"],
-                    width="100%",
-                    spacing="4",
-                    # Añadimos una posición "sticky" para que la previsualización se quede fija al hacer scroll
-                    position="sticky",
-                    top="2em",
-                ),
-                columns={"initial": "1", "lg": "2"},
-                gap="2em",
+    """
+    Página para añadir una nueva publicación, ahora envuelta en un rx.container
+    para un centrado perfecto y un ancho máximo controlado.
+    """
+    # Usamos rx.container para centrar y limitar el ancho del contenido principal.
+    return rx.container(
+        rx.grid(
+            # Columna izquierda (Formulario)
+            rx.vstack(
+                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                blog_post_add_form(),
                 width="100%",
-                # Le damos un ancho máximo para que no se expanda demasiado en pantallas grandes
-                max_width="1600px",
+                spacing="4",
             ),
-            padding_x=["1em", "2em", "3em"], # Padding adaptable
-            padding_y="2em",
+            # Columna derecha (Previsualización)
+            rx.vstack(
+                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                post_preview(),
+                display=["none", "none", "flex", "flex"],
+                width="100%",
+                spacing="4",
+                position="sticky",
+                top="2em",
+            ),
+            columns={"initial": "1", "lg": "2"},
+            gap="2em",
             width="100%",
         ),
-        width="100%", # El center ocupa todo el ancho disponible para poder centrar su contenido
+        # El size="4" de rx.container establece el max_width a 1664px.
+        size="4",
+        padding_y="2em",
     )
