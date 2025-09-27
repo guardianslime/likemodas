@@ -75,33 +75,38 @@ def post_preview() -> rx.Component:
 
 @require_admin
 def blog_post_add_content() -> rx.Component:
-    """Página para añadir una nueva publicación con un layout responsivo y funcional."""
-    return rx.box(
-        # --- LAYOUT RESPONSIVO CORREGIDO ---
-        # 1 columna en móvil, 2 en pantallas grandes (lg).
-        rx.grid(
-            # Columna izquierda (Formulario)
-            rx.vstack(
-                # Este es el único título que conservamos.
-                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                blog_post_add_form(),
+    """Página para añadir una nueva publicación con un layout centrado y responsivo."""
+    # Envolvemos todo en un rx.center para lograr el efecto deseado.
+    return rx.center(
+        rx.box(
+            rx.grid(
+                # Columna izquierda (Formulario)
+                rx.vstack(
+                    rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                    blog_post_add_form(),
+                    width="100%",
+                    spacing="4",
+                ),
+                # Columna derecha (Previsualización)
+                rx.vstack(
+                    rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                    post_preview(),
+                    display=["none", "none", "flex", "flex"],
+                    width="100%",
+                    spacing="4",
+                    # Añadimos una posición "sticky" para que la previsualización se quede fija al hacer scroll
+                    position="sticky",
+                    top="2em",
+                ),
+                columns={"initial": "1", "lg": "2"},
+                gap="2em",
                 width="100%",
-                spacing="4",
+                # Le damos un ancho máximo para que no se expanda demasiado en pantallas grandes
+                max_width="1600px",
             ),
-            # Columna derecha (Previsualización)
-            rx.vstack(
-                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                post_preview(),
-                # Se oculta en móvil para dar prioridad al formulario
-                display=["none", "none", "flex", "flex"],
-                width="100%",
-                spacing="4",
-            ),
-            columns={"initial": "1", "lg": "2"}, # Responsividad clave
-            gap="2em",
+            padding_x=["1em", "2em", "3em"], # Padding adaptable
+            padding_y="2em",
             width="100%",
         ),
-        padding_x=["1em", "2em", "4em"], # Padding adaptable
-        padding_y="2em",
-        width="100%",
+        width="100%", # El center ocupa todo el ancho disponible para poder centrar su contenido
     )

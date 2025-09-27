@@ -239,60 +239,71 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
         align="center",
     )
 
-# --- NUEVO COMPONENTE DE TARJETA PARA MÓVIL ---
+# --- NUEVO COMPONENTE DE TARJETA PARA MÓVIL (MÁS COMPACTO) ---
 def mobile_post_card(post: AdminPostRowData) -> rx.Component:
-    """Componente de tarjeta para mostrar un post en la vista móvil."""
+    """Componente de tarjeta optimizado para la vista móvil."""
     return rx.card(
         rx.vstack(
+            # Sección Superior: Imagen, Título, Precio y QR
             rx.hstack(
-                rx.hstack(
-                    rx.cond(
-                        post.main_image_url != "",
-                        rx.avatar(src=rx.get_upload_url(post.main_image_url), size="5"),
-                        rx.box(rx.icon("image_off", size=24), width="var(--avatar-size-5)", height="var(--avatar-size-5)", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center", border_radius="100%")
-                    ),
-                    rx.vstack(
-                        rx.heading(post.title, size="4", trim="end", no_of_lines=2),
-                        rx.text(post.price_cop, size="3", color_scheme="gray"),
-                        align_items="start",
-                        spacing="0",
-                    ),
-                    align="center",
-                    spacing="4",
+                rx.avatar(src=rx.get_upload_url(post.main_image_url), size="5", radius="medium"),
+                rx.vstack(
+                    rx.heading(post.title, size="4", trim="end", no_of_lines=1, width="150px"),
+                    rx.text(post.price_cop, size="3", color_scheme="gray"),
+                    align_items="start",
+                    spacing="0",
                 ),
                 rx.spacer(),
-                rx.icon_button(
-                    rx.icon("qr-code"),
-                    on_click=AppState.open_qr_modal(post.id),
-                    variant="soft",
-                    size="3"
-                ),
+                rx.icon_button(rx.icon("qr-code"), on_click=AppState.open_qr_modal(post.id)),
+                align="center",
                 width="100%",
             ),
             rx.divider(margin_y="0.75em"),
+            # Sección Media: Estado
             rx.hstack(
-                rx.text("Estado:", weight="bold"),
+                rx.text("Estado:", weight="medium", size="2"),
+                rx.spacer(),
+                rx.badge(
+                    rx.cond(post.publish_active, "Visible", "Oculto"),
+                    color_scheme=rx.cond(post.publish_active, "green", "gray"),
+                ),
                 rx.switch(
                     is_checked=post.publish_active,
                     on_change=lambda checked: AppState.toggle_publish_status(post.id),
                 ),
-                rx.text(rx.cond(post.publish_active, "Visible", "Oculto")),
-                rx.spacer(),
-                rx.button("Editar", on_click=lambda: AppState.start_editing_post(post.id), variant="outline", size="2"),
-                rx.alert_dialog.root(
-                    rx.alert_dialog.trigger(
-                        rx.button("Eliminar", color_scheme="red", variant="soft", size="2")
-                    ),
-                    # ... (el contenido del alert_dialog es el mismo que en desktop) ...
-                ),
                 align="center",
+                justify="end",
                 spacing="3",
                 width="100%",
             ),
-            spacing="3",
+            # Sección Inferior: Acciones
+            rx.hstack(
+                rx.button("Editar", on_click=AppState.start_editing_post(post.id), width="100%", size="2"),
+                rx.alert_dialog.root(
+                    rx.alert_dialog.trigger(
+                        rx.button("Eliminar", color_scheme="red", width="100%", size="2")
+                    ),
+                    rx.alert_dialog.content(
+                        rx.alert_dialog.title("Confirmar Eliminación"),
+                        rx.alert_dialog.description(f"¿Seguro que quieres eliminar '{post.title}'?"),
+                        rx.flex(
+                            rx.alert_dialog.cancel(rx.button("Cancelar")),
+                            rx.alert_dialog.action(
+                                rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))
+                            ),
+                            spacing="3", margin_top="1em", justify="end",
+                        ),
+                    ),
+                ),
+                spacing="3",
+                width="100%",
+                margin_top="0.5em",
+            ),
+            spacing="2",
             width="100%",
         )
     )
+
 
 def blog_admin_page() -> rx.Component:
     """Página de 'Mis Publicaciones' para el vendedor, ahora completamente responsiva."""
@@ -327,10 +338,10 @@ def blog_admin_page() -> rx.Component:
             spacing="4",
             width="100%",
         ),
-        # Se muestra por defecto y se oculta en pantallas 'lg' en adelante
         display=["block", "block", "none", "none"],
     )
 
+    # Contenedor principal de la página
     return rx.center(
         rx.container(
             rx.vstack(
@@ -343,18 +354,18 @@ def blog_admin_page() -> rx.Component:
                 rx.divider(margin_y="1.5em"),
                 rx.cond(
                     AppState.my_admin_posts,
-                    rx.fragment(
-                        desktop_view,
-                        mobile_view,
-                    ),
+                    rx.fragment(desktop_view, mobile_view),
                     rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
                 ),
                 edit_post_dialog(),
                 qr_display_modal(),
                 spacing="5", width="100%",
             ),
-            padding_y="2em", max_width="1200px",
+            # Se ajusta el tamaño máximo para dar más espacio
+            max_width="1400px",
+            width="100%",
+            padding_y="2em",
         ),
         min_height="85vh",
-        width="100%"
+        width="100%",
     )

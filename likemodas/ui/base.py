@@ -41,14 +41,13 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 sliding_admin_sidebar(),
                 rx.box(
                     child,
-                    padding_x="4em",
+                    # --- LÍNEA MODIFICADA ---
+                    # Hacemos el padding horizontal responsivo
+                    padding_x=["1em", "2em", "3em", "4em"],
                     padding_y="2em",
                     width="100%"
                 ),
-                
-                # --- CORRECCIÓN: AÑADIMOS EL BOTÓN FLOTANTE AQUÍ ---
                 fixed_color_mode_button(),
-
                 width="100%",
                 min_height="100vh",
             ),
