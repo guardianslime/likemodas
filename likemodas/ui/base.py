@@ -1,4 +1,4 @@
-# likemodas/ui/base.py (VERSIÓN CON LAYOUT DE ADMIN CORREGIDO)
+# likemodas/ui/base.py (VERSIÓN CON LAYOUT DE ADMIN ESTRUCTURALMENTE CORREGIDO)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
@@ -31,27 +31,24 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         background=rx.color("gray", 2)
     )
 
-    # El layout del admin ahora usa un hstack para posicionar correctamente el contenido
-    # al lado del espacio reservado por el menú lateral.
-    admin_layout = rx.hstack(
-        # Este componente no cambia, sigue siendo el menú deslizable
+    # El layout del admin ahora es un simple rx.box que sirve como fondo
+    admin_layout = rx.box(
+        # El menú lateral se superpone (position="fixed")
         sliding_admin_sidebar(),
+        
         # --- ÁREA DE CONTENIDO PRINCIPAL CORREGIDA ---
         # Este es el "lienzo" donde se dibujarán todas las páginas del admin.
-        # Ahora ocupa todo el ancho restante y puede centrar su contenido.
+        # Le aplicamos un padding a la izquierda para que NUNCA se oculte debajo del menú.
         rx.box(
             child,
             width="100%",
             height="100%",
-            padding_x=["1em", "2em", "3em"],
+            padding_left=["1em", "2em", "5em"], # Padding izquierdo responsivo
+            padding_right=["1em", "2em", "2em"],# Padding derecho responsivo
             padding_y="2em",
         ),
-        # Se añade un espaciado inicial para el menú colapsado
-        spacing="0",
-        padding_left=["0em", "0em", "4em"],
         width="100%",
         min_height="100vh",
-        align="start",
     )
 
     public_layout = rx.box(
@@ -70,6 +67,5 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 public_layout
             )
         ),
-        # El botón de modo oscuro se aplica a ambos layouts desde aquí
         fixed_color_mode_button(),
     )
