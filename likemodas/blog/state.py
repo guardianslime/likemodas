@@ -24,13 +24,13 @@ class BlogAdminState(AppState):
         Ahora maneja de forma segura el caso en que no hay un usuario logueado.
         """
         # --- MODIFICACIÓN CLAVE Y FINAL ---
-        # Ahora verificamos no solo si el usuario está autenticado,
-        # sino también que la información del usuario (user_info) ya se haya cargado.
-        if not self.is_authenticated or self.user_info is None:
+        # Usamos hasattr() para verificar de forma segura si 'user_info' existe
+        # antes de intentar acceder a él. Esto previene el AttributeError.
+        if not hasattr(self, "user_info") or self.user_info is None:
             return []
         # --- FIN DE LA MODIFICACIÓN ---
         
-        # Si ambas condiciones son verdaderas, podemos acceder a self.user_info de forma segura.
+        # Si la comprobación pasa, podemos acceder a self.user_info de forma segura.
         with rx.session() as session:
             posts = session.exec(
                 select(BlogPostModel)
@@ -44,7 +44,7 @@ class BlogAdminState(AppState):
         Manejador de evento para eliminar una publicación de forma segura.
         """
         # Usamos la misma lógica segura aquí.
-        if not self.is_authenticated or self.user_info is None:
+        if not hasattr(self, "user_info") or self.user_info is None:
             return
 
         with rx.session() as session:
