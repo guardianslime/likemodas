@@ -13,6 +13,7 @@ class BlogAdminState(AppState):
     post_form_data: dict = {
         "title": "",
         "content": "",
+        "price_str": "", # <--- AÑADE ESTA LÍNEA
     }
 
     def set_post_form_field(self, field: str, value: str):

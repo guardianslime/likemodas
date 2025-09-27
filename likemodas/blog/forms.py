@@ -279,7 +279,17 @@ def blog_post_add_form() -> rx.Component:
                     rx.grid(
                         rx.vstack(
                             rx.text("Precio (COP)", as_="div", size="2", weight="bold"),
-                            rx.input(placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3"),
+                            # --- LÍNEAS MODIFICADAS ---
+                            rx.input(
+                                placeholder="Ej: 55000 (sin puntos)", 
+                                type="number", 
+                                name="price", 
+                                required=True, 
+                                size="3",
+                                value=BlogAdminState.post_form_data["price_str"],
+                                on_change=lambda val: BlogAdminState.set_post_form_field("price_str", val)
+                            ),
+                            # --- FIN DE LA MODIFICACIÓN ---
                         ),
                         rx.vstack(
                             rx.text("Incluye IVA (19%)", as_="div", size="2", weight="bold"),
