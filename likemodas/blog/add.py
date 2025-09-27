@@ -1,19 +1,20 @@
-# likemodas/blog/add.py (SIN CAMBIOS, SOLO PARA VERIFICACIÓN)
+# likemodas/blog/add.py (COMPLETO Y CORREGIDO)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from .forms import blog_post_add_form
 from .state import BlogAdminState
-from ..ui.skeletons import skeleton_post_preview # Esta línea ahora funcionará
+from ..ui.skeletons import skeleton_post_preview
 
 def post_preview() -> rx.Component:
     """Componente de previsualización del post."""
     return rx.box(
         rx.cond(
             BlogAdminState.is_loading,
-            skeleton_post_preview(), # Y esta también
+            skeleton_post_preview(),
             rx.vstack(
                 rx.image(
+                    # Ahora puede acceder a post_form_data sin error
                     src=BlogAdminState.post_form_data["main_image"],
                     width="100%",
                     height="auto",
