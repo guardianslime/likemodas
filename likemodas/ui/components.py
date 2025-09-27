@@ -1,4 +1,4 @@
-# likemodas/ui/components.py (CORREGIDO)
+# likemodas/ui/components.py (COMPLETO Y CORREGIDO)
 
 import reflex as rx
 import math
@@ -6,15 +6,8 @@ from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, ProductCardData
 from reflex.event import EventSpec
 
-# ... (las funciones star_rating_display_safe, searchable_select y multi_select_component no tienen cambios visuales y se omiten por brevedad) ...
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
-    """
-    Un componente seguro para mostrar estrellas.
-    ✨ CORREGIDO: Ahora siempre muestra las 5 estrellas, llenas o vacías.
-    """
     return rx.hstack(
-        # El bucle que dibuja las 5 estrellas se mantiene igual.
-        # Su lógica interna ya decide si la estrella está rellena o no.
         rx.foreach(
             rx.Var.range(5),
             lambda i: rx.icon(
@@ -24,8 +17,6 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
                 size=size,
             )
         ),
-        # ✨ CORRECCIÓN: El contador de reseñas ahora es condicional.
-        # Solo se mostrará el texto "(#)" si hay más de 0 reseñas.
         rx.cond(
             count > 0,
             rx.text(f"({count})", size="2", color_scheme="gray", margin_left="0.25em"),
@@ -36,7 +27,6 @@ def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: in
 
 def searchable_select(
     placeholder: str, 
-    # La variable ahora puede ser una lista de strings o una lista de tuplas
     options: rx.Var[list], 
     on_change_select: EventSpec,
     value_select: rx.Var[str],
@@ -48,7 +38,6 @@ def searchable_select(
     is_open = AppState.open_filter_name == filter_name
     
     def render_option(option: rx.Var):
-        """Función interna para renderizar un botón de opción."""
         label = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[0], option)
         value = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[1], option)
         return rx.button(
@@ -58,21 +47,26 @@ def searchable_select(
         )
 
     return rx.box(
+        # --- MODIFICACIÓN CLAVE EN EL BOTÓN ---
         rx.button(
             rx.cond(value_select, value_select, placeholder),
             rx.icon(tag="chevron-down"),
             on_click=AppState.toggle_filter_dropdown(filter_name),
             variant="outline", width="100%", justify_content="space-between",
             color_scheme="gray", size="2", is_disabled=is_disabled,
+            # Estilos para permitir que el texto se ajuste
+            height="auto",
+            white_space="normal",
+            text_align="left",
+            padding="0.5em 0.75em",
         ),
+        # --- FIN DE LA MODIFICACIÓN ---
         rx.cond(
             is_open,
             rx.vstack(
                 rx.input(placeholder="Buscar...", value=search_value, on_change=on_change_search),
                 rx.scroll_area(
                     rx.vstack(
-                        # --- MODIFICACIÓN CLAVE AQUÍ ---
-                        # Usamos la nueva función interna para renderizar cada opción
                         rx.foreach(options, render_option),
                         spacing="1", width="100%",
                     ),
@@ -98,7 +92,6 @@ def multi_select_component(
     on_change_search: rx.event.EventSpec,
     filter_name: str,
 ) -> rx.Component:
-    """Un componente para seleccionar múltiples opciones con un buscador."""
     return rx.vstack(
         rx.flex(
             rx.foreach(
@@ -132,7 +125,6 @@ def multi_select_component(
 
 
 def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Component:
-    """Galería de productos que ahora usa el componente de estrellas seguro."""
     return rx.cond(
         posts,
         rx.flex(
@@ -156,8 +148,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px",
                             ),
                             rx.vstack(
-                                # --- MODIFICACIÓN CLAVE AQUÍ ---
-                                # Se reemplaza no_of_lines=1 por estilos que permiten que el texto se ajuste.
                                 rx.text(
                                     post.title, 
                                     weight="bold", 
@@ -165,9 +155,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     white_space="normal",
                                     text_overflow="initial",
                                     overflow="visible",
-                                    min_height="3.5em", # Asegura un espacio mínimo para dos líneas
+                                    min_height="3.5em",
                                 ),
-                                # --- FIN DE LA MODIFICACIÓN ---
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(post.price_cop, size="5", weight="medium"),
                                 rx.hstack(
