@@ -23,14 +23,14 @@ class BlogAdminState(AppState):
         Una variable computada que devuelve solo las publicaciones del usuario actual.
         Ahora maneja de forma segura el caso en que no hay un usuario logueado.
         """
-        # --- MODIFICACIÓN CLAVE ---
-        # En lugar de verificar 'self.user_info', usamos 'self.is_authenticated',
-        # que es seguro durante la compilación del proyecto.
-        if not self.is_authenticated:
+        # --- MODIFICACIÓN CLAVE Y FINAL ---
+        # Ahora verificamos no solo si el usuario está autenticado,
+        # sino también que la información del usuario (user_info) ya se haya cargado.
+        if not self.is_authenticated or self.user_info is None:
             return []
         # --- FIN DE LA MODIFICACIÓN ---
         
-        # Si el usuario está autenticado, podemos acceder a self.user_info de forma segura.
+        # Si ambas condiciones son verdaderas, podemos acceder a self.user_info de forma segura.
         with rx.session() as session:
             posts = session.exec(
                 select(BlogPostModel)
@@ -43,7 +43,8 @@ class BlogAdminState(AppState):
         """
         Manejador de evento para eliminar una publicación de forma segura.
         """
-        if not self.is_authenticated:
+        # Usamos la misma lógica segura aquí.
+        if not self.is_authenticated or self.user_info is None:
             return
 
         with rx.session() as session:
