@@ -10,27 +10,29 @@ class BlogAdminState(AppState):
     Estado para la página de administración de publicaciones.
     """
 
-    # Variable para el formulario de "Crear Publicación", necesaria para la previsualización.
     post_form_data: dict = {
         "title": "",
         "content": "",
         "main_image": "",
+        # Añade aquí otros campos si tu formulario los tiene
     }
+
+    # --- MODIFICACIÓN CLAVE: AÑADIR MANEJADOR DE EVENTOS ---
+    def set_post_form_field(self, field: str, value: str):
+        """
+        Un manejador genérico para actualizar cualquier campo del formulario.
+        """
+        self.post_form_data[field] = value
+    # --- FIN DE LA MODIFICACIÓN ---
 
     @rx.var
     def my_blog_posts(self) -> list[BlogPostModel]:
         """
-        Una variable computada que devuelve solo las publicaciones del usuario actual.
-        Ahora maneja de forma segura el caso en que no hay un usuario logueado.
+        Devuelve solo las publicaciones del usuario actual.
         """
-        # --- MODIFICACIÓN CLAVE Y FINAL ---
-        # Usamos hasattr() para verificar de forma segura si 'user_info' existe
-        # antes de intentar acceder a él. Esto previene el AttributeError.
         if not hasattr(self, "user_info") or self.user_info is None:
             return []
-        # --- FIN DE LA MODIFICACIÓN ---
         
-        # Si la comprobación pasa, podemos acceder a self.user_info de forma segura.
         with rx.session() as session:
             posts = session.exec(
                 select(BlogPostModel)
@@ -43,7 +45,6 @@ class BlogAdminState(AppState):
         """
         Manejador de evento para eliminar una publicación de forma segura.
         """
-        # Usamos la misma lógica segura aquí.
         if not hasattr(self, "user_info") or self.user_info is None:
             return
 

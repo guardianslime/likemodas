@@ -1,6 +1,8 @@
 # likemodas/blog/forms.py (CORREGIDO)
 
 import reflex as rx
+
+from likemodas.blog.state import BlogAdminState
 from ..state import AppState
 from ..models import Category
 from ..ui.components import searchable_select
@@ -238,29 +240,17 @@ def blog_post_add_form() -> rx.Component:
                                     AppState.new_variants,
                                     lambda variant, index: rx.box(
                                         rx.image(src=rx.get_upload_url(variant.get("image_url", "")), width="80px", height="80px", object_fit="cover", border_radius="md"),
-                                        
-                                        # --- INICIO DE LA MODIFICACIÓN: BOTÓN DE ELIMINAR ---
                                         rx.icon_button(
                                             rx.icon("trash-2", size=12),
                                             on_click=AppState.remove_add_image(index),
-                                            color_scheme="red",
-                                            variant="soft",
-                                            size="1",
-                                            style={
-                                                "position": "absolute",
-                                                "top": "2px",
-                                                "right": "2px",
-                                                "cursor": "pointer",
-                                                "z_index": "10"
-                                            }
+                                            color_scheme="red", variant="soft", size="1",
+                                            style={"position": "absolute", "top": "2px", "right": "2px", "cursor": "pointer", "z_index": "10"}
                                         ),
-                                        # --- FIN DE LA MODIFICACIÓN ---
-                                        
                                         border_width=rx.cond(AppState.selected_variant_index == index, "3px", "1px"),
                                         border_color=rx.cond(AppState.selected_variant_index == index, "violet", "gray"),
                                         padding="2px", border_radius="lg", cursor="pointer",
                                         on_click=AppState.select_variant_for_editing(index),
-                                        position="relative", # <-- Necesario para el botón
+                                        position="relative",
                                     )
                                 ),
                                 wrap="wrap", spacing="3", margin_top="0.5em"
@@ -271,8 +261,20 @@ def blog_post_add_form() -> rx.Component:
                     spacing="2",
                 ),
                 rx.vstack(
-                    rx.text("Título del Producto", as_="div", size="2", weight="bold"),
-                    rx.input(placeholder="Nombre del producto", name="title", required=True, size="3"),
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    rx.form.field(
+                        rx.vstack(
+                            rx.form.label("Título del Producto"),
+                            rx.input(
+                                value=BlogAdminState.post_form_data["title"],
+                                on_change=lambda val: BlogAdminState.set_post_form_field("title", val),
+                                placeholder="Nombre del producto", name="title", required=True, size="3", width="100%"
+                            ),
+                            align_items="stretch", width="100%",
+                        ),
+                        width="100%",
+                    ),
+                    # --- FIN DE LA MODIFICACIÓN ---
                     rx.text("Categoría", as_="div", size="2", weight="bold"),
                     rx.select(
                         AppState.categories, placeholder="Selecciona una categoría...", name="category",
@@ -352,8 +354,21 @@ def blog_post_add_form() -> rx.Component:
                             align_items="stretch", width="100%",
                         )
                     ),
-                    rx.text("Descripción", as_="div", size="2", weight="bold"),
-                    rx.text_area(placeholder="Detalles del producto...", name="content", required=True, size="2", style={"height": "150px"}),
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    rx.form.field(
+                        rx.vstack(
+                             rx.form.label("Descripción"),
+                             rx.text_area(
+                                value=BlogAdminState.post_form_data["content"],
+                                on_change=lambda val: BlogAdminState.set_post_form_field("content", val),
+                                placeholder="Detalles del producto...", name="content", required=True, size="2", 
+                                style={"height": "150px"}, width="100%"
+                            ),
+                            align_items="stretch", width="100%",
+                        ),
+                        width="100%",
+                    ),
+                    # --- FIN DE LA MODIFICACIÓN ---
                     rx.hstack(
                         rx.button("Publicar Ahora", type="submit", color_scheme="violet", size="3"),
                         width="100%", justify="end",
