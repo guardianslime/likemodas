@@ -13,17 +13,14 @@ class BlogAdminState(AppState):
     post_form_data: dict = {
         "title": "",
         "content": "",
-        "main_image": "",
-        # Añade aquí otros campos si tu formulario los tiene
     }
 
-    # --- MODIFICACIÓN CLAVE: AÑADIR MANEJADOR DE EVENTOS ---
     def set_post_form_field(self, field: str, value: str):
         """
-        Un manejador genérico para actualizar cualquier campo del formulario.
+        Un manejador genérico para actualizar cualquier campo del
+        formulario.
         """
         self.post_form_data[field] = value
-    # --- FIN DE LA MODIFICACIÓN ---
 
     @rx.var
     def my_blog_posts(self) -> list[BlogPostModel]:

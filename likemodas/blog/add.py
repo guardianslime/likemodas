@@ -1,45 +1,63 @@
-# likemodas/blog/add.py (COMPLETO Y CORREGIDO)
+# likemodas/blog/add.py (CORREGIDO)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from .forms import blog_post_add_form
-from .state import BlogAdminState
+from ..blog.state import BlogAdminState
+from ..state import AppState # Importamos AppState para la previsualización
 from ..ui.skeletons import skeleton_post_preview
 
 def post_preview() -> rx.Component:
-    """Componente de previsualización del post."""
+    """
+    Componente de previsualización que ahora se actualiza en tiempo real
+    mostrando la primera imagen subida y los datos del formulario.
+    """
     return rx.box(
-        rx.cond(
-            BlogAdminState.is_loading,
-            skeleton_post_preview(),
-            rx.vstack(
+        rx.vstack(
+            # --- LÓGICA DE IMAGEN CORREGIDA ---
+            # Muestra la primera imagen de la lista de variantes subidas.
+            rx.cond(
+                AppState.new_variants,
                 rx.image(
-                    src=BlogAdminState.post_form_data["main_image"],
+                    src=rx.get_upload_url(AppState.new_variants[0].get("image_url", "")),
                     width="100%",
                     height="auto",
+                    max_height="300px", # Limitamos la altura para mejor visualización
                     object_fit="cover",
                     border_radius="md",
                 ),
-                rx.heading(
-                    rx.cond(
-                        BlogAdminState.post_form_data["title"],
-                        BlogAdminState.post_form_data["title"],
-                        "Título de la publicación"
-                    ),
-                    size="6"
+                # Muestra un placeholder si no hay imágenes
+                rx.center(
+                    rx.icon("image_off", size=48, color=rx.color("gray", 8)),
+                    width="100%",
+                    height="300px",
+                    bg=rx.color("gray", 3),
+                    border_radius="md"
+                )
+            ),
+            # El título y contenido se mantienen, ya que estaban bien conectados.
+            rx.heading(
+                rx.cond(
+                    BlogAdminState.post_form_data["title"],
+                    BlogAdminState.post_form_data["title"],
+                    "Título de la publicación"
                 ),
-                rx.text(
-                    rx.cond(
-                        BlogAdminState.post_form_data["content"],
-                        BlogAdminState.post_form_data["content"],
-                        "Contenido de la publicación..."
-                    )
+                size="6",
+                margin_top="1em"
+            ),
+            rx.text(
+                rx.cond(
+                    BlogAdminState.post_form_data["content"],
+                    BlogAdminState.post_form_data["content"],
+                    "Contenido de la publicación..."
                 ),
-                spacing="4",
-                width="100%",
-            )
+                no_of_lines=5 # Limitamos las líneas para que no se extienda demasiado
+            ),
+            spacing="4",
+            width="100%",
         ),
-        border="1px solid #e0e0e0",
+        border="1px solid",
+        border_color=rx.color("gray", 6),
         border_radius="lg",
         padding="1.5em",
         width="100%",
@@ -48,30 +66,33 @@ def post_preview() -> rx.Component:
 
 @require_admin
 def blog_post_add_content() -> rx.Component:
-    """Página para añadir una nueva publicación con layout responsivo."""
+    """Página para añadir una nueva publicación con un layout responsivo y funcional."""
     return rx.box(
+        # --- LAYOUT RESPONSIVO CORREGIDO ---
+        # 1 columna en móvil, 2 en pantallas grandes (lg).
         rx.grid(
             # Columna izquierda (Formulario)
             rx.vstack(
-                rx.heading("Crear Nueva Publicación", size="7", margin_bottom="1em"),
+                # Este es el único título que conservamos.
+                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 blog_post_add_form(),
                 width="100%",
                 spacing="4",
             ),
             # Columna derecha (Previsualización)
             rx.vstack(
-                rx.heading("Previsualización", size="7", margin_bottom="1em"),
+                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 post_preview(),
+                # Se oculta en móvil para dar prioridad al formulario
+                display=["none", "none", "flex", "flex"],
                 width="100%",
                 spacing="4",
             ),
-            # --- MODIFICACIÓN CLAVE ---
-            # Se corrige 'columns' por 'grid_template_columns' para que acepte la lista responsiva.
-            grid_template_columns=["repeat(1, 1fr)", "repeat(1, 1fr)", "repeat(2, 1fr)", "repeat(2, 1fr)", "repeat(2, 1fr)"],
-            gap=4,
+            columns={"initial": "1", "lg": "2"}, # Responsividad clave
+            gap="2em",
             width="100%",
         ),
-        padding_x=["1em", "1em", "2em", "2em", "2em"],
+        padding_x=["1em", "2em", "4em"], # Padding adaptable
         padding_y="2em",
         width="100%",
     )

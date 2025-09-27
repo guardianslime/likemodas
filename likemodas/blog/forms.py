@@ -145,7 +145,6 @@ def variant_stock_manager_edit() -> rx.Component:
         align_items="stretch", width="100%",
     )
 
-# --- Formulario para AÑADIR un producto (CON BOTÓN DE ELIMINAR) ---
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     tipo_selector = searchable_select(
@@ -221,7 +220,6 @@ def blog_post_add_form() -> rx.Component:
 
     return rx.form(
         rx.vstack(
-            rx.heading("Añadir Nuevo Producto", size="8", margin_bottom="1.5em"),
             rx.grid(
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
@@ -261,7 +259,6 @@ def blog_post_add_form() -> rx.Component:
                     spacing="2",
                 ),
                 rx.vstack(
-                    # --- INICIO DE LA MODIFICACIÓN ---
                     rx.form.field(
                         rx.vstack(
                             rx.form.label("Título del Producto"),
@@ -274,7 +271,6 @@ def blog_post_add_form() -> rx.Component:
                         ),
                         width="100%",
                     ),
-                    # --- FIN DE LA MODIFICACIÓN ---
                     rx.text("Categoría", as_="div", size="2", weight="bold"),
                     rx.select(
                         AppState.categories, placeholder="Selecciona una categoría...", name="category",
@@ -354,35 +350,39 @@ def blog_post_add_form() -> rx.Component:
                             align_items="stretch", width="100%",
                         )
                     ),
-                    # --- INICIO DE LA MODIFICACIÓN ---
                     rx.form.field(
                         rx.vstack(
                              rx.form.label("Descripción"),
                              rx.text_area(
                                 value=BlogAdminState.post_form_data["content"],
                                 on_change=lambda val: BlogAdminState.set_post_form_field("content", val),
-                                placeholder="Detalles del producto...", name="content", required=True, size="2", 
+                                placeholder="Detalles del producto...", name="content", required=True, size="2",
                                 style={"height": "150px"}, width="100%"
                             ),
                             align_items="stretch", width="100%",
                         ),
                         width="100%",
                     ),
-                    # --- FIN DE LA MODIFICACIÓN ---
                     rx.hstack(
                         rx.button("Publicar Ahora", type="submit", color_scheme="violet", size="3"),
                         width="100%", justify="end",
                     ),
                     spacing="3", align_items="stretch", width="100%",
                 ),
-                columns="2", spacing="6", width="100%", align_items="start",
+                columns={"initial": "1", "md": "2"}, 
+                spacing="6", 
+                width="100%", 
+                align_items="start",
             ),
-            spacing="5", max_width="1024px",
+            spacing="5", 
+            max_width="1024px",
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
-        width="100%", max_width="1024px",
+        width="100%", 
+        max_width="1024px",
     )
+
 
 # --- Formulario para EDITAR un producto (CON BOTÓN DE ELIMINAR CORREGIDO) ---
 def blog_post_edit_form() -> rx.Component:
