@@ -1,29 +1,27 @@
-# likemodas/blog/add.py (COMPLETO Y CORREGIDO)
+# likemodas/blog/add.py (SIN CAMBIOS, SOLO PARA VERIFICACIÓN)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from .forms import blog_post_add_form
-# --- MODIFICACIÓN CLAVE AQUÍ ---
-# Se corrige el nombre del estado importado de 'AdminState' a 'BlogAdminState'
-from .state import BlogAdminState 
-from ..ui.skeletons import skeleton_post_preview
+from .state import BlogAdminState
+from ..ui.skeletons import skeleton_post_preview # Esta línea ahora funcionará
 
 def post_preview() -> rx.Component:
     """Componente de previsualización del post."""
     return rx.box(
         rx.cond(
-            BlogAdminState.is_loading, # Usamos el nombre corregido
-            skeleton_post_preview(),
+            BlogAdminState.is_loading,
+            skeleton_post_preview(), # Y esta también
             rx.vstack(
                 rx.image(
-                    src=BlogAdminState.post_form_data["main_image"], # Usamos el nombre corregido
+                    src=BlogAdminState.post_form_data["main_image"],
                     width="100%",
                     height="auto",
                     object_fit="cover",
                     border_radius="md",
                 ),
-                rx.heading(BlogAdminState.post_form_data["title"] or "Título de la publicación", size="6"), # Usamos el nombre corregido
-                rx.text(BlogAdminState.post_form_data["content"] or "Contenido de la publicación..."), # Usamos el nombre corregido
+                rx.heading(BlogAdminState.post_form_data["title"] or "Título de la publicación", size="6"),
+                rx.text(BlogAdminState.post_form_data["content"] or "Contenido de la publicación..."),
                 spacing="4",
                 width="100%",
             )
@@ -54,7 +52,6 @@ def blog_post_add_content() -> rx.Component:
                 width="100%",
                 spacing="4",
             ),
-            # Define las columnas para diferentes tamaños de pantalla
             columns=["1", "1", "2", "2", "2"],
             gap=4,
             width="100%",

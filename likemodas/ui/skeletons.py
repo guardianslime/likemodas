@@ -68,6 +68,18 @@ def skeleton_product_gallery(count: int = 8) -> rx.Component:
         wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
     )
 
+# --- FUNCIÓN NUEVA AÑADIDA ---
+def skeleton_post_preview() -> rx.Component:
+    """Un esqueleto de carga para la previsualización del post."""
+    return rx.vstack(
+        rx.box(width="100%", height="250px", background_color="var(--gray-5)", border_radius="md"),
+        rx.box(width="80%", height="24px", background_color="var(--gray-5)", border_radius="md"),
+        rx.box(width="60%", height="24px", background_color="var(--gray-5)", border_radius="md"),
+        spacing="4",
+        width="100%",
+    )
+# --- FIN DE LA FUNCIÓN NUEVA ---
+
 def skeleton_product_detail_view() -> rx.Component:
     """Un esqueleto para la página de detalle del producto."""
     image_section = skeleton_block(height="500px", width="100%")
