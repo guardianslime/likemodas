@@ -3,25 +3,27 @@
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from .forms import blog_post_add_form
-from .state import AdminState # Asegúrate de importar el estado
-from ..ui.skeletons import skeleton_post_preview # Importa el skeleton
+# --- MODIFICACIÓN CLAVE AQUÍ ---
+# Se corrige el nombre del estado importado de 'AdminState' a 'BlogAdminState'
+from .state import BlogAdminState 
+from ..ui.skeletons import skeleton_post_preview
 
 def post_preview() -> rx.Component:
     """Componente de previsualización del post."""
     return rx.box(
         rx.cond(
-            AdminState.is_loading,
+            BlogAdminState.is_loading, # Usamos el nombre corregido
             skeleton_post_preview(),
             rx.vstack(
                 rx.image(
-                    src=AdminState.post_form_data["main_image"],
+                    src=BlogAdminState.post_form_data["main_image"], # Usamos el nombre corregido
                     width="100%",
                     height="auto",
                     object_fit="cover",
                     border_radius="md",
                 ),
-                rx.heading(AdminState.post_form_data["title"] or "Título de la publicación", size="6"),
-                rx.text(AdminState.post_form_data["content"] or "Contenido de la publicación..."),
+                rx.heading(BlogAdminState.post_form_data["title"] or "Título de la publicación", size="6"), # Usamos el nombre corregido
+                rx.text(BlogAdminState.post_form_data["content"] or "Contenido de la publicación..."), # Usamos el nombre corregido
                 spacing="4",
                 width="100%",
             )
@@ -52,9 +54,7 @@ def blog_post_add_content() -> rx.Component:
                 width="100%",
                 spacing="4",
             ),
-            # --- MODIFICACIÓN CLAVE ---
             # Define las columnas para diferentes tamaños de pantalla
-            # 1 columna para móvil, 2 para escritorio
             columns=["1", "1", "2", "2", "2"],
             gap=4,
             width="100%",
