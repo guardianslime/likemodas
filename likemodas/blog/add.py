@@ -77,11 +77,12 @@ def post_preview() -> rx.Component:
 @require_admin
 def blog_post_add_content() -> rx.Component:
     """
-    Página para añadir una nueva publicación, con el layout centrado
-    correctamente gracias a la corrección en el layout base.
+    Página para añadir una nueva publicación que, gracias al layout base corregido,
+    ahora se centra perfectamente en la pantalla.
     """
-    # Volvemos a usar rx.center, que ahora funcionará como se espera.
+    # Usamos rx.center para que centre su contenido en el espacio disponible.
     return rx.center(
+        # Este rx.box contiene todo el layout y le damos el ancho que te gustó.
         rx.box(
             rx.grid(
                 # Columna izquierda (Formulario)
@@ -106,8 +107,10 @@ def blog_post_add_content() -> rx.Component:
                 width="100%",
             ),
             width="100%",
-            # Mantenemos el ancho generoso que te gustó
+            # El ancho máximo generoso que querías conservar
             max_width="1800px",
             padding_y="2em",
-        )
+        ),
+        width="100%",
+        height="100%",
     )
