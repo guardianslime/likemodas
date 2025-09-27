@@ -77,40 +77,37 @@ def post_preview() -> rx.Component:
 @require_admin
 def blog_post_add_content() -> rx.Component:
     """
-    Página para añadir una nueva publicación, con un vstack que fuerza
-    el centrado horizontal de su contenido.
+    Página para añadir una nueva publicación, con el layout centrado
+    correctamente gracias a la corrección en el layout base.
     """
-    # --- AJUSTE CLAVE DE LAYOUT ---
-    # Usamos un vstack que ocupa todo el ancho y le pedimos que
-    # alinee su contenido (el grid) en el centro.
-    return rx.vstack(
-        rx.grid(
-            # Columna izquierda (Formulario)
-            rx.vstack(
-                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                blog_post_add_form(),
+    # Volvemos a usar rx.center, que ahora funcionará como se espera.
+    return rx.center(
+        rx.box(
+            rx.grid(
+                # Columna izquierda (Formulario)
+                rx.vstack(
+                    rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                    blog_post_add_form(),
+                    width="100%",
+                    spacing="4",
+                ),
+                # Columna derecha (Previsualización)
+                rx.vstack(
+                    rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                    post_preview(),
+                    display=["none", "none", "flex", "flex"],
+                    width="100%",
+                    spacing="4",
+                    position="sticky",
+                    top="2em",
+                ),
+                columns={"initial": "1", "lg": "2"},
+                gap="2.5em",
                 width="100%",
-                spacing="4",
             ),
-            # Columna derecha (Previsualización)
-            rx.vstack(
-                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                post_preview(),
-                display=["none", "none", "flex", "flex"],
-                width="100%",
-                spacing="4",
-                position="sticky",
-                top="2em",
-            ),
-            columns={"initial": "1", "lg": "2"},
-            gap="2.5em",
             width="100%",
             # Mantenemos el ancho generoso que te gustó
             max_width="1800px",
-        ),
-        # --- PROPIEDADES DE CENTRADO ---
-        align="center",      # <-- ESTA LÍNEA CENTRA HORIZONTALMENTE EL GRID
-        justify="center",    # Esto ayuda con el centrado vertical
-        width="100%",        # El vstack debe ocupar todo el ancho para poder centrar
-        padding_y="2em",
+            padding_y="2em",
+        )
     )

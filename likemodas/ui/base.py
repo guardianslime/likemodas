@@ -1,4 +1,4 @@
-# likemodas/ui/base.py (Código completo y corregido)
+# likemodas/ui/base.py (CORREGIDO)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
@@ -23,7 +23,7 @@ def fixed_color_mode_button() -> rx.Component:
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    """Estructura de página base que ahora incluye el botón flotante en ambas vistas."""
+    """Estructura de página base que ahora posiciona correctamente el contenido del admin."""
     loading_screen = rx.center(
         rx.spinner(size="3"),
         height="100vh",
@@ -36,13 +36,15 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         loading_screen,
         rx.cond(
             AppState.is_admin,
-            # --- LAYOUT DE ADMIN ---
+            # --- LAYOUT DE ADMIN CORREGIDO ---
             rx.box(
                 sliding_admin_sidebar(),
                 rx.box(
                     child,
-                    # --- LÍNEA MODIFICADA ---
-                    # Hacemos el padding horizontal responsivo
+                    # --- AJUSTE CLAVE ---
+                    # Añadimos un margen a la izquierda para empujar el contenido
+                    # y dejar espacio para el menú lateral, permitiendo un centrado real.
+                    margin_left=["1em", "2em", "3.5em", "3.5em"],
                     padding_x=["1em", "2em", "3em", "4em"],
                     padding_y="2em",
                     width="100%"
