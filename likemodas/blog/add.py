@@ -20,9 +20,6 @@ def post_preview() -> rx.Component:
                     object_fit="cover",
                     border_radius="md",
                 ),
-                # --- MODIFICACIÓN CLAVE AQUÍ ---
-                # Se reemplaza el 'or' de Python por 'rx.cond' para manejar
-                # el valor predeterminado de forma compatible con Reflex.
                 rx.heading(
                     rx.cond(
                         BlogAdminState.post_form_data["title"],
@@ -31,7 +28,6 @@ def post_preview() -> rx.Component:
                     ),
                     size="6"
                 ),
-                # --- Y AQUÍ TAMBIÉN ---
                 rx.text(
                     rx.cond(
                         BlogAdminState.post_form_data["content"],
@@ -39,7 +35,6 @@ def post_preview() -> rx.Component:
                         "Contenido de la publicación..."
                     )
                 ),
-                # --- FIN DE LAS MODIFICACIONES ---
                 spacing="4",
                 width="100%",
             )
@@ -70,7 +65,9 @@ def blog_post_add_content() -> rx.Component:
                 width="100%",
                 spacing="4",
             ),
-            columns=["1", "1", "2", "2", "2"],
+            # --- MODIFICACIÓN CLAVE ---
+            # Se corrige 'columns' por 'grid_template_columns' para que acepte la lista responsiva.
+            grid_template_columns=["repeat(1, 1fr)", "repeat(1, 1fr)", "repeat(2, 1fr)", "repeat(2, 1fr)", "repeat(2, 1fr)"],
             gap=4,
             width="100%",
         ),
