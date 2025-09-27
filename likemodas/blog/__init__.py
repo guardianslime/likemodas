@@ -1,4 +1,4 @@
-# likemodas/blog/__init__.py
+# likemodas/blog/__init__.py (SIN CAMBIOS)
 
 from .add import blog_post_add_content
 from .detail import blog_post_detail_content
