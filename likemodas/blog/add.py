@@ -14,15 +14,32 @@ def post_preview() -> rx.Component:
             skeleton_post_preview(),
             rx.vstack(
                 rx.image(
-                    # Ahora puede acceder a post_form_data sin error
                     src=BlogAdminState.post_form_data["main_image"],
                     width="100%",
                     height="auto",
                     object_fit="cover",
                     border_radius="md",
                 ),
-                rx.heading(BlogAdminState.post_form_data["title"] or "Título de la publicación", size="6"),
-                rx.text(BlogAdminState.post_form_data["content"] or "Contenido de la publicación..."),
+                # --- MODIFICACIÓN CLAVE AQUÍ ---
+                # Se reemplaza el 'or' de Python por 'rx.cond' para manejar
+                # el valor predeterminado de forma compatible con Reflex.
+                rx.heading(
+                    rx.cond(
+                        BlogAdminState.post_form_data["title"],
+                        BlogAdminState.post_form_data["title"],
+                        "Título de la publicación"
+                    ),
+                    size="6"
+                ),
+                # --- Y AQUÍ TAMBIÉN ---
+                rx.text(
+                    rx.cond(
+                        BlogAdminState.post_form_data["content"],
+                        BlogAdminState.post_form_data["content"],
+                        "Contenido de la publicación..."
+                    )
+                ),
+                # --- FIN DE LAS MODIFICACIONES ---
                 spacing="4",
                 width="100%",
             )
