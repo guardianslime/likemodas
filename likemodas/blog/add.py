@@ -76,34 +76,40 @@ def post_preview() -> rx.Component:
 @require_admin
 def blog_post_add_content() -> rx.Component:
     """
-    Página reestructurada para añadir una nueva publicación, garantizando el centrado
-    en PC y manteniendo el diseño en móvil.
+    Página de creación de publicación con un desplazamiento manual hacia la derecha
+    para lograr un centrado visual en PC, sin afectar la vista móvil.
     """
-    return rx.center(
-        rx.box(
-            rx.grid(
-                rx.vstack(
-                    rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                    blog_post_add_form(),
-                    width="100%",
-                    spacing="4",
-                ),
-                rx.vstack(
-                    rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                    post_preview(),
-                    display=["none", "none", "flex", "flex"],
-                    width="100%",
-                    spacing="4",
-                    position="sticky",
-                    top="2em",
-                ),
-                columns={"initial": "1", "lg": "2"},
-                gap="2.5em",
+    return rx.hstack(
+        rx.grid(
+            rx.vstack(
+                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                blog_post_add_form(),
                 width="100%",
+                spacing="4",
             ),
+            rx.vstack(
+                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                post_preview(),
+                display=["none", "none", "flex", "flex"],
+                width="100%",
+                spacing="4",
+                position="sticky",
+                top="2em",
+            ),
+            columns={"initial": "1", "lg": "2"},
+            gap="2.5em",
             width="100%",
             max_width="1800px",
         ),
         width="100%",
-        height="100%",
+        padding_y="2em",
+        
+        # --- LA LÍNEA CLAVE DE LA SOLUCIÓN ---
+        # Esto aplica un padding (relleno) a la izquierda.
+        # ["0em", "0em", "8em", "8em"] significa:
+        # - 0em en pantallas pequeñas (móvil)
+        # - 0em en pantallas medianas (tablet)
+        # - 8em en pantallas grandes (lg)
+        # - 8em en pantallas extra grandes (xl)
+        padding_left=["0em", "0em", "8em", "8em"],
     )
