@@ -4,7 +4,7 @@ import reflex as rx
 from ..auth.admin_auth import require_admin
 from .forms import blog_post_add_form
 from ..blog.state import BlogAdminState
-from ..state import AppState 
+from ..state import AppState
 from ..ui.skeletons import skeleton_post_preview
 from ..ui.components import star_rating_display_safe
 
@@ -42,11 +42,11 @@ def post_preview() -> rx.Component:
                         rx.cond(BlogAdminState.post_form_data["title"], BlogAdminState.post_form_data["title"], "Título del Producto"),
                         weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible", min_height="3.5em",
                     ),
-                    star_rating_display_safe(0, 0, size=24), 
+                    star_rating_display_safe(0, 0, size=24),
                     rx.text(format_preview_price(BlogAdminState.post_form_data["price_str"]), size="5", weight="medium"),
                     rx.hstack(
                         rx.badge(
-                            "Envío a convenir", 
+                            "Envío a convenir",
                             color_scheme="gray", variant="soft", size="2",
                         ),
                         rx.cond(
@@ -66,18 +66,16 @@ def post_preview() -> rx.Component:
         ),
         width="290px",
         height="auto",
-        min_height="450px", 
+        min_height="450px",
         bg=rx.color_mode_cond("#f9f9f9", "#111111"),
         border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
         border_radius="8px", box_shadow="md", padding="1em",
     )
 
-
 @require_admin
 def blog_post_add_content() -> rx.Component:
     """
-    Página para añadir una nueva publicación que, gracias al layout base corregido,
-    ahora se centra perfectamente en la pantalla.
+    Página para añadir una nueva publicación centrada correctamente.
     """
     return rx.center(
         rx.box(
@@ -101,10 +99,12 @@ def blog_post_add_content() -> rx.Component:
                 gap="2.5em",
                 width="100%",
             ),
+            # Se mantienen tus restricciones de ancho
             width="100%",
             max_width="1800px",
             padding_y="2em",
         ),
+        # Propiedades clave para que el centrado funcione
         width="100%",
         height="100%",
     )
