@@ -25,16 +25,19 @@ class LocalAuthSession(rx.Model, table=True):
     Un modelo local que replica la tabla de sesión de reflex-local-auth
     para resolver problemas de importación.
     """
-    __tablename__ = "localauthsession" # Asegura que coincida con la tabla existente
+    __tablename__ = "localauthsession"
     
     user_id: int = Field(nullable=False)
     session_id: str = Field(max_length=255, unique=True, index=True, nullable=False)
+    
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     expiration: datetime = Field(
         sa_type=sqlalchemy.DateTime(timezone=True),
-        server_default=sqlalchemy.func.now(),
         nullable=False,
+        # Movemos el 'server_default' aquí dentro
+        sa_column_kwargs={"server_default": sqlalchemy.func.now()}
     )
-# --- ✨ FIN: AÑADIR ESTE MODELO COMPLETO ✨ ---
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
 
 # --- Funciones de Utilidad ---
