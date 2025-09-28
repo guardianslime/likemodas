@@ -41,8 +41,6 @@ def post_preview() -> rx.Component:
                     rx.text(
                         rx.cond(BlogAdminState.post_form_data["title"], BlogAdminState.post_form_data["title"], "Título del Producto"),
                         weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible",
-                        # --- CAMBIO 1: LÍNEA ELIMINADA ---
-                        # min_height="3.5em", # <- Esta línea causaba el espacio extra
                     ),
                     star_rating_display_safe(0, 0, size=24),
                     rx.text(format_preview_price(BlogAdminState.post_form_data["price_str"]), size="5", weight="medium"),
@@ -60,8 +58,8 @@ def post_preview() -> rx.Component:
                         ),
                         spacing="3", align="center",
                     ),
-                    # --- CAMBIO 2: ESPACIO REDUCIDO ---
-                    spacing="1.5", # <- Reducido de "2" para un look más compacto
+                    # --- CORRECCIÓN AQUÍ ---
+                    spacing="1", # Cambiado de "1.5" a "1"
                     align_items="start", 
                     width="100%"
                 ),
