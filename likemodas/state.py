@@ -377,12 +377,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
 
-            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-            # En lugar de solo llamar a _login, ahora le pasamos la URL a la que
-            # queremos que redirija al usuario tras un inicio de sesión exitoso.
-            # La ruta "/admin/store" es la que corresponde a tu página de tienda.
-            return self._login(user.id, redirect_url="/admin/store")
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # 1. Establecemos la variable de estado 'redirect_to' con nuestra URL deseada.
+            self.redirect_to = "/admin/store"
+            
+            # 2. Llamamos al método _login SIN argumentos extra. Él leerá la variable que acabamos de establecer.
+            return self._login(user.id)
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     def handle_forgot_password(self, form_data: dict):
         email = form_data.get("email", "").strip().lower()
