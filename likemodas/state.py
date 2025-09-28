@@ -8,6 +8,7 @@ from sqlmodel import text # Importar text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import List, Dict, Optional, Tuple
+from reflex_local_auth.models import LocalAuthSession
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
@@ -348,6 +349,32 @@ class AppState(reflex_local_auth.LocalAuthState):
     token: str = ""
     is_token_valid: bool = False
 
+    # --- ✨ INICIO: MÉTODO _login PERSONALIZADO ✨ ---
+    def _login(self, user_id: int):
+        """
+        Sobrescribe el método _login de LocalAuthState para controlar la redirección.
+        """
+        with rx.session() as session:
+            # 1. Crea un ID de sesión seguro y único
+            session_id = secrets.token_hex(32)
+            
+            # 2. Establece una fecha de expiración (ej. 30 días)
+            expiration = datetime.now(timezone.utc) + timedelta(days=30)
+            
+            # 3. Crea el registro de la sesión en la base de datos
+            auth_session = LocalAuthSession(
+                user_id=user_id,
+                session_id=session_id,
+                expiration=expiration,
+            )
+            session.add(auth_session)
+            session.commit()
+
+            # 4. Establece la cookie en el navegador del usuario y redirige
+            self.set_cookie("session_id", session_id, expires=expiration, samesite="lax", secure=True)
+            return rx.redirect("/admin/store")
+    # --- ✨ FIN: MÉTODO _login PERSONALIZADO ✨ ---
+
     # --- INICIO DE LA NUEVA FUNCIÓN DE LOGIN ---
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
@@ -377,11 +404,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
 
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # 1. Establecemos la variable de estado 'redirect_to' con nuestra URL deseada.
-            self.redirect_to = "/admin/store"
-            
-            # 2. Llamamos al método _login SIN argumentos extra. Él leerá la variable que acabamos de establecer.
+            # --- ✨ CORRECCIÓN FINAL ✨ ---
+            # Simplemente llamamos a nuestro método _login personalizado.
+            # Ya no se necesita 'redirect_to' ni 'redirect_url'.
             return self._login(user.id)
             # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
