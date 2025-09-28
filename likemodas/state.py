@@ -8,7 +8,9 @@ from sqlmodel import text # Importar text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import List, Dict, Optional, Tuple
-from reflex_local_auth.user import LocalAuthSession
+# --- ✨ INICIO: CORRECCIÓN DE LA IMPORTACIÓN ✨ ---
+from reflex_local_auth import LocalAuthSession
+# --- ✨ FIN: CORRECCIÓN DE LA IMPORTACIÓN ✨ ---
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
@@ -362,7 +364,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             expiration = datetime.now(timezone.utc) + timedelta(days=30)
             
             # 3. Crea el registro de la sesión en la base de datos
-            auth_session = LocalAuthSession(
+            auth_session = LocalAuthSession( # <- Esta línea ya no dará error
                 user_id=user_id,
                 session_id=session_id,
                 expiration=expiration,
