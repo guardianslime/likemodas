@@ -98,16 +98,19 @@ def blog_post_add_content() -> rx.Component:
                 position="sticky",
                 top="2em",
             ),
-            # Propiedades de la rejilla
-            columns={"initial": "1", "lg": "2"},
-            gap="2.5em",
+            
+            # --- AJUSTE 1: ANCHO DE COLUMNAS ---
+            # En PC (lg), la primera columna (formulario) será el doble de ancha que la segunda.
+            columns={"initial": "1", "lg": "2fr 1fr"},
+            
+            # --- AJUSTE 2: ESPACIO ENTRE COLUMNAS ---
+            # Aumentamos el espacio para que no se vea tan junto.
+            gap="4em",
+            
             width="100%",
             max_width="1800px",
         ),
         width="100%",
         padding_y="2em",
-        
-        # --- AJUSTE FINAL REALIZADO AQUÍ ---
-        # Aumentamos el valor a 15em. ¡Puedes seguir ajustándolo si lo necesitas!
         padding_left=["0em", "0em", "15em", "15em"],
     )
