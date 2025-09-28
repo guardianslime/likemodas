@@ -81,12 +81,14 @@ def blog_post_add_content() -> rx.Component:
     """
     return rx.hstack(
         rx.grid(
+            # Columna del Formulario
             rx.vstack(
                 rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 blog_post_add_form(),
                 width="100%",
                 spacing="4",
             ),
+            # Columna de Previsualización
             rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 post_preview(),
@@ -96,6 +98,7 @@ def blog_post_add_content() -> rx.Component:
                 position="sticky",
                 top="2em",
             ),
+            # Propiedades de la rejilla
             columns={"initial": "1", "lg": "2"},
             gap="2.5em",
             width="100%",
@@ -104,12 +107,7 @@ def blog_post_add_content() -> rx.Component:
         width="100%",
         padding_y="2em",
         
-        # --- LA LÍNEA CLAVE DE LA SOLUCIÓN ---
-        # Esto aplica un padding (relleno) a la izquierda.
-        # ["0em", "0em", "8em", "8em"] significa:
-        # - 0em en pantallas pequeñas (móvil)
-        # - 0em en pantallas medianas (tablet)
-        # - 8em en pantallas grandes (lg)
-        # - 8em en pantallas extra grandes (xl)
-        padding_left=["0em", "0em", "8em", "8em"],
+        # --- AJUSTE REALIZADO AQUÍ ---
+        # Aumentamos el valor de 8em a 12em para moverlo más a la derecha en PC.
+        padding_left=["0em", "0em", "12em", "12em"],
     )
