@@ -29,14 +29,16 @@ class LocalAuthSession(rx.Model, table=True):
     
     user_id: int = Field(nullable=False)
     session_id: str = Field(max_length=255, unique=True, index=True, nullable=False)
-    
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     expiration: datetime = Field(
         sa_type=sqlalchemy.DateTime(timezone=True),
         nullable=False,
-        # Movemos el 'server_default' aquí dentro
         sa_column_kwargs={"server_default": sqlalchemy.func.now()}
     )
+
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Esta línea le dice a SQLAlchemy que si la tabla 'localauthsession'
+    # ya fue definida por la librería, simplemente use esa definición existente.
+    __table_args__ = {"extend_existing": True}
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
 
