@@ -357,7 +357,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         self.error_message = ""
         
-        # --- CORRECCIÓN 1: Manejo de valores nulos ---
         username = (form_data.get("username") or "").strip()
         password = (form_data.get("password") or "").strip()
 
@@ -378,8 +377,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
 
-            # --- CORRECCIÓN 2: Pasar solo el ID del usuario ---
-            return self._login(user.id) # 👈 El método _login espera un entero (ID), no el objeto.
+            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+            # En lugar de solo llamar a _login, ahora le pasamos la URL a la que
+            # queremos que redirija al usuario tras un inicio de sesión exitoso.
+            # La ruta "/admin/store" es la que corresponde a tu página de tienda.
+            return self._login(user.id, redirect_url="/admin/store")
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
     def handle_forgot_password(self, form_data: dict):
         email = form_data.get("email", "").strip().lower()
