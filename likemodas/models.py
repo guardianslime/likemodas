@@ -25,7 +25,7 @@ class LocalAuthSession(rx.Model, table=True):
     Un modelo local que replica la tabla de sesión de reflex-local-auth
     para resolver problemas de importación.
     """
-    __tablename__ = "localauthsession"
+    __tablename__ = "localauthsession" # Asegura que coincida con la tabla existente
     
     user_id: int = Field(nullable=False)
     session_id: str = Field(max_length=255, unique=True, index=True, nullable=False)
