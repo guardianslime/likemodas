@@ -113,10 +113,10 @@ def public_navbar() -> rx.Component:
                     rx.menu.item("Mi Cuenta", on_click=lambda: rx.redirect("/my-account/profile"), color_scheme="violet"),
                     rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases"), color_scheme="violet"),
                     rx.menu.item(
-                        "Cerrar Sesión", 
-                        # --- ✨ CORRECCIÓN AQUÍ ---
-                        # Se llama al evento de logout del estado en lugar de redirigir a una página inexistente.
-                        on_click=AppState.do_logout,
+                        "Cerrar Sesión",
+                        # --- ✨ ESTA LÍNEA ES CORRECTA ✨ ---
+                        # Llama al evento de logout del estado, que gestiona la cookie y la redirección.
+                        on_click=AppState.do_logout, # [cite: 921]
                         color_scheme="red"
                     ),
                 )

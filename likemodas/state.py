@@ -263,18 +263,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         password = form_data.get("password")
         confirm_password = form_data.get("confirm_password")
 
-        # --- INICIO DE LA MODIFICACIÓN ---
-        if not email or not email.strip().lower().endswith("@gmail.com"):
-            self.error_message = "Correo inválido. Solo se permiten direcciones @gmail.com."
+        # Regla de negocio: solo se permiten correos de Gmail
+        if not email or not email.strip().lower().endswith("@gmail.com"): # [cite: 1086]
+            self.error_message = "Correo inválido. Solo se permiten direcciones @gmail.com." 
             return
-        # --- FIN DE LA MODIFICACIÓN ---
 
+        # Validaciones de campos
         if not all([username, email, password, confirm_password]):
             self.error_message = "Todos los campos son obligatorios."
             return
         if password != confirm_password:
-            self.error_message = "Las contraseñas no coinciden."
+            self.error_message = "Las contraseñas no coinciden." 
             return
+        
+        # Validación de la fortaleza de la contraseña
         password_errors = validate_password(password)
         if password_errors:
             self.error_message = "\n".join(password_errors)
@@ -282,14 +284,18 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         try:
             with rx.session() as session:
-                if session.exec(sqlmodel.select(LocalUser).where(LocalUser.username == username)).first():
+                # Verificar si el usuario o email ya existen
+                if session.exec(sqlmodel.select(LocalUser).where(LocalUser.username == username)).first(): # [cite: 1089]
                     self.error_message = "El nombre de usuario ya está en uso."
                     return
-                if session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == email)).first():
+                if session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == email)).first(): # [cite: 1090]
                     self.error_message = "El email ya está registrado."
                     return
 
+                # Hashear la contraseña antes de guardarla (¡Muy importante!)
                 password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+                
+                # Crear el usuario principal y la información asociada
                 new_user = LocalUser(username=username, password_hash=password_hash, enabled=True)
                 session.add(new_user)
                 session.commit()
@@ -301,13 +307,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 session.refresh(new_user_info)
 
+                # Generar y enviar el token de verificación por correo
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
                 
-                send_verification_email(recipient_email=email, token=token_str)
+                send_verification_email(recipient_email=email, token=token_str) # [cite: 1093]
                 self.success = True
         except Exception as e:
             self.error_message = f"Error inesperado: {e}"
@@ -376,7 +383,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
         """
-        Manejador de login que valida al usuario y luego controla la redirección.
+        Manejador de login que valida al usuario, utiliza la lógica interna de la
+        librería para crear la sesión y la cookie, y finalmente redirige.
         """
         self.error_message = ""
         username = (form_data.get("username") or "").strip()
@@ -396,17 +404,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
 
             if not user_info or not user_info.is_verified:
-                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
+                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo." 
                 return
 
             # --- ✨ SOLUCIÓN FINAL Y DIRECTA ✨ ---
-            # 1. Llama al método original de la librería. Este se encargará
-            #    de crear la sesión y la cookie internamente.
-            # 2. Ignoramos su 'return' (que sería un redirect a '/')
-            #    al no poner 'return' delante de la llamada.
-            self._login(user.id)
+            # 1. Llama al método _login original de la librería reflex-local-auth.
+            #    Este se encargará de crear la sesión en la base de datos y
+            #    asignar el session_id a la cookie de estado.
+            self._login(user.id) # [cite: 1107]
             
-            # 3. Inmediatamente después, retornamos nuestra propia redirección.
+            # 2. Inmediatamente después, retornamos nuestra propia redirección a la tienda.
+            #    Reflex enviará tanto la actualización de la cookie como la redirección
+            #    al navegador del cliente de forma coordinada.
             return rx.redirect("/admin/store")
     
 
@@ -4777,38 +4786,39 @@ class AppState(reflex_local_auth.LocalAuthState):
     def handle_password_change(self, form_data: dict):
         """Cambia la contraseña del usuario tras verificar la actual."""
         if not self.authenticated_user:
-            # --- CORRECCIÓN ---
-            yield rx.toast.error("Debes iniciar sesión.")
+            yield rx.toast.error("Debes iniciar sesión.") # [cite: 1732]
             return
             
         current_password = form_data.get("current_password")
         new_password = form_data.get("new_password")
         confirm_password = form_data.get("confirm_password")
 
-        if not all([current_password, new_password, confirm_password]):
-            # --- CORRECCIÓN ---
+        # Validar que todos los campos estén completos
+        if not all([current_password, new_password, confirm_password]): # [cite: 1733]
             yield rx.toast.error("Todos los campos son obligatorios.")
             return
         
-        if new_password != confirm_password:
-            # --- CORRECCIÓN ---
+        # Validar que las nuevas contraseñas coincidan
+        if new_password != confirm_password: # [cite: 1734]
             yield rx.toast.error("Las nuevas contraseñas no coinciden.")
             return
         
+        # Validar la fortaleza de la nueva contraseña
         password_errors = validate_password(new_password)
         if password_errors:
-            # --- CORRECCIÓN ---
             yield rx.toast.error("\n".join(password_errors))
             return
             
         with rx.session() as session:
-            local_user = session.get(LocalUser, self.authenticated_user.id)
+            local_user = session.get(LocalUser, self.authenticated_user.id) # [cite: 1735]
+            
+            # Verificar que la contraseña actual sea correcta
             if not bcrypt.checkpw(current_password.encode("utf-8"), local_user.password_hash):
-                # --- CORRECCIÓN ---
                 yield rx.toast.error("La contraseña actual es incorrecta.")
                 return
                 
-            local_user.password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
+            # Hashear y guardar la nueva contraseña
+            local_user.password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()) # [cite: 1736]
             session.add(local_user)
             session.commit()
             
