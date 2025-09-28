@@ -176,7 +176,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     spacing="3",
                                     align="center",
                                 ),
-                                spacing="2", align_items="start", width="100%"
+                                spacing="1.5", align_items="start", width="100%"
                             ),
                             spacing="2", width="100%",
                             on_click=AppState.open_product_detail_modal(post.id),
@@ -186,6 +186,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     ),
                     width="290px",
                     height="auto",
+                    min_height="450px", # Mantenemos una altura mínima para consistencia
                     bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                     border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                     border_radius="8px", box_shadow="md", padding="1em",
