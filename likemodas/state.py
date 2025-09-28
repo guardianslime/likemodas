@@ -358,7 +358,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             session_id = secrets.token_hex(32)
             expiration = datetime.now(timezone.utc) + timedelta(days=30)
             
-            # Esta línea ahora funciona porque importamos nuestro propio modelo
             auth_session = LocalAuthSession(
                 user_id=user_id,
                 session_id=session_id,
@@ -367,8 +366,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(auth_session)
             session.commit()
 
-            self.set_cookie("session_id", session_id, expires=expiration, samesite="lax", secure=True)
-            return rx.redirect("/admin/store")
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Retornamos ambos eventos juntos: primero se establece la cookie
+            # y luego se redirige a la tienda.
+            return rx.set_cookie("session_id", session_id, expires=expiration, samesite="lax", secure=True), rx.redirect("/admin/store")
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     # --- ✨ INICIO: MÉTODO _login PERSONALIZADO ✨ ---
     @rx.event
