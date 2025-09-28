@@ -8,9 +8,6 @@ from sqlmodel import text # Importar text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import List, Dict, Optional, Tuple
-# --- ✨ INICIO: CORRECCIÓN DE LA IMPORTACIÓN ✨ ---
-from reflex_local_auth import LocalAuthSession
-# --- ✨ FIN: CORRECCIÓN DE LA IMPORTACIÓN ✨ ---
 from .models import LocalAuthSession
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
@@ -361,7 +358,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session_id = secrets.token_hex(32)
             expiration = datetime.now(timezone.utc) + timedelta(days=30)
             
-            # Esta línea ya no dará error gracias a los pasos 1 y 2
+            # Esta línea ahora funciona porque importamos nuestro propio modelo
             auth_session = LocalAuthSession(
                 user_id=user_id,
                 session_id=session_id,

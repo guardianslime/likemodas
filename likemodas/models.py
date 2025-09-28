@@ -19,13 +19,13 @@ if "CommentModel" not in locals():
 if "PurchaseItemModel" not in locals():
     PurchaseItemModel = "PurchaseItemModel"
 
-# --- ✨ INICIO: AÑADIR ESTE MODELO COMPLETO ✨ ---
+# --- ✨ INICIO: AÑADIR/REEMPLAZAR ESTE MODELO COMPLETO ✨ ---
 class LocalAuthSession(rx.Model, table=True):
     """
     Un modelo local que replica la tabla de sesión de reflex-local-auth
-    para resolver problemas de importación.
+    para resolver problemas de importación y definición.
     """
-    __tablename__ = "localauthsession" # Asegura que coincida con la tabla existente
+    __tablename__ = "localauthsession"
     
     user_id: int = Field(nullable=False)
     session_id: str = Field(max_length=255, unique=True, index=True, nullable=False)
@@ -35,11 +35,9 @@ class LocalAuthSession(rx.Model, table=True):
         sa_column_kwargs={"server_default": sqlalchemy.func.now()}
     )
 
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Esta línea le dice a SQLAlchemy que si la tabla 'localauthsession'
-    # ya fue definida por la librería, simplemente use esa definición existente.
+    # Esta línea evita el error "Table is already defined"
     __table_args__ = {"extend_existing": True}
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+# --- ✨ FIN: AÑADIR/REEMPLAZAR ESTE MODELO COMPLETO ✨ ---
 
 
 # --- Funciones de Utilidad ---
