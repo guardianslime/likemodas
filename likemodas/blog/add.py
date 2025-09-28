@@ -107,7 +107,7 @@ def blog_post_add_content() -> rx.Component:
         width="100%",
         padding_y="2em",
         
-        # --- AJUSTE REALIZADO AQUÍ ---
-        # Aumentamos el valor de 8em a 12em para moverlo más a la derecha en PC.
-        padding_left=["0em", "0em", "12em", "12em"],
+        # --- AJUSTE FINAL REALIZADO AQUÍ ---
+        # Aumentamos el valor a 15em. ¡Puedes seguir ajustándolo si lo necesitas!
+        padding_left=["0em", "0em", "15em", "15em"],
     )
