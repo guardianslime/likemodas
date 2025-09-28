@@ -356,35 +356,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     token: str = ""
     is_token_valid: bool = False
 
-    # --- ESTE MÉTODO AHORA FUNCIONARÁ PORQUE LA IMPORTACIÓN ES CORRECTA ---
-    def _login(self, user_id: int):
-        """
-        Sobrescribe el método _login de LocalAuthState para controlar la redirección.
-        """
-        with rx.session() as session:
-            session_id = secrets.token_hex(32)
-            expiration = datetime.now(timezone.utc) + timedelta(days=30)
-            
-            auth_session = LocalAuthSession(
-                user_id=user_id,
-                session_id=session_id,
-                expiration=expiration,
-            )
-            session.add(auth_session)
-            session.commit()
-
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # Retornamos ambos eventos juntos: primero se establece la cookie
-            # y luego se redirige a la tienda.
-            return rx.set_cookie("session_id", session_id, expires=expiration, samesite="lax", secure=True), rx.redirect("/admin/store")
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
     # --- ✨ INICIO: MÉTODO _login PERSONALIZADO ✨ ---
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
         """
-        [VERSIÓN CORREGIDA] Manejador de login que valida al usuario, utiliza la lógica
-        interna de la librería para crear la sesión/cookie y finalmente redirige.
+        [VERSIÓN FINAL Y CORRECTA] Manejador de login que valida al usuario,
+        utiliza la lógica interna de la librería para crear la sesión/cookie
+        y finalmente redirige.
         """
         self.error_message = ""
         username = (form_data.get("username") or "").strip()
@@ -395,29 +373,25 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         with rx.session() as session:
-            # Busca al usuario en la base de datos
             user = session.exec(select(LocalUser).where(LocalUser.username == username)).one_or_none()
 
-            # Valida que el usuario exista y la contraseña sea correcta
             if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
                 self.error_message = "Usuario o contraseña inválidos."
                 return
 
-            # Valida que el usuario haya verificado su correo
             user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
             if not user_info or not user_info.is_verified:
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
 
-            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+            # --- ✨ LA SOLUCIÓN ✨ ---
             # 1. Llama al método _login heredado de reflex_local_auth.LocalAuthState.
-            #    Este método SÍ sabe cómo manejar el estado de la sesión y la cookie
-            #    de forma correcta y declarativa. NO devuelve nada.
-            self._login(user.id) #
-
-            # 2. Después de modificar el estado, devolvemos UN ÚNICO evento: la redirección.
-            #    Reflex se encargará de enviar tanto la actualización de la cookie como
-            #    la orden de redirigir al navegador del cliente.
+            #    Este método gestiona el estado de la sesión y la cookie correctamente.
+            #    NO se debe modificar y NO devuelve nada.
+            self._login(user.id)
+            
+            # 2. Después de que el estado se ha actualizado, devolvemos UN ÚNICO evento:
+            #    la redirección a la tienda. Reflex se encarga del resto.
             return rx.redirect("/admin/store")
             # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
     
