@@ -19,6 +19,24 @@ if "CommentModel" not in locals():
 if "PurchaseItemModel" not in locals():
     PurchaseItemModel = "PurchaseItemModel"
 
+# --- ✨ INICIO: AÑADIR ESTE MODELO COMPLETO ✨ ---
+class LocalAuthSession(rx.Model, table=True):
+    """
+    Un modelo local que replica la tabla de sesión de reflex-local-auth
+    para resolver problemas de importación.
+    """
+    __tablename__ = "localauthsession" # Asegura que coincida con la tabla existente
+    
+    user_id: int = Field(nullable=False)
+    session_id: str = Field(max_length=255, unique=True, index=True, nullable=False)
+    expiration: datetime = Field(
+        sa_type=sqlalchemy.DateTime(timezone=True),
+        server_default=sqlalchemy.func.now(),
+        nullable=False,
+    )
+# --- ✨ FIN: AÑADIR ESTE MODELO COMPLETO ✨ ---
+
+
 # --- Funciones de Utilidad ---
 def format_utc_to_local(utc_dt: Optional[datetime]) -> str:
     if not utc_dt:
