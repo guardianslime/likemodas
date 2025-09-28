@@ -3387,7 +3387,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         ))
                 session.commit()
 
-            # Lógica de Pago (Fuera de la sesión)
+            # --- Lógica de Pago para Wompi (Online) ---
             if self.payment_method == "Online":
                 if purchase_id_for_payment is None:
                     yield rx.toast.error("Error crítico: No se pudo obtener el ID de la compra.")
@@ -3410,11 +3410,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                     self.cart.clear()
                     self.default_shipping_address = None
-                    # --- ✨ CORRECCIÓN AQUÍ ---
-                    yield rx.redirect(payment_url, external=True)
-                    return
+                    
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                    # En lugar de rx.redirect(..., external=True), usamos rx.call_script
+                    # para decirle al navegador que vaya a la URL externa de Wompi.
+                    yield rx.call_script(f"window.location.href = '{payment_url}'")
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                    return # [cite: 1813]
                 else:
-                    yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.")
+                    yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.") # [cite: 1814, 1815]
                     return
 
             else:  # Pago Contra Entrega
@@ -3422,11 +3426,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.default_shipping_address = None
                 yield AppState.notify_admin_of_new_purchase
                 yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
-                # --- ✨ CORRECCIÓN AQUÍ ---
                 yield rx.redirect("/my-purchases")
                 return
-            # --- FIN: LÓGICA EXISTENTE ---
         
+    # 🟡 REEMPLAZA esta función en tu archivo 🟡
     @rx.event
     async def start_sistecredito_polling(self):
         """
@@ -3434,7 +3437,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         if not self.sistecredito_polling_purchase_id:
             yield rx.toast.error("Error: No se encontró una compra para procesar.")
-            # --- ✨ CORRECCIÓN AQUÍ ---
             yield rx.redirect("/cart")
             return
 
@@ -3442,25 +3444,23 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase = session.get(PurchaseModel, self.sistecredito_polling_purchase_id)
             if not purchase or not purchase.sistecredito_transaction_id:
                 yield rx.toast.error("Error de consistencia de datos.")
-                # --- ✨ CORRECCIÓN AQUÍ ---
                 yield rx.redirect("/cart")
                 return
             
             transaction_id = purchase.sistecredito_transaction_id
 
-        # Limpiar el ID del estado para que no se reutilice
         self.sistecredito_polling_purchase_id = None
-
         redirect_url = await sistecredito_service.poll_for_redirect_url(transaction_id)
 
         if redirect_url:
             # Éxito: redirigir al usuario a Sistecredito
-            # --- ✨ CORRECCIÓN AQUÍ ---
-            yield rx.redirect(redirect_url, external=True)
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Usamos rx.call_script para la redirección externa.
+            yield rx.call_script(f"window.location.href = '{redirect_url}'")
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         else:
             # Falla: notificar y redirigir de vuelta al carrito
-            yield rx.toast.error("Sistecredito no pudo procesar tu solicitud. Por favor, intenta de nuevo.")
-            # --- ✨ CORRECCIÓN AQUÍ ---
+            yield rx.toast.error("Sistecredito no pudo procesar tu solicitud. Por favor, intenta de nuevo.") # [cite: 1822]
             yield rx.redirect("/cart")
 
 
