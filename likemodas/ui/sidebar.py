@@ -101,8 +101,9 @@ def sliding_admin_sidebar() -> rx.Component:
                 rx.button(
                     "Logout", 
                     rx.icon(tag="log-out", margin_left="0.5em"),
-                    # --- CORRECCIÓN AQUÍ ---
-                    on_click=rx.redirect(navigation.routes.LOGOUT_ROUTE),
+                    # --- ✨ CORRECCIÓN AQUÍ ---
+                    # Se utiliza el mismo evento AppState.do_logout para unificar la funcionalidad.
+                    on_click=AppState.do_logout,
                     width="100%", 
                     variant="soft", 
                     color_scheme="red"
