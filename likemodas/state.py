@@ -11,6 +11,7 @@ from typing import List, Dict, Optional, Tuple
 # --- ✨ INICIO: CORRECCIÓN DE LA IMPORTACIÓN ✨ ---
 from reflex_local_auth import LocalAuthSession
 # --- ✨ FIN: CORRECCIÓN DE LA IMPORTACIÓN ✨ ---
+from .models import LocalAuthSession
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
@@ -351,6 +352,27 @@ class AppState(reflex_local_auth.LocalAuthState):
     token: str = ""
     is_token_valid: bool = False
 
+    # --- ESTE MÉTODO AHORA FUNCIONARÁ PORQUE LA IMPORTACIÓN ES CORRECTA ---
+    def _login(self, user_id: int):
+        """
+        Sobrescribe el método _login de LocalAuthState para controlar la redirección.
+        """
+        with rx.session() as session:
+            session_id = secrets.token_hex(32)
+            expiration = datetime.now(timezone.utc) + timedelta(days=30)
+            
+            # Esta línea ya no dará error gracias a los pasos 1 y 2
+            auth_session = LocalAuthSession(
+                user_id=user_id,
+                session_id=session_id,
+                expiration=expiration,
+            )
+            session.add(auth_session)
+            session.commit()
+
+            self.set_cookie("session_id", session_id, expires=expiration, samesite="lax", secure=True)
+            return rx.redirect("/admin/store")
+
     # --- ✨ INICIO: MÉTODO _login PERSONALIZADO ✨ ---
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
@@ -390,39 +412,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.redirect("/admin/store")
             # --- ✨ FIN DE LA SOLUCIÓN FINAL ✨ ---
     # --- INICIO DE LA NUEVA FUNCIÓN DE LOGIN ---
-    @rx.event
-    def handle_login_with_verification(self, form_data: dict):
-        """
-        [VERSIÓN FINAL] Manejador de login personalizado que requiere que la
-        cuenta esté verificada y maneja correctamente los tipos de datos.
-        """
-        self.error_message = ""
-        
-        username = (form_data.get("username") or "").strip()
-        password = (form_data.get("password") or "").strip()
-
-        if not username or not password:
-            self.error_message = "Usuario y contraseña son requeridos."
-            return
-
-        with rx.session() as session:
-            user = session.exec(select(LocalUser).where(LocalUser.username == username)).one_or_none()
-
-            if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
-                self.error_message = "Usuario o contraseña inválidos."
-                return
-
-            user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
-
-            if not user_info or not user_info.is_verified:
-                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
-                return
-
-            # --- ✨ CORRECCIÓN FINAL ✨ ---
-            # Simplemente llamamos a nuestro método _login personalizado.
-            # Ya no se necesita 'redirect_to' ni 'redirect_url'.
-            return self._login(user.id)
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+    
 
     def handle_forgot_password(self, form_data: dict):
         email = form_data.get("email", "").strip().lower()
