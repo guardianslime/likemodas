@@ -114,7 +114,8 @@ def public_navbar() -> rx.Component:
                     rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases"), color_scheme="violet"),
                     rx.menu.item(
                         "Cerrar Sesión", 
-                        on_click=AppState.do_logout, 
+                        # --- CORRECCIÓN AQUÍ ---
+                        on_click=rx.redirect(navigation.routes.LOGOUT_ROUTE),
                         color_scheme="red"
                     ),
                 )

@@ -4816,16 +4816,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ FIN: SECCIÓN DE PERFIL DE USUARIO CORREGIDA ✨ ---
 
-    @rx.event
-    def do_logout(self):
-        """
-        [CORRECCIÓN DEFINITIVA] Cierra la sesión del usuario llamando
-        al manejador de eventos oficial de reflex-local-auth.
-        """
-        # Esta es la forma correcta de usar la librería.
-        # 'return' cede el control al manejador de logout, que se encargará
-        # de limpiar el token, el estado y redirigir.
-        return reflex_local_auth.LogoutState.on_logout
 
 
     product_comments: list[CommentData] = []
