@@ -4818,12 +4818,17 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def do_logout(self):
-        """Cierra la sesión del usuario y lo redirige a la página de login."""
-        # Esta es la acción original que cierra la sesión
-        yield self._logout()
+        """
+        [CORREGIDO] Cierra la sesión del usuario eliminando el token de autenticación
+        y luego redirige a la página de login.
+        """
+        # --- INICIO DE LA CORRECCIÓN ---
+        # En lugar de llamar a un método que no existe (_logout),
+        # simplemente limpiamos el token. Esto desautenticará al usuario.
+        self.token = ""
+        # --- FIN DE LA CORRECCIÓN ---
         
-        # ✨ AÑADE ESTA LÍNEA ✨
-        # Redirige explícitamente a la ruta de login después de que la sesión se ha cerrado.
+        # Redirige explícitamente a la ruta de login.
         yield rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
 
 
