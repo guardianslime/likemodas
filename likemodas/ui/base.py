@@ -23,7 +23,10 @@ def fixed_color_mode_button() -> rx.Component:
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    """Estructura de página base con el layout de admin corregido para permitir un centrado real."""
+    """
+    Estructura de página base con un layout de admin basado en Grid para un
+    centrado robusto y predecible.
+    """
     loading_screen = rx.center(
         rx.spinner(size="3"),
         height="100vh",
@@ -31,25 +34,37 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         background=rx.color("gray", 2)
     )
 
-    # El layout del admin ahora es un simple rx.box que sirve como fondo
+    # --- INICIO DE LA REESTRUCTURACIÓN ---
     admin_layout = rx.box(
-        # El menú lateral se superpone (position="fixed")
+        # La barra lateral se mantiene como una superposición
         sliding_admin_sidebar(),
         
-        # --- ÁREA DE CONTENIDO PRINCIPAL CORREGIDA ---
-        # Este es el "lienzo" donde se dibujarán todas las páginas del admin.
-        # Le aplicamos un padding a la izquierda para que NUNCA se oculte debajo del menú.
-        rx.box(
-            child,
+        # Usamos una rejilla para el contenido principal
+        rx.grid(
+            # 1. Columna fantasma: un espacio vacío que empuja el contenido
+            # para que no quede debajo del botón del menú lateral.
+            rx.box(display=["none", "none", "block"]), # Oculto en móvil
+            
+            # 2. Columna principal: aquí irá el contenido de cada página (el 'child').
+            # Ocupará todo el espacio restante.
+            rx.box(
+                child,
+                width="100%",
+                height="100%",
+                padding_x=["1em", "2em"],
+                padding_y="2em",
+            ),
+            
+            # Definimos el comportamiento de las columnas.
+            # En móvil: una sola columna.
+            # En escritorio ('lg'): una columna de 5em y la otra ocupa el resto (1fr).
+            columns={"initial": "1", "lg": "5em 1fr"},
             width="100%",
-            height="100%",
-            padding_left=["1em", "2em", "5em"], # Padding izquierdo responsivo
-            padding_right=["1em", "2em", "2em"],# Padding derecho responsivo
-            padding_y="2em",
         ),
         width="100%",
         min_height="100vh",
     )
+    # --- FIN DE LA REESTRUCTURACIÓN ---
 
     public_layout = rx.box(
         public_navbar(),

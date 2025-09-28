@@ -79,37 +79,31 @@ def blog_post_add_content() -> rx.Component:
     Página reestructurada para añadir una nueva publicación, garantizando el centrado
     en PC y manteniendo el diseño en móvil.
     """
-    # 1. Contenedor Principal Centrado (rx.hstack)
-    # Este componente ocupa todo el ancho y centra a su hijo (la rejilla).
-    return rx.hstack(
-        # 2. Tu Layout de Rejilla (rx.grid)
-        # Contiene las dos columnas y se le aplica el ancho máximo aquí.
-        rx.grid(
-            # 3. La Columna del Formulario (rx.vstack)
-            rx.vstack(
-                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                blog_post_add_form(),
+    return rx.center(
+        rx.box(
+            rx.grid(
+                rx.vstack(
+                    rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                    blog_post_add_form(),
+                    width="100%",
+                    spacing="4",
+                ),
+                rx.vstack(
+                    rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                    post_preview(),
+                    display=["none", "none", "flex", "flex"],
+                    width="100%",
+                    spacing="4",
+                    position="sticky",
+                    top="2em",
+                ),
+                columns={"initial": "1", "lg": "2"},
+                gap="2.5em",
                 width="100%",
-                spacing="4",
             ),
-            # 4. La Columna de Previsualización (rx.vstack)
-            rx.vstack(
-                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                post_preview(),
-                display=["none", "none", "flex", "flex"],
-                width="100%",
-                spacing="4",
-                position="sticky",
-                top="2em",
-            ),
-            # Propiedades de la rejilla que mantienen tu diseño
-            columns={"initial": "1", "lg": "2"},
-            gap="2.5em",
             width="100%",
-            max_width="1800px", # El ancho máximo que querías se aplica aquí
+            max_width="1800px",
         ),
-        # Propiedades del hstack para que funcione el centrado
         width="100%",
-        padding_y="2em",
-        justify="center", # La propiedad clave para centrar
+        height="100%",
     )
