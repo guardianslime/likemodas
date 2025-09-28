@@ -75,36 +75,34 @@ def post_preview() -> rx.Component:
 @require_admin
 def blog_post_add_content() -> rx.Component:
     """
-    Página para añadir una nueva publicación centrada correctamente.
+    Página para añadir una nueva publicación, centrada con el método de margen automático.
     """
-    return rx.center(
-        rx.box(
-            rx.grid(
-                rx.vstack(
-                    rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                    blog_post_add_form(),
-                    width="100%",
-                    spacing="4",
-                ),
-                rx.vstack(
-                    rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                    post_preview(),
-                    display=["none", "none", "flex", "flex"],
-                    width="100%",
-                    spacing="4",
-                    position="sticky",
-                    top="2em",
-                ),
-                columns={"initial": "1", "lg": "2"},
-                gap="2.5em",
+    return rx.box(
+        rx.grid(
+            rx.vstack(
+                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                blog_post_add_form(),
                 width="100%",
+                spacing="4",
             ),
-            # Se mantienen tus restricciones de ancho
+            rx.vstack(
+                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                post_preview(),
+                display=["none", "none", "flex", "flex"],
+                width="100%",
+                spacing="4",
+                position="sticky",
+                top="2em",
+            ),
+            columns={"initial": "1", "lg": "2"},
+            gap="2.5em",
             width="100%",
-            max_width="1800px",
-            padding_y="2em",
         ),
-        # Propiedades clave para que el centrado funcione
+        # Mantenemos todas tus propiedades...
         width="100%",
-        height="100%",
+        max_width="1800px",
+        padding_y="2em",
+        
+        # ... y añadimos la propiedad clave para el centrado
+        margin_x="auto", # Esto se traduce a margin-left: auto; margin-right: auto;
     )
