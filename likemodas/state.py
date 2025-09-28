@@ -383,8 +383,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
         """
-        Manejador de login que valida al usuario, utiliza la lógica interna de la
-        librería para crear la sesión y la cookie, y finalmente redirige.
+        [VERSIÓN CORREGIDA] Manejador de login que valida al usuario, utiliza la lógica
+        interna de la librería para crear la sesión/cookie y finalmente redirige.
         """
         self.error_message = ""
         username = (form_data.get("username") or "").strip()
@@ -395,28 +395,31 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         with rx.session() as session:
+            # Busca al usuario en la base de datos
             user = session.exec(select(LocalUser).where(LocalUser.username == username)).one_or_none()
 
+            # Valida que el usuario exista y la contraseña sea correcta
             if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
                 self.error_message = "Usuario o contraseña inválidos."
                 return
 
+            # Valida que el usuario haya verificado su correo
             user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
-
             if not user_info or not user_info.is_verified:
-                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo." 
+                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
 
-            # --- ✨ SOLUCIÓN FINAL Y DIRECTA ✨ ---
-            # 1. Llama al método _login original de la librería reflex-local-auth.
-            #    Este se encargará de crear la sesión en la base de datos y
-            #    asignar el session_id a la cookie de estado.
-            self._login(user.id) # [cite: 1107]
-            
-            # 2. Inmediatamente después, retornamos nuestra propia redirección a la tienda.
-            #    Reflex enviará tanto la actualización de la cookie como la redirección
-            #    al navegador del cliente de forma coordinada.
+            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+            # 1. Llama al método _login heredado de reflex_local_auth.LocalAuthState.
+            #    Este método SÍ sabe cómo manejar el estado de la sesión y la cookie
+            #    de forma correcta y declarativa. NO devuelve nada.
+            self._login(user.id) #
+
+            # 2. Después de modificar el estado, devolvemos UN ÚNICO evento: la redirección.
+            #    Reflex se encargará de enviar tanto la actualización de la cookie como
+            #    la orden de redirigir al navegador del cliente.
             return rx.redirect("/admin/store")
+            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
     
 
     def handle_forgot_password(self, form_data: dict):
