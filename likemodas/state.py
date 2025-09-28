@@ -376,10 +376,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
         """
-        Manejador de login que toma control de la redirección final.
+        Manejador de login que valida al usuario y luego controla la redirección.
         """
-        # ... (Toda tu lógica de validación de usuario y contraseña se mantiene igual) ...
-   
         self.error_message = ""
         username = (form_data.get("username") or "").strip()
         password = (form_data.get("password") or "").strip()
@@ -401,16 +399,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
 
-            # --- ✨ INICIO DE LA SOLUCIÓN FINAL ✨ ---
-            
-            # 1. Ejecutamos el login de la librería. Esto crea la sesión y
-            #    establece la cookie, pero ignoramos su instrucción de redirigir.
+            # --- ✨ SOLUCIÓN FINAL Y DIRECTA ✨ ---
+            # 1. Llama al método original de la librería. Este se encargará
+            #    de crear la sesión y la cookie internamente.
+            # 2. Ignoramos su 'return' (que sería un redirect a '/')
+            #    al no poner 'return' delante de la llamada.
             self._login(user.id)
             
-            # 2. Ahora, emitimos NUESTRA PROPIA instrucción de redirigir a la tienda.
+            # 3. Inmediatamente después, retornamos nuestra propia redirección.
             return rx.redirect("/admin/store")
-            # --- ✨ FIN DE LA SOLUCIÓN FINAL ✨ ---
-    # --- INICIO DE LA NUEVA FUNCIÓN DE LOGIN ---
     
 
     def handle_forgot_password(self, form_data: dict):
