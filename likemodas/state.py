@@ -8,7 +8,7 @@ from sqlmodel import text # Importar text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import List, Dict, Optional, Tuple
-from reflex_local_auth.models import LocalAuthSession
+from reflex_local_auth.user import LocalAuthSession
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
