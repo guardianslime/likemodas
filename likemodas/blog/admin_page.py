@@ -1,8 +1,5 @@
-# likemodas/blog/admin_page.py (COMPLETO Y CORREGIDO)
-
 import reflex as rx
 from ..state import AppState
-# Se elimina la importación de 'navigation' de aquí para romper el ciclo.
 from .forms import blog_post_edit_form
 from ..state import AdminPostRowData, AdminVariantData
 from ..ui.qr_display import qr_code_display
@@ -11,6 +8,21 @@ def edit_post_dialog() -> rx.Component:
     """El diálogo modal que contiene el formulario de edición."""
     return rx.alert_dialog.root(
         rx.alert_dialog.content(
+            # --- INICIO DE LA MODIFICACIÓN: AÑADIR BOTÓN DE CIERRE 'X' ---
+            rx.alert_dialog.cancel(
+                rx.icon_button(
+                    rx.icon(tag="x"),
+                    variant="soft",
+                    color_scheme="gray",
+                    style={
+                        "position": "absolute",
+                        "top": "0.8rem",
+                        "right": "0.8rem",
+                    },
+                )
+            ),
+            # --- FIN DE LA MODIFICACIÓN ---
+            
             rx.alert_dialog.title("Editar Publicación"),
             rx.alert_dialog.description("Modifica los detalles de tu producto y guárdalos."),
             blog_post_edit_form(),
@@ -182,7 +194,6 @@ def post_admin_row(post: AdminPostRowData) -> rx.Component:
         align="center",
     )
 
-# --- COMPONENTE PARA LA FILA DE LA TABLA (ESCRITORIO) ---
 def desktop_post_row(post: AdminPostRowData) -> rx.Component:
     """Componente para una fila de la tabla de administración en escritorio."""
     return rx.table.row(
@@ -239,12 +250,10 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
         align="center",
     )
 
-# --- NUEVO COMPONENTE DE TARJETA PARA MÓVIL (MÁS COMPACTO) ---
 def mobile_post_card(post: AdminPostRowData) -> rx.Component:
     """Componente de tarjeta optimizado para la vista móvil."""
     return rx.card(
         rx.vstack(
-            # Sección Superior: Imagen, Título, Precio y QR
             rx.hstack(
                 rx.avatar(src=rx.get_upload_url(post.main_image_url), size="5", radius="medium"),
                 rx.vstack(
@@ -259,7 +268,6 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
                 width="100%",
             ),
             rx.divider(margin_y="0.75em"),
-            # Sección Media: Estado
             rx.hstack(
                 rx.text("Estado:", weight="medium", size="2"),
                 rx.spacer(),
@@ -276,7 +284,6 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
                 spacing="3",
                 width="100%",
             ),
-            # Sección Inferior: Acciones
             rx.hstack(
                 rx.button("Editar", on_click=AppState.start_editing_post(post.id), width="100%", size="2"),
                 rx.alert_dialog.root(
@@ -309,7 +316,6 @@ def blog_admin_page() -> rx.Component:
     """Página de 'Mis Publicaciones' para el vendedor, ahora completamente responsiva."""
     from .. import navigation
 
-    # --- VISTA DE ESCRITORIO CON LA TABLA ---
     desktop_view = rx.box(
         rx.table.root(
             rx.table.header(
@@ -327,11 +333,9 @@ def blog_admin_page() -> rx.Component:
             ),
             variant="surface", width="100%",
         ),
-        # Se muestra solo en pantallas 'lg' (grandes) en adelante
         display=["none", "none", "block", "block"],
     )
 
-    # --- VISTA MÓVIL CON LAS TARJETAS ---
     mobile_view = rx.box(
         rx.vstack(
             rx.foreach(AppState.my_admin_posts, mobile_post_card),
@@ -341,7 +345,6 @@ def blog_admin_page() -> rx.Component:
         display=["block", "block", "none", "none"],
     )
 
-    # Contenedor principal de la página
     return rx.center(
         rx.container(
             rx.vstack(
@@ -361,7 +364,6 @@ def blog_admin_page() -> rx.Component:
                 qr_display_modal(),
                 spacing="5", width="100%",
             ),
-            # Se ajusta el tamaño máximo para dar más espacio
             max_width="1400px",
             width="100%",
             padding_y="2em",
