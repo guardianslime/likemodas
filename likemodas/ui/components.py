@@ -155,7 +155,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     white_space="normal",
                                     text_overflow="initial",
                                     overflow="visible",
-                                    # min_height="3.5em",
                                 ),
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(post.price_cop, size="5", weight="medium"),
@@ -176,9 +175,13 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     spacing="3",
                                     align="center",
                                 ),
-                                spacing="1.5", align_items="start", width="100%"
+                                # --- CORRECCIÓN AQUÍ ---
+                                spacing="1", # Cambiado de "1.5" a "1"
+                                align_items="start", 
+                                width="100%"
                             ),
-                            spacing="2", width="100%",
+                            spacing="2", 
+                            width="100%",
                             on_click=AppState.open_product_detail_modal(post.id),
                             cursor="pointer",
                         ),
@@ -186,7 +189,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     ),
                     width="290px",
                     height="auto",
-                    min_height="450px", # Mantenemos una altura mínima para consistencia
+                    min_height="450px",
                     bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                     border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                     border_radius="8px", box_shadow="md", padding="1em",
