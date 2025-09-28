@@ -352,31 +352,43 @@ class AppState(reflex_local_auth.LocalAuthState):
     is_token_valid: bool = False
 
     # --- ✨ INICIO: MÉTODO _login PERSONALIZADO ✨ ---
-    def _login(self, user_id: int):
+    @rx.event
+    def handle_login_with_verification(self, form_data: dict):
         """
-        Sobrescribe el método _login de LocalAuthState para controlar la redirección.
+        Manejador de login que toma control de la redirección final.
         """
+        # ... (Toda tu lógica de validación de usuario y contraseña se mantiene igual) ...
+   
+        self.error_message = ""
+        username = (form_data.get("username") or "").strip()
+        password = (form_data.get("password") or "").strip()
+
+        if not username or not password:
+            self.error_message = "Usuario y contraseña son requeridos."
+            return
+
         with rx.session() as session:
-            # 1. Crea un ID de sesión seguro y único
-            session_id = secrets.token_hex(32)
-            
-            # 2. Establece una fecha de expiración (ej. 30 días)
-            expiration = datetime.now(timezone.utc) + timedelta(days=30)
-            
-            # 3. Crea el registro de la sesión en la base de datos
-            auth_session = LocalAuthSession( # <- Esta línea ya no dará error
-                user_id=user_id,
-                session_id=session_id,
-                expiration=expiration,
-            )
-            session.add(auth_session)
-            session.commit()
+            user = session.exec(select(LocalUser).where(LocalUser.username == username)).one_or_none()
 
-            # 4. Establece la cookie en el navegador del usuario y redirige
-            self.set_cookie("session_id", session_id, expires=expiration, samesite="lax", secure=True)
+            if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
+                self.error_message = "Usuario o contraseña inválidos."
+                return
+
+            user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
+
+            if not user_info or not user_info.is_verified:
+                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
+                return
+
+            # --- ✨ INICIO DE LA SOLUCIÓN FINAL ✨ ---
+            
+            # 1. Ejecutamos el login de la librería. Esto crea la sesión y
+            #    establece la cookie, pero ignoramos su instrucción de redirigir.
+            self._login(user.id)
+            
+            # 2. Ahora, emitimos NUESTRA PROPIA instrucción de redirigir a la tienda.
             return rx.redirect("/admin/store")
-    # --- ✨ FIN: MÉTODO _login PERSONALIZADO ✨ ---
-
+            # --- ✨ FIN DE LA SOLUCIÓN FINAL ✨ ---
     # --- INICIO DE LA NUEVA FUNCIÓN DE LOGIN ---
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
