@@ -429,15 +429,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
 
-            # --- ✨ LA SOLUCIÓN ✨ ---
-            # 1. Llama al método _login heredado de reflex_local_auth.LocalAuthState.
-            #    Este método gestiona el estado de la sesión y la cookie correctamente.
-            #    NO se debe modificar y NO devuelve nada.
             self._login(user.id)
-            
-            # 2. Después de que el estado se ha actualizado, devolvemos UN ÚNICO evento:
-            #    la redirección a la tienda. Reflex se encarga del resto.
-            return rx.redirect("/admin/store")
+            # --- 👇 CORRECCIÓN AQUÍ 👇 ---
+            yield rx.redirect("/admin/store")
             # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
     
 
@@ -1211,7 +1205,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
-        return rx.redirect("/blog")
+        yield rx.redirect("/blog")
     
     @rx.event
     def remove_add_image(self, index: int):
@@ -5671,7 +5665,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.current_ticket = None
         self.current_ticket_purchase = None
         self.ticket_messages = []
-        return rx.redirect(f"/returns?purchase_id={purchase_id}")
+        yield rx.redirect(f"/returns?purchase_id={purchase_id}")
 
     @rx.event
     def on_load_return_page(self):
