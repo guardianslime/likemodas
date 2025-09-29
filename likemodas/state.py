@@ -3111,8 +3111,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 for item in purchase.items:
-                    # --- 👇 CORRECCIÓN CLAVE AQUÍ 👇 ---
-                    # Accedemos al UUID a través del diccionario 'selected_variant'
                     variant_uuid = item.selected_variant.get("variant_uuid")
                     
                     if item.blog_post_id == product_id and variant_uuid:
@@ -3121,7 +3119,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         variant_sales_aggregator[variant_uuid]["revenue"] += item.price_at_purchase * item.quantity
                         variant_sales_aggregator[variant_uuid]["profit"] += item_profit
                         variant_sales_aggregator[variant_uuid]["daily_profit"][purchase_date_str] += item_profit
-                    # --- FIN DE LA CORRECCIÓN ---
 
             product_total_units = 0
             product_total_revenue = 0.0
@@ -3130,8 +3127,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             for variant_db in blog_post.variants:
                 variant_uuid = variant_db.get("variant_uuid")
-                if variant_uuid and variant_uuid in variant_sales_aggregator:
-                    sales_data = variant_sales_aggregator[variant_uuid]
+                if variant_uuid: # Modificado para incluir todas las variantes, tengan ventas o no
+                    sales_data = variant_sales_aggregator.get(variant_uuid, {"units": 0, "revenue": 0.0, "profit": 0.0, "daily_profit": {}})
                     
                     product_total_units += sales_data["units"]
                     product_total_revenue += sales_data["revenue"]
@@ -3152,19 +3149,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         total_profit_cop=format_to_cop(sales_data["profit"]),
                         daily_profit_data=sorted_daily_profit
                     ))
-            
-            if not product_variants_data and blog_post.variants:
-                for variant_db in blog_post.variants:
-                    attributes_str = ", ".join([f"{k}: {v}" for k,v in variant_db.get("attributes", {}).items()])
-                    product_variants_data.append(VariantDetailFinanceDTO(
-                        variant_uuid=variant_db.get("variant_uuid", str(uuid.uuid4())),
-                        attributes_str=attributes_str,
-                        image_url=variant_db.get("image_url"),
-                        units_sold=0,
-                        total_revenue_cop=format_to_cop(0.0),
-                        total_profit_cop=format_to_cop(0.0),
-                        daily_profit_data=[]
-                    ))
 
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
@@ -3177,7 +3161,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             
             if product_variants_data:
-                await self.select_variant_for_detail(0)
+                # --- 👇 CORRECCIÓN AQUÍ 👇 ---
+                self.select_variant_for_detail(0)
 
             self.show_product_detail_modal = True
         self.is_loading = False
