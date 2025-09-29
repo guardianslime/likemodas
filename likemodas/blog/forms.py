@@ -278,15 +278,22 @@ def blog_post_add_form() -> rx.Component:
                         rx.vstack(
                             rx.text("Precio (COP)", as_="div", size="3", weight="bold"),
                             rx.input(
-                                placeholder="Ej: 55000 (sin puntos)", 
-                                type="number", 
-                                name="price", 
-                                required=True, 
-                                size="3",
+                                placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3",
                                 value=BlogAdminState.post_form_data["price_str"],
                                 on_change=lambda val: BlogAdminState.set_post_form_field("price_str", val)
                             ),
                         ),
+                        rx.vstack(
+                            rx.text("Ganancia (COP)", as_="div", size="3", weight="bold"),
+                            rx.input(
+                                placeholder="Ej: 15000 (sin puntos)", type="number", size="3",
+                                value=AppState.profit_str,
+                                on_change=AppState.set_profit_str
+                            ),
+                        ),
+                        columns="2", spacing="4", width="100%",
+                    ),
+                    rx.grid(
                         rx.vstack(
                             rx.text("Incluye IVA (19%)", as_="div", size="3", weight="bold"),
                             rx.hstack(
@@ -303,7 +310,7 @@ def blog_post_add_form() -> rx.Component:
                                 align="center", spacing="3", height="100%",
                             ),
                         ),
-                        columns="3", spacing="4", width="100%",
+                        columns="2", spacing="4", width="100%", margin_top="1em" # Añadimos margen superior
                     ),
                     rx.grid(
                         rx.vstack(
@@ -482,13 +489,16 @@ def blog_post_edit_form() -> rx.Component:
                             rx.input(name="price", value=AppState.edit_price_str, on_change=AppState.set_edit_price_str, type="number", required=True, size="3"),
                         ),
                         rx.vstack(
+                            rx.text("Ganancia (COP)", as_="div", size="2", weight="bold"),
+                            rx.input(value=AppState.edit_profit_str, on_change=AppState.set_edit_profit_str, type="number", size="3"),
+                        ),
+                        columns="2", spacing="3", width="100%",
+                    ),
+                    rx.grid(
+                        rx.vstack(
                             rx.text("Incluye IVA", as_="div", size="2", weight="bold"),
                             rx.hstack(
-                                rx.switch(
-                                    name="price_includes_iva",
-                                    is_checked=AppState.edit_price_includes_iva,
-                                    on_change=AppState.set_edit_price_includes_iva,
-                                ),
+                                rx.switch(name="price_includes_iva", is_checked=AppState.edit_price_includes_iva, on_change=AppState.set_edit_price_includes_iva),
                                 rx.text(rx.cond(AppState.edit_price_includes_iva, "Sí", "No")),
                                 align="center", spacing="3", height="100%",
                             ),
@@ -496,16 +506,12 @@ def blog_post_edit_form() -> rx.Component:
                         rx.vstack(
                             rx.text("Origen", as_="div", size="2", weight="bold"),
                             rx.hstack(
-                                rx.switch(
-                                    name="is_imported",
-                                    is_checked=AppState.edit_is_imported,
-                                    on_change=AppState.set_edit_is_imported,
-                                ),
+                                rx.switch(name="is_imported", is_checked=AppState.edit_is_imported, on_change=AppState.set_edit_is_imported),
                                 rx.text(rx.cond(AppState.edit_is_imported, "Importado", "Nacional")),
                                 align="center", spacing="3", height="100%",
                             ),
                         ),
-                        columns="3", spacing="3", width="100%",
+                        columns="2", spacing="3", width="100%", margin_top="1em" # Añadimos margen superior
                     ),
                     rx.grid(
                         rx.vstack(

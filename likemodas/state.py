@@ -217,6 +217,26 @@ class VariantFormData(rx.Base):
 class UserProfileData(rx.Base):
     username: str = ""; email: str = ""; phone: str = ""; avatar_url: str = ""
 
+# --- PASO 1: AÑADE ESTOS NUEVOS DTOs AL INICIO DEL ARCHIVO ---
+
+class FinanceStatsDTO(rx.Base):
+    """DTO para las estadísticas generales del dashboard financiero."""
+    total_revenue_cop: str = "$0"
+    total_profit_cop: str = "$0"
+    total_shipping_cop: str = "$0"
+    total_sales_count: int = 0
+    average_order_value_cop: str = "$0"
+    profit_margin_percentage: str = "0.00%"
+
+class ProductFinanceDTO(rx.Base):
+    """DTO para la tabla de finanzas por producto."""
+    product_id: int
+    title: str
+    units_sold: int
+    total_revenue_cop: str
+    total_profit_cop: str
+
+
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
@@ -1116,6 +1136,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.error("Debes generar y configurar las variantes para al menos una imagen.")
 
         try:
+            price_float = float(form_data.get("price", 0.0))
+            profit_float = float(self.profit_str) if self.profit_str else None  # <-- LÍNEA NUEVA
             shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
             limit = None
             if self.combines_shipping and self.shipping_combination_limit_str:
@@ -1123,7 +1145,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if self.combines_shipping and (limit is None or limit <= 0):
                 return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
         except ValueError:
-            return rx.toast.error("Los costos y límites deben ser números válidos.")
+            return rx.toast.error("Precio, ganancia y límites deben ser números válidos.") # <-- TEXTO MODIFICADO
 
         all_variants_for_db = []
         for index, generated_list in self.generated_variants_map.items():
@@ -1145,7 +1167,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 userinfo_id=self.authenticated_user_info.id,
                 title=form_data["title"],
                 content=form_data.get("content", ""),
-                price=float(form_data.get("price", 0.0)),
+                price=price_float,
+                profit=profit_float,  # <-- LÍNEA NUEVA
                 price_includes_iva=self.price_includes_iva,
                 category=form_data.get("category"),
                 variants=all_variants_for_db,
@@ -2186,7 +2209,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_post_title = db_post.title
             self.edit_post_content = db_post.content
             self.edit_price_str = str(db_post.price or 0.0)
-            self.edit_category = db_post.category # ANTES: db_post.category.value
+            self.edit_profit_str = str(db_post.profit or "")  # <-- LÍNEA NUEVA
+            self.edit_category = db_post.category
 
             # 2. Cargar opciones de envío y producto
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
@@ -2205,7 +2229,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if not img_url: continue
 
                 try:
-                    # Encontrar el índice de la imagen única para usar como clave del mapa
                     image_group_index = self.edit_post_images_in_form.index(img_url)
                     reconstructed_map[image_group_index].append(
                         VariantFormData(
@@ -2215,7 +2238,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                     )
                 except ValueError:
-                    continue # Ignorar variantes cuya imagen no está en la lista principal
+                    continue
 
             self.edit_variants_map = dict(reconstructed_map)
             
@@ -2224,6 +2247,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield self.select_edit_image_for_editing(0)
 
             self.is_editing_post = True
+
     
     # --- ⚙️ INICIO: LÓGICA FALTANTE PARA GESTIONAR VARIANTES EN EL FORMULARIO DE EDICIÓN ⚙️ ---
 
@@ -2311,10 +2335,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         try:
             price = float(self.edit_price_str or 0.0)
+            profit = float(self.edit_profit_str) if self.edit_profit_str else None  # <-- LÍNEA NUEVA
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
             limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
         except ValueError:
-            return rx.toast.error("Precio, costo de envío y límite deben ser números válidos.")
+            return rx.toast.error("Precio, ganancia, costo de envío y límite deben ser números válidos.") # <-- TEXTO MODIFICADO
 
         all_variants_for_db = []
         for image_group_index, variant_list in self.edit_variants_map.items():
@@ -2325,8 +2350,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "stock": variant_form_data.stock,
                     "image_url": variant_form_data.image_url or main_image_for_group,
                 }
-
-                # Si la variante ya tiene un VUID, lo conservamos. Si no, generamos uno nuevo.
+                
                 existing_uuid = getattr(variant_form_data, 'variant_uuid', None)
                 if existing_uuid:
                     new_variant_dict["variant_uuid"] = existing_uuid
@@ -2344,6 +2368,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_to_update.title = self.edit_post_title
                 post_to_update.content = self.edit_post_content
                 post_to_update.price = price
+                post_to_update.profit = profit  # <-- LÍNEA NUEVA
                 post_to_update.category = self.edit_category
                 post_to_update.price_includes_iva = self.edit_price_includes_iva
                 post_to_update.is_imported = self.edit_is_imported
@@ -2360,9 +2385,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield AppState.on_load_admin_store
                 yield rx.toast.success("Publicación actualizada correctamente.")
 
+
     # --- ⚙️ INICIO: NUEVOS HELPERS Y PROPIEDADES PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
-
-
 
     @rx.var
     def unique_edit_form_images(self) -> list[str]:
@@ -3003,16 +3027,137 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_image(self, filename: str): self.temp_images.remove(filename)
+
+    profit_str: str = ""
+
+    def set_profit_str(self, profit: str):
+        self.profit_str = profit
+
+    edit_profit_str: str = ""
+    def set_edit_profit_str(self, profit: str):
+        self.edit_profit_str = profit
+
+    # --- Variables para el Dashboard de Finanzas ---
+    finance_stats: Optional[FinanceStatsDTO] = None
+    product_finance_data: list[ProductFinanceDTO] = []
+    profit_chart_data: list[dict[str, any]] = []
+    search_product_finance: str = ""
+
+    def set_search_product_finance(self, query: str):
+        self.search_product_finance = query
+
+    @rx.var
+    def filtered_product_finance_data(self) -> list[ProductFinanceDTO]:
+        """Filtra la tabla de finanzas por producto."""
+        if not self.search_product_finance.strip():
+            return self.product_finance_data
+        
+        query = self.search_product_finance.lower()
+        return [
+            p for p in self.product_finance_data 
+            if query in p.title.lower()
+        ]
+
+    # --- PASO 3: AÑADE EL NUEVO EVENT HANDLER on_load_finance_data ---
+
+    @rx.event
+    def on_load_finance_data(self):
+        """Calcula todas las estadísticas financieras para el dashboard."""
+        if not self.is_admin:
+            return rx.redirect("/")
+
+        self.is_loading = True
+        yield
+
+        with rx.session() as session:
+            # Consideramos solo las compras completadas (entregadas o ventas directas)
+            completed_purchases = session.exec(
+                sqlmodel.select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.selectinload(PurchaseModel.items)
+                    .selectinload(PurchaseItemModel.blog_post)
+                )
+                .where(PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]))
+            ).unique().all()
+
+            if not completed_purchases:
+                self.finance_stats = FinanceStatsDTO()
+                self.product_finance_data = []
+                self.profit_chart_data = []
+                self.is_loading = False
+                return
+
+            # Cálculos generales
+            total_revenue = sum(p.total_price for p in completed_purchases)
+            total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
+            total_sales_count = len(completed_purchases)
+            total_profit = 0
+            
+            # Cálculos por producto
+            product_aggregator = defaultdict(lambda: {"units": 0, "revenue": 0.0, "profit": 0.0})
+            
+            # Datos para el gráfico (ganancia por día)
+            daily_profit = defaultdict(float)
+
+            for purchase in completed_purchases:
+                purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
+                
+                for item in purchase.items:
+                    if item.blog_post and item.blog_post.profit is not None:
+                        item_profit = item.blog_post.profit * item.quantity
+                        total_profit += item_profit
+                        daily_profit[purchase_date_str] += item_profit
+
+                        product_aggregator[item.blog_post_id]["units"] += item.quantity
+                        product_aggregator[item.blog_post_id]["revenue"] += item.price_at_purchase * item.quantity
+                        product_aggregator[item.blog_post_id]["profit"] += item_profit
+            
+            # Preparar DTO de estadísticas generales
+            avg_order_value = total_revenue / total_sales_count if total_sales_count > 0 else 0
+            profit_margin = (total_profit / total_revenue) * 100 if total_revenue > 0 else 0
+
+            self.finance_stats = FinanceStatsDTO(
+                total_revenue_cop=format_to_cop(total_revenue),
+                total_profit_cop=format_to_cop(total_profit),
+                total_shipping_cop=format_to_cop(total_shipping_collected),
+                total_sales_count=total_sales_count,
+                average_order_value_cop=format_to_cop(avg_order_value),
+                profit_margin_percentage=f"{profit_margin:.2f}%"
+            )
+
+            # Preparar DTO de finanzas por producto
+            product_ids = list(product_aggregator.keys())
+            product_titles = {p.id: p.title for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()}
+            
+            self.product_finance_data = sorted([
+                ProductFinanceDTO(
+                    product_id=pid,
+                    title=product_titles.get(pid, "Producto Eliminado"),
+                    units_sold=data["units"],
+                    total_revenue_cop=format_to_cop(data["revenue"]),
+                    total_profit_cop=format_to_cop(data["profit"])
+                ) for pid, data in product_aggregator.items()
+            ], key=lambda x: x.total_profit_cop, reverse=True)
+
+            # Preparar datos para el gráfico
+            sorted_dates = sorted(daily_profit.keys())
+            self.profit_chart_data = [
+                {"date": date, "Ganancia": profit} for date, profit in daily_profit.items()
+            ]
+
+        self.is_loading = False
+
     
     def _clear_add_form(self):
         self.title = ""
         self.content = ""
         self.price = ""
+        self.profit_str = ""  # <-- LÍNEA NUEVA: Resetea el campo de ganancia
         self.category = ""
         self.temp_images = []
         self.new_variants = []
         self.selected_variant_index = -1
-        self.attr_colores = "" # Reiniciar a una cadena vacía, no una lista.
+        self.attr_colores = ""
         self.attr_tallas_ropa = []
         self.attr_numeros_calzado = []
         self.attr_tamanos_mochila = []
@@ -3023,10 +3168,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_imported = False
         self.combines_shipping = False
         self.shipping_combination_limit_str = "3"
-        
-        # --- 👇 LÍNEA IMPORTANTE A AÑADIR/VERIFICAR 👇 ---
-        self.variant_form_data = [] # Asegúrate de que esta línea esté aquí
-        self.generated_variants_map = {} # Asegúrate de limpiar el map
+        self.variant_form_data = []
+        self.generated_variants_map = {}
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""

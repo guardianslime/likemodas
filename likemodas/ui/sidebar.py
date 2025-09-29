@@ -42,12 +42,14 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
 def sidebar_items() -> rx.Component:
     """La lista de vínculos del sidebar."""
     return rx.vstack(
-        # La sección de admin sigue igual
         rx.cond(
             AppState.is_admin,
             rx.fragment(
                 rx.vstack(
-                    sidebar_item("Dashboard", "layout-dashboard", "/admin/users"),
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    sidebar_item("Finanzas", "line-chart", "/admin/finance"), # <-- NUEVO
+                    sidebar_item("Gestión de Usuarios", "users", "/admin/users"), # <-- RENOMBRADO
+                    # --- FIN DE LA MODIFICACIÓN ---
                     sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
                     sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
                     sidebar_item("Mi Ubicación de Envío", "map-pin", "/admin/my-location"),
@@ -61,8 +63,6 @@ def sidebar_items() -> rx.Component:
             )
         ),
         sidebar_item("Tienda", "store", "/admin/store"),
-        # --- CORRECCIÓN: SE ELIMINA EL VÍNCULO DE CONTACTO ---
-        # sidebar_item("Contacto", "mail", navigation.routes.CONTACT_US_ROUTE),
         spacing="2", 
         width="100%",
     )

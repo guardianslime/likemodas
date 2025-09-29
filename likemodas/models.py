@@ -208,6 +208,7 @@ class BlogPostModel(rx.Model, table=True):
     title: str
     content: str
     price: float = 0.0
+    profit: Optional[float] = Field(default=None)
     variants: list = Field(default_factory=list, sa_column=Column(JSONB))
     publish_active: bool = False
     publish_date: Optional[datetime] = Field(default=None)

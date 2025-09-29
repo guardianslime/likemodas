@@ -10,6 +10,7 @@ from . import navigation
 from .auth import pages as auth_pages
 from .account import profile_page, shipping_info as shipping_info_module, saved_posts as saved_posts_module
 from .admin import page as admin_page
+from .admin import finance_page # <-- Añade esta importación
 from .admin.profile_page import seller_profile_page
 from .admin.store_page import admin_store_page
 from .admin.tickets_page import admin_tickets_page_content
@@ -50,6 +51,9 @@ app.add_page(base_page(purchases_page.purchase_history_content()), route="/my-pu
 app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
 app.add_page(base_page(saved_posts_module.saved_posts_content()), route="/my-account/saved-posts", title="Publicaciones Guardadas", on_load=AppState.on_load_saved_posts_page)
 app.add_page(base_page(blog_admin_page()), route="/blog", title="Mis Publicaciones")
+# --- AÑADE ESTA LÍNEA ---
+app.add_page(base_page(finance_page.finance_page_content()), route="/admin/finance", on_load=AppState.on_load_finance_data, title="Finanzas")
+# --- FIN DE LA LÍNEA A AÑADIR ---
 app.add_page(base_page(user_management_page()), route="/admin/users", on_load=AppState.load_all_users, title="Gestión de Usuarios")
 app.add_page(base_page(blog_post_add_content()), route=navigation.routes.BLOG_POST_ADD_ROUTE, title="Añadir Producto")
 app.add_page(base_page(seller_profile_page()), route="/admin/my-location", on_load=AppState.on_load_seller_profile, title="Mi Ubicación de Origen")
