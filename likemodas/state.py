@@ -3074,6 +3074,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     async def show_product_detail(self, product_id: int):
         if not self.is_admin:
             yield rx.redirect("/")
+            return
 
         self.is_loading = True
         yield
@@ -3081,11 +3082,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             blog_post = session.get(BlogPostModel, product_id)
             if not blog_post:
-                rx.toast.error("Producto no encontrado.")
+                yield rx.toast.error("Producto no encontrado.")
                 self.is_loading = False
                 return
 
-            # Agrupar las variantes vendidas por UUID para calcular totales
             variant_sales_aggregator = defaultdict(lambda: {"units": 0, "revenue": 0.0, "profit": 0.0, "daily_profit": defaultdict(float)})
 
             completed_purchases = session.exec(
@@ -3096,28 +3096,31 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
                 .where(
                     PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]),
-                    PurchaseItemModel.blog_post_id == product_id # Filtrar por el producto seleccionado
+                    PurchaseItemModel.blog_post_id == product_id
                 )
-                .join(PurchaseItemModel) # Es importante unirse a PurchaseItemModel para el WHERE
+                .join(PurchaseItemModel)
             ).unique().all()
-
 
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 for item in purchase.items:
-                    if item.blog_post_id == product_id and item.variant_uuid:
+                    # --- 👇 CORRECCIÓN CLAVE AQUÍ 👇 ---
+                    # Accedemos al UUID a través del diccionario 'selected_variant'
+                    variant_uuid = item.selected_variant.get("variant_uuid")
+                    
+                    if item.blog_post_id == product_id and variant_uuid:
                         item_profit = (item.blog_post.profit or 0) * item.quantity
-                        variant_sales_aggregator[item.variant_uuid]["units"] += item.quantity
-                        variant_sales_aggregator[item.variant_uuid]["revenue"] += item.price_at_purchase * item.quantity
-                        variant_sales_aggregator[item.variant_uuid]["profit"] += item_profit
-                        variant_sales_aggregator[item.variant_uuid]["daily_profit"][purchase_date_str] += item_profit
+                        variant_sales_aggregator[variant_uuid]["units"] += item.quantity
+                        variant_sales_aggregator[variant_uuid]["revenue"] += item.price_at_purchase * item.quantity
+                        variant_sales_aggregator[variant_uuid]["profit"] += item_profit
+                        variant_sales_aggregator[variant_uuid]["daily_profit"][purchase_date_str] += item_profit
+                    # --- FIN DE LA CORRECCIÓN ---
 
-            # Crear el DTO de detalle del producto
             product_total_units = 0
             product_total_revenue = 0.0
             product_total_profit = 0.0
-
             product_variants_data = []
+
             for variant_db in blog_post.variants:
                 variant_uuid = variant_db.get("variant_uuid")
                 if variant_uuid and variant_uuid in variant_sales_aggregator:
@@ -3127,12 +3130,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     product_total_revenue += sales_data["revenue"]
                     product_total_profit += sales_data["profit"]
 
-                    # Convertir atributos a cadena legible
-                    attributes_str = ", ".join([f"{k}: {v}" for k,v in variant_db.get("attributes", {}).items()])
-
-                    sorted_daily_profit = sorted([
-                        {"date": date, "Ganancia": profit} for date, profit in sales_data["daily_profit"].items()
-                    ], key=lambda x: x['date']) # Ordenar por fecha para el gráfico
+                    attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
+                    sorted_daily_profit = sorted(
+                        [{"date": date, "Ganancia": profit} for date, profit in sales_data["daily_profit"].items()],
+                        key=lambda x: x['date']
+                    )
 
                     product_variants_data.append(VariantDetailFinanceDTO(
                         variant_uuid=variant_uuid,
@@ -3144,12 +3146,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         daily_profit_data=sorted_daily_profit
                     ))
             
-            # Si no hay ventas registradas para ninguna variante, pero el producto existe, podemos mostrarlo con 0 ventas.
             if not product_variants_data and blog_post.variants:
                 for variant_db in blog_post.variants:
-                     attributes_str = ", ".join([f"{k}: {v}" for k,v in variant_db.get("attributes", {}).items()])
-                     product_variants_data.append(VariantDetailFinanceDTO(
-                        variant_uuid=variant_db.get("variant_uuid", str(uuid.uuid4())), # Asegurar UUID
+                    attributes_str = ", ".join([f"{k}: {v}" for k,v in variant_db.get("attributes", {}).items()])
+                    product_variants_data.append(VariantDetailFinanceDTO(
+                        variant_uuid=variant_db.get("variant_uuid", str(uuid.uuid4())),
                         attributes_str=attributes_str,
                         image_url=variant_db.get("image_url"),
                         units_sold=0,
@@ -3157,7 +3158,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         total_profit_cop=format_to_cop(0.0),
                         daily_profit_data=[]
                     ))
-
 
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
@@ -3169,7 +3169,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 variants=product_variants_data
             )
             
-            # Seleccionar la primera variante por defecto si existe
             if product_variants_data:
                 await self.select_variant_for_detail(0)
 
