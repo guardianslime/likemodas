@@ -3070,7 +3070,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
 
         with rx.session() as session:
-            # Consideramos solo las compras completadas (entregadas o ventas directas)
             completed_purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -3087,24 +3086,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.is_loading = False
                 return
 
-            # Cálculos generales
             total_revenue = sum(p.total_price for p in completed_purchases)
             total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
             total_sales_count = len(completed_purchases)
             total_profit = 0
             
-            # Cálculos por producto
             product_aggregator = defaultdict(lambda: {"units": 0, "revenue": 0.0, "profit": 0.0})
-            
-            # Datos para el gráfico (ganancia por día)
             daily_profit = defaultdict(float)
 
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 
                 for item in purchase.items:
-                    if item.blog_post and item.blog_post.profit is not None:
-                        item_profit = item.blog_post.profit * item.quantity
+                    # --- INICIO DE LA CORRECCIÓN CLAVE ---
+                    # Ahora incluimos todos los productos, y si la ganancia es None, la tratamos como 0.
+                    if item.blog_post:
+                        item_profit = (item.blog_post.profit or 0) * item.quantity
+                        # --- FIN DE LA CORRECCIÓN CLAVE ---
+                        
                         total_profit += item_profit
                         daily_profit[purchase_date_str] += item_profit
 
@@ -3112,7 +3111,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         product_aggregator[item.blog_post_id]["revenue"] += item.price_at_purchase * item.quantity
                         product_aggregator[item.blog_post_id]["profit"] += item_profit
             
-            # Preparar DTO de estadísticas generales
             avg_order_value = total_revenue / total_sales_count if total_sales_count > 0 else 0
             profit_margin = (total_profit / total_revenue) * 100 if total_revenue > 0 else 0
 
@@ -3125,7 +3123,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 profit_margin_percentage=f"{profit_margin:.2f}%"
             )
 
-            # Preparar DTO de finanzas por producto
             product_ids = list(product_aggregator.keys())
             product_titles = {p.id: p.title for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()}
             
@@ -3137,9 +3134,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     total_revenue_cop=format_to_cop(data["revenue"]),
                     total_profit_cop=format_to_cop(data["profit"])
                 ) for pid, data in product_aggregator.items()
-            ], key=lambda x: x.total_profit_cop, reverse=True)
+            ], key=lambda x: x.units_sold, reverse=True) # Ordenado por más vendidos
 
-            # Preparar datos para el gráfico
             sorted_dates = sorted(daily_profit.keys())
             self.profit_chart_data = [
                 {"date": date, "Ganancia": profit} for date, profit in daily_profit.items()

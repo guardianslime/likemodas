@@ -1,4 +1,4 @@
-# Archivo: likemodas/admin/finance_page.py (CORREGIDO)
+# Archivo: likemodas/admin/finance_page.py (VERSIÓN MEJORADA)
 
 import reflex as rx
 from ..state import AppState, ProductFinanceDTO
@@ -28,31 +28,29 @@ def stat_card(title: str, value: str, icon: str) -> rx.Component:
     )
 
 def finance_chart() -> rx.Component:
-    """Componente para el gráfico de ganancias."""
-    return rx.box(
-        rx.heading("Tendencia de Ganancias (Últimos 30 Días)", size="5", margin_bottom="1em"),
-        ResponsiveContainer.create(
-            # --- 👇 CORRECCIÓN AQUÍ 👇 ---
-            # Se eliminó el argumento `children=[...]` y los componentes se listan directamente.
-            LineChart.create(
-                CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
-                XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
-                YAxis.create(stroke=rx.color("gray", 9)),
-                tooltip(
-                    content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}
+    """Componente para el gráfico de ganancias, ahora dentro de una tarjeta."""
+    return rx.card(
+        rx.vstack(
+            rx.heading("Tendencia de Ganancias (Últimos 30 Días)", size="5"),
+            ResponsiveContainer.create(
+                LineChart.create(
+                    CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
+                    XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
+                    YAxis.create(stroke=rx.color("gray", 9)),
+                    tooltip(
+                        content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}
+                    ),
+                    Legend.create(),
+                    Line.create(type="monotone", data_key="Ganancia", stroke="var(--violet-9)", stroke_width=2, dot=False),
+                    data=AppState.profit_chart_data,
+                    margin={"top": 10, "right": 30, "left": 0, "bottom": 0},
                 ),
-                Legend.create(),
-                Line.create(type="monotone", data_key="Ganancia", stroke="var(--violet-9)", stroke_width=2),
-                data=AppState.profit_chart_data,
-                margin={"top": 5, "right": 20, "left": -10, "bottom": 5},
+                aspect=3.0, # <-- Mejora la proporción del gráfico
             ),
-            # --- FIN DE LA CORRECCIÓN ---
-            height="300px",
+            align_items="start",
+            spacing="4",
             width="100%",
-        ),
-        padding="1.5em",
-        border="1px solid var(--gray-5)",
-        border_radius="var(--radius-3)",
+        )
     )
 
 def product_finance_table_row(p_data: ProductFinanceDTO) -> rx.Component:
@@ -68,62 +66,74 @@ def product_finance_table_row(p_data: ProductFinanceDTO) -> rx.Component:
 @require_admin
 def finance_page_content() -> rx.Component:
     """Página del dashboard financiero."""
-    return rx.vstack(
-        rx.heading("Dashboard Financiero", size="8"),
-        rx.cond(
-            AppState.is_loading,
-            rx.center(rx.spinner(size="3"), height="70vh"),
-            rx.vstack(
-                # Tarjetas de estadísticas
-                rx.grid(
-                    stat_card("Ingresos Totales", AppState.finance_stats.total_revenue_cop, "trending-up"),
-                    stat_card("Ganancia Neta", AppState.finance_stats.total_profit_cop, "piggy-bank"),
-                    stat_card("Total Ventas", AppState.finance_stats.total_sales_count.to_string(), "package"),
-                    stat_card("Margen de Ganancia", AppState.finance_stats.profit_margin_percentage, "percent"),
-                    stat_card("Envío Recaudado", AppState.finance_stats.total_shipping_cop, "truck"),
-                    stat_card("Ticket Promedio", AppState.finance_stats.average_order_value_cop, "receipt"),
-                    columns={"initial": "1", "sm": "2", "lg": "3"},
-                    spacing="4",
-                    width="100%",
-                ),
-                
-                # Gráfico
-                finance_chart(),
-
-                # Tabla de productos
+    # --- CORRECCIÓN DE CENTRADO ---
+    # Envolvemos todo en un rx.center para centrar el contenido vertical y horizontalmente.
+    return rx.center(
+        rx.vstack(
+            rx.heading("Dashboard Financiero", size="8"),
+            rx.cond(
+                AppState.is_loading,
+                rx.center(rx.spinner(size="3"), height="70vh"),
                 rx.vstack(
-                    rx.heading("Rendimiento por Producto", size="5"),
-                    rx.input(
-                        placeholder="Buscar producto por nombre...",
-                        value=AppState.search_product_finance,
-                        on_change=AppState.set_search_product_finance,
+                    rx.grid(
+                        stat_card("Ingresos Totales", AppState.finance_stats.total_revenue_cop, "trending-up"),
+                        stat_card("Ganancia Neta", AppState.finance_stats.total_profit_cop, "piggy-bank"),
+                        stat_card("Total Ventas", AppState.finance_stats.total_sales_count.to_string(), "package"),
+                        stat_card("Margen de Ganancia", AppState.finance_stats.profit_margin_percentage, "percent"),
+                        stat_card("Envío Recaudado", AppState.finance_stats.total_shipping_cop, "truck"),
+                        stat_card("Ticket Promedio", AppState.finance_stats.average_order_value_cop, "receipt"),
+                        columns={"initial": "1", "sm": "2", "lg": "3"},
+                        spacing="4",
                         width="100%",
-                        max_width="400px",
                     ),
-                    rx.table.root(
-                        rx.table.header(
-                            rx.table.row(
-                                rx.table.column_header_cell("Producto"),
-                                rx.table.column_header_cell("Unidades Vendidas", text_align="center"),
-                                rx.table.column_header_cell("Ingresos", text_align="right"),
-                                rx.table.column_header_cell("Ganancia", text_align="right"),
-                            )
-                        ),
-                        rx.table.body(
-                            rx.foreach(AppState.filtered_product_finance_data, product_finance_table_row)
-                        ),
-                        variant="surface",
+                    
+                    finance_chart(),
+
+                    # --- MEJORA VISUAL: TABLA DENTRO DE UNA TARJETA ---
+                    rx.card(
+                        rx.vstack(
+                            rx.heading("Rendimiento por Producto", size="5"),
+                            rx.input(
+                                placeholder="Buscar producto por nombre...",
+                                value=AppState.search_product_finance,
+                                on_change=AppState.set_search_product_finance,
+                                width="100%",
+                                max_width="400px",
+                            ),
+                            rx.table.root(
+                                rx.table.header(
+                                    rx.table.row(
+                                        rx.table.column_header_cell("Producto"),
+                                        rx.table.column_header_cell("Unidades Vendidas", text_align="center"),
+                                        rx.table.column_header_cell("Ingresos", text_align="right"),
+                                        rx.table.column_header_cell("Ganancia", text_align="right"),
+                                    )
+                                ),
+                                rx.table.body(
+                                    rx.foreach(AppState.filtered_product_finance_data, product_finance_table_row)
+                                ),
+                                variant="surface",
+                            ),
+                            # Mensaje por si no hay productos
+                            rx.cond(
+                                ~AppState.filtered_product_finance_data,
+                                rx.callout("No se encontraron datos de productos para mostrar.", icon="info", margin_top="1em")
+                            ),
+                            align_items="stretch",
+                            spacing="4",
+                            width="100%",
+                        )
                     ),
-                    align_items="start",
-                    spacing="4",
+                    spacing="6",
                     width="100%",
-                ),
-                spacing="6",
-                width="100%",
-            )
+                )
+            ),
+            padding_x="2em",
+            padding_bottom="2em",
+            width="100%",
+            max_width="1400px",
+            align="center",
+            spacing="5",
         ),
-        padding="2em",
-        width="100%",
-        max_width="1400px",
-        align="center",
+        min_height="85vh"
     )
