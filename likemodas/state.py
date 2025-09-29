@@ -3204,16 +3204,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.product_detail_chart_data = []
 
     @rx.event
-    async def on_load_finance_data(self):
+    def on_load_finance_data(self):
         """Calcula todas las estadísticas financieras para el dashboard."""
         if not self.is_admin:
-            return rx.redirect("/")
+            # --- 👇 CORRECCIÓN AQUÍ 👇 ---
+            # Cambiamos 'return' por 'yield' para ejecutar la acción de redirección.
+            yield rx.redirect("/")
+            return # Usamos un return vacío para detener la ejecución de la función aquí.
+            # --- FIN DE LA CORRECCIÓN ---
 
         self.is_loading = True
         yield
 
         with rx.session() as session:
-            # Obtener todas las compras completadas con sus ítems y productos.
             completed_purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -3230,35 +3233,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.is_loading = False
                 return
 
-            total_revenue = 0.0
-            total_profit = 0.0
-            total_shipping_collected = 0.0
+            total_revenue = sum(p.total_price for p in completed_purchases)
+            total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
             total_sales_count = len(completed_purchases)
+            total_profit = 0
             
             product_aggregator = defaultdict(lambda: {"title": "", "units": 0, "revenue": 0.0, "profit": 0.0})
             daily_profit = defaultdict(float)
 
             for purchase in completed_purchases:
-                total_shipping_collected += (purchase.shipping_applied or 0.0)
-                total_revenue += purchase.total_price # Revenue es el precio total de la compra
-
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 
                 for item in purchase.items:
                     if item.blog_post:
-                        # Si la ganancia es None, se asume 0.
                         item_profit = (item.blog_post.profit or 0.0) * item.quantity
                         
                         total_profit += item_profit
                         daily_profit[purchase_date_str] += item_profit
 
-                        # Agregación por producto
                         product_aggregator[item.blog_post_id]["title"] = item.blog_post.title
                         product_aggregator[item.blog_post_id]["units"] += item.quantity
                         product_aggregator[item.blog_post_id]["revenue"] += item.price_at_purchase * item.quantity
                         product_aggregator[item.blog_post_id]["profit"] += item_profit
             
-            # Preparar DTO de estadísticas generales
             avg_order_value = total_revenue / total_sales_count if total_sales_count > 0 else 0
             profit_margin = (total_profit / total_revenue) * 100 if total_revenue > 0 else 0
 
@@ -3271,7 +3268,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 profit_margin_percentage=f"{profit_margin:.2f}%"
             )
 
-            # Preparar DTO de finanzas por producto
+            product_ids = list(product_aggregator.keys())
+            product_titles = {p.id: p.title for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()}
+            
             self.product_finance_data = sorted([
                 ProductFinanceDTO(
                     product_id=pid,
@@ -3282,8 +3281,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ) for pid, data in product_aggregator.items()
             ], key=lambda x: x.units_sold, reverse=True)
 
-            # Preparar datos para el gráfico de ganancia diaria general
-            # Asegurarse de que los datos estén ordenados por fecha
             sorted_daily_profit_keys = sorted(daily_profit.keys())
             self.profit_chart_data = [
                 {"date": date, "Ganancia": daily_profit[date]} for date in sorted_daily_profit_keys
