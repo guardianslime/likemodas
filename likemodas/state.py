@@ -3073,7 +3073,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def show_product_detail(self, product_id: int):
         if not self.is_admin:
-            return rx.redirect("/")
+            yield rx.redirect("/")
 
         self.is_loading = True
         yield
