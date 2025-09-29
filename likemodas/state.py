@@ -3194,7 +3194,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
 
     @rx.event
-    def close_product_detail_modal(self): # <--- Se eliminó el argumento 'open_state'
+    def close_product_detail_modal(self):
         """Cierra el modal de detalle del producto y resetea su estado."""
         self.show_product_detail_modal = False
         self.selected_product_detail = None
@@ -5562,7 +5562,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     
     @rx.event
-    def close_product_detail_modal(self, open_state: bool):
+    def close_product_detail_modal(self): # <--- No espera argumentos
         if not open_state:
             self.show_detail_modal = False
             self.product_in_modal = None
