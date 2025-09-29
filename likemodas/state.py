@@ -226,7 +226,8 @@ class ProductDetailFinanceDTO(rx.Base):
     total_units_sold: int
     total_revenue_cop: str
     total_profit_cop: str
-    variants: List[Dict[str, Any]] = [] # Contendrá las variantes del producto para mostrar
+    # --- 👇 LA ÚNICA LÍNEA QUE CAMBIA ES LA SIGUIENTE 👇 ---
+    variants: List[VariantDetailFinanceDTO] = [] # <--- LÍNEA CORREGIDA# Contendrá las variantes del producto para mostrar
 
 class VariantDetailFinanceDTO(rx.Base):
     """DTO para el detalle financiero de una variante específica."""
