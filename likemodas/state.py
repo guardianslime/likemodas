@@ -217,21 +217,7 @@ class VariantFormData(rx.Base):
 class UserProfileData(rx.Base):
     username: str = ""; email: str = ""; phone: str = ""; avatar_url: str = ""
 
-# --- DTOs adicionales para finanzas detalladas ---
-class ProductDetailFinanceDTO(rx.Base):
-    """DTO para el detalle financiero de un producto específico."""
-    product_id: int
-    title: str
-    image_url: Optional[str] = None
-    total_units_sold: int
-    total_revenue_cop: str
-    total_profit_cop: str
-    variants: List[VariantDetailFinanceDTO] = []
 
-# --- 👇 INICIO DE LA CORRECCIÓN CLAVE 👇 ---
-# Esta línea le dice a Pydantic que resuelva las referencias de tipos pendientes
-# entre las clases que acabamos de definir.
-ProductDetailFinanceDTO.update_forward_refs(VariantDetailFinanceDTO=VariantDetailFinanceDTO)
 # --- FIN DE LA CORRECCIÓN CLAVE ---
 
 class VariantDetailFinanceDTO(rx.Base):
@@ -248,6 +234,20 @@ class VariantDetailFinanceDTO(rx.Base):
 # Formatea a COP
 def format_to_cop(value: float) -> str:
     return f"${int(value):,}".replace(",", ".") # Formato colombiano
+
+# 2. Ahora definimos la clase que la utiliza.
+class ProductDetailFinanceDTO(rx.Base):
+    """DTO para el detalle financiero de un producto específico."""
+    product_id: int
+    title: str
+    image_url: Optional[str] = None
+    total_units_sold: int
+    total_revenue_cop: str
+    total_profit_cop: str
+    variants: List[VariantDetailFinanceDTO] = []
+
+# 3. Finalmente, llamamos a update_forward_refs. Ahora sí encontrará el nombre.
+ProductDetailFinanceDTO.update_forward_refs()
 
 # --- PASO 1: AÑADE ESTOS NUEVOS DTOs AL INICIO DEL ARCHIVO ---
 
