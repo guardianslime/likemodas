@@ -3196,7 +3196,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def close_product_detail_modal(self):
         """Cierra el modal de detalle del producto y resetea su estado."""
-        self.show_product_detail_modal = False
+        self.show_detail_modal = False
+        self.product_in_modal = None
+        # Añadimos también el reseteo de las otras variables para asegurar la limpieza completa
         self.selected_product_detail = None
         self.selected_variant_detail = None
         self.selected_variant_index = -1
@@ -5560,13 +5562,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         yield AppState.load_saved_post_ids
 
-    
-    @rx.event
-    def close_product_detail_modal(self): # <--- No espera argumentos
-        if not open_state:
-            self.show_detail_modal = False
-            self.product_in_modal = None
-    
     @rx.var
     def base_app_url(self) -> str:
         return get_config().deploy_url
