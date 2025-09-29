@@ -226,18 +226,24 @@ class ProductDetailFinanceDTO(rx.Base):
     total_units_sold: int
     total_revenue_cop: str
     total_profit_cop: str
-    # --- 👇 LA ÚNICA LÍNEA QUE CAMBIA ES LA SIGUIENTE 👇 ---
-    variants: List[VariantDetailFinanceDTO] = [] # <--- LÍNEA CORREGIDA# Contendrá las variantes del producto para mostrar
+    variants: List[VariantDetailFinanceDTO] = []
+
+# --- 👇 INICIO DE LA CORRECCIÓN CLAVE 👇 ---
+# Esta línea le dice a Pydantic que resuelva las referencias de tipos pendientes
+# entre las clases que acabamos de definir.
+ProductDetailFinanceDTO.update_forward_refs(VariantDetailFinanceDTO=VariantDetailFinanceDTO)
+# --- FIN DE LA CORRECCIÓN CLAVE ---
 
 class VariantDetailFinanceDTO(rx.Base):
     """DTO para el detalle financiero de una variante específica."""
     variant_uuid: str
-    attributes_str: str # Ej: "Color: Rojo, Talla: M"
+    attributes_str: str
     image_url: Optional[str] = None
     units_sold: int
     total_revenue_cop: str
     total_profit_cop: str
-    daily_profit_data: List[Dict[str, Any]] = [] # Datos para el gráfico de la variante
+    daily_profit_data: List[Dict[str, Any]] = []
+ # Datos para el gráfico de la variante
 
 # Formatea a COP
 def format_to_cop(value: float) -> str:
