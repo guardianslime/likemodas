@@ -3,7 +3,6 @@
 import reflex as rx
 from ..state import AppState, ProductFinanceDTO
 from ..auth.admin_auth import require_admin
-# --- 👇 CORRECCIÓN AQUÍ 👇 ---
 from reflex.components.recharts import LineChart, Line, XAxis, YAxis, CartesianGrid, tooltip, Legend, ResponsiveContainer
 
 def stat_card(title: str, value: str, icon: str) -> rx.Component:
@@ -40,8 +39,8 @@ def finance_chart() -> rx.Component:
                     CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
                     XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
                     YAxis.create(stroke=rx.color("gray", 9)),
-                    # --- 👇 Y CORRECCIÓN AQUÍ 👇 ---
-                    tooltip.create(
+                    # --- 👇 CORRECCIÓN FINAL AQUÍ 👇 ---
+                    tooltip(
                         content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}
                     ),
                     Legend.create(),
