@@ -222,7 +222,7 @@ class UserProfileData(rx.Base):
 
 class VariantDetailFinanceDTO(rx.Base):
     """DTO para el detalle financiero de una variante específica."""
-    variant_uuid: str
+    variant_key: str # Usaremos una clave única (UUID o de atributos)
     attributes_str: str
     image_url: Optional[str] = None
     units_sold: int
@@ -246,7 +246,6 @@ class ProductDetailFinanceDTO(rx.Base):
     total_profit_cop: str
     variants: List[VariantDetailFinanceDTO] = []
 
-# 3. Finalmente, llamamos a update_forward_refs. Ahora sí encontrará el nombre.
 ProductDetailFinanceDTO.update_forward_refs()
 
 # --- PASO 1: AÑADE ESTOS NUEVOS DTOs AL INICIO DEL ARCHIVO ---
@@ -3075,10 +3074,32 @@ class AppState(reflex_local_auth.LocalAuthState):
             p for p in self.product_finance_data 
             if query in p.title.lower()
         ]
+    
+    def _get_variant_key(self, variant_dict: dict) -> str:
+        """
+        Crea una clave única y estable para una variante.
+        Usa el UUID si existe; de lo contrario, usa los atributos.
+        """
+        if variant_uuid := variant_dict.get("variant_uuid"):
+            return variant_uuid
+        
+        attrs = variant_dict.get("attributes", {})
+        if not attrs:
+            # Si no hay atributos, usamos la URL de la imagen como último recurso
+            return variant_dict.get("image_url", str(uuid.uuid4()))
+            
+        # Ordenamos las claves para asegurar que la clave sea siempre la misma
+        sorted_attrs = sorted(attrs.items())
+        return "-".join([f"{k}:{v}" for k, v in sorted_attrs])
+
 
     # --- Función para mostrar el detalle de un producto ---
     @rx.event
     async def show_product_detail(self, product_id: int):
+        """
+        [VERSIÓN 2.0] Muestra el detalle financiero de un producto,
+        compatible con variantes antiguas (sin UUID) y nuevas.
+        """
         if not self.is_admin:
             yield rx.redirect("/")
             return
@@ -3097,58 +3118,51 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             completed_purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
-                .options(
-                    sqlalchemy.orm.selectinload(PurchaseModel.items)
-                    .selectinload(PurchaseItemModel.blog_post)
-                )
+                .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
                 .where(
                     PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]),
                     PurchaseItemModel.blog_post_id == product_id
-                )
-                .join(PurchaseItemModel)
+                ).join(PurchaseItemModel)
             ).unique().all()
 
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 for item in purchase.items:
-                    variant_uuid = item.selected_variant.get("variant_uuid")
-                    
-                    if item.blog_post_id == product_id and variant_uuid:
+                    if item.blog_post_id == product_id:
+                        variant_key = self._get_variant_key(item.selected_variant)
                         item_profit = (item.blog_post.profit or 0) * item.quantity
-                        variant_sales_aggregator[variant_uuid]["units"] += item.quantity
-                        variant_sales_aggregator[variant_uuid]["revenue"] += item.price_at_purchase * item.quantity
-                        variant_sales_aggregator[variant_uuid]["profit"] += item_profit
-                        variant_sales_aggregator[variant_uuid]["daily_profit"][purchase_date_str] += item_profit
+                        
+                        variant_sales_aggregator[variant_key]["units"] += item.quantity
+                        variant_sales_aggregator[variant_key]["revenue"] += item.price_at_purchase * item.quantity
+                        variant_sales_aggregator[variant_key]["profit"] += item_profit
+                        variant_sales_aggregator[variant_key]["daily_profit"][purchase_date_str] += item_profit
 
-            product_total_units = 0
-            product_total_revenue = 0.0
-            product_total_profit = 0.0
+            product_total_units, product_total_revenue, product_total_profit = 0, 0.0, 0.0
             product_variants_data = []
 
             for variant_db in blog_post.variants:
-                variant_uuid = variant_db.get("variant_uuid")
-                if variant_uuid: # Modificado para incluir todas las variantes, tengan ventas o no
-                    sales_data = variant_sales_aggregator.get(variant_uuid, {"units": 0, "revenue": 0.0, "profit": 0.0, "daily_profit": {}})
-                    
-                    product_total_units += sales_data["units"]
-                    product_total_revenue += sales_data["revenue"]
-                    product_total_profit += sales_data["profit"]
+                variant_key = self._get_variant_key(variant_db)
+                sales_data = variant_sales_aggregator.get(variant_key, {"units": 0, "revenue": 0.0, "profit": 0.0, "daily_profit": {}})
+                
+                product_total_units += sales_data["units"]
+                product_total_revenue += sales_data["revenue"]
+                product_total_profit += sales_data["profit"]
 
-                    attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
-                    sorted_daily_profit = sorted(
-                        [{"date": date, "Ganancia": profit} for date, profit in sales_data["daily_profit"].items()],
-                        key=lambda x: x['date']
-                    )
+                attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
+                sorted_daily_profit = sorted(
+                    [{"date": date, "Ganancia": profit} for date, profit in sales_data["daily_profit"].items()],
+                    key=lambda x: x['date']
+                )
 
-                    product_variants_data.append(VariantDetailFinanceDTO(
-                        variant_uuid=variant_uuid,
-                        attributes_str=attributes_str,
-                        image_url=variant_db.get("image_url"),
-                        units_sold=sales_data["units"],
-                        total_revenue_cop=format_to_cop(sales_data["revenue"]),
-                        total_profit_cop=format_to_cop(sales_data["profit"]),
-                        daily_profit_data=sorted_daily_profit
-                    ))
+                product_variants_data.append(VariantDetailFinanceDTO(
+                    variant_key=variant_key,
+                    attributes_str=attributes_str,
+                    image_url=variant_db.get("image_url"),
+                    units_sold=sales_data["units"],
+                    total_revenue_cop=format_to_cop(sales_data["revenue"]),
+                    total_profit_cop=format_to_cop(sales_data["profit"]),
+                    daily_profit_data=sorted_daily_profit
+                ))
 
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
@@ -3161,7 +3175,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             
             if product_variants_data:
-                # --- 👇 CORRECCIÓN AQUÍ 👇 ---
                 self.select_variant_for_detail(0)
 
             self.show_product_detail_modal = True
@@ -3170,7 +3183,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- Función para seleccionar una variante específica en el detalle del producto ---
     @rx.event
     def select_variant_for_detail(self, index: int):
-        if self.selected_product_detail and index < len(self.selected_product_detail.variants):
+        if self.selected_product_detail and 0 <= index < len(self.selected_product_detail.variants):
             self.selected_variant_index = index
             self.selected_variant_detail = self.selected_product_detail.variants[index]
             self.product_detail_chart_data = self.selected_variant_detail.daily_profit_data
