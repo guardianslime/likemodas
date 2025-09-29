@@ -1,4 +1,4 @@
-# Archivo: likemodas/admin/finance_page.py (VERSIÓN MEJORADA)
+# Archivo: likemodas/admin/finance_page.py (CORREGIDO)
 
 import reflex as rx
 from ..state import AppState, ProductFinanceDTO
@@ -45,7 +45,8 @@ def finance_chart() -> rx.Component:
                     data=AppState.profit_chart_data,
                     margin={"top": 10, "right": 30, "left": 0, "bottom": 0},
                 ),
-                aspect=3.0, # <-- Mejora la proporción del gráfico
+                # --- 👇 CORRECCIÓN AQUÍ 👇 ---
+                aspect=3, # Se cambió de 3.0 a 3 (entero)
             ),
             align_items="start",
             spacing="4",
@@ -66,8 +67,6 @@ def product_finance_table_row(p_data: ProductFinanceDTO) -> rx.Component:
 @require_admin
 def finance_page_content() -> rx.Component:
     """Página del dashboard financiero."""
-    # --- CORRECCIÓN DE CENTRADO ---
-    # Envolvemos todo en un rx.center para centrar el contenido vertical y horizontalmente.
     return rx.center(
         rx.vstack(
             rx.heading("Dashboard Financiero", size="8"),
@@ -89,7 +88,6 @@ def finance_page_content() -> rx.Component:
                     
                     finance_chart(),
 
-                    # --- MEJORA VISUAL: TABLA DENTRO DE UNA TARJETA ---
                     rx.card(
                         rx.vstack(
                             rx.heading("Rendimiento por Producto", size="5"),
@@ -114,7 +112,6 @@ def finance_page_content() -> rx.Component:
                                 ),
                                 variant="surface",
                             ),
-                            # Mensaje por si no hay productos
                             rx.cond(
                                 ~AppState.filtered_product_finance_data,
                                 rx.callout("No se encontraron datos de productos para mostrar.", icon="info", margin_top="1em")
