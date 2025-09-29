@@ -32,21 +32,21 @@ def finance_chart() -> rx.Component:
     return rx.box(
         rx.heading("Tendencia de Ganancias (Últimos 30 Días)", size="5", margin_bottom="1em"),
         ResponsiveContainer.create(
+            # --- 👇 CORRECCIÓN AQUÍ 👇 ---
+            # Se eliminó el argumento `children=[...]` y los componentes se listan directamente.
             LineChart.create(
+                CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
+                XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
+                YAxis.create(stroke=rx.color("gray", 9)),
+                tooltip(
+                    content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}
+                ),
+                Legend.create(),
+                Line.create(type="monotone", data_key="Ganancia", stroke="var(--violet-9)", stroke_width=2),
                 data=AppState.profit_chart_data,
                 margin={"top": 5, "right": 20, "left": -10, "bottom": 5},
-                children=[
-                    CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
-                    XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
-                    YAxis.create(stroke=rx.color("gray", 9)),
-                    # --- 👇 CORRECCIÓN FINAL AQUÍ 👇 ---
-                    tooltip(
-                        content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}
-                    ),
-                    Legend.create(),
-                    Line.create(type="monotone", data_key="Ganancia", stroke="var(--violet-9)", stroke_width=2),
-                ]
             ),
+            # --- FIN DE LA CORRECCIÓN ---
             height="300px",
             width="100%",
         ),
