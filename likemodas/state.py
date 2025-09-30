@@ -3320,7 +3320,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         (últimos 30 días) y llama a la función de cálculo.
         """
         if not self.is_admin:
-            return rx.redirect("/")
+            # --- ✅ CORRECCIÓN CLAVE AQUÍ ✅ ---
+            # Se cambia 'return' por 'yield' para que sea compatible con la función asíncrona.
+            yield rx.redirect("/")
+            return
         
         # Establecer fechas por defecto
         today = datetime.now(timezone.utc)
@@ -3328,7 +3331,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.finance_end_date = today.strftime('%Y-%m-%d')
         self.finance_start_date = thirty_days_ago.strftime('%Y-%m-%d')
         
-        # Ahora 'yield from' funcionará porque ambas funciones son 'async'
+        # Llamar al cálculo
         yield from self._calculate_finance_data()
 
     @rx.event
