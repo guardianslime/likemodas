@@ -3172,10 +3172,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 for item in purchase.items:
                     if item.blog_post_id == product_id and item.blog_post:
-                        # ✨ CORRECCIÓN CLAVE: Usa la nueva función de clave consistente
+                        # 1. Usamos una clave consistente para identificar la variante
                         variant_key = self._get_variant_key(item.selected_variant)
                         
-                        # ✨ CORRECCIÓN CLAVE: Lógica de cálculo de costos y ganancias
+                        # 2. Aplicamos la misma lógica de cálculo corregida
                         item_revenue = item.price_at_purchase * item.quantity
                         
                         price = item.blog_post.price or 0.0
@@ -3185,6 +3185,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         item_cogs = cost_of_good * item.quantity
                         item_net_profit = profit * item.quantity
                         
+                        # 3. Agregamos los datos al diccionario de la variante correcta
                         aggregator = variant_sales_aggregator[variant_key]
                         aggregator["units"] += item.quantity
                         aggregator["revenue"] += item_revenue
@@ -3200,7 +3201,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             product_variants_data = []
             if blog_post.variants:
                 for variant_db in blog_post.variants:
-                    # ✨ CORRECCIÓN CLAVE: Usa la nueva función de clave consistente
+                    # 4. Usamos la misma clave consistente para buscar los datos agregados
                     variant_key = self._get_variant_key(variant_db)
                     sales_data = variant_sales_aggregator.get(variant_key, {})
                     attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
@@ -3329,15 +3330,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 for item in purchase.items:
                     if item.blog_post:
-                        # ✨ CORRECCIÓN CLAVE: Lógica de cálculo de costos y ganancias
+                        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
                         item_revenue = item.price_at_purchase * item.quantity
                         
                         price = item.blog_post.price or 0.0
                         profit = item.blog_post.profit or 0.0
+                        
+                        # 1. Calculamos el costo real del producto
                         cost_of_good = price - profit
                         
+                        # 2. Calculamos el costo total y la ganancia neta para este item
                         item_cogs = cost_of_good * item.quantity
                         item_net_profit = profit * item.quantity
+                        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
                         total_revenue += item_revenue
                         total_cogs += item_cogs
@@ -3348,6 +3353,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         product_aggregator[item.blog_post_id]["title"] = item.blog_post.title
                         product_aggregator[item.blog_post_id]["units"] += item.quantity
                         product_aggregator[item.blog_post_id]["revenue"] += item_revenue
+                        
+                        # 3. Agregamos los nuevos valores al agregador del producto
                         product_aggregator[item.blog_post_id]["net_profit"] += item_net_profit
                         product_aggregator[item.blog_post_id]["cogs"] += item_cogs
             
