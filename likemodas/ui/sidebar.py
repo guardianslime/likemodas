@@ -73,14 +73,10 @@ def sliding_admin_sidebar() -> rx.Component:
             margin_bottom={"initial": "0.5em", "lg": "1em"},
         ),
         
-        # --- ✅ 1. SE AÑADE flex_grow="1" PARA QUE ESTA ÁREA SE EXpanda ✅ ---
-        # Esto empuja la sección de logout hacia abajo de forma natural y elimina el gran espacio.
         rx.scroll_area(
             sidebar_items(),
             flex_grow="1", 
         ),
-        
-        # --- ✅ 2. SE ELIMINA EL rx.spacer() QUE CAUSABA EL HUECO GRANDE ✅ ---
         
         rx.vstack(
             rx.divider(),
@@ -112,10 +108,11 @@ def sliding_admin_sidebar() -> rx.Component:
             spacing={"initial": "2", "lg": "3"},
         ),
         spacing={"initial": "2", "lg": "4"},
-
-        # --- ✅ 3. AJUSTE FINAL DEL PADDING PARA CENTRAR EL LOGO ✅ ---
         padding_x="1em",
-        padding_y={"initial": "2em", "lg": "1.5em"},
+        
+        # --- ✅ AJUSTE FINAL Y ÚNICO AQUÍ ✅ ---
+        # Aumentamos el padding vertical en PC (lg) de 1.5em a 2.5em. El de móvil no se toca.
+        padding_y={"initial": "1.5em", "lg": "2.5em"},
         
         bg=rx.color("gray", 2),
         align="start", 
@@ -123,7 +120,7 @@ def sliding_admin_sidebar() -> rx.Component:
         width=SIDEBAR_WIDTH,
     )
 
-    # El resto del código se mantiene igual
+    # El resto del código no cambia
     return rx.box(
         rx.hstack(
             sidebar_panel,
