@@ -4,7 +4,6 @@ from ..auth.admin_auth import require_admin
 from reflex.components.recharts import LineChart, Line, XAxis, YAxis, CartesianGrid, tooltip, Legend, ResponsiveContainer
 
 def stat_card(title: str, value: str, icon: str) -> rx.Component:
-    """Muestra una tarjeta de estadística en el dashboard."""
     return rx.card(
         rx.hstack(
             rx.box(rx.icon(icon, size=32), padding="0.75em", bg=rx.color("violet", 3), border_radius="50%"),
@@ -19,7 +18,7 @@ def stat_card(title: str, value: str, icon: str) -> rx.Component:
     )
 
 def general_finance_chart() -> rx.Component:
-    """Componente para el gráfico de ganancias generales."""
+    """Componente para el gráfico de ganancias generales, ahora con renderizado robusto."""
     return rx.card(
         rx.vstack(
             rx.heading("Tendencia de Ganancias Generales (Últimos Días)", size="5", margin_bottom="1em"),
@@ -41,14 +40,13 @@ def general_finance_chart() -> rx.Component:
                     height="300px",
                     width="100%",
                 ),
-                rx.center(rx.text("No hay suficientes datos para mostrar una tendencia.", color_scheme="gray"), height="300px")
+                rx.center(rx.text("No hay suficientes datos de ganancias para mostrar una tendencia.", color_scheme="gray"), height="300px")
             ),
             align_items="start", spacing="4", width="100%"
         )
     )
 
 def product_finance_table_row(p_data: ProductFinanceDTO) -> rx.Component:
-    """Define una fila en la tabla de rendimiento por producto."""
     return rx.table.row(
         rx.table.cell(p_data.title),
         rx.table.cell(p_data.units_sold, text_align="center"),
@@ -80,7 +78,7 @@ def variant_detail_view() -> rx.Component:
                         rx.hstack(
                             rx.vstack(
                                 rx.text("Unidades Vendidas", size="2"),
-                                # ✨ CORRECCIÓN CRÍTICA: Se eliminó .to_string()
+                                # ✨ CORRECCIÓN DE BUG EN TIEMPO DE EJECUCIÓN ✨
                                 rx.heading(AppState.selected_variant_detail.units_sold, size="4"),
                                 align_items="start", spacing="0"
                             ),
@@ -106,19 +104,29 @@ def variant_detail_view() -> rx.Component:
                     spacing="5", align="center", width="100%"
                 ),
             ),
-             rx.box(
-                ResponsiveContainer.create(
-                    LineChart.create(
-                        CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
-                        XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
-                        YAxis.create(stroke=rx.color("gray", 9)),
-                        tooltip(content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}),
-                        Line.create(type="monotone", data_key="Ganancia", stroke="var(--teal-9)", stroke_width=2, dot=False),
-                        data=AppState.product_detail_chart_data,
-                        margin={"top": 10, "right": 20, "left": 0, "bottom": 0},
+            rx.card(
+                rx.vstack(
+                    rx.heading("Tendencia de Ganancia de la Variante", size="4"),
+                    rx.cond(
+                        AppState.product_detail_chart_data,
+                        rx.box(
+                            ResponsiveContainer.create(
+                                LineChart.create(
+                                    CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
+                                    XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
+                                    YAxis.create(stroke=rx.color("gray", 9)),
+                                    tooltip(content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}),
+                                    Line.create(type="monotone", data_key="Ganancia", stroke="var(--teal-9)", stroke_width=2, dot=False),
+                                    data=AppState.product_detail_chart_data,
+                                    margin={"top": 10, "right": 20, "left": 0, "bottom": 0},
+                                ),
+                            ),
+                            height="250px", width="100%"
+                        ),
+                        rx.center(rx.text("No hay datos de ganancias para esta variante."), height="250px")
                     ),
+                    align_items="start", width="100%"
                 ),
-                height="250px", width="100%"
             ),
             spacing="4", width="100%"
         ),
@@ -129,16 +137,33 @@ def product_detail_modal() -> rx.Component:
     """Modal rediseñado con pestañas para el detalle financiero."""
     return rx.dialog.root(
         open=AppState.show_product_detail_modal,
-        on_open_change=AppState.set_show_product_detail_modal, # Usa el setter para cerrar
+        on_open_change=AppState.set_show_product_detail_modal,
         rx.dialog.content(
             rx.cond(
                 AppState.selected_product_detail,
                 rx.vstack(
-                    rx.dialog.title(f"Análisis de: {AppState.selected_product_detail.title}"),
+                    rx.dialog.title(AppState.selected_product_detail.title),
                     rx.dialog.description("Análisis detallado de ventas por variante."),
                     rx.tabs.root(
                         rx.tabs.list(
+                            rx.tabs.trigger("Resumen General", value="summary"),
                             rx.tabs.trigger("Análisis por Variante", value="variants"),
+                        ),
+                        rx.tabs.content(
+                            rx.vstack(
+                                rx.grid(
+                                    # ✨ CORRECCIÓN DE BUG EN TIEMPO DE EJECUCIÓN ✨
+                                    stat_card("Unidades Totales Vendidas", AppState.selected_product_detail.total_units_sold, "package-check"),
+                                    stat_card("Ingresos Totales", AppState.selected_product_detail.total_revenue_cop, "trending-up"),
+                                    stat_card("Ganancia Total", AppState.selected_product_detail.total_profit_cop, "piggy-bank"),
+                                    columns={"initial": "1", "sm": "3"},
+                                    spacing="3",
+                                    width="100%"
+                                ),
+                                spacing="4",
+                                padding_top="1em"
+                            ),
+                            value="summary"
                         ),
                         rx.tabs.content(
                             rx.grid(
@@ -176,11 +201,10 @@ def product_detail_modal() -> rx.Component:
                             ),
                             value="variants"
                         ),
-                        default_value="variants",
+                        default_value="summary",
                         width="100%",
                     ),
                     rx.flex(
-                        # El botón de cerrar ahora funciona a través del on_open_change del root
                         rx.dialog.close(rx.button("Cerrar", variant="soft", color_scheme="gray")),
                         justify="end",
                         width="100%",
@@ -209,7 +233,7 @@ def finance_page_content() -> rx.Component:
                             stat_card("Ingresos Totales", AppState.finance_stats.total_revenue_cop, "trending-up"),
                             stat_card("Costo de Mercancía", AppState.finance_stats.total_cogs_cop, "receipt"),
                             stat_card("Ganancia Neta", AppState.finance_stats.total_profit_cop, "piggy-bank"),
-                            # ✨ CORRECCIÓN CRÍTICA: Se eliminó .to_string()
+                            # ✨ CORRECCIÓN DE BUG EN TIEMPO DE EJECUCIÓN ✨
                             stat_card("Total Ventas", AppState.finance_stats.total_sales_count, "package"),
                             stat_card("Envío Recaudado", AppState.finance_stats.total_shipping_cop, "truck"),
                             stat_card("Ganancia/Pérdida por Envío", AppState.finance_stats.shipping_profit_loss_cop, "percent"),
