@@ -257,7 +257,15 @@ class ProductDetailFinanceDTO(rx.Base):
     image_url: Optional[str] = None
     total_units_sold: int
     total_revenue_cop: str
-    total_profit_cop: str
+    
+    # --- ✅ INICIO DE CAMPOS AÑADIDOS ✅ ---
+    total_cogs_cop: str                   # Costo de Mercancía para este producto
+    product_profit_cop: str             # Ganancia Neta solo del producto
+    shipping_collected_cop: str         # Envío Recaudado para este producto
+    shipping_profit_loss_cop: str       # Ganancia/Pérdida por envío para este producto
+    grand_total_profit_cop: str         # Ganancia Total (Producto + Envío)
+    # --- ✅ FIN DE CAMPOS AÑADIDOS ✅ ---
+
     variants: List[VariantDetailFinanceDTO] = []
 
 ProductDetailFinanceDTO.update_forward_refs()
@@ -3135,78 +3143,79 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def show_product_detail(self, product_id: int):
         """
-        [VERSIÓN 3.0 - CÁLCULOS Y AGREGACIÓN CORREGIDOS]
-        Muestra el detalle financiero de un producto, asegurando que los datos de
-        las variantes vendidas se muestren correctamente.
+        [VERSIÓN 4.0] Muestra el detalle financiero de un producto, incluyendo métricas
+        de envío y costo específicas para ese producto.
         """
         if not self.is_admin:
             yield rx.redirect("/")
             return
 
-        self.is_loading = True
         yield
-        
+
         with rx.session() as session:
             blog_post = session.get(BlogPostModel, product_id)
             if not blog_post:
                 yield rx.toast.error("Producto no encontrado.")
-                self.is_loading = False
                 return
 
             variant_sales_aggregator = defaultdict(lambda: {
                 "units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0, "daily_profit": defaultdict(float)
             })
 
-            completed_purchases = session.exec(
+            completed_purchases_query = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
                 .where(
                     PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]),
                     PurchaseItemModel.blog_post_id == product_id
                 ).join(PurchaseItemModel)
-            ).unique().all()
+            ).unique()
+            completed_purchases = completed_purchases_query.all()
             
-            product_total_units, product_total_revenue, product_total_net_profit, product_total_cogs = 0, 0.0, 0.0, 0.0
+            product_total_units = 0
+            product_total_revenue = 0.0
+            product_total_net_profit = 0.0
+            product_total_cogs = 0.0
+            product_shipping_collected = 0.0
+            product_actual_shipping_cost = 0.0
 
             for purchase in completed_purchases:
-                purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
+                # Sumar costos de envío de esta compra
+                product_shipping_collected += purchase.shipping_applied or 0.0
+                product_actual_shipping_cost += purchase.actual_shipping_cost or purchase.shipping_applied or 0.0
+
                 for item in purchase.items:
                     if item.blog_post_id == product_id and item.blog_post:
-                        # --- ✅ INICIO DE LA CORRECCIÓN CLAVE ✅ ---
-                        # 1. Buscamos la definición COMPLETA de la variante que se vendió
-                        #    para obtener su UUID, que es la clave canónica.
                         sold_variant_definition = next(
                             (v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant),
-                            item.selected_variant # Fallback por si no se encuentra
+                            item.selected_variant
                         )
                         variant_key = self._get_variant_key(sold_variant_definition)
                         
-                        # 2. Aplicamos la lógica de cálculo de costos correcta
                         item_revenue = item.price_at_purchase * item.quantity
-                        price = item.blog_post.price or 0.0
-                        profit = item.blog_post.profit or 0.0
-                        cost_of_good = price - profit
-                        item_cogs = cost_of_good * item.quantity
-                        item_net_profit = profit * item.quantity
+                        profit_per_unit = item.blog_post.profit or 0.0
+                        cost_per_unit = (item.blog_post.price or 0.0) - profit_per_unit
+                        item_cogs = cost_per_unit * item.quantity
+                        item_net_profit = profit_per_unit * item.quantity
                         
-                        # 3. Agregamos los datos al diccionario de la variante correcta usando la clave canónica
                         aggregator = variant_sales_aggregator[variant_key]
                         aggregator["units"] += item.quantity
                         aggregator["revenue"] += item_revenue
                         aggregator["net_profit"] += item_net_profit
                         aggregator["cogs"] += item_cogs
-                        aggregator["daily_profit"][purchase_date_str] += item_net_profit
-                        # --- ✅ FIN DE LA CORRECCIÓN CLAVE ✅ ---
+                        aggregator["daily_profit"][purchase.purchase_date.strftime('%Y-%m-%d')] += item_net_profit
 
                         product_total_units += item.quantity
                         product_total_revenue += item_revenue
                         product_total_net_profit += item_net_profit
                         product_total_cogs += item_cogs
 
+            product_shipping_profit_loss = product_shipping_collected - product_actual_shipping_cost
+            grand_total_profit = product_total_net_profit + product_shipping_profit_loss
+
             product_variants_data = []
             if blog_post.variants:
                 for variant_db in blog_post.variants:
-                    # 4. Usamos la misma clave canónica (UUID) para buscar los datos agregados
                     variant_key = self._get_variant_key(variant_db)
                     sales_data = variant_sales_aggregator.get(variant_key, {})
                     attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
@@ -3226,24 +3235,25 @@ class AppState(reflex_local_auth.LocalAuthState):
                         daily_profit_data=sorted_daily_profit
                     ))
 
-            main_image_url = blog_post.variants[0].get("image_url") if blog_post.variants else None
-
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
                 title=blog_post.title,
-                image_url=main_image_url,
+                image_url=blog_post.variants[0].get("image_url") if blog_post.variants else None,
                 total_units_sold=product_total_units,
                 total_revenue_cop=format_to_cop(product_total_revenue),
-                total_profit_cop=format_to_cop(product_total_net_profit),
+                total_cogs_cop=format_to_cop(product_total_cogs),
+                product_profit_cop=format_to_cop(product_total_net_profit),
+                shipping_collected_cop=format_to_cop(product_shipping_collected),
+                shipping_profit_loss_cop=format_to_cop(product_shipping_profit_loss),
+                grand_total_profit_cop=format_to_cop(grand_total_profit),
                 variants=product_variants_data
             )
             
-            # Opcional: auto-seleccionar la primera variante con ventas
-            first_sold_variant_index = next((i for i, v in enumerate(product_variants_data) if v.units_sold > 0), 0)
-            self.select_variant_for_detail(first_sold_variant_index)
+            if product_variants_data:
+                first_sold_variant_index = next((i for i, v in enumerate(product_variants_data) if v.units_sold > 0), 0)
+                self.select_variant_for_detail(first_sold_variant_index)
 
-        self.show_product_detail_modal = True
-        self.is_loading = False
+            self.show_product_detail_modal = True
     
     # --- Función para seleccionar una variante específica en el detalle del producto ---
     @rx.event
