@@ -80,7 +80,10 @@ def variant_detail_view() -> rx.Component:
                         rx.text("Detalles de la Variante", size="4", weight="bold"),
                         rx.text(AppState.selected_variant_detail.attributes_str, size="2"),
                         rx.divider(),
-                        rx.hstack(
+                        
+                        # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
+                        # Se reemplaza el HStack por un Grid para dar más espacio.
+                        rx.grid(
                             rx.vstack(
                                 rx.text("Unidades Vendidas", size="2"),
                                 rx.heading(AppState.selected_variant_detail.units_sold, size="4"),
@@ -101,8 +104,13 @@ def variant_detail_view() -> rx.Component:
                                 rx.heading(AppState.selected_variant_detail.total_net_profit_cop, size="4"),
                                 align_items="start", spacing="0"
                             ),
+                            # Se define una cuadrícula de 2 columnas con buen espaciado.
+                            columns="2",
                             spacing="5",
+                            width="100%",
                         ),
+                        # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
+                        
                         align_items="start", spacing="2", width="100%"
                     ),
                     spacing="5", align="center", width="100%"
