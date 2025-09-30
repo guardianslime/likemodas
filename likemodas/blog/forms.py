@@ -286,13 +286,14 @@ def blog_post_add_form() -> rx.Component:
                             ),
                         ),
                         rx.vstack(
-                            rx.text("Ganancia (COP)", as_="div", size="3", weight="bold"),
-                            rx.input(
-                                placeholder="Ej: 15000 (sin puntos)", type="number", size="3",
-                                value=AppState.profit_str,
-                                on_change=AppState.set_profit_str
-                            ),
+                        rx.text("Ganancia (COP)", as_="div", size="3", weight="bold"),
+                        rx.input(
+                            placeholder="Ej: 15000 (sin puntos)", type="number", size="3",
+                            name="profit",  # <-- ✨ CORRECCIÓN CLAVE AÑADIDA AQUÍ
+                            value=AppState.profit_str,
+                            on_change=AppState.set_profit_str
                         ),
+                    ),
                         columns="2", spacing="4", width="100%",
                     ),
                     rx.grid(
@@ -492,7 +493,13 @@ def blog_post_edit_form() -> rx.Component:
                         ),
                         rx.vstack(
                             rx.text("Ganancia (COP)", as_="div", size="2", weight="bold"),
-                            rx.input(value=AppState.edit_profit_str, on_change=AppState.set_edit_profit_str, type="number", size="3"),
+                            rx.input(
+                                name="profit", # <-- ✨ CORRECCIÓN CLAVE AÑADIDA AQUÍ
+                                value=AppState.edit_profit_str, 
+                                on_change=AppState.set_edit_profit_str, 
+                                type="number", 
+                                size="3"
+                            ),
                         ),
                         columns="2", spacing="3", width="100%",
                     ),
