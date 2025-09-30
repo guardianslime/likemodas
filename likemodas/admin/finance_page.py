@@ -224,7 +224,7 @@ def product_detail_modal() -> rx.Component:
         # ✨ CORRECCIÓN DE SINTAXIS: Todos los argumentos de palabra clave (props) van DESPUÉS de los hijos.
         open=AppState.show_product_detail_modal,
         on_open_change=AppState.set_show_product_detail_modal,
-        style={"max_width": "1100px", "width": "95%"}
+        style={"max_width": "1300px", "width": "95%"}
     )
 
 @require_admin
