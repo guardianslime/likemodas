@@ -298,6 +298,9 @@ class PurchaseModel(rx.Model, table=True):
     wompi_transaction_id: Optional[str] = Field(default=None, index=True, unique=True)
     wompi_events: list = Field(default_factory=list, sa_column=Column(JSON))
     wompi_payment_link_id: Optional[str] = Field(default=None, index=True)
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    actual_shipping_cost: Optional[float] = Field(default=None)
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
     # --- INICIO: NUEVOS CAMPOS PARA SISTECREDITO ---
     sistecredito_transaction_id: Optional[str] = Field(default=None, index=True, unique=True)

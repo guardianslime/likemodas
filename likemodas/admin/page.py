@@ -12,14 +12,35 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     """
     
     # Componente reutilizable para el formulario de tiempo de entrega
-    set_delivery_time_form = rx.vstack(
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    set_delivery_and_shipping_form = rx.vstack(
         rx.divider(),
-        rx.text("Establecer tiempo de entrega:", size="3", weight="medium"),
-        rx.hstack(
-            rx.input(placeholder="Días", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "days", val)),
-            rx.input(placeholder="Horas", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "hours", val)),
-            rx.input(placeholder="Minutos", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "minutes", val)),
-            spacing="3", width="100%",
+        rx.grid(
+            rx.vstack(
+                rx.text("Establecer tiempo de entrega:", size="3", weight="medium"),
+                rx.hstack(
+                    rx.input(placeholder="Días", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "days", val)),
+                    rx.input(placeholder="Horas", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "hours", val)),
+                    rx.input(placeholder="Minutos", type="number", on_change=lambda val: AppState.set_admin_delivery_time(purchase.id, "minutes", val)),
+                    spacing="2", width="100%",
+                ),
+                spacing="2",
+                align_items="start",
+            ),
+            rx.vstack(
+                rx.text("Costo de Envío Final (Opcional):", size="3", weight="medium"),
+                rx.input(
+                    placeholder=f"Inicial: {purchase.shipping_applied_cop}",
+                    type="number",
+                    on_change=lambda val: AppState.set_admin_final_shipping_cost(purchase.id, val)
+                ),
+                rx.text("Si se deja en blanco, se usará el costo inicial.", size="1", color_scheme="gray"),
+                spacing="2",
+                align_items="start",
+            ),
+            columns="2",
+            spacing="4",
+            width="100%",
         ),
         width="100%", spacing="2", margin_top="1em"
     )
@@ -51,18 +72,18 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             # --- LÓGICA DE ACCIONES CORREGIDA Y COMPLETADA ---
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
-                # Caso 1: Pedido PENDIENTE (solo para Contra Entrega)
                 rx.vstack(
-                    set_delivery_time_form,
+                    # 👇 Usa el nuevo formulario combinado
+                    set_delivery_and_shipping_form,
                     rx.button("Enviar y Notificar al Cliente", on_click=AppState.ship_pending_cod_order(purchase.id), width="100%", margin_top="0.5em"),
                 )
             ),
             
             rx.cond(
                 purchase.status == PurchaseStatus.CONFIRMED.value,
-                # Caso 2: El pago ya está CONFIRMADO (online), listo para enviar.
                 rx.vstack(
-                    set_delivery_time_form,
+                    # 👇 Usa el nuevo formulario combinado
+                    set_delivery_and_shipping_form,
                     rx.button(
                         "Establecer Tiempo y Notificar Envío", 
                         on_click=AppState.ship_confirmed_online_order(purchase.id),

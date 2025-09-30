@@ -222,12 +222,13 @@ class UserProfileData(rx.Base):
 
 class VariantDetailFinanceDTO(rx.Base):
     """DTO para el detalle financiero de una variante específica."""
-    variant_key: str # Usaremos una clave única (UUID o de atributos)
+    variant_key: str
     attributes_str: str
     image_url: Optional[str] = None
     units_sold: int
     total_revenue_cop: str
-    total_profit_cop: str
+    total_cogs_cop: str # ✨ NUEVO
+    total_net_profit_cop: str # ✨ RENOMBRADO
     daily_profit_data: List[Dict[str, Any]] = []
  # Datos para el gráfico de la variante
 
@@ -253,8 +254,10 @@ ProductDetailFinanceDTO.update_forward_refs()
 class FinanceStatsDTO(rx.Base):
     """DTO para las estadísticas generales del dashboard financiero."""
     total_revenue_cop: str = "$0"
+    total_cogs_cop: str = "$0"  # ✨ NUEVO: Costo de Mercancía Vendida
     total_profit_cop: str = "$0"
     total_shipping_cop: str = "$0"
+    shipping_profit_loss_cop: str = "$0" # ✨ NUEVO: Ganancia/Pérdida por Envío
     total_sales_count: int = 0
     average_order_value_cop: str = "$0"
     profit_margin_percentage: str = "0.00%"
@@ -265,7 +268,8 @@ class ProductFinanceDTO(rx.Base):
     title: str
     units_sold: int
     total_revenue_cop: str
-    total_profit_cop: str
+    total_cogs_cop: str # ✨ NUEVO
+    total_net_profit_cop: str # ✨ RENOMBRADO de total_profit_cop
 
 
 class AppState(reflex_local_auth.LocalAuthState):
@@ -3130,12 +3134,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 for item in purchase.items:
                     if item.blog_post_id == product_id:
                         variant_key = self._get_variant_key(item.selected_variant)
-                        item_profit = (item.blog_post.profit or 0) * item.quantity
+                        # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+                        purchase_price = (item.blog_post.price or 0.0) - (item.blog_post.profit or 0.0)
+                        item_cogs = purchase_price * item.quantity
+                        item_net_profit = (item.blog_post.profit or 0) * item.quantity
                         
                         variant_sales_aggregator[variant_key]["units"] += item.quantity
                         variant_sales_aggregator[variant_key]["revenue"] += item.price_at_purchase * item.quantity
-                        variant_sales_aggregator[variant_key]["profit"] += item_profit
-                        variant_sales_aggregator[variant_key]["daily_profit"][purchase_date_str] += item_profit
+                        variant_sales_aggregator[variant_key]["net_profit"] += item_net_profit # ✨ RENOMBRADO
+                        variant_sales_aggregator[variant_key]["cogs"] += item_cogs # ✨ NUEVO
+                        variant_sales_aggregator[variant_key]["daily_profit"][purchase_date_str] += item_net_profit # ✨ RENOMBRADO
+                        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
             product_total_units, product_total_revenue, product_total_profit = 0, 0.0, 0.0
             product_variants_data = []
@@ -3160,7 +3169,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     image_url=variant_db.get("image_url"),
                     units_sold=sales_data["units"],
                     total_revenue_cop=format_to_cop(sales_data["revenue"]),
-                    total_profit_cop=format_to_cop(sales_data["profit"]),
+                    total_cogs_cop=format_to_cop(sales_data["cogs"]), # ✨ NUEVO
+                    total_net_profit_cop=format_to_cop(sales_data["net_profit"]), # ✨ RENOMBRADO
                     daily_profit_data=sorted_daily_profit
                 ))
 
@@ -3204,6 +3214,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.selected_variant_index = -1
         self.product_detail_chart_data = []
 
+    # --- ✨ INICIO DE NUEVAS VARIABLES Y SETTERS ✨ ---
+    admin_final_shipping_cost: Dict[int, str] = {}
+
+    def set_admin_final_shipping_cost(self, purchase_id: int, value: str):
+        """Guarda el costo de envío final ingresado por el admin."""
+        self.admin_final_shipping_cost[purchase_id] = value
+    # --- ✨ FIN DE NUEVAS VARIABLES Y SETTERS ✨ ---
+
     @rx.event
     def on_load_finance_data(self):
         """Calcula todas las estadísticas financieras para el dashboard."""
@@ -3237,48 +3255,63 @@ class AppState(reflex_local_auth.LocalAuthState):
             total_revenue = sum(p.total_price for p in completed_purchases)
             total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
             total_sales_count = len(completed_purchases)
-            total_profit = 0
             
-            product_aggregator = defaultdict(lambda: {"title": "", "units": 0, "revenue": 0.0, "profit": 0.0})
+            # --- ✨ INICIO DE LA LÓGICA DE CÁLCULO MEJORADA ✨ ---
+            total_net_profit = 0
+            total_cogs = 0
+            total_actual_shipping_cost = 0
+
+            product_aggregator = defaultdict(lambda: {"title": "", "units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0})
             daily_profit = defaultdict(float)
 
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 
+                # Sumar el costo de envío real si existe
+                total_actual_shipping_cost += purchase.actual_shipping_cost or purchase.shipping_applied or 0.0
+
                 for item in purchase.items:
                     if item.blog_post:
-                        item_profit = (item.blog_post.profit or 0.0) * item.quantity
+                        purchase_price = (item.blog_post.price or 0.0) - (item.blog_post.profit or 0.0)
+                        item_cogs = purchase_price * item.quantity
+                        item_net_profit = (item.blog_post.profit or 0.0) * item.quantity
                         
-                        total_profit += item_profit
-                        daily_profit[purchase_date_str] += item_profit
+                        total_cogs += item_cogs
+                        total_net_profit += item_net_profit
+                        daily_profit[purchase_date_str] += item_net_profit
 
                         product_aggregator[item.blog_post_id]["title"] = item.blog_post.title
                         product_aggregator[item.blog_post_id]["units"] += item.quantity
                         product_aggregator[item.blog_post_id]["revenue"] += item.price_at_purchase * item.quantity
-                        product_aggregator[item.blog_post_id]["profit"] += item_profit
+                        product_aggregator[item.blog_post_id]["net_profit"] += item_net_profit
+                        product_aggregator[item.blog_post_id]["cogs"] += item_cogs
             
+            shipping_profit_loss = total_shipping_collected - total_actual_shipping_cost
+            grand_total_net_profit = total_net_profit + shipping_profit_loss
+            # --- ✨ FIN DE LA LÓGICA DE CÁLCULO MEJORADA ✨ ---
+
             avg_order_value = total_revenue / total_sales_count if total_sales_count > 0 else 0
-            profit_margin = (total_profit / total_revenue) * 100 if total_revenue > 0 else 0
+            profit_margin = (grand_total_net_profit / total_revenue) * 100 if total_revenue > 0 else 0
 
             self.finance_stats = FinanceStatsDTO(
                 total_revenue_cop=format_to_cop(total_revenue),
-                total_profit_cop=format_to_cop(total_profit),
+                total_cogs_cop=format_to_cop(total_cogs), # ✨ NUEVO
+                total_profit_cop=format_to_cop(grand_total_net_profit), # Ahora es ganancia neta total
                 total_shipping_cop=format_to_cop(total_shipping_collected),
+                shipping_profit_loss_cop=format_to_cop(shipping_profit_loss), # ✨ NUEVO
                 total_sales_count=total_sales_count,
                 average_order_value_cop=format_to_cop(avg_order_value),
                 profit_margin_percentage=f"{profit_margin:.2f}%"
             )
 
-            product_ids = list(product_aggregator.keys())
-            product_titles = {p.id: p.title for p in session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()}
-            
             self.product_finance_data = sorted([
                 ProductFinanceDTO(
                     product_id=pid,
                     title=data["title"],
                     units_sold=data["units"],
                     total_revenue_cop=format_to_cop(data["revenue"]),
-                    total_profit_cop=format_to_cop(data["profit"])
+                    total_cogs_cop=format_to_cop(data["cogs"]), # ✨ NUEVO
+                    total_net_profit_cop=format_to_cop(data["net_profit"]) # ✨ RENOMBRADO
                 ) for pid, data in product_aggregator.items()
             ], key=lambda x: x.units_sold, reverse=True)
 
@@ -4244,16 +4277,60 @@ class AppState(reflex_local_auth.LocalAuthState):
                 any(p.status == PurchaseStatus.PENDING_CONFIRMATION.value for p in self.active_purchases)
             )
 
-    # ✨ NUEVA FUNCIÓN solo para notificar el envío
+    def _update_shipping_and_notify(self, session, purchase, total_delta):
+        """
+        Función auxiliar que centraliza la lógica para actualizar el envío, 
+        guardar el costo final y notificar al cliente.
+        """
+        # 1. Guarda el costo de envío final ingresado por el admin
+        try:
+            final_shipping_cost_str = self.admin_final_shipping_cost.get(purchase.id)
+            # Si el admin ingresó un valor, lo usamos. Si no, usamos el costo inicial cargado a la compra.
+            purchase.actual_shipping_cost = float(final_shipping_cost_str) if final_shipping_cost_str else purchase.shipping_applied
+        except (ValueError, TypeError):
+            # Si el valor ingresado no es un número válido, usamos el costo inicial como respaldo.
+            purchase.actual_shipping_cost = purchase.shipping_applied
+        
+        # 2. Actualiza el estado y las fechas del pedido
+        purchase.status = PurchaseStatus.SHIPPED
+        purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
+        purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
+        session.add(purchase)
+
+        # 3. Construye el mensaje de notificación para el cliente
+        days = total_delta.days
+        hours, remainder = divmod(total_delta.seconds, 3600)
+        minutes, _ = divmod(remainder, 60)
+        
+        time_parts = []
+        if days > 0: time_parts.append(f"{days} día(s)")
+        if hours > 0: time_parts.append(f"{hours} hora(s)")
+        if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
+        
+        time_str = ", ".join(time_parts) if time_parts else "pronto"
+        mensaje = f"¡Tu compra #{purchase.id} está en camino! 🚚 Llegará en aprox. {time_str}."
+
+        # 4. Crea y guarda la notificación
+        notification = NotificationModel(
+            userinfo_id=purchase.userinfo_id,
+            message=mensaje,
+            url="/my-purchases"
+        )
+        session.add(notification)
+        
+        # 5. Limpia el valor temporal del formulario para esta orden
+        if purchase.id in self.admin_final_shipping_cost:
+            del self.admin_final_shipping_cost[purchase.id]
+
     @rx.event
     def ship_confirmed_online_order(self, purchase_id: int):
         """
-        Notifica el envío de un pedido online ya confirmado.
+        Notifica el envío de un pedido online ya confirmado, utilizando la lógica unificada.
         """
         if not self.is_admin: 
             return rx.toast.error("Acción no permitida.")
         
-        # (La validación del tiempo es idéntica a la función anterior)
+        # Valida que se haya ingresado un tiempo de entrega
         time_data = self.admin_delivery_time.get(purchase_id, {})
         try:
             days = int(time_data.get("days", "0") or "0")
@@ -4268,30 +4345,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.CONFIRMED:
-                # Actualizar el estado y las fechas del pedido
-                purchase.status = PurchaseStatus.SHIPPED
-                purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
-                purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
-                session.add(purchase)
-
-                # Crear el mensaje de notificación descriptivo
-                time_parts = []
-                if days > 0: time_parts.append(f"{days} día(s)")
-                if hours > 0: time_parts.append(f"{hours} hora(s)")
-                if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
-                
-                time_str = ", ".join(time_parts) if time_parts else "pronto"
-                mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
-
-                # Crear y guardar el objeto de notificación
-                notification = NotificationModel(
-                    userinfo_id=purchase.userinfo_id,
-                    message=mensaje,
-                    url="/my-purchases"
-                )
-                session.add(notification)
+                # Llama a la función auxiliar con la lógica compartida
+                self._update_shipping_and_notify(session, purchase, total_delta)
                 session.commit()
-                
                 yield rx.toast.success("Notificación de envío enviada.")
                 yield AppState.load_active_purchases
             else:
@@ -4300,12 +4356,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def ship_pending_cod_order(self, purchase_id: int):
         """
-        Envía un pedido Contra Entrega y notifica al cliente con el tiempo estimado.
+        Envía un pedido Contra Entrega, utilizando la lógica unificada.
         """
         if not self.is_admin: 
             return rx.toast.error("Acción no permitida.")
         
-        # 1. Validar el tiempo de entrega introducido por el admin
+        # La validación del tiempo es idéntica
         time_data = self.admin_delivery_time.get(purchase_id, {})
         try:
             days = int(time_data.get("days", "0") or "0")
@@ -4320,92 +4376,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.status == PurchaseStatus.PENDING_CONFIRMATION and purchase.payment_method == "Contra Entrega":
-                # 2. Actualizar el estado y las fechas del pedido
-                purchase.status = PurchaseStatus.SHIPPED
-                purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
-                purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
-                session.add(purchase)
-
-                # --- ✨ INICIO DE LA LÓGICA DE NOTIFICACIÓN ✨ ---
-                # 3. Crear un mensaje de notificación descriptivo
-                time_parts = []
-                if days > 0: time_parts.append(f"{days} día(s)")
-                if hours > 0: time_parts.append(f"{hours} hora(s)")
-                if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
-                
-                time_str = ", ".join(time_parts) if time_parts else "pronto"
-                mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
-
-                # 4. Crear y guardar el objeto de notificación
-                notification = NotificationModel(
-                    userinfo_id=purchase.userinfo_id,
-                    message=mensaje,
-                    url="/my-purchases"
-                )
-                session.add(notification)
-                # --- ✨ FIN DE LA LÓGICA DE NOTIFICACIÓN ✨ ---
-
+                # Llama a la misma función auxiliar
+                self._update_shipping_and_notify(session, purchase, total_delta)
                 session.commit()
-                
                 yield rx.toast.success("Pedido contra entrega en camino y notificado.")
                 yield AppState.load_active_purchases
             else:
                 yield rx.toast.error("Esta acción no es válida para este pedido.")
-    
-    @rx.event
-    def ship_confirmed_online_order(self, purchase_id: int):
-        """
-        Cambia el estado de una compra de 'CONFIRMED' a 'SHIPPED'
-        y notifica al cliente con el tiempo de entrega estimado.
-        """
-        if not self.is_admin: 
-            return rx.toast.error("Acción no permitida.")
-        
-        # 1. Validar el tiempo de entrega introducido por el admin
-        time_data = self.admin_delivery_time.get(purchase_id, {})
-        try:
-            days = int(time_data.get("days", "0") or "0")
-            hours = int(time_data.get("hours", "0") or "0")
-            minutes = int(time_data.get("minutes", "0") or "0")
-            total_delta = timedelta(days=days, hours=hours, minutes=minutes)
-            if total_delta.total_seconds() <= 0:
-                return rx.toast.error("El tiempo de entrega debe ser mayor a cero.")
-        except (ValueError, TypeError):
-            return rx.toast.error("Por favor, introduce números válidos para el tiempo de entrega.")
 
-        with rx.session() as session:
-            purchase = session.get(PurchaseModel, purchase_id)
-            # Verifica que la compra esté en el estado correcto
-            if purchase and purchase.status == PurchaseStatus.CONFIRMED:
-                # 2. Actualizar el estado y las fechas del pedido
-                purchase.status = PurchaseStatus.SHIPPED
-                purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
-                purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
-                session.add(purchase)
-
-                # 3. Crear un mensaje de notificación descriptivo para el cliente
-                time_parts = []
-                if days > 0: time_parts.append(f"{days} día(s)")
-                if hours > 0: time_parts.append(f"{hours} hora(s)")
-                if minutes > 0: time_parts.append(f"{minutes} minuto(s)")
-                
-                time_str = ", ".join(time_parts) if time_parts else "pronto"
-                mensaje = f"¡Tu compra #{purchase.id} está en camino! Llegará en aprox. {time_str}."
-
-                # 4. Crear y guardar el objeto de notificación
-                notification = NotificationModel(
-                    userinfo_id=purchase.userinfo_id,
-                    message=mensaje,
-                    url="/my-purchases"
-                )
-                session.add(notification)
-                session.commit()
-                
-                yield rx.toast.success("Notificación de envío enviada al cliente.")
-                yield AppState.load_active_purchases
-            else:
-                yield rx.toast.error("Esta acción no es válida para este pedido.")
-    
     @rx.event
     def confirm_online_payment(self, purchase_id: int):
         """
