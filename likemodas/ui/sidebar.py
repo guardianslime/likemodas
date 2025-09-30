@@ -1,4 +1,4 @@
-# En likemodas/ui/sidebar.py (Versión con sintaxis corregida)
+# En likemodas/ui/sidebar.py (Versión Definitiva)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
@@ -6,16 +6,14 @@ from ..state import AppState
 from .. import navigation
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Un componente de enlace de sidebar rediseñado que resalta la página activa."""
+    """Un componente de enlace de sidebar con tamaños responsivos para texto, icono y padding."""
     is_active = (AppState.current_path == href)
 
     return rx.link(
         rx.hstack(
-            # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
-            # El tamaño del icono vuelve a ser un número entero simple.
+            # --- ✅ El tamaño del icono ahora es fijo y pequeño, ideal para ambos modos ---
             rx.icon(icon, size=18),
-            # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
-            
+            # --- ✅ El tamaño del texto y el padding son más pequeños en móvil ---
             rx.text(text, size={"initial": "2", "lg": "3"}),
             rx.spacer(),
             rx.cond(
@@ -27,7 +25,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
             font_weight=rx.cond(is_active, "bold", "normal"),
             border_radius="var(--radius-3)",
             width="100%",
-            padding={"initial": "0.5em", "lg": "0.75em"},
+            padding={"initial": "0.4em", "lg": "0.75em"},
             align="center",
             _hover={
                 "background_color": rx.color("violet", 5),
@@ -39,7 +37,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
     )
 
 def sidebar_items() -> rx.Component:
-    """La lista de vínculos del sidebar."""
+    """La lista de vínculos del sidebar, con espaciado responsivo."""
     return rx.vstack(
         rx.cond(
             AppState.is_admin,
@@ -53,11 +51,10 @@ def sidebar_items() -> rx.Component:
                     sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
                     sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
                     sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
-                    # --- ✅ Sintaxis de 'spacing' corregida a diccionario ✅ ---
                     spacing={"initial": "1", "lg": "2"},
                     width="100%"
                 ),
-                rx.divider(margin_y="1em"),
+                rx.divider(margin_y={"initial": "0.5em", "lg": "1em"}),
             )
         ),
         sidebar_item("Tienda", "store", "/admin/store"),
@@ -66,17 +63,21 @@ def sidebar_items() -> rx.Component:
     )
 
 def sliding_admin_sidebar() -> rx.Component:
-    """El componente completo del sidebar con el nuevo diseño."""
-    SIDEBAR_WIDTH = {"initial": "14em", "lg": "16em"}
+    """
+    El componente completo del sidebar.
+    RESTAURADO a su funcionalidad original de PC y adaptado para móvil.
+    """
+    # --- ✅ 1. Ancho fijo para un comportamiento predecible en la animación ✅ ---
+    SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%",
-            margin_bottom={"initial": "1em", "lg": "1.5em"},
+            margin_bottom={"initial": "0.75em", "lg": "1.5em"},
         ),
         
-        # Eliminamos el scroll_area para que todo el contenido sea visible
+        # Se elimina el scroll_area para que se vea completo, como pediste
         sidebar_items(),
         
         rx.spacer(),
@@ -108,14 +109,11 @@ def sliding_admin_sidebar() -> rx.Component:
                 )
             ),
             width="100%",
-            # --- ✅ Sintaxis de 'spacing' corregida a diccionario ✅ ---
             spacing={"initial": "2", "lg": "3"},
         ),
 
-        # --- ✅ Sintaxis de 'spacing' corregida y padding ajustado ✅ ---
-        spacing={"initial": "3", "lg": "5"},
+        spacing={"initial": "2", "lg": "5"}, # Espaciado general reducido en móvil
         padding="1em",
-        padding_bottom={"initial": "1.5em", "lg": "1em"}, # Margen inferior solo en móvil
         bg=rx.color("gray", 2),
         align="start", 
         height="100%", 
@@ -136,7 +134,7 @@ def sliding_admin_sidebar() -> rx.Component:
                 border_radius="0 8px 8px 0",
                 height="150px",
                 display="flex",
-                align="center"
+                align="items-center" # Corregido para que funcione
             ),
             align_items="center",
             spacing="0",
@@ -146,12 +144,12 @@ def sliding_admin_sidebar() -> rx.Component:
         left="0",
         height="100vh",
         display="flex",
-        align="center",
+        align_items="center",
+        # --- ✅ 2. Lógica de ocultar/mostrar restaurada a la versión simple y funcional ✅ ---
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
-            # El valor negativo debe coincidir con SIDEBAR_WIDTH
-            {"initial": "translateX(-14em)", "lg": "translateX(-16em)"}
+            f"translateX(-{SIDEBAR_WIDTH})"
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
