@@ -169,7 +169,7 @@ def product_detail_modal() -> rx.Component:
                             rx.tabs.trigger("Análisis por Variante", value="variants"),
                         ),
                         rx.tabs.content(
-                            # --- ✅ INICIO DE LA CORRECCIÓN DE LA INTERFAZ ✅ ---
+                            # --- ✅ Interfaz con todas las métricas solicitadas ✅ ---
                             rx.grid(
                                 stat_card("Unidades Vendidas", AppState.selected_product_detail.total_units_sold, "package-check"),
                                 stat_card("Ingresos Totales", AppState.selected_product_detail.total_revenue_cop, "trending-up"),
@@ -177,17 +177,49 @@ def product_detail_modal() -> rx.Component:
                                 stat_card("Ganancia (Producto)", AppState.selected_product_detail.product_profit_cop, "piggy-bank"),
                                 stat_card("Envío Recaudado", AppState.selected_product_detail.shipping_collected_cop, "truck"),
                                 stat_card("Ganancia/Pérdida Envío", AppState.selected_product_detail.shipping_profit_loss_cop, "percent"),
-                                # Se organiza en una cuadrícula responsiva
+                                # Cuadrícula responsiva para adaptarse a móvil
                                 columns={"initial": "2", "sm": "3"},
                                 spacing="3",
                                 width="100%",
                                 padding_top="1em"
                             ),
-                            # --- ✅ FIN DE LA CORRECCIÓN DE LA INTERFAZ ✅ ---
                             value="summary"
                         ),
                         rx.tabs.content(
-                            # ... (El contenido de "Análisis por Variante" no cambia) ...
+                            rx.grid(
+                                rx.scroll_area(
+                                    rx.vstack(
+                                        rx.foreach(
+                                            AppState.selected_product_detail.variants,
+                                            lambda variant, index: rx.box(
+                                                rx.hstack(
+                                                    rx.image(src=rx.get_upload_url(variant.image_url), height="40px", width="40px", object_fit="cover", border_radius="md"),
+                                                    rx.text(variant.attributes_str, size="2"),
+                                                    align="center",
+                                                    spacing="3",
+                                                ),
+                                                on_click=AppState.select_variant_for_detail(index),
+                                                padding="0.5em",
+                                                border_radius="md",
+                                                cursor="pointer",
+                                                bg=rx.cond(AppState.selected_variant_index == index, rx.color("violet", 3), "transparent"),
+                                                _hover={"background_color": rx.color("gray", 3)}
+                                            )
+                                        ),
+                                        spacing="2",
+                                        padding_right="0.5em"
+                                    ),
+                                    type="auto",
+                                    scrollbars="vertical",
+                                    style={"height": "450px"}
+                                ),
+                                variant_detail_view(),
+                                columns="1fr 2fr",
+                                spacing="4",
+                                width="100%",
+                                padding_top="1em"
+                            ),
+                            value="variants"
                         ),
                         default_value="summary",
                         width="100%",
