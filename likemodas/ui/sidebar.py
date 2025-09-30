@@ -1,18 +1,18 @@
-# likemodas/ui/sidebar.py (Versión Definitiva Restaurada)
+# likemodas/ui/sidebar.py (Versión Final Definitiva)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
 from ..state import AppState
 from .. import navigation
 
+# --- Esta función y la siguiente no necesitan cambios ---
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Componente de enlace con tamaños responsivos para texto, icono y padding."""
+    """Un componente de enlace de sidebar rediseñado que resalta la página activa."""
     is_active = (AppState.current_path == href)
-
     return rx.link(
         rx.hstack(
-            rx.icon(icon, size=18),
-            rx.text(text, size={"initial": "2", "lg": "3"}),
+            rx.icon(icon, size=20),
+            rx.text(text, size="3"),
             rx.spacer(),
             rx.cond(
                 has_notification,
@@ -23,9 +23,11 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
             font_weight=rx.cond(is_active, "bold", "normal"),
             border_radius="var(--radius-3)",
             width="100%",
-            padding={"initial": "0.5em 0.75em", "lg": "0.75em"},
+            padding="0.75em",
             align="center",
-            _hover={"background_color": rx.color("violet", 5)},
+            _hover={
+                "background_color": rx.color("violet", 5),
+            },
         ),
         href=href,
         underline="none",
@@ -33,7 +35,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
     )
 
 def sidebar_items() -> rx.Component:
-    """La lista de vínculos del sidebar, con espaciado responsivo."""
+    """La lista de vínculos del sidebar."""
     return rx.vstack(
         rx.cond(
             AppState.is_admin,
@@ -47,32 +49,34 @@ def sidebar_items() -> rx.Component:
                     sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
                     sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
                     sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
-                    spacing={"initial": "1", "lg": "2"},
+                    spacing="2",
                     width="100%"
                 ),
-                rx.divider(margin_y={"initial": "0.5em", "lg": "1em"}),
+                rx.divider(margin_y="1em"),
             )
         ),
         sidebar_item("Tienda", "store", "/admin/store"),
-        spacing={"initial": "1", "lg": "2"},
+        spacing="2",
         width="100%",
     )
 
+# --- La función principal con la corrección final ---
 def sliding_admin_sidebar() -> rx.Component:
-    """Sidebar con funcionalidad de PC restaurada y diseño móvil adaptado."""
+    """Sidebar con la funcionalidad de PC 100% restaurada y un arreglo sutil para móvil."""
     
-    # --- ✅ 1. Ancho fijo para restaurar la animación y el diseño de PC. ✅ ---
+    # 1. Ancho fijo para que la animación de PC funcione perfectamente.
     SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
-            align="center", justify="center", width="100%",
-            margin_bottom={"initial": "0.5em", "lg": "1.5em"},
+            align="center", justify="center", width="100%", margin_bottom="1.5em",
         ),
         
-        # El contenido se encogerá para caber en móvil gracias a los tamaños responsivos
-        sidebar_items(),
+        # El scroll_area es correcto para evitar que el contenido se desborde en pantallas muy pequeñas.
+        rx.scroll_area(
+            sidebar_items(),
+        ),
         
         rx.spacer(),
         
@@ -83,7 +87,7 @@ def sliding_admin_sidebar() -> rx.Component:
                     AppState.is_authenticated,
                     rx.hstack(
                         rx.avatar(fallback=AppState.authenticated_user.username[0].upper(), size="2"),
-                        rx.text(AppState.authenticated_user.username, size={"initial": "2", "lg": "3"}, weight="medium"),
+                        rx.text(AppState.authenticated_user.username, size="3", weight="medium"),
                         align="center", spacing="3",
                     ),
                 ),
@@ -103,13 +107,16 @@ def sliding_admin_sidebar() -> rx.Component:
                 )
             ),
             width="100%",
-            spacing={"initial": "2", "lg": "3"},
+            spacing="3",
         ),
+        spacing="5",
 
-        spacing={"initial": "2", "lg": "5"},
-        # --- ✅ 2. Padding estratégico para móvil y PC ✅ ---
-        padding_x="1em",
-        padding_y={"initial": "2.5em", "lg": "1em"}, # Más padding vertical en móvil
+        # --- ✅ INICIO DE LA CORRECCIÓN DEFINITIVA ✅ ---
+        # Usamos padding responsivo. En móvil ("initial") tendrá más espacio vertical.
+        # En PC ("lg") volverá al valor original de "1em".
+        padding={"initial": "2.5em 1em 1.5em", "lg": "1em"},
+        # --- ✅ FIN DE LA CORRECCIÓN DEFINITIVA ✅ ---
+
         bg=rx.color("gray", 2),
         align="start", 
         height="100%", 
@@ -140,11 +147,12 @@ def sliding_admin_sidebar() -> rx.Component:
             spacing="0",
         ),
         position="fixed",
-        top="0", left="0",
+        top="0",
+        left="0",
         height="100%",
         display="flex",
         align_items="center",
-        # --- ✅ 3. Lógica de animación original restaurada. ✅ ---
+        # La lógica original y funcional para ocultar/mostrar se restaura.
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
@@ -152,4 +160,5 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
+        # SE HA ELIMINADO POR COMPLETO EL CÓDIGO 'className' y '_light'/'_dark' que rompía el diseño.
     )
