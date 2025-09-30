@@ -3174,6 +3174,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     if item.blog_post_id == product_id and item.blog_post:
                         variant_key = self._get_variant_key(item.selected_variant)
                         price = item.blog_post.price or 0.0
+                        # ✨ CORRECCIÓN CLAVE AQUÍ ✨
                         profit = item.blog_post.profit or 0.0
                         
                         purchase_price = price - profit
@@ -3315,6 +3316,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 for item in purchase.items:
                     if item.blog_post:
                         price = item.blog_post.price or 0.0
+                        # ✨ CORRECCIÓN CLAVE AQUÍ ✨
                         profit = item.blog_post.profit or 0.0
                         
                         purchase_price = price - profit
@@ -3323,6 +3325,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         
                         total_cogs += item_cogs
                         total_net_profit += item_net_profit
+                        
                         daily_profit[purchase_date_str] += item_net_profit
 
                         product_aggregator[item.blog_post_id]["title"] = item.blog_post.title

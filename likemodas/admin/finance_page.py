@@ -17,7 +17,7 @@ def stat_card(title: str, value: str, icon: str) -> rx.Component:
             spacing="4", align="center"
         ),
         width="100%", height="100%"
-    ) #
+    ) 
 
 def general_finance_chart() -> rx.Component:
     """Componente para el gráfico de ganancias generales, ahora con renderizado robusto."""
