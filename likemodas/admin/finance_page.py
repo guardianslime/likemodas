@@ -70,48 +70,61 @@ def variant_detail_view() -> rx.Component:
     return rx.cond(
         AppState.selected_variant_detail,
         rx.vstack(
+            # --- ✅ INICIO DE LA CORRECCIÓN ESTRUCTURAL ✅ ---
+            # El rx.card ahora contendrá un VStack para organizar el contenido verticalmente
             rx.card(
-                rx.hstack(
-                    rx.image(
-                        src=rx.get_upload_url(AppState.selected_variant_detail.image_url),
-                        height="100px", width="100px", object_fit="cover", border_radius="lg"
-                    ),
-                    rx.vstack(
-                        rx.text("Detalles de la Variante", size="4", weight="bold"),
-                        rx.text(AppState.selected_variant_detail.attributes_str, size="2"),
-                        rx.divider(),
-                        # --- ✅ SE RESTAURA EL DISEÑO HORIZONTAL (HSTACK) ORIGINAL ✅ ---
-                        rx.hstack(
-                            rx.vstack(
-                                rx.text("Unidades Vendidas", size="2"),
-                                rx.heading(AppState.selected_variant_detail.units_sold, size="4"),
-                                align_items="start", spacing="0"
-                            ),
-                            rx.vstack(
-                                rx.text("Ingresos", size="2"),
-                                rx.heading(AppState.selected_variant_detail.total_revenue_cop, size="4"),
-                                align_items="start", spacing="0"
-                            ),
-                            rx.vstack(
-                                rx.text("Costo", size="2"),
-                                rx.heading(AppState.selected_variant_detail.total_cogs_cop, size="4"),
-                                align_items="start", spacing="0"
-                            ),
-                            rx.vstack(
-                                rx.text("Ganancia Neta", size="2"),
-                                rx.heading(AppState.selected_variant_detail.total_net_profit_cop, size="4"),
-                                align_items="start", spacing="0"
-                            ),
-                            spacing="5", # Se mantiene el espaciado que te gustaba
+                rx.vstack(
+                    # 1. Primera fila: Imagen y detalles principales
+                    rx.hstack(
+                        rx.image(
+                            src=rx.get_upload_url(AppState.selected_variant_detail.image_url),
+                            height="80px", width="80px", object_fit="cover", border_radius="lg"
                         ),
-                        # --- ✅ FIN DE LA RESTAURACIÓN ✅ ---
-                        align_items="start", spacing="2", width="100%"
+                        rx.vstack(
+                            rx.text("Detalles de la Variante", size="4", weight="bold"),
+                            rx.text(AppState.selected_variant_detail.attributes_str, size="2"),
+                            align_items="start", spacing="1"
+                        ),
+                        align="center",
+                        spacing="5",
+                        width="100%"
                     ),
-                    spacing="5", align="center", width="100%"
-                ),
+                    rx.divider(),
+                    # 2. Segunda fila: Los 4 indicadores con todo el ancho para ellos
+                    rx.hstack(
+                        rx.vstack(
+                            rx.text("Unidades Vendidas", size="2"),
+                            rx.heading(AppState.selected_variant_detail.units_sold, size="4"),
+                            align_items="start", spacing="0"
+                        ),
+                        rx.vstack(
+                            rx.text("Ingresos", size="2"),
+                            rx.heading(AppState.selected_variant_detail.total_revenue_cop, size="4"),
+                            align_items="start", spacing="0"
+                        ),
+                        rx.vstack(
+                            rx.text("Costo", size="2"),
+                            rx.heading(AppState.selected_variant_detail.total_cogs_cop, size="4"),
+                            align_items="start", spacing="0"
+                        ),
+                        rx.vstack(
+                            rx.text("Ganancia Neta", size="2"),
+                            rx.heading(AppState.selected_variant_detail.total_net_profit_cop, size="4"),
+                            align_items="start", spacing="0"
+                        ),
+                        spacing="5",
+                        justify="between", # Asegura que se distribuyan en todo el espacio
+                        width="100%",
+                        padding_y="0.5em"
+                    ),
+                    spacing="3",
+                    width="100%"
+                )
             ),
+            # --- ✅ FIN DE LA CORRECCIÓN ESTRUCTURAL ✅ ---
+            
+            # El gráfico se mantiene igual, sin cambios
             rx.card(
-                # ... (el resto de la función para el gráfico no cambia) ...
                 rx.vstack(
                     rx.heading("Tendencia de Ganancia de la Variante", size="4"),
                     rx.cond(
