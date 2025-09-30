@@ -3107,28 +3107,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             if query in p.title.lower()
         ]
     
-    def _get_variant_key(self, variant_dict: dict) -> str:
+    def _get_variant_key(self, variant_data: dict) -> str:
         """
         [VERSIÓN CORREGIDA Y ROBUSTA]
-        Crea una clave única y estable para una variante.
-        Usa el UUID si existe; de lo contrario, usa los atributos.
-        Ahora es seguro contra datos nulos (None).
+        Crea una clave única y estable para una variante basada en sus atributos.
         """
-        # ✨ LÍNEA CRÍTICA AÑADIDA ✨
-        # Si el dato que llega no es un diccionario (es None), devolvemos una clave única
-        # aleatoria para que no choque con nada y evitamos el error.
-        if not isinstance(variant_dict, dict):
+        if not isinstance(variant_data, dict):
             return str(uuid.uuid4())
 
-        if variant_uuid := variant_dict.get("variant_uuid"):
+        # Prioriza el UUID si existe, ya que es el identificador más fiable
+        if variant_uuid := variant_data.get("variant_uuid"):
             return variant_uuid
         
-        attrs = variant_dict.get("attributes", {})
-        if not attrs:
-            return variant_dict.get("image_url", str(uuid.uuid4()))
+        # Si no hay UUID, usa los atributos. Comprueba si el diccionario
+        # ya es el de atributos o si los contiene.
+        attrs = variant_data.get("attributes", variant_data)
+        if not isinstance(attrs, dict) or not attrs:
+            return variant_data.get("image_url", str(uuid.uuid4()))
         
+        # Crea una clave ordenada y predecible a partir de los atributos
         sorted_attrs = sorted(attrs.items())
-        return "-".join([f"{k}:{v}" for k, v in sorted_attrs])
+        return "-".join(f"{k}:{v}" for k, v in sorted_attrs)
 
 
     # --- Función para mostrar el detalle de un producto ---
@@ -3136,8 +3135,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def show_product_detail(self, product_id: int):
         """
-        [VERSIÓN 2.4 - ROBUSTA Y DEFINITIVA] Muestra el detalle financiero de un producto.
-        Esta versión maneja correctamente datos antiguos, variantes eliminadas y listas de variantes vacías.
+        [VERSIÓN 3.0 - CÁLCULOS Y AGREGACIÓN CORREGIDOS]
+        Muestra el detalle financiero de un producto, asegurando que los datos de
+        las variantes vendidas se muestren correctamente.
         """
         if not self.is_admin:
             yield rx.redirect("/")
@@ -3172,58 +3172,61 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 for item in purchase.items:
                     if item.blog_post_id == product_id and item.blog_post:
+                        # ✨ CORRECCIÓN CLAVE: Usa la nueva función de clave consistente
                         variant_key = self._get_variant_key(item.selected_variant)
-                        price = item.blog_post.price or 0.0
-                        # ✨ CORRECCIÓN CLAVE AQUÍ ✨
-                        profit = item.blog_post.profit or 0.0
                         
-                        purchase_price = price - profit
-                        item_cogs = purchase_price * item.quantity
+                        # ✨ CORRECCIÓN CLAVE: Lógica de cálculo de costos y ganancias
+                        item_revenue = item.price_at_purchase * item.quantity
+                        
+                        price = item.blog_post.price or 0.0
+                        profit = item.blog_post.profit or 0.0
+                        cost_of_good = price - profit
+
+                        item_cogs = cost_of_good * item.quantity
                         item_net_profit = profit * item.quantity
                         
                         aggregator = variant_sales_aggregator[variant_key]
                         aggregator["units"] += item.quantity
-                        aggregator["revenue"] += item.price_at_purchase * item.quantity
+                        aggregator["revenue"] += item_revenue
                         aggregator["net_profit"] += item_net_profit
                         aggregator["cogs"] += item_cogs
                         aggregator["daily_profit"][purchase_date_str] += item_net_profit
 
                         product_total_units += item.quantity
-                        product_total_revenue += item.price_at_purchase * item.quantity
+                        product_total_revenue += item_revenue
                         product_total_net_profit += item_net_profit
                         product_total_cogs += item_cogs
 
             product_variants_data = []
-            for variant_db in blog_post.variants:
-                variant_key = self._get_variant_key(variant_db)
-                sales_data = variant_sales_aggregator.get(variant_key, {})
-                attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
-                sorted_daily_profit = sorted(
-                    [{"date": date, "Ganancia": profit} for date, profit in sales_data.get("daily_profit", {}).items()],
-                    key=lambda x: x['date']
-                )
-                product_variants_data.append(VariantDetailFinanceDTO(
-                    variant_key=variant_key,
-                    attributes_str=attributes_str,
-                    image_url=variant_db.get("image_url"),
-                    units_sold=sales_data.get("units", 0),
-                    total_revenue_cop=format_to_cop(sales_data.get("revenue", 0.0)),
-                    total_cogs_cop=format_to_cop(sales_data.get("cogs", 0.0)),
-                    total_net_profit_cop=format_to_cop(sales_data.get("net_profit", 0.0)),
-                    daily_profit_data=sorted_daily_profit
-                ))
+            if blog_post.variants:
+                for variant_db in blog_post.variants:
+                    # ✨ CORRECCIÓN CLAVE: Usa la nueva función de clave consistente
+                    variant_key = self._get_variant_key(variant_db)
+                    sales_data = variant_sales_aggregator.get(variant_key, {})
+                    attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
+                    sorted_daily_profit = sorted(
+                        [{"date": date, "Ganancia": profit} for date, profit in sales_data.get("daily_profit", {}).items()],
+                        key=lambda x: x['date']
+                    )
+                    product_variants_data.append(VariantDetailFinanceDTO(
+                        variant_key=variant_key,
+                        attributes_str=attributes_str,
+                        image_url=variant_db.get("image_url"),
+                        units_sold=sales_data.get("units", 0),
+                        total_revenue_cop=format_to_cop(sales_data.get("revenue", 0.0)),
+                        total_cogs_cop=format_to_cop(sales_data.get("cogs", 0.0)),
+                        total_net_profit_cop=format_to_cop(sales_data.get("net_profit", 0.0)),
+                        daily_profit_data=sorted_daily_profit
+                    ))
 
-            # ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨
-            # Se comprueba que la lista de variantes no esté vacía antes de acceder al índice [0].
             main_image_url = None
-            if blog_post.variants: # Esto evalúa a True si la lista no está vacía
+            if blog_post.variants:
                 main_image_url = blog_post.variants[0].get("image_url")
-            # ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨
 
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
                 title=blog_post.title,
-                image_url=main_image_url, # Se usa la variable segura que acabamos de crear
+                image_url=main_image_url,
                 total_units_sold=product_total_units,
                 total_revenue_cop=format_to_cop(product_total_revenue),
                 total_profit_cop=format_to_cop(product_total_net_profit),
@@ -3282,8 +3285,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_finance_data(self):
         """
-        [VERSIÓN 2.1 CORREGIDA] Calcula todas las estadísticas financieras,
-        manejando de forma segura los productos antiguos sin datos de ganancia.
+        [VERSIÓN 3.0 - CÁLCULOS CORREGIDOS]
+        Calcula todas las estadísticas financieras con las fórmulas correctas para
+        ingresos, costos y ganancias.
         """
         if not self.is_admin:
             yield rx.redirect("/")
@@ -3309,13 +3313,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.is_loading = False
                 return
 
-            total_revenue = sum(p.total_price for p in completed_purchases)
+            total_revenue = 0.0
             total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
             total_sales_count = len(completed_purchases)
-            
-            total_net_profit = 0
-            total_cogs = 0
-            total_actual_shipping_cost = 0
+            total_net_profit = 0.0
+            total_cogs = 0.0
+            total_actual_shipping_cost = 0.0
 
             product_aggregator = defaultdict(lambda: {"title": "", "units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0})
             daily_profit = defaultdict(float)
@@ -3326,14 +3329,17 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 for item in purchase.items:
                     if item.blog_post:
+                        # ✨ CORRECCIÓN CLAVE: Lógica de cálculo de costos y ganancias
+                        item_revenue = item.price_at_purchase * item.quantity
+                        
                         price = item.blog_post.price or 0.0
-                        # ✨ CORRECCIÓN CLAVE AQUÍ ✨
                         profit = item.blog_post.profit or 0.0
+                        cost_of_good = price - profit
                         
-                        purchase_price = price - profit
-                        item_cogs = purchase_price * item.quantity
+                        item_cogs = cost_of_good * item.quantity
                         item_net_profit = profit * item.quantity
-                        
+
+                        total_revenue += item_revenue
                         total_cogs += item_cogs
                         total_net_profit += item_net_profit
                         
@@ -3341,7 +3347,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                         product_aggregator[item.blog_post_id]["title"] = item.blog_post.title
                         product_aggregator[item.blog_post_id]["units"] += item.quantity
-                        product_aggregator[item.blog_post_id]["revenue"] += item.price_at_purchase * item.quantity
+                        product_aggregator[item.blog_post_id]["revenue"] += item_revenue
                         product_aggregator[item.blog_post_id]["net_profit"] += item_net_profit
                         product_aggregator[item.blog_post_id]["cogs"] += item_cogs
             
