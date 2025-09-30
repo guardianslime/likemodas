@@ -3115,8 +3115,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def show_product_detail(self, product_id: int):
         """
-        [VERSIÓN 2.2 CORREGIDA] Muestra el detalle financiero de un producto,
-        manejando de forma segura los productos antiguos sin datos de ganancia.
+        [VERSIÓN 2.3 CORREGIDA Y ROBUSTA] Muestra el detalle financiero de un producto.
+        Esta versión maneja correctamente datos antiguos y variantes eliminadas para evitar cierres inesperados del modal.
         """
         if not self.is_admin:
             yield rx.redirect("/")
@@ -3144,6 +3144,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     PurchaseItemModel.blog_post_id == product_id
                 ).join(PurchaseItemModel)
             ).unique().all()
+            
+            # --- ✨ INICIO DE LA LÓGICA CORREGIDA ✨ ---
+
+            # 1. Primero, calculamos los totales de TODAS las ventas históricas, incluyendo las de variantes que ya no existen.
+            product_total_units, product_total_revenue, product_total_net_profit, product_total_cogs = 0, 0.0, 0.0, 0.0
 
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
@@ -3151,37 +3156,34 @@ class AppState(reflex_local_auth.LocalAuthState):
                     if item.blog_post_id == product_id and item.blog_post:
                         variant_key = self._get_variant_key(item.selected_variant)
                         
-                        # ✨ INICIO DE LA CORRECCIÓN ✨
-                        # Usamos 'or 0.0' para asegurar que los cálculos no fallen con datos antiguos.
                         price = item.blog_post.price or 0.0
                         profit = item.blog_post.profit or 0.0
                         
                         purchase_price = price - profit
                         item_cogs = purchase_price * item.quantity
                         item_net_profit = profit * item.quantity
-                        # ✨ FIN DE LA CORRECCIÓN ✨
+                        
+                        aggregator = variant_sales_aggregator[variant_key]
+                        aggregator["units"] += item.quantity
+                        aggregator["revenue"] += item.price_at_purchase * item.quantity
+                        aggregator["net_profit"] += item_net_profit
+                        aggregator["cogs"] += item_cogs
+                        aggregator["daily_profit"][purchase_date_str] += item_net_profit
 
-                        variant_sales_aggregator[variant_key]["units"] += item.quantity
-                        variant_sales_aggregator[variant_key]["revenue"] += item.price_at_purchase * item.quantity
-                        variant_sales_aggregator[variant_key]["net_profit"] += item_net_profit
-                        variant_sales_aggregator[variant_key]["cogs"] += item_cogs
-                        variant_sales_aggregator[variant_key]["daily_profit"][purchase_date_str] += item_net_profit
+                        product_total_units += item.quantity
+                        product_total_revenue += item.price_at_purchase * item.quantity
+                        product_total_net_profit += item_net_profit
+                        product_total_cogs += item_cogs
 
-            product_total_units, product_total_revenue, product_total_profit, product_total_cogs = 0, 0.0, 0.0, 0.0
+            # 2. Ahora, construimos la lista de DTOs para las variantes que SÍ existen actualmente.
             product_variants_data = []
-
             for variant_db in blog_post.variants:
                 variant_key = self._get_variant_key(variant_db)
-                sales_data = variant_sales_aggregator.get(variant_key, {"units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0, "daily_profit": {}})
-                
-                product_total_units += sales_data["units"]
-                product_total_revenue += sales_data["revenue"]
-                product_total_profit += sales_data["net_profit"]
-                product_total_cogs += sales_data["cogs"]
+                sales_data = variant_sales_aggregator.get(variant_key, {}) # Obtenemos sus ventas si las tuvo
 
                 attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
                 sorted_daily_profit = sorted(
-                    [{"date": date, "Ganancia": profit} for date, profit in sales_data["daily_profit"].items()],
+                    [{"date": date, "Ganancia": profit} for date, profit in sales_data.get("daily_profit", {}).items()],
                     key=lambda x: x['date']
                 )
 
@@ -3189,23 +3191,26 @@ class AppState(reflex_local_auth.LocalAuthState):
                     variant_key=variant_key,
                     attributes_str=attributes_str,
                     image_url=variant_db.get("image_url"),
-                    units_sold=sales_data["units"],
-                    total_revenue_cop=format_to_cop(sales_data["revenue"]),
-                    total_cogs_cop=format_to_cop(sales_data["cogs"]),
-                    total_net_profit_cop=format_to_cop(sales_data["net_profit"]),
+                    units_sold=sales_data.get("units", 0),
+                    total_revenue_cop=format_to_cop(sales_data.get("revenue", 0.0)),
+                    total_cogs_cop=format_to_cop(sales_data.get("cogs", 0.0)),
+                    total_net_profit_cop=format_to_cop(sales_data.get("net_profit", 0.0)),
                     daily_profit_data=sorted_daily_profit
                 ))
 
+            # 3. Finalmente, creamos el DTO del producto principal usando los totales CORRECTOS y completos.
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
                 title=blog_post.title,
                 image_url=(blog_post.variants[0].get("image_url") if blog_post.variants else None),
                 total_units_sold=product_total_units,
                 total_revenue_cop=format_to_cop(product_total_revenue),
-                total_profit_cop=format_to_cop(product_total_profit),
+                total_profit_cop=format_to_cop(product_total_net_profit),
                 variants=product_variants_data
             )
             
+            # --- ✨ FIN DE LA LÓGICA CORREGIDA ✨ ---
+
             if product_variants_data:
                 self.select_variant_for_detail(0)
 
