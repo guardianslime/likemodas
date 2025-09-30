@@ -72,24 +72,17 @@ def sliding_admin_sidebar() -> rx.Component:
     SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
-        # Sección del logo (sin cambios)
+        # ... (La sección del logo y el scroll_area no cambian) ...
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%", margin_bottom="1.5em",
         ),
-        
-        # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
-        # Se envuelve la lista de items en un rx.scroll_area
         rx.scroll_area(
             sidebar_items(),
             type="auto",
             scrollbars="vertical",
-            # Ocupa el espacio disponible, empujando el pie de página hacia abajo
             flex_grow="1",
         ),
-        # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
-        
-        # La sección de logout se mantiene igual pero ahora siempre será visible
         rx.vstack(
             rx.divider(),
             rx.hstack(
@@ -121,12 +114,19 @@ def sliding_admin_sidebar() -> rx.Component:
             spacing="3",
         ),
 
-        spacing="5", padding="1em",
+        spacing="5",
+        # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
+        # Se cambia 'padding' por 'padding_x' y 'padding_y' para poder añadir
+        # un espacio extra en la parte inferior.
+        padding_x="1em",
+        padding_top="1em",
+        padding_bottom="2.5em", # <-- ESTA LÍNEA EMPUJA TODO HACIA ARRIBA
+        # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
         bg=rx.color("gray", 2),
         align="start", height="100%", width=SIDEBAR_WIDTH,
     )
 
-    # El resto de la función (el contenedor del sidebar) no cambia
+    # El resto de la función no cambia...
     return rx.box(
         rx.hstack(
             sidebar_panel,
