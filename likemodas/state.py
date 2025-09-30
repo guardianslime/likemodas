@@ -1172,18 +1172,32 @@ class AppState(reflex_local_auth.LocalAuthState):
     def submit_and_publish(self, form_data: dict):
         if not self.is_admin or not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
-        if not all([form_data.get("title"), self.price_str, form_data.get("category")]):
+
+        # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+
+        # 1. Extraemos los valores directamente del form_data que nos llega.
+        title = form_data.get("title", "").strip()
+        price_str = form_data.get("price", "")
+        category = form_data.get("category", "")
+        profit_str = form_data.get("profit", "")
+        content = form_data.get("content", "")
+        shipping_cost_str = form_data.get("shipping_cost", "")
+        limit_str = form_data.get("shipping_combination_limit", "3") # Obtenemos el límite también
+
+        # 2. La validación ahora usa las variables correctas.
+        if not all([title, price_str, category]):
             return rx.toast.error("Título, precio y categoría son obligatorios.")
+
+        # 3. El resto de la lógica usa estas variables locales.
         if not self.generated_variants_map:
             return rx.toast.error("Debes generar y configurar las variantes para al menos una imagen.")
 
         try:
-            price_float = float(self.price_str)
-            profit_float = float(self.profit_str) if self.profit_str else None
-            shipping_cost = float(self.shipping_cost_str) if self.shipping_cost_str else None
-            limit = None
-            if self.combines_shipping and self.shipping_combination_limit_str:
-                limit = int(self.shipping_combination_limit_str)
+            price_float = float(price_str)
+            profit_float = float(profit_str) if profit_str else None
+            shipping_cost = float(shipping_cost_str) if shipping_cost_str else None
+            limit = int(limit_str) if self.combines_shipping and limit_str else None
+            
             if self.combines_shipping and (limit is None or limit <= 0):
                 return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
         except ValueError:
@@ -1207,12 +1221,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             new_post = BlogPostModel(
                 userinfo_id=self.authenticated_user_info.id,
-                title=form_data["title"],
-                content=form_data.get("content", ""),
+                title=title,
+                content=content,
                 price=price_float,
                 profit=profit_float,
                 price_includes_iva=self.price_includes_iva,
-                category=form_data.get("category"),
+                category=category,
                 variants=all_variants_for_db,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
@@ -1224,7 +1238,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             session.add(new_post)
             session.commit()
-            session.refresh(new_post)
+
+        # ✨ --- FIN DE LA CORRECCIÓN --- ✨
 
         self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
