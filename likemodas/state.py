@@ -3172,26 +3172,31 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 for item in purchase.items:
                     if item.blog_post_id == product_id and item.blog_post:
-                        # 1. Usamos una clave consistente para identificar la variante
-                        variant_key = self._get_variant_key(item.selected_variant)
+                        # --- ✅ INICIO DE LA CORRECCIÓN CLAVE ✅ ---
+                        # 1. Buscamos la definición COMPLETA de la variante que se vendió
+                        #    para obtener su UUID, que es la clave canónica.
+                        sold_variant_definition = next(
+                            (v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant),
+                            item.selected_variant # Fallback por si no se encuentra
+                        )
+                        variant_key = self._get_variant_key(sold_variant_definition)
                         
-                        # 2. Aplicamos la misma lógica de cálculo corregida
+                        # 2. Aplicamos la lógica de cálculo de costos correcta
                         item_revenue = item.price_at_purchase * item.quantity
-                        
                         price = item.blog_post.price or 0.0
                         profit = item.blog_post.profit or 0.0
                         cost_of_good = price - profit
-
                         item_cogs = cost_of_good * item.quantity
                         item_net_profit = profit * item.quantity
                         
-                        # 3. Agregamos los datos al diccionario de la variante correcta
+                        # 3. Agregamos los datos al diccionario de la variante correcta usando la clave canónica
                         aggregator = variant_sales_aggregator[variant_key]
                         aggregator["units"] += item.quantity
                         aggregator["revenue"] += item_revenue
                         aggregator["net_profit"] += item_net_profit
                         aggregator["cogs"] += item_cogs
                         aggregator["daily_profit"][purchase_date_str] += item_net_profit
+                        # --- ✅ FIN DE LA CORRECCIÓN CLAVE ✅ ---
 
                         product_total_units += item.quantity
                         product_total_revenue += item_revenue
@@ -3201,10 +3206,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             product_variants_data = []
             if blog_post.variants:
                 for variant_db in blog_post.variants:
-                    # 4. Usamos la misma clave consistente para buscar los datos agregados
+                    # 4. Usamos la misma clave canónica (UUID) para buscar los datos agregados
                     variant_key = self._get_variant_key(variant_db)
                     sales_data = variant_sales_aggregator.get(variant_key, {})
                     attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
+                    
                     sorted_daily_profit = sorted(
                         [{"date": date, "Ganancia": profit} for date, profit in sales_data.get("daily_profit", {}).items()],
                         key=lambda x: x['date']
@@ -3220,9 +3226,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         daily_profit_data=sorted_daily_profit
                     ))
 
-            main_image_url = None
-            if blog_post.variants:
-                main_image_url = blog_post.variants[0].get("image_url")
+            main_image_url = blog_post.variants[0].get("image_url") if blog_post.variants else None
 
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
@@ -3234,8 +3238,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 variants=product_variants_data
             )
             
-            if product_variants_data:
-                self.select_variant_for_detail(0)
+            # Opcional: auto-seleccionar la primera variante con ventas
+            first_sold_variant_index = next((i for i, v in enumerate(product_variants_data) if v.units_sold > 0), 0)
+            self.select_variant_for_detail(first_sold_variant_index)
 
         self.show_product_detail_modal = True
         self.is_loading = False
@@ -3283,6 +3288,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.admin_final_shipping_cost[purchase_id] = value
     # --- ✨ FIN DE NUEVAS VARIABLES Y SETTERS ✨ ---
 
+
     @rx.event
     def on_load_finance_data(self):
         """
@@ -3298,6 +3304,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
 
         with rx.session() as session:
+            # Nota: Solo se consideran ventas "Entregadas" o "Venta Directa" para las finanzas.
             completed_purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -3330,7 +3337,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 for item in purchase.items:
                     if item.blog_post:
-                        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+                        # --- ✅ INICIO DE LA CORRECCIÓN CLAVE ✅ ---
                         item_revenue = item.price_at_purchase * item.quantity
                         
                         price = item.blog_post.price or 0.0
@@ -3342,7 +3349,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         # 2. Calculamos el costo total y la ganancia neta para este item
                         item_cogs = cost_of_good * item.quantity
                         item_net_profit = profit * item.quantity
-                        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+                        # --- ✅ FIN DE LA CORRECCIÓN CLAVE ✅ ---
 
                         total_revenue += item_revenue
                         total_cogs += item_cogs
