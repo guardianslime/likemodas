@@ -123,12 +123,25 @@ class ProductDetailData(rx.Base):
     class Config: orm_mode = True
 
 class AdminPurchaseCardData(rx.Base):
-    id: int; customer_name: str; customer_email: str; purchase_date_formatted: str
-    status: str; total_price: float; shipping_name: str; shipping_full_address: str
+    id: int
+    customer_name: str; customer_email: str; purchase_date_formatted: str
+    status: str; total_price: float; shipping_name: str
+    shipping_full_address: str
     shipping_phone: str; items_formatted: list[str]; payment_method: str
     confirmed_at: Optional[datetime] = None
+    
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # Añade el campo para almacenar el costo de envío numérico
+    shipping_applied: Optional[float] = 0.0
+
     @property
     def total_price_cop(self) -> str: return format_to_cop(self.total_price)
+    
+    # Añade la propiedad para formatear el costo de envío
+    @property
+    def shipping_applied_cop(self) -> str:
+        return format_to_cop(self.shipping_applied or 0.0)
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
 class PurchaseItemCardData(rx.Base):
     id: int; title: str; image_url: str; price_at_purchase: float; price_at_purchase_cop: str; quantity: int
@@ -4229,8 +4242,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 AdminPurchaseCardData(
                     id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
                     purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
-                    # --- ✨ LÍNEA AÑADIDA PARA CORREGIR EL ERROR ✨ ---
                     payment_method=p.payment_method,
+                    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+                    shipping_applied=p.shipping_applied, # Pasa el costo de envío también aquí
+                    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                     shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
                 ) for p in results
@@ -4269,6 +4284,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                     purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
                     payment_method=p.payment_method,
                     confirmed_at=p.confirmed_at,
+                    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+                    shipping_applied=p.shipping_applied, # Pasa el costo de envío aquí
+                    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                     shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                     shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
                 ) for p in purchases
