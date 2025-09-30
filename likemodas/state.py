@@ -21,6 +21,7 @@ import uuid # Asegúrate de importar la biblioteca uuid
 # from pyzbar.pyzbar import decode
 from PIL import Image
 import io
+import csv
 from urllib.parse import urlparse, parse_qs
 import cv2  # <-- AÑADE ESTA IMPORTACIÓN
 import numpy as np # <-- AÑADE ESTA IMPORTACIÓN
@@ -289,8 +290,10 @@ class ProductFinanceDTO(rx.Base):
     title: str
     units_sold: int
     total_revenue_cop: str
-    total_cogs_cop: str # ✨ NUEVO
-    total_net_profit_cop: str # ✨ RENOMBRADO de total_profit_cop
+    total_cogs_cop: str
+    total_net_profit_cop: str
+    # --- ✅ NUEVO CAMPO AÑADIDO ✅ ---
+    profit_margin_str: str = "0.00%"
 
 
 class AppState(reflex_local_auth.LocalAuthState):
@@ -305,6 +308,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     _product_id_to_load_on_mount: Optional[int] = None
     success: bool = False
     error_message: str = ""
+    # --- ✅ INICIO DE NUEVAS VARIABLES ✅ ---
+    # Variables para el filtro de fechas
+    finance_start_date: str = ""
+    finance_end_date: str = ""
+
+    def set_finance_start_date(self, date: str):
+        self.finance_start_date = date
+
+    def set_finance_end_date(self, date: str):
+        self.finance_end_date = date
+    # --- ✅ FIN DE NUEVAS VARIABLES ✅ ---
     
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfoDTO | None:
@@ -3302,82 +3316,93 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_finance_data(self):
         """
-        [VERSIÓN 3.0 - CÁLCULOS CORREGIDOS]
-        Calcula todas las estadísticas financieras con las fórmulas correctas para
-        ingresos, costos y ganancias.
+        Se ejecuta al cargar la página. Establece un rango de fechas por defecto
+        (últimos 30 días) y llama a la función de cálculo.
         """
         if not self.is_admin:
-            yield rx.redirect("/")
-            return
+            return rx.redirect("/")
+        
+        # Establecer fechas por defecto
+        today = datetime.now(timezone.utc)
+        thirty_days_ago = today - timedelta(days=30)
+        self.finance_end_date = today.strftime('%Y-%m-%d')
+        self.finance_start_date = thirty_days_ago.strftime('%Y-%m-%d')
+        
+        # Llamar al cálculo
+        yield from self._calculate_finance_data()
 
+    @rx.event
+    def filter_finance_data(self):
+        """
+        Evento que se dispara al hacer clic en el botón 'Filtrar'.
+        Llama a la función de cálculo con las fechas seleccionadas.
+        """
+        yield from self._calculate_finance_data()
+
+    async def _calculate_finance_data(self):
+        """
+        [VERSIÓN 5.0] Lógica central que calcula todas las métricas financieras
+        basándose en el rango de fechas del estado.
+        """
         self.is_loading = True
         yield
 
         with rx.session() as session:
-            # Nota: Solo se consideran ventas "Entregadas" o "Venta Directa" para las finanzas.
-            completed_purchases = session.exec(
+            # Construye la consulta base
+            query = (
                 sqlmodel.select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.selectinload(PurchaseModel.items)
                     .selectinload(PurchaseItemModel.blog_post)
                 )
                 .where(PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]))
-            ).unique().all()
+            )
 
-            if not completed_purchases:
-                self.finance_stats = FinanceStatsDTO()
-                self.product_finance_data = []
-                self.profit_chart_data = []
-                self.is_loading = False
-                return
+            # Aplica los filtros de fecha si existen
+            if self.finance_start_date:
+                start_date = datetime.strptime(self.finance_start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                query = query.where(PurchaseModel.purchase_date >= start_date)
+            if self.finance_end_date:
+                end_date = datetime.strptime(self.finance_end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                end_date_inclusive = end_date + timedelta(days=1)
+                query = query.where(PurchaseModel.purchase_date < end_date_inclusive)
+
+            completed_purchases = session.exec(query.order_by(PurchaseModel.purchase_date.desc())).unique().all()
 
             total_revenue = 0.0
-            total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
-            total_sales_count = len(completed_purchases)
-            total_net_profit = 0.0
             total_cogs = 0.0
-            total_actual_shipping_cost = 0.0
-
+            total_net_profit = 0.0
+            total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
+            total_actual_shipping_cost = sum(p.actual_shipping_cost or p.shipping_applied or 0.0 for p in completed_purchases)
+            total_sales_count = len(completed_purchases)
+            
             product_aggregator = defaultdict(lambda: {"title": "", "units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0})
             daily_profit = defaultdict(float)
 
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
-                total_actual_shipping_cost += purchase.actual_shipping_cost or purchase.shipping_applied or 0.0
-
                 for item in purchase.items:
                     if item.blog_post:
-                        # --- ✅ INICIO DE LA CORRECCIÓN CLAVE ✅ ---
                         item_revenue = item.price_at_purchase * item.quantity
-                        
-                        price = item.blog_post.price or 0.0
-                        profit = item.blog_post.profit or 0.0
-                        
-                        # 1. Calculamos el costo real del producto
-                        cost_of_good = price - profit
-                        
-                        # 2. Calculamos el costo total y la ganancia neta para este item
-                        item_cogs = cost_of_good * item.quantity
-                        item_net_profit = profit * item.quantity
-                        # --- ✅ FIN DE LA CORRECCIÓN CLAVE ✅ ---
+                        profit_per_unit = item.blog_post.profit or 0.0
+                        cost_per_unit = (item.blog_post.price or 0.0) - profit_per_unit
+                        item_cogs = cost_per_unit * item.quantity
+                        item_net_profit = profit_per_unit * item.quantity
 
                         total_revenue += item_revenue
                         total_cogs += item_cogs
                         total_net_profit += item_net_profit
-                        
                         daily_profit[purchase_date_str] += item_net_profit
 
-                        product_aggregator[item.blog_post_id]["title"] = item.blog_post.title
-                        product_aggregator[item.blog_post_id]["units"] += item.quantity
-                        product_aggregator[item.blog_post_id]["revenue"] += item_revenue
-                        
-                        # 3. Agregamos los nuevos valores al agregador del producto
-                        product_aggregator[item.blog_post_id]["net_profit"] += item_net_profit
-                        product_aggregator[item.blog_post_id]["cogs"] += item_cogs
+                        aggregator = product_aggregator[item.blog_post_id]
+                        aggregator["title"] = item.blog_post.title
+                        aggregator["units"] += item.quantity
+                        aggregator["revenue"] += item_revenue
+                        aggregator["net_profit"] += item_net_profit
+                        aggregator["cogs"] += item_cogs
             
             shipping_profit_loss = total_shipping_collected - total_actual_shipping_cost
             grand_total_net_profit = total_net_profit + shipping_profit_loss
-
             avg_order_value = total_revenue / total_sales_count if total_sales_count > 0 else 0
             profit_margin = (grand_total_net_profit / total_revenue) * 100 if total_revenue > 0 else 0
 
@@ -3399,16 +3424,52 @@ class AppState(reflex_local_auth.LocalAuthState):
                     units_sold=data["units"],
                     total_revenue_cop=format_to_cop(data["revenue"]),
                     total_cogs_cop=format_to_cop(data["cogs"]),
-                    total_net_profit_cop=format_to_cop(data["net_profit"])
+                    total_net_profit_cop=format_to_cop(data["net_profit"]),
+                    profit_margin_str=f"{(data['net_profit'] / data['revenue'] * 100):.2f}%" if data['revenue'] > 0 else "0.00%"
                 ) for pid, data in product_aggregator.items()
             ], key=lambda x: x.units_sold, reverse=True)
 
-            sorted_daily_profit_keys = sorted(daily_profit.keys())
-            self.profit_chart_data = [
-                {"date": date, "Ganancia": daily_profit[date]} for date in sorted_daily_profit_keys
-            ]
+            # Ordenar fechas para el gráfico
+            if daily_profit:
+                sorted_dates = sorted(daily_profit.keys())
+                self.profit_chart_data = [{"date": date, "Ganancia": daily_profit[date]} for date in sorted_dates]
+            else:
+                self.profit_chart_data = []
 
         self.is_loading = False
+
+    @rx.event
+    def export_product_finance_csv(self):
+        """
+        Genera un archivo CSV a partir de los datos filtrados de rendimiento
+        por producto y lo descarga en el navegador del usuario.
+        """
+        if not self.filtered_product_finance_data:
+            return rx.toast.info("No hay datos para exportar.")
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Escribir la fila de encabezado
+        headers = [
+            "Producto", "Unidades Vendidas", "Ingresos", 
+            "Costo Total", "Ganancia Neta", "Margen de Ganancia (%)"
+        ]
+        writer.writerow(headers)
+
+        # Escribir los datos de cada producto
+        for p_data in self.filtered_product_finance_data:
+            writer.writerow([
+                p_data.title,
+                p_data.units_sold,
+                p_data.total_revenue_cop,
+                p_data.total_cogs_cop,
+                p_data.total_net_profit_cop,
+                p_data.profit_margin_str
+            ])
+        
+        output.seek(0)
+        return rx.download(data=output.getvalue(), filename="rendimiento_productos.csv")
 
     # --- Funciones de formulario de publicación ---
 
