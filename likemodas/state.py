@@ -3121,8 +3121,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def show_product_detail(self, product_id: int):
         """
-        [VERSIÓN 2.3 CORREGIDA Y ROBUSTA] Muestra el detalle financiero de un producto.
-        Esta versión maneja correctamente datos antiguos y variantes eliminadas para evitar cierres inesperados del modal.
+        [VERSIÓN 2.4 - ROBUSTA Y DEFINITIVA] Muestra el detalle financiero de un producto.
+        Esta versión maneja correctamente datos antiguos, variantes eliminadas y listas de variantes vacías.
         """
         if not self.is_admin:
             yield rx.redirect("/")
@@ -3151,7 +3151,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ).join(PurchaseItemModel)
             ).unique().all()
             
-            # 1. Primero, calculamos los totales de TODAS las ventas históricas, incluyendo las de variantes que ya no existen.
             product_total_units, product_total_revenue, product_total_net_profit, product_total_cogs = 0, 0.0, 0.0, 0.0
 
             for purchase in completed_purchases:
@@ -3159,7 +3158,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 for item in purchase.items:
                     if item.blog_post_id == product_id and item.blog_post:
                         variant_key = self._get_variant_key(item.selected_variant)
-                        
                         price = item.blog_post.price or 0.0
                         profit = item.blog_post.profit or 0.0
                         
@@ -3179,18 +3177,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                         product_total_net_profit += item_net_profit
                         product_total_cogs += item_cogs
 
-            # 2. Ahora, construimos la lista de DTOs para las variantes que SÍ existen actualmente.
             product_variants_data = []
             for variant_db in blog_post.variants:
                 variant_key = self._get_variant_key(variant_db)
-                sales_data = variant_sales_aggregator.get(variant_key, {}) # Obtenemos sus ventas si las tuvo
-
+                sales_data = variant_sales_aggregator.get(variant_key, {})
                 attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
                 sorted_daily_profit = sorted(
                     [{"date": date, "Ganancia": profit} for date, profit in sales_data.get("daily_profit", {}).items()],
                     key=lambda x: x['date']
                 )
-
                 product_variants_data.append(VariantDetailFinanceDTO(
                     variant_key=variant_key,
                     attributes_str=attributes_str,
@@ -3202,11 +3197,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                     daily_profit_data=sorted_daily_profit
                 ))
 
-            # 3. Finalmente, creamos el DTO del producto principal usando los totales CORRECTOS y completos.
+            # ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨
+            # Se comprueba que la lista de variantes no esté vacía antes de acceder al índice [0].
+            main_image_url = None
+            if blog_post.variants: # Esto evalúa a True si la lista no está vacía
+                main_image_url = blog_post.variants[0].get("image_url")
+            # ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨
+
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
                 title=blog_post.title,
-                image_url=(blog_post.variants[0].get("image_url") if blog_post.variants else None),
+                image_url=main_image_url, # Se usa la variable segura que acabamos de crear
                 total_units_sold=product_total_units,
                 total_revenue_cop=format_to_cop(product_total_revenue),
                 total_profit_cop=format_to_cop(product_total_net_profit),
