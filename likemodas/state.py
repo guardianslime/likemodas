@@ -3237,7 +3237,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = False
     
     # --- Función para seleccionar una variante específica en el detalle del producto ---
-    # ✨ LA ÚNICA CORRECCIÓN NECESARIA ES QUITAR EL DECORADOR @rx.event DE AQUÍ ✨
+    @rx.event
     def select_variant_for_detail(self, index: int):
         if self.selected_product_detail and 0 <= index < len(self.selected_product_detail.variants):
             self.selected_variant_index = index
@@ -3259,6 +3259,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.selected_variant_detail = None
         self.selected_variant_index = -1
         self.product_detail_chart_data = []
+
+    @rx.event
+    def set_show_product_detail_modal(self, open: bool):
+        """Controla la visibilidad del modal de finanzas y limpia el estado al cerrar."""
+        self.show_product_detail_modal = open
+        # Si el modal se está cerrando, limpiamos los datos para la próxima vez
+        if not open:
+            self.selected_product_detail = None
+            self.selected_variant_detail = None
+            self.selected_variant_index = -1
+            self.product_detail_chart_data = []
 
     # --- ✨ INICIO DE NUEVAS VARIABLES Y SETTERS ✨ ---
     admin_final_shipping_cost: Dict[int, str] = {}
