@@ -1,4 +1,4 @@
-# En likemodas/ui/sidebar.py (Versión Definitiva)
+# likemodas/ui/sidebar.py (Versión Restaurada y Corregida)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
@@ -6,15 +6,13 @@ from ..state import AppState
 from .. import navigation
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Un componente de enlace de sidebar con tamaños responsivos para texto, icono y padding."""
+    """Un componente de enlace con tamaños responsivos que no afectan la estructura."""
     is_active = (AppState.current_path == href)
 
     return rx.link(
         rx.hstack(
-            # --- ✅ El tamaño del icono ahora es fijo y pequeño, ideal para ambos modos ---
-            rx.icon(icon, size=18),
-            # --- ✅ El tamaño del texto y el padding son más pequeños en móvil ---
-            rx.text(text, size={"initial": "2", "lg": "3"}),
+            rx.icon(icon, size=20),
+            rx.text(text, size="3"),
             rx.spacer(),
             rx.cond(
                 has_notification,
@@ -25,7 +23,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
             font_weight=rx.cond(is_active, "bold", "normal"),
             border_radius="var(--radius-3)",
             width="100%",
-            padding={"initial": "0.4em", "lg": "0.75em"},
+            padding="0.75em",
             align="center",
             _hover={
                 "background_color": rx.color("violet", 5),
@@ -37,7 +35,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
     )
 
 def sidebar_items() -> rx.Component:
-    """La lista de vínculos del sidebar, con espaciado responsivo."""
+    """La lista de vínculos del sidebar."""
     return rx.vstack(
         rx.cond(
             AppState.is_admin,
@@ -51,34 +49,36 @@ def sidebar_items() -> rx.Component:
                     sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
                     sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
                     sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
-                    spacing={"initial": "1", "lg": "2"},
+                    spacing="2",
                     width="100%"
                 ),
-                rx.divider(margin_y={"initial": "0.5em", "lg": "1em"}),
+                rx.divider(margin_y="1em"),
             )
         ),
         sidebar_item("Tienda", "store", "/admin/store"),
-        spacing={"initial": "1", "lg": "2"},
+        spacing="2",
         width="100%",
     )
 
 def sliding_admin_sidebar() -> rx.Component:
     """
-    El componente completo del sidebar.
-    RESTAURADO a su funcionalidad original de PC y adaptado para móvil.
+    Sidebar restaurado a su funcionalidad original de PC,
+    con una adaptación sutil y correcta para móvil.
     """
-    # --- ✅ 1. Ancho fijo para un comportamiento predecible en la animación ✅ ---
+    # --- ✅ 1. RESTAURADO: Ancho fijo para que la animación de PC funcione perfectamente ✅ ---
     SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
-            align="center", justify="center", width="100%",
-            margin_bottom={"initial": "0.75em", "lg": "1.5em"},
+            align="center", justify="center", width="100%", margin_bottom="1.5em",
         ),
         
-        # Se elimina el scroll_area para que se vea completo, como pediste
-        sidebar_items(),
+        # En इpantallas muy cortas, el scroll es la única opción segura.
+        # En la mayoría de móviles, no será necesario gracias a la reducción de espacios.
+        rx.scroll_area(
+            sidebar_items(),
+        ),
         
         rx.spacer(),
         
@@ -109,10 +109,9 @@ def sliding_admin_sidebar() -> rx.Component:
                 )
             ),
             width="100%",
-            spacing={"initial": "2", "lg": "3"},
+            spacing="3",
         ),
-
-        spacing={"initial": "2", "lg": "5"}, # Espaciado general reducido en móvil
+        spacing="5",
         padding="1em",
         bg=rx.color("gray", 2),
         align="start", 
@@ -123,10 +122,18 @@ def sliding_admin_sidebar() -> rx.Component:
     return rx.box(
         rx.hstack(
             sidebar_panel,
+            # --- ✅ 2. RESTAURADO: El botón vuelve a su diseño original ✅ ---
             rx.box(
                 rx.text(
                     "LIKEMODAS",
-                    style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.2em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}
+                    style={
+                        "writing_mode": "vertical-rl", 
+                        "transform": "rotate(180deg)", 
+                        "padding": "0.5em 0.2em", 
+                        "font_weight": "bold", 
+                        "letter_spacing": "2px", 
+                        "color": "white"
+                    }
                 ),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer",
@@ -134,7 +141,7 @@ def sliding_admin_sidebar() -> rx.Component:
                 border_radius="0 8px 8px 0",
                 height="150px",
                 display="flex",
-                align="items-center" # Corregido para que funcione
+                align_items="center"
             ),
             align_items="center",
             spacing="0",
@@ -145,7 +152,7 @@ def sliding_admin_sidebar() -> rx.Component:
         height="100vh",
         display="flex",
         align_items="center",
-        # --- ✅ 2. Lógica de ocultar/mostrar restaurada a la versión simple y funcional ✅ ---
+        # --- ✅ 3. RESTAURADO: La lógica original y funcional para ocultar/mostrar ✅ ---
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
@@ -153,4 +160,27 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
+        # --- ✅ 4. ADAPTACIÓN SUTIL PARA MÓVIL (oculta el sidebar fijo) ✅ ---
+        # Este es el truco: en PC (lg), si está abierto, le damos un estilo.
+        # En móvil, nunca aplicamos ese estilo, por lo que siempre se puede ocultar.
+        className=rx.cond(
+            AppState.show_admin_sidebar,
+            "expanded-sidebar", # Un nombre de clase para CSS
+            ""
+        ),
+        # Estilos que se aplican con la clase anterior SOLO en pantallas grandes
+        _light={
+            "& .expanded-sidebar": {
+                "@media (min-width: 1024px)": {
+                    "transform": "translateX(0) !important",
+                },
+            },
+        },
+        _dark={
+            "& .expanded-sidebar": {
+                "@media (min-width: 1024px)": {
+                    "transform": "translateX(0) !important",
+                },
+            },
+        }
     )
