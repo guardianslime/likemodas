@@ -62,23 +62,24 @@ def sidebar_items() -> rx.Component:
 
 # --- La función principal con la corrección final ---
 def sliding_admin_sidebar() -> rx.Component:
-    """Sidebar con la funcionalidad de PC 100% restaurada y un arreglo sutil para móvil."""
+    """Sidebar con el diseño final, balanceado para PC y móvil."""
     
-    # 1. Ancho fijo para que la animación de PC funcione perfectamente.
     SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
-            align="center", justify="center", width="100%", margin_bottom="1.5em",
+            align="center", justify="center", width="100%",
         ),
         
-        # El scroll_area es correcto para evitar que el contenido se desborde en pantallas muy pequeñas.
+        # --- ✅ 1. SE AÑADE flex_grow="1" PARA QUE ESTA ÁREA CREZCA ✅ ---
+        # Esto empuja la sección de logout hacia abajo de forma natural.
         rx.scroll_area(
             sidebar_items(),
+            flex_grow="1", # Le dice a esta área que ocupe todo el espacio vertical sobrante.
         ),
         
-        rx.spacer(),
+        # --- ✅ 2. SE ELIMINA EL rx.spacer() QUE CAUSABA EL HUECO GRANDE ✅ ---
         
         rx.vstack(
             rx.divider(),
@@ -111,18 +112,18 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         spacing="5",
 
-        # --- ✅ INICIO DE LA CORRECCIÓN DEFINITIVA ✅ ---
-        # Usamos padding responsivo. En móvil ("initial") tendrá más espacio vertical.
-        # En PC ("lg") volverá al valor original de "1em".
-        padding={"initial": "2.5em 1em 1.5em", "lg": "1em"},
-        # --- ✅ FIN DE LA CORRECCIÓN DEFINITIVA ✅ ---
-
+        # --- ✅ 3. AJUSTE FINAL DEL PADDING PARA UN BALANCE PERFECTO ✅ ---
+        # Un poco más de espacio arriba en PC y un espacio balanceado en móvil.
+        padding_x="1em",
+        padding_y={"initial": "1.5em", "lg": "2em"},
+        
         bg=rx.color("gray", 2),
         align="start", 
         height="100%", 
         width=SIDEBAR_WIDTH,
     )
 
+    # El resto del código se mantiene igual, con la lógica de PC restaurada
     return rx.box(
         rx.hstack(
             sidebar_panel,
@@ -146,13 +147,10 @@ def sliding_admin_sidebar() -> rx.Component:
             align_items="center",
             spacing="0",
         ),
-        position="fixed",
-        top="0",
-        left="0",
+        position="fixed", top="0", left="0",
         height="100%",
         display="flex",
         align_items="center",
-        # La lógica original y funcional para ocultar/mostrar se restaura.
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
@@ -160,5 +158,23 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
-        # SE HA ELIMINADO POR COMPLETO EL CÓDIGO 'className' y '_light'/'_dark' que rompía el diseño.
+        className=rx.cond(
+            AppState.show_admin_sidebar,
+            "expanded-sidebar",
+            ""
+        ),
+        _light={
+            "& .expanded-sidebar": {
+                "@media (min-width: 1024px)": {
+                    "transform": "translateX(0) !important",
+                },
+            },
+        },
+        _dark={
+            "& .expanded-sidebar": {
+                "@media (min-width: 1024px)": {
+                    "transform": "translateX(0) !important",
+                },
+            },
+        }
     )
