@@ -1,11 +1,11 @@
-# likemodas/admin/finance_page.py (Versión con todas las funcionalidades)
+# likemodas/admin/finance_page.py (Versión Completa y Corregida)
 
 import reflex as rx
-
-from likemodas.blog.public_page import product_detail_modal
 from ..state import AppState, ProductFinanceDTO, VariantDetailFinanceDTO
 from ..auth.admin_auth import require_admin
 from reflex.components.recharts import LineChart, Line, XAxis, YAxis, CartesianGrid, tooltip, Legend, ResponsiveContainer
+
+# --- Las funciones auxiliares y de la página principal (sin cambios) ---
 
 def stat_card(title: str, value: str, icon: str) -> rx.Component:
     """Muestra una tarjeta de estadística en el dashboard."""
@@ -96,8 +96,175 @@ def product_finance_table_row(p_data: ProductFinanceDTO) -> rx.Component:
         ),
         align="center",
     )
+    
+# --- ✅ INICIO DE LA CORRECCIÓN: SE AÑADEN LAS FUNCIONES DEL MODAL FINANCIERO ✅ ---
 
-# ... (Las funciones `variant_detail_view` y `product_detail_modal` no cambian, puedes dejarlas como están)
+def variant_detail_view() -> rx.Component:
+    """Vista detallada para una variante seleccionada dentro del modal."""
+    return rx.cond(
+        AppState.selected_variant_detail,
+        rx.vstack(
+            rx.card(
+                rx.vstack(
+                    rx.hstack(
+                        rx.image(
+                            src=rx.get_upload_url(AppState.selected_variant_detail.image_url),
+                            height="80px", width="80px", object_fit="cover", border_radius="lg"
+                        ),
+                        rx.vstack(
+                            rx.text("Detalles de la Variante", size="4", weight="bold"),
+                            rx.text(AppState.selected_variant_detail.attributes_str, size="2"),
+                            align_items="start", spacing="1"
+                        ),
+                        align="center",
+                        spacing="5",
+                        width="100%"
+                    ),
+                    rx.divider(),
+                    rx.hstack(
+                        rx.vstack(
+                            rx.text("Unidades Vendidas", size="2"),
+                            rx.heading(AppState.selected_variant_detail.units_sold, size="4"),
+                            align_items="start", spacing="0"
+                        ),
+                        rx.vstack(
+                            rx.text("Ingresos", size="2"),
+                            rx.heading(AppState.selected_variant_detail.total_revenue_cop, size="4"),
+                            align_items="start", spacing="0"
+                        ),
+                        rx.vstack(
+                            rx.text("Costo", size="2"),
+                            rx.heading(AppState.selected_variant_detail.total_cogs_cop, size="4"),
+                            align_items="start", spacing="0"
+                        ),
+                        rx.vstack(
+                            rx.text("Ganancia Neta", size="2"),
+                            rx.heading(AppState.selected_variant_detail.total_net_profit_cop, size="4"),
+                            align_items="start", spacing="0"
+                        ),
+                        spacing="5",
+                        justify="between",
+                        width="100%",
+                        padding_y="0.5em"
+                    ),
+                    spacing="3",
+                    width="100%"
+                )
+            ),
+            rx.card(
+                rx.vstack(
+                    rx.heading("Tendencia de Ganancia de la Variante", size="4"),
+                    rx.cond(
+                        AppState.product_detail_chart_data,
+                        rx.box(
+                            ResponsiveContainer.create(
+                                LineChart.create(
+                                    CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
+                                    XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
+                                    YAxis.create(stroke=rx.color("gray", 9)),
+                                    tooltip(content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}),
+                                    Line.create(type="monotone", data_key="Ganancia", stroke="var(--teal-9)", stroke_width=2, dot=False),
+                                    data=AppState.product_detail_chart_data,
+                                    margin={"top": 10, "right": 20, "left": 0, "bottom": 0},
+                                ),
+                            ),
+                            height="250px", width="100%"
+                        ),
+                        rx.center(rx.text("No hay datos de ganancias para esta variante."), height="250px")
+                    ),
+                    align_items="start", width="100%"
+                ),
+            ),
+            spacing="4", width="100%"
+        ),
+        rx.center(rx.text("Selecciona una variante de la lista para ver sus detalles."), height="400px")
+    )
+
+def product_detail_modal() -> rx.Component:
+    """Modal específico para el detalle financiero de un producto."""
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.cond(
+                AppState.selected_product_detail,
+                rx.vstack(
+                    rx.dialog.title(AppState.selected_product_detail.title),
+                    rx.dialog.description("Análisis detallado de ventas por variante."),
+                    rx.tabs.root(
+                        rx.tabs.list(
+                            rx.tabs.trigger("Resumen General", value="summary"),
+                            rx.tabs.trigger("Análisis por Variante", value="variants"),
+                        ),
+                        rx.tabs.content(
+                            rx.grid(
+                                stat_card("Unidades Vendidas", AppState.selected_product_detail.total_units_sold, "package-check"),
+                                stat_card("Ingresos Totales", AppState.selected_product_detail.total_revenue_cop, "trending-up"),
+                                stat_card("Costo de Mercancía", AppState.selected_product_detail.total_cogs_cop, "receipt"),
+                                stat_card("Ganancia (Producto)", AppState.selected_product_detail.product_profit_cop, "piggy-bank"),
+                                stat_card("Envío Recaudado", AppState.selected_product_detail.shipping_collected_cop, "truck"),
+                                stat_card("Ganancia/Pérdida Envío", AppState.selected_product_detail.shipping_profit_loss_cop, "percent"),
+                                columns={"initial": "2", "sm": "3"},
+                                spacing="3",
+                                width="100%",
+                                padding_top="1em"
+                            ),
+                            value="summary"
+                        ),
+                        rx.tabs.content(
+                            rx.grid(
+                                rx.scroll_area(
+                                    rx.vstack(
+                                        rx.foreach(
+                                            AppState.selected_product_detail.variants,
+                                            lambda variant, index: rx.box(
+                                                rx.hstack(
+                                                    rx.image(src=rx.get_upload_url(variant.image_url), height="40px", width="40px", object_fit="cover", border_radius="md"),
+                                                    rx.text(variant.attributes_str, size="2"),
+                                                    align="center",
+                                                    spacing="3",
+                                                ),
+                                                on_click=AppState.select_variant_for_detail(index),
+                                                padding="0.5em",
+                                                border_radius="md",
+                                                cursor="pointer",
+                                                bg=rx.cond(AppState.selected_variant_index == index, rx.color("violet", 3), "transparent"),
+                                                _hover={"background_color": rx.color("gray", 3)}
+                                            )
+                                        ),
+                                        spacing="2",
+                                        padding_right="0.5em"
+                                    ),
+                                    type="auto",
+                                    scrollbars="vertical",
+                                    style={"height": ["200px", "250px", "450px"]},
+                                ),
+                                variant_detail_view(),
+                                columns={"initial": "1", "md": "1fr 2fr"},
+                                spacing="4",
+                                width="100%",
+                                padding_top="1em"
+                            ),
+                            value="variants"
+                        ),
+                        default_value="summary",
+                        width="100%",
+                    ),
+                    rx.flex(
+                        rx.dialog.close(rx.button("Cerrar", variant="soft", color_scheme="gray")),
+                        justify="end",
+                        width="100%",
+                        margin_top="1em"
+                    ),
+                    spacing="4",
+                ),
+                rx.center(rx.spinner())
+            )
+        ),
+        open=AppState.show_product_detail_modal,
+        on_open_change=AppState.set_show_product_detail_modal,
+        style={"max_width": "1300px", "width": "95%"}
+    )
+    
+# --- ✅ FIN DE LA CORRECCIÓN ✅ ---
 
 @require_admin
 def finance_page_content() -> rx.Component:
@@ -143,7 +310,6 @@ def finance_page_content() -> rx.Component:
         rx.center(
             rx.vstack(
                 rx.heading("Dashboard Financiero", size="8", margin_bottom="0.5em"),
-                
                 rx.card(
                     rx.flex(
                         rx.vstack(
@@ -164,7 +330,6 @@ def finance_page_content() -> rx.Component:
                     ),
                     width="100%"
                 ),
-                
                 rx.cond(
                     AppState.is_loading,
                     rx.center(rx.spinner(size="3"), height="70vh"),

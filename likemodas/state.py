@@ -259,13 +259,14 @@ class ProductDetailFinanceDTO(rx.Base):
     total_units_sold: int
     total_revenue_cop: str
     
-    # --- ✅ INICIO DE CAMPOS AÑADIDOS ✅ ---
-    total_cogs_cop: str                   # Costo de Mercancía para este producto
-    product_profit_cop: str             # Ganancia Neta solo del producto
-    shipping_collected_cop: str         # Envío Recaudado para este producto
-    shipping_profit_loss_cop: str       # Ganancia/Pérdida por envío para este producto
-    grand_total_profit_cop: str         # Ganancia Total (Producto + Envío)
-    # --- ✅ FIN DE CAMPOS AÑADIDOS ✅ ---
+    # --- ✅ INICIO DE LA CORRECCIÓN DE CAMPOS ✅ ---
+    # Se asegura que todos los campos que usa el modal existan con el nombre correcto.
+    total_cogs_cop: str
+    product_profit_cop: str
+    shipping_collected_cop: str
+    shipping_profit_loss_cop: str
+    total_profit_cop: str  # Este campo es el que usa la tarjeta de "Ganancia Total"
+    # --- ✅ FIN DE LA CORRECCIÓN DE CAMPOS ✅ ---
 
     variants: List[VariantDetailFinanceDTO] = []
 
