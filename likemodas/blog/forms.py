@@ -261,8 +261,9 @@ def blog_post_add_form() -> rx.Component:
                         rx.vstack(
                             rx.form.label("Título del Producto", size="3"),
                             rx.input(
-                                value=BlogAdminState.post_form_data["title"],
-                                on_change=lambda val: BlogAdminState.set_post_form_field("title", val),
+                                # ✨ CORRECCIÓN AQUÍ ✨
+                                value=AppState.title,
+                                on_change=AppState.set_title,
                                 placeholder="Nombre del producto", name="title", required=True, size="3", width="100%"
                             ),
                             align_items="stretch", width="100%",
@@ -279,8 +280,9 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Precio (COP)", as_="div", size="3", weight="bold"),
                             rx.input(
                                 placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3",
-                                value=BlogAdminState.post_form_data["price_str"],
-                                on_change=lambda val: BlogAdminState.set_post_form_field("price_str", val)
+                                # ✨ CORRECCIÓN AQUÍ ✨
+                                value=AppState.price,
+                                on_change=AppState.set_price_from_input
                             ),
                         ),
                         rx.vstack(
