@@ -3237,7 +3237,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = False
     
     # --- Función para seleccionar una variante específica en el detalle del producto ---
-    @rx.event
+    # ✨ LA ÚNICA CORRECCIÓN NECESARIA ES QUITAR EL DECORADOR @rx.event DE AQUÍ ✨
     def select_variant_for_detail(self, index: int):
         if self.selected_product_detail and 0 <= index < len(self.selected_product_detail.variants):
             self.selected_variant_index = index
