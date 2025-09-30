@@ -46,48 +46,44 @@ def sidebar_items() -> rx.Component:
             AppState.is_admin,
             rx.fragment(
                 rx.vstack(
-                    # --- INICIO DE LA MODIFICACIÓN ---
-                    sidebar_item("Finanzas", "line-chart", "/admin/finance"), # <-- NUEVO
-                    sidebar_item("Gestión de Usuarios", "users", "/admin/users"), # <-- RENOMBRADO
-                    # --- FIN DE LA MODIFICACIÓN ---
+                    sidebar_item("Finanzas", "line-chart", "/admin/finance"),
+                    sidebar_item("Gestión de Usuarios", "users", "/admin/users"),
                     sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
                     sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
                     sidebar_item("Mi Ubicación de Envío", "map-pin", "/admin/my-location"),
                     sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
                     sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
                     sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
-                    spacing="2", 
+                    # --- ✅ Espaciado responsivo entre items ✅ ---
+                    spacing=["1", "1", "2"], 
                     width="100%"
                 ),
                 rx.divider(margin_y="1em"),
             )
         ),
         sidebar_item("Tienda", "store", "/admin/store"),
-        spacing="2", 
+        # --- ✅ Espaciado responsivo entre secciones ✅ ---
+        spacing=["1", "1", "2"],
         width="100%",
     )
 
 def sliding_admin_sidebar() -> rx.Component:
     """El componente completo del sidebar con el nuevo diseño."""
-    # --- ✅ 1. ANCHO RESPONSIVO: Más pequeño en móvil, más grande en PC ✅ ---
     SIDEBAR_WIDTH = ["14em", "14em", "16em", "16em"]
 
     sidebar_panel = rx.vstack(
-        # Sección del logo (sin cambios)
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
-            align="center", justify="center", width="100%", margin_bottom="1.5em",
+            align="center", justify="center", width="100%", 
+            # --- ✅ Margen inferior del logo responsivo ✅ ---
+            margin_bottom=["1em", "1em", "1.5em"],
         ),
         
-        # El scroll para los items se mantiene, es una buena práctica
-        rx.scroll_area(
-            sidebar_items(),
-            type="auto",
-            scrollbars="vertical",
-            flex_grow="1",
-        ),
+        # --- ✅ SE ELIMINA EL SCROLL_AREA PARA MOSTRAR TODO EL CONTENIDO ✅ ---
+        sidebar_items(),
         
-        # --- ✅ 2. SE AÑADE MARGEN INFERIOR SOLO A LA SECCIÓN DE LOGOUT ✅ ---
+        rx.spacer(), # Empuja la sección de logout hacia abajo
+        
         rx.vstack(
             rx.divider(),
             rx.hstack(
@@ -114,20 +110,21 @@ def sliding_admin_sidebar() -> rx.Component:
                     color_scheme="red"
                 )
             ),
-            width="100%", 
-            spacing="3",
-            # Este margen solo se aplicará en pantallas pequeñas y medianas
-            margin_bottom=["1.5em", "1.5em", "0em", "0em"],
+            width="100%",
+            # --- ✅ Espaciado responsivo para la sección de logout ✅ ---
+            spacing=["2", "2", "3"],
         ),
 
-        spacing="5",
-        padding="1em", # <-- Se revierte al padding original y simple
+        # --- ✅ Espaciado general del panel, responsivo ✅ ---
+        spacing=["3", "3", "5"],
+        padding="1em",
         bg=rx.color("gray", 2),
         align="start", 
         height="100%", 
-        width=SIDEBAR_WIDTH, # <-- Ahora usa el ancho responsivo
+        width=SIDEBAR_WIDTH,
     )
 
+    # El resto de la función (el contenedor) no cambia
     return rx.box(
         rx.hstack(
             sidebar_panel,
@@ -153,7 +150,6 @@ def sliding_admin_sidebar() -> rx.Component:
         height="100vh",
         display="flex",
         align_items="center",
-        # --- ✅ 3. LA TRANSFORMACIÓN TAMBIÉN SE HACE RESPONSIVA ✅ ---
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
