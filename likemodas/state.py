@@ -3115,8 +3115,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def show_product_detail(self, product_id: int):
         """
-        [VERSIÓN 2.1 CORREGIDA] Muestra el detalle financiero de un producto,
-        con la inicialización correcta del agregador de variantes.
+        [VERSIÓN 2.2 CORREGIDA] Muestra el detalle financiero de un producto,
+        manejando de forma segura los productos antiguos sin datos de ganancia.
         """
         if not self.is_admin:
             yield rx.redirect("/")
@@ -3132,13 +3132,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.is_loading = False
                 return
 
-            # Se inicializa el defaultdict con las claves correctas: 'net_profit' y 'cogs'.
             variant_sales_aggregator = defaultdict(lambda: {
-                "units": 0, 
-                "revenue": 0.0, 
-                "net_profit": 0.0, 
-                "cogs": 0.0, 
-                "daily_profit": defaultdict(float)
+                "units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0, "daily_profit": defaultdict(float)
             })
 
             completed_purchases = session.exec(
@@ -3153,13 +3148,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
                 for item in purchase.items:
-                    if item.blog_post_id == product_id:
+                    if item.blog_post_id == product_id and item.blog_post:
                         variant_key = self._get_variant_key(item.selected_variant)
                         
-                        purchase_price = (item.blog_post.price or 0.0) - (item.blog_post.profit or 0.0)
-                        item_cogs = purchase_price * item.quantity
-                        item_net_profit = (item.blog_post.profit or 0.0) * item.quantity
+                        # ✨ INICIO DE LA CORRECCIÓN ✨
+                        # Usamos 'or 0.0' para asegurar que los cálculos no fallen con datos antiguos.
+                        price = item.blog_post.price or 0.0
+                        profit = item.blog_post.profit or 0.0
                         
+                        purchase_price = price - profit
+                        item_cogs = purchase_price * item.quantity
+                        item_net_profit = profit * item.quantity
+                        # ✨ FIN DE LA CORRECCIÓN ✨
+
                         variant_sales_aggregator[variant_key]["units"] += item.quantity
                         variant_sales_aggregator[variant_key]["revenue"] += item.price_at_purchase * item.quantity
                         variant_sales_aggregator[variant_key]["net_profit"] += item_net_profit
@@ -3245,13 +3246,13 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_finance_data(self):
-        """Calcula todas las estadísticas financieras para el dashboard."""
+        """
+        [VERSIÓN 2.1 CORREGIDA] Calcula todas las estadísticas financieras,
+        manejando de forma segura los productos antiguos sin datos de ganancia.
+        """
         if not self.is_admin:
-            # --- 👇 CORRECCIÓN AQUÍ 👇 ---
-            # Cambiamos 'return' por 'yield' para ejecutar la acción de redirección.
             yield rx.redirect("/")
-            return # Usamos un return vacío para detener la ejecución de la función aquí.
-            # --- FIN DE LA CORRECCIÓN ---
+            return
 
         self.is_loading = True
         yield
@@ -3277,7 +3278,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             total_shipping_collected = sum(p.shipping_applied or 0.0 for p in completed_purchases)
             total_sales_count = len(completed_purchases)
             
-            # --- ✨ INICIO DE LA LÓGICA DE CÁLCULO MEJORADA ✨ ---
             total_net_profit = 0
             total_cogs = 0
             total_actual_shipping_cost = 0
@@ -3287,15 +3287,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             for purchase in completed_purchases:
                 purchase_date_str = purchase.purchase_date.strftime('%Y-%m-%d')
-                
-                # Sumar el costo de envío real si existe
                 total_actual_shipping_cost += purchase.actual_shipping_cost or purchase.shipping_applied or 0.0
 
                 for item in purchase.items:
                     if item.blog_post:
-                        purchase_price = (item.blog_post.price or 0.0) - (item.blog_post.profit or 0.0)
+                        # ✨ INICIO DE LA CORRECCIÓN ✨
+                        # Usamos 'or 0.0' como valor por defecto si price o profit son None.
+                        # Esto evita el error con datos antiguos.
+                        price = item.blog_post.price or 0.0
+                        profit = item.blog_post.profit or 0.0
+                        
+                        purchase_price = price - profit
                         item_cogs = purchase_price * item.quantity
-                        item_net_profit = (item.blog_post.profit or 0.0) * item.quantity
+                        item_net_profit = profit * item.quantity
+                        # ✨ FIN DE LA CORRECCIÓN ✨
                         
                         total_cogs += item_cogs
                         total_net_profit += item_net_profit
@@ -3309,17 +3314,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             shipping_profit_loss = total_shipping_collected - total_actual_shipping_cost
             grand_total_net_profit = total_net_profit + shipping_profit_loss
-            # --- ✨ FIN DE LA LÓGICA DE CÁLCULO MEJORADA ✨ ---
 
             avg_order_value = total_revenue / total_sales_count if total_sales_count > 0 else 0
             profit_margin = (grand_total_net_profit / total_revenue) * 100 if total_revenue > 0 else 0
 
             self.finance_stats = FinanceStatsDTO(
                 total_revenue_cop=format_to_cop(total_revenue),
-                total_cogs_cop=format_to_cop(total_cogs), # ✨ NUEVO
-                total_profit_cop=format_to_cop(grand_total_net_profit), # Ahora es ganancia neta total
+                total_cogs_cop=format_to_cop(total_cogs),
+                total_profit_cop=format_to_cop(grand_total_net_profit),
                 total_shipping_cop=format_to_cop(total_shipping_collected),
-                shipping_profit_loss_cop=format_to_cop(shipping_profit_loss), # ✨ NUEVO
+                shipping_profit_loss_cop=format_to_cop(shipping_profit_loss),
                 total_sales_count=total_sales_count,
                 average_order_value_cop=format_to_cop(avg_order_value),
                 profit_margin_percentage=f"{profit_margin:.2f}%"
@@ -3331,8 +3335,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     title=data["title"],
                     units_sold=data["units"],
                     total_revenue_cop=format_to_cop(data["revenue"]),
-                    total_cogs_cop=format_to_cop(data["cogs"]), # ✨ NUEVO
-                    total_net_profit_cop=format_to_cop(data["net_profit"]) # ✨ RENOMBRADO
+                    total_cogs_cop=format_to_cop(data["cogs"]),
+                    total_net_profit_cop=format_to_cop(data["net_profit"])
                 ) for pid, data in product_aggregator.items()
             ], key=lambda x: x.units_sold, reverse=True)
 
