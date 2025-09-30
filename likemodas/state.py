@@ -3314,7 +3314,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
 
     @rx.event
-    def on_load_finance_data(self):
+    async def on_load_finance_data(self):
         """
         Se ejecuta al cargar la página. Establece un rango de fechas por defecto
         (últimos 30 días) y llama a la función de cálculo.
@@ -3328,11 +3328,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.finance_end_date = today.strftime('%Y-%m-%d')
         self.finance_start_date = thirty_days_ago.strftime('%Y-%m-%d')
         
-        # Llamar al cálculo
+        # Ahora 'yield from' funcionará porque ambas funciones son 'async'
         yield from self._calculate_finance_data()
 
     @rx.event
-    def filter_finance_data(self):
+    async def filter_finance_data(self):
         """
         Evento que se dispara al hacer clic en el botón 'Filtrar'.
         Llama a la función de cálculo con las fechas seleccionadas.
@@ -3359,13 +3359,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
 
             # Aplica los filtros de fecha si existen
-            if self.finance_start_date:
-                start_date = datetime.strptime(self.finance_start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-                query = query.where(PurchaseModel.purchase_date >= start_date)
-            if self.finance_end_date:
-                end_date = datetime.strptime(self.finance_end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-                end_date_inclusive = end_date + timedelta(days=1)
-                query = query.where(PurchaseModel.purchase_date < end_date_inclusive)
+            try:
+                if self.finance_start_date:
+                    start_date = datetime.strptime(self.finance_start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                    query = query.where(PurchaseModel.purchase_date >= start_date)
+                if self.finance_end_date:
+                    end_date = datetime.strptime(self.finance_end_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                    end_date_inclusive = end_date + timedelta(days=1)
+                    query = query.where(PurchaseModel.purchase_date < end_date_inclusive)
+            except ValueError:
+                # Si las fechas son inválidas, no se aplican filtros de fecha
+                pass
 
             completed_purchases = session.exec(query.order_by(PurchaseModel.purchase_date.desc())).unique().all()
 
@@ -3425,11 +3429,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     total_revenue_cop=format_to_cop(data["revenue"]),
                     total_cogs_cop=format_to_cop(data["cogs"]),
                     total_net_profit_cop=format_to_cop(data["net_profit"]),
-                    profit_margin_str=f"{(data['net_profit'] / data['revenue'] * 100):.2f}%" if data['revenue'] > 0 else "0.00%"
+                    profit_margin_str=f"{(data['net_profit'] / data['revenue'] * 100):.2f}%" if data.get('revenue', 0) > 0 else "0.00%"
                 ) for pid, data in product_aggregator.items()
             ], key=lambda x: x.units_sold, reverse=True)
 
-            # Ordenar fechas para el gráfico
             if daily_profit:
                 sorted_dates = sorted(daily_profit.keys())
                 self.profit_chart_data = [{"date": date, "Ganancia": daily_profit[date]} for date in sorted_dates]
