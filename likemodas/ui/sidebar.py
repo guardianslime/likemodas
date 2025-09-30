@@ -69,20 +69,25 @@ def sidebar_items() -> rx.Component:
 
 def sliding_admin_sidebar() -> rx.Component:
     """El componente completo del sidebar con el nuevo diseño."""
-    SIDEBAR_WIDTH = "16em"
+    # --- ✅ 1. ANCHO RESPONSIVO: Más pequeño en móvil, más grande en PC ✅ ---
+    SIDEBAR_WIDTH = ["14em", "14em", "16em", "16em"]
 
     sidebar_panel = rx.vstack(
-        # ... (La sección del logo y el scroll_area no cambian) ...
+        # Sección del logo (sin cambios)
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%", margin_bottom="1.5em",
         ),
+        
+        # El scroll para los items se mantiene, es una buena práctica
         rx.scroll_area(
             sidebar_items(),
             type="auto",
             scrollbars="vertical",
             flex_grow="1",
         ),
+        
+        # --- ✅ 2. SE AÑADE MARGEN INFERIOR SOLO A LA SECCIÓN DE LOGOUT ✅ ---
         rx.vstack(
             rx.divider(),
             rx.hstack(
@@ -91,8 +96,7 @@ def sliding_admin_sidebar() -> rx.Component:
                     rx.hstack(
                         rx.avatar(fallback=AppState.authenticated_user.username[0].upper(), size="2"),
                         rx.text(AppState.authenticated_user.username, size="3", weight="medium"),
-                        align="center",
-                        spacing="3",
+                        align="center", spacing="3",
                     ),
                 ),
                 rx.spacer(),
@@ -112,21 +116,18 @@ def sliding_admin_sidebar() -> rx.Component:
             ),
             width="100%", 
             spacing="3",
+            # Este margen solo se aplicará en pantallas pequeñas y medianas
+            margin_bottom=["1.5em", "1.5em", "0em", "0em"],
         ),
 
         spacing="5",
-        # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
-        # Se cambia 'padding' por 'padding_x' y 'padding_y' para poder añadir
-        # un espacio extra en la parte inferior.
-        padding_x="1em",
-        padding_top="1em",
-        padding_bottom="2.5em", # <-- ESTA LÍNEA EMPUJA TODO HACIA ARRIBA
-        # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
+        padding="1em", # <-- Se revierte al padding original y simple
         bg=rx.color("gray", 2),
-        align="start", height="100%", width=SIDEBAR_WIDTH,
+        align="start", 
+        height="100%", 
+        width=SIDEBAR_WIDTH, # <-- Ahora usa el ancho responsivo
     )
 
-    # El resto de la función no cambia...
     return rx.box(
         rx.hstack(
             sidebar_panel,
@@ -152,10 +153,11 @@ def sliding_admin_sidebar() -> rx.Component:
         height="100vh",
         display="flex",
         align_items="center",
+        # --- ✅ 3. LA TRANSFORMACIÓN TAMBIÉN SE HACE RESPONSIVA ✅ ---
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
-            f"translateX(-{SIDEBAR_WIDTH})"
+            ["translateX(-14em)", "translateX(-14em)", "translateX(-16em)", "translateX(-16em)"]
         ),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
