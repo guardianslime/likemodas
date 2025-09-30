@@ -11,8 +11,11 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
 
     return rx.link(
         rx.hstack(
-            # --- ✅ Sintaxis corregida para el tamaño del icono y texto ✅ ---
-            rx.icon(icon, size={"initial": 18, "lg": 20}),
+            # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
+            # El tamaño del icono vuelve a ser un número entero simple.
+            rx.icon(icon, size=18),
+            # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
+            
             rx.text(text, size={"initial": "2", "lg": "3"}),
             rx.spacer(),
             rx.cond(
@@ -24,7 +27,7 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
             font_weight=rx.cond(is_active, "bold", "normal"),
             border_radius="var(--radius-3)",
             width="100%",
-            padding={"initial": "0.5em", "lg": "0.75em"}, # Padding también responsivo
+            padding={"initial": "0.5em", "lg": "0.75em"},
             align="center",
             _hover={
                 "background_color": rx.color("violet", 5),
