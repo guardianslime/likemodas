@@ -70,13 +70,14 @@ def sliding_admin_sidebar() -> rx.Component:
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%",
+            margin_bottom={"initial": "0.5em", "lg": "1em"},
         ),
         
-        # --- ✅ 1. SE AÑADE flex_grow="1" PARA QUE ESTA ÁREA CREZCA ✅ ---
-        # Esto empuja la sección de logout hacia abajo de forma natural.
+        # --- ✅ 1. SE AÑADE flex_grow="1" PARA QUE ESTA ÁREA SE EXpanda ✅ ---
+        # Esto empuja la sección de logout hacia abajo de forma natural y elimina el gran espacio.
         rx.scroll_area(
             sidebar_items(),
-            flex_grow="1", # Le dice a esta área que ocupe todo el espacio vertical sobrante.
+            flex_grow="1", 
         ),
         
         # --- ✅ 2. SE ELIMINA EL rx.spacer() QUE CAUSABA EL HUECO GRANDE ✅ ---
@@ -88,7 +89,7 @@ def sliding_admin_sidebar() -> rx.Component:
                     AppState.is_authenticated,
                     rx.hstack(
                         rx.avatar(fallback=AppState.authenticated_user.username[0].upper(), size="2"),
-                        rx.text(AppState.authenticated_user.username, size="3", weight="medium"),
+                        rx.text(AppState.authenticated_user.username, size={"initial": "2", "lg": "3"}, weight="medium"),
                         align="center", spacing="3",
                     ),
                 ),
@@ -108,14 +109,13 @@ def sliding_admin_sidebar() -> rx.Component:
                 )
             ),
             width="100%",
-            spacing="3",
+            spacing={"initial": "2", "lg": "3"},
         ),
-        spacing="5",
+        spacing={"initial": "2", "lg": "4"},
 
-        # --- ✅ 3. AJUSTE FINAL DEL PADDING PARA UN BALANCE PERFECTO ✅ ---
-        # Un poco más de espacio arriba en PC y un espacio balanceado en móvil.
+        # --- ✅ 3. AJUSTE FINAL DEL PADDING PARA CENTRAR EL LOGO ✅ ---
         padding_x="1em",
-        padding_y={"initial": "1.5em", "lg": "2em"},
+        padding_y={"initial": "2em", "lg": "1.5em"},
         
         bg=rx.color("gray", 2),
         align="start", 
@@ -123,7 +123,7 @@ def sliding_admin_sidebar() -> rx.Component:
         width=SIDEBAR_WIDTH,
     )
 
-    # El resto del código se mantiene igual, con la lógica de PC restaurada
+    # El resto del código se mantiene igual
     return rx.box(
         rx.hstack(
             sidebar_panel,
