@@ -3314,14 +3314,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
 
     @rx.event
-    async def on_load_finance_data(self):
+    def on_load_finance_data(self):
         """
         Se ejecuta al cargar la página. Establece un rango de fechas por defecto
         (últimos 30 días) y llama a la función de cálculo.
         """
         if not self.is_admin:
-            # --- ✅ CORRECCIÓN CLAVE AQUÍ ✅ ---
-            # Se cambia 'return' por 'yield' para que sea compatible con la función asíncrona.
             yield rx.redirect("/")
             return
         
@@ -3331,20 +3329,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.finance_end_date = today.strftime('%Y-%m-%d')
         self.finance_start_date = thirty_days_ago.strftime('%Y-%m-%d')
         
-        # Llamar al cálculo
+        # Ahora 'yield from' funcionará porque ambas funciones son síncronas.
         yield from self._calculate_finance_data()
 
     @rx.event
-    async def filter_finance_data(self):
+    def filter_finance_data(self):
         """
         Evento que se dispara al hacer clic en el botón 'Filtrar'.
         Llama a la función de cálculo con las fechas seleccionadas.
         """
         yield from self._calculate_finance_data()
 
-    async def _calculate_finance_data(self):
+    def _calculate_finance_data(self):
         """
-        [VERSIÓN 5.0] Lógica central que calcula todas las métricas financieras
+        [VERSIÓN 5.1 - Corregida] Lógica central que calcula todas las métricas financieras
         basándose en el rango de fechas del estado.
         """
         self.is_loading = True
@@ -3371,7 +3369,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     end_date_inclusive = end_date + timedelta(days=1)
                     query = query.where(PurchaseModel.purchase_date < end_date_inclusive)
             except ValueError:
-                # Si las fechas son inválidas, no se aplican filtros de fecha
                 pass
 
             completed_purchases = session.exec(query.order_by(PurchaseModel.purchase_date.desc())).unique().all()
