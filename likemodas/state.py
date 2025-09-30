@@ -3094,18 +3094,24 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     def _get_variant_key(self, variant_dict: dict) -> str:
         """
+        [VERSIÓN CORREGIDA Y ROBUSTA]
         Crea una clave única y estable para una variante.
         Usa el UUID si existe; de lo contrario, usa los atributos.
+        Ahora es seguro contra datos nulos (None).
         """
+        # ✨ LÍNEA CRÍTICA AÑADIDA ✨
+        # Si el dato que llega no es un diccionario (es None), devolvemos una clave única
+        # aleatoria para que no choque con nada y evitamos el error.
+        if not isinstance(variant_dict, dict):
+            return str(uuid.uuid4())
+
         if variant_uuid := variant_dict.get("variant_uuid"):
             return variant_uuid
         
         attrs = variant_dict.get("attributes", {})
         if not attrs:
-            # Si no hay atributos, usamos la URL de la imagen como último recurso
             return variant_dict.get("image_url", str(uuid.uuid4()))
-            
-        # Ordenamos las claves para asegurar que la clave sea siempre la misma
+        
         sorted_attrs = sorted(attrs.items())
         return "-".join([f"{k}:{v}" for k, v in sorted_attrs])
 
