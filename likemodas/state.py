@@ -258,15 +258,11 @@ class ProductDetailFinanceDTO(rx.Base):
     image_url: Optional[str] = None
     total_units_sold: int
     total_revenue_cop: str
-    
-    # --- ✅ INICIO DE LA CORRECCIÓN DE CAMPOS ✅ ---
-    # Se asegura que todos los campos que usa el modal existan con el nombre correcto.
     total_cogs_cop: str
     product_profit_cop: str
     shipping_collected_cop: str
     shipping_profit_loss_cop: str
-    total_profit_cop: str  # Este campo es el que usa la tarjeta de "Ganancia Total"
-    # --- ✅ FIN DE LA CORRECCIÓN DE CAMPOS ✅ ---
+    total_profit_cop: str  # Este es el campo que usa la UI y debe llamarse así
 
     variants: List[VariantDetailFinanceDTO] = []
 
@@ -3158,68 +3154,57 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def show_product_detail(self, product_id: int):
         """
-        [VERSIÓN 4.0] Muestra el detalle financiero de un producto, incluyendo métricas
-        de envío y costo específicas para ese producto.
+        [VERSIÓN 4.2 - Corregida] Muestra el detalle financiero de un producto, llenando
+        correctamente la estructura de datos para el modal.
         """
         if not self.is_admin:
             yield rx.redirect("/")
             return
 
+        self.selected_product_detail = None
+        self.show_product_detail_modal = True
         yield
 
         with rx.session() as session:
             blog_post = session.get(BlogPostModel, product_id)
             if not blog_post:
                 yield rx.toast.error("Producto no encontrado.")
+                self.show_product_detail_modal = False
                 return
 
             variant_sales_aggregator = defaultdict(lambda: {
                 "units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0, "daily_profit": defaultdict(float)
             })
-
-            completed_purchases_query = session.exec(
+            completed_purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(sqlalchemy.orm.selectinload(PurchaseModel.items).selectinload(PurchaseItemModel.blog_post))
                 .where(
                     PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]),
                     PurchaseItemModel.blog_post_id == product_id
                 ).join(PurchaseItemModel)
-            ).unique()
-            completed_purchases = completed_purchases_query.all()
+            ).unique().all()
             
-            product_total_units = 0
-            product_total_revenue = 0.0
-            product_total_net_profit = 0.0
-            product_total_cogs = 0.0
-            product_shipping_collected = 0.0
-            product_actual_shipping_cost = 0.0
+            product_total_units, product_total_revenue, product_total_net_profit, product_total_cogs = 0, 0.0, 0.0, 0.0
+            product_shipping_collected, product_actual_shipping_cost = 0.0, 0.0
 
             for purchase in completed_purchases:
-                # Sumar costos de envío de esta compra
                 product_shipping_collected += purchase.shipping_applied or 0.0
                 product_actual_shipping_cost += purchase.actual_shipping_cost or purchase.shipping_applied or 0.0
-
                 for item in purchase.items:
                     if item.blog_post_id == product_id and item.blog_post:
-                        sold_variant_definition = next(
-                            (v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant),
-                            item.selected_variant
-                        )
+                        sold_variant_definition = next((v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), item.selected_variant)
                         variant_key = self._get_variant_key(sold_variant_definition)
-                        
                         item_revenue = item.price_at_purchase * item.quantity
                         profit_per_unit = item.blog_post.profit or 0.0
                         cost_per_unit = (item.blog_post.price or 0.0) - profit_per_unit
                         item_cogs = cost_per_unit * item.quantity
                         item_net_profit = profit_per_unit * item.quantity
-                        
                         aggregator = variant_sales_aggregator[variant_key]
                         aggregator["units"] += item.quantity
                         aggregator["revenue"] += item_revenue
                         aggregator["net_profit"] += item_net_profit
                         aggregator["cogs"] += item_cogs
                         aggregator["daily_profit"][purchase.purchase_date.strftime('%Y-%m-%d')] += item_net_profit
-
                         product_total_units += item.quantity
                         product_total_revenue += item_revenue
                         product_total_net_profit += item_net_profit
@@ -3228,27 +3213,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             product_shipping_profit_loss = product_shipping_collected - product_actual_shipping_cost
             grand_total_profit = product_total_net_profit + product_shipping_profit_loss
 
-            product_variants_data = []
-            if blog_post.variants:
-                for variant_db in blog_post.variants:
-                    variant_key = self._get_variant_key(variant_db)
-                    sales_data = variant_sales_aggregator.get(variant_key, {})
-                    attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
-                    
-                    sorted_daily_profit = sorted(
-                        [{"date": date, "Ganancia": profit} for date, profit in sales_data.get("daily_profit", {}).items()],
-                        key=lambda x: x['date']
-                    )
-                    product_variants_data.append(VariantDetailFinanceDTO(
-                        variant_key=variant_key,
-                        attributes_str=attributes_str,
-                        image_url=variant_db.get("image_url"),
-                        units_sold=sales_data.get("units", 0),
-                        total_revenue_cop=format_to_cop(sales_data.get("revenue", 0.0)),
-                        total_cogs_cop=format_to_cop(sales_data.get("cogs", 0.0)),
-                        total_net_profit_cop=format_to_cop(sales_data.get("net_profit", 0.0)),
-                        daily_profit_data=sorted_daily_profit
-                    ))
+            product_variants_data = [
+                VariantDetailFinanceDTO(
+                    variant_key=self._get_variant_key(variant_db),
+                    attributes_str=", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()]),
+                    image_url=variant_db.get("image_url"),
+                    units_sold=variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("units", 0),
+                    total_revenue_cop=format_to_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("revenue", 0.0)),
+                    total_cogs_cop=format_to_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("cogs", 0.0)),
+                    total_net_profit_cop=format_to_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("net_profit", 0.0)),
+                    daily_profit_data=sorted([{"date": date, "Ganancia": profit} for date, profit in variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("daily_profit", {}).items()], key=lambda x: x['date'])
+                ) for variant_db in (blog_post.variants or [])
+            ]
 
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
@@ -3260,15 +3236,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 product_profit_cop=format_to_cop(product_total_net_profit),
                 shipping_collected_cop=format_to_cop(product_shipping_collected),
                 shipping_profit_loss_cop=format_to_cop(product_shipping_profit_loss),
-                grand_total_profit_cop=format_to_cop(grand_total_profit),
+                # --- ✅ CORRECCIÓN FINAL AQUÍ: Se usa el nombre de campo correcto ✅ ---
+                total_profit_cop=format_to_cop(grand_total_profit),
                 variants=product_variants_data
             )
             
             if product_variants_data:
                 first_sold_variant_index = next((i for i, v in enumerate(product_variants_data) if v.units_sold > 0), 0)
                 self.select_variant_for_detail(first_sold_variant_index)
-
-            self.show_product_detail_modal = True
     
     # --- Función para seleccionar una variante específica en el detalle del producto ---
     @rx.event
