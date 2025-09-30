@@ -157,7 +157,6 @@ def variant_detail_view() -> rx.Component:
 def product_detail_modal() -> rx.Component:
     """Modal con la sintaxis corregida para el detalle financiero."""
     return rx.dialog.root(
-        # ✨ CORRECCIÓN DE SINTAXIS: Todos los componentes hijos van PRIMERO.
         rx.dialog.content(
             rx.cond(
                 AppState.selected_product_detail,
@@ -210,10 +209,12 @@ def product_detail_modal() -> rx.Component:
                                     ),
                                     type="auto",
                                     scrollbars="vertical",
-                                    style={"height": "450px"}
+                                    style={"height": ["200px", "250px", "450px"]}, # Altura adaptable
                                 ),
                                 variant_detail_view(),
-                                columns="1fr 2fr",
+                                # --- ✅ CORRECCIÓN DE RESPONSIVIDAD AQUÍ ✅ ---
+                                # 1 columna en móvil, 2 columnas en pantallas medianas y grandes
+                                columns={"initial": "1", "md": "1fr 2fr"},
                                 spacing="4",
                                 width="100%",
                                 padding_top="1em"
@@ -234,15 +235,80 @@ def product_detail_modal() -> rx.Component:
                 rx.center(rx.spinner())
             )
         ),
-        # ✨ CORRECCIÓN DE SINTAXIS: Todos los argumentos de palabra clave (props) van DESPUÉS de los hijos.
         open=AppState.show_product_detail_modal,
         on_open_change=AppState.set_show_product_detail_modal,
         style={"max_width": "1300px", "width": "95%"}
     )
 
+def mobile_finance_card(p_data: ProductFinanceDTO) -> rx.Component:
+    """Una tarjeta responsiva para mostrar el rendimiento de un producto en móvil."""
+    return rx.card(
+        rx.vstack(
+            rx.heading(p_data.title, size="4"),
+            rx.divider(),
+            rx.grid(
+                rx.vstack(rx.text("Unidades", size="2", color_scheme="gray"), rx.text(p_data.units_sold, weight="bold"), align="center"),
+                rx.vstack(rx.text("Ingresos", size="2", color_scheme="gray"), rx.text(p_data.total_revenue_cop, weight="bold"), align="center"),
+                rx.vstack(rx.text("Costo Total", size="2", color_scheme="gray"), rx.text(p_data.total_cogs_cop, weight="bold"), align="center"),
+                rx.vstack(rx.text("Ganancia Neta", size="2", color_scheme="gray"), rx.text(p_data.total_net_profit_cop, weight="bold"), align="center"),
+                columns="4",
+                spacing="3",
+                width="100%",
+                margin_y="0.5em"
+            ),
+            rx.divider(),
+            rx.button(
+                "Ver Detalles",
+                rx.icon("bar-chart-2", margin_left="0.5em"),
+                on_click=AppState.show_product_detail(p_data.product_id),
+                variant="soft",
+                width="100%",
+                margin_top="0.5em"
+            ),
+            spacing="3",
+            width="100%"
+        )
+    )
+
+
 @require_admin
 def finance_page_content() -> rx.Component:
     """Página del dashboard financiero con la UI mejorada y nuevas métricas."""
+    # --- Vista de la tabla para escritorio ---
+    desktop_table = rx.box(
+        rx.table.root(
+            rx.table.header(
+                rx.table.row(
+                    rx.table.column_header_cell("Producto"),
+                    rx.table.column_header_cell("Unidades Vendidas", text_align="center"),
+                    rx.table.column_header_cell("Ingresos", text_align="right"),
+                    rx.table.column_header_cell("Costo Total", text_align="right"),
+                    rx.table.column_header_cell("Ganancia Neta", text_align="right"),
+                    rx.table.column_header_cell("Ver Detalles", text_align="center"),
+                )
+            ),
+            rx.table.body(
+                rx.cond(
+                    AppState.filtered_product_finance_data,
+                    rx.foreach(AppState.filtered_product_finance_data, product_finance_table_row),
+                    rx.table.row(rx.table.cell("No se encontraron datos de productos.", col_span=6, text_align="center"))
+                )
+            ),
+            variant="surface",
+        ),
+        display=["none", "none", "block"]  # Oculto en móvil, visible en escritorio
+    )
+
+    # --- Vista de tarjetas para móvil ---
+    mobile_card_list = rx.box(
+        rx.vstack(
+            rx.foreach(AppState.filtered_product_finance_data, mobile_finance_card),
+            spacing="4",
+            width="100%"
+        ),
+        display=["block", "block", "none"]  # Visible en móvil, oculto en escritorio
+    )
+
     return rx.fragment(
         rx.center(
             rx.vstack(
@@ -258,6 +324,7 @@ def finance_page_content() -> rx.Component:
                             stat_card("Total Ventas", AppState.finance_stats.total_sales_count, "package"),
                             stat_card("Envío Recaudado", AppState.finance_stats.total_shipping_cop, "truck"),
                             stat_card("Ganancia/Pérdida por Envío", AppState.finance_stats.shipping_profit_loss_cop, "percent"),
+                            # --- ✅ CORRECCIÓN DE RESPONSIVIDAD AQUÍ ✅ ---
                             columns={"initial": "1", "sm": "2", "lg": "3"},
                             spacing="4",
                             width="100%",
@@ -272,33 +339,19 @@ def finance_page_content() -> rx.Component:
                                     on_change=AppState.set_search_product_finance,
                                     width="100%", max_width="400px",
                                 ),
-                                rx.table.root(
-                                    rx.table.header(
-                                        rx.table.row(
-                                            rx.table.column_header_cell("Producto"),
-                                            rx.table.column_header_cell("Unidades Vendidas", text_align="center"),
-                                            rx.table.column_header_cell("Ingresos", text_align="right"),
-                                            rx.table.column_header_cell("Costo Total", text_align="right"),
-                                            rx.table.column_header_cell("Ganancia Neta", text_align="right"),
-                                            rx.table.column_header_cell("Ver Detalles", text_align="center"),
-                                        )
-                                    ),
-                                    rx.table.body(
-                                        rx.cond(
-                                            AppState.filtered_product_finance_data,
-                                            rx.foreach(AppState.filtered_product_finance_data, product_finance_table_row),
-                                            rx.table.row(rx.table.cell("No se encontraron datos de productos.", col_span=6, text_align="center"))
-                                        )
-                                    ),
-                                    variant="surface",
-                                ),
+                                # --- ✅ Se muestran la tabla o las tarjetas según el tamaño de pantalla ✅ ---
+                                desktop_table,
+                                mobile_card_list,
                                 align_items="stretch", spacing="4", width="100%",
                             )
                         ),
                         spacing="6", width="100%",
                     )
                 ),
-                padding_x="2em", padding_bottom="2em", width="100%", max_width="1400px", align="center", spacing="5",
+                # --- ✅ Padding responsivo para móvil ✅ ---
+                padding_x=["1em", "1.5em", "2em"],
+                padding_bottom="2em",
+                width="100%", max_width="1400px", align="center", spacing="5",
             ),
             min_height="85vh", width="100%",
         ),

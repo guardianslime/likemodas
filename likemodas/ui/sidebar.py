@@ -72,14 +72,24 @@ def sliding_admin_sidebar() -> rx.Component:
     SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
+        # Sección del logo (sin cambios)
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%", margin_bottom="1.5em",
         ),
-        sidebar_items(),
-        rx.spacer(),
         
-        # --- SECCIÓN INFERIOR REDISEÑADA ---
+        # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
+        # Se envuelve la lista de items en un rx.scroll_area
+        rx.scroll_area(
+            sidebar_items(),
+            type="auto",
+            scrollbars="vertical",
+            # Ocupa el espacio disponible, empujando el pie de página hacia abajo
+            flex_grow="1",
+        ),
+        # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
+        
+        # La sección de logout se mantiene igual pero ahora siempre será visible
         rx.vstack(
             rx.divider(),
             rx.hstack(
@@ -101,8 +111,6 @@ def sliding_admin_sidebar() -> rx.Component:
                 rx.button(
                     "Logout", 
                     rx.icon(tag="log-out", margin_left="0.5em"),
-                    # --- ✨ CORRECCIÓN AQUÍ ---
-                    # Se utiliza el mismo evento AppState.do_logout para unificar la funcionalidad.
                     on_click=AppState.do_logout,
                     width="100%", 
                     variant="soft", 
@@ -112,13 +120,13 @@ def sliding_admin_sidebar() -> rx.Component:
             width="100%", 
             spacing="3",
         ),
-        # --- FIN DE LA SECCIÓN REDISEÑADA ---
 
         spacing="5", padding="1em",
         bg=rx.color("gray", 2),
         align="start", height="100%", width=SIDEBAR_WIDTH,
     )
 
+    # El resto de la función (el contenedor del sidebar) no cambia
     return rx.box(
         rx.hstack(
             sidebar_panel,
@@ -129,7 +137,7 @@ def sliding_admin_sidebar() -> rx.Component:
                 ),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer",
-                bg=rx.color("violet", 9), # Color morado
+                bg=rx.color("violet", 9),
                 border_radius="0 8px 8px 0",
                 height="150px",
                 display="flex",
