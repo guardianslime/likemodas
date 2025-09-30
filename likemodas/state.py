@@ -3145,6 +3145,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ).join(PurchaseItemModel)
             ).unique().all()
             
+            # 1. Primero, calculamos los totales de TODAS las ventas históricas, incluyendo las de variantes que ya no existen.
             product_total_units, product_total_revenue, product_total_net_profit, product_total_cogs = 0, 0.0, 0.0, 0.0
 
             for purchase in completed_purchases:
@@ -3172,10 +3173,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         product_total_net_profit += item_net_profit
                         product_total_cogs += item_cogs
 
+            # 2. Ahora, construimos la lista de DTOs para las variantes que SÍ existen actualmente.
             product_variants_data = []
             for variant_db in blog_post.variants:
                 variant_key = self._get_variant_key(variant_db)
-                sales_data = variant_sales_aggregator.get(variant_key, {})
+                sales_data = variant_sales_aggregator.get(variant_key, {}) # Obtenemos sus ventas si las tuvo
 
                 attributes_str = ", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()])
                 sorted_daily_profit = sorted(
@@ -3194,6 +3196,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     daily_profit_data=sorted_daily_profit
                 ))
 
+            # 3. Finalmente, creamos el DTO del producto principal usando los totales CORRECTOS y completos.
             self.selected_product_detail = ProductDetailFinanceDTO(
                 product_id=blog_post.id,
                 title=blog_post.title,
@@ -3289,7 +3292,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 for item in purchase.items:
                     if item.blog_post:
-                        # Usamos 'or 0.0' como valor por defecto si price o profit son None.
                         price = item.blog_post.price or 0.0
                         profit = item.blog_post.profit or 0.0
                         
