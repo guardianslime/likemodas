@@ -82,7 +82,9 @@ def variant_detail_view() -> rx.Component:
                         rx.hstack(
                             rx.vstack(
                                 rx.text("Unidades Vendidas", size="2"),
-                                rx.heading(AppState.selected_variant_detail.units_sold.to_string(), size="4"),
+                                # ✨ LA CORRECCIÓN ESTÁ AQUÍ ✨
+                                # Se eliminó .to_string()
+                                rx.heading(AppState.selected_variant_detail.units_sold, size="4"),
                                 align_items="start", spacing="0"
                             ),
                             rx.vstack(
@@ -90,7 +92,6 @@ def variant_detail_view() -> rx.Component:
                                 rx.heading(AppState.selected_variant_detail.total_revenue_cop, size="4"),
                                 align_items="start", spacing="0"
                             ),
-                            # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
                             rx.vstack(
                                 rx.text("Costo", size="2"),
                                 rx.heading(AppState.selected_variant_detail.total_cogs_cop, size="4"),
@@ -101,7 +102,6 @@ def variant_detail_view() -> rx.Component:
                                 rx.heading(AppState.selected_variant_detail.total_net_profit_cop, size="4"),
                                 align_items="start", spacing="0"
                             ),
-                            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                             spacing="5",
                         ),
                         align_items="start", spacing="2", width="100%"
@@ -109,10 +109,27 @@ def variant_detail_view() -> rx.Component:
                     spacing="5", align="center", width="100%"
                 ),
             ),
-            # ... (el resto de la función con el gráfico no cambia) ...
+            # El gráfico de la variante (no cambia)
+            rx.box(
+                ResponsiveContainer.create(
+                    LineChart.create(
+                        CartesianGrid.create(stroke_dasharray="3 3", stroke=rx.color("gray", 6)),
+                        XAxis.create(data_key="date", stroke=rx.color("gray", 9)),
+                        YAxis.create(stroke=rx.color("gray", 9)),
+                        tooltip(content_style={"backgroundColor": "var(--gray-2)", "border": "1px solid var(--gray-5)"}),
+                        Legend.create(),
+                        Line.create(type="monotone", data_key="Ganancia", stroke="var(--violet-9)", stroke_width=2, dot=False),
+                        data=AppState.product_detail_chart_data,
+                        margin={"top": 10, "right": 30, "left": 0, "bottom": 0},
+                    ),
+                ),
+                height="250px",
+                width="100%",
+                margin_top="1em"
+            ),
         ),
         rx.center(rx.text("Selecciona una variante de la lista para ver sus detalles."), height="400px")
-    ) #
+    )
 
 def product_detail_modal() -> rx.Component:
     # ... (el modal no necesita cambios estructurales, ya que los cambios están en `variant_detail_view`) ...
