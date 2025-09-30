@@ -80,10 +80,8 @@ def variant_detail_view() -> rx.Component:
                         rx.text("Detalles de la Variante", size="4", weight="bold"),
                         rx.text(AppState.selected_variant_detail.attributes_str, size="2"),
                         rx.divider(),
-                        
-                        # --- ✅ INICIO DE LA CORRECCIÓN ✅ ---
-                        # Se reemplaza el HStack por un Grid para dar más espacio.
-                        rx.grid(
+                        # --- ✅ SE RESTAURA EL DISEÑO HORIZONTAL (HSTACK) ORIGINAL ✅ ---
+                        rx.hstack(
                             rx.vstack(
                                 rx.text("Unidades Vendidas", size="2"),
                                 rx.heading(AppState.selected_variant_detail.units_sold, size="4"),
@@ -104,19 +102,16 @@ def variant_detail_view() -> rx.Component:
                                 rx.heading(AppState.selected_variant_detail.total_net_profit_cop, size="4"),
                                 align_items="start", spacing="0"
                             ),
-                            # Se define una cuadrícula de 2 columnas con buen espaciado.
-                            columns="2",
-                            spacing="5",
-                            width="100%",
+                            spacing="5", # Se mantiene el espaciado que te gustaba
                         ),
-                        # --- ✅ FIN DE LA CORRECCIÓN ✅ ---
-                        
+                        # --- ✅ FIN DE LA RESTAURACIÓN ✅ ---
                         align_items="start", spacing="2", width="100%"
                     ),
                     spacing="5", align="center", width="100%"
                 ),
             ),
             rx.card(
+                # ... (el resto de la función para el gráfico no cambia) ...
                 rx.vstack(
                     rx.heading("Tendencia de Ganancia de la Variante", size="4"),
                     rx.cond(
@@ -144,6 +139,7 @@ def variant_detail_view() -> rx.Component:
         ),
         rx.center(rx.text("Selecciona una variante de la lista para ver sus detalles."), height="400px")
     )
+
 
 def product_detail_modal() -> rx.Component:
     """Modal con la sintaxis corregida para el detalle financiero."""
@@ -228,7 +224,7 @@ def product_detail_modal() -> rx.Component:
         # ✨ CORRECCIÓN DE SINTAXIS: Todos los argumentos de palabra clave (props) van DESPUÉS de los hijos.
         open=AppState.show_product_detail_modal,
         on_open_change=AppState.set_show_product_detail_modal,
-        style={"max_width": "900px", "width": "95%"}
+        style={"max_width": "1100px", "width": "95%"}
     )
 
 @require_admin
