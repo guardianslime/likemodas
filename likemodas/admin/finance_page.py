@@ -1,9 +1,13 @@
+# likemodas/admin/finance_page.py (VERSIÓN FINAL Y COMPLETA)
+
 import reflex as rx
 from ..state import AppState, ProductFinanceDTO, VariantDetailFinanceDTO
 from ..auth.admin_auth import require_admin
 from reflex.components.recharts import LineChart, Line, XAxis, YAxis, CartesianGrid, tooltip, Legend, ResponsiveContainer
 
 def stat_card(title: str, value: str, icon: str) -> rx.Component:
+    """Muestra una tarjeta de estadística en el dashboard."""
+    # ✨ CORRECCIÓN DE SINTAXIS: Argumentos de palabra clave (width, height) al final.
     return rx.card(
         rx.hstack(
             rx.box(rx.icon(icon, size=32), padding="0.75em", bg=rx.color("violet", 3), border_radius="50%"),
@@ -18,7 +22,7 @@ def stat_card(title: str, value: str, icon: str) -> rx.Component:
     )
 
 def general_finance_chart() -> rx.Component:
-    """Componente para el gráfico de ganancias generales, ahora con renderizado robusto."""
+    """Componente para el gráfico de ganancias generales."""
     return rx.card(
         rx.vstack(
             rx.heading("Tendencia de Ganancias Generales (Últimos Días)", size="5", margin_bottom="1em"),
@@ -40,13 +44,14 @@ def general_finance_chart() -> rx.Component:
                     height="300px",
                     width="100%",
                 ),
-                rx.center(rx.text("No hay suficientes datos de ganancias para mostrar una tendencia.", color_scheme="gray"), height="300px")
+                rx.center(rx.text("No hay suficientes datos para mostrar una tendencia.", color_scheme="gray"), height="300px")
             ),
             align_items="start", spacing="4", width="100%"
         )
     )
 
 def product_finance_table_row(p_data: ProductFinanceDTO) -> rx.Component:
+    """Define una fila en la tabla de rendimiento por producto."""
     return rx.table.row(
         rx.table.cell(p_data.title),
         rx.table.cell(p_data.units_sold, text_align="center"),
@@ -78,7 +83,6 @@ def variant_detail_view() -> rx.Component:
                         rx.hstack(
                             rx.vstack(
                                 rx.text("Unidades Vendidas", size="2"),
-                                # ✨ CORRECCIÓN DE BUG EN TIEMPO DE EJECUCIÓN ✨
                                 rx.heading(AppState.selected_variant_detail.units_sold, size="4"),
                                 align_items="start", spacing="0"
                             ),
@@ -134,10 +138,9 @@ def variant_detail_view() -> rx.Component:
     )
 
 def product_detail_modal() -> rx.Component:
-    """Modal rediseñado con pestañas para el detalle financiero."""
+    """Modal con la sintaxis corregida para el detalle financiero."""
     return rx.dialog.root(
-        open=AppState.show_product_detail_modal,
-        on_open_change=AppState.set_show_product_detail_modal,
+        # ✨ CORRECCIÓN DE SINTAXIS: Todos los componentes hijos van PRIMERO.
         rx.dialog.content(
             rx.cond(
                 AppState.selected_product_detail,
@@ -152,7 +155,6 @@ def product_detail_modal() -> rx.Component:
                         rx.tabs.content(
                             rx.vstack(
                                 rx.grid(
-                                    # ✨ CORRECCIÓN DE BUG EN TIEMPO DE EJECUCIÓN ✨
                                     stat_card("Unidades Totales Vendidas", AppState.selected_product_detail.total_units_sold, "package-check"),
                                     stat_card("Ingresos Totales", AppState.selected_product_detail.total_revenue_cop, "trending-up"),
                                     stat_card("Ganancia Total", AppState.selected_product_detail.total_profit_cop, "piggy-bank"),
@@ -212,9 +214,12 @@ def product_detail_modal() -> rx.Component:
                     ),
                     spacing="4",
                 ),
-                rx.center(rx.spinner()) # Muestra spinner mientras carga
+                rx.center(rx.spinner())
             )
         ),
+        # ✨ CORRECCIÓN DE SINTAXIS: Todos los argumentos de palabra clave (props) van DESPUÉS de los hijos.
+        open=AppState.show_product_detail_modal,
+        on_open_change=AppState.set_show_product_detail_modal,
         style={"max_width": "900px", "width": "95%"}
     )
 
@@ -233,7 +238,6 @@ def finance_page_content() -> rx.Component:
                             stat_card("Ingresos Totales", AppState.finance_stats.total_revenue_cop, "trending-up"),
                             stat_card("Costo de Mercancía", AppState.finance_stats.total_cogs_cop, "receipt"),
                             stat_card("Ganancia Neta", AppState.finance_stats.total_profit_cop, "piggy-bank"),
-                            # ✨ CORRECCIÓN DE BUG EN TIEMPO DE EJECUCIÓN ✨
                             stat_card("Total Ventas", AppState.finance_stats.total_sales_count, "package"),
                             stat_card("Envío Recaudado", AppState.finance_stats.total_shipping_cop, "truck"),
                             stat_card("Ganancia/Pérdida por Envío", AppState.finance_stats.shipping_profit_loss_cop, "percent"),
