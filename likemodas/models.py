@@ -324,10 +324,7 @@ class PurchaseModel(rx.Model, table=True):
     def confirmed_at_formatted(self) -> str: return format_utc_to_local(self.confirmed_at)
     @property
     def total_price_cop(self) -> str: return format_to_cop(self.total_price)
-    @property
-    def items_formatted(self) -> list[str]:
-        if not self.items: return []
-        return [f"{item.quantity}x {item.blog_post.title} (a {format_to_cop(item.price_at_purchase)} c/u)" for item in self.items if item.blog_post]
+    
 
 class PurchaseItemModel(rx.Model, table=True):
     purchase_id: int = Field(foreign_key="purchasemodel.id")

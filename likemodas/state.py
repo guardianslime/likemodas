@@ -4426,7 +4426,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         [VERSIÓN FINAL Y DEFINITIVA]
         Carga las compras activas, construyendo correctamente el DTO AdminPurchaseCardData
-        con la lista detallada de 'items', solucionando el error de compilación.
+        con la lista detallada de 'items'.
         """
         if not self.is_admin: 
             self.active_purchases = []
@@ -4449,23 +4449,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             active_purchases_list = []
             for p in purchases:
-                # --- ✨ LÓGICA DE CORRECCIÓN APLICADA AQUÍ ✨ ---
-                # Se construye la lista detallada de 'items' para cada orden activa.
                 detailed_items = []
                 for item in p.items:
                     if item.blog_post:
-                        # Encontrar la imagen correcta para la variante comprada
                         variant_image_url = ""
-                        if item.blog_post.variants: # Asegurarse de que la lista de variantes no esté vacía
+                        if item.blog_post.variants:
                             for variant in item.blog_post.variants:
                                 if variant.get("attributes") == item.selected_variant:
                                     variant_image_url = variant.get("image_url", "")
                                     break
-                            # Fallback a la primera imagen si no se encuentra una coincidencia exacta
                             if not variant_image_url:
                                 variant_image_url = item.blog_post.variants[0].get("image_url", "")
                         
-                        # Se crea la cadena de texto con los detalles de la variante en el backend
                         variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
 
                         detailed_items.append(
@@ -4494,7 +4489,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_name=p.shipping_name, 
                         shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                         shipping_phone=p.shipping_phone, 
-                        # Se asigna la nueva lista de objetos detallados. ¡Este era el punto del error!
                         items=detailed_items
                     )
                 )
