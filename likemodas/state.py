@@ -146,6 +146,7 @@ class AdminPurchaseCardData(rx.Base):
     def shipping_applied_cop(self) -> str: return format_to_cop(self.shipping_applied or 0.0)
 
 
+# DTO para un item individual en el historial de compras
 class PurchaseItemCardData(rx.Base):
     id: int
     title: str
@@ -153,8 +154,8 @@ class PurchaseItemCardData(rx.Base):
     price_at_purchase: float
     price_at_purchase_cop: str
     quantity: int
-    # --- ✨ CAMBIO: Añadido para guardar detalles de la variante ---
-    variant_details: dict = {}
+    # --- ✨ CAMBIO 1: Se añade un campo para la cadena de texto pre-formateada ---
+    variant_details_str: str = ""
 
     @property
     def subtotal_cop(self) -> str:
@@ -4357,6 +4358,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def notify_admin_of_new_purchase(self):
         self.new_purchase_notification = True
 
+    # --- ✨ MÉTODO MODIFICADO: `load_purchase_history` (para Admin) ✨ ---
     @rx.event
     def load_purchase_history(self):
         """Carga el historial de compras finalizadas con items detallados."""
@@ -4364,6 +4366,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.purchase_history = []
             return
         with rx.session() as session:
+            # ... (la consulta a la base de datos se mantiene igual) ...
             results = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -4376,20 +4379,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_history = []
             for p in results:
-                # Construir la lista detallada de items para esta compra
                 detailed_items = []
                 for item in p.items:
                     if item.blog_post:
-                        # Encontrar la imagen correcta para la variante comprada
                         variant_image_url = ""
                         for variant in item.blog_post.variants:
                             if variant.get("attributes") == item.selected_variant:
                                 variant_image_url = variant.get("image_url", "")
                                 break
-                        # Si no se encuentra, usar la primera imagen del producto como fallback
                         if not variant_image_url and item.blog_post.variants:
                             variant_image_url = item.blog_post.variants[0].get("image_url", "")
                         
+                        # --- ✨ CAMBIO 2: Se crea la cadena de texto aquí en el backend ---
+                        variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+
                         detailed_items.append(
                             PurchaseItemCardData(
                                 id=item.blog_post.id,
@@ -4398,12 +4401,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 price_at_purchase=item.price_at_purchase,
                                 price_at_purchase_cop=format_to_cop(item.price_at_purchase),
                                 quantity=item.quantity,
-                                variant_details=item.selected_variant,
+                                variant_details_str=variant_str, # Se asigna la cadena pre-formateada
                             )
                         )
 
                 temp_history.append(
                     AdminPurchaseCardData(
+                        # ... (otros campos del DTO se asignan igual) ...
                         id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
                         purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
                         shipping_applied=p.shipping_applied,
@@ -4411,11 +4415,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_phone=p.shipping_phone, 
                         payment_method=p.payment_method,
                         confirmed_at=p.confirmed_at,
-                        # Se asigna la nueva lista de objetos detallados
                         items=detailed_items
                     )
                 )
             self.purchase_history = temp_history
+
             
     @rx.event
     def load_active_purchases(self):
@@ -4706,6 +4710,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.user_purchases = []
             return
         with rx.session() as session:
+            # ... (la consulta a la base de datos se mantiene igual) ...
             results = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -4721,16 +4726,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if p.items:
                     for item in p.items:
                         if item.blog_post:
-                            # Encontrar la imagen correcta para la variante comprada
                             variant_image_url = ""
                             for variant in item.blog_post.variants:
                                 if variant.get("attributes") == item.selected_variant:
                                     variant_image_url = variant.get("image_url", "")
                                     break
-                            # Fallback a la primera imagen
                             if not variant_image_url and item.blog_post.variants:
                                 variant_image_url = item.blog_post.variants[0].get("image_url", "")
                             
+                            # --- ✨ CAMBIO 3: Se crea la cadena de texto aquí también ---
+                            variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+
                             purchase_items_data.append(
                                 PurchaseItemCardData(
                                     id=item.blog_post.id,
@@ -4739,13 +4745,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                                     price_at_purchase=item.price_at_purchase,
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
                                     quantity=item.quantity,
-                                    # Se pasan los detalles de la variante
-                                    variant_details=item.selected_variant,
+                                    variant_details_str=variant_str, # Se asigna la cadena pre-formateada
                                 )
                             )
                 
                 temp_purchases.append(
                     UserPurchaseHistoryCardData(
+                        # ... (otros campos del DTO se asignan igual) ...
                         id=p.id, userinfo_id=p.userinfo_id, purchase_date_formatted=p.purchase_date_formatted,
                         status=p.status.value, total_price_cop=p.total_price_cop,
                         shipping_applied_cop=format_to_cop(p.shipping_applied),

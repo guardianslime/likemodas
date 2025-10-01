@@ -11,8 +11,7 @@ from ..blog.public_page import product_detail_modal
 # --- ✨ INICIO DE LA MODIFICACIÓN: COMPONENTE DE ITEM REDISEÑADO ✨ ---
 def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
     """
-    Componente rediseñado que muestra una tarjeta completa para cada artículo comprado,
-    incluyendo imagen, título, detalles de variante y precio.
+    Componente rediseñado que muestra una tarjeta completa para cada artículo comprado.
     """
     return rx.hstack(
         rx.box(
@@ -30,9 +29,9 @@ def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
         ),
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
-            # Muestra los detalles de la variante (ej: "Color: Rojo, Talla: M")
+            # --- ✨ CORRECCIÓN: Se usa la cadena de texto pre-formateada ---
             rx.text(
-                ", ".join([f"{k}: {v}" for k, v in item.variant_details.items()]),
+                item.variant_details_str,
                 size="2",
                 color_scheme="gray",
             ),

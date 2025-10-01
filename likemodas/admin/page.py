@@ -141,8 +141,9 @@ def history_item_card_admin(item: PurchaseItemCardData) -> rx.Component:
         ),
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
+            # --- ✨ CORRECCIÓN: Se usa la cadena de texto pre-formateada ---
             rx.text(
-                ", ".join([f"{k}: {v}" for k, v in item.variant_details.items()]),
+                item.variant_details_str,
                 size="2",
                 color_scheme="gray",
             ),
