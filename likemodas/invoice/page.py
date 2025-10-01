@@ -72,8 +72,10 @@ def invoice_page_content() -> rx.Component:
                                 rx.table.cell(
                                     rx.vstack(
                                         rx.text(item.name, weight="bold", style={"color": "black"}),
+                                        # Se añade el texto con los detalles de la variante
                                         rx.text(item.variant_details_str, size="2", color_scheme="gray"),
-                                        align_items="start", spacing="0"
+                                        align_items="start", 
+                                        spacing="0"
                                     )
                                 ),
                                 # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
