@@ -4448,14 +4448,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_active_purchases(self):
         """
-        [VERSIÓN FINAL Y DEFINITIVA]
-        Carga las compras activas, construyendo correctamente el DTO AdminPurchaseCardData
-        con la lista detallada de 'items'.
+        [CORREGIDO] Carga las compras activas y LIMPIA la notificación,
+        ya que el admin está viendo la página.
         """
         if not self.is_admin: 
-            self.active_purchases = []
             return
 
+        # 1. Limpiar la notificación al entrar a la página
+        self.new_purchase_notification = False
+        
+        # 2. La lógica para cargar las órdenes se mantiene igual
         with rx.session() as session:
             purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
@@ -4471,6 +4473,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(PurchaseModel.purchase_date.asc())
             ).unique().all()
             
+            # (El resto de la lógica de carga se mantiene igual que la que ya tienes)
             active_purchases_list = []
             for p in purchases:
                 detailed_items = []
@@ -4486,42 +4489,51 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 variant_image_url = item.blog_post.variants[0].get("image_url", "")
                         
                         variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
-
                         detailed_items.append(
                             PurchaseItemCardData(
-                                id=item.blog_post.id,
-                                title=item.blog_post.title,
-                                image_url=variant_image_url,
+                                id=item.blog_post.id, title=item.blog_post.title, image_url=variant_image_url,
                                 price_at_purchase=item.price_at_purchase,
                                 price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                quantity=item.quantity,
-                                variant_details_str=variant_str,
+                                quantity=item.quantity, variant_details_str=variant_str,
                             )
                         )
-
                 active_purchases_list.append(
                     AdminPurchaseCardData(
-                        id=p.id, 
-                        customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A", 
+                        id=p.id, customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A", 
                         customer_email=p.userinfo.email if p.userinfo else "N/A",
-                        purchase_date_formatted=p.purchase_date_formatted, 
-                        status=p.status.value, 
-                        total_price=p.total_price,
-                        payment_method=p.payment_method,
-                        confirmed_at=p.confirmed_at,
-                        shipping_applied=p.shipping_applied,
-                        shipping_name=p.shipping_name, 
+                        purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, 
+                        total_price=p.total_price, payment_method=p.payment_method, confirmed_at=p.confirmed_at,
+                        shipping_applied=p.shipping_applied, shipping_name=p.shipping_name, 
                         shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
-                        shipping_phone=p.shipping_phone, 
-                        items=detailed_items
+                        shipping_phone=p.shipping_phone, items=detailed_items
                     )
                 )
-            
             self.active_purchases = active_purchases_list
-            
-            self.set_new_purchase_notification(
-                any(p.status == PurchaseStatus.PENDING_CONFIRMATION.value for p in self.active_purchases)
-            )
+
+    # --- AÑADE ESTA NUEVA FUNCIÓN COMPLETA ---
+    @rx.event
+    def poll_for_new_orders(self):
+        """
+        Verifica periódicamente si hay nuevas órdenes que requieran acción
+        y activa la notificación sin recargar toda la data.
+        """
+        if not self.is_admin:
+            return
+
+        with rx.session() as session:
+            # Busca órdenes que requieran la primera acción del admin
+            new_order_to_confirm = session.exec(
+                sqlmodel.select(PurchaseModel.id).where(
+                    PurchaseModel.status.in_([
+                        PurchaseStatus.PENDING_CONFIRMATION,
+                        PurchaseStatus.CONFIRMED
+                    ])
+                )
+            ).first()
+
+            # Si encuentra al menos una, activa la notificación
+            if new_order_to_confirm:
+                self.new_purchase_notification = True
 
     def _update_shipping_and_notify(self, session, purchase, total_delta):
         """

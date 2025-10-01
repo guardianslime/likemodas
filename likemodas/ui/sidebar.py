@@ -1,13 +1,12 @@
-# likemodas/ui/sidebar.py (Versión Final Definitiva)
+# likemodas/ui/sidebar.py (VERSIÓN FINAL CON POLLING)
 
 import reflex as rx
 from reflex.style import toggle_color_mode
 from ..state import AppState
 from .. import navigation
 
-# --- Esta función y la siguiente no necesitan cambios ---
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Un componente de enlace de sidebar rediseñado que resalta la página activa."""
+    """Un componente de enlace de sidebar que resalta la página activa."""
     is_active = (AppState.current_path == href)
     return rx.link(
         rx.hstack(
@@ -46,6 +45,7 @@ def sidebar_items() -> rx.Component:
                     sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
                     sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
                     sidebar_item("Mi Ubicación de Envío", "map-pin", "/admin/my-location"),
+                    # La notificación ahora se controla con la variable `new_purchase_notification`
                     sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
                     sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
                     sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
@@ -60,10 +60,8 @@ def sidebar_items() -> rx.Component:
         width="100%",
     )
 
-# --- La función principal con la corrección final ---
 def sliding_admin_sidebar() -> rx.Component:
-    """Sidebar con el diseño final, balanceado para PC y móvil."""
-    
+    """Sidebar con el diseño final y el nuevo mecanismo de polling."""
     SIDEBAR_WIDTH = "16em"
 
     sidebar_panel = rx.vstack(
@@ -72,12 +70,10 @@ def sliding_admin_sidebar() -> rx.Component:
             align="center", justify="center", width="100%",
             margin_bottom={"initial": "0.5em", "lg": "1em"},
         ),
-        
         rx.scroll_area(
             sidebar_items(),
             flex_grow="1", 
         ),
-        
         rx.vstack(
             rx.divider(),
             rx.hstack(
@@ -99,9 +95,7 @@ def sliding_admin_sidebar() -> rx.Component:
                     "Logout", 
                     rx.icon(tag="log-out", margin_left="0.5em"),
                     on_click=AppState.do_logout,
-                    width="100%", 
-                    variant="soft", 
-                    color_scheme="red"
+                    width="100%", variant="soft", color_scheme="red"
                 )
             ),
             width="100%",
@@ -109,18 +103,13 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         spacing={"initial": "2", "lg": "4"},
         padding_x="1em",
-        
-        # --- ✅ AJUSTE FINAL Y ÚNICO AQUÍ ✅ ---
-        # Aumentamos el padding vertical en PC (lg) de 1.5em a 2.5em. El de móvil no se toca.
         padding_y={"initial": "1.5em", "lg": "2.5em"},
-        
         bg=rx.color("gray", 2),
         align="start", 
         height="100%", 
         width=SIDEBAR_WIDTH,
     )
 
-    # El resto del código no cambia
     return rx.box(
         rx.hstack(
             sidebar_panel,
@@ -134,20 +123,46 @@ def sliding_admin_sidebar() -> rx.Component:
                     }
                 ),
                 on_click=AppState.toggle_admin_sidebar,
-                cursor="pointer",
-                bg=rx.color("violet", 9),
-                border_radius="0 8px 8px 0",
-                height="150px",
-                display="flex",
-                align_items="center"
+                cursor="pointer", bg=rx.color("violet", 9),
+                border_radius="0 8px 8px 0", height="150px",
+                display="flex", align_items="center"
             ),
             align_items="center",
             spacing="0",
         ),
+        
+        # --- ✨ INICIO DE LA LÓGICA DE POLLING EN TIEMPO REAL ✨ ---
+        rx.cond(
+            AppState.is_admin,
+            rx.fragment(
+                # 1. Un botón invisible que activará el sondeo
+                rx.button(
+                    on_click=AppState.poll_for_new_orders,
+                    id="admin_notification_poller",
+                    display="none",
+                ),
+                # 2. Un script que se ejecuta al montar el componente y "hace clic" en el botón cada 15 segundos
+                rx.box(
+                    on_mount=rx.call_script(
+                        """
+                        if (!window.likemodas_admin_poller) {
+                            window.likemodas_admin_poller = setInterval(() => {
+                                const trigger = document.getElementById('admin_notification_poller');
+                                if (trigger) {
+                                    trigger.click();
+                                }
+                            }, 15000);
+                        }
+                        """
+                    ),
+                    display="none",
+                )
+            )
+        ),
+        # --- ✨ FIN DE LA LÓGICA DE POLLING ✨ ---
+        
         position="fixed", top="0", left="0",
-        height="100%",
-        display="flex",
-        align_items="center",
+        height="100%", display="flex", align_items="center",
         transform=rx.cond(
             AppState.show_admin_sidebar,
             "translateX(0)",
