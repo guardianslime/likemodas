@@ -39,7 +39,7 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
 
 # PASO 1: CREAR UN COMPONENTE AISLADO
 # Este decorador le dice a Reflex que trate esta función como un componente independiente.
-@rx.component
+@rx.Component
 def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.Component:
     """
     Componente aislado que renderiza la lista de artículos para una compra.
