@@ -37,7 +37,9 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
 
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra activa y sus acciones dinámicas."""
+    """
+    Muestra los detalles de una compra activa y sus acciones dinámicas.
+    """
     set_delivery_and_shipping_form = rx.vstack(
         rx.divider(),
         rx.grid(
@@ -84,22 +86,22 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- ✨ CORRECCIÓN FINAL Y DEFINITIVA ✨ ---
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 rx.vstack(
-                    # Se utiliza el componente unificado y una lambda segura
+                    # --- ✨ LÍNEA DE CÓDIGO CORREGIDA Y DEFINITIVA ✨ ---
+                    # En lugar de `purchase.items`, usamos el mapa para evitar el bug.
                     rx.foreach(
-                        purchase.items, 
-                        lambda item: purchase_item_display_admin(item)
+                        AppState.active_purchase_items_map.get(purchase.id, []), 
+                        purchase_item_display_admin
                     ),
-                    spacing="2", width="100%",
+                    spacing="2",
+                    width="100%",
                 ),
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
-            # La lógica de botones no cambia
+            
+            # La lógica de botones se mantiene igual
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
@@ -140,7 +142,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             spacing="4", width="100%",
         ), width="100%",
     )
-
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
     """Muestra los detalles de una compra en el historial."""

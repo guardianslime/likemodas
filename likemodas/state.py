@@ -4420,7 +4420,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             self.purchase_history = temp_history
 
-            
+    @rx.var
+    def active_purchase_items_map(self) -> dict[int, list[PurchaseItemCardData]]:
+        """
+        Crea un diccionario que mapea el ID de una compra ACTIVA a su lista de artículos.
+        Esto evita el acceso anidado (purchase.items) que causa el error de compilación.
+        """
+        return {p.id: p.items for p in self.active_purchases}
+
     @rx.event
     def load_active_purchases(self):
         """
