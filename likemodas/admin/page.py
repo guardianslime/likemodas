@@ -1,11 +1,12 @@
-# likemodas/admin/page.py (VERSIÓN FINAL, SIMPLIFICADA Y CORRECTA)
+# likemodas/admin/page.py (VERSIÓN FINAL Y DEFINITIVA)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
 
-# Este componente ya es correcto y lo vamos a reutilizar.
+
+# --- ✨ CORRECCIÓN 1: Se elimina el f-string que iba a causar el siguiente error ---
 def history_item_card_admin(item: PurchaseItemCardData) -> rx.Component:
     """Muestra un item individual detallado, reutilizable en ambas vistas."""
     return rx.hstack(
@@ -29,6 +30,7 @@ def history_item_card_admin(item: PurchaseItemCardData) -> rx.Component:
         ),
         rx.spacer(),
         rx.text(
+            # Se construye el texto de forma segura para Reflex
             item.quantity.to_string(), "x ", item.price_at_purchase_cop,
             size="3"
         ),
@@ -38,12 +40,9 @@ def history_item_card_admin(item: PurchaseItemCardData) -> rx.Component:
     )
 
 
-# --- ✨ INICIO DE LA MODIFICACIÓN CLAVE ✨ ---
-# Se reestructura `purchase_card_admin` para eliminar la lambda conflictiva.
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     """
     Muestra los detalles de una compra activa y sus acciones dinámicas.
-    Ahora reutiliza el componente `history_item_card_admin` para mostrar los artículos.
     """
     set_delivery_and_shipping_form = rx.vstack(
         rx.divider(),
@@ -75,7 +74,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
 
     return rx.card(
         rx.vstack(
-            # El encabezado no cambia
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
@@ -92,19 +90,21 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # La sección de artículos ahora usa la misma lógica que el historial
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 rx.vstack(
-                    # Se itera sobre `purchase.items` y se usa el componente reutilizable
-                    rx.foreach(purchase.items, history_item_card_admin),
+                    # --- ✨ CORRECCIÓN 2: Se envuelve la llamada en una lambda para resolver el bug del compilador ---
+                    rx.foreach(
+                        purchase.items, 
+                        lambda item: history_item_card_admin(item)
+                    ),
                     spacing="2",
                     width="100%",
                 ),
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
             
-            # La lógica de botones no cambia
+            # La lógica de botones se mantiene igual
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
@@ -119,8 +119,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     rx.button(
                         "Establecer Tiempo y Notificar Envío", 
                         on_click=AppState.ship_confirmed_online_order(purchase.id),
-                        width="100%", 
-                        margin_top="0.5em"
+                        width="100%", margin_top="0.5em"
                     ),
                 )
             ),
@@ -146,7 +145,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             spacing="4", width="100%",
         ), width="100%",
     )
-# --- ✨ FIN DE LA MODIFICACIÓN CLAVE ✨ ---
 
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
