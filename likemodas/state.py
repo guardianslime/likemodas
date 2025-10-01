@@ -4423,8 +4423,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             
     @rx.event
     def load_active_purchases(self):
-        """Carga las compras que requieren acción del admin."""
-        if not self.is_admin: return
+        """
+        [VERSIÓN FINAL CORREGIDA]
+        Carga las compras activas, construyendo correctamente el DTO AdminPurchaseCardData
+        con la lista detallada de 'items' en lugar del antiguo 'items_formatted'.
+        """
+        if not self.is_admin: 
+            self.active_purchases = []
+            return
+
         with rx.session() as session:
             purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
@@ -4432,31 +4439,68 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                # Se elimina el estado 'DELIVERED' de esta consulta.
-                # Ahora solo se mostrarán las órdenes que están pendientes o en tránsito.
                 .where(PurchaseModel.status.in_([
                     PurchaseStatus.PENDING_CONFIRMATION,
                     PurchaseStatus.CONFIRMED,
                     PurchaseStatus.SHIPPED,
                 ]))
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 .order_by(PurchaseModel.purchase_date.asc())
             ).unique().all()
             
-            self.active_purchases = [
-                AdminPurchaseCardData(
-                    id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
-                    purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
-                    payment_method=p.payment_method,
-                    confirmed_at=p.confirmed_at,
-                    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-                    shipping_applied=p.shipping_applied, # Pasa el costo de envío aquí
-                    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-                    shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
-                    shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
-                ) for p in purchases
-            ]
+            active_purchases_list = []
+            for p in purchases:
+                # --- ✨ INICIO DE LA LÓGICA DE CORRECCIÓN ✨ ---
+                # Ahora construimos la lista detallada de items aquí también.
+                detailed_items = []
+                for item in p.items:
+                    if item.blog_post:
+                        # Encontrar la imagen correcta para la variante comprada
+                        variant_image_url = ""
+                        for variant in item.blog_post.variants:
+                            if variant.get("attributes") == item.selected_variant:
+                                variant_image_url = variant.get("image_url", "")
+                                break
+                        # Si no se encuentra, usar la primera imagen del producto como fallback
+                        if not variant_image_url and item.blog_post.variants:
+                            variant_image_url = item.blog_post.variants[0].get("image_url", "")
+                        
+                        # Se crea la cadena de texto con los detalles de la variante en el backend
+                        variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+
+                        detailed_items.append(
+                            PurchaseItemCardData(
+                                id=item.blog_post.id,
+                                title=item.blog_post.title,
+                                image_url=variant_image_url,
+                                price_at_purchase=item.price_at_purchase,
+                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                                quantity=item.quantity,
+                                variant_details_str=variant_str,
+                            )
+                        )
+                # --- ✨ FIN DE LA LÓGICA DE CORRECCIÓN ✨ ---
+
+                active_purchases_list.append(
+                    AdminPurchaseCardData(
+                        id=p.id, 
+                        customer_name=p.userinfo.user.username, 
+                        customer_email=p.userinfo.email,
+                        purchase_date_formatted=p.purchase_date_formatted, 
+                        status=p.status.value, 
+                        total_price=p.total_price,
+                        payment_method=p.payment_method,
+                        confirmed_at=p.confirmed_at,
+                        shipping_applied=p.shipping_applied,
+                        shipping_name=p.shipping_name, 
+                        shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                        shipping_phone=p.shipping_phone, 
+                        # Se asigna la nueva lista de objetos detallados en lugar de 'items_formatted'
+                        items=detailed_items
+                    )
+                )
+            
+            self.active_purchases = active_purchases_list
+            
             self.set_new_purchase_notification(
                 any(p.status == PurchaseStatus.PENDING_CONFIRMATION.value for p in self.active_purchases)
             )
