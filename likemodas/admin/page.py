@@ -61,19 +61,19 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- ✨ INICIO DE LA SECCIÓN CORREGIDA ✨ ---
-            # Se reemplaza `purchase.items_formatted` por la iteración sobre la lista de objetos `purchase.items`.
+            # --- ✨ ESTA ES LA SECCIÓN CORREGIDA ✨ ---
+            # Se itera sobre `purchase.items` (la lista de objetos) en lugar del antiguo `items_formatted`.
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 rx.foreach(
                     purchase.items,
                     lambda item: rx.vstack(
                         rx.text(
-                            # Construimos el texto usando componentes de Reflex para evitar errores de compilación
+                            # Se construye el texto usando solo componentes de Reflex para evitar errores.
                             item.quantity.to_string(), "x ", item.title, " (a ", item.price_at_purchase_cop, " c/u)",
                             size="3"
                         ),
-                        # Mostramos los detalles de la variante (ej: "Color: Rojo, Talla: M")
+                        # Se muestran los detalles de la variante que pre-formateamos en el AppState.
                         rx.text(
                             item.variant_details_str, 
                             size="2", 
@@ -82,14 +82,14 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                         align_items="start",
                         spacing="0",
                         width="100%",
-                        padding_y="0.25em" # Añade un poco de espacio vertical por item
+                        padding_y="0.25em"
                     )
                 ),
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
-            # --- ✨ FIN DE LA SECCIÓN CORREGIDA ✨ ---
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
-            # La lógica de acciones de los botones se mantiene sin cambios
+            # El resto de la lógica de botones se mantiene igual.
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
