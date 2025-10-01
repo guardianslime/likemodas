@@ -168,6 +168,12 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_phone: str; items: list[PurchaseItemCardData]
     estimated_delivery_date_formatted: str
 
+# --- ✨ INICIO DE LA SOLUCIÓN ✨ ---
+# Se añaden estas líneas para resolver las referencias anidadas
+AdminPurchaseCardData.update_forward_refs()
+UserPurchaseHistoryCardData.update_forward_refs()
+# --- ✨ FIN DE LA SOLUCIÓN ✨ ---
+
 # --- PASO 1: AÑADIR ESTE NUEVO DTO ANTES DE AppState ---
 class AdminVariantData(rx.Base):
     """DTO para mostrar una variante con su QR en el modal de admin."""
