@@ -1,12 +1,12 @@
-# likemodas/admin/page.py (VERSIÓN UNIFICADA Y FINAL)
+# likemodas/admin/page.py (VERSIÓN FINAL Y DEFINITIVA)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
 
-# --- COMPONENTE REUTILIZABLE PARA MOSTRAR ITEMS ---
-# Este componente es ahora la única forma de mostrar un item, evitando inconsistencias.
+
+# --- COMPONENTE REUTILIZABLE PARA MOSTRAR ITEMS (SIN CAMBIOS) ---
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     """Muestra un item individual detallado, reutilizable en ambas vistas."""
     return rx.hstack(
@@ -26,7 +26,6 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
         ),
         rx.spacer(),
         rx.text(
-            # Se construye el texto de forma segura para Reflex, sin f-strings
             item.quantity.to_string(), "x ", item.price_at_purchase_cop,
             size="3"
         ),
@@ -36,10 +35,29 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     )
 
 
+# --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA ✨ ---
+
+# PASO 1: CREAR UN COMPONENTE AISLADO
+# Este decorador le dice a Reflex que trate esta función como un componente independiente.
+@rx.component
+def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.Component:
+    """
+    Componente aislado que renderiza la lista de artículos para una compra.
+    Recibe el ID y el mapa de datos, rompiendo el anidamiento que causa el bug.
+    """
+    return rx.vstack(
+        rx.foreach(
+            map_var.get(purchase_id, []), 
+            purchase_item_display_admin
+        ),
+        spacing="2",
+        width="100%",
+    )
+# --- ✨ FIN DE LA SOLUCIÓN ✨ ---
+
+
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
-    """
-    Muestra los detalles de una compra activa y sus acciones dinámicas.
-    """
+    """Muestra los detalles de una compra activa y sus acciones dinámicas."""
     set_delivery_and_shipping_form = rx.vstack(
         rx.divider(),
         rx.grid(
@@ -88,20 +106,15 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                rx.vstack(
-                    # --- ✨ LÍNEA DE CÓDIGO CORREGIDA Y DEFINITIVA ✨ ---
-                    # En lugar de `purchase.items`, usamos el mapa para evitar el bug.
-                    rx.foreach(
-                        AppState.active_purchase_items_map.get(purchase.id, []), 
-                        purchase_item_display_admin
-                    ),
-                    spacing="2",
-                    width="100%",
+                # --- ✨ PASO 2: USAR EL NUEVO COMPONENTE AISLADO ---
+                purchase_items_view(
+                    purchase_id=purchase.id, 
+                    map_var=AppState.active_purchase_items_map
                 ),
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
             
-            # La lógica de botones se mantiene igual
+            # La lógica de botones se mantiene sin cambios
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
@@ -109,6 +122,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     rx.button("Enviar y Notificar al Cliente", on_click=AppState.ship_pending_cod_order(purchase.id), width="100%", margin_top="0.5em"),
                 )
             ),
+            # ... (resto de los botones sin cambios) ...
             rx.cond(
                 purchase.status == PurchaseStatus.CONFIRMED.value,
                 rx.vstack(
@@ -143,8 +157,9 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
         ), width="100%",
     )
 
+
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra en el historial con items detallados."""
+    """Muestra los detalles de una compra en el historial."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -172,15 +187,10 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             rx.divider(),
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                rx.vstack(
-                    # --- ✨ LÍNEA DE CÓDIGO CORREGIDA Y DEFINITIVA ✨ ---
-                    # En lugar de `purchase.items`, usamos el nuevo mapa para evitar el bug.
-                    rx.foreach(
-                        AppState.purchase_history_items_map.get(purchase.id, []), 
-                        purchase_item_display_admin
-                    ),
-                    spacing="2",
-                    width="100%",
+                # --- ✨ PASO 3: APLICAR EL MISMO PATRÓN AL HISTORIAL POR CONSISTENCIA ---
+                purchase_items_view(
+                    purchase_id=purchase.id,
+                    map_var=AppState.purchase_history_items_map
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
