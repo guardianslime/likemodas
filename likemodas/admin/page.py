@@ -7,12 +7,9 @@ from ..models import PurchaseStatus
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     """
-    Muestra los detalles de una compra y las acciones dinámicas 
-    según el estado y el método de pago.
+    Muestra los detalles de una compra activa y las acciones dinámicas 
+    según su estado.
     """
-    
-    # Componente reutilizable para el formulario de tiempo de entrega
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
     set_delivery_and_shipping_form = rx.vstack(
         rx.divider(),
         rx.grid(
@@ -47,7 +44,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
 
     return rx.card(
         rx.vstack(
-            # Sección superior con detalles (no cambia)
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
@@ -63,26 +59,47 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 ), width="100%",
             ),
             rx.divider(),
+            
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Se reemplaza la sección de artículos para usar la nueva estructura de datos.
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
-                spacing="1", align_items="start", width="100%", margin_bottom="1em"
+                rx.vstack(
+                    rx.foreach(
+                        purchase.items,
+                        lambda item: rx.vstack(
+                            rx.text(
+                                item.quantity.to_string(), "x ", item.title, " (a ", item.price_at_purchase_cop, " c/u)",
+                                size="3"
+                            ),
+                            rx.text(
+                                item.variant_details_str, 
+                                size="2", 
+                                color_scheme="gray"
+                            ),
+                            align_items="start",
+                            spacing="0",
+                            width="100%",
+                        )
+                    ),
+                    spacing="2",
+                    width="100%",
+                ),
+                spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
-            # --- LÓGICA DE ACCIONES CORREGIDA Y COMPLETADA ---
+            # La lógica de acciones se mantiene igual
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
-                    # 👇 Usa el nuevo formulario combinado
                     set_delivery_and_shipping_form,
                     rx.button("Enviar y Notificar al Cliente", on_click=AppState.ship_pending_cod_order(purchase.id), width="100%", margin_top="0.5em"),
                 )
             ),
-            
             rx.cond(
                 purchase.status == PurchaseStatus.CONFIRMED.value,
                 rx.vstack(
-                    # 👇 Usa el nuevo formulario combinado
                     set_delivery_and_shipping_form,
                     rx.button(
                         "Establecer Tiempo y Notificar Envío", 
@@ -92,13 +109,10 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     ),
                 )
             ),
-            
             rx.cond(
                 (purchase.status == PurchaseStatus.SHIPPED.value) | (purchase.status == PurchaseStatus.DELIVERED.value),
-                # Caso 3: El pedido está ENVIADO o ENTREGADO
                 rx.cond(
                     purchase.payment_method == "Contra Entrega",
-                    # Si aún no se ha confirmado el pago, muestra el botón para hacerlo
                     rx.cond(
                         ~purchase.confirmed_at,
                         rx.button(
@@ -108,7 +122,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                             width="100%", 
                             margin_top="1em"
                         ),
-                        # Si ya se confirmó, muestra un mensaje
                         rx.callout(
                             "Pago Recibido. Esperando confirmación del cliente.", 
                             icon="check", 
@@ -117,12 +130,9 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                             margin_top="1em"
                         )
                     ),
-                    # Si es Online, ya está pago, solo se espera confirmación
                     rx.callout("Envío notificado. Esperando confirmación del cliente.", icon="check", width="100%", margin_top="1em")
                 )
             ),
-            # --- FIN DE LÓGICA DE ACCIONES ---
-
             spacing="4", width="100%",
         ), width="100%",
     )
