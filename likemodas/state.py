@@ -12,6 +12,9 @@ from .models import LocalAuthSession
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
+
+import os
+
 import bcrypt
 import re
 import asyncio
