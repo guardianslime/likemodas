@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL CON DETALLES DE VARIANTE)
+# likemodas/invoice/page.py (VERSIÓN FINAL)
 import reflex as rx
 from .state import InvoiceState
 
@@ -17,6 +17,7 @@ def invoice_page_content() -> rx.Component:
         rx.cond(
             InvoiceState.invoice_data,
             rx.vstack(
+                # ... (sección del encabezado y datos del cliente sin cambios) ...
                 rx.hstack(
                     rx.image(src="/logo.png", width="120px", height="auto"),
                     rx.spacer(),
@@ -68,17 +69,15 @@ def invoice_page_content() -> rx.Component:
                         rx.foreach(
                             InvoiceState.invoice_items,
                             lambda item: rx.table.row(
-                                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
                                 rx.table.cell(
                                     rx.vstack(
                                         rx.text(item.name, weight="bold", style={"color": "black"}),
-                                        # Se añade el texto con los detalles de la variante
+                                        # Esta línea mostrará los detalles de la variante
                                         rx.text(item.variant_details_str, size="2", color_scheme="gray"),
                                         align_items="start", 
                                         spacing="0"
                                     )
                                 ),
-                                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                                 rx.table.cell(item.quantity, text_align="center", style={"color": "black"}),
                                 rx.table.cell(item.price_cop, text_align="right", style={"color": "black"}),
                                 rx.table.cell(item.subtotal_cop, text_align="right", style={"color": "black"}),
@@ -90,6 +89,7 @@ def invoice_page_content() -> rx.Component:
                     variant="surface",
                     width="100%",
                 ),
+                # ... (sección de totales y botón de imprimir sin cambios) ...
                 rx.hstack(
                     rx.spacer(),
                     rx.vstack(

@@ -212,7 +212,7 @@ class InvoiceItemData(rx.Base):
     subtotal_cop: str
     iva_cop: str
     total_con_iva_cop: str
-    # --- ✨ CAMBIO: Añadido para mostrar detalles en la factura ---
+    # --- ✨ CORRECCIÓN: Asegurarse de que este campo exista ---
     variant_details_str: str = ""
 
     @property
@@ -959,7 +959,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     item_iva = item_base_subtotal * 0.19
                     item_total_con_iva = item_base_subtotal + item_iva
 
-                    # Formatear detalles de la variante para la factura
+                    # --- LÓGICA AÑADIDA: Formatear detalles de la variante para la factura ---
                     variant_str = ", ".join([f"{k}: {v}" for k,v in item.selected_variant.items()])
 
                     invoice_items.append(
@@ -971,11 +971,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                             subtotal_cop=format_to_cop(item_base_subtotal),
                             iva_cop=format_to_cop(item_iva),
                             total_con_iva_cop=format_to_cop(item_total_con_iva),
-                            # Se pasa la cadena formateada
+                            # Se pasa la cadena formateada al DTO
                             variant_details_str=variant_str
                         )
                     )
-            # ... (resto de la función `get_invoice_data` sin cambios) ...
+            
             return InvoiceData(
                 id=purchase.id,
                 purchase_date_formatted=purchase.purchase_date_formatted,
@@ -990,6 +990,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 iva_cop=format_to_cop(iva_amount),
                 total_price_cop=format_to_cop(purchase.total_price),
             )
+            
             
     @rx.var
     def available_types(self) -> list[str]:
