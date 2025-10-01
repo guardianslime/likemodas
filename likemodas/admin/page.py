@@ -6,7 +6,7 @@ from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
 
 
-# --- COMPONENTE REUTILIZABLE PARA MOSTRAR ITEMS (SIN CAMBIOS) ---
+# --- COMPONENTE REUTILIZABLE PARA MOSTRAR ITEMS ---
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     """Muestra un item individual detallado, reutilizable en ambas vistas."""
     return rx.hstack(
@@ -35,15 +35,11 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     )
 
 
-# --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA ✨ ---
-
-# PASO 1: CREAR UN COMPONENTE AISLADO
-# Este decorador le dice a Reflex que trate esta función como un componente independiente.
-@rx.Component
+# --- ✨ INICIO DE LA CORRECCIÓN: SE ELIMINA EL DECORADOR @rx.Component ✨ ---
+# Esta es ahora una función de ayuda normal, no un componente decorado.
 def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.Component:
     """
-    Componente aislado que renderiza la lista de artículos para una compra.
-    Recibe el ID y el mapa de datos, rompiendo el anidamiento que causa el bug.
+    Renderiza la lista de artículos para una compra específica.
     """
     return rx.vstack(
         rx.foreach(
@@ -53,7 +49,7 @@ def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.C
         spacing="2",
         width="100%",
     )
-# --- ✨ FIN DE LA SOLUCIÓN ✨ ---
+# --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
@@ -106,7 +102,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                # --- ✨ PASO 2: USAR EL NUEVO COMPONENTE AISLADO ---
+                # Se llama a la función de ayuda, que ahora es sintácticamente correcta
                 purchase_items_view(
                     purchase_id=purchase.id, 
                     map_var=AppState.active_purchase_items_map
@@ -114,7 +110,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
             
-            # La lógica de botones se mantiene sin cambios
+            # El resto de la función se mantiene igual...
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
@@ -122,7 +118,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     rx.button("Enviar y Notificar al Cliente", on_click=AppState.ship_pending_cod_order(purchase.id), width="100%", margin_top="0.5em"),
                 )
             ),
-            # ... (resto de los botones sin cambios) ...
             rx.cond(
                 purchase.status == PurchaseStatus.CONFIRMED.value,
                 rx.vstack(
@@ -187,7 +182,6 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             rx.divider(),
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                # --- ✨ PASO 3: APLICAR EL MISMO PATRÓN AL HISTORIAL POR CONSISTENCIA ---
                 purchase_items_view(
                     purchase_id=purchase.id,
                     map_var=AppState.purchase_history_items_map
