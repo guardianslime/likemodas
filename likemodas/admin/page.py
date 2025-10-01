@@ -144,7 +144,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     )
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra en el historial."""
+    """Muestra los detalles de una compra en el historial con items detallados."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -173,8 +173,12 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 rx.vstack(
-                    # Se utiliza el componente unificado aquí también
-                    rx.foreach(purchase.items, purchase_item_display_admin),
+                    # --- ✨ LÍNEA DE CÓDIGO CORREGIDA Y DEFINITIVA ✨ ---
+                    # En lugar de `purchase.items`, usamos el nuevo mapa para evitar el bug.
+                    rx.foreach(
+                        AppState.purchase_history_items_map.get(purchase.id, []), 
+                        purchase_item_display_admin
+                    ),
                     spacing="2",
                     width="100%",
                 ),
