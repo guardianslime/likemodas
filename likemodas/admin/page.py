@@ -1,13 +1,13 @@
-# likemodas/admin/page.py (VERSIÓN FINAL Y DEFINITIVA)
+# likemodas/admin/page.py (VERSIÓN UNIFICADA Y FINAL)
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
 
-
-# --- ✨ CORRECCIÓN 1: Se elimina el f-string que iba a causar el siguiente error ---
-def history_item_card_admin(item: PurchaseItemCardData) -> rx.Component:
+# --- COMPONENTE REUTILIZABLE PARA MOSTRAR ITEMS ---
+# Este componente es ahora la única forma de mostrar un item, evitando inconsistencias.
+def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     """Muestra un item individual detallado, reutilizable en ambas vistas."""
     return rx.hstack(
         rx.image(
@@ -20,17 +20,13 @@ def history_item_card_admin(item: PurchaseItemCardData) -> rx.Component:
         ),
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
-            rx.text(
-                item.variant_details_str,
-                size="2",
-                color_scheme="gray",
-            ),
+            rx.text(item.variant_details_str, size="2", color_scheme="gray"),
             align_items="start",
             spacing="0",
         ),
         rx.spacer(),
         rx.text(
-            # Se construye el texto de forma segura para Reflex
+            # Se construye el texto de forma segura para Reflex, sin f-strings
             item.quantity.to_string(), "x ", item.price_at_purchase_cop,
             size="3"
         ),
@@ -41,9 +37,7 @@ def history_item_card_admin(item: PurchaseItemCardData) -> rx.Component:
 
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
-    """
-    Muestra los detalles de una compra activa y sus acciones dinámicas.
-    """
+    """Muestra los detalles de una compra activa y sus acciones dinámicas."""
     set_delivery_and_shipping_form = rx.vstack(
         rx.divider(),
         rx.grid(
@@ -90,21 +84,22 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             rx.divider(),
             
+            # --- ✨ CORRECCIÓN FINAL Y DEFINITIVA ✨ ---
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 rx.vstack(
-                    # --- ✨ CORRECCIÓN 2: Se envuelve la llamada en una lambda para resolver el bug del compilador ---
+                    # Se utiliza el componente unificado y una lambda segura
                     rx.foreach(
                         purchase.items, 
-                        lambda item: history_item_card_admin(item)
+                        lambda item: purchase_item_display_admin(item)
                     ),
-                    spacing="2",
-                    width="100%",
+                    spacing="2", width="100%",
                 ),
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
-            
-            # La lógica de botones se mantiene igual
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
+            # La lógica de botones no cambia
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
@@ -148,7 +143,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
 
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra en el historial con items detallados."""
+    """Muestra los detalles de una compra en el historial."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -177,7 +172,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 rx.vstack(
-                    rx.foreach(purchase.items, history_item_card_admin),
+                    # Se utiliza el componente unificado aquí también
+                    rx.foreach(purchase.items, purchase_item_display_admin),
                     spacing="2",
                     width="100%",
                 ),
