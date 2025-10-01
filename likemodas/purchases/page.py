@@ -1,4 +1,5 @@
-# likemodas/purchases/page.py
+# likemodas/purchases/page.py (VERSIÓN FINAL Y CORREGIDA)
+
 import reflex as rx
 import reflex_local_auth
 
@@ -7,72 +8,54 @@ from ..account.layout import account_layout
 from ..models import PurchaseStatus
 from ..blog.public_page import product_detail_modal
 
-def purchase_item_thumbnail(item: PurchaseItemCardData) -> rx.Component:
-    """Componente para mostrar la miniatura de un artículo comprado individual."""
-    return rx.box(
+# --- ✨ INICIO DE LA MODIFICACIÓN: COMPONENTE DE ITEM REDISEÑADO ✨ ---
+def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
+    """
+    Componente rediseñado que muestra una tarjeta completa para cada artículo comprado,
+    incluyendo imagen, título, detalles de variante y precio.
+    """
+    return rx.hstack(
+        rx.box(
+            rx.image(
+                src=rx.get_upload_url(item.image_url),
+                alt=item.title,
+                width="80px",
+                height="80px",
+                object_fit="cover",
+                border_radius="md",
+            ),
+            on_click=AppState.open_product_detail_modal(item.id),
+            cursor="pointer",
+            _hover={"opacity": 0.8},
+        ),
         rx.vstack(
-            rx.box(
-                rx.image(
-                    src=rx.get_upload_url(item.image_url),
-                    alt=item.title,
-                    width="100px",
-                    height="100px",
-                    object_fit="cover",
-                    border_radius="md",
-                ),
-                on_click=AppState.open_product_detail_modal(item.id),
-                cursor="pointer",
-                position="relative",
-                _hover={"transform": "scale(1.05)"},
-                transition="transform 0.2s",
+            rx.text(item.title, weight="bold", size="3"),
+            # Muestra los detalles de la variante (ej: "Color: Rojo, Talla: M")
+            rx.text(
+                ", ".join([f"{k}: {v}" for k, v in item.variant_details.items()]),
+                size="2",
+                color_scheme="gray",
             ),
-            rx.vstack(
-                rx.text(
-                    f"{item.quantity}x {item.price_at_purchase_cop}", 
-                    size="2",
-                    color_scheme="gray",
-                ),
-                rx.text(
-                    item.subtotal_cop,
-                    size="3",
-                    weight="bold",
-                ),
-                spacing="0",
-                align_items="center",
-                margin_top="0.25em"
-            ),
+            align_items="start",
             spacing="1",
-            align="center",
         ),
-        width="110px",
-    )
-
-def purchase_items_gallery(items: rx.Var[list[PurchaseItemCardData]]) -> rx.Component:
-    """Renderiza la galería de artículos para una compra."""
-    return rx.vstack(
-        rx.text("Artículos Comprados:", weight="medium", size="4"),
-        rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
-        rx.scroll_area(
-            rx.hstack(
-                rx.foreach(
-                    items,
-                    purchase_item_thumbnail
-                ),
-                spacing="4",
-                padding_y="0.5em",
-            ),
-            type="auto",
-            scrollbars="horizontal",
-            width="100%",
+        rx.spacer(),
+        rx.vstack(
+            rx.text(f"{item.quantity}x {item.price_at_purchase_cop}", size="3"),
+            rx.text(item.subtotal_cop, weight="bold", size="3", text_align="right"),
+            align_items="end",
+            spacing="1",
         ),
-        spacing="2", align_items="start", width="100%",
+        spacing="4",
+        align="center",
+        width="100%",
     )
+# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     """Componente principal que muestra una tarjeta de compra en el historial."""
     return rx.card(
         rx.vstack(
-            # ... (La sección superior con el ID y la fecha se mantiene igual) ...
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"),
@@ -80,15 +63,11 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                     align_items="start",
                 ),
                 rx.spacer(),
-                rx.vstack(
-                    rx.badge(purchase.status.replace("_", " ").title(), color_scheme="violet", variant="soft", size="2"),
-                    align_items="end",
-                ),
+                rx.badge(purchase.status.replace("_", " ").title(), color_scheme="violet", variant="soft", size="2"),
                 justify="between",
                 width="100%",
             ),
             rx.divider(),
-            # ... (La sección de detalles de envío y artículos se mantiene igual) ...
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -97,9 +76,23 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
-            purchase_items_gallery(items=AppState.purchase_items_map.get(purchase.id, [])),
-            
-            # ... (La sección de totales se mantiene igual) ...
+
+            # --- ✨ INICIO DE LA MODIFICACIÓN: SECCIÓN DE ARTÍCULOS MEJORADA ✨ ---
+            rx.vstack(
+                rx.text("Artículos Comprados:", weight="medium", size="4"),
+                rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
+                rx.vstack(
+                    rx.foreach(
+                        AppState.purchase_items_map.get(purchase.id, []),
+                        purchase_item_card  # Usamos el nuevo componente de tarjeta
+                    ),
+                    spacing="3",
+                    width="100%",
+                ),
+                spacing="2", align_items="start", width="100%",
+            ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
             rx.vstack(
                 rx.hstack(
                     rx.spacer(),
@@ -115,66 +108,47 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 ),
                 align_items="end", width="100%", margin_top="1em", spacing="2"
             ),
-            
-            # --- INICIO DE LA LÓGICA DE ACCIONES MEJORADA ---
             rx.divider(margin_y="1em"),
 
-            # Caso 1: El pedido ha sido ENVIADO
+            # Lógica de acciones (botones)
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value,
                 rx.vstack(
                     rx.callout(
                         f"Tu pedido llegará aproximadamente el: {purchase.estimated_delivery_date_formatted}",
-                        icon="truck",
-                        color_scheme="blue",
-                        width="100%"
+                        icon="truck", color_scheme="blue", width="100%"
                     ),
                     rx.button(
                         "He Recibido mi Pedido",
                         on_click=AppState.user_confirm_delivery(purchase.id),
-                        width="100%",
-                        margin_top="0.5em",
-                        color_scheme="green",
+                        width="100%", margin_top="0.5em", color_scheme="green",
                     ),
-                    spacing="3",
-                    width="100%",
+                    spacing="3", width="100%",
                 )
             ),
-
-            # Caso 2: El pedido ha sido ENTREGADO
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value,
                  rx.vstack(
                     rx.callout(
                         "¡Pedido entregado! Gracias por tu compra.",
-                        icon="check_check",
-                        color_scheme="violet",
-                        width="100%",
+                        icon="check_check", color_scheme="violet", width="100%",
                     ),
                     rx.hstack(
                         rx.link(
                             rx.button("Imprimir Factura", variant="outline", width="100%"),
                             href=f"/invoice?id={purchase.id}",
-                            is_external=False, # Abre en la misma app
-                            target="_blank",   # Abre en una nueva pestaña
-                            width="100%",
+                            is_external=False, target="_blank", width="100%",
                         ),
                         rx.button(
                             "Devolución o Cambio",
                             on_click=AppState.go_to_return_page(purchase.id),
-                            variant="solid",
-                            color_scheme="orange",
-                            width="100%",
+                            variant="solid", color_scheme="orange", width="100%",
                         ),
-                        spacing="3",
-                        margin_top="1em",
-                        width="100%",
+                        spacing="3", margin_top="1em", width="100%",
                     ),
-                    width="100%",
-                    align_items="center"
+                    width="100%", align_items="center"
                  )
             ),
-            # --- FIN DE LA LÓGICA DE ACCIONES MEJORADA ---
             spacing="4", width="100%"
         ),
         width="100%", padding="1.5em",
@@ -206,5 +180,4 @@ def purchase_history_content() -> rx.Component:
         width="100%",
         on_mount=AppState.check_for_auto_confirmations
     )
-    # CAMBIA ESTA LÍNEA
     return account_layout(page_content)

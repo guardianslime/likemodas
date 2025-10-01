@@ -2,7 +2,7 @@
 
 import reflex as rx
 from ..auth.admin_auth import require_admin
-from ..state import AppState, AdminPurchaseCardData
+from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
@@ -127,8 +127,39 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
         ), width="100%",
     )
 
+# --- ✨ INICIO DE LA MODIFICACIÓN: NUEVO COMPONENTE PARA ITEMS ✨ ---
+def history_item_card_admin(item: PurchaseItemCardData) -> rx.Component:
+    """Muestra un item individual dentro de la tarjeta de historial del admin."""
+    return rx.hstack(
+        rx.image(
+            src=rx.get_upload_url(item.image_url),
+            alt=item.title,
+            width="60px",
+            height="60px",
+            object_fit="cover",
+            border_radius="sm",
+        ),
+        rx.vstack(
+            rx.text(item.title, weight="bold", size="3"),
+            rx.text(
+                ", ".join([f"{k}: {v}" for k, v in item.variant_details.items()]),
+                size="2",
+                color_scheme="gray",
+            ),
+            align_items="start",
+            spacing="0",
+        ),
+        rx.spacer(),
+        rx.text(f"{item.quantity}x {item.price_at_purchase_cop}", size="3"),
+        spacing="3",
+        align="center",
+        width="100%",
+    )
+# --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
+
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra en el historial."""
+    """Muestra los detalles de una compra en el historial con items detallados."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -140,7 +171,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 ),
                 rx.spacer(),
                 rx.vstack(
-                    rx.badge(purchase.status, color_scheme="blue", variant="soft", size="2"),
+                    rx.badge(purchase.status, color_scheme="green", variant="soft", size="2"),
                     rx.heading(purchase.total_price_cop, size="6"),
                     align_items="end",
                 ), width="100%",
@@ -154,11 +185,18 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
+            # --- ✨ INICIO DE LA MODIFICACIÓN: LISTA DE ARTÍCULOS MEJORADA ✨ ---
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                rx.foreach(purchase.items_formatted, lambda item: rx.text(item, size="3")),
-                spacing="1", align_items="start", width="100%",
+                rx.vstack(
+                    # Itera sobre la nueva lista de objetos `items`
+                    rx.foreach(purchase.items, history_item_card_admin),
+                    spacing="2",
+                    width="100%",
+                ),
+                spacing="2", align_items="start", width="100%",
             ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
             rx.link(
                 rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="1em"),
                 href=f"/invoice?id={purchase.id}",
@@ -166,6 +204,28 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             spacing="4", width="100%",
         ), width="100%",
+    )
+
+
+@require_admin
+def payment_history_content() -> rx.Component:
+    """Página de admin para ver el historial de pagos."""
+    return rx.center(
+        rx.vstack(
+            rx.heading("Historial de Pagos", size="8"),
+            rx.input(
+                placeholder="Buscar por ID, cliente o email...",
+                value=AppState.search_query_admin_history,
+                on_change=AppState.set_search_query_admin_history,
+                width="100%", max_width="400px", margin_y="1.5em",
+            ),
+            rx.cond(
+                AppState.filtered_admin_purchases,
+                rx.foreach(AppState.filtered_admin_purchases, purchase_card_history),
+                rx.center(rx.text("No se encontró historial para la búsqueda."), padding_y="2em")
+            ),
+            align="center", spacing="6", padding="2em", width="100%", max_width="960px",
+        ), width="100%"
     )
 
 @require_admin
@@ -180,26 +240,5 @@ def admin_confirm_content() -> rx.Component:
                 rx.center(rx.text("No hay compras activas para gestionar."), padding_y="2em")
             ),
             align="center", spacing="5", padding="2em", width="100%", max_width="960px", 
-        ), width="100%"
-    )
-
-@require_admin
-def payment_history_content() -> rx.Component:
-    """Página de admin para ver el historial de pagos."""
-    return rx.center(
-        rx.vstack(
-            rx.heading("Historial de Pagos", size="8"),
-            rx.input(
-                placeholder="Buscar por ID, cliente o email...", 
-                value=AppState.search_query_admin_history,
-                on_change=AppState.set_search_query_admin_history,
-                width="100%", max_width="400px", margin_y="1.5em",
-            ),
-            rx.cond(
-                AppState.filtered_admin_purchases,
-                rx.foreach(AppState.filtered_admin_purchases, purchase_card_history),
-                rx.center(rx.text("No se encontró historial para la búsqueda."), padding_y="2em")
-            ),
-            align="center", spacing="6", padding="2em", width="100%", max_width="960px",
         ), width="100%"
     )

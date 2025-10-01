@@ -123,31 +123,42 @@ class ProductDetailData(rx.Base):
     seller_score: int = 0
     class Config: orm_mode = True
 
+# DTO para la tarjeta de historial del admin
 class AdminPurchaseCardData(rx.Base):
     id: int
-    customer_name: str; customer_email: str; purchase_date_formatted: str
-    status: str; total_price: float; shipping_name: str
+    customer_name: str
+    customer_email: str
+    purchase_date_formatted: str
+    status: str
+    total_price: float
+    shipping_name: str
     shipping_full_address: str
-    shipping_phone: str; items_formatted: list[str]; payment_method: str
+    shipping_phone: str
+    payment_method: str
     confirmed_at: Optional[datetime] = None
-    
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-    # Añade el campo para almacenar el costo de envío numérico
     shipping_applied: Optional[float] = 0.0
+    # --- ✨ CAMBIO: De lista de strings a lista de objetos detallados ---
+    items: list[PurchaseItemCardData] = []
 
     @property
     def total_price_cop(self) -> str: return format_to_cop(self.total_price)
-    
-    # Añade la propiedad para formatear el costo de envío
     @property
-    def shipping_applied_cop(self) -> str:
-        return format_to_cop(self.shipping_applied or 0.0)
-    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+    def shipping_applied_cop(self) -> str: return format_to_cop(self.shipping_applied or 0.0)
+
 
 class PurchaseItemCardData(rx.Base):
-    id: int; title: str; image_url: str; price_at_purchase: float; price_at_purchase_cop: str; quantity: int
+    id: int
+    title: str
+    image_url: str
+    price_at_purchase: float
+    price_at_purchase_cop: str
+    quantity: int
+    # --- ✨ CAMBIO: Añadido para guardar detalles de la variante ---
+    variant_details: dict = {}
+
     @property
-    def subtotal_cop(self) -> str: return format_to_cop(self.price_at_purchase * self.quantity)
+    def subtotal_cop(self) -> str:
+        return format_to_cop(self.price_at_purchase * self.quantity)
 
 class UserPurchaseHistoryCardData(rx.Base):
     id: int; userinfo_id: int; purchase_date_formatted: str; status: str
@@ -187,8 +198,16 @@ class CommentData(rx.Base):
     author_avatar_url: str = ""
 
 class InvoiceItemData(rx.Base):
-    name: str; quantity: int; price: float; price_cop: str
-    subtotal_cop: str; iva_cop: str; total_con_iva_cop: str
+    name: str
+    quantity: int
+    price: float
+    price_cop: str
+    subtotal_cop: str
+    iva_cop: str
+    total_con_iva_cop: str
+    # --- ✨ CAMBIO: Añadido para mostrar detalles en la factura ---
+    variant_details_str: str = ""
+
     @property
     def total_cop(self) -> str: return format_to_cop(self.price * self.quantity)
 
@@ -902,6 +921,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- FIN: NUEVOS EVENT HANDLERS ---
     
+    # --- ✨ MÉTODO MODIFICADO: `get_invoice_data` ✨ ---
     @rx.event
     def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
         if not self.is_authenticated:
@@ -917,16 +937,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .where(PurchaseModel.id == purchase_id)
             ).unique().one_or_none()
 
-            if not purchase:
-                return None
-
+            if not purchase: return None
             if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
                 return None
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
             shipping_cost = purchase.shipping_applied or 0.0
             iva_amount = subtotal_base_products * 0.19
-            grand_total = purchase.total_price
             
             invoice_items = []
             for item in purchase.items:
@@ -934,19 +951,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                     item_base_subtotal = item.blog_post.base_price * item.quantity
                     item_iva = item_base_subtotal * 0.19
                     item_total_con_iva = item_base_subtotal + item_iva
+
+                    # Formatear detalles de la variante para la factura
+                    variant_str = ", ".join([f"{k}: {v}" for k,v in item.selected_variant.items()])
+
                     invoice_items.append(
                         InvoiceItemData(
                             name=item.blog_post.title,
                             quantity=item.quantity,
-                            # --- ✨ CORRECCIÓN AQUÍ: Se añade el campo 'price' que faltaba ---
                             price=item.blog_post.base_price,
                             price_cop=format_to_cop(item.blog_post.base_price),
                             subtotal_cop=format_to_cop(item_base_subtotal),
                             iva_cop=format_to_cop(item_iva),
-                            total_con_iva_cop=format_to_cop(item_total_con_iva)
+                            total_con_iva_cop=format_to_cop(item_total_con_iva),
+                            # Se pasa la cadena formateada
+                            variant_details_str=variant_str
                         )
                     )
-
+            # ... (resto de la función `get_invoice_data` sin cambios) ...
             return InvoiceData(
                 id=purchase.id,
                 purchase_date_formatted=purchase.purchase_date_formatted,
@@ -959,7 +981,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 subtotal_cop=format_to_cop(subtotal_base_products),
                 shipping_applied_cop=format_to_cop(shipping_cost),
                 iva_cop=format_to_cop(iva_amount),
-                total_price_cop=format_to_cop(grand_total),
+                total_price_cop=format_to_cop(purchase.total_price),
             )
             
     @rx.var
@@ -4337,7 +4359,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def load_purchase_history(self):
-        """Carga el historial de compras finalizadas (Entregadas)."""
+        """Carga el historial de compras finalizadas con items detallados."""
         if not self.is_admin:
             self.purchase_history = []
             return
@@ -4348,27 +4370,52 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
                 )
-                .where(PurchaseModel.status == PurchaseStatus.DELIVERED)
+                .where(PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]))
                 .order_by(PurchaseModel.purchase_date.desc())
             ).unique().all()
             
-            # El nombre de esta variable estaba incorrecto, lo corregí a self.purchase_history
-            self.purchase_history = [
-                AdminPurchaseCardData(
-                    id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
-                    purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
-                    payment_method=p.payment_method,
-                    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-                    shipping_applied=p.shipping_applied, # Pasa el costo de envío también aquí
-                    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-                    shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
-                    shipping_phone=p.shipping_phone, items_formatted=p.items_formatted
-                ) for p in results
-            ]
-        
-        self.set_new_purchase_notification(
-            any(p.status == "pending_confirmation" for p in self.active_purchases)
-        )
+            temp_history = []
+            for p in results:
+                # Construir la lista detallada de items para esta compra
+                detailed_items = []
+                for item in p.items:
+                    if item.blog_post:
+                        # Encontrar la imagen correcta para la variante comprada
+                        variant_image_url = ""
+                        for variant in item.blog_post.variants:
+                            if variant.get("attributes") == item.selected_variant:
+                                variant_image_url = variant.get("image_url", "")
+                                break
+                        # Si no se encuentra, usar la primera imagen del producto como fallback
+                        if not variant_image_url and item.blog_post.variants:
+                            variant_image_url = item.blog_post.variants[0].get("image_url", "")
+                        
+                        detailed_items.append(
+                            PurchaseItemCardData(
+                                id=item.blog_post.id,
+                                title=item.blog_post.title,
+                                image_url=variant_image_url,
+                                price_at_purchase=item.price_at_purchase,
+                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                                quantity=item.quantity,
+                                variant_details=item.selected_variant,
+                            )
+                        )
+
+                temp_history.append(
+                    AdminPurchaseCardData(
+                        id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
+                        purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
+                        shipping_applied=p.shipping_applied,
+                        shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                        shipping_phone=p.shipping_phone, 
+                        payment_method=p.payment_method,
+                        confirmed_at=p.confirmed_at,
+                        # Se asigna la nueva lista de objetos detallados
+                        items=detailed_items
+                    )
+                )
+            self.purchase_history = temp_history
             
     @rx.event
     def load_active_purchases(self):
@@ -4652,6 +4699,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         return {p.id: p.items for p in self.user_purchases}
     # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
 
+    # --- ✨ MÉTODO MODIFICADO: `load_purchases` (para User) ✨ ---
     @rx.event
     def load_purchases(self):
         if not self.authenticated_user_info:
@@ -4673,44 +4721,42 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if p.items:
                     for item in p.items:
                         if item.blog_post:
-                            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                            # Se obtiene la imagen de la primera variante del producto
-                            main_image = ""
-                            if item.blog_post.variants:
-                                main_image = item.blog_post.variants[0].get("image_url", "")
-                            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                            # Encontrar la imagen correcta para la variante comprada
+                            variant_image_url = ""
+                            for variant in item.blog_post.variants:
+                                if variant.get("attributes") == item.selected_variant:
+                                    variant_image_url = variant.get("image_url", "")
+                                    break
+                            # Fallback a la primera imagen
+                            if not variant_image_url and item.blog_post.variants:
+                                variant_image_url = item.blog_post.variants[0].get("image_url", "")
                             
                             purchase_items_data.append(
                                 PurchaseItemCardData(
                                     id=item.blog_post.id,
                                     title=item.blog_post.title,
-                                    image_url=main_image, # Se usa la nueva variable
+                                    image_url=variant_image_url,
                                     price_at_purchase=item.price_at_purchase,
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                    quantity=item.quantity
+                                    quantity=item.quantity,
+                                    # Se pasan los detalles de la variante
+                                    variant_details=item.selected_variant,
                                 )
                             )
                 
                 temp_purchases.append(
                     UserPurchaseHistoryCardData(
-                        id=p.id,
-                        userinfo_id=p.userinfo_id,
-                        purchase_date_formatted=p.purchase_date_formatted,
-                        status=p.status.value,
-                        total_price_cop=p.total_price_cop,
+                        id=p.id, userinfo_id=p.userinfo_id, purchase_date_formatted=p.purchase_date_formatted,
+                        status=p.status.value, total_price_cop=p.total_price_cop,
                         shipping_applied_cop=format_to_cop(p.shipping_applied),
-                        shipping_name=p.shipping_name,
-                        shipping_address=p.shipping_address,
-                        shipping_neighborhood=p.shipping_neighborhood,
-                        shipping_city=p.shipping_city,
-                        shipping_phone=p.shipping_phone,
-                        items=purchase_items_data,
-                        # --- ✨ LÍNEA ACTUALIZADA ✨ ---
-                        # Formateamos y pasamos la fecha de entrega estimada al DTO.
+                        shipping_name=p.shipping_name, shipping_address=p.shipping_address,
+                        shipping_neighborhood=p.shipping_neighborhood, shipping_city=p.shipping_city,
+                        shipping_phone=p.shipping_phone, items=purchase_items_data,
                         estimated_delivery_date_formatted=format_utc_to_local(p.estimated_delivery_date)
                     )
                 )
             self.user_purchases = temp_purchases
+
     
     @rx.var
     def notification_list(self) -> list[NotificationDTO]:

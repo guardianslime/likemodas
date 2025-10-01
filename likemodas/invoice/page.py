@@ -1,4 +1,4 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL CON FECHA A LA IZQUIERDA)
+# likemodas/invoice/page.py (VERSIÓN FINAL CON DETALLES DE VARIANTE)
 import reflex as rx
 from .state import InvoiceState
 
@@ -12,12 +12,11 @@ invoice_style = {
 }
 
 def invoice_page_content() -> rx.Component:
-    """Página que renderiza una factura usando su propio estado."""
+    """Página que renderiza una factura con detalles de variante específicos."""
     return rx.box(
         rx.cond(
             InvoiceState.invoice_data,
             rx.vstack(
-                # ... (sección del encabezado y la tabla de artículos sin cambios) ...
                 rx.hstack(
                     rx.image(src="/logo.png", width="120px", height="auto"),
                     rx.spacer(),
@@ -69,7 +68,15 @@ def invoice_page_content() -> rx.Component:
                         rx.foreach(
                             InvoiceState.invoice_items,
                             lambda item: rx.table.row(
-                                rx.table.cell(item.name, style={"color": "black"}),
+                                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+                                rx.table.cell(
+                                    rx.vstack(
+                                        rx.text(item.name, weight="bold", style={"color": "black"}),
+                                        rx.text(item.variant_details_str, size="2", color_scheme="gray"),
+                                        align_items="start", spacing="0"
+                                    )
+                                ),
+                                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                                 rx.table.cell(item.quantity, text_align="center", style={"color": "black"}),
                                 rx.table.cell(item.price_cop, text_align="right", style={"color": "black"}),
                                 rx.table.cell(item.subtotal_cop, text_align="right", style={"color": "black"}),
@@ -81,8 +88,6 @@ def invoice_page_content() -> rx.Component:
                     variant="surface",
                     width="100%",
                 ),
-
-                # --- ✨ INICIO DE LA SECCIÓN DE TOTALES MODIFICADA ✨ ---
                 rx.hstack(
                     rx.spacer(),
                     rx.vstack(
@@ -117,8 +122,6 @@ def invoice_page_content() -> rx.Component:
                     width="100%",
                     justify="end",
                 ),
-                # --- ✨ FIN DE LA SECCIÓN DE TOTALES MODIFICADA ✨ ---
-
                 rx.button(
                     "Imprimir Factura", on_click=rx.call_script("window.print()"),
                     class_name="no-print", margin_top="3em",
