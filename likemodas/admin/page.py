@@ -5,10 +5,11 @@ from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
 
+
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     """
-    Muestra los detalles de una compra activa y las acciones dinámicas 
-    según su estado.
+    Muestra los detalles de una compra y las acciones dinámicas 
+    según el estado y el método de pago.
     """
     set_delivery_and_shipping_form = rx.vstack(
         rx.divider(),
@@ -60,36 +61,35 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            # Se reemplaza la sección de artículos para usar la nueva estructura de datos.
+            # --- ✨ INICIO DE LA SECCIÓN CORREGIDA ✨ ---
+            # Se reemplaza `purchase.items_formatted` por la iteración sobre la lista de objetos `purchase.items`.
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                rx.vstack(
-                    rx.foreach(
-                        purchase.items,
-                        lambda item: rx.vstack(
-                            rx.text(
-                                item.quantity.to_string(), "x ", item.title, " (a ", item.price_at_purchase_cop, " c/u)",
-                                size="3"
-                            ),
-                            rx.text(
-                                item.variant_details_str, 
-                                size="2", 
-                                color_scheme="gray"
-                            ),
-                            align_items="start",
-                            spacing="0",
-                            width="100%",
-                        )
-                    ),
-                    spacing="2",
-                    width="100%",
+                rx.foreach(
+                    purchase.items,
+                    lambda item: rx.vstack(
+                        rx.text(
+                            # Construimos el texto usando componentes de Reflex para evitar errores de compilación
+                            item.quantity.to_string(), "x ", item.title, " (a ", item.price_at_purchase_cop, " c/u)",
+                            size="3"
+                        ),
+                        # Mostramos los detalles de la variante (ej: "Color: Rojo, Talla: M")
+                        rx.text(
+                            item.variant_details_str, 
+                            size="2", 
+                            color_scheme="gray"
+                        ),
+                        align_items="start",
+                        spacing="0",
+                        width="100%",
+                        padding_y="0.25em" # Añade un poco de espacio vertical por item
+                    )
                 ),
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            # --- ✨ FIN DE LA SECCIÓN CORREGIDA ✨ ---
             
-            # La lógica de acciones se mantiene igual
+            # La lógica de acciones de los botones se mantiene sin cambios
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
@@ -239,7 +239,6 @@ def payment_history_content() -> rx.Component:
         ), width="100%"
     )
 
-@require_admin
 def admin_confirm_content() -> rx.Component:
     """Página de admin para gestionar órdenes activas."""
     return rx.center(
