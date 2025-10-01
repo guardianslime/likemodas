@@ -4424,9 +4424,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_active_purchases(self):
         """
-        [VERSIÓN FINAL CORREGIDA]
+        [VERSIÓN FINAL Y DEFINITIVA]
         Carga las compras activas, construyendo correctamente el DTO AdminPurchaseCardData
-        con la lista detallada de 'items' en lugar del antiguo 'items_formatted'.
+        con la lista detallada de 'items', solucionando el error de compilación.
         """
         if not self.is_admin: 
             self.active_purchases = []
@@ -4449,20 +4449,21 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             active_purchases_list = []
             for p in purchases:
-                # --- ✨ INICIO DE LA LÓGICA DE CORRECCIÓN ✨ ---
-                # Ahora construimos la lista detallada de items aquí también.
+                # --- ✨ LÓGICA DE CORRECCIÓN APLICADA AQUÍ ✨ ---
+                # Se construye la lista detallada de 'items' para cada orden activa.
                 detailed_items = []
                 for item in p.items:
                     if item.blog_post:
                         # Encontrar la imagen correcta para la variante comprada
                         variant_image_url = ""
-                        for variant in item.blog_post.variants:
-                            if variant.get("attributes") == item.selected_variant:
-                                variant_image_url = variant.get("image_url", "")
-                                break
-                        # Si no se encuentra, usar la primera imagen del producto como fallback
-                        if not variant_image_url and item.blog_post.variants:
-                            variant_image_url = item.blog_post.variants[0].get("image_url", "")
+                        if item.blog_post.variants: # Asegurarse de que la lista de variantes no esté vacía
+                            for variant in item.blog_post.variants:
+                                if variant.get("attributes") == item.selected_variant:
+                                    variant_image_url = variant.get("image_url", "")
+                                    break
+                            # Fallback a la primera imagen si no se encuentra una coincidencia exacta
+                            if not variant_image_url:
+                                variant_image_url = item.blog_post.variants[0].get("image_url", "")
                         
                         # Se crea la cadena de texto con los detalles de la variante en el backend
                         variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
@@ -4478,13 +4479,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 variant_details_str=variant_str,
                             )
                         )
-                # --- ✨ FIN DE LA LÓGICA DE CORRECCIÓN ✨ ---
 
                 active_purchases_list.append(
                     AdminPurchaseCardData(
                         id=p.id, 
-                        customer_name=p.userinfo.user.username, 
-                        customer_email=p.userinfo.email,
+                        customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A", 
+                        customer_email=p.userinfo.email if p.userinfo else "N/A",
                         purchase_date_formatted=p.purchase_date_formatted, 
                         status=p.status.value, 
                         total_price=p.total_price,
@@ -4494,7 +4494,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_name=p.shipping_name, 
                         shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                         shipping_phone=p.shipping_phone, 
-                        # Se asigna la nueva lista de objetos detallados en lugar de 'items_formatted'
+                        # Se asigna la nueva lista de objetos detallados. ¡Este era el punto del error!
                         items=detailed_items
                     )
                 )
