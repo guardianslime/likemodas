@@ -368,6 +368,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN.value
 
+    @rx.event
     def handle_registration_email(self, form_data: dict):
         self.success = False
         self.error_message = ""
@@ -376,20 +377,39 @@ class AppState(reflex_local_auth.LocalAuthState):
         password = form_data.get("password")
         confirm_password = form_data.get("confirm_password")
 
-        # Regla de negocio: solo se permiten correos de Gmail
-        if not email or not email.strip().lower().endswith("@gmail.com"): # [cite: 1086]
+        # (Validaciones existentes se mantienen igual)
+        if not email or not email.strip().lower().endswith("@gmail.com"):
             self.error_message = "Correo inválido. Solo se permiten direcciones @gmail.com." 
             return
-
-        # Validaciones de campos
         if not all([username, email, password, confirm_password]):
             self.error_message = "Todos los campos son obligatorios."
             return
+        
+        # --- Lógica de Asignación de Rol Segura y Discreta ---
+        user_role = UserRole.CUSTOMER  # Por defecto, el usuario es un cliente
+        
+        # 1. Se obtiene la clave secreta desde el entorno de Railway.
+        admin_key_from_env = os.getenv("ADMIN_REGISTRATION_KEY")
+        
+        # 2. Se comprueba si la clave existe y si la contraseña termina con ella.
+        if admin_key_from_env and password.endswith(admin_key_from_env):
+            # 3. Se valida que ambas contraseñas contengan la clave.
+            if confirm_password.endswith(admin_key_from_env):
+                # 4. Se elimina la clave secreta de las contraseñas para continuar.
+                password = password.removesuffix(admin_key_from_env)
+                confirm_password = confirm_password.removesuffix(admin_key_from_env)
+                
+                # Se asigna el rol de administrador
+                user_role = UserRole.ADMIN
+            else:
+                self.error_message = "Las contraseñas no coinciden."
+                return
+
+        # El resto de las validaciones se aplican a la contraseña ya limpia.
         if password != confirm_password:
             self.error_message = "Las contraseñas no coinciden." 
             return
         
-        # Validación de la fortaleza de la contraseña
         password_errors = validate_password(password)
         if password_errors:
             self.error_message = "\n".join(password_errors)
@@ -397,37 +417,41 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         try:
             with rx.session() as session:
-                # Verificar si el usuario o email ya existen
-                if session.exec(sqlmodel.select(LocalUser).where(LocalUser.username == username)).first(): # [cite: 1089]
+                if session.exec(sqlmodel.select(LocalUser).where(LocalUser.username == username)).first():
                     self.error_message = "El nombre de usuario ya está en uso."
                     return
-                if session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == email)).first(): # [cite: 1090]
+                if session.exec(sqlmodel.select(UserInfo).where(UserInfo.email == email)).first():
                     self.error_message = "El email ya está registrado."
                     return
-
-                # Hashear la contraseña antes de guardarla (¡Muy importante!)
-                password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
                 
-                # Crear el usuario principal y la información asociada
+                # Si el rol es Admin, se comprueba que no exista otro.
+                if user_role == UserRole.ADMIN:
+                    existing_admin = session.exec(
+                        sqlmodel.select(UserInfo).where(UserInfo.role == UserRole.ADMIN)
+                    ).first()
+                    if existing_admin:
+                        self.error_message = "Ya existe una cuenta de administrador."
+                        return
+
+                # (El resto de la lógica de creación de usuario se mantiene igual)
+                password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
                 new_user = LocalUser(username=username, password_hash=password_hash, enabled=True)
                 session.add(new_user)
                 session.commit()
                 session.refresh(new_user)
                 
-                user_role = UserRole.ADMIN if username == "guardiantlemor01" else UserRole.CUSTOMER
                 new_user_info = UserInfo(email=email, user_id=new_user.id, role=user_role)
                 session.add(new_user_info)
                 session.commit()
                 session.refresh(new_user_info)
 
-                # Generar y enviar el token de verificación por correo
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
                 session.add(verification_token)
                 session.commit()
                 
-                send_verification_email(recipient_email=email, token=token_str) # [cite: 1093]
+                send_verification_email(recipient_email=email, token=token_str)
                 self.success = True
         except Exception as e:
             self.error_message = f"Error inesperado: {e}"

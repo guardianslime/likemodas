@@ -1,3 +1,5 @@
+# likemodas/auth/forms.py (Función `my_register_form` limpia)
+
 import reflex as rx
 import reflex_local_auth
 from reflex_local_auth.pages.components import input_100w, MIN_WIDTH
@@ -21,7 +23,7 @@ def register_error() -> rx.Component:
     )
 
 def my_register_form() -> rx.Component:
-    """El formulario de registro, ahora 100% conectado a AppState."""
+    """El formulario de registro, sin el campo de código de administrador."""
     return rx.form(
         rx.vstack(
             rx.heading("Crear una Cuenta", size="7"),
@@ -34,8 +36,10 @@ def my_register_form() -> rx.Component:
             password_input(placeholder="Password", name="password"),
             rx.text("Confirmar Contraseña"),
             password_input(placeholder="Confirm password", name="confirm_password"),
-            # --- ✨ MODIFICACIÓN: Botón de Registro en violeta ✨ ---
-            rx.button("Crear Cuenta", width="100%", type="submit", color_scheme="violet"),
+            
+            # --- ✨ CAMBIO: Se ha eliminado el campo de código secreto de la UI ✨ ---
+            
+            rx.button("Crear Cuenta", width="100%", type="submit", color_scheme="violet", margin_top="1em"),
             rx.center(
                 rx.link("¿Ya tienes cuenta? Inicia sesión", on_click=lambda: rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE), color_scheme="violet"),
                 width="100%",
