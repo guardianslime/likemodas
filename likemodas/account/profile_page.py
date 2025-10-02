@@ -6,7 +6,7 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..ui.password_input import password_input
 
-# El modal de TFA se mantiene aquí porque otras partes del código lo importan desde este archivo.
+# El modal de TFA se mantiene aquí porque es parte de esta página
 def tfa_activation_modal() -> rx.Component:
     """Modal para mostrar el QR y confirmar la activación de 2FA."""
     return rx.dialog.root(
@@ -41,13 +41,52 @@ def tfa_activation_modal() -> rx.Component:
 
 @reflex_local_auth.require_login
 def profile_page_content() -> rx.Component:
-    """Página para que el CLIENTE gestione su perfil. Redirige a los admins."""
+    """Página de CLIENTE para gestionar perfil, con estética mejorada y sección 2FA."""
 
-    # Vista de redirección si un admin entra por error
+    # --- Vista de redirección si un admin entra por error ---
     admin_redirect_view = rx.center(
-        rx.vstack(rx.spinner(size="3"), rx.text("Redirigiendo al perfil de administrador...")),
-        min_height="85vh",
-        on_mount=rx.redirect("/admin/profile"),
+        rx.vstack(rx.spinner(size="3"), rx.text("Redirigiendo...")),
+        min_height="85vh", on_mount=rx.redirect("/admin/profile"),
+    )
+
+    # --- Sección de Seguridad para 2FA ---
+    security_section = rx.card(
+        rx.vstack(
+            rx.heading("Seguridad de la Cuenta", size="6"),
+            rx.text("Activa la autenticación de dos factores (2FA) para una capa extra de protección."),
+            rx.divider(),
+            rx.cond(
+                AppState.profile_info.tfa_enabled,
+                rx.vstack(
+                    rx.callout.root(rx.callout.icon(rx.icon("shield-check")), rx.callout.text("2FA está activa."), color_scheme="green"),
+                    rx.alert_dialog.root(
+                        rx.alert_dialog.trigger(rx.button("Desactivar 2FA", color_scheme="red", variant="soft", margin_top="1em")),
+                        rx.alert_dialog.content(
+                            rx.alert_dialog.title("¿Desactivar 2FA?"),
+                            rx.alert_dialog.description("Introduce tu contraseña para confirmar."),
+                            rx.form(
+                                rx.vstack(
+                                    password_input(name="password", required=True),
+                                    rx.flex(
+                                        rx.alert_dialog.cancel(rx.button("Cancelar")),
+                                        rx.alert_dialog.action(rx.button("Sí, desactivar", type="submit")),
+                                        spacing="3", margin_top="1em", justify="end",
+                                    ),
+                                ),
+                                on_submit=AppState.disable_tfa,
+                            ),
+                        ),
+                    ),
+                    align_items="start", width="100%",
+                ),
+                rx.vstack(
+                    rx.callout.root(rx.callout.icon(rx.icon("shield-alert")), rx.callout.text("2FA no está activa."), color_scheme="orange"),
+                    rx.button("Activar 2FA", on_click=AppState.start_tfa_activation, margin_top="1em", color_scheme="violet"),
+                    align_items="start", width="100%",
+                )
+            ),
+            spacing="4", width="100%",
+        )
     )
 
     # --- Vista completa y estéticamente mejorada para el CLIENTE ---
@@ -55,25 +94,18 @@ def profile_page_content() -> rx.Component:
         tfa_activation_modal(),
         account_layout(
             rx.vstack(
-                rx.heading("Mi Perfil", size="8", width="100%"),
-                rx.text("Gestiona tu información personal y de seguridad.", size="4", color_scheme="gray", width="100%"),
+                rx.heading("Mi Perfil", size="8", width="100%", text_align="center"),
+                rx.text("Gestiona tu información personal y de seguridad.", size="4", color_scheme="gray", width="100%", text_align="center"),
                 rx.divider(margin_y="1.5em"),
                 
                 rx.card(
                     rx.vstack(
                         rx.heading("Imagen de Perfil", size="6"),
                         rx.hstack(
-                            rx.avatar(
-                                src=rx.get_upload_url(AppState.profile_info.avatar_url),
-                                fallback=rx.cond(AppState.profile_info.username, AppState.profile_info.username[0].upper(), "?"),
-                                size="8"
-                            ),
+                            rx.avatar(src=rx.get_upload_url(AppState.profile_info.avatar_url), fallback=rx.cond(AppState.profile_info.username, AppState.profile_info.username[0].upper(), "?"), size="8"),
                             rx.upload(
                                 rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic para subir imagen")),
-                                id="avatar_upload",
-                                border="2px dashed var(--gray-a7)",
-                                padding="3em",
-                                border_radius="var(--radius-3)",
+                                id="avatar_upload", border="2px dashed var(--gray-a7)", padding="2.5em",
                                 on_drop=AppState.handle_avatar_upload(rx.upload_files("avatar_upload")),
                                 flex_grow="1",
                             ),
@@ -93,8 +125,8 @@ def profile_page_content() -> rx.Component:
                                 rx.input(name="email", value=AppState.profile_info.email, is_disabled=True),
                                 rx.text("Teléfono"),
                                 rx.input(name="phone", value=AppState.profile_phone, on_change=AppState.set_profile_phone),
-                                rx.spacer(), # <-- MEJORA DE ALINEACIÓN
-                                rx.button("Guardar Cambios", type="submit", margin_top="1em", color_scheme="violet"), # <-- MEJORA DE COLOR
+                                rx.spacer(),
+                                rx.button("Guardar Cambios", type="submit", margin_top="1em", color_scheme="violet"),
                                 align_items="stretch", spacing="3", height="100%",
                             ),
                             on_submit=AppState.handle_profile_update, height="100%",
@@ -111,8 +143,8 @@ def profile_page_content() -> rx.Component:
                                 password_input(name="new_password", required=True),
                                 rx.text("Confirmar Nueva Contraseña"),
                                 password_input(name="confirm_password", required=True),
-                                rx.spacer(), # <-- MEJORA DE ALINEACIÓN
-                                rx.button("Actualizar Contraseña", type="submit", margin_top="1em", color_scheme="violet"), # <-- MEJORA DE COLOR
+                                rx.spacer(),
+                                rx.button("Actualizar Contraseña", type="submit", margin_top="1em", color_scheme="violet"),
                                 align_items="stretch", spacing="3", height="100%",
                             ),
                             on_submit=AppState.handle_password_change, height="100%",
@@ -121,18 +153,20 @@ def profile_page_content() -> rx.Component:
                     ),
                     columns={"initial": "1", "md": "2"}, spacing="5", width="100%",
                 ),
+
+                security_section, # <-- AÑADIMOS LA SECCIÓN DE 2FA
+
                 rx.card(
                     rx.form(
                         rx.vstack(
                             rx.heading("Zona de Peligro", color_scheme="red", size="6"),
-                            rx.text("Una vez que elimines tu cuenta, no hay vuelta atrás."),
-                            rx.text("Confirma tu contraseña para continuar:", margin_top="1em"),
-                            password_input(name="password", placeholder="Contraseña actual...", required=True),
+                            rx.text("La eliminación de tu cuenta es permanente. Introduce tu contraseña para proceder."),
+                            password_input(name="password", placeholder="Contraseña actual...", required=True, margin_top="1em"),
                             rx.alert_dialog.root(
                                 rx.alert_dialog.trigger(rx.button("Eliminar mi Cuenta Permanentemente", color_scheme="red", type="button")),
                                 rx.alert_dialog.content(
                                     rx.alert_dialog.title("¿Estás absolutamente seguro?"),
-                                    rx.alert_dialog.description("Esta acción es irreversible y eliminará todos tus datos."),
+                                    rx.alert_dialog.description("Esta acción es irreversible."),
                                     rx.flex(
                                         rx.alert_dialog.cancel(rx.button("Cancelar", variant="soft")),
                                         rx.alert_dialog.action(rx.button("Sí, eliminar mi cuenta", type="submit")),
@@ -146,17 +180,9 @@ def profile_page_content() -> rx.Component:
                     ),
                     style={"border": "1px solid var(--red-a7)"}
                 ),
-                spacing="5",
-                width="100%",
-                max_width="1200px",
-                align="center",
+                spacing="5", width="100%", max_width="1200px", align="center",
             )
         )
     )
 
-    # Condición principal: si es admin, redirige; si no, muestra el perfil de cliente.
-    return rx.cond(
-        AppState.is_admin,
-        admin_redirect_view,
-        client_profile_view
-    )
+    return rx.cond(AppState.is_admin, admin_redirect_view, client_profile_view)
