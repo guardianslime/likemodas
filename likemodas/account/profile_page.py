@@ -48,7 +48,6 @@ def profile_page_content() -> rx.Component:
         min_height="85vh", on_mount=rx.redirect("/admin/profile"),
     )
 
-    # --- INICIO DE MEJORAS ESTÉTICAS ---
     security_section = rx.card(
         rx.vstack(
             rx.hstack(rx.icon("shield-check", size=24), rx.heading("Seguridad de la Cuenta", size="6")),
@@ -59,7 +58,9 @@ def profile_page_content() -> rx.Component:
                 rx.hstack(
                     rx.badge("2FA Activada", color_scheme="green", variant="soft", size="2"),
                     rx.alert_dialog.root(
-                        rx.alert_dialog.trigger(rx.button("Desactivar", color_scheme="red", variant="link")),
+                        # --- INICIO DE LA CORRECCIÓN ---
+                        rx.alert_dialog.trigger(rx.button("Desactivar", color_scheme="red", variant="soft")),
+                        # --- FIN DE LA CORRECCIÓN ---
                         rx.alert_dialog.content(
                             rx.alert_dialog.title("¿Desactivar 2FA?"),
                             rx.alert_dialog.description("Introduce tu contraseña para confirmar."),
@@ -114,12 +115,11 @@ def profile_page_content() -> rx.Component:
         ),
         style={"border": "1px solid var(--red-a7)"}
     )
-    # --- FIN DE MEJORAS ESTÉTICAS ---
-
+    
     client_profile_view = account_layout(
         rx.vstack(
-            rx.heading("Mi Perfil", size="8", width="100%"),
-            rx.text("Gestiona tu información personal y de seguridad.", size="4", color_scheme="gray", width="100%"),
+            rx.heading("Mi Perfil", size="8", width="100%", text_align="center"),
+            rx.text("Gestiona tu información personal y de seguridad.", size="4", color_scheme="gray", width="100%", text_align="center"),
             rx.divider(margin_y="1.5em"),
             rx.card(
                 rx.vstack(
