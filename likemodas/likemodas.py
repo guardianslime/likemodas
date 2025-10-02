@@ -7,8 +7,10 @@ from .api import webhooks, tasks as api_tasks
 from .state import AppState
 from .ui.base import base_page
 from . import navigation
+# --- INICIO DE LA CORRECCIÓN ---
 from .auth import pages as auth_pages
-from .auth import tfa_verify_page_content
+from .auth.tfa_verify_page import tfa_verify_page_content # Importar desde el archivo específico
+# --- FIN DE LA CORRECCIÓN ---
 from .account import profile_page, shipping_info as shipping_info_module, saved_posts as saved_posts_module
 from .admin import page as admin_page
 from .admin import finance_page # <-- Añade esta importación
