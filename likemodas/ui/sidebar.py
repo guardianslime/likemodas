@@ -1,9 +1,10 @@
+# likemodas/ui/sidebar.py
+
 import reflex as rx
 from ..state import AppState
 from .. import navigation
 
-
-# La función sidebar_item y sidebar_items se mantienen igual que en la respuesta anterior
+# Las funciones sidebar_item y sidebar_items se mantienen igual
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
     is_active = (AppState.current_path == href)
     return rx.link(
@@ -49,16 +50,21 @@ def sliding_admin_sidebar() -> rx.Component:
             rx.divider(),
             rx.link(
                 rx.hstack(
-                    # --- INICIO DE LA CORRECCIÓN DEL AVATAR ---
                     rx.avatar(
-                        # Le decimos que la fuente de la imagen es la URL del avatar en el perfil
                         src=rx.get_upload_url(AppState.profile_info.avatar_url),
-                        # Mantenemos la letra como fallback por si no hay imagen
                         fallback=rx.cond(AppState.authenticated_user.username, AppState.authenticated_user.username[0].upper(), "?"),
                         size="2"
                     ),
-                    # --- FIN DE LA CORRECCIÓN DEL AVATAR ---
-                    rx.text(AppState.authenticated_user.username, size={"initial": "2", "lg": "3"}, weight="medium", no_of_lines=1),
+                    # --- 4. CAMBIAR COLOR DEL NOMBRE DE USUARIO ---
+                    rx.text(
+                        AppState.authenticated_user.username,
+                        size={"initial": "2", "lg": "3"},
+                        weight="medium",
+                        no_of_lines=1,
+                        # Se establece el color directamente para que coincida con el tema
+                        color="var(--violet-11)"
+                    ),
+                    # --- FIN DE LA CORRECCIÓN 4 ---
                     align="center", spacing="3", width="100%",
                     padding="0.75em", border_radius="var(--radius-3)",
                     _hover={"background_color": rx.color("violet", 4)},
@@ -74,39 +80,11 @@ def sliding_admin_sidebar() -> rx.Component:
         spacing={"initial": "2", "lg": "4"}, padding_x="1em", padding_y={"initial": "1.5em", "lg": "2.5em"},
         bg=rx.color("gray", 2), align="start", height="100%", width=SIDEBAR_WIDTH,
     )
-
-    # El resto de la función se mantiene igual...
+    
+    # El resto del código para el panel deslizable y el polling se mantiene igual...
     return rx.box(
-        rx.hstack(
-            sidebar_panel,
-            rx.box(
-                rx.text("LIKEMODAS", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.2em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}),
-                on_click=AppState.toggle_admin_sidebar,
-                cursor="pointer", bg=rx.color("violet", 9),
-                border_radius="0 8px 8px 0", height="150px",
-                display="flex", align_items="center"
-            ),
-            align_items="center", spacing="0",
-        ),
-        rx.cond(
-            AppState.is_admin,
-            rx.fragment(
-                rx.button(on_click=AppState.poll_for_new_orders, id="admin_notification_poller", display="none"),
-                rx.box(
-                    on_mount=rx.call_script(
-                        """
-                        if (!window.likemodas_admin_poller) {
-                            window.likemodas_admin_poller = setInterval(() => {
-                                const trigger = document.getElementById('admin_notification_poller');
-                                if (trigger) { trigger.click(); }
-                            }, 15000);
-                        }
-                        """
-                    ),
-                    display="none",
-                )
-            )
-        ),
+        rx.hstack(sidebar_panel, rx.box(rx.text("LIKEMODAS", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.2em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}), on_click=AppState.toggle_admin_sidebar, cursor="pointer", bg=rx.color("violet", 9), border_radius="0 8px 8px 0", height="150px", display="flex", align_items="center"), align_items="center", spacing="0"),
+        rx.cond(AppState.is_admin, rx.fragment(rx.button(on_click=AppState.poll_for_new_orders, id="admin_notification_poller", display="none"), rx.box(on_mount=rx.call_script("if (!window.likemodas_admin_poller) { window.likemodas_admin_poller = setInterval(() => { const trigger = document.getElementById('admin_notification_poller'); if (trigger) { trigger.click(); } }, 15000); }"), display="none"))),
         position="fixed", top="0", left="0", height="100%", display="flex", align_items="center",
         transform=rx.cond(AppState.show_admin_sidebar, "translateX(0)", f"translateX(-{SIDEBAR_WIDTH})"),
         transition="transform 0.4s ease-in-out", z_index="1000",

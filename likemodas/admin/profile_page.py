@@ -1,3 +1,5 @@
+# likemodas/admin/profile_page.py
+
 import reflex as rx
 from ..state import AppState
 from ..ui.base import base_page
@@ -5,7 +7,7 @@ from ..ui.password_input import password_input
 from ..account.profile_page import tfa_activation_modal
 
 def admin_profile_page_content() -> rx.Component:
-    """Página de perfil adaptada para administradores, ahora con layout centrado."""
+    """Página de perfil para administradores con mejoras estéticas y de alineación."""
 
     security_section = rx.card(
         rx.vstack(
@@ -38,7 +40,7 @@ def admin_profile_page_content() -> rx.Component:
                 ),
                 rx.vstack(
                     rx.callout.root(rx.callout.icon(rx.icon("shield-alert")), rx.callout.text("2FA no está activa."), color_scheme="orange"),
-                    rx.button("Activar 2FA", on_click=AppState.start_tfa_activation, margin_top="1em"),
+                    rx.button("Activar 2FA", on_click=AppState.start_tfa_activation, margin_top="1em", color_scheme="violet"),
                     align_items="start", width="100%",
                 )
             ),
@@ -46,23 +48,21 @@ def admin_profile_page_content() -> rx.Component:
         )
     )
 
-    # --- INICIO DE LA MEJORA ESTÉTICA ---
-    # En lugar de rx.center, usamos un VStack exterior que nos da más control.
     page_content = rx.vstack(
-        # Este VStack interior mantiene el contenido agrupado y con un ancho máximo.
         rx.vstack(
-            rx.heading("Perfil de Administrador", size="8"),
-            rx.text("Gestiona tu información personal y de seguridad para la plataforma.", size="4", color_scheme="gray"),
+            # --- 1. CENTRAR TÍTULOS ---
+            rx.heading("Perfil de Administrador", size="8", text_align="center", width="100%"),
+            rx.text(
+                "Gestiona tu información personal y de seguridad para la plataforma.",
+                size="4", color_scheme="gray", text_align="center", width="100%"
+            ),
+            # --- FIN DE LA CORRECCIÓN 1 ---
             rx.divider(margin_y="1em"),
             rx.card(
                 rx.vstack(
                     rx.heading("Imagen de Perfil", size="6"),
                     rx.hstack(
-                        rx.avatar(
-                            src=rx.get_upload_url(AppState.profile_info.avatar_url),
-                            fallback=rx.cond(AppState.profile_info.username, AppState.profile_info.username[0].upper(), "?"),
-                            size="8"
-                        ),
+                        rx.avatar(src=rx.get_upload_url(AppState.profile_info.avatar_url), fallback=rx.cond(AppState.profile_info.username, AppState.profile_info.username[0].upper(), "?"), size="8"),
                         rx.upload(
                             rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic para subir imagen")),
                             id="avatar_upload", border="2px dashed var(--gray-a7)", padding="2.5em",
@@ -85,10 +85,13 @@ def admin_profile_page_content() -> rx.Component:
                             rx.input(name="email", value=AppState.profile_info.email, is_disabled=True),
                             rx.text("Teléfono de Contacto"),
                             rx.input(name="phone", value=AppState.profile_phone, on_change=AppState.set_profile_phone),
-                            rx.button("Guardar Cambios", type="submit", margin_top="1em"),
-                            align_items="stretch", spacing="3",
+                            # --- 3. AÑADIR SPACER PARA ALINEAR BOTONES ---
+                            rx.spacer(),
+                            # --- 2. CAMBIAR COLOR DE BOTONES ---
+                            rx.button("Guardar Cambios", type="submit", margin_top="1em", color_scheme="violet"),
+                            align_items="stretch", spacing="3", height="100%",
                         ),
-                        on_submit=AppState.handle_profile_update,
+                        on_submit=AppState.handle_profile_update, height="100%",
                     ),
                     height="100%",
                 ),
@@ -102,25 +105,23 @@ def admin_profile_page_content() -> rx.Component:
                             password_input(name="new_password", required=True),
                             rx.text("Confirmar Nueva Contraseña"),
                             password_input(name="confirm_password", required=True),
-                            rx.button("Actualizar Contraseña", type="submit", margin_top="1em"),
-                            align_items="stretch", spacing="3",
+                            # --- 3. AÑADIR SPACER PARA ALINEAR BOTONES ---
+                            rx.spacer(),
+                            # --- 2. CAMBIAR COLOR DE BOTONES ---
+                            rx.button("Actualizar Contraseña", type="submit", margin_top="1em", color_scheme="violet"),
+                            align_items="stretch", spacing="3", height="100%",
                         ),
-                        on_submit=AppState.handle_password_change,
+                        on_submit=AppState.handle_password_change, height="100%",
                     ),
                     height="100%",
                 ),
                 columns={"initial": "1", "lg": "2"}, spacing="5", width="100%",
             ),
             security_section,
-            spacing="5",
-            width="100%",
-            max_width="1200px",
+            spacing="5", width="100%", max_width="1200px",
         ),
-        align="center", # <-- La clave para centrar el contenido en la página.
-        width="100%",
-        padding_y="2em"
+        align="center", width="100%", padding_y="2em"
     )
-    # --- FIN DE LA MEJORA ESTÉTICA ---
 
     return rx.fragment(
         base_page(page_content),
