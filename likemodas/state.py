@@ -23,7 +23,11 @@ import httpx
 import uuid # Asegúrate de importar la biblioteca uuid
 # from pyzbar.pyzbar import decode
 from PIL import Image
+import pyotp
+import qrcode
+import base64
 import io
+from .services.encryption_service import encrypt_secret, decrypt_secret
 import csv
 from urllib.parse import urlparse, parse_qs
 import cv2  # <-- AÑADE ESTA IMPORTACIÓN
@@ -600,6 +604,127 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield rx.toast.success("¡Contraseña actualizada con éxito!")
                 return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+            
+    show_tfa_activation_modal: bool = False
+    tfa_qr_code_data_uri: str = ""
+    _temp_tfa_secret: Optional[str] = None
+
+    @rx.event
+    def start_tfa_activation(self):
+        if not self.is_authenticated:
+            return rx.toast.error("Debes iniciar sesión.")
+        secret = pyotp.random_base32()
+        self._temp_tfa_secret = secret
+        user_email = self.authenticated_user_info.email
+        totp = pyotp.TOTP(secret)
+        provisioning_uri = totp.provisioning_uri(name=user_email, issuer_name="Likemodas")
+        img = qrcode.make(provisioning_uri)
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        buffer.seek(0)
+        img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+        self.tfa_qr_code_data_uri = f"data:image/png;base64,{img_base64}"
+        self.show_tfa_activation_modal = True
+
+    def set_show_tfa_activation_modal(self, state: bool):
+        self.show_tfa_activation_modal = state
+        if not state:
+            self._temp_tfa_secret = None
+            self.tfa_qr_code_data_uri = ""
+
+    @rx.event
+    def verify_and_enable_tfa(self, form_data: dict):
+        if not self.is_authenticated or not self._temp_tfa_secret:
+            return rx.toast.error("Sesión inválida. Por favor, intenta de nuevo.")
+        user_code = form_data.get("tfa_code")
+        if not user_code or not user_code.isdigit() or len(user_code) != 6:
+            return rx.toast.error("Por favor, introduce un código válido de 6 dígitos.")
+        totp = pyotp.TOTP(self._temp_tfa_secret)
+        if totp.verify(user_code):
+            with rx.session() as session:
+                user_info = session.get(UserInfo, self.authenticated_user_info.id)
+                if user_info:
+                    user_info.tfa_secret = encrypt_secret(self._temp_tfa_secret)
+                    user_info.tfa_enabled = True
+                    session.add(user_info)
+                    session.commit()
+                    self.set_show_tfa_activation_modal(False)
+                    yield self.on_load_profile_page()
+                    yield rx.toast.success("¡Autenticación de dos factores activada exitosamente!")
+                else:
+                    yield rx.toast.error("No se pudo encontrar el perfil del usuario.")
+        else:
+            yield rx.toast.error("El código de verificación es incorrecto.")
+
+    tfa_user_id_pending_verification: Optional[int] = None
+
+    @rx.event
+    def handle_login_with_verification(self, form_data: dict):
+        self.error_message = ""
+        username = (form_data.get("username") or "").strip()
+        password = (form_data.get("password") or "").strip()
+        if not username or not password:
+            self.error_message = "Usuario y contraseña son requeridos."
+            return
+        with rx.session() as session:
+            user = session.exec(select(LocalUser).where(LocalUser.username == username)).one_or_none()
+            if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
+                self.error_message = "Usuario o contraseña inválidos."
+                return
+            user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
+            if not user_info or not user_info.is_verified:
+                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
+                return
+            if user_info.tfa_enabled:
+                self.tfa_user_id_pending_verification = user.id
+                return rx.redirect("/verify-2fa")
+            else:
+                self._login(user.id)
+                return rx.redirect("/admin/store")
+
+    @rx.event
+    def verify_tfa_login(self, form_data: dict):
+        if self.tfa_user_id_pending_verification is None:
+            return rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE)
+        user_code = form_data.get("tfa_code")
+        if not user_code or not user_code.isdigit() or len(user_code) != 6:
+            return rx.toast.error("Código inválido.")
+        with rx.session() as session:
+            user_info = session.exec(select(UserInfo).where(UserInfo.user_id == self.tfa_user_id_pending_verification)).one_or_none()
+            if not user_info or not user_info.tfa_secret:
+                return rx.toast.error("Error de configuración de 2FA.")
+            decrypted_secret = decrypt_secret(user_info.tfa_secret)
+            if not decrypted_secret:
+                return rx.toast.error("Error de seguridad: no se pudo descifrar el secreto.")
+            totp = pyotp.TOTP(decrypted_secret)
+            if totp.verify(user_code):
+                user_id_to_login = self.tfa_user_id_pending_verification
+                self.tfa_user_id_pending_verification = None
+                self._login(user_id_to_login)
+                return rx.redirect("/admin/store")
+            else:
+                return rx.toast.error("El código de verificación es incorrecto.")
+
+    @rx.event
+    def disable_tfa(self, form_data: dict):
+        if not self.is_authenticated:
+            return rx.toast.error("Debes iniciar sesión.")
+        password = form_data.get("password")
+        if not password:
+            return rx.toast.error("Se requiere tu contraseña para desactivar 2FA.")
+        with rx.session() as session:
+            local_user = session.get(LocalUser, self.authenticated_user.id)
+            if local_user and bcrypt.checkpw(password.encode("utf-8"), local_user.password_hash):
+                user_info = session.get(UserInfo, self.authenticated_user_info.id)
+                if user_info:
+                    user_info.tfa_enabled = False
+                    user_info.tfa_secret = None
+                    session.add(user_info)
+                    session.commit()
+                    yield self.on_load_profile_page()
+                    yield rx.toast.success("Autenticación de dos factores desactivada.")
+            else:
+                yield rx.toast.error("La contraseña es incorrecta.")
             
 
      # --- INICIO: NUEVAS VARIABLES PARA VENTA DIRECTA ---
@@ -3932,6 +4057,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
                 yield rx.redirect("/my-purchases")
                 return
+            
         
     # 🟡 REEMPLAZA esta función en tu archivo 🟡
     @rx.event

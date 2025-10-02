@@ -8,6 +8,7 @@ from .state import AppState
 from .ui.base import base_page
 from . import navigation
 from .auth import pages as auth_pages
+from .auth import tfa_verify_page_content
 from .account import profile_page, shipping_info as shipping_info_module, saved_posts as saved_posts_module
 from .admin import page as admin_page
 from .admin import finance_page # <-- Añade esta importación
@@ -40,6 +41,9 @@ app.add_page(
     title="Likemodas | Inicio"
 )
 app.add_page(base_page(auth_pages.my_login_page_content()), route=reflex_local_auth.routes.LOGIN_ROUTE, title="Iniciar Sesión")
+# --- AÑADIR ESTA NUEVA RUTA ---
+app.add_page(base_page(tfa_verify_page_content()), route="/verify-2fa", title="Verificación 2FA")
+# --- FIN DE LA NUEVA RUTA ---
 app.add_page(base_page(auth_pages.my_register_page_content()), route=reflex_local_auth.routes.REGISTER_ROUTE, title="Registrarse")
 app.add_page(base_page(auth_pages.verification_page_content()), route="/verify-email", on_load=AppState.verify_token, title="Verificar Email")
 app.add_page(base_page(auth_pages.forgot_password_page_content()), route="/forgot-password", title="Recuperar Contraseña")
