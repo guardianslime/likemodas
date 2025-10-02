@@ -1,69 +1,124 @@
 import reflex as rx
 from ..state import AppState
-from ..auth.admin_auth import require_admin
-from ..ui.components import searchable_select
+from ..ui.base import base_page
+from ..ui.password_input import password_input
+from ..account.profile_page import tfa_activation_modal  # Reutilizamos el modal de TFA
 
-@require_admin
-def seller_profile_page() -> rx.Component:
-    """Página para que el vendedor (admin) configure su ubicación de origen."""
-    return rx.container(
+def admin_profile_page_content() -> rx.Component:
+    """Página de perfil adaptada exclusivamente para administradores y vendedores."""
+
+    security_section = rx.card(
         rx.vstack(
-            rx.heading("Mi Ubicación de Origen", size="7"),
-            rx.text(
-                "Establece la ciudad, barrio y dirección desde donde envías tus productos.",
-                "El costo de envío se calculará a partir de esta ubicación.",
-                margin_bottom="1.5em"
-            ),
-            rx.form(
+            rx.heading("Seguridad de la Cuenta", size="6"),
+            rx.text("Gestiona la autenticación de dos factores (2FA) para proteger tu cuenta."),
+            rx.divider(),
+            rx.cond(
+                AppState.profile_info.tfa_enabled,
                 rx.vstack(
-                    # --- INICIO DE LA MODIFICACIÓN ---
-                    
-                    # 1. Nuevo selector de búsqueda para la CIUDAD
-                    rx.text("Mi Ciudad*", weight="bold"),
-                    searchable_select(
-                        placeholder="Selecciona tu ciudad...",
-                        options=AppState.filtered_seller_cities, # Usa la nueva propiedad
-                        on_change_select=AppState.set_seller_profile_city, # Nuevo setter
-                        value_select=AppState.seller_profile_city,
-                        search_value=AppState.search_seller_city, # Nuevo estado de búsqueda
-                        on_change_search=AppState.set_search_seller_city, # Nuevo setter de búsqueda
-                        filter_name="seller_city_filter",
+                    rx.callout.root(rx.callout.icon(rx.icon("shield-check")), rx.callout.text("2FA está activa."), color_scheme="green"),
+                    rx.alert_dialog.root(
+                        rx.alert_dialog.trigger(rx.button("Desactivar 2FA", color_scheme="red", variant="soft", margin_top="1em")),
+                        rx.alert_dialog.content(
+                            rx.alert_dialog.title("¿Desactivar 2FA?"),
+                            rx.alert_dialog.description("Introduce tu contraseña para confirmar."),
+                            rx.form(
+                                rx.vstack(
+                                    password_input(name="password", required=True),
+                                    rx.flex(
+                                        rx.alert_dialog.cancel(rx.button("Cancelar")),
+                                        rx.alert_dialog.action(rx.button("Sí, desactivar", type="submit")),
+                                        spacing="3", margin_top="1em", justify="end",
+                                    ),
+                                ),
+                                on_submit=AppState.disable_tfa,
+                            ),
+                        ),
                     ),
-
-                    # 2. El selector de BARRIO ahora es dinámico
-                    rx.text("Mi Barrio*", weight="bold", margin_top="1em"),
-                    searchable_select(
-                        placeholder="Selecciona tu barrio...",
-                        options=AppState.filtered_seller_barrios, # Usa la propiedad dinámica
-                        on_change_select=AppState.set_seller_profile_barrio,
-                        value_select=AppState.seller_profile_barrio,
-                        search_value=AppState.search_seller_barrio,
-                        on_change_search=AppState.set_search_seller_barrio,
-                        filter_name="seller_barrio_filter",
-                        # Se deshabilita hasta que se elija una ciudad
-                        is_disabled=~AppState.seller_profile_city, 
-                    ),
-
-                    # --- FIN DE LA MODIFICACIÓN ---
-                    
-                    rx.text("Mi Dirección*", weight="bold", margin_top="1em"),
-                    rx.input(
-                        name="seller_address",
-                        placeholder="Ej: Calle 5 # 10-20",
-                        value=AppState.seller_profile_address,
-                        on_change=AppState.set_seller_profile_address,
-                        required=True
-                    ),
-                    rx.button("Guardar Mi Ubicación", type="submit", margin_top="2em", color_scheme="violet"),
-                    spacing="3",
-                    align_items="stretch"
+                    align_items="start", width="100%",
                 ),
-                on_submit=AppState.save_seller_profile,
+                rx.vstack(
+                    rx.callout.root(rx.callout.icon(rx.icon("shield-alert")), rx.callout.text("2FA no está activa."), color_scheme="orange"),
+                    rx.button("Activar 2FA", on_click=AppState.start_tfa_activation, margin_top="1em"),
+                    align_items="start", width="100%",
+                )
             ),
-            align="stretch",
-            width="100%",
-            max_width="600px",
+            spacing="4", width="100%",
+        )
+    )
+
+    page_content = rx.vstack(
+        rx.heading("Perfil de Administrador", size="8"),
+        rx.text("Gestiona tu información personal y de seguridad para la plataforma.", size="4", color_scheme="gray"),
+        rx.divider(margin_y="1.5em"),
+
+        rx.card(
+            rx.vstack(
+                rx.heading("Imagen de Perfil", size="6"),
+                rx.hstack(
+                    rx.avatar(
+                        src=rx.get_upload_url(AppState.profile_info.avatar_url),
+                        fallback=rx.cond(AppState.profile_info.username, AppState.profile_info.username[0].upper(), "?"),
+                        size="8"
+                    ),
+                    rx.upload(
+                        rx.vstack(rx.icon("upload"), rx.text("Arrastra una imagen")),
+                        id="avatar_upload", border="2px dashed var(--gray-a7)", padding="2.5em",
+                        on_drop=AppState.handle_avatar_upload(rx.upload_files("avatar_upload")),
+                        flex_grow="1",
+                    ),
+                    align="center", spacing="5", width="100%",
+                ),
+                spacing="5", width="100%",
+            )
         ),
-        padding_top="2em",
-        min_height="85vh",
+        
+        rx.grid(
+            rx.card(
+                rx.form(
+                    rx.vstack(
+                        rx.heading("Información General", size="6"),
+                        rx.text("Nombre de Usuario"),
+                        rx.input(name="username", value=AppState.profile_username, on_change=AppState.set_profile_username, required=True),
+                        rx.text("Email (no se puede cambiar)"),
+                        rx.input(name="email", value=AppState.profile_info.email, is_disabled=True),
+                        rx.text("Teléfono de Contacto"),
+                        rx.input(name="phone", value=AppState.profile_phone, on_change=AppState.set_profile_phone),
+                        rx.button("Guardar Cambios", type="submit", margin_top="1em"),
+                        align_items="stretch", spacing="3",
+                    ),
+                    on_submit=AppState.handle_profile_update,
+                ),
+                height="100%",
+            ),
+            rx.card(
+                rx.form(
+                    rx.vstack(
+                        rx.heading("Cambiar Contraseña", size="6"),
+                        rx.text("Contraseña Actual"),
+                        password_input(name="current_password", required=True),
+                        rx.text("Nueva Contraseña"),
+                        password_input(name="new_password", required=True),
+                        rx.text("Confirmar Nueva Contraseña"),
+                        password_input(name="confirm_password", required=True),
+                        rx.button("Actualizar Contraseña", type="submit", margin_top="1em"),
+                        align_items="stretch", spacing="3",
+                    ),
+                    on_submit=AppState.handle_password_change,
+                ),
+                height="100%",
+            ),
+            columns={"initial": "1", "md": "2"}, spacing="5", width="100%",
+        ),
+
+        security_section,
+
+        spacing="6",
+        width="100%",
+        max_width="1200px",
+        align="center",
+    )
+
+    return rx.fragment(
+        base_page(page_content),
+        tfa_activation_modal()
     )
