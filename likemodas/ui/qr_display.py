@@ -1,7 +1,11 @@
-# likemodas/ui/qr_display.py
-import reflex as rx
+# likemodas/ui/qr_display.py (CORREGIDO)
 
-class QrCodeComponent(rx.Component):
+import reflex as rx
+# --- 1. IMPORTAMOS EL COMPONENTE CORRECTO ---
+from reflex.components.component import NoSSRComponent
+
+# --- 2. LA CLASE AHORA HEREDA DE NoSSRComponent ---
+class QrCodeComponent(NoSSRComponent):
     """
     Componente de Reflex que envuelve la librería 'react-qr-code'
     para mostrar códigos QR.
@@ -22,10 +26,6 @@ qr_code_component = QrCodeComponent.create
 def qr_code_display(value: rx.Var[str], size: rx.Var[int] = 180) -> rx.Component:
     """
     Muestra un código QR para el valor (URL) dado con una configuración robusta.
-    
-    Args:
-        value: La URL o texto a codificar en el QR.
-        size: El tamaño en píxeles del QR.
     """
     return rx.box(
         qr_code_component(
