@@ -262,7 +262,11 @@ class VariantFormData(rx.Base):
     attributes: dict[str, str]; stock: int = 10; image_url: str = ""
 
 class UserProfileData(rx.Base):
-    username: str = ""; email: str = ""; phone: str = ""; avatar_url: str = ""
+    username: str = ""
+    email: str = ""
+    phone: str = ""
+    avatar_url: str = ""
+    tfa_enabled: bool = False  # <- AÑADE ESTA LÍNEA
 
 
 # --- FIN DE LA CORRECCIÓN CLAVE ---
@@ -5358,7 +5362,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     username=user_info.user.username,
                     email=user_info.email,
                     phone=user_info.phone or "",
-                    avatar_url=user_info.avatar_url or "" # Pasa el nombre del archivo o un string vacío
+                    avatar_url=user_info.avatar_url or "",
+                    tfa_enabled=user_info.tfa_enabled  # <- AÑADE ESTA LÍNEA
                 )
                 self.profile_username = user_info.user.username
                 self.profile_phone = user_info.phone or ""
