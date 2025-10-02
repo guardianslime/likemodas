@@ -1,30 +1,28 @@
-!/.env.example
-# .states/  <- Es opcional, pero bueno ignorarlo
-# Archivos de entorno
-# Archivos de la base de datos local
-# Archivos de sistema operativo
-# Directorio de estados de Reflex
-# Directorios de build y assets de Reflex/Next.js
-# Directorios de caché y compilados de Python
-# Entorno virtual de Python
-*.db
-*.py[cod]
-.DS_Store
-.env*
-.next/
-.states
+# Entornos virtuales de Python
 .venv/
-.web
-.web/
-Thumbs.db
-__pycache__/
-assets/external/
 venv/
-# .env
-APP_BASE_URL="http://localhost:3000" # Cambia esto por tu URL de Vercel en producción
 
-EMAIL_HOST="smtp.gmail.com"
-EMAIL_PORT="587"
-EMAIL_USER="tu_correo@gmail.com"
-# ¡Usa una "Contraseña de aplicación" generada en tu cuenta de Google, no tu contraseña normal!
-EMAIL_PASSWORD="tu_contraseña_de_aplicacion"
+# Archivos de caché y compilados de Python
+__pycache__/
+*.py[cod]
+
+# Archivos de entorno - ¡NUNCA SUBIR A GIT!
+# El asterisco (*) asegura que se ignoren .env, .env.local, etc.
+.env*
+# La exclamación (!) asegura que el archivo de ejemplo SÍ se incluya en Git.
+!/.env.example
+
+# Directorios de build y assets de Reflex/Next.js
+.next/
+.web/
+assets/external/
+
+# Directorio de estados de Reflex
+.states/
+
+# Bases de datos locales (si usaras SQLite)
+*.db
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
