@@ -125,6 +125,10 @@ class UserInfo(rx.Model, table=True):
     seller_city: Optional[str] = Field(default=None) 
     seller_address: Optional[str] = Field(default=None)
 
+    # --- NUEVOS CAMPOS PARA 2FA ---
+    tfa_secret: Optional[str] = Field(default=None)
+    tfa_enabled: bool = Field(default=False, nullable=False)
+    # --- FIN DE NUEVOS CAMPOS ---
 
     # --- Relaciones con otros Modelos ---
     
