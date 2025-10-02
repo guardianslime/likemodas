@@ -11,9 +11,11 @@ from ..blog.public_page import product_detail_modal
 @reflex_local_auth.require_login
 def saved_posts_content() -> rx.Component:
     """Página que muestra las publicaciones guardadas por el usuario."""
+    # --- INICIO DE LA CORRECCIÓN DE LAYOUT ---
     page_content = rx.vstack(
-        rx.heading("Mis Publicaciones Guardadas", size="7"),
-        rx.text("Aquí encontrarás los productos que has guardado para ver más tarde.", margin_bottom="1.5em"),
+        rx.heading("Mis Publicaciones Guardadas", size="8"),
+        rx.text("Aquí encontrarás los productos que has guardado para ver más tarde.", margin_bottom="1.5em", color_scheme="gray", size="4"),
+        rx.divider(margin_y="1.5em"),
         rx.cond(
             AppState.is_loading,
             skeleton_product_gallery(),
@@ -21,13 +23,21 @@ def saved_posts_content() -> rx.Component:
                 AppState.saved_posts_gallery,
                 product_gallery_component(posts=AppState.saved_posts_gallery),
                 rx.center(
-                    rx.text("Aún no has guardado ninguna publicación."),
+                    rx.vstack(
+                        rx.icon("bookmark-x", size=48, color_scheme="gray"),
+                        rx.text("Aún no has guardado ninguna publicación."),
+                        spacing="4"
+                    ),
                     padding_y="5em",
                 )
             )
         ),
-        product_detail_modal(),
         align="center", 
         width="100%",
+        max_width="1600px"
     )
-    return account_layout(page_content)
+    # --- FIN DE LA CORRECCIÓN DE LAYOUT ---
+    return rx.fragment(
+        account_layout(page_content),
+        product_detail_modal(),
+    )
