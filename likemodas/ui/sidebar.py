@@ -2,18 +2,16 @@ import reflex as rx
 from ..state import AppState
 from .. import navigation
 
+
+# La función sidebar_item y sidebar_items se mantienen igual que en la respuesta anterior
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Un componente de enlace de sidebar que resalta la página activa."""
     is_active = (AppState.current_path == href)
     return rx.link(
         rx.hstack(
             rx.icon(icon, size=20),
             rx.text(text, size="3"),
             rx.spacer(),
-            rx.cond(
-                has_notification,
-                rx.box(width="8px", height="8px", bg="red", border_radius="50%")
-            ),
+            rx.cond(has_notification, rx.box(width="8px", height="8px", bg="red", border_radius="50%")),
             bg=rx.cond(is_active, rx.color("violet", 4), "transparent"),
             color=rx.cond(is_active, rx.color("violet", 11), rx.color_mode_cond("black", "white")),
             font_weight=rx.cond(is_active, "bold", "normal"),
@@ -21,75 +19,60 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
             width="100%", padding="0.75em", align="center",
             _hover={"background_color": rx.color("violet", 5)},
         ),
-        href=href,
-        underline="none",
-        width="100%",
+        href=href, underline="none", width="100%",
     )
 
 def sidebar_items() -> rx.Component:
-    """La lista de vínculos del sidebar del administrador."""
     return rx.vstack(
         sidebar_item("Finanzas", "line-chart", "/admin/finance"),
         sidebar_item("Gestión de Usuarios", "users", "/admin/users"),
         sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
         sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
-        sidebar_item("Mi Ubicación de Origen", "map-pin", "/admin/my-location"), # <-- NUEVO ENLACE
+        sidebar_item("Mi Ubicación de Origen", "map-pin", "/admin/my-location"),
         sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
         sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
         sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
         rx.divider(margin_y="1em"),
         sidebar_item("Tienda (Punto de Venta)", "store", "/admin/store"),
-        spacing="2",
-        width="100%",
+        spacing="2", width="100%",
     )
 
 def sliding_admin_sidebar() -> rx.Component:
-    """Sidebar con diseño mejorado y perfil clicable."""
     SIDEBAR_WIDTH = "16em"
-
     sidebar_panel = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
-            align="center", justify="center", width="100%",
-            margin_bottom={"initial": "0.5em", "lg": "1em"},
+            align="center", justify="center", width="100%", margin_bottom={"initial": "0.5em", "lg": "1em"},
         ),
-        rx.scroll_area(
-            sidebar_items(),
-            flex_grow="1",
-        ),
+        rx.scroll_area(sidebar_items(), flex_grow="1"),
         rx.vstack(
             rx.divider(),
-            # --- MEJORA ESTÉTICA Y FUNCIONAL ---
             rx.link(
                 rx.hstack(
-                    rx.avatar(fallback=rx.cond(AppState.authenticated_user.username, AppState.authenticated_user.username[0].upper(), "?"), size="2"),
+                    # --- INICIO DE LA CORRECCIÓN DEL AVATAR ---
+                    rx.avatar(
+                        # Le decimos que la fuente de la imagen es la URL del avatar en el perfil
+                        src=rx.get_upload_url(AppState.profile_info.avatar_url),
+                        # Mantenemos la letra como fallback por si no hay imagen
+                        fallback=rx.cond(AppState.authenticated_user.username, AppState.authenticated_user.username[0].upper(), "?"),
+                        size="2"
+                    ),
+                    # --- FIN DE LA CORRECCIÓN DEL AVATAR ---
                     rx.text(AppState.authenticated_user.username, size={"initial": "2", "lg": "3"}, weight="medium", no_of_lines=1),
-                    align="center",
-                    spacing="3",
-                    width="100%",
-                    padding="0.75em",
-                    border_radius="var(--radius-3)",
+                    align="center", spacing="3", width="100%",
+                    padding="0.75em", border_radius="var(--radius-3)",
                     _hover={"background_color": rx.color("violet", 4)},
                 ),
-                href="/admin/profile", # Apunta a la nueva página de perfil
-                underline="none",
-                width="100%",
+                href="/admin/profile", underline="none", width="100%",
             ),
-            # --- FIN DE LA MEJORA ---
             rx.button(
-                "Logout",
-                rx.icon(tag="log-out", margin_left="0.5em"),
-                on_click=AppState.do_logout,
-                width="100%", variant="soft", color_scheme="red"
+                "Logout", rx.icon(tag="log-out", margin_left="0.5em"),
+                on_click=AppState.do_logout, width="100%", variant="soft", color_scheme="red"
             ),
-            width="100%",
-            spacing={"initial": "2", "lg": "3"},
+            width="100%", spacing={"initial": "2", "lg": "3"},
         ),
-        spacing={"initial": "2", "lg": "4"},
-        padding_x="1em",
-        padding_y={"initial": "1.5em", "lg": "2.5em"},
-        bg=rx.color("gray", 2),
-        align="start", height="100%", width=SIDEBAR_WIDTH,
+        spacing={"initial": "2", "lg": "4"}, padding_x="1em", padding_y={"initial": "1.5em", "lg": "2.5em"},
+        bg=rx.color("gray", 2), align="start", height="100%", width=SIDEBAR_WIDTH,
     )
 
     # El resto de la función se mantiene igual...

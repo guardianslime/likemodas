@@ -2,10 +2,10 @@ import reflex as rx
 from ..state import AppState
 from ..ui.base import base_page
 from ..ui.password_input import password_input
-from ..account.profile_page import tfa_activation_modal  # Reutilizamos el modal de TFA
+from ..account.profile_page import tfa_activation_modal
 
 def admin_profile_page_content() -> rx.Component:
-    """Página de perfil adaptada exclusivamente para administradores y vendedores."""
+    """Página de perfil adaptada para administradores, ahora con layout centrado."""
 
     security_section = rx.card(
         rx.vstack(
@@ -46,77 +46,81 @@ def admin_profile_page_content() -> rx.Component:
         )
     )
 
+    # --- INICIO DE LA MEJORA ESTÉTICA ---
+    # En lugar de rx.center, usamos un VStack exterior que nos da más control.
     page_content = rx.vstack(
-        rx.heading("Perfil de Administrador", size="8"),
-        rx.text("Gestiona tu información personal y de seguridad para la plataforma.", size="4", color_scheme="gray"),
-        rx.divider(margin_y="1.5em"),
-
-        rx.card(
-            rx.vstack(
-                rx.heading("Imagen de Perfil", size="6"),
-                rx.hstack(
-                    rx.avatar(
-                        src=rx.get_upload_url(AppState.profile_info.avatar_url),
-                        fallback=rx.cond(AppState.profile_info.username, AppState.profile_info.username[0].upper(), "?"),
-                        size="8"
-                    ),
-                    rx.upload(
-                        rx.vstack(rx.icon("upload"), rx.text("Arrastra una imagen")),
-                        id="avatar_upload", border="2px dashed var(--gray-a7)", padding="2.5em",
-                        on_drop=AppState.handle_avatar_upload(rx.upload_files("avatar_upload")),
-                        flex_grow="1",
-                    ),
-                    align="center", spacing="5", width="100%",
-                ),
-                spacing="5", width="100%",
-            )
-        ),
-        
-        rx.grid(
+        # Este VStack interior mantiene el contenido agrupado y con un ancho máximo.
+        rx.vstack(
+            rx.heading("Perfil de Administrador", size="8"),
+            rx.text("Gestiona tu información personal y de seguridad para la plataforma.", size="4", color_scheme="gray"),
+            rx.divider(margin_y="1em"),
             rx.card(
-                rx.form(
-                    rx.vstack(
-                        rx.heading("Información General", size="6"),
-                        rx.text("Nombre de Usuario"),
-                        rx.input(name="username", value=AppState.profile_username, on_change=AppState.set_profile_username, required=True),
-                        rx.text("Email (no se puede cambiar)"),
-                        rx.input(name="email", value=AppState.profile_info.email, is_disabled=True),
-                        rx.text("Teléfono de Contacto"),
-                        rx.input(name="phone", value=AppState.profile_phone, on_change=AppState.set_profile_phone),
-                        rx.button("Guardar Cambios", type="submit", margin_top="1em"),
-                        align_items="stretch", spacing="3",
+                rx.vstack(
+                    rx.heading("Imagen de Perfil", size="6"),
+                    rx.hstack(
+                        rx.avatar(
+                            src=rx.get_upload_url(AppState.profile_info.avatar_url),
+                            fallback=rx.cond(AppState.profile_info.username, AppState.profile_info.username[0].upper(), "?"),
+                            size="8"
+                        ),
+                        rx.upload(
+                            rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic para subir imagen")),
+                            id="avatar_upload", border="2px dashed var(--gray-a7)", padding="2.5em",
+                            on_drop=AppState.handle_avatar_upload(rx.upload_files("avatar_upload")),
+                            flex_grow="1",
+                        ),
+                        align="center", spacing="5", width="100%",
                     ),
-                    on_submit=AppState.handle_profile_update,
-                ),
-                height="100%",
+                    spacing="5", width="100%",
+                )
             ),
-            rx.card(
-                rx.form(
-                    rx.vstack(
-                        rx.heading("Cambiar Contraseña", size="6"),
-                        rx.text("Contraseña Actual"),
-                        password_input(name="current_password", required=True),
-                        rx.text("Nueva Contraseña"),
-                        password_input(name="new_password", required=True),
-                        rx.text("Confirmar Nueva Contraseña"),
-                        password_input(name="confirm_password", required=True),
-                        rx.button("Actualizar Contraseña", type="submit", margin_top="1em"),
-                        align_items="stretch", spacing="3",
+            rx.grid(
+                rx.card(
+                    rx.form(
+                        rx.vstack(
+                            rx.heading("Información General", size="6"),
+                            rx.text("Nombre de Usuario"),
+                            rx.input(name="username", value=AppState.profile_username, on_change=AppState.set_profile_username, required=True),
+                            rx.text("Email (no se puede cambiar)"),
+                            rx.input(name="email", value=AppState.profile_info.email, is_disabled=True),
+                            rx.text("Teléfono de Contacto"),
+                            rx.input(name="phone", value=AppState.profile_phone, on_change=AppState.set_profile_phone),
+                            rx.button("Guardar Cambios", type="submit", margin_top="1em"),
+                            align_items="stretch", spacing="3",
+                        ),
+                        on_submit=AppState.handle_profile_update,
                     ),
-                    on_submit=AppState.handle_password_change,
+                    height="100%",
                 ),
-                height="100%",
+                rx.card(
+                    rx.form(
+                        rx.vstack(
+                            rx.heading("Cambiar Contraseña", size="6"),
+                            rx.text("Contraseña Actual"),
+                            password_input(name="current_password", required=True),
+                            rx.text("Nueva Contraseña"),
+                            password_input(name="new_password", required=True),
+                            rx.text("Confirmar Nueva Contraseña"),
+                            password_input(name="confirm_password", required=True),
+                            rx.button("Actualizar Contraseña", type="submit", margin_top="1em"),
+                            align_items="stretch", spacing="3",
+                        ),
+                        on_submit=AppState.handle_password_change,
+                    ),
+                    height="100%",
+                ),
+                columns={"initial": "1", "lg": "2"}, spacing="5", width="100%",
             ),
-            columns={"initial": "1", "md": "2"}, spacing="5", width="100%",
+            security_section,
+            spacing="5",
+            width="100%",
+            max_width="1200px",
         ),
-
-        security_section,
-
-        spacing="6",
+        align="center", # <-- La clave para centrar el contenido en la página.
         width="100%",
-        max_width="1200px",
-        align="center",
+        padding_y="2em"
     )
+    # --- FIN DE LA MEJORA ESTÉTICA ---
 
     return rx.fragment(
         base_page(page_content),
