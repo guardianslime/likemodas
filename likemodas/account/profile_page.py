@@ -58,9 +58,7 @@ def profile_page_content() -> rx.Component:
                 rx.hstack(
                     rx.badge("2FA Activada", color_scheme="green", variant="soft", size="2"),
                     rx.alert_dialog.root(
-                        # --- INICIO DE LA CORRECCIÓN ---
                         rx.alert_dialog.trigger(rx.button("Desactivar", color_scheme="red", variant="soft")),
-                        # --- FIN DE LA CORRECCIÓN ---
                         rx.alert_dialog.content(
                             rx.alert_dialog.title("¿Desactivar 2FA?"),
                             rx.alert_dialog.description("Introduce tu contraseña para confirmar."),
@@ -92,7 +90,9 @@ def profile_page_content() -> rx.Component:
     danger_zone = rx.card(
         rx.form(
             rx.vstack(
-                rx.hstack(rx.icon("alert-triangle", color_scheme="red", size=24), rx.heading("Zona de Peligro", color_scheme="red", size="6")),
+                # --- INICIO DE LA CORRECCIÓN ---
+                rx.hstack(rx.icon("triangle-alert", color_scheme="red", size=24), rx.heading("Zona de Peligro", color_scheme="red", size="6")),
+                # --- FIN DE LA CORRECCIÓN ---
                 rx.text("La eliminación de tu cuenta es permanente. Esta acción no se puede deshacer.", color_scheme="gray"),
                 rx.divider(border_color="var(--red-a6)"),
                 rx.text("Confirma tu contraseña para proceder:", margin_top="1em"),
