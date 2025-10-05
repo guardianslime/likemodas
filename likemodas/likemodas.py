@@ -66,22 +66,35 @@ app.add_page(base_page(tfa_verify_page_content()), route="/verify-2fa", title="V
 app.add_page(base_page(seller_page.seller_page_content()), route="/vendedor", on_load=AppState.on_load_seller_page, title="Publicaciones del Vendedor")
 
 # Rutas de la Cuenta de CLIENTE
+# Esta línea ya era correcta y sirve de modelo.
 app.add_page(user_profile_page.profile_page_content(), route="/my-account/profile", title="Mi Perfil", on_load=AppState.on_load_profile_page)
-app.add_page(base_page(shipping_info_module.shipping_info_content()), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
-app.add_page(base_page(saved_posts_module.saved_posts_content()), route="/my-account/saved-posts", title="Publicaciones Guardadas", on_load=AppState.on_load_saved_posts_page)
+
+# --- INICIO DE LA CORRECCIÓN ---
+# Se elimina la envoltura "base_page(...)" de las siguientes líneas.
+# La función de la página ya se encarga de llamar al layout correcto.
+app.add_page(shipping_info_module.shipping_info_content(), route=navigation.routes.SHIPPING_INFO_ROUTE, title="Información de Envío", on_load=AppState.load_addresses)
+app.add_page(saved_posts_module.saved_posts_content(), route="/my-account/saved-posts", title="Publicaciones Guardadas", on_load=AppState.on_load_saved_posts_page)
+# --- FIN DE LA CORRECCIÓN ---
+
 
 # Rutas del Proceso de Compra
 app.add_page(base_page(cart_page.cart_page_content()), route="/cart", title="Mi Carrito", on_load=[AppState.on_load, AppState.load_default_shipping_info])
-app.add_page(base_page(purchases_page.purchase_history_content()), route="/my-purchases", title="Mis Compras", on_load=AppState.on_load_purchases_page)
+
+# --- INICIO DE LA CORRECCIÓN ---
+app.add_page(purchases_page.purchase_history_content(), route="/my-purchases", title="Mis Compras", on_load=AppState.on_load_purchases_page)
+# --- FIN DE LA CORRECCIÓN ---
+
 app.add_page(base_page(payment_status.payment_status_page()), route="/payment-status", title="Estado del Pago")
 app.add_page(base_page(payment_pending.payment_pending_page()), route="/payment-pending", title="Pago Pendiente")
 app.add_page(processing_payment.processing_payment_page(), route="/processing-payment", on_load=AppState.start_sistecredito_polling, title="Procesando Pago")
 
 # Rutas de Soporte y Facturas
+# Nota: La página de facturas no usa base_page porque es para imprimir. Esto es correcto.
 app.add_page(invoice_page.invoice_page_content(), route="/invoice", on_load=InvoiceState.on_load_invoice_page, title="Factura")
 app.add_page(base_page(returns_page.return_exchange_page_content()), route=navigation.routes.RETURN_EXCHANGE_ROUTE, on_load=AppState.on_load_return_page, title="Devolución o Cambio")
 
 # Rutas del Panel de ADMINISTRADOR
+# Nota: Estas páginas ya llaman a su propio layout, por lo que algunas usan base_page y otras no, lo cual es correcto.
 app.add_page(admin_profile_page_content(), route="/admin/profile", title="Perfil de Administrador", on_load=AppState.on_load_profile_page)
 app.add_page(my_location_page_content(), route="/admin/my-location", on_load=AppState.on_load_seller_profile, title="Mi Ubicación de Origen")
 app.add_page(base_page(blog_admin_page()), route="/blog", title="Mis Publicaciones")
