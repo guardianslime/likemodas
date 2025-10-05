@@ -3579,7 +3579,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_gasto)
             session.commit()
 
-        yield self.load_gastos
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+        # Se usa la referencia de la clase AppState para encadenar el evento.
+        yield AppState.load_gastos
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+        
         yield rx.toast.success("Gasto registrado exitosamente.")
 
     # --- FIN: NUEVOS EVENT HANDLERS Y VARS PARA GASTOS ---
