@@ -98,6 +98,15 @@ class UserReputation(str, enum.Enum):
     GOLD = "gold"
     DIAMOND = "diamond"
 
+# Añadir este enum
+class GastoCategoria(str, enum.Enum):
+    MARKETING = "Marketing"
+    SOFTWARE = "Software"
+    COMISIONES = "Comisiones"
+    LOGISTICA = "Logística"
+    SUMINISTROS = "Suministros"
+    OTROS = "Otros"
+
 # --- Modelos de Base de Datos ---
 
 class UserInfo(rx.Model, table=True):
@@ -148,6 +157,8 @@ class UserInfo(rx.Model, table=True):
     # Relación muchos a muchos para publicaciones guardadas
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
 
+    gastos: List["Gasto"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
     # --- Propiedades Calculadas (no son columnas en la BD) ---
 
     @property
@@ -189,6 +200,7 @@ class UserInfo(rx.Model, table=True):
 
     class Config:
         exclude = {"user", "posts", "verification_tokens", "shipping_addresses", "contact_entries", "purchases", "notifications", "comments", "comment_votes", "saved_posts"}
+
 
 class VerificationToken(rx.Model, table=True):
     token: str = Field(unique=True, index=True)
@@ -444,3 +456,22 @@ class SupportMessageModel(rx.Model, table=True):
     @property
     def created_at_formatted(self) -> str:
         return format_utc_to_local(self.created_at)
+
+
+class Gasto(rx.Model, table=True):
+    """Representa un gasto operativo registrado por un administrador."""
+    userinfo_id: int = Field(foreign_key="userinfo.id")
+    fecha: datetime = Field(default_factory=get_utc_now, nullable=False)
+    descripcion: str
+    categoria: GastoCategoria = Field(default=GastoCategoria.OTROS, nullable=False)
+    valor: float
+
+    userinfo: "UserInfo" = Relationship(back_populates="gastos")
+
+    @property
+    def fecha_formateada(self) -> str:
+        return format_utc_to_local(self.fecha)
+
+    @property
+    def valor_cop(self) -> str:
+        return format_to_cop(self.valor)
