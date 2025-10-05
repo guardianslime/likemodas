@@ -10,25 +10,19 @@ from ..ui.base import base_page
 def my_location_page_content() -> rx.Component:
     """Página para que el vendedor (admin) configure su ubicación de origen."""
     
-    # --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
-    # Se replica la estructura de la página de referencia "Información para Envíos"
     page_content = rx.vstack(
-        # 1. Títulos principales, igual que en la página de referencia
         rx.heading("Mi Ubicación de Origen", size="8"),
         rx.text(
             "Establece la ciudad, barrio y dirección desde donde envías tus productos. El costo de envío se calculará a partir de esta ubicación.",
             color_scheme="gray", 
             size="4",
+            text_align="center"
         ),
-        rx.divider(margin_y="1.5em"),
-
-        # 2. Se envuelve el formulario en un rx.card para darle cuerpo y un fondo distinto
         rx.card(
             rx.form(
                 rx.vstack(
                     rx.heading("Ubicación de Envío", size="6", width="100%"),
                     rx.grid(
-                        # Columna 1: Ciudad
                         rx.vstack(
                             rx.text("Mi Ciudad*"),
                             searchable_select(
@@ -43,7 +37,6 @@ def my_location_page_content() -> rx.Component:
                             align_items="stretch",
                             spacing="1",
                         ),
-                        # Columna 2: Barrio
                         rx.vstack(
                             rx.text("Mi Barrio*"),
                             searchable_select(
@@ -59,7 +52,6 @@ def my_location_page_content() -> rx.Component:
                             align_items="stretch",
                             spacing="1",
                         ),
-                        # Fila 2: Dirección
                         rx.vstack(
                             rx.text("Mi Dirección* (Calle, Carrera, Apto, etc.)"),
                             rx.input(
@@ -88,15 +80,20 @@ def my_location_page_content() -> rx.Component:
                 ),
                 on_submit=AppState.save_seller_profile,
             ),
-            width="100%" # La tarjeta ocupa todo el ancho del contenedor
+            width="100%"
         ),
-        
-        # 3. Contenedor principal que centra todo y define el ancho máximo
         align="center",
         spacing="5",
         width="100%",
-        max_width="1200px",
+        max_width="960px",
     )
-    # --- FIN DE LA CORRECCIÓN DEFINITIVA ---
     
-    return base_page(page_content)
+    # --- ✨ CORRECCIÓN CLAVE AQUÍ ✨ ---
+    # Volvemos a envolver el 'page_content' en un 'rx.center' para
+    # asegurar que esté centrado horizontal y verticalmente.
+    return base_page(
+        rx.center(
+            page_content,
+            min_height="85vh"
+        )
+    )
