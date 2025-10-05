@@ -10,23 +10,27 @@ from ..ui.base import base_page
 def my_location_page_content() -> rx.Component:
     """Página para que el vendedor (admin) configure su ubicación de origen."""
     
-    # --- INICIO DE LA REESTRUCTURACIÓN CON RX.GRID ---
+    # --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
+    # Se replica la estructura de la página de referencia "Información para Envíos"
     page_content = rx.vstack(
+        # 1. Títulos principales, igual que en la página de referencia
         rx.heading("Mi Ubicación de Origen", size="8"),
         rx.text(
             "Establece la ciudad, barrio y dirección desde donde envías tus productos. El costo de envío se calculará a partir de esta ubicación.",
             color_scheme="gray", 
             size="4",
-            text_align="center"
         ),
+        rx.divider(margin_y="1.5em"),
+
+        # 2. Se envuelve el formulario en un rx.card para darle cuerpo y un fondo distinto
         rx.card(
             rx.form(
                 rx.vstack(
-                    # Usamos un grid para distribuir los campos del formulario
+                    rx.heading("Ubicación de Envío", size="6", width="100%"),
                     rx.grid(
                         # Columna 1: Ciudad
                         rx.vstack(
-                            rx.text("Mi Ciudad*", weight="bold"),
+                            rx.text("Mi Ciudad*"),
                             searchable_select(
                                 placeholder="Selecciona tu ciudad...",
                                 options=AppState.filtered_seller_cities,
@@ -37,11 +41,11 @@ def my_location_page_content() -> rx.Component:
                                 filter_name="seller_city_filter",
                             ),
                             align_items="stretch",
-                            spacing="2",
+                            spacing="1",
                         ),
                         # Columna 2: Barrio
                         rx.vstack(
-                            rx.text("Mi Barrio*", weight="bold"),
+                            rx.text("Mi Barrio*"),
                             searchable_select(
                                 placeholder="Selecciona tu barrio...",
                                 options=AppState.filtered_seller_barrios,
@@ -53,11 +57,11 @@ def my_location_page_content() -> rx.Component:
                                 is_disabled=~AppState.seller_profile_city,
                             ),
                             align_items="stretch",
-                            spacing="2",
+                            spacing="1",
                         ),
-                        # Fila 2: Dirección (ocupa ambas columnas)
+                        # Fila 2: Dirección
                         rx.vstack(
-                            rx.text("Mi Dirección*", weight="bold"),
+                            rx.text("Mi Dirección* (Calle, Carrera, Apto, etc.)"),
                             rx.input(
                                 name="seller_address",
                                 placeholder="Ej: Calle 5 # 10-20",
@@ -66,32 +70,33 @@ def my_location_page_content() -> rx.Component:
                                 required=True
                             ),
                             align_items="stretch",
-                            spacing="2",
-                            # Esta propiedad hace que ocupe todo el ancho del grid
-                            grid_column={"initial": "span 1", "md": "span 2"},
+                            spacing="1",
+                            grid_column={"initial": "1", "md": "span 2"},
                         ),
-                        # Configuración del grid: 1 columna en móvil, 2 en pantallas medianas y grandes
                         columns={"initial": "1", "md": "2"},
                         spacing="4",
                         width="100%",
                     ),
-                    rx.button("Guardar Mi Ubicación", type="submit", margin_top="2em", color_scheme="violet", width="100%"),
-                    spacing="4",
-                    align_items="stretch"
+                    rx.hstack(
+                        rx.spacer(),
+                        rx.button("Guardar Mi Ubicación", type="submit", color_scheme="violet"),
+                        width="100%", 
+                        margin_top="1.5em"
+                    ),
+                    spacing="5",
+                    width="100%",
                 ),
                 on_submit=AppState.save_seller_profile,
             ),
+            width="100%" # La tarjeta ocupa todo el ancho del contenedor
         ),
+        
+        # 3. Contenedor principal que centra todo y define el ancho máximo
         align="center",
         spacing="5",
         width="100%",
-        max_width="960px",
+        max_width="1200px",
     )
-    # --- FIN DE LA REESTRUCTURACIÓN ---
+    # --- FIN DE LA CORRECCIÓN DEFINITIVA ---
     
-    return base_page(
-        rx.center(
-            page_content,
-            min_height="85vh"
-        )
-    )
+    return base_page(page_content)
