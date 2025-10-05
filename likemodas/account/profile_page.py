@@ -6,9 +6,9 @@ from ..state import AppState
 from ..account.layout import account_layout
 from ..ui.password_input import password_input
 
-# El modal de TFA se mantiene aquí porque es parte de esta página
 def tfa_activation_modal() -> rx.Component:
     """Modal para mostrar el QR y confirmar la activación de 2FA."""
+    # ... (Este componente no necesita cambios)
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.title("Activar Autenticación de Dos Factores"),
@@ -41,7 +41,7 @@ def tfa_activation_modal() -> rx.Component:
 
 
 @reflex_local_auth.require_login
-def profile_page_content() -> rx.Component:
+def profile_page() -> rx.Component:
     """Página de CLIENTE para gestionar perfil, con estética mejorada y sección 2FA."""
     admin_redirect_view = rx.center(
         rx.vstack(rx.spinner(size="3"), rx.text("Redirigiendo...")),
@@ -90,9 +90,7 @@ def profile_page_content() -> rx.Component:
     danger_zone = rx.card(
         rx.form(
             rx.vstack(
-                # --- INICIO DE LA CORRECCIÓN ---
                 rx.hstack(rx.icon("triangle-alert", color_scheme="red", size=24), rx.heading("Zona de Peligro", color_scheme="red", size="6")),
-                # --- FIN DE LA CORRECCIÓN ---
                 rx.text("La eliminación de tu cuenta es permanente. Esta acción no se puede deshacer.", color_scheme="gray"),
                 rx.divider(border_color="var(--red-a6)"),
                 rx.text("Confirma tu contraseña para proceder:", margin_top="1em"),
@@ -116,6 +114,7 @@ def profile_page_content() -> rx.Component:
         style={"border": "1px solid var(--red-a7)"}
     )
     
+    # --- INICIO DE LA CORRECCIÓN DE LAYOUT ---
     client_profile_view = account_layout(
         rx.vstack(
             rx.heading("Mi Perfil", size="8", width="100%", text_align="center"),
@@ -144,9 +143,14 @@ def profile_page_content() -> rx.Component:
             ),
             security_section,
             danger_zone,
-            spacing="5", width="100%", max_width="1200px", align="center",
+            # Estas propiedades centran el contenido
+            spacing="5", 
+            width="100%", 
+            max_width="1200px", 
+            align="center",
         )
     )
+    # --- FIN DE LA CORRECCIÓN DE LAYOUT ---
 
     return rx.fragment(
         rx.cond(AppState.is_admin, admin_redirect_view, client_profile_view),

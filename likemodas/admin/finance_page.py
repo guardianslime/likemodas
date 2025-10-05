@@ -273,42 +273,44 @@ def product_detail_modal() -> rx.Component:
         style={"max_width": "1300px", "width": "95%"}
     )
     
-# --- INICIO: NUEVOS COMPONENTES PARA GESTIÓN DE GASTOS ---
+# --- INICIO: COMPONENTES MEJORADOS PARA GESTIÓN DE GASTOS ---
 
 def gasto_form() -> rx.Component:
-    """Formulario para registrar un nuevo gasto."""
-    return rx.card(
-        rx.form(
-            rx.vstack(
-                rx.heading("Registrar Nuevo Gasto", size="5"),
-                rx.grid(
-                    rx.vstack(
-                        rx.text("Descripción", size="2"),
-                        rx.input(name="descripcion", placeholder="Ej: Publicidad en Instagram", required=True),
-                        align="stretch"
-                    ),
-                    rx.vstack(
-                        rx.text("Categoría", size="2"),
-                        rx.select(AppState.gasto_categories, name="categoria", placeholder="Seleccionar...", required=True),
-                        align="stretch"
-                    ),
-                    rx.vstack(
-                        rx.text("Valor (COP)", size="2"),
-                        rx.input(name="valor", placeholder="Ej: 50000", type="number", required=True),
-                        align="stretch"
-                    ),
-                    columns={"initial": "1", "sm": "3"},
-                    spacing="3",
-                    width="100%",
+    """Formulario rediseñado para registrar un nuevo gasto."""
+    return rx.form(
+        rx.vstack(
+            rx.heading("Registrar Nuevo Gasto", size="5"),
+            rx.grid(
+                rx.vstack(
+                    rx.text("Descripción", size="2", weight="medium"),
+                    rx.input(name="descripcion", placeholder="Ej: Publicidad en Instagram", required=True),
+                    align="stretch"
                 ),
-                rx.button("Añadir Gasto", type="submit", margin_top="1em", color_scheme="violet"),
+                rx.vstack(
+                    rx.text("Categoría", size="2", weight="medium"),
+                    rx.select(AppState.gasto_categories, name="categoria", placeholder="Seleccionar...", required=True),
+                    align="stretch"
+                ),
+                rx.vstack(
+                    rx.text("Valor (COP)", size="2", weight="medium"),
+                    rx.input(name="valor", placeholder="Ej: 50000", type="number", required=True),
+                    align="stretch"
+                ),
+                columns={"initial": "1", "md": "2fr 1fr 1fr"}, # Mejor distribución
                 spacing="4",
-                align_items="stretch",
+                width="100%",
             ),
-            on_submit=AppState.handle_add_gasto,
-            reset_on_submit=True,
+            rx.hstack(
+                rx.spacer(),
+                rx.button("Añadir Gasto", type="submit", color_scheme="violet"),
+                width="100%",
+                margin_top="1em"
+            ),
+            spacing="4",
+            align_items="stretch",
         ),
-        width="100%"
+        on_submit=AppState.handle_add_gasto,
+        reset_on_submit=True,
     )
 
 def desktop_gasto_row(gasto: GastoDataDTO) -> rx.Component:
@@ -317,33 +319,33 @@ def desktop_gasto_row(gasto: GastoDataDTO) -> rx.Component:
         rx.table.cell(gasto.fecha_formateada),
         rx.table.cell(gasto.descripcion),
         rx.table.cell(rx.badge(gasto.categoria)),
-        rx.table.cell(gasto.valor_cop, text_align="right"),
+        rx.table.cell(gasto.valor_cop, text_align="right", weight="bold"),
+        align="center" # Centrar verticalmente
     )
 
 def mobile_gasto_card(gasto: GastoDataDTO) -> rx.Component:
-    """Renderiza una tarjeta de gasto para vista móvil."""
+    """Renderiza una tarjeta de gasto mejorada para vista móvil."""
     return rx.card(
         rx.vstack(
             rx.hstack(
-                rx.vstack(
-                    rx.text(gasto.descripcion, weight="bold"),
-                    rx.text(gasto.fecha_formateada, size="2", color_scheme="gray"),
-                    align="start",
-                ),
+                rx.text(gasto.descripcion, weight="bold", size="4"),
                 rx.spacer(),
-                rx.vstack(
-                    rx.badge(gasto.categoria),
-                    rx.text(gasto.valor_cop, weight="bold"),
-                    align="end",
-                ),
-                width="100%"
+                rx.badge(gasto.categoria),
+                align="center",
             ),
-            spacing="3"
+            rx.hstack(
+                rx.text(gasto.fecha_formateada, size="2", color_scheme="gray"),
+                rx.spacer(),
+                rx.text(gasto.valor_cop, weight="bold", size="4"),
+                align="center",
+                margin_top="0.5em"
+            ),
+            spacing="2"
         )
     )
 
 def gastos_module() -> rx.Component:
-    """Módulo completo para la gestión de gastos."""
+    """Módulo completo y rediseñado para la gestión de gastos."""
     desktop_table = rx.box(
         rx.table.root(
             rx.table.header(
@@ -383,24 +385,23 @@ def gastos_module() -> rx.Component:
         rx.vstack(
             rx.heading("Gestión de Gastos", size="5"),
             gasto_form(),
-            rx.card(
-                rx.flex(
-                    rx.vstack(
-                        rx.text("Desde", size="2"),
-                        rx.input(type="date", value=AppState.gasto_start_date, on_change=AppState.set_gasto_start_date),
-                        align="start"
-                    ),
-                    rx.vstack(
-                        rx.text("Hasta", size="2"),
-                        rx.input(type="date", value=AppState.gasto_end_date, on_change=AppState.set_gasto_end_date),
-                        align="start"
-                    ),
-                    rx.button("Filtrar Gastos", on_click=AppState.load_gastos, margin_top="1.25em"),
-                    spacing="4",
-                    direction={"initial": "column", "sm": "row"},
-                    align={"initial": "stretch", "sm": "end"},
-                    width="100%"
+            rx.divider(),
+            rx.flex(
+                rx.vstack(
+                    rx.text("Desde", size="2"),
+                    rx.input(type="date", value=AppState.gasto_start_date, on_change=AppState.set_gasto_start_date),
+                    align="start"
                 ),
+                rx.vstack(
+                    rx.text("Hasta", size="2"),
+                    rx.input(type="date", value=AppState.gasto_end_date, on_change=AppState.set_gasto_end_date),
+                    align="start"
+                ),
+                rx.button("Filtrar Gastos", on_click=AppState.load_gastos, margin_top="1.25em", variant="soft"),
+                spacing="4",
+                direction={"initial": "column", "sm": "row"},
+                align={"initial": "stretch", "sm": "end"},
+                width="100%"
             ),
             desktop_table,
             mobile_list,
@@ -409,10 +410,9 @@ def gastos_module() -> rx.Component:
             width="100%",
         )
     )
+# --- FIN: COMPONENTES MEJORADOS ---
 
-# --- FIN: NUEVOS COMPONENTES ---
-
-
+# TU FUNCIÓN finance_page_content DEBE QUEDAR ASÍ
 @require_admin
 def finance_page_content() -> rx.Component:
     """Página del dashboard financiero con la UI mejorada y nuevas métricas."""
@@ -513,8 +513,9 @@ def finance_page_content() -> rx.Component:
                                 align_items="stretch", spacing="4", width="100%",
                             )
                         ),
-                        # --- INTEGRACIÓN DEL MÓDULO DE GASTOS ---
-                        gastos_module(), # <-- AÑADE ESTA LÍNEA
+                        
+                        # --- INTEGRACIÓN DEL MÓDULO DE GASTOS MEJORADO ---
+                        gastos_module(), 
 
                         spacing="6", width="100%",
                     )

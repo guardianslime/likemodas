@@ -1,3 +1,5 @@
+# likemodas/admin/my_location_page.py
+
 import reflex as rx
 from ..state import AppState
 from ..auth.admin_auth import require_admin
@@ -5,13 +7,15 @@ from ..ui.components import searchable_select
 from ..ui.base import base_page
 
 @require_admin
-def my_location_page_content() -> rx.Component:
+def my_location_page() -> rx.Component:
     """Página para que el vendedor (admin) configure su ubicación de origen."""
     page_content = rx.vstack(
         rx.heading("Mi Ubicación de Origen", size="8"),
         rx.text(
             "Establece la ciudad, barrio y dirección desde donde envías tus productos. El costo de envío se calculará a partir de esta ubicación.",
-            color_scheme="gray", size="4"
+            color_scheme="gray", 
+            size="4",
+            text_align="center" # Centrar texto
         ),
         rx.card(
             rx.form(
@@ -26,7 +30,6 @@ def my_location_page_content() -> rx.Component:
                         on_change_search=AppState.set_search_seller_city,
                         filter_name="seller_city_filter",
                     ),
-
                     rx.text("Mi Barrio*", weight="bold", margin_top="1em"),
                     searchable_select(
                         placeholder="Selecciona tu barrio...",
@@ -38,7 +41,6 @@ def my_location_page_content() -> rx.Component:
                         filter_name="seller_barrio_filter",
                         is_disabled=~AppState.seller_profile_city,
                     ),
-                    
                     rx.text("Mi Dirección*", weight="bold", margin_top="1em"),
                     rx.input(
                         name="seller_address",
@@ -57,6 +59,13 @@ def my_location_page_content() -> rx.Component:
         align="center",
         spacing="5",
         width="100%",
-        max_width="700px",
+        max_width="700px", # Ancho máximo para el formulario
     )
-    return base_page(page_content)
+    
+    # --- CORRECCIÓN: Envolver en rx.center para centrado vertical y horizontal ---
+    return base_page(
+        rx.center(
+            page_content,
+            min_height="85vh"
+        )
+    )
