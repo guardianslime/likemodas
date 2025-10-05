@@ -3588,26 +3588,29 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_finance_data(self):
         """
+        [VERSIÓN CORREGIDA]
         Se ejecuta al cargar la página. Establece un rango de fechas por defecto
-        y llama a la función de cálculo. AHORA TAMBIÉN CARGA GASTOS.
+        y luego cede el control a los eventos que cargan los datos financieros y de gastos.
         """
         if not self.is_admin:
-            yield rx.redirect("/")
-            return
-        
-        # Establecer fechas por defecto para finanzas
+            return rx.redirect("/")
+
+        # Paso 1: Establecer las fechas por defecto de forma síncrona.
         today = datetime.now(timezone.utc)
         thirty_days_ago = today - timedelta(days=30)
+        
+        # Fechas para finanzas
         self.finance_end_date = today.strftime('%Y-%m-%d')
         self.finance_start_date = thirty_days_ago.strftime('%Y-%m-%d')
         
-        # Establecer fechas por defecto para gastos
+        # Fechas para gastos
         self.gasto_end_date = today.strftime('%Y-%m-%d')
         self.gasto_start_date = thirty_days_ago.strftime('%Y-%m-%d')
         
-        # Llamar a las funciones de carga
-        yield from self._calculate_finance_data()
-        yield self.load_gastos
+        # Paso 2: Ceder el control a los manejadores de eventos correctos.
+        # Reflex los ejecutará en secuencia. Esta es la forma correcta de encadenar eventos.
+        yield AppState.filter_finance_data
+        yield AppState.load_gastos
 
     @rx.event
     def filter_finance_data(self):
