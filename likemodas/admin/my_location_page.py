@@ -7,7 +7,7 @@ from ..ui.components import searchable_select
 from ..ui.base import base_page
 
 @require_admin
-def my_location_page() -> rx.Component:
+def my_location_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
     """Página para que el vendedor (admin) configure su ubicación de origen."""
     page_content = rx.vstack(
         rx.heading("Mi Ubicación de Origen", size="8"),
@@ -15,7 +15,7 @@ def my_location_page() -> rx.Component:
             "Establece la ciudad, barrio y dirección desde donde envías tus productos. El costo de envío se calculará a partir de esta ubicación.",
             color_scheme="gray", 
             size="4",
-            text_align="center" # Centrar texto
+            text_align="center"
         ),
         rx.card(
             rx.form(
@@ -59,10 +59,9 @@ def my_location_page() -> rx.Component:
         align="center",
         spacing="5",
         width="100%",
-        max_width="700px", # Ancho máximo para el formulario
+        max_width="700px",
     )
     
-    # --- CORRECCIÓN: Envolver en rx.center para centrado vertical y horizontal ---
     return base_page(
         rx.center(
             page_content,
