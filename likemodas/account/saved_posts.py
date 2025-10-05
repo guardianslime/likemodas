@@ -32,7 +32,7 @@ def saved_posts_content() -> rx.Component:
                 )
             )
         ),
-        align="center", 
+        align="center",
         width="100%",
         max_width="1600px"
     )

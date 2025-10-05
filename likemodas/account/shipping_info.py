@@ -29,7 +29,6 @@ def address_form() -> rx.Component:
     )
 
 def address_card(address: ShippingAddressModel) -> rx.Component:
-    # ... (Esta función auxiliar no necesita cambios)
     return rx.card(
         rx.vstack(
             rx.hstack(rx.text(address.name, weight="bold", size="5"), rx.spacer(), rx.cond(address.is_default, rx.badge("Predeterminada", color_scheme="green")), width="100%"),
@@ -78,4 +77,4 @@ def shipping_info_content() -> rx.Component:
         spacing="5",
     )
     # --- FIN DE LA CORRECCIÓN DE LAYOUT ---
-    return account_layout(page_content)
+    return account_layout(page_content) 

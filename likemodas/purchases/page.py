@@ -8,11 +8,8 @@ from ..account.layout import account_layout
 from ..models import PurchaseStatus
 from ..blog.public_page import product_detail_modal
 
-# --- ✨ INICIO DE LA MODIFICACIÓN: COMPONENTE DE ITEM REDISEÑADO ✨ ---
 def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
-    """
-    Componente rediseñado que muestra una tarjeta completa para cada artículo comprado.
-    """
+    """Componente rediseñado que muestra una tarjeta completa para cada artículo comprado."""
     return rx.hstack(
         rx.box(
             rx.image(src=rx.get_upload_url(item.image_url), alt=item.title, width="80px", height="80px", object_fit="cover", border_radius="md"),
@@ -33,9 +30,7 @@ def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
         spacing="4", align="center", width="100%",
     )
 
-
 def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
-    # ... (Esta función auxiliar no necesita cambios)
     return rx.card(
         rx.vstack(
             rx.hstack(

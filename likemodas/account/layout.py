@@ -8,9 +8,9 @@ from ..ui.base import base_page  # <-- IMPORTANTE: Importamos el layout base
 def account_layout(child: rx.Component) -> rx.Component:
     """
     Layout corregido que envuelve las páginas de la sección Mi Cuenta.
-    Ahora usa 'base_page' para incluir la barra de navegación principal.
+    [cite_start]Ahora usa 'base_page' para incluir la barra de navegación principal[cite: 2064, 2135].
     """
-    # El contenido de la cuenta es un Hstack con el sidebar y la página hija
+    # [cite_start]El contenido de la cuenta es un Hstack con el sidebar y la página hija [cite: 2075]
     account_content = rx.hstack(
         account_sidebar(),
         rx.box(
@@ -23,5 +23,5 @@ def account_layout(child: rx.Component) -> rx.Component:
         width="100%"
     )
 
-    # Envolvemos TODO en el base_page para obtener la navbar y la estructura principal
+    # [cite_start]Envolvemos TODO en el base_page para obtener la navbar y la estructura principal [cite: 49, 2078]
     return base_page(account_content)
