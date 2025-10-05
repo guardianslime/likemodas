@@ -8,7 +8,7 @@ from ..ui.password_input import password_input
 
 def tfa_activation_modal() -> rx.Component:
     """Modal para mostrar el QR y confirmar la activación de 2FA."""
-    # ... (Este componente no necesita cambios)
+    # ... (Este componente no necesita cambios y se mantiene igual)
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.title("Activar Autenticación de Dos Factores"),
@@ -41,7 +41,7 @@ def tfa_activation_modal() -> rx.Component:
 
 
 @reflex_local_auth.require_login
-def profile_page() -> rx.Component:
+def profile_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
     """Página de CLIENTE para gestionar perfil, con estética mejorada y sección 2FA."""
     admin_redirect_view = rx.center(
         rx.vstack(rx.spinner(size="3"), rx.text("Redirigiendo...")),
@@ -114,7 +114,6 @@ def profile_page() -> rx.Component:
         style={"border": "1px solid var(--red-a7)"}
     )
     
-    # --- INICIO DE LA CORRECCIÓN DE LAYOUT ---
     client_profile_view = account_layout(
         rx.vstack(
             rx.heading("Mi Perfil", size="8", width="100%", text_align="center"),
@@ -143,14 +142,12 @@ def profile_page() -> rx.Component:
             ),
             security_section,
             danger_zone,
-            # Estas propiedades centran el contenido
             spacing="5", 
             width="100%", 
             max_width="1200px", 
             align="center",
         )
     )
-    # --- FIN DE LA CORRECCIÓN DE LAYOUT ---
 
     return rx.fragment(
         rx.cond(AppState.is_admin, admin_redirect_view, client_profile_view),
