@@ -2,12 +2,12 @@
 
 import reflex as rx
 import reflex_local_auth
+
 from ..state import AppState, UserPurchaseHistoryCardData, PurchaseItemCardData
 from ..account.layout import account_layout
 from ..models import PurchaseStatus
 from ..blog.public_page import product_detail_modal
 
-# ... (Las funciones purchase_item_card y purchase_detail_card no necesitan cambios) ...
 def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
     """Componente rediseñado que muestra una tarjeta completa para cada artículo comprado."""
     return rx.hstack(
@@ -61,11 +61,9 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
         width="100%", padding="1.5em",
     )
 
-
 @reflex_local_auth.require_login
-def purchase_history_page() -> rx.Component:
+def purchase_history_content() -> rx.Component: # <-- NOMBRE CORREGIDO
     """Página del historial de compras del usuario."""
-    # --- INICIO DE LA CORRECCIÓN DE LAYOUT ---
     page_content = rx.vstack(
         rx.heading("Mi Historial de Compras", size="8", text_align="center"),
         rx.text("Aquí puedes ver el estado y los detalles de todos tus pedidos.", color_scheme="gray", size="4", text_align="center"),
@@ -73,9 +71,7 @@ def purchase_history_page() -> rx.Component:
             placeholder="Buscar por ID o producto...",
             value=AppState.search_query_user_history,
             on_change=AppState.set_search_query_user_history,
-            width="100%", 
-            max_width="400px", 
-            margin_y="1.5em",
+            width="100%", max_width="400px", margin_y="1.5em",
         ),
         rx.cond(
             AppState.filtered_user_purchases,
@@ -90,7 +86,6 @@ def purchase_history_page() -> rx.Component:
         width="100%",
         max_width="960px",
     )
-    # --- FIN DE LA CORRECCIÓN DE LAYOUT ---
 
     return rx.fragment(
         account_layout(page_content),
