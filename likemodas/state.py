@@ -49,7 +49,8 @@ from .models import (
     CommentVoteModel, UserInfo, UserReputation, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
     PurchaseModel, PurchaseStatus, PurchaseItemModel, NotificationModel, Category,
     PasswordResetToken, LocalUser, ContactEntryModel, CommentModel,
-    SupportTicketModel, SupportMessageModel, TicketStatus, format_utc_to_local
+    SupportTicketModel, SupportMessageModel, TicketStatus, format_utc_to_local,
+    Gasto, GastoCategoria
 )
 from .services.email_service import send_verification_email, send_password_reset_email
 from .services import wompi_service 
@@ -329,6 +330,13 @@ class ProductFinanceDTO(rx.Base):
     # --- ✅ NUEVO CAMPO AÑADIDO ✅ ---
     profit_margin_str: str = "0.00%"
 
+class GastoDataDTO(rx.Base):
+    """DTO para mostrar un gasto en la UI."""
+    id: int
+    fecha_formateada: str
+    descripcion: str
+    categoria: str
+    valor_cop: str
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -3288,6 +3296,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     product_finance_data: List[ProductFinanceDTO] = []
     profit_chart_data: List[Dict[str, Any]] = []
     search_product_finance: str = ""
+    # Lista para almacenar los gastos cargados desde la BD
+    all_gastos: List[GastoDataDTO] = []
+    
+    # Variables para el filtro de fechas de gastos
+    gasto_start_date: str = ""
+    gasto_end_date: str = ""
 
     # --- Nuevas variables para el detalle del producto/variante ---
     show_product_detail_modal: bool = False
@@ -3474,25 +3488,126 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.admin_final_shipping_cost[purchase_id] = value
     # --- ✨ FIN DE NUEVAS VARIABLES Y SETTERS ✨ ---
 
+    # --- INICIO: NUEVOS EVENT HANDLERS Y VARS PARA GASTOS ---
 
+    def set_gasto_start_date(self, date: str):
+        """Actualiza la fecha de inicio para el filtro de gastos."""
+        self.gasto_start_date = date
+
+    def set_gasto_end_date(self, date: str):
+        """Actualiza la fecha de fin para el filtro de gastos."""
+        self.gasto_end_date = date
+
+    @rx.var
+    def gasto_categories(self) -> list[str]:
+        """Devuelve la lista de categorías de gastos para el formulario."""
+        return [c.value for c in GastoCategoria]
+
+    @rx.var
+    def filtered_gastos(self) -> List[GastoDataDTO]:
+        """Filtra la lista de gastos por el rango de fechas seleccionado."""
+        if not self.gasto_start_date and not self.gasto_end_date:
+            return self.all_gastos
+
+        try:
+            start_dt = datetime.strptime(self.gasto_start_date, '%Y-%m-%d') if self.gasto_start_date else None
+            end_dt = datetime.strptime(self.gasto_end_date, '%Y-%m-%d') if self.gasto_end_date else None
+        except ValueError:
+            return self.all_gastos
+
+        def parse_fecha(fecha_str: str) -> datetime:
+            return datetime.strptime(fecha_str.split(' ')[0], '%d-%m-%Y')
+
+        filtered = self.all_gastos
+        if start_dt:
+            filtered = [g for g in filtered if parse_fecha(g.fecha_formateada) >= start_dt]
+        if end_dt:
+            filtered = [g for g in filtered if parse_fecha(g.fecha_formateada) <= end_dt]
+            
+        return filtered
+
+    @rx.event
+    def load_gastos(self):
+        """Carga todos los gastos registrados por el administrador actual."""
+        if not self.is_admin:
+            return
+
+        with rx.session() as session:
+            gastos_db = session.exec(
+                sqlmodel.select(Gasto)
+                .where(Gasto.userinfo_id == self.authenticated_user_info.id)
+                .order_by(Gasto.fecha.desc())
+            ).all()
+
+            self.all_gastos = [
+                GastoDataDTO(
+                    id=g.id,
+                    fecha_formateada=g.fecha_formateada,
+                    descripcion=g.descripcion,
+                    categoria=g.categoria.value,
+                    valor_cop=g.valor_cop
+                ) for g in gastos_db
+            ]
+
+    @rx.event
+    def handle_add_gasto(self, form_data: dict):
+        """Manejador para crear un nuevo registro de gasto."""
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
+
+        descripcion = form_data.get("descripcion")
+        categoria = form_data.get("categoria")
+        valor_str = form_data.get("valor")
+
+        if not all([descripcion, categoria, valor_str]):
+            return rx.toast.error("Todos los campos son obligatorios.")
+
+        try:
+            valor_float = float(valor_str)
+            if valor_float <= 0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            return rx.toast.error("El valor debe ser un número positivo.")
+        
+        with rx.session() as session:
+            new_gasto = Gasto(
+                userinfo_id=self.authenticated_user_info.id,
+                descripcion=descripcion,
+                categoria=categoria,
+                valor=valor_float
+            )
+            session.add(new_gasto)
+            session.commit()
+
+        yield self.load_gastos
+        yield rx.toast.success("Gasto registrado exitosamente.")
+
+    # --- FIN: NUEVOS EVENT HANDLERS Y VARS PARA GASTOS ---
+
+    # MODIFY THIS EXISTING EVENT HANDLER
     @rx.event
     def on_load_finance_data(self):
         """
         Se ejecuta al cargar la página. Establece un rango de fechas por defecto
-        (últimos 30 días) y llama a la función de cálculo.
+        y llama a la función de cálculo. AHORA TAMBIÉN CARGA GASTOS.
         """
         if not self.is_admin:
             yield rx.redirect("/")
             return
         
-        # Establecer fechas por defecto
+        # Establecer fechas por defecto para finanzas
         today = datetime.now(timezone.utc)
         thirty_days_ago = today - timedelta(days=30)
         self.finance_end_date = today.strftime('%Y-%m-%d')
         self.finance_start_date = thirty_days_ago.strftime('%Y-%m-%d')
         
-        # Ahora 'yield from' funcionará porque ambas funciones son síncronas.
+        # Establecer fechas por defecto para gastos
+        self.gasto_end_date = today.strftime('%Y-%m-%d')
+        self.gasto_start_date = thirty_days_ago.strftime('%Y-%m-%d')
+        
+        # Llamar a las funciones de carga
         yield from self._calculate_finance_data()
+        yield self.load_gastos
 
     @rx.event
     def filter_finance_data(self):

@@ -1,25 +1,34 @@
 # likemodas/admin/finance_page.py (Versión Completa y Corregida)
 
 import reflex as rx
-from ..state import AppState, ProductFinanceDTO, VariantDetailFinanceDTO
+from ..state import AppState, ProductFinanceDTO, VariantDetailFinanceDTO, GastoDataDTO
 from ..auth.admin_auth import require_admin
-from reflex.components.recharts import LineChart, Line, XAxis, YAxis, CartesianGrid, tooltip, Legend, ResponsiveContainer
-
-# --- Las funciones auxiliares y de la página principal (sin cambios) ---
+from reflex.components.recharts import (
+    LineChart, Line, XAxis, YAxis, CartesianGrid, 
+    tooltip, Legend, ResponsiveContainer
+)
 
 def stat_card(title: str, value: str, icon: str) -> rx.Component:
     """Muestra una tarjeta de estadística en el dashboard."""
     return rx.card(
         rx.hstack(
-            rx.box(rx.icon(icon, size=32), padding="0.75em", bg=rx.color("violet", 3), border_radius="50%"),
+            rx.box(
+                rx.icon(icon, size=32), 
+                padding="0.75em", 
+                bg=rx.color("violet", 3), 
+                border_radius="50%"
+            ),
             rx.vstack(
                 rx.text(title, size="3", color_scheme="gray"),
                 rx.heading(value, size="6"),
-                align_items="start", spacing="0"
+                align_items="start", 
+                spacing="0"
             ),
-            spacing="4", align="center"
+            spacing="4", 
+            align="center"
         ),
-        width="100%", height="100%"
+        width="100%", 
+        height="100%"
     )
 
 def general_finance_chart() -> rx.Component:
@@ -47,7 +56,9 @@ def general_finance_chart() -> rx.Component:
                 ),
                 rx.center(rx.text("No hay datos de ganancias para el rango de fechas seleccionado.", color_scheme="gray"), height="300px")
             ),
-            align_items="start", spacing="4", width="100%"
+            align_items="start", 
+            spacing="4", 
+            width="100%"
         )
     )
 
@@ -97,8 +108,6 @@ def product_finance_table_row(p_data: ProductFinanceDTO) -> rx.Component:
         align="center",
     )
     
-# --- ✅ INICIO DE LA CORRECCIÓN: SE AÑADEN LAS FUNCIONES DEL MODAL FINANCIERO ✅ ---
-
 def variant_detail_view() -> rx.Component:
     """Vista detallada para una variante seleccionada dentro del modal."""
     return rx.cond(
@@ -264,7 +273,145 @@ def product_detail_modal() -> rx.Component:
         style={"max_width": "1300px", "width": "95%"}
     )
     
-# --- ✅ FIN DE LA CORRECCIÓN ✅ ---
+# --- INICIO: NUEVOS COMPONENTES PARA GESTIÓN DE GASTOS ---
+
+def gasto_form() -> rx.Component:
+    """Formulario para registrar un nuevo gasto."""
+    return rx.card(
+        rx.form(
+            rx.vstack(
+                rx.heading("Registrar Nuevo Gasto", size="5"),
+                rx.grid(
+                    rx.vstack(
+                        rx.text("Descripción", size="2"),
+                        rx.input(name="descripcion", placeholder="Ej: Publicidad en Instagram", required=True),
+                        align="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Categoría", size="2"),
+                        rx.select(AppState.gasto_categories, name="categoria", placeholder="Seleccionar...", required=True),
+                        align="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Valor (COP)", size="2"),
+                        rx.input(name="valor", placeholder="Ej: 50000", type="number", required=True),
+                        align="stretch"
+                    ),
+                    columns={"initial": "1", "sm": "3"},
+                    spacing="3",
+                    width="100%",
+                ),
+                rx.button("Añadir Gasto", type="submit", margin_top="1em", color_scheme="violet"),
+                spacing="4",
+                align_items="stretch",
+            ),
+            on_submit=AppState.handle_add_gasto,
+            reset_on_submit=True,
+        ),
+        width="100%"
+    )
+
+def desktop_gasto_row(gasto: GastoDataDTO) -> rx.Component:
+    """Renderiza una fila de la tabla de gastos para escritorio."""
+    return rx.table.row(
+        rx.table.cell(gasto.fecha_formateada),
+        rx.table.cell(gasto.descripcion),
+        rx.table.cell(rx.badge(gasto.categoria)),
+        rx.table.cell(gasto.valor_cop, text_align="right"),
+    )
+
+def mobile_gasto_card(gasto: GastoDataDTO) -> rx.Component:
+    """Renderiza una tarjeta de gasto para vista móvil."""
+    return rx.card(
+        rx.vstack(
+            rx.hstack(
+                rx.vstack(
+                    rx.text(gasto.descripcion, weight="bold"),
+                    rx.text(gasto.fecha_formateada, size="2", color_scheme="gray"),
+                    align="start",
+                ),
+                rx.spacer(),
+                rx.vstack(
+                    rx.badge(gasto.categoria),
+                    rx.text(gasto.valor_cop, weight="bold"),
+                    align="end",
+                ),
+                width="100%"
+            ),
+            spacing="3"
+        )
+    )
+
+def gastos_module() -> rx.Component:
+    """Módulo completo para la gestión de gastos."""
+    desktop_table = rx.box(
+        rx.table.root(
+            rx.table.header(
+                rx.table.row(
+                    rx.table.column_header_cell("Fecha"),
+                    rx.table.column_header_cell("Descripción"),
+                    rx.table.column_header_cell("Categoría"),
+                    rx.table.column_header_cell("Valor", text_align="right"),
+                )
+            ),
+            rx.table.body(
+                rx.cond(
+                    AppState.filtered_gastos,
+                    rx.foreach(AppState.filtered_gastos, desktop_gasto_row),
+                    rx.table.row(rx.table.cell("No se encontraron gastos para el rango de fechas.", col_span=4, text_align="center"))
+                )
+            ),
+            variant="surface"
+        ),
+        display=["none", "none", "block"]
+    )
+
+    mobile_list = rx.box(
+        rx.vstack(
+            rx.cond(
+                AppState.filtered_gastos,
+                rx.foreach(AppState.filtered_gastos, mobile_gasto_card),
+                rx.center(rx.text("No se encontraron gastos para el rango de fechas."), padding="2em")
+            ),
+            spacing="3",
+            width="100%"
+        ),
+        display=["block", "block", "none"]
+    )
+
+    return rx.card(
+        rx.vstack(
+            rx.heading("Gestión de Gastos", size="5"),
+            gasto_form(),
+            rx.card(
+                rx.flex(
+                    rx.vstack(
+                        rx.text("Desde", size="2"),
+                        rx.input(type="date", value=AppState.gasto_start_date, on_change=AppState.set_gasto_start_date),
+                        align="start"
+                    ),
+                    rx.vstack(
+                        rx.text("Hasta", size="2"),
+                        rx.input(type="date", value=AppState.gasto_end_date, on_change=AppState.set_gasto_end_date),
+                        align="start"
+                    ),
+                    rx.button("Filtrar Gastos", on_click=AppState.load_gastos, margin_top="1.25em"),
+                    spacing="4",
+                    direction={"initial": "column", "sm": "row"},
+                    align={"initial": "stretch", "sm": "end"},
+                    width="100%"
+                ),
+            ),
+            desktop_table,
+            mobile_list,
+            align_items="stretch",
+            spacing="4",
+            width="100%",
+        )
+    )
+
+# --- FIN: NUEVOS COMPONENTES ---
+
 
 @require_admin
 def finance_page_content() -> rx.Component:
@@ -366,6 +513,9 @@ def finance_page_content() -> rx.Component:
                                 align_items="stretch", spacing="4", width="100%",
                             )
                         ),
+                        # --- INTEGRACIÓN DEL MÓDULO DE GASTOS ---
+                        gastos_module(), # <-- AÑADE ESTA LÍNEA
+
                         spacing="6", width="100%",
                     )
                 ),
