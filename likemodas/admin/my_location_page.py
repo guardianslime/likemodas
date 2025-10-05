@@ -7,7 +7,7 @@ from ..ui.components import searchable_select
 from ..ui.base import base_page
 
 @require_admin
-def my_location_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
+def my_location_page_content() -> rx.Component:
     """Página para que el vendedor (admin) configure su ubicación de origen."""
     page_content = rx.vstack(
         rx.heading("Mi Ubicación de Origen", size="8"),
@@ -59,7 +59,9 @@ def my_location_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
         align="center",
         spacing="5",
         width="100%",
-        max_width="700px",
+        # --- ✨ CORRECCIÓN CLAVE AQUÍ ✨ ---
+        # Aumentamos el ancho máximo para que se vea más proporcional
+        max_width="800px", 
     )
     
     return base_page(
