@@ -59,9 +59,8 @@ def my_location_page_content() -> rx.Component:
         align="center",
         spacing="5",
         width="100%",
-        # --- ✨ CORRECCIÓN CLAVE AQUÍ ✨ ---
-        # Aumentamos el ancho máximo para que se vea más proporcional
-        max_width="800px", 
+        # --- ✨ CORRECCIÓN CLAVE: Aumentamos el ancho máximo ---
+        max_width="960px", 
     )
     
     return base_page(
