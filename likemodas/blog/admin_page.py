@@ -1,8 +1,14 @@
 import reflex as rx
-from ..state import AppState
-from .forms import blog_post_edit_form
-from ..state import AdminPostRowData, AdminVariantData
-from ..ui.qr_display import qr_code_display
+
+from likemodas.ui.qr_display import qr_code_display
+from ..auth.admin_auth import require_admin
+from .. import navigation
+from ..state import AdminVariantData, AppState, AdminPostRowData
+
+# --- PASO 1: Importar los componentes del modal y formulario desde un archivo separado ---
+# (Esto asume que los tienes en un archivo como se muestra en tu código base)
+from .forms import blog_post_edit_form, edit_post_dialog
+from .admin_page import qr_display_modal, mobile_post_card, desktop_post_row
 
 def edit_post_dialog() -> rx.Component:
     """El diálogo modal que contiene el formulario de edición."""
@@ -312,9 +318,9 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
     )
 
 
+@require_admin
 def blog_admin_page() -> rx.Component:
     """Página de 'Mis Publicaciones' para el vendedor, ahora completamente responsiva."""
-    from .. import navigation
 
     desktop_view = rx.box(
         rx.table.root(
@@ -348,7 +354,6 @@ def blog_admin_page() -> rx.Component:
     return rx.center(
         rx.container(
             rx.vstack(
-                # --- INICIO DE LA CORRECCIÓN RESPONSIVA ---
                 rx.flex(
                     rx.heading("Mis Publicaciones", size={"initial": "8", "md": "7"}),
                     rx.spacer(),
@@ -356,24 +361,29 @@ def blog_admin_page() -> rx.Component:
                         "Crear Nueva Publicación", 
                         on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE), 
                         color_scheme="violet",
-                        width={"initial": "100%", "md": "auto"}, # Botón ancho en móvil
+                        width={"initial": "100%", "md": "auto"},
                     ),
-                    # Propiedades responsivas clave:
-                    direction={"initial": "column", "md": "row"}, # Columna en móvil, fila en PC
+                    direction={"initial": "column", "md": "row"},
                     spacing="4",
-                    align={"initial": "stretch", "md": "center"}, # Alinear al centro vertical en PC
+                    align={"initial": "stretch", "md": "center"},
                     width="100%",
                 ),
-                # --- FIN DE LA CORRECCIÓN RESPONSIVA ---
                 
                 rx.divider(margin_y="1.5em"),
+
                 rx.cond(
                     AppState.my_admin_posts,
                     rx.fragment(desktop_view, mobile_view),
                     rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
                 ),
-                blog_post_edit_form(),
+
+                # --- INICIO DE LA CORRECCIÓN ---
+                # Se eliminó el formulario de edición de aquí y en su lugar
+                # se llaman a los componentes de los modales.
+                edit_post_dialog(),
                 qr_display_modal(),
+                # --- FIN DE LA CORRECCIÓN ---
+                
                 spacing="5", 
                 width="100%",
             ),
