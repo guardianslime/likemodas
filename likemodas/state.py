@@ -1466,22 +1466,31 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def search_users_for_employment(self):
-        """Busca usuarios (clientes) que puedan ser contratados como empleados."""
+        """
+        [CORREGIDO] Busca usuarios que puedan ser contratados,
+        incluyendo ahora tanto a Clientes como a otros Vendedores.
+        """
         self.search_results_users = []
         query = self.search_query_users.strip()
         if not query:
             return rx.toast.info("Introduce un nombre de usuario o email para buscar.")
 
         with rx.session() as session:
-            # Subconsulta para encontrar IDs de usuarios que ya son empleados
+            # Subconsulta para encontrar IDs de usuarios que ya son empleados de alguien
             subquery = sqlmodel.select(EmpleadoVendedorLink.empleado_id)
             
             results = session.exec(
                 sqlmodel.select(UserInfo)
                 .join(LocalUser)
                 .where(
-                    UserInfo.role == UserRole.CUSTOMER,
+                    # --- ¡CORRECCIÓN CLAVE! ---
+                    # Ahora busca usuarios cuyo rol sea CUSTOMER O VENDEDOR
+                    UserInfo.role.in_([UserRole.CUSTOMER, UserRole.VENDEDOR]),
+                    
+                    # Excluye a los que ya son empleados
                     UserInfo.id.notin_(subquery),
+                    
+                    # Condición de búsqueda por nombre o email
                     (LocalUser.username.ilike(f"%{query}%")) | (UserInfo.email.ilike(f"%{query}%"))
                 )
             ).all()
