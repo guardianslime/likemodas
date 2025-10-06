@@ -8,7 +8,7 @@ from sqlmodel import text # Importar text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Dict, Optional, Tuple
-from .models import LocalAuthSession
+from .models import EmpleadoVendedorLink, LocalAuthSession
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
@@ -512,13 +512,76 @@ class AppState(reflex_local_auth.LocalAuthState):
     token: str = ""
     is_token_valid: bool = False
 
-    # --- ✨ INICIO: MÉTODO _login PERSONALIZADO ✨ ---
+    # --- Variables de Estado para el Contexto y Gestión de Empleados ---
+    context_user_id: Optional[int] = None
+    is_vigilando: bool = False
+    original_admin_id: Optional[int] = None # Para que el admin pueda salir del modo vigilancia
+
+    # Para la página de gestión de empleados
+    empleados: list[UserInfo] = []
+    search_results_users: list[UserInfo] = []
+    search_query_users: str = ""
+
+    # Para la vinculación desde el perfil del empleado
+    vendedor_search_results: list[UserInfo] = []
+
+    # --- Propiedades Computadas para Roles y Contexto ---
+
+    @rx.var
+    def is_vendedor(self) -> bool:
+        """Verifica si el usuario autenticado es un Vendedor."""
+        return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.VENDEDOR.value
+
+    @rx.var
+    def mi_vendedor_info(self) -> Optional[UserInfo]:
+        """Si el usuario es un empleado, devuelve la información completa de su vendedor."""
+        if not self.is_authenticated or not self.authenticated_user_info:
+            return None
+        with rx.session() as session:
+            link = session.exec(
+                sqlmodel.select(EmpleadoVendedorLink)
+                .options(sqlalchemy.orm.joinedload(EmpleadoVendedorLink.vendedor).joinedload(UserInfo.user))
+                .where(EmpleadoVendedorLink.empleado_id == self.authenticated_user_info.id)
+            ).one_or_none()
+            return link.vendedor if link else None
+
+    @rx.var
+    def is_empleado(self) -> bool:
+        """Verifica si el usuario autenticado es un Empleado (si tiene un empleador)."""
+        return self.mi_vendedor_info is not None
+
+    @rx.var
+    def context_user_info(self) -> Optional[UserInfo]:
+        """
+        LA PROPIEDAD CENTRAL: Devuelve el objeto UserInfo del contexto activo.
+        Esta propiedad será la fuente de verdad para todas las consultas de datos de negocio.
+        """
+        if self.context_user_id is None:
+            return None
+        with rx.session() as session:
+            return session.exec(
+                sqlmodel.select(UserInfo)
+                .options(sqlalchemy.orm.joinedload(UserInfo.user))
+                .where(UserInfo.id == self.context_user_id)
+            ).one_or_none()
+
+    @rx.var
+    def vendedor_users(self) -> list[UserInfo]:
+        """Filtra y devuelve solo los usuarios con rol de Vendedor."""
+        return [u for u in self.all_users if u.role == UserRole.VENDEDOR]
+
+    @rx.var
+    def customer_users(self) -> list[UserInfo]:
+        """Filtra y devuelve solo los usuarios con rol de Cliente."""
+        return [u for u in self.all_users if u.role == UserRole.CUSTOMER]
+
+    # --- Manejadores de Eventos (Nuevos y Modificados) ---
+
     @rx.event
     def handle_login_with_verification(self, form_data: dict):
         """
-        [VERSIÓN FINAL Y CORRECTA] Manejador de login que valida al usuario,
-        utiliza la lógica interna de la librería para crear la sesión/cookie
-        y finalmente redirige.
+        [VERSIÓN MODIFICADA] Manejador de login que valida, crea la sesión
+        y establece el contexto de usuario inicial.
         """
         self.error_message = ""
         username = (form_data.get("username") or "").strip()
@@ -530,7 +593,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         with rx.session() as session:
             user = session.exec(select(LocalUser).where(LocalUser.username == username)).one_or_none()
-
             if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
                 self.error_message = "Usuario o contraseña inválidos."
                 return
@@ -540,11 +602,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
                 return
 
-            self._login(user.id)
-            # --- 👇 CORRECCIÓN AQUÍ 👇 ---
-            yield rx.redirect("/admin/store")
-            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-    
+            # ---- INICIO DE LA LÓGICA DE CONTEXTO ----
+            # Revisa si el usuario que inicia sesión es un empleado
+            empleador_link = session.exec(
+                select(EmpleadoVendedorLink).where(EmpleadoVendedorLink.empleado_id == user_info.id)
+            ).one_or_none()
+            
+            if empleador_link:  # Si es un empleado
+                # El contexto es el ID de su empleador (Vendedor)
+                self.context_user_id = empleador_link.vendedor_id
+            else:  # Si es Admin, Vendedor o Cliente
+                # El contexto es su propio ID
+                self.context_user_id = user_info.id
+            # ---- FIN DE LA LÓGICA DE CONTEXTO ----
+
+            if user_info.tfa_enabled:
+                self.tfa_user_id_pending_verification = user.id
+                return rx.redirect("/verify-2fa")
+            else:
+                self._login(user.id)
+                return rx.redirect("/admin/store")
+        
 
     def handle_forgot_password(self, form_data: dict):
         email = form_data.get("email", "").strip().lower()
@@ -669,30 +747,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.error("El código de verificación es incorrecto.")
 
     tfa_user_id_pending_verification: Optional[int] = None
-
-    @rx.event
-    def handle_login_with_verification(self, form_data: dict):
-        self.error_message = ""
-        username = (form_data.get("username") or "").strip()
-        password = (form_data.get("password") or "").strip()
-        if not username or not password:
-            self.error_message = "Usuario y contraseña son requeridos."
-            return
-        with rx.session() as session:
-            user = session.exec(select(LocalUser).where(LocalUser.username == username)).one_or_none()
-            if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
-                self.error_message = "Usuario o contraseña inválidos."
-                return
-            user_info = session.exec(select(UserInfo).where(UserInfo.user_id == user.id)).one_or_none()
-            if not user_info or not user_info.is_verified:
-                self.error_message = "Tu cuenta no ha sido verificada. Por favor, revisa tu correo."
-                return
-            if user_info.tfa_enabled:
-                self.tfa_user_id_pending_verification = user.id
-                return rx.redirect("/verify-2fa")
-            else:
-                self._login(user.id)
-                return rx.redirect("/admin/store")
 
     @rx.event
     def verify_tfa_login(self, form_data: dict):
@@ -1380,30 +1434,147 @@ class AppState(reflex_local_auth.LocalAuthState):
             for v in self.new_variants 
             if v.get("image_url")
         ]
+    
+    def set_search_query_users(self, query: str):
+        self.search_query_users = query
+
+    @rx.event
+    def load_empleados(self):
+        """Carga la lista de empleados asociados al vendedor en contexto."""
+        if not self.context_user_id:
+            self.empleados = []
+            return
+            
+        with rx.session() as session:
+            links = session.exec(
+                sqlmodel.select(EmpleadoVendedorLink)
+                .options(sqlalchemy.orm.joinedload(EmpleadoVendedorLink.empleado).joinedload(UserInfo.user))
+                .where(EmpleadoVendedorLink.vendedor_id == self.context_user_id)
+            ).all()
+            self.empleados = [link.empleado for link in links if link.empleado and link.empleado.user]
+
+    @rx.event
+    def search_users_for_employment(self):
+        """Busca usuarios (clientes) que puedan ser contratados como empleados."""
+        self.search_results_users = []
+        query = self.search_query_users.strip()
+        if not query:
+            return rx.toast.info("Introduce un nombre de usuario o email para buscar.")
+
+        with rx.session() as session:
+            # Subconsulta para encontrar IDs de usuarios que ya son empleados
+            subquery = sqlmodel.select(EmpleadoVendedorLink.empleado_id)
+            
+            results = session.exec(
+                sqlmodel.select(UserInfo)
+                .join(LocalUser)
+                .where(
+                    UserInfo.role == UserRole.CUSTOMER,
+                    UserInfo.id.notin_(subquery),
+                    (LocalUser.username.ilike(f"%{query}%")) | (UserInfo.email.ilike(f"%{query}%"))
+                )
+            ).all()
+            self.search_results_users = results
+
+    @rx.event
+    def add_empleado(self, empleado_userinfo_id: int):
+        """Vincula un usuario como empleado del vendedor en contexto."""
+        if not self.context_user_id:
+            return rx.toast.error("Error de contexto.")
+
+        with rx.session() as session:
+            # Doble verificación para asegurar que el usuario no sea ya un empleado
+            existing_link = session.exec(
+                sqlmodel.select(EmpleadoVendedorLink).where(EmpleadoVendedorLink.empleado_id == empleado_userinfo_id)
+            ).first()
+            if existing_link:
+                return rx.toast.error("Este usuario ya es empleado de otro vendedor.")
+            
+            new_link = EmpleadoVendedorLink(
+                vendedor_id=self.context_user_id,
+                empleado_id=empleado_userinfo_id
+            )
+            session.add(new_link)
+            session.commit()
+            
+            yield self.load_empleados()
+            yield rx.toast.success("Empleado añadido correctamente.")
+
+    @rx.event
+    def remove_empleado(self, empleado_userinfo_id: int):
+        """Elimina la vinculación de un empleado."""
+        with rx.session() as session:
+            # El ID del vendedor puede ser el del contexto (si es un vendedor) o el del empleador (si es un empleado desvinculándose)
+            vendedor_id = self.context_user_id if not self.is_empleado else self.mi_vendedor_info.id
+
+            link_to_delete = session.exec(
+                sqlmodel.select(EmpleadoVendedorLink).where(
+                    EmpleadoVendedorLink.vendedor_id == vendedor_id,
+                    EmpleadoVendedorLink.empleado_id == empleado_userinfo_id
+                )
+            ).one_or_none()
+            
+            if link_to_delete:
+                session.delete(link_to_delete)
+                session.commit()
+                yield self.load_empleados()
+                yield rx.toast.info("Empleado desvinculado.")
+
+    @rx.event
+    def start_vigilancia(self, vendedor_userinfo_id: int):
+        """Inicia el modo de vigilancia para un administrador."""
+        if not self.is_admin:
+            return rx.toast.error("Acción no permitida.")
+            
+        self.original_admin_id = self.authenticated_user_info.id
+        self.context_user_id = vendedor_userinfo_id
+        self.is_vigilando = True
+        
+        yield rx.toast.info(f"Iniciando modo de vigilancia.")
+        yield rx.redirect("/admin/finance")
+
+    @rx.event
+    def stop_vigilancia(self):
+        """Detiene el modo de vigilancia y restaura el contexto del administrador."""
+        if not self.is_admin or not self.original_admin_id:
+            return
+            
+        self.context_user_id = self.original_admin_id
+        self.is_vigilando = False
+        self.original_admin_id = None
+        
+        yield rx.toast.info("Modo de vigilancia finalizado.")
+        yield rx.redirect("/admin/users")
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
-        if not self.is_admin or not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
+        """
+        [VERSIÓN COMPLETA Y CORREGIDA]
+        Manejador para crear y publicar un nuevo producto. Asigna la propiedad
+        de la publicación basándose en el 'context_user_id', permitiendo que los
+        empleados publiquen en nombre de sus vendedores.
+        """
+        # 1. Determinar el propietario del post usando el contexto
+        # ¡Este es el cambio fundamental!
+        owner_id = self.context_user_id
+        
+        if not owner_id:
+            return rx.toast.error("Error de sesión o contexto no válido. No se puede publicar.")
 
-        # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
-
-        # 1. Extraemos los valores directamente del form_data que nos llega.
+        # 2. Extraer y validar los datos del formulario
         title = form_data.get("title", "").strip()
         price_str = form_data.get("price", "")
         category = form_data.get("category", "")
-        profit_str = form_data.get("profit", "")
         content = form_data.get("content", "")
+        profit_str = form_data.get("profit", "")
         shipping_cost_str = form_data.get("shipping_cost", "")
-        limit_str = form_data.get("shipping_combination_limit", "3") # Obtenemos el límite también
+        limit_str = form_data.get("shipping_combination_limit", "3")
 
-        # 2. La validación ahora usa las variables correctas.
         if not all([title, price_str, category]):
-            return rx.toast.error("Título, precio y categoría son obligatorios.")
+            return rx.toast.error("El título, el precio y la categoría son campos obligatorios.")
 
-        # 3. El resto de la lógica usa estas variables locales.
         if not self.generated_variants_map:
-            return rx.toast.error("Debes generar y configurar las variantes para al menos una imagen.")
+            return rx.toast.error("Debes generar y configurar las variantes (stock, etc.) para al menos una imagen antes de publicar.")
 
         try:
             price_float = float(price_str)
@@ -1413,27 +1584,31 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             if self.combines_shipping and (limit is None or limit <= 0):
                 return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
-        except ValueError:
+        except (ValueError, TypeError):
             return rx.toast.error("Precio, ganancia, costo de envío y límites deben ser números válidos.")
 
+        # 3. Construir la lista final de variantes para la base de datos
         all_variants_for_db = []
         for index, generated_list in self.generated_variants_map.items():
+            # La URL de la imagen principal del grupo
             main_image_url_for_group = self.new_variants[index].get("image_url", "")
             for variant_data in generated_list:
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
+                    # Usa la imagen asignada a la variante, o la del grupo como fallback
                     "image_url": variant_data.image_url or main_image_url_for_group,
-                    "variant_uuid": str(uuid.uuid4())
+                    "variant_uuid": str(uuid.uuid4()) # Asigna un ID único a cada variante
                 }
                 all_variants_for_db.append(variant_dict)
 
         if not all_variants_for_db:
             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
 
+        # 4. Crear y guardar el nuevo producto en la base de datos
         with rx.session() as session:
             new_post = BlogPostModel(
-                userinfo_id=self.authenticated_user_info.id,
+                userinfo_id=owner_id,  # <-- Se usa el ID del contexto
                 title=title,
                 content=content,
                 price=price_float,
@@ -1452,9 +1627,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_post)
             session.commit()
 
-        # ✨ --- FIN DE LA CORRECCIÓN --- ✨
-
-        self._clear_add_form()
+        # 5. Limpiar el formulario y redirigir
+        self._clear_add_form() # Asegúrate de tener esta función para limpiar el estado del form
         yield rx.toast.success("Producto publicado exitosamente.")
         yield rx.redirect("/blog")
     

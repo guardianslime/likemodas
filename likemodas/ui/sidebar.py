@@ -1,11 +1,11 @@
-# likemodas/ui/sidebar.py (VERSIÓN FINAL CON ALTURA DINÁMICA 'dvh')
+# likemodas/ui/sidebar.py
 
 import reflex as rx
 from ..state import AppState
 from .. import navigation
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
-    """Componente para un enlace individual en el sidebar (sin cambios)."""
+    """Componente reutilizable para un enlace individual en el sidebar."""
     is_active = (AppState.current_path == href)
     return rx.link(
         rx.hstack(
@@ -28,18 +28,44 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
     )
 
 def sidebar_items() -> rx.Component:
-    """Genera la lista de enlaces de navegación del sidebar (sin cambios)."""
-    return rx.vstack(
-        sidebar_item("Finanzas", "line-chart", "/admin/finance"),
-        sidebar_item("Gestión de Usuarios", "users", "/admin/users"),
+    """
+    Genera la lista de enlaces de navegación del sidebar de forma dinámica
+    basándose en el rol del usuario y el estado de vigilancia.
+    """
+    # Elementos que ven los Vendedores y los Empleados
+    elementos_base_vendedor = rx.fragment(
         sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
         sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
+        sidebar_item("Tienda (Punto de Venta)", "store", "/admin/store"),
+    )
+
+    # Elementos que solo ven los Vendedores (y Admins vigilando), pero NO los Empleados
+    elementos_gestion_vendedor = rx.fragment(
+        sidebar_item("Finanzas", "line-chart", "/admin/finance"),
+        sidebar_item("Gestión de Empleados", "user-cog", "/admin/employees"),
         sidebar_item("Mi Ubicación de Origen", "map-pin", "/admin/my-location"),
         sidebar_item("Confirmar Pagos", "dollar-sign", "/admin/confirm-payments", has_notification=AppState.new_purchase_notification),
         sidebar_item("Historial de Pagos", "history", "/admin/payment-history"),
         sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
-        rx.divider(margin_y="1em"),
-        sidebar_item("Tienda (Punto de Venta)", "store", "/admin/store"),
+    )
+
+    # Elementos exclusivos para un Administrador (cuando NO está en modo vigilancia)
+    elementos_exclusivos_admin = rx.fragment(
+        sidebar_item("Gestión de Usuarios", "users", "/admin/users"),
+    )
+
+    return rx.vstack(
+        elementos_base_vendedor,
+        rx.cond(
+            ~AppState.is_empleado,  # Si NO es un empleado (es Vendedor o Admin)
+            rx.fragment(
+                elementos_gestion_vendedor,
+                rx.cond(
+                    ~AppState.is_vigilando,  # Y si NO está vigilando (es Admin en su propia cuenta)
+                    elementos_exclusivos_admin
+                )
+            )
+        ),
         spacing="2",
         width="100%",
     )
@@ -51,12 +77,34 @@ def sliding_admin_sidebar() -> rx.Component:
     """
     SIDEBAR_WIDTH = "16em"
 
-    # --- CONTENIDO COMPLETO DEL SIDEBAR ---
-    # Un solo Vstack con todo el contenido, que será envuelto en un área de scroll.
     sidebar_content = rx.vstack(
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%",
+        ),
+        # Indicador de Modo Vigilancia
+        rx.cond(
+            AppState.is_vigilando,
+            rx.box(
+                rx.hstack(
+                    rx.icon("eye", size=16),
+                    rx.text("Modo Vigilancia", size="2", weight="bold"),
+                    rx.spacer(),
+                    rx.icon_button(
+                        rx.icon("x-circle", size=16),
+                        on_click=AppState.stop_vigilancia,
+                        size="1",
+                        variant="ghost",
+                        color_scheme="red",
+                    ),
+                    align="center",
+                ),
+                bg=rx.color("red", 4),
+                padding="0.5em",
+                border_radius="md",
+                width="100%",
+                margin_bottom="1em",
+            )
         ),
         sidebar_items(),
         rx.spacer(),
@@ -76,7 +124,8 @@ def sliding_admin_sidebar() -> rx.Component:
                     align="center", spacing="3", width="100%", padding="0.75em",
                     border_radius="var(--radius-3)", _hover={"background_color": rx.color("violet", 4)},
                 ),
-                href="/admin/profile", underline="none", width="100%",
+                href="/admin/profile", # El perfil siempre es el del usuario logueado
+                underline="none", width="100%",
             ),
             rx.button(
                 "Logout", rx.icon(tag="log-out", margin_left="0.5em"),
@@ -89,33 +138,28 @@ def sliding_admin_sidebar() -> rx.Component:
         min_height="100%",
     )
 
-    # --- ENVOLTORIO DE SCROLL ---
-    # El contenido se envuelve en un `scroll_area` para permitir el deslizamiento.
     sidebar_panel = rx.scroll_area(
         sidebar_content,
         height="100%",
         width="100%",
     )
 
-    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-    # El contenedor principal ahora usa `100dvh` para ajustarse a la altura VISIBLE de la pantalla.
     return rx.box(
         rx.hstack(
             rx.box(
                 sidebar_panel,
                 width=SIDEBAR_WIDTH,
-                height="100dvh", # <-- SOLUCIÓN: Usa la altura dinámica del viewport.
+                height="100dvh", # Altura dinámica del viewport para evitar barras de scroll del navegador
                 bg=rx.color("gray", 2),
             ),
-            rx.box( # La pestaña "LIKEMODAS"
+            rx.box(
                 rx.text("LIKEMODAS", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.2em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer", bg=rx.color("violet", 9), border_radius="0 8px 8px 0",
                 height="150px", display="flex", align_items="center"
             ),
-            align_items="center", spacing="0"
+            align_items="center", spacing="0",
         ),
-        # Lógica de polling (sin cambios)
         rx.cond(
             AppState.is_admin,
             rx.fragment(
@@ -123,11 +167,9 @@ def sliding_admin_sidebar() -> rx.Component:
                 rx.box(on_mount=rx.call_script("if (!window.likemodas_admin_poller) { window.likemodas_admin_poller = setInterval(() => { const trigger = document.getElementById('admin_notification_poller'); if (trigger) { trigger.click(); } }, 15000); }"), display="none")
             )
         ),
-        # El contenedor exterior también usa 100dvh.
-        position="fixed", top="0", left="0", height="100dvh", # <-- SOLUCIÓN
+        position="fixed", top="0", left="0", height="100dvh",
         display="flex", align_items="center",
         transform=rx.cond(AppState.show_admin_sidebar, "translateX(0)", f"translateX(-{SIDEBAR_WIDTH})"),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
     )
-    # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---

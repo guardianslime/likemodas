@@ -27,6 +27,7 @@ from .admin.my_location_page import my_location_page_content
 from .admin.store_page import admin_store_page
 from .admin.tickets_page import admin_tickets_page_content
 from .admin.users_page import user_management_page
+from .admin import employees_page # Importa la nueva página
 
 # Vistas de Blog y Productos
 from .blog import blog_admin_page, blog_post_add_content
@@ -105,3 +106,4 @@ app.add_page(base_page(admin_page.admin_confirm_content()), route="/admin/confir
 app.add_page(base_page(admin_store_page()), route="/admin/store", on_load=[AppState.on_load_admin_store, AppState.process_qr_url_on_load], title="Admin | Tienda")
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_purchase_history)
 app.add_page(base_page(admin_tickets_page_content()), route=navigation.routes.SUPPORT_TICKETS_ROUTE, on_load=AppState.on_load_admin_tickets_page, title="Solicitudes de Soporte")
+app.add_page(base_page(employees_page.employees_management_page()), route="/admin/employees", on_load=AppState.load_empleados, title="Gestión de Empleados")
