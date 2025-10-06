@@ -1,4 +1,4 @@
-# likemodas/ui/sidebar.py (VERSIÓN UNIVERSAL Y DEFINITIVA)
+# likemodas/ui/sidebar.py (VERSIÓN FINAL CON FLEX-SHRINK)
 
 import reflex as rx
 from ..state import AppState
@@ -46,15 +46,13 @@ def sidebar_items() -> rx.Component:
 
 def sliding_admin_sidebar() -> rx.Component:
     """
-    Componente del sidebar deslizable con una única estructura robusta y responsive.
+    Componente del sidebar con la estructura de 3 partes definitiva y universal.
     """
     SIDEBAR_WIDTH = "16em"
 
-    # --- ✨ INICIO DE LA SOLUCIÓN DEFINITIVA ✨ ---
-    # Este vstack es el contenedor principal del panel. Su altura es del 100%
-    # de la pantalla y sus 3 hijos se distribuirán el espacio verticalmente.
+    # --- ✨ INICIO DE LA SOLUCIÓN FINAL ✨ ---
     sidebar_panel = rx.vstack(
-        # 1. SECCIÓN SUPERIOR (LOGO) - Altura fija
+        # 1. SECCIÓN SUPERIOR (LOGO)
         rx.vstack(
             rx.hstack(
                 rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
@@ -62,22 +60,21 @@ def sliding_admin_sidebar() -> rx.Component:
                 justify="center",
                 width="100%",
             ),
-            padding="1.5em 1em 0 1em", # Padding solo arriba y a los lados
+            padding="1.5em 1em 0 1em",
             width="100%",
+            flex_shrink="0",  # <-- CLAVE #1: Prohíbe que esta sección se encoja.
         ),
 
-        # 2. SECCIÓN MEDIA (LINKS) - Altura flexible y scroll
-        # Este es el componente clave. Ocupará todo el espacio vertical sobrante
-        # y mostrará una barra de scroll si el contenido es muy largo.
+        # 2. SECCIÓN MEDIA (LINKS CON SCROLL)
         rx.scroll_area(
             sidebar_items(),
             width="100%",
-            height="0",          # Truco de Flexbox: altura inicial de 0
-            flex_grow="1",       # Propiedad clave: le dice que crezca para rellenar el espacio
-            padding="1em",
+            flex_grow="1",  # Le dice a esta sección que ocupe todo el espacio sobrante.
+            padding_x="1em",
+            margin_y="1em",
         ),
 
-        # 3. SECCIÓN INFERIOR (PERFIL Y LOGOUT) - Altura fija
+        # 3. SECCIÓN INFERIOR (PERFIL Y LOGOUT)
         rx.vstack(
             rx.divider(),
             rx.link(
@@ -100,27 +97,30 @@ def sliding_admin_sidebar() -> rx.Component:
                 "Logout", rx.icon(tag="log-out", margin_left="0.5em"),
                 on_click=AppState.do_logout, width="100%", variant="soft", color_scheme="red"
             ),
-            width="100%", spacing="2", padding="0 1em 1.5em 1em", # Padding solo a los lados y abajo
+            width="100%",
+            spacing="2",
+            padding="0 1em 1.5em 1em",
+            flex_shrink="0",  # <-- CLAVE #2: Prohíbe que esta sección se encoja.
         ),
 
         # Propiedades del panel principal
         height="100%",
         width="100%",
         spacing="0",
-        align_items="stretch", # Asegura que los hijos ocupen todo el ancho
+        align_items="stretch",
         bg=rx.color("gray", 2),
     )
-    # --- ✨ FIN DE LA SOLUCIÓN DEFINITIVA ✨ ---
+    # --- ✨ FIN DE LA SOLUCIÓN FINAL ✨ ---
 
     # El resto del componente que maneja el deslizamiento no cambia.
     return rx.box(
         rx.hstack(
-            rx.box( # El contenedor del panel con el ancho fijo
+            rx.box(
                 sidebar_panel,
                 width=SIDEBAR_WIDTH,
                 height="100%",
             ),
-            rx.box( # La pestaña para abrir/cerrar
+            rx.box(
                 rx.text("LIKEMODAS", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.2em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer", bg=rx.color("violet", 9), border_radius="0 8px 8px 0",
@@ -128,7 +128,6 @@ def sliding_admin_sidebar() -> rx.Component:
             ),
             align_items="center", spacing="0"
         ),
-        # Lógica de polling (sin cambios)
         rx.cond(
             AppState.is_admin,
             rx.fragment(
@@ -136,7 +135,6 @@ def sliding_admin_sidebar() -> rx.Component:
                 rx.box(on_mount=rx.call_script("if (!window.likemodas_admin_poller) { window.likemodas_admin_poller = setInterval(() => { const trigger = document.getElementById('admin_notification_poller'); if (trigger) { trigger.click(); } }, 15000); }"), display="none")
             )
         ),
-        # Lógica de posicionamiento (sin cambios)
         position="fixed", top="0", left="0", height="100%", display="flex", align_items="center",
         transform=rx.cond(AppState.show_admin_sidebar, "translateX(0)", f"translateX(-{SIDEBAR_WIDTH})"),
         transition="transform 0.4s ease-in-out",
