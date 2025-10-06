@@ -40,7 +40,6 @@ def sidebar_items() -> rx.Component:
 def sliding_admin_sidebar() -> rx.Component:
     SIDEBAR_WIDTH = "16em"
     
-    # --- INICIO DE LA CORRECCIÓN CLAVE ---
     sidebar_panel = rx.vstack(
         # Contenido superior (logo e ítems)
         rx.vstack(
@@ -49,13 +48,11 @@ def sliding_admin_sidebar() -> rx.Component:
                 align="center", justify="center", width="100%", margin_bottom={"initial": "0.5em", "lg": "1em"},
             ),
             rx.scroll_area(sidebar_items(), flex_grow="1"),
-            # Este spacer solo ocupará espacio si hay lugar, empujando el pie de página hacia abajo.
             rx.spacer(), 
             spacing="4",
             padding_x="1em",
             padding_top={"initial": "1.5em", "lg": "2.5em"},
             width="100%",
-            # Hacemos que este vstack ocupe todo el alto disponible
             flex_grow="1", 
         ),
 
@@ -95,11 +92,12 @@ def sliding_admin_sidebar() -> rx.Component:
         # Propiedades del panel principal
         bg=rx.color("gray", 2), 
         align="start", 
-        height="100%", # Asegura que el panel ocupe toda la altura
+        height="100%",
         width=SIDEBAR_WIDTH,
-        spacing=0 # Eliminamos el espaciado principal para controlar el layout con vstacks internos
+        # --- ✨ CORRECCIÓN CLAVE AQUÍ ✨ ---
+        # El valor de spacing debe ser un string "0", no el número 0.
+        spacing="0" 
     )
-    # --- FIN DE LA CORRECCIÓN CLAVE ---
     
     return rx.box(
         rx.hstack(
