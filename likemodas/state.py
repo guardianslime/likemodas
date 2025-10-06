@@ -857,30 +857,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def buyer_options_for_select(self) -> list[tuple[str, str]]:
         """
-        Prepara la lista de usuarios en el formato (label, value)
-        requerido por el componente `searchable_select`.
+        [CORREGIDO] Prepara y filtra la lista de usuarios en el formato (label, value)
+        para el selector de comprador, evitando errores de 'DetachedInstanceError'.
         """
-        if not self.filtered_all_users_for_sale:
-            return []
-        
         options = []
-        for user in self.filtered_all_users_for_sale:
-            if user.user:  # Chequeo de seguridad
+        
+        # Usa la lista `self.all_users` que ya tiene los datos precargados
+        source_users = self.all_users
+
+        # Aplica el filtro de búsqueda si existe
+        if self.search_query_all_buyers.strip():
+            q = self.search_query_all_buyers.lower()
+            source_users = [
+                u for u in self.all_users
+                if u.user and (q in u.user.username.lower() or q in u.email.lower())
+            ]
+            
+        for user in source_users:
+            # Ahora el chequeo 'if user.user' es seguro porque los datos fueron precargados
+            if user.user:
                 label = f"{user.user.username} ({user.email})"
                 value = str(user.id)
                 options.append((label, value))
+                
         return options
-
-    @rx.var
-    def filtered_all_users_for_sale(self) -> list[UserInfo]:
-        """Filtra la lista de todos los usuarios para el selector de comprador."""
-        if not self.search_query_all_buyers.strip():
-            return self.all_users
-        q = self.search_query_all_buyers.lower()
-        return [
-            u for u in self.all_users
-            if u.user and (q in u.user.username.lower() or q in u.email.lower())
-        ]      
     
     # --- INICIO: NUEVOS EVENT HANDLERS PARA VENTA DIRECTA ---
 
@@ -5535,6 +5535,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def load_all_users(self):
+        """
+        [CORREGIDO] Carga todos los usuarios con su relación 'user' precargada
+        para evitar errores de 'DetachedInstanceError'.
+        """
         if not self.is_admin:
             self.all_users = []
             return rx.redirect("/")
@@ -5542,6 +5546,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             self.all_users = session.exec(
                 sqlmodel.select(UserInfo).options(
+                    # Esta línea es la clave: le dice a SQLAlchemy que cargue la relación 'user' inmediatamente.
                     sqlalchemy.orm.joinedload(UserInfo.user)
                 )
             ).all()
