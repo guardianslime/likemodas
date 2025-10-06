@@ -1,10 +1,10 @@
 # likemodas/admin/users_page.py (NUEVO ARCHIVO)
 
 import reflex as rx
-from ..state import AppState
-from ..models import UserInfo, UserRole
+from ..state import AppState, UserManagementDTO # Importa el nuevo DTO
+from ..models import UserRole 
 
-def user_status_badge(user: UserInfo) -> rx.Component:
+def user_status_badge(user: UserManagementDTO) -> rx.Component: # <-- Usa el DTO
     """Devuelve un badge de estado basado en si el usuario está verificado o vetado."""
     return rx.cond(
         user.is_banned,
@@ -16,37 +16,30 @@ def user_status_badge(user: UserInfo) -> rx.Component:
         )
     )
 
-def user_row(user: UserInfo) -> rx.Component:
+def user_row(user: UserManagementDTO) -> rx.Component: # <-- Usa el DTO
     """Componente para renderizar una fila de la tabla de usuarios."""
     return rx.table.row(
-        rx.table.cell(rx.cond(user.user, user.user.username, "N/A")),
+        rx.table.cell(user.username), # Acceso directo y seguro
         rx.table.cell(user.email),
         rx.table.cell(rx.badge(user.role)),
         rx.table.cell(user_status_badge(user)),
         rx.table.cell(
             rx.hstack(
-                # Botón para cambiar rol de Admin
                 rx.button(
                     rx.cond(user.role == UserRole.ADMIN, "Quitar Admin", "Hacer Admin"),
-                    # --- CORRECCIÓN APLICADA ---
                     on_click=AppState.toggle_admin_role(user.id),
                     size="1"
                 ),
-                # Botón para Vendedor
                 rx.button(
                     rx.cond(user.role == UserRole.VENDEDOR, "Quitar Vendedor", "Hacer Vendedor"),
-                    # --- CORRECCIÓN APLICADA ---
                     on_click=AppState.toggle_vendedor_role(user.id),
                     size="1",
                     color_scheme="violet",
                     is_disabled=(user.role == UserRole.ADMIN)
                 ),
-                # Botón para vetar/quitar veto
                 rx.cond(
                     user.is_banned,
-                    # --- CORRECCIÓN APLICADA ---
                     rx.button("Quitar Veto", on_click=AppState.unban_user(user.id), color_scheme="green", size="1"),
-                    # --- CORRECCIÓN APLICADA ---
                     rx.button("Vetar (7 días)", on_click=AppState.ban_user(user.id, 7), color_scheme="red", size="1"),
                 ),
                 spacing="2"
@@ -82,6 +75,7 @@ def user_management_page() -> rx.Component:
                     )
                 ),
                 rx.table.body(
+                    # Itera sobre la propiedad computada que ahora devuelve DTOs
                     rx.foreach(AppState.filtered_all_users, user_row)
                 ),
                 variant="surface",

@@ -104,6 +104,15 @@ class DirectSaleGroupDTO(rx.Base):
     subtotal_cop: str
     variants: list[DirectSaleVariantDTO] = []
 
+class UserManagementDTO(rx.Base):
+    """DTO para mostrar un usuario en la tabla de gestión de administradores."""
+    id: int
+    username: str
+    email: str
+    role: UserRole
+    is_banned: bool
+    is_verified: bool
+
 # ✨ --- FIN DE LA SOLUCIÓN --- ✨
 
 class UserInfoDTO(rx.Base):
@@ -857,28 +866,22 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def buyer_options_for_select(self) -> list[tuple[str, str]]:
         """
-        [CORREGIDO] Prepara y filtra la lista de usuarios en el formato (label, value)
-        para el selector de comprador, evitando errores de 'DetachedInstanceError'.
+        [CORRECCIÓN DEFINITIVA] Prepara y filtra la lista de DTOs para el selector de comprador.
         """
         options = []
-        
-        # Usa la lista `self.all_users` que ya tiene los datos precargados
-        source_users = self.all_users
+        source_users = self.managed_users # Usa la nueva lista de DTOs
 
-        # Aplica el filtro de búsqueda si existe
         if self.search_query_all_buyers.strip():
             q = self.search_query_all_buyers.lower()
             source_users = [
-                u for u in self.all_users
-                if u.user and (q in u.user.username.lower() or q in u.email.lower())
+                u for u in self.managed_users
+                if (q in u.username.lower() or q in u.email.lower())
             ]
             
         for user in source_users:
-            # Ahora el chequeo 'if user.user' es seguro porque los datos fueron precargados
-            if user.user:
-                label = f"{user.user.username} ({user.email})"
-                value = str(user.id)
-                options.append((label, value))
+            label = f"{user.username} ({user.email})"
+            value = str(user.id)
+            options.append((label, value))
                 
         return options
     
@@ -1554,48 +1557,46 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- 2. PROPIEDAD COMPUTADA PARA FILTRAR USUARIOS ---
     @rx.var
-    def filtered_all_users(self) -> list[UserInfo]:
-        """Filtra la lista completa de usuarios según la barra de búsqueda."""
+    def filtered_all_users(self) -> list[UserManagementDTO]:
+        """Filtra la lista de DTOs de usuarios según la barra de búsqueda."""
         if not self.search_query_all_users.strip():
-            return self.all_users
+            return self.managed_users
         
         query = self.search_query_all_users.lower()
         return [
-            u for u in self.all_users
-            if u.user and (query in u.user.username.lower() or query in u.email.lower())
+            u for u in self.managed_users
+            if (query in u.username.lower() or query in u.email.lower())
         ]
 
     # --- 3. NUEVO MANEJADOR DE EVENTOS PARA CAMBIAR ROL DE VENDEDOR ---
     @rx.event
     def toggle_vendedor_role(self, userinfo_id: int):
-        """[CORREGIDO] Cambia el rol de un usuario a/desde Vendedor y actualiza el estado localmente."""
+        """[CORRECCIÓN DEFINITIVA] Cambia el rol y actualiza la lista de DTOs."""
         if not self.is_admin:
-            return rx.toast.error("No tienes permisos para realizar esta acción.")
-
+            return rx.toast.error("No tienes permisos.")
         with rx.session() as session:
             user_info = session.get(UserInfo, userinfo_id)
             if user_info and user_info.user:
-                if user_info.id == self.authenticated_user_info.id:
-                    return rx.toast.warning("No puedes cambiar tu propio rol de esta manera.")
-                
-                if user_info.role == UserRole.VENDEDOR:
-                    user_info.role = UserRole.CUSTOMER
-                    yield rx.toast.info(f"{user_info.user.username} ahora es un Cliente.")
-                elif user_info.role == UserRole.CUSTOMER:
-                    user_info.role = UserRole.VENDEDOR
-                    yield rx.toast.success(f"{user_info.user.username} ahora es un Vendedor.")
+                # ... (lógica de cambio de rol en la BD) ...
+                new_role = UserRole.CUSTOMER if user_info.role == UserRole.VENDEDOR else UserRole.VENDEDOR
+                if user_info.role in [UserRole.CUSTOMER, UserRole.VENDEDOR]:
+                    user_info.role = new_role
+                    session.add(user_info)
+                    session.commit()
+                    session.refresh(user_info)
+
+                    # --- ¡CORRECCIÓN CLAVE! ---
+                    # Actualiza el DTO en la lista del estado, en lugar de recargar todo.
+                    for i, u in enumerate(self.managed_users):
+                        if u.id == userinfo_id:
+                            self.managed_users[i].role = new_role
+                            break
+                    # --- FIN DE LA CORRECCIÓN ---
+                    
+                    toast_message = f"{user_info.user.username} ahora es un {new_role.value.capitalize()}."
+                    return rx.toast.info(toast_message)
                 else:
-                    yield rx.toast.error("Solo se puede alternar el rol entre Cliente y Vendedor.")
-
-                session.add(user_info)
-                session.commit()
-                session.refresh(user_info)
-
-                # --- CORRECCIÓN CLAVE: Actualiza la lista en el estado directamente ---
-                for i, u in enumerate(self.all_users):
-                    if u.id == userinfo_id:
-                        self.all_users[i] = user_info
-                        break
+                    return rx.toast.error("Solo se puede alternar el rol entre Cliente y Vendedor.")
 
 
     # --- 4. NUEVO MANEJADOR PARA POLLING DE ROL (Redirección automática) ---
@@ -4882,7 +4883,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     pending_purchases: List[AdminPurchaseCardData] = []
     purchase_history: List[AdminPurchaseCardData] = []
     new_purchase_notification: bool = False
-    all_users: List[UserInfo] = []
+    managed_users: list[UserManagementDTO] = []
     admin_store_posts: list[ProductCardData] = []
     show_admin_sidebar: bool = False
 
@@ -5536,24 +5537,36 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_all_users(self):
         """
-        [CORREGIDO] Carga todos los usuarios con su relación 'user' precargada
-        para evitar errores de 'DetachedInstanceError'.
+        [CORRECCIÓN DEFINITIVA] Carga todos los usuarios y los convierte en DTOs seguros para el estado.
         """
         if not self.is_admin:
-            self.all_users = []
+            self.managed_users = []
             return rx.redirect("/")
         
         with rx.session() as session:
-            self.all_users = session.exec(
-                sqlmodel.select(UserInfo).options(
-                    # Esta línea es la clave: le dice a SQLAlchemy que cargue la relación 'user' inmediatamente.
-                    sqlalchemy.orm.joinedload(UserInfo.user)
-                )
+            users_from_db = session.exec(
+                sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
             ).all()
+            
+            # Convierte los objetos complejos de la BD en DTOs simples y seguros
+            self.managed_users = [
+                UserManagementDTO(
+                    id=u.id,
+                    username=u.user.username if u.user else "Usuario no válido",
+                    email=u.email,
+                    role=u.role,
+                    is_banned=u.is_banned,
+                    is_verified=u.is_verified,
+                )
+                for u in users_from_db
+            ]
 
     @rx.event
     def toggle_admin_role(self, userinfo_id: int):
-        """[CORREGIDO] Cambia el rol de un usuario a/desde Admin y actualiza el estado localmente."""
+        """
+        [CORRECCIÓN DEFINITIVA] Cambia el rol de un usuario a/desde Admin
+        y actualiza la lista de DTOs en el estado localmente.
+        """
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
             
@@ -5563,23 +5576,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if user_info.id == self.authenticated_user_info.id:
                     return rx.toast.warning("No puedes cambiar tu propio rol.")
                 
-                if user_info.role == UserRole.ADMIN:
-                    user_info.role = UserRole.CUSTOMER
-                else:
-                    user_info.role = UserRole.ADMIN
+                new_role = UserRole.CUSTOMER if user_info.role == UserRole.ADMIN else UserRole.ADMIN
+                user_info.role = new_role
                 session.add(user_info)
                 session.commit()
                 session.refresh(user_info)
 
-                # --- CORRECCIÓN CLAVE: Actualiza la lista en el estado directamente ---
-                for i, u in enumerate(self.all_users):
+                # --- CORRECCIÓN CLAVE: Actualiza el DTO en la lista del estado directamente ---
+                for i, u in enumerate(self.managed_users):
                     if u.id == userinfo_id:
-                        self.all_users[i] = user_info
+                        self.managed_users[i].role = new_role
                         break
 
     @rx.event
     def ban_user(self, userinfo_id: int, days: int = 7):
-        """[CORREGIDO] Veta a un usuario y actualiza el estado localmente."""
+        """
+        [CORRECCIÓN DEFINITIVA] Veta a un usuario por un número de días
+        y actualiza el estado localmente.
+        """
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
         
@@ -5595,15 +5609,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 session.refresh(user_info)
 
-                # --- CORRECCIÓN CLAVE: Actualiza la lista en el estado directamente ---
-                for i, u in enumerate(self.all_users):
+                # --- CORRECCIÓN CLAVE: Actualiza el DTO en la lista del estado directamente ---
+                for i, u in enumerate(self.managed_users):
                     if u.id == userinfo_id:
-                        self.all_users[i] = user_info
+                        self.managed_users[i].is_banned = True
                         break
 
     @rx.event
     def unban_user(self, userinfo_id: int):
-        """[CORREGIDO] Quita el veto a un usuario y actualiza el estado localmente."""
+        """
+        [CORRECCIÓN DEFINITIVA] Quita el veto a un usuario
+        y actualiza el estado localmente.
+        """
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
 
@@ -5616,10 +5633,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 session.refresh(user_info)
                 
-                # --- CORRECCIÓN CLAVE: Actualiza la lista en el estado directamente ---
-                for i, u in enumerate(self.all_users):
+                # --- CORRECCIÓN CLAVE: Actualiza el DTO en la lista del estado directamente ---
+                for i, u in enumerate(self.managed_users):
                     if u.id == userinfo_id:
-                        self.all_users[i] = user_info
+                        self.managed_users[i].is_banned = False
                         break
     
     # --- 👇 AÑADE ESTA NUEVA PROPIEDAD COMPUTADA AQUÍ 👇 ---
