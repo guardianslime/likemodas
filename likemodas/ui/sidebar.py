@@ -1,5 +1,3 @@
-# likemodas/ui/sidebar.py
-
 import reflex as rx
 from ..state import AppState
 from .. import navigation
@@ -91,7 +89,8 @@ def sliding_admin_sidebar() -> rx.Component:
                     rx.text("Modo Vigilancia", size="2", weight="bold"),
                     rx.spacer(),
                     rx.icon_button(
-                        rx.icon("x-circle", size=16),
+                        # --- CORRECCIÓN DEL ICONO ---
+                        rx.icon("circle-x", size=16),
                         on_click=AppState.stop_vigilancia,
                         size="1",
                         variant="ghost",
@@ -124,7 +123,7 @@ def sliding_admin_sidebar() -> rx.Component:
                     align="center", spacing="3", width="100%", padding="0.75em",
                     border_radius="var(--radius-3)", _hover={"background_color": rx.color("violet", 4)},
                 ),
-                href="/admin/profile", # El perfil siempre es el del usuario logueado
+                href="/admin/profile",
                 underline="none", width="100%",
             ),
             rx.button(
@@ -149,7 +148,7 @@ def sliding_admin_sidebar() -> rx.Component:
             rx.box(
                 sidebar_panel,
                 width=SIDEBAR_WIDTH,
-                height="100dvh", # Altura dinámica del viewport para evitar barras de scroll del navegador
+                height="100dvh",
                 bg=rx.color("gray", 2),
             ),
             rx.box(

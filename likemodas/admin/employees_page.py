@@ -1,4 +1,3 @@
-# likemodas/admin/employees_page.py
 import reflex as rx
 from ..state import AppState
 from ..models import UserInfo
@@ -7,9 +6,10 @@ def user_search_result_card(user: UserInfo) -> rx.Component:
     """Tarjeta para un usuario en los resultados de búsqueda."""
     return rx.card(
         rx.hstack(
-            rx.avatar(fallback=user.user.username[0].upper() if user.user else "?"),
+            # --- CORRECCIÓN DEL ERROR ---
+            rx.avatar(fallback=rx.cond(user.user, user.user.username[0].upper(), "?")),
             rx.vstack(
-                rx.text(user.user.username, weight="bold"),
+                rx.text(rx.cond(user.user, user.user.username, "Usuario Inválido"), weight="bold"),
                 rx.text(user.email, size="2", color_scheme="gray"),
                 align_items="start"
             ),
@@ -22,9 +22,10 @@ def current_employee_card(user: UserInfo) -> rx.Component:
     """Tarjeta para un empleado actual."""
     return rx.card(
         rx.hstack(
-            rx.avatar(fallback=user.user.username[0].upper() if user.user else "?"),
+            # --- CORRECCIÓN DEL ERROR ---
+            rx.avatar(fallback=rx.cond(user.user, user.user.username[0].upper(), "?")),
             rx.vstack(
-                rx.text(user.user.username, weight="bold"),
+                rx.text(rx.cond(user.user, user.user.username, "Usuario Inválido"), weight="bold"),
                 rx.text(user.email, size="2", color_scheme="gray"),
                 align_items="start"
             ),
