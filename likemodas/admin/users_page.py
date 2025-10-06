@@ -21,8 +21,6 @@ def user_row(user: UserInfo) -> rx.Component:
     return rx.table.row(
         rx.table.cell(rx.cond(user.user, user.user.username, "N/A")),
         rx.table.cell(user.email),
-        # --- CORRECCIÓN CLAVE AQUÍ ---
-        # Se elimina .value. rx.badge puede renderizar el valor del enum directamente.
         rx.table.cell(rx.badge(user.role)),
         rx.table.cell(user_status_badge(user)),
         rx.table.cell(
@@ -30,23 +28,24 @@ def user_row(user: UserInfo) -> rx.Component:
                 # Botón para cambiar rol de Admin
                 rx.button(
                     rx.cond(user.role == UserRole.ADMIN, "Quitar Admin", "Hacer Admin"),
-                    on_click=lambda: AppState.toggle_admin_role(user.id),
+                    # --- CORRECCIÓN AQUÍ ---
+                    on_click=AppState.toggle_admin_role(user.id),
                     size="1"
                 ),
                 # Botón para Vendedor
                 rx.button(
                     rx.cond(user.role == UserRole.VENDEDOR, "Quitar Vendedor", "Hacer Vendedor"),
-                    on_click=lambda: AppState.toggle_vendedor_role(user.id),
+                    # --- CORRECCIÓN AQUÍ ---
+                    on_click=AppState.toggle_vendedor_role(user.id),
                     size="1",
                     color_scheme="violet",
-                    # Se deshabilita si el usuario ya es Admin
                     is_disabled=(user.role == UserRole.ADMIN)
                 ),
                 # Botón para vetar/quitar veto
                 rx.cond(
                     user.is_banned,
-                    rx.button("Quitar Veto", on_click=lambda: AppState.unban_user(user.id), color_scheme="green", size="1"),
-                    rx.button("Vetar (7 días)", on_click=lambda: AppState.ban_user(user.id, 7), color_scheme="red", size="1"),
+                    rx.button("Quitar Veto", on_click=AppState.unban_user(user.id), color_scheme="green", size="1"),
+                    rx.button("Vetar (7 días)", on_click=AppState.ban_user(user.id, 7), color_scheme="red", size="1"),
                 ),
                 spacing="2"
             )
