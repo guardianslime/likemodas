@@ -1,21 +1,16 @@
 # likemodas/admin/store_page.py
 
 import reflex as rx
-from ..auth.admin_auth import require_admin
+from ..auth.admin_auth import require_panel_access  # <-- CORRECCIÓN: Importa el decorador correcto
 from ..ui.components import product_gallery_component, searchable_select
 from ..blog.public_page import product_detail_modal
 from ..state import AppState, DirectSaleGroupDTO, DirectSaleVariantDTO
 
-# La función sliding_direct_sale_cart() no cambia y se omite por brevedad...
 def sliding_direct_sale_cart() -> rx.Component:
-    """
-    Sidebar deslizable para el carrito de venta directa, con el nuevo diseño
-    de productos agrupados y controles de cantidad por variante.
-    """
+    """Sidebar deslizable para el carrito de venta directa."""
     SIDEBAR_WIDTH = "16em"
 
     def render_variant_row(variant: DirectSaleVariantDTO) -> rx.Component:
-        """Componente para renderizar una fila de variante con sus controles."""
         return rx.hstack(
             rx.text(variant.attributes_str, size="2", no_of_lines=1),
             rx.spacer(),
@@ -42,7 +37,6 @@ def sliding_direct_sale_cart() -> rx.Component:
         )
 
     def render_product_group(group: DirectSaleGroupDTO) -> rx.Component:
-        """Componente para renderizar un grupo de producto en el carrito."""
         return rx.vstack(
             rx.hstack(
                 rx.image(
@@ -149,10 +143,9 @@ def sliding_direct_sale_cart() -> rx.Component:
         z_index="1000",
     )
 
-
-@require_admin
+@require_panel_access # <-- CORRECCIÓN: Usa el decorador correcto
 def admin_store_page() -> rx.Component:
-    """Página de Tienda para el administrador, incluyendo el activador del escáner QR."""
+    """Página de Tienda para el administrador/vendedor."""
     main_content = rx.vstack(
         rx.vstack(
             rx.heading("Tienda (Punto de Venta)", size="8"),
@@ -204,19 +197,13 @@ def admin_store_page() -> rx.Component:
         ),
         product_detail_modal(is_for_direct_sale=True),
         sliding_direct_sale_cart(),
-
-        # --- MODAL DE ESCANEO QR (NUEVA VERSIÓN) ---
-        # Este es el nuevo modal que reemplaza al anterior.
         rx.dialog.root(
             rx.dialog.content(
                 rx.dialog.title("Añadir Producto por QR"),
                 rx.dialog.description(
                     "Selecciona una opción para escanear el código QR del producto."
                 ),
-                
-                # Usamos un Vstack para organizar los dos botones de acción
                 rx.vstack(
-                    # --- Botón 1: Abrir la cámara directamente ---
                     rx.upload(
                         rx.button(
                             rx.hstack(rx.icon("camera"), rx.text("Tomar Foto con la Cámara")),
@@ -226,17 +213,13 @@ def admin_store_page() -> rx.Component:
                             color_scheme="violet",
                         ),
                         id="qr_upload_camera",
-                        # La propiedad 'capture' le dice al navegador que abra la cámara
                         capture="environment", 
-                        # MEJORA 1: Cerramos el modal inmediatamente al recibir el archivo
                         on_drop=[
                             AppState.set_show_qr_scanner_modal(False), 
                             AppState.handle_qr_image_upload(rx.upload_files("qr_upload_camera"))
                         ],
                         width="100%",
                     ),
-
-                    # --- Botón 2: Subir desde la galería ---
                     rx.upload(
                         rx.button(
                             rx.hstack(rx.icon("image"), rx.text("Subir desde Galería")),
@@ -246,20 +229,16 @@ def admin_store_page() -> rx.Component:
                             variant="outline",
                         ),
                         id="qr_upload_gallery",
-                        # MEJORA 1: También cerramos el modal aquí
                         on_drop=[
                             AppState.set_show_qr_scanner_modal(False),
                             AppState.handle_qr_image_upload(rx.upload_files("qr_upload_gallery"))
                         ],
                         width="100%",
                     ),
-                    
                     spacing="4",
                     width="100%",
                     margin_y="1em",
                 ),
-                
-                # Botón de cancelar
                 rx.flex(
                     rx.dialog.close(
                         rx.button("Cancelar", variant="soft", color_scheme="gray")

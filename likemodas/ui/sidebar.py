@@ -1,3 +1,5 @@
+# likemodas/ui/sidebar.py
+
 import reflex as rx
 from ..state import AppState
 from .. import navigation
@@ -27,17 +29,17 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
 
 def sidebar_items() -> rx.Component:
     """
-    Genera la lista de enlaces de navegación del sidebar de forma dinámica
-    basándose en el rol del usuario y el estado de vigilancia.
+    [CORREGIDO] Genera los enlaces del sidebar de forma dinámica, ocultando
+    "Gestión de Usuarios" para los Vendedores.
     """
     # Elementos que ven los Vendedores y los Empleados
-    elementos_base_vendedor = rx.fragment(
+    elementos_base = rx.fragment(
         sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
         sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
         sidebar_item("Tienda (Punto de Venta)", "store", "/admin/store"),
     )
 
-    # Elementos que solo ven los Vendedores (y Admins vigilando), pero NO los Empleados
+    # Elementos de gestión que solo ven los Vendedores (y Admins), pero NO los Empleados
     elementos_gestion_vendedor = rx.fragment(
         sidebar_item("Finanzas", "line-chart", "/admin/finance"),
         sidebar_item("Gestión de Empleados", "user-cog", "/admin/employees"),
@@ -53,26 +55,23 @@ def sidebar_items() -> rx.Component:
     )
 
     return rx.vstack(
-        elementos_base_vendedor,
+        elementos_base,
         rx.cond(
             ~AppState.is_empleado,  # Si NO es un empleado (es Vendedor o Admin)
-            rx.fragment(
-                elementos_gestion_vendedor,
-                rx.cond(
-                    ~AppState.is_vigilando,  # Y si NO está vigilando (es Admin en su propia cuenta)
-                    elementos_exclusivos_admin
-                )
-            )
+            elementos_gestion_vendedor
+        ),
+        # La lógica para los elementos de admin ahora es independiente
+        rx.cond(
+            AppState.is_admin & ~AppState.is_vigilando,
+            elementos_exclusivos_admin
         ),
         spacing="2",
         width="100%",
     )
 
+
 def sliding_admin_sidebar() -> rx.Component:
-    """
-    Componente del sidebar deslizable con un diseño único y scrollable
-    que respeta el área visible en todos los dispositivos.
-    """
+    """Componente del sidebar deslizable."""
     SIDEBAR_WIDTH = "16em"
 
     sidebar_content = rx.vstack(
@@ -80,7 +79,6 @@ def sliding_admin_sidebar() -> rx.Component:
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%",
         ),
-        # Indicador de Modo Vigilancia
         rx.cond(
             AppState.is_vigilando,
             rx.box(
@@ -89,7 +87,6 @@ def sliding_admin_sidebar() -> rx.Component:
                     rx.text("Modo Vigilancia", size="2", weight="bold"),
                     rx.spacer(),
                     rx.icon_button(
-                        # --- CORRECCIÓN DEL ICONO ---
                         rx.icon("circle-x", size=16),
                         on_click=AppState.stop_vigilancia,
                         size="1",
@@ -123,7 +120,7 @@ def sliding_admin_sidebar() -> rx.Component:
                     align="center", spacing="3", width="100%", padding="0.75em",
                     border_radius="var(--radius-3)", _hover={"background_color": rx.color("violet", 4)},
                 ),
-                href="/admin/profile",
+                href="/admin/profile", 
                 underline="none", width="100%",
             ),
             rx.button(
