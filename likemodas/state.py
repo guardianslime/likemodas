@@ -6696,15 +6696,26 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_admin_tickets_page(self):
-        """Carga todos los tickets de soporte donde el usuario actual es el vendedor."""
-        if not self.is_admin:
+        """
+        [CORREGIDO] Carga todos los tickets de soporte donde el usuario actual
+        es el vendedor, permitiendo el acceso a Vendedores y Administradores.
+        """
+        # --- ¡ESTA ES LA CORRECCIÓN CLAVE! ---
+        # Ahora comprobamos si el usuario NO es admin Y TAMPOCO es vendedor.
+        if not (self.is_admin or self.is_vendedor):
             return rx.redirect("/")
 
+        # El resto de la función se mantiene igual.
         with rx.session() as session:
+            # La consulta busca tickets donde el usuario actual sea el vendedor.
+            # Un admin sin tickets no verá nada, lo cual es correcto.
+            # Si un admin está en modo vigilancia, el context_user_id será el del vendedor.
+            user_id_to_check = self.context_user_id if self.context_user_id else self.authenticated_user_info.id
+
             tickets = session.exec(
                 sqlmodel.select(SupportTicketModel)
                 .options(sqlalchemy.orm.joinedload(SupportTicketModel.buyer).joinedload(UserInfo.user))
-                .where(SupportTicketModel.seller_id == self.authenticated_user_info.id)
+                .where(SupportTicketModel.seller_id == user_id_to_check)
                 .order_by(SupportTicketModel.created_at.desc())
             ).all()
 
