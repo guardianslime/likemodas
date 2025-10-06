@@ -575,14 +575,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).one_or_none()
 
     @rx.var
-    def vendedor_users(self) -> list[UserInfo]:
-        """Filtra y devuelve solo los usuarios con rol de Vendedor."""
-        return [u for u in self.all_users if u.role == UserRole.VENDEDOR]
+    def vendedor_users(self) -> list[UserManagementDTO]:
+        """
+        [CORREGIDO] Filtra y devuelve solo los DTOs de usuarios 
+        con rol de Vendedor desde la lista 'managed_users'.
+        """
+        # Usa el nuevo nombre de la variable
+        return [u for u in self.managed_users if u.role == UserRole.VENDEDOR]
 
     @rx.var
-    def customer_users(self) -> list[UserInfo]:
-        """Filtra y devuelve solo los usuarios con rol de Cliente."""
-        return [u for u in self.all_users if u.role == UserRole.CUSTOMER]
+    def customer_users(self) -> list[UserManagementDTO]:
+        """
+        [CORREGIDO] Filtra y devuelve solo los DTOs de usuarios 
+        con rol de Cliente desde la lista 'managed_users'.
+        """
+        # Usa el nuevo nombre de la variable
+        return [u for u in self.managed_users if u.role == UserRole.CUSTOMER]
 
     # --- Manejadores de Eventos (Nuevos y Modificados) ---
 
