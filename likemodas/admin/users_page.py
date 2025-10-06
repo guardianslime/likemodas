@@ -21,7 +21,9 @@ def user_row(user: UserInfo) -> rx.Component:
     return rx.table.row(
         rx.table.cell(rx.cond(user.user, user.user.username, "N/A")),
         rx.table.cell(user.email),
-        rx.table.cell(rx.badge(user.role.value)),
+        # --- CORRECCIÓN CLAVE AQUÍ ---
+        # Se elimina .value. rx.badge puede renderizar el valor del enum directamente.
+        rx.table.cell(rx.badge(user.role)),
         rx.table.cell(user_status_badge(user)),
         rx.table.cell(
             rx.hstack(
@@ -31,7 +33,7 @@ def user_row(user: UserInfo) -> rx.Component:
                     on_click=lambda: AppState.toggle_admin_role(user.id),
                     size="1"
                 ),
-                # --- NUEVO BOTÓN PARA VENDEDOR ---
+                # Botón para Vendedor
                 rx.button(
                     rx.cond(user.role == UserRole.VENDEDOR, "Quitar Vendedor", "Hacer Vendedor"),
                     on_click=lambda: AppState.toggle_vendedor_role(user.id),
@@ -58,7 +60,6 @@ def user_management_page() -> rx.Component:
             rx.heading("Gestión de Usuarios", size="7"),
             rx.text("Administra los roles y el estado de todos los usuarios registrados."),
             
-            # --- BARRA DE BÚSQUEDA AÑADIDA ---
             rx.input(
                 placeholder="Buscar por nombre de usuario o email...",
                 value=AppState.search_query_all_users,
@@ -80,7 +81,6 @@ def user_management_page() -> rx.Component:
                     )
                 ),
                 rx.table.body(
-                    # --- USA LA LISTA FILTRADA ---
                     rx.foreach(AppState.filtered_all_users, user_row)
                 ),
                 variant="surface",
