@@ -1,4 +1,4 @@
-# likemodas/ui/sidebar.py (VERSIÓN HÍBRIDA FINAL: SCROLL EN MÓVIL, ORIGINAL EN PC)
+# likemodas/ui/sidebar.py (VERSIÓN FINAL CON SCROLL UNIVERSAL)
 
 import reflex as rx
 from ..state import AppState
@@ -46,19 +46,25 @@ def sidebar_items() -> rx.Component:
 
 def sliding_admin_sidebar() -> rx.Component:
     """
-    Componente del sidebar que muestra un layout en móvil y otro diferente en PC.
+    Componente del sidebar deslizable con un diseño único y scrollable
+    para garantizar el funcionamiento en todas las pantallas.
     """
     SIDEBAR_WIDTH = "16em"
 
-    # --- LAYOUT #1: VERSIÓN PARA MÓVIL (CON SCROLL COMPLETO) ---
-    mobile_content = rx.vstack(
+    # --- ✨ INICIO DE LA SOLUCIÓN UNIVERSAL ✨ ---
+
+    # 1. Se crea un único vstack con TODO el contenido del sidebar.
+    sidebar_content = rx.vstack(
+        # Sección Superior (Logo)
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%",
         ),
+        # Sección Media (Links)
         sidebar_items(),
-        # Spacer para empujar el contenido inferior hacia abajo
+        # Un espaciador para empujar la sección inferior hacia abajo en pantallas de PC.
         rx.spacer(),
+        # Sección Inferior (Perfil y Logout)
         rx.vstack(
             rx.divider(),
             rx.link(
@@ -85,65 +91,20 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         spacing="4",
         padding={"initial": "1.5em 1em", "lg": "2.5em 1em"},
+        # La altura mínima es clave para que el espaciador funcione en PC.
         min_height="100%",
     )
-    mobile_layout = rx.scroll_area(mobile_content, height="100%", width="100%")
 
-    # --- LAYOUT #2: VERSIÓN PARA PC (TU CÓDIGO ORIGINAL SIN CAMBIOS) ---
-    desktop_layout = rx.vstack(
-        rx.vstack(
-            rx.hstack(
-                rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
-                align="center", justify="center", width="100%", margin_bottom={"initial": "0.5em", "lg": "1em"},
-            ),
-            rx.scroll_area(sidebar_items(), flex_grow="1"),
-            rx.spacer(),
-            spacing="4", padding_x="1em", padding_top={"initial": "1.5em", "lg": "2.5em"},
-            width="100%", flex_grow="1",
-        ),
-        rx.vstack(
-            rx.divider(),
-            rx.link(
-                rx.hstack(
-                    rx.avatar(
-                        src=rx.get_upload_url(AppState.profile_info.avatar_url),
-                        fallback=rx.cond(AppState.authenticated_user.username, AppState.authenticated_user.username[0].upper(), "?"),
-                        size="2"
-                    ),
-                    rx.text(
-                        AppState.authenticated_user.username,
-                        size={"initial": "2", "lg": "3"}, weight="medium", no_of_lines=1, color="var(--violet-11)"
-                    ),
-                    align="center", spacing="3", width="100%", padding="0.75em",
-                    border_radius="var(--radius-3)", _hover={"background_color": rx.color("violet", 4)},
-                ),
-                href="/admin/profile", underline="none", width="100%",
-            ),
-            rx.button(
-                "Logout", rx.icon(tag="log-out", margin_left="0.5em"),
-                on_click=AppState.do_logout, width="100%", variant="soft", color_scheme="red"
-            ),
-            width="100%", spacing={"initial": "2", "lg": "3"},
-            padding_x="1em", padding_bottom={"initial": "1.5em", "lg": "2.5em"},
-        ),
-        bg=rx.color("gray", 2), align="start", height="100%", width="100%", spacing="0"
+    # 2. El contenido completo se envuelve en un `rx.scroll_area` que ocupa toda la altura.
+    #    Este es el único layout, y funcionará en todas las pantallas.
+    sidebar_panel = rx.scroll_area(
+        sidebar_content,
+        height="100%",
+        width="100%",
     )
+    # --- ✨ FIN DE LA SOLUCIÓN UNIVERSAL ✨ ---
 
-    # --- CONTENEDOR QUE DECIDE QUÉ LAYOUT MOSTRAR ---
-    sidebar_panel = rx.fragment(
-        rx.box(
-            mobile_layout,
-            display=["block", "block", "block", "none"], # Visible hasta la pantalla 'lg'
-            height="100%", width="100%",
-        ),
-        rx.box(
-            desktop_layout,
-            display=["none", "none", "none", "block"], # Visible solo desde la pantalla 'lg'
-            height="100%", width="100%",
-        ),
-    )
-
-    # El resto de la lógica que envuelve el panel no cambia.
+    # La lógica que controla el deslizamiento del sidebar no cambia.
     return rx.box(
         rx.hstack(
             rx.box(
