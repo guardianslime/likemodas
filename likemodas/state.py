@@ -1546,6 +1546,78 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield rx.toast.info("Modo de vigilancia finalizado.")
         yield rx.redirect("/admin/users")
 
+    search_query_all_users: str = ""
+
+    def set_search_query_all_users(self, query: str):
+        """Actualiza el término de búsqueda para la tabla de gestión de usuarios."""
+        self.search_query_all_users = query
+
+    # --- 2. PROPIEDAD COMPUTADA PARA FILTRAR USUARIOS ---
+    @rx.var
+    def filtered_all_users(self) -> list[UserInfo]:
+        """Filtra la lista completa de usuarios según la barra de búsqueda."""
+        if not self.search_query_all_users.strip():
+            return self.all_users
+        
+        query = self.search_query_all_users.lower()
+        return [
+            u for u in self.all_users
+            if u.user and (query in u.user.username.lower() or query in u.email.lower())
+        ]
+
+    # --- 3. NUEVO MANEJADOR DE EVENTOS PARA CAMBIAR ROL DE VENDEDOR ---
+    @rx.event
+    def toggle_vendedor_role(self, userinfo_id: int):
+        """
+        Cambia el rol de un usuario entre Vendedor y Cliente.
+        """
+        if not self.is_admin:
+            return rx.toast.error("No tienes permisos para realizar esta acción.")
+
+        with rx.session() as session:
+            user_info = session.get(UserInfo, userinfo_id)
+            if user_info:
+                if user_info.id == self.authenticated_user_info.id:
+                    return rx.toast.warning("No puedes cambiar tu propio rol de esta manera.")
+                
+                if user_info.role == UserRole.VENDEDOR:
+                    user_info.role = UserRole.CUSTOMER
+                    yield rx.toast.info(f"{user_info.user.username} ahora es un Cliente.")
+                elif user_info.role == UserRole.CUSTOMER:
+                    user_info.role = UserRole.VENDEDOR
+                    yield rx.toast.success(f"{user_info.user.username} ahora es un Vendedor.")
+                else:
+                    yield rx.toast.error("Solo se puede alternar el rol entre Cliente y Vendedor.")
+
+                session.add(user_info)
+                session.commit()
+        
+        # Recarga la lista de usuarios en la tabla del admin para reflejar el cambio.
+        yield self.load_all_users
+
+    # --- 4. NUEVO MANEJADOR PARA POLLING DE ROL (Redirección automática) ---
+    @rx.event
+    def poll_user_role(self):
+        """
+        Verifica periódicamente el rol del usuario actual en la base de datos.
+        Si ha cambiado, fuerza una recarga de la página para actualizar la interfaz.
+        """
+        if not self.is_authenticated or not self.authenticated_user_info:
+            return
+
+        with rx.session() as session:
+            # Obtiene el rol más reciente del usuario desde la base de datos
+            db_user_role = session.exec(
+                sqlmodel.select(UserInfo.role).where(UserInfo.id == self.authenticated_user_info.id)
+            ).one_or_none()
+
+            # Compara el rol de la BD con el rol que está en el estado actual de la app
+            if db_user_role and db_user_role != self.authenticated_user_info.role:
+                # Si son diferentes, significa que un admin cambió el rol.
+                # Forzamos una recarga completa de la página.
+                yield rx.toast.info("Tu rol ha sido actualizado. Redirigiendo...")
+                yield rx.reload()
+
     @rx.event
     def submit_and_publish(self, form_data: dict):
         """

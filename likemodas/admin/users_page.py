@@ -6,7 +6,6 @@ from ..models import UserInfo, UserRole
 
 def user_status_badge(user: UserInfo) -> rx.Component:
     """Devuelve un badge de estado basado en si el usuario está verificado o vetado."""
-    # El veto tiene prioridad sobre el estado de verificación
     return rx.cond(
         user.is_banned,
         rx.badge("Vetado", color_scheme="red"),
@@ -20,17 +19,26 @@ def user_status_badge(user: UserInfo) -> rx.Component:
 def user_row(user: UserInfo) -> rx.Component:
     """Componente para renderizar una fila de la tabla de usuarios."""
     return rx.table.row(
-        rx.table.cell(user.user.username),
+        rx.table.cell(rx.cond(user.user, user.user.username, "N/A")),
         rx.table.cell(user.email),
-        rx.table.cell(rx.badge(user.role)),
+        rx.table.cell(rx.badge(user.role.value)),
         rx.table.cell(user_status_badge(user)),
         rx.table.cell(
             rx.hstack(
-                # Botón para cambiar el rol
+                # Botón para cambiar rol de Admin
                 rx.button(
                     rx.cond(user.role == UserRole.ADMIN, "Quitar Admin", "Hacer Admin"),
                     on_click=lambda: AppState.toggle_admin_role(user.id),
                     size="1"
+                ),
+                # --- NUEVO BOTÓN PARA VENDEDOR ---
+                rx.button(
+                    rx.cond(user.role == UserRole.VENDEDOR, "Quitar Vendedor", "Hacer Vendedor"),
+                    on_click=lambda: AppState.toggle_vendedor_role(user.id),
+                    size="1",
+                    color_scheme="violet",
+                    # Se deshabilita si el usuario ya es Admin
+                    is_disabled=(user.role == UserRole.ADMIN)
                 ),
                 # Botón para vetar/quitar veto
                 rx.cond(
@@ -44,11 +52,22 @@ def user_row(user: UserInfo) -> rx.Component:
     )
 
 def user_management_page() -> rx.Component:
-    """Página principal de gestión de usuarios."""
+    """Página principal de gestión de usuarios con búsqueda."""
     return rx.container(
         rx.vstack(
             rx.heading("Gestión de Usuarios", size="7"),
             rx.text("Administra los roles y el estado de todos los usuarios registrados."),
+            
+            # --- BARRA DE BÚSQUEDA AÑADIDA ---
+            rx.input(
+                placeholder="Buscar por nombre de usuario o email...",
+                value=AppState.search_query_all_users,
+                on_change=AppState.set_search_query_all_users,
+                width="100%",
+                max_width="400px",
+                margin_y="1em"
+            ),
+            
             rx.divider(margin_y="1.5em"),
             rx.table.root(
                 rx.table.header(
@@ -61,7 +80,8 @@ def user_management_page() -> rx.Component:
                     )
                 ),
                 rx.table.body(
-                    rx.foreach(AppState.all_users, user_row)
+                    # --- USA LA LISTA FILTRADA ---
+                    rx.foreach(AppState.filtered_all_users, user_row)
                 ),
                 variant="surface",
                 width="100%",

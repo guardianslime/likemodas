@@ -29,11 +29,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         ),
         width="100%",
         min_height="100vh",
-        # --- INICIO DE LA MEJORA DE CARGA DE DATOS ---
-        # Al montar cualquier página de admin, se llama a on_load_profile_page
-        # para asegurar que los datos del perfil (y el avatar) siempre estén disponibles.
         on_mount=rx.cond(AppState.is_admin, AppState.on_load_profile_page, None)
-        # --- FIN DE LA MEJORA ---
     )
 
     public_layout = rx.box(
@@ -48,5 +44,35 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             loading_screen,
             rx.cond(AppState.is_admin, admin_layout, public_layout)
         ),
+        
+        # --- INICIO DE LA LÓGICA DE POLLING DE ROL ---
+        rx.cond(
+            AppState.is_authenticated & ~AppState.is_admin,
+            rx.fragment(
+                rx.button(
+                    "Role Polling Trigger",
+                    on_click=AppState.poll_user_role,
+                    id="role_poller_button",
+                    display="none",
+                ),
+                rx.box(
+                    on_mount=rx.call_script(
+                        """
+                        if (!window.likemodas_role_poller) {
+                            window.likemodas_role_poller = setInterval(() => {
+                                const trigger = document.getElementById('role_poller_button');
+                                if (trigger) {
+                                    trigger.click();
+                                }
+                            }, 10000); // Verifica cada 10 segundos
+                        }
+                        """
+                    ),
+                    display="none",
+                )
+            )
+        ),
+        # --- FIN DE LA LÓGICA DE POLLING DE ROL ---
+
         fixed_color_mode_button(),
     )
