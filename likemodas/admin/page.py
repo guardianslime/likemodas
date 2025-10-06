@@ -1,9 +1,10 @@
 # likemodas/admin/page.py (VERSIÓN FINAL Y DEFINITIVA)
 
 import reflex as rx
-from ..auth.admin_auth import require_admin
 from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
+# --- 1. Importa el decorador correcto ---
+from ..auth.admin_auth import require_panel_access
 
 
 # --- COMPONENTE REUTILIZABLE PARA MOSTRAR ITEMS ---
@@ -35,12 +36,8 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     )
 
 
-# --- ✨ INICIO DE LA CORRECCIÓN: SE ELIMINA EL DECORADOR @rx.Component ✨ ---
-# Esta es ahora una función de ayuda normal, no un componente decorado.
 def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.Component:
-    """
-    Renderiza la lista de artículos para una compra específica.
-    """
+    """Renderiza la lista de artículos para una compra específica."""
     return rx.vstack(
         rx.foreach(
             map_var.get(purchase_id, []), 
@@ -49,7 +46,6 @@ def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.C
         spacing="2",
         width="100%",
     )
-# --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
 
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
@@ -102,7 +98,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
             
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
-                # Se llama a la función de ayuda, que ahora es sintácticamente correcta
                 purchase_items_view(
                     purchase_id=purchase.id, 
                     map_var=AppState.active_purchase_items_map
@@ -110,7 +105,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
             
-            # El resto de la función se mantiene igual...
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
@@ -198,7 +192,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
     )
 
 
-@require_admin
+# --- 2. Usa el nuevo decorador ---
+@require_panel_access 
 def admin_confirm_content() -> rx.Component:
     """Página de admin para gestionar órdenes activas."""
     return rx.center(
@@ -214,7 +209,8 @@ def admin_confirm_content() -> rx.Component:
     )
 
 
-@require_admin
+# --- 2. Usa el nuevo decorador ---
+@require_panel_access 
 def payment_history_content() -> rx.Component:
     """Página de admin para ver el historial de pagos."""
     return rx.center(

@@ -2,11 +2,11 @@
 
 import reflex as rx
 from ..state import AppState
-from ..auth.admin_auth import require_admin
+from ..auth.admin_auth import require_panel_access  # <-- 1. Importa el decorador correcto
 from ..ui.components import searchable_select
 from ..ui.base import base_page
 
-@require_admin
+@require_panel_access # <-- 2. Usa el nuevo decorador
 def my_location_page_content() -> rx.Component:
     """Página para que el vendedor (admin) configure su ubicación de origen."""
     
@@ -88,9 +88,6 @@ def my_location_page_content() -> rx.Component:
         max_width="960px",
     )
     
-    # --- ✨ CORRECCIÓN CLAVE AQUÍ ✨ ---
-    # Volvemos a envolver el 'page_content' en un 'rx.center' para
-    # asegurar que esté centrado horizontal y verticalmente.
     return base_page(
         rx.center(
             page_content,

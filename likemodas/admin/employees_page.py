@@ -1,12 +1,14 @@
+# likemodas/admin/employees_page.py
+
 import reflex as rx
 from ..state import AppState
 from ..models import UserInfo
+from ..auth.admin_auth import require_panel_access # <-- 1. Importa el decorador correcto
 
 def user_search_result_card(user: UserInfo) -> rx.Component:
     """Tarjeta para un usuario en los resultados de búsqueda."""
     return rx.card(
         rx.hstack(
-            # --- CORRECCIÓN DEL ERROR ---
             rx.avatar(fallback=rx.cond(user.user, user.user.username[0].upper(), "?")),
             rx.vstack(
                 rx.text(rx.cond(user.user, user.user.username, "Usuario Inválido"), weight="bold"),
@@ -22,7 +24,6 @@ def current_employee_card(user: UserInfo) -> rx.Component:
     """Tarjeta para un empleado actual."""
     return rx.card(
         rx.hstack(
-            # --- CORRECCIÓN DEL ERROR ---
             rx.avatar(fallback=rx.cond(user.user, user.user.username[0].upper(), "?")),
             rx.vstack(
                 rx.text(rx.cond(user.user, user.user.username, "Usuario Inválido"), weight="bold"),
@@ -34,13 +35,13 @@ def current_employee_card(user: UserInfo) -> rx.Component:
         )
     )
 
+@require_panel_access # <-- 2. Usa el nuevo decorador
 def employees_management_page() -> rx.Component:
     """Página de gestión de empleados para el vendedor."""
     return rx.vstack(
         rx.heading("Gestión de Empleados", size="8", text_align="center"),
         rx.text("Busca usuarios y asígnalos como empleados para que puedan gestionar tus publicaciones.", text_align="center"),
         
-        # Sección para añadir nuevos empleados
         rx.card(
             rx.vstack(
                 rx.heading("Añadir Nuevo Empleado", size="5"),
@@ -69,7 +70,6 @@ def employees_management_page() -> rx.Component:
             width="100%"
         ),
         
-        # Sección para ver empleados actuales
         rx.heading("Mis Empleados Actuales", size="6", margin_top="2em"),
         rx.cond(
             AppState.empleados,

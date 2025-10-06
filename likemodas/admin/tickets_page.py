@@ -2,7 +2,7 @@
 
 import reflex as rx
 from ..state import AppState, SupportTicketAdminData
-from ..auth.admin_auth import require_admin
+from ..auth.admin_auth import require_panel_access # <-- 1. Importa el decorador correcto
 
 def ticket_list_item(ticket: SupportTicketAdminData) -> rx.Component:
     """Componente para mostrar un ticket en la lista del admin."""
@@ -30,7 +30,7 @@ def ticket_list_item(ticket: SupportTicketAdminData) -> rx.Component:
         _hover={"background_color": rx.color("gray", 4)},
     )
 
-@require_admin
+@require_panel_access # <-- 2. Usa el nuevo decorador
 def admin_tickets_page_content() -> rx.Component:
     """Página para que el admin vea y gestione los tickets de soporte."""
     return rx.container(

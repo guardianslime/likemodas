@@ -1,7 +1,7 @@
 # likemodas/blog/add.py (CORREGIDO)
 
 import reflex as rx
-from ..auth.admin_auth import require_admin
+from ..auth.admin_auth import require_panel_access # <-- 1. Importa el decorador correcto
 from .forms import blog_post_add_form
 from ..blog.state import BlogAdminState
 from ..state import AppState
@@ -76,7 +76,7 @@ def post_preview() -> rx.Component:
     )
 
 
-@require_admin
+@require_panel_access # <-- 2. Usa el nuevo decorador
 def blog_post_add_content() -> rx.Component:
     """
     Página de creación de publicación con un desplazamiento manual hacia la derecha
@@ -101,15 +101,8 @@ def blog_post_add_content() -> rx.Component:
                 position="sticky",
                 top="2em",
             ),
-            
-            # --- AJUSTE 1: ANCHO DE COLUMNAS ---
-            # En PC (lg), la primera columna (formulario) será el doble de ancha que la segunda.
             columns={"initial": "1", "lg": "2fr 1fr"},
-            
-            # --- AJUSTE 2: ESPACIO ENTRE COLUMNAS ---
-            # Aumentamos el espacio para que no se vea tan junto.
             gap="4em",
-            
             width="100%",
             max_width="1800px",
         ),

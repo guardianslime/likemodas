@@ -2,7 +2,7 @@
 
 import reflex as rx
 from ..state import AppState, ProductFinanceDTO, VariantDetailFinanceDTO, GastoDataDTO
-from ..auth.admin_auth import require_admin
+from ..auth.admin_auth import require_panel_access  # <-- CORRECCIÓN: Importa el decorador correcto
 from reflex.components.recharts import (
     LineChart, Line, XAxis, YAxis, CartesianGrid, 
     tooltip, Legend, ResponsiveContainer
@@ -273,8 +273,6 @@ def product_detail_modal() -> rx.Component:
         style={"max_width": "1300px", "width": "95%"}
     )
     
-# --- INICIO: COMPONENTES MEJORADOS PARA GESTIÓN DE GASTOS ---
-
 def gasto_form() -> rx.Component:
     """Formulario rediseñado para registrar un nuevo gasto."""
     return rx.form(
@@ -296,7 +294,7 @@ def gasto_form() -> rx.Component:
                     rx.input(name="valor", placeholder="Ej: 50000", type="number", required=True),
                     align="stretch"
                 ),
-                columns={"initial": "1", "md": "2fr 1fr 1fr"}, # Mejor distribución
+                columns={"initial": "1", "md": "2fr 1fr 1fr"},
                 spacing="4",
                 width="100%",
             ),
@@ -320,7 +318,7 @@ def desktop_gasto_row(gasto: GastoDataDTO) -> rx.Component:
         rx.table.cell(gasto.descripcion),
         rx.table.cell(rx.badge(gasto.categoria)),
         rx.table.cell(gasto.valor_cop, text_align="right", weight="bold"),
-        align="center" # Centrar verticalmente
+        align="center"
     )
 
 def mobile_gasto_card(gasto: GastoDataDTO) -> rx.Component:
@@ -410,10 +408,9 @@ def gastos_module() -> rx.Component:
             width="100%",
         )
     )
-# --- FIN: COMPONENTES MEJORADOS ---
 
-# TU FUNCIÓN finance_page_content DEBE QUEDAR ASÍ
-@require_admin
+# --- CORRECCIÓN: Usa el decorador correcto ---
+@require_panel_access
 def finance_page_content() -> rx.Component:
     """Página del dashboard financiero con la UI mejorada y nuevas métricas."""
     desktop_table = rx.box(
@@ -513,10 +510,7 @@ def finance_page_content() -> rx.Component:
                                 align_items="stretch", spacing="4", width="100%",
                             )
                         ),
-                        
-                        # --- INTEGRACIÓN DEL MÓDULO DE GASTOS MEJORADO ---
                         gastos_module(), 
-
                         spacing="6", width="100%",
                     )
                 ),

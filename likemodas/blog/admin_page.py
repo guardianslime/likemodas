@@ -1,10 +1,10 @@
+# likemodas/blog/admin_page.py
+
 import reflex as rx
-from ..auth.admin_auth import require_admin
+from ..auth.admin_auth import require_panel_access # <-- 1. Importa el decorador correcto
 from .. import navigation
 from ..state import AppState, AdminPostRowData, AdminVariantData
 from ..ui.qr_display import qr_code_display
-
-# --- CORRECCIÓN: Se importa únicamente el formulario de edición desde 'forms.py' ---
 from .forms import blog_post_edit_form
 
 # ==============================================================================
@@ -196,7 +196,7 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
 # FUNCIÓN PRINCIPAL DE LA PÁGINA
 # ==============================================================================
 
-@require_admin
+@require_panel_access # <-- 2. Usa el nuevo decorador
 def blog_admin_page() -> rx.Component:
     """Página de 'Mis Publicaciones' para el vendedor, ahora completamente responsiva."""
     desktop_view = rx.box(
@@ -249,7 +249,6 @@ def blog_admin_page() -> rx.Component:
                     rx.fragment(desktop_view, mobile_view),
                     rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
                 ),
-                # Se llaman a los modales aquí. Son invisibles hasta que se activan.
                 edit_post_dialog(),
                 qr_display_modal(),
                 spacing="5", 

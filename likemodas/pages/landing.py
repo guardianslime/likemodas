@@ -9,15 +9,16 @@ from ..blog.public_page import blog_public_page_content
 
 def landing_content() -> rx.Component:
     """
-    Página de aterrizaje inteligente que muestra la vista correcta
-    según si el usuario es administrador o no.
+    Página de aterrizaje que muestra la vista correcta
+    según el rol del usuario (Admin/Vendedor vs. Cliente).
     """
     return rx.box(
         rx.cond(
-            AppState.is_admin,
-            # Si es admin, muestra la página de la tienda de administración
+            # --- ¡CORRECCIÓN CLAVE! ---
+            # Muestra el punto de venta si es Admin O Vendedor
+            AppState.is_admin | AppState.is_vendedor,
             admin_store_page(),
-            # Si no, muestra la galería pública con sus modales
+            # Si no, muestra la galería pública
             blog_public_page_content()
         ),
         width="100%"
