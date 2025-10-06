@@ -1568,15 +1568,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- 3. NUEVO MANEJADOR DE EVENTOS PARA CAMBIAR ROL DE VENDEDOR ---
     @rx.event
     def toggle_vendedor_role(self, userinfo_id: int):
-        """
-        Cambia el rol de un usuario entre Vendedor y Cliente.
-        """
+        """[CORREGIDO] Cambia el rol de un usuario a/desde Vendedor y actualiza el estado localmente."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos para realizar esta acción.")
 
         with rx.session() as session:
             user_info = session.get(UserInfo, userinfo_id)
-            if user_info:
+            if user_info and user_info.user:
                 if user_info.id == self.authenticated_user_info.id:
                     return rx.toast.warning("No puedes cambiar tu propio rol de esta manera.")
                 
@@ -1591,9 +1589,14 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 session.add(user_info)
                 session.commit()
-        
-        # Recarga la lista de usuarios en la tabla del admin para reflejar el cambio.
-        yield self.load_all_users
+                session.refresh(user_info)
+
+                # --- CORRECCIÓN CLAVE: Actualiza la lista en el estado directamente ---
+                for i, u in enumerate(self.all_users):
+                    if u.id == userinfo_id:
+                        self.all_users[i] = user_info
+                        break
+
 
     # --- 4. NUEVO MANEJADOR PARA POLLING DE ROL (Redirección automática) ---
     @rx.event
@@ -5545,6 +5548,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def toggle_admin_role(self, userinfo_id: int):
+        """[CORREGIDO] Cambia el rol de un usuario a/desde Admin y actualiza el estado localmente."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
             
@@ -5560,11 +5564,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                     user_info.role = UserRole.ADMIN
                 session.add(user_info)
                 session.commit()
-        # ✨ CORRECCIÓN AQUÍ
-        yield AppState.load_all_users
+                session.refresh(user_info)
+
+                # --- CORRECCIÓN CLAVE: Actualiza la lista en el estado directamente ---
+                for i, u in enumerate(self.all_users):
+                    if u.id == userinfo_id:
+                        self.all_users[i] = user_info
+                        break
 
     @rx.event
     def ban_user(self, userinfo_id: int, days: int = 7):
+        """[CORREGIDO] Veta a un usuario y actualiza el estado localmente."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
         
@@ -5578,10 +5588,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 user_info.ban_expires_at = datetime.now(timezone.utc) + timedelta(days=days)
                 session.add(user_info)
                 session.commit()
-        yield AppState.load_all_users
+                session.refresh(user_info)
+
+                # --- CORRECCIÓN CLAVE: Actualiza la lista en el estado directamente ---
+                for i, u in enumerate(self.all_users):
+                    if u.id == userinfo_id:
+                        self.all_users[i] = user_info
+                        break
 
     @rx.event
     def unban_user(self, userinfo_id: int):
+        """[CORREGIDO] Quita el veto a un usuario y actualiza el estado localmente."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
 
@@ -5592,9 +5609,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 user_info.ban_expires_at = None
                 session.add(user_info)
                 session.commit()
-        yield AppState.load_all_users
-    
-    admin_store_posts: list[ProductCardData] = []
+                session.refresh(user_info)
+                
+                # --- CORRECCIÓN CLAVE: Actualiza la lista en el estado directamente ---
+                for i, u in enumerate(self.all_users):
+                    if u.id == userinfo_id:
+                        self.all_users[i] = user_info
+                        break
     
     # --- 👇 AÑADE ESTA NUEVA PROPIEDAD COMPUTADA AQUÍ 👇 ---
     @rx.var
