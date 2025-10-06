@@ -59,9 +59,11 @@ class SavedPostLink(rx.Model, table=True):
     blogpostmodel_id: int = Field(foreign_key="blogpostmodel.id", primary_key=True)
 
 # --- Enumeraciones ---
+# --- 1. MODIFICAR UserRole ---
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     ADMIN = "admin"
+    VENDEDOR = "vendedor"  # <-- AÑADIR ESTA LÍNEA
 
 class PurchaseStatus(str, enum.Enum):
     PENDING_PAYMENT = "pending_payment"
@@ -107,6 +109,30 @@ class GastoCategoria(str, enum.Enum):
     SUMINISTROS = "Suministros"
     OTROS = "Otros"
 
+# --- 2. AÑADIR EL NUEVO MODELO EmpleadoVendedorLink ---
+class EmpleadoVendedorLink(rx.Model, table=True):
+    """
+    Tabla de enlace que establece la relación jerárquica 
+    entre un Vendedor y un Empleado.
+    """
+    __tablename__ = "empleadovendedorlink"
+
+    vendedor_id: int = Field(foreign_key="userinfo.id")
+    # La restricción de unicidad garantiza que un empleado solo tiene un empleador
+    empleado_id: int = Field(foreign_key="userinfo.id", unique=True)
+    
+    created_at: datetime = Field(
+        default_factory=get_utc_now,
+        sa_type=sqlalchemy.DateTime(timezone=True),
+        sa_column_kwargs={"server_default": sqlalchemy.func.now()},
+        nullable=False
+    )
+    
+    # Relaciones para facilitar las consultas con SQLModel
+    vendedor: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[EmpleadoVendedorLink.vendedor_id]"})
+    empleado: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[EmpleadoVendedorLink.empleado_id]"})
+
+
 # --- Modelos de Base de Datos ---
 
 class UserInfo(rx.Model, table=True):
@@ -140,6 +166,9 @@ class UserInfo(rx.Model, table=True):
     # --- FIN DE NUEVOS CAMPOS ---
 
     # --- Relaciones con otros Modelos ---
+
+    user: Optional["LocalUser"] = Relationship()
+    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     
     # Relación corregida con LocalUser (sin cascada de este lado)
     user: Optional["LocalUser"] = Relationship()
@@ -158,6 +187,23 @@ class UserInfo(rx.Model, table=True):
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
 
     gastos: List["Gasto"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+    # --- INICIO DE ADICIONES ---
+    # Relación para que un Vendedor pueda acceder a su lista de empleados
+    empleados: List["EmpleadoVendedorLink"] = Relationship(
+        sa_relationship_kwargs={
+            "primaryjoin": "UserInfo.id==EmpleadoVendedorLink.vendedor_id",
+            "cascade": "all, delete-orphan", # Si se borra el vendedor, se borra el vínculo
+        }
+    )
+    
+    # Relación para que un Empleado pueda encontrar a su Vendedor
+    empleador_link: Optional["EmpleadoVendedorLink"] = Relationship(
+        sa_relationship_kwargs={
+            "primaryjoin": "UserInfo.id==EmpleadoVendedorLink.empleado_id",
+            "uselist": False, # Indica que es una relación de uno a uno (o uno-a-cero)
+        }
+    )
 
     # --- Propiedades Calculadas (no son columnas en la BD) ---
 
