@@ -28,14 +28,14 @@ def user_row(user: UserInfo) -> rx.Component:
                 # Botón para cambiar rol de Admin
                 rx.button(
                     rx.cond(user.role == UserRole.ADMIN, "Quitar Admin", "Hacer Admin"),
-                    # --- CORRECCIÓN AQUÍ ---
+                    # --- CORRECCIÓN APLICADA ---
                     on_click=AppState.toggle_admin_role(user.id),
                     size="1"
                 ),
                 # Botón para Vendedor
                 rx.button(
                     rx.cond(user.role == UserRole.VENDEDOR, "Quitar Vendedor", "Hacer Vendedor"),
-                    # --- CORRECCIÓN AQUÍ ---
+                    # --- CORRECCIÓN APLICADA ---
                     on_click=AppState.toggle_vendedor_role(user.id),
                     size="1",
                     color_scheme="violet",
@@ -44,7 +44,9 @@ def user_row(user: UserInfo) -> rx.Component:
                 # Botón para vetar/quitar veto
                 rx.cond(
                     user.is_banned,
+                    # --- CORRECCIÓN APLICADA ---
                     rx.button("Quitar Veto", on_click=AppState.unban_user(user.id), color_scheme="green", size="1"),
+                    # --- CORRECCIÓN APLICADA ---
                     rx.button("Vetar (7 días)", on_click=AppState.ban_user(user.id, 7), color_scheme="red", size="1"),
                 ),
                 spacing="2"
