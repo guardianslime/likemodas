@@ -1,4 +1,4 @@
-# likemodas/ui/sidebar.py (VERSIÓN FINAL CON SCROLL UNIVERSAL)
+# likemodas/ui/sidebar.py (VERSIÓN FINAL CON ALTURA DINÁMICA 'dvh')
 
 import reflex as rx
 from ..state import AppState
@@ -47,24 +47,19 @@ def sidebar_items() -> rx.Component:
 def sliding_admin_sidebar() -> rx.Component:
     """
     Componente del sidebar deslizable con un diseño único y scrollable
-    para garantizar el funcionamiento en todas las pantallas.
+    que respeta el área visible en todos los dispositivos.
     """
     SIDEBAR_WIDTH = "16em"
 
-    # --- ✨ INICIO DE LA SOLUCIÓN UNIVERSAL ✨ ---
-
-    # 1. Se crea un único vstack con TODO el contenido del sidebar.
+    # --- CONTENIDO COMPLETO DEL SIDEBAR ---
+    # Un solo Vstack con todo el contenido, que será envuelto en un área de scroll.
     sidebar_content = rx.vstack(
-        # Sección Superior (Logo)
         rx.hstack(
             rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
             align="center", justify="center", width="100%",
         ),
-        # Sección Media (Links)
         sidebar_items(),
-        # Un espaciador para empujar la sección inferior hacia abajo en pantallas de PC.
         rx.spacer(),
-        # Sección Inferior (Perfil y Logout)
         rx.vstack(
             rx.divider(),
             rx.link(
@@ -91,29 +86,28 @@ def sliding_admin_sidebar() -> rx.Component:
         ),
         spacing="4",
         padding={"initial": "1.5em 1em", "lg": "2.5em 1em"},
-        # La altura mínima es clave para que el espaciador funcione en PC.
         min_height="100%",
     )
 
-    # 2. El contenido completo se envuelve en un `rx.scroll_area` que ocupa toda la altura.
-    #    Este es el único layout, y funcionará en todas las pantallas.
+    # --- ENVOLTORIO DE SCROLL ---
+    # El contenido se envuelve en un `scroll_area` para permitir el deslizamiento.
     sidebar_panel = rx.scroll_area(
         sidebar_content,
         height="100%",
         width="100%",
     )
-    # --- ✨ FIN DE LA SOLUCIÓN UNIVERSAL ✨ ---
 
-    # La lógica que controla el deslizamiento del sidebar no cambia.
+    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+    # El contenedor principal ahora usa `100dvh` para ajustarse a la altura VISIBLE de la pantalla.
     return rx.box(
         rx.hstack(
             rx.box(
                 sidebar_panel,
                 width=SIDEBAR_WIDTH,
-                height="100%",
+                height="100dvh", # <-- SOLUCIÓN: Usa la altura dinámica del viewport.
                 bg=rx.color("gray", 2),
             ),
-            rx.box(
+            rx.box( # La pestaña "LIKEMODAS"
                 rx.text("LIKEMODAS", style={"writing_mode": "vertical-rl", "transform": "rotate(180deg)", "padding": "0.5em 0.2em", "font_weight": "bold", "letter_spacing": "2px", "color": "white"}),
                 on_click=AppState.toggle_admin_sidebar,
                 cursor="pointer", bg=rx.color("violet", 9), border_radius="0 8px 8px 0",
@@ -121,6 +115,7 @@ def sliding_admin_sidebar() -> rx.Component:
             ),
             align_items="center", spacing="0"
         ),
+        # Lógica de polling (sin cambios)
         rx.cond(
             AppState.is_admin,
             rx.fragment(
@@ -128,8 +123,11 @@ def sliding_admin_sidebar() -> rx.Component:
                 rx.box(on_mount=rx.call_script("if (!window.likemodas_admin_poller) { window.likemodas_admin_poller = setInterval(() => { const trigger = document.getElementById('admin_notification_poller'); if (trigger) { trigger.click(); } }, 15000); }"), display="none")
             )
         ),
-        position="fixed", top="0", left="0", height="100%", display="flex", align_items="center",
+        # El contenedor exterior también usa 100dvh.
+        position="fixed", top="0", left="0", height="100dvh", # <-- SOLUCIÓN
+        display="flex", align_items="center",
         transform=rx.cond(AppState.show_admin_sidebar, "translateX(0)", f"translateX(-{SIDEBAR_WIDTH})"),
         transition="transform 0.4s ease-in-out",
         z_index="1000",
     )
+    # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
