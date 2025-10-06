@@ -16,7 +16,10 @@ def fixed_color_mode_button() -> rx.Component:
     )
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
-    """Estructura de página base con layout de admin y carga de datos de perfil."""
+    """
+    [CORREGIDO] Estructura de página base que ahora diferencia entre 
+    Admin/Vendedor y el resto de usuarios.
+    """
     loading_screen = rx.center(rx.spinner(size="3"), height="100vh", width="100%", background=rx.color("gray", 2))
 
     admin_layout = rx.box(
@@ -42,10 +45,17 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         rx.cond(
             ~AppState.is_hydrated,
             loading_screen,
-            rx.cond(AppState.is_admin, admin_layout, public_layout)
+            # --- ¡ESTA ES LA CORRECCIÓN CLAVE! ---
+            # Ahora se comprueba si el usuario es Admin O Vendedor.
+            rx.cond(
+                AppState.is_admin | AppState.is_vendedor, 
+                admin_layout, 
+                public_layout
+            )
+            # --- FIN DE LA CORRECCIÓN ---
         ),
         
-        # --- INICIO DE LA LÓGICA DE POLLING DE ROL ---
+        # El sistema de polling para la redirección automática (esto ya es correcto)
         rx.cond(
             AppState.is_authenticated & ~AppState.is_admin,
             rx.fragment(
@@ -72,7 +82,6 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 )
             )
         ),
-        # --- FIN DE LA LÓGICA DE POLLING DE ROL ---
-
+        
         fixed_color_mode_button(),
     )
