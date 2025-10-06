@@ -348,21 +348,34 @@ def blog_admin_page() -> rx.Component:
     return rx.center(
         rx.container(
             rx.vstack(
-                rx.hstack(
-                    rx.heading("Mis Publicaciones", size="7"),
+                # --- INICIO DE LA CORRECCIÓN RESPONSIVA ---
+                rx.flex(
+                    rx.heading("Mis Publicaciones", size={"initial": "8", "md": "7"}),
                     rx.spacer(),
-                    rx.button("Crear Nueva Publicación", on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE), color_scheme="violet"),
-                    justify="between", align="center", width="100%",
+                    rx.button(
+                        "Crear Nueva Publicación", 
+                        on_click=rx.redirect(navigation.routes.BLOG_POST_ADD_ROUTE), 
+                        color_scheme="violet",
+                        width={"initial": "100%", "md": "auto"}, # Botón ancho en móvil
+                    ),
+                    # Propiedades responsivas clave:
+                    direction={"initial": "column", "md": "row"}, # Columna en móvil, fila en PC
+                    spacing="4",
+                    align={"initial": "stretch", "md": "center"}, # Alinear al centro vertical en PC
+                    width="100%",
                 ),
+                # --- FIN DE LA CORRECCIÓN RESPONSIVA ---
+                
                 rx.divider(margin_y="1.5em"),
                 rx.cond(
                     AppState.my_admin_posts,
                     rx.fragment(desktop_view, mobile_view),
                     rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
                 ),
-                edit_post_dialog(),
+                blog_post_edit_form(),
                 qr_display_modal(),
-                spacing="5", width="100%",
+                spacing="5", 
+                width="100%",
             ),
             max_width="1400px",
             width="100%",
