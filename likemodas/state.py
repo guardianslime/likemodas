@@ -5971,27 +5971,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     def poll_employment_requests(self):
         """
         [CORREGIDO] Busca periódicamente la primera solicitud de empleo pendiente
-        para mostrarla en el aviso global.
+        y se asegura de cargar los datos del remitente para mostrarla en el aviso global.
         """
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # La condición ahora es más simple y efectiva.
-        # Solo se ejecuta si el usuario está autenticado y NO hay ya un aviso global activo.
         if not self.authenticated_user_info or self.pending_request_notification:
             return
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
         with rx.session() as session:
-            # La lógica de búsqueda se mantiene, es correcta.
+            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+            # Añadimos .options(...) para forzar la carga de la relación 'requester' y su 'user' anidado.
+            # Esto asegura que `first_pending.requester.user.username` esté disponible.
             first_pending = session.exec(
                 sqlmodel.select(EmploymentRequest)
-                .options(sqlalchemy.orm.joinedload(EmploymentRequest.requester).joinedload(UserInfo.user))
+                .options(
+                    sqlalchemy.orm.joinedload(EmploymentRequest.requester)
+                    .joinedload(UserInfo.user)
+                )
                 .where(
                     EmploymentRequest.candidate_id == self.authenticated_user_info.id,
                     EmploymentRequest.status == RequestStatus.PENDING
                 )
             ).first()
+            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
             
-            if first_pending:
+            # Esta parte se asegura de que el banner solo se muestre si tenemos todos los datos.
+            if first_pending and first_pending.requester and first_pending.requester.user:
                 self.pending_request_notification = first_pending
 
     # 3. --- Función 'responder_solicitud_empleo' (reemplazar la existente) ---
