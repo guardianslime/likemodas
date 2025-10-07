@@ -181,7 +181,7 @@ def profile_page_content() -> rx.Component:
                 columns={"initial": "1", "md": "2"}, spacing="5", width="100%",
             ),
             security_section,
-            seccion_solicitudes_empleo(), # <-- Esta es la sección que muestra las solicitudes
+            seccion_solicitudes_empleo(),
             danger_zone,
             spacing="5", 
             width="100%", 

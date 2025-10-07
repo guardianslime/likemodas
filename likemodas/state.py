@@ -5828,20 +5828,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             if existing_request:
                 return rx.toast.info("Ya has enviado una solicitud pendiente a este usuario.")
 
-            # Crear la nueva solicitud
-            new_request = EmploymentRequest(
-                requester_id=requester_id,
-                candidate_id=candidate_userinfo_id
-            )
-            session.add(new_request)
-
-            # Crear una notificación para el candidato
-            # Se carga la relación 'user' para evitar errores al acceder al nombre
+            # Es necesario cargar la relación 'user' del solicitante para obtener su nombre de usuario
             requester_info = session.exec(
                 sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
                 .where(UserInfo.id == requester_id)
             ).one()
             
+            if not requester_info or not requester_info.user:
+                return rx.toast.error("Error al identificar al solicitante.")
+
+            # Crear la nueva solicitud guardando el nombre del solicitante
+            new_request = EmploymentRequest(
+                requester_id=requester_id,
+                candidate_id=candidate_userinfo_id,
+                requester_username=requester_info.user.username
+            )
+            session.add(new_request)
+
+            # Crear una notificación para el candidato
             notification = NotificationModel(
                 userinfo_id=candidate_userinfo_id,
                 message=f"¡{requester_info.user.username} quiere contratarte como empleado!",
@@ -5851,7 +5855,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
         
         self.search_results_users = [] # Limpiar resultados de búsqueda
-        return rx.toast.success("Solicitud de empleo enviada.")
+        yield rx.toast.success("Solicitud de empleo enviada.")
+        # Recargar los datos para que la nueva solicitud aparezca en el historial del Vendedor
+        yield self.load_empleados()
 
     @rx.event
     def responder_solicitud_empleo(self, request_id: int, aceptada: bool):
