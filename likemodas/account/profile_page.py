@@ -43,6 +43,8 @@ def tfa_activation_modal() -> rx.Component:
 
 def seccion_solicitudes_empleo() -> rx.Component:
     """Componente para mostrar las solicitudes de empleo recibidas."""
+    
+    # --- FUNCIÓN INTERNA CORREGIDA ---
     def solicitud_card(req: EmploymentRequest) -> rx.Component:
         return rx.card(
             rx.hstack(
@@ -51,8 +53,16 @@ def seccion_solicitudes_empleo() -> rx.Component:
                         "Solicitud de empleo recibida de:",
                         size="2", color_scheme="gray"
                     ),
+                    # --- ¡CORRECCIÓN CLAVE AQUÍ! ---
+                    # Se reemplaza el 'if/else' de Python por 'rx.cond'.
+                    # Esta condición anidada comprueba de forma segura si existen
+                    # el solicitante y su usuario antes de intentar mostrar el nombre.
                     rx.text(
-                        req.requester.user.username if req.requester and req.requester.user else "Vendedor", 
+                        rx.cond(
+                            req.requester & req.requester.user,
+                            req.requester.user.username,
+                            "Vendedor Desconocido"
+                        ),
                         weight="bold"
                     ),
                     align_items="start"
@@ -74,6 +84,7 @@ def seccion_solicitudes_empleo() -> rx.Component:
             width="100%"
         )
     )
+
 
 @reflex_local_auth.require_login
 def profile_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
