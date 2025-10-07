@@ -5805,6 +5805,60 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
 
     @rx.event
+    def responder_solicitud_empleo(self, request_id: int, aceptada: bool):
+        """El candidato acepta o rechaza una solicitud de empleo."""
+        if not self.authenticated_user_info:
+            return rx.toast.error("Debes iniciar sesión.")
+
+        with rx.session() as session:
+            request = session.get(EmploymentRequest, request_id)
+
+            # Validar que la solicitud existe y es para el usuario actual
+            if not request or request.candidate_id != self.authenticated_user_info.id:
+                return rx.toast.error("Solicitud no válida.")
+
+            if aceptada:
+                # Verificar que el candidato no sea ya empleado de alguien más
+                existing_link = session.exec(
+                    sqlmodel.select(EmpleadoVendedorLink).where(EmpleadoVendedorLink.empleado_id == request.candidate_id)
+                ).first()
+                if existing_link:
+                    request.status = RequestStatus.REJECTED
+                    session.add(request)
+                    session.commit()
+                    yield self.on_load_profile_page() # Recargar la lista de solicitudes
+                    return rx.toast.error("Ya eres empleado de otro vendedor. Solicitud rechazada.")
+
+                # Crear el vínculo de empleo
+                new_link = EmpleadoVendedorLink(
+                    vendedor_id=request.requester_id,
+                    empleado_id=request.candidate_id
+                )
+                session.add(new_link)
+                request.status = RequestStatus.ACCEPTED
+                session.add(request)
+                
+                # Notificar al Vendedor
+                candidate_user = session.get(UserInfo, request.candidate_id)
+                notification = NotificationModel(
+                    userinfo_id=request.requester_id,
+                    message=f"¡{candidate_user.user.username} ha aceptado tu solicitud de empleo!",
+                    url="/admin/employees"
+                )
+                session.add(notification)
+                session.commit()
+                
+                yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
+                yield rx.reload() # Recarga la página para aplicar el nuevo rol de empleado
+            
+            else: # Si es rechazada
+                request.status = RequestStatus.REJECTED
+                session.add(request)
+                session.commit()
+                yield self.on_load_profile_page() # Recargar la lista de solicitudes
+                return rx.toast.info("Has rechazado la oferta de empleo.")
+
+    @rx.event
     async def handle_avatar_upload(self, files: list[rx.UploadFile]):
         """Maneja la subida de una nueva imagen de perfil."""
         if not self.authenticated_user_info:
