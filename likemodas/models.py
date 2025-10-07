@@ -125,10 +125,14 @@ class EmploymentRequest(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
     requester_username: str
 
-    # --- CORRECCIÓN CLAVE: Se añade 'back_populates' ---
     requester: "UserInfo" = Relationship(back_populates="solicitudes_enviadas", sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.requester_id]"})
     candidate: "UserInfo" = Relationship(back_populates="solicitudes_recibidas", sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.candidate_id]"})
 
+    # --- ✨ AÑADE ESTA NUEVA PROPIEDAD AQUÍ ✨ ---
+    @property
+    def created_at_formatted(self) -> str:
+        """Devuelve la fecha de creación formateada."""
+        return format_utc_to_local(self.created_at)
 
 # --- 2. AÑADIR EL NUEVO MODELO EmpleadoVendedorLink ---
 class EmpleadoVendedorLink(rx.Model, table=True):

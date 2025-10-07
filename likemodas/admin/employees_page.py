@@ -45,8 +45,11 @@ def sent_request_card(req: EmploymentRequest) -> rx.Component:
     return rx.card(
         rx.hstack(
             rx.vstack(
-                rx.text(f"Enviada a: {req.candidate_id}", weight="bold"), # Aquí podrías mostrar el nombre si lo cargas
-                rx.text(f"Fecha: {req.created_at.strftime('%d-%m-%Y')}", size="2", color_scheme="gray"),
+                # En lugar de candidate_id, cargaremos el nombre del candidato en una futura mejora.
+                # Por ahora, usamos el ID que es seguro.
+                rx.text(f"Enviada a: (Usuario #{req.candidate_id})", weight="bold"),
+                # --- ✨ CORRECCIÓN AQUÍ: Usamos la nueva propiedad formateada ---
+                rx.text(f"Fecha: {req.created_at_formatted}", size="2", color_scheme="gray"),
                 align_items="start"
             ),
             rx.spacer(),

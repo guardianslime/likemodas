@@ -52,13 +52,18 @@ def seccion_solicitudes_empleo() -> rx.Component:
                         "Solicitud de empleo recibida de:",
                         size="2", color_scheme="gray"
                     ),
-                    rx.text(
-                        rx.cond(
-                            req.requester & req.requester.user,
-                            req.requester.user.username,
-                            "Vendedor Desconocido"
+                    rx.hstack( # Usamos hstack para alinear nombre y fecha
+                        rx.text(
+                            rx.cond(
+                                req.requester & req.requester.user,
+                                req.requester.user.username,
+                                "Vendedor Desconocido"
+                            ),
+                            weight="bold"
                         ),
-                        weight="bold"
+                        rx.spacer(),
+                        # --- ✨ CORRECCIÓN AQUÍ: Usamos la nueva propiedad formateada ---
+                        rx.text(req.created_at_formatted, size="2", color_scheme="gray"),
                     ),
                     align_items="start"
                 ),
