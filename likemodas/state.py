@@ -5970,13 +5970,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def poll_employment_requests(self):
         """
-        Busca periódicamente la primera solicitud de empleo pendiente
+        [CORREGIDO] Busca periódicamente la primera solicitud de empleo pendiente
         para mostrarla en el aviso global.
         """
-        if not (self.is_vendedor or self.is_admin) or self.pending_request_notification or not self.authenticated_user_info:
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # La condición ahora es más simple y efectiva.
+        # Solo se ejecuta si el usuario está autenticado y NO hay ya un aviso global activo.
+        if not self.authenticated_user_info or self.pending_request_notification:
             return
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
         with rx.session() as session:
+            # La lógica de búsqueda se mantiene, es correcta.
             first_pending = session.exec(
                 sqlmodel.select(EmploymentRequest)
                 .options(sqlalchemy.orm.joinedload(EmploymentRequest.requester).joinedload(UserInfo.user))
@@ -5992,7 +5997,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     # 3. --- Función 'responder_solicitud_empleo' (reemplazar la existente) ---
     @rx.event
     def responder_solicitud_empleo(self, request_id: int, aceptada: bool):
-        """[CORREGIDO] El candidato acepta o rechaza una solicitud de empleo y limpia el aviso global."""
+        """
+        [CORREGIDO] El candidato acepta o rechaza una solicitud de empleo, limpia el aviso global
+        y actualiza la interfaz correspondientemente.
+        """
         if not self.authenticated_user_info:
             return rx.toast.error("Debes iniciar sesión.")
 
@@ -6002,10 +6010,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not request or request.candidate_id != self.authenticated_user_info.id:
                 return rx.toast.error("Solicitud no válida.")
 
-            # Limpia el aviso para que desaparezca después de la acción
+            # Limpia el aviso global para que desaparezca inmediatamente después de la acción.
             self.pending_request_notification = None
 
             if aceptada:
+                # Verifica si el usuario ya es empleado de otro vendedor.
                 existing_link = session.exec(
                     sqlmodel.select(EmpleadoVendedorLink).where(EmpleadoVendedorLink.empleado_id == request.candidate_id)
                 ).first()
@@ -6013,9 +6022,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     request.status = RequestStatus.REJECTED
                     session.add(request)
                     session.commit()
-                    yield self.on_load_profile_page()
+                    yield self.on_load_profile_page() # Actualiza la lista en el perfil.
                     return rx.toast.error("Ya eres empleado de otro vendedor. Solicitud rechazada.")
 
+                # Crea el nuevo vínculo de empleado.
                 new_link = EmpleadoVendedorLink(
                     vendedor_id=request.requester_id,
                     empleado_id=request.candidate_id
@@ -6024,6 +6034,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 request.status = RequestStatus.ACCEPTED
                 session.add(request)
                 
+                # Notifica al vendedor que su solicitud fue aceptada.
                 candidate_user = session.get(UserInfo, request.candidate_id)
                 notification = NotificationModel(
                     userinfo_id=request.requester_id,
@@ -6035,14 +6046,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 
                 yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
+                # Recarga toda la página para que se aplique el nuevo contexto de "Empleado".
                 yield rx.call_script("window.location.reload()")
             
-            else: # Si es rechazada
+            else: # Si la solicitud es rechazada
                 request.status = RequestStatus.REJECTED
                 session.add(request)
                 session.commit()
+                
+                # Actualiza la lista de solicitudes en la página de perfil para que esta desaparezca.
                 yield self.on_load_profile_page()
-                return rx.toast.info("Has rechazado la oferta de empleo.")
+                yield rx.toast.info("Has rechazado la oferta de empleo.")
 
     @rx.event
     async def handle_avatar_upload(self, files: list[rx.UploadFile]):
