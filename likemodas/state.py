@@ -5962,20 +5962,21 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.toast.info("Has descartado la solicitud.")
             
     # Nueva variable para guardar la solicitud a mostrar en el aviso global
+    # 1. --- Variable para guardar la solicitud a mostrar en el aviso ---
+    # 1. --- Variable de estado (añadir si no existe) ---
     pending_request_notification: Optional[EmploymentRequest] = None
 
+    # 2. --- Nueva función para buscar solicitudes ---
     @rx.event
     def poll_employment_requests(self):
         """
         Busca periódicamente la primera solicitud de empleo pendiente
         para mostrarla en el aviso global.
         """
-        # Solo se ejecuta si el usuario es un vendedor/admin y no hay ya una notificación activa
-        if not (self.is_vendedor or self.is_admin) or self.pending_request_notification:
+        if not (self.is_vendedor or self.is_admin) or self.pending_request_notification or not self.authenticated_user_info:
             return
 
         with rx.session() as session:
-            # Busca la primera solicitud pendiente para el usuario actual
             first_pending = session.exec(
                 sqlmodel.select(EmploymentRequest)
                 .options(sqlalchemy.orm.joinedload(EmploymentRequest.requester).joinedload(UserInfo.user))
@@ -5988,6 +5989,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if first_pending:
                 self.pending_request_notification = first_pending
 
+    # 3. --- Función 'responder_solicitud_empleo' (reemplazar la existente) ---
     @rx.event
     def responder_solicitud_empleo(self, request_id: int, aceptada: bool):
         """[CORREGIDO] El candidato acepta o rechaza una solicitud de empleo y limpia el aviso global."""
@@ -6000,7 +6002,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not request or request.candidate_id != self.authenticated_user_info.id:
                 return rx.toast.error("Solicitud no válida.")
 
-            # Limpiamos la notificación sin importar si se acepta o rechaza
+            # Limpia el aviso para que desaparezca después de la acción
             self.pending_request_notification = None
 
             if aceptada:
@@ -6033,16 +6035,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 
                 yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                # Reemplazamos rx.reload() por una llamada a script compatible.
-                yield rx.call_script("window.location.reload()") # Forza la recarga de la página
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                yield rx.call_script("window.location.reload()")
             
             else: # Si es rechazada
                 request.status = RequestStatus.REJECTED
                 session.add(request)
                 session.commit()
-                # Recargamos la lista de solicitudes en el perfil para que desaparezca
                 yield self.on_load_profile_page()
                 return rx.toast.info("Has rechazado la oferta de empleo.")
 

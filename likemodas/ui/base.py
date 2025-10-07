@@ -6,15 +6,12 @@ from ..state import AppState
 from .nav import public_navbar
 from .sidebar import sliding_admin_sidebar
 
-# --- ✨ INICIO: NUEVO BANNER PERSONALIZADO ✨ ---
 def persistent_employment_request_banner() -> rx.Component:
     """
     Un banner personalizado y persistente que flota en la parte superior derecha
     y muestra una solicitud de empleo pendiente con opciones para aceptar o rechazar.
-    Funciona en versiones antiguas de Reflex.
     """
     return rx.box(
-        # Usamos rx.cond para mostrar el banner solo si hay una notificación pendiente
         rx.cond(
             AppState.pending_request_notification,
             rx.card(
@@ -49,28 +46,20 @@ def persistent_employment_request_banner() -> rx.Component:
                     align="center",
                     width="100%",
                 ),
-                # Estilos del banner
                 padding="1em",
                 width="100%",
                 max_width="450px",
             ),
         ),
-        # Estilos para posicionar el banner
         position="fixed",
-        top="7rem", # Lo ubicamos debajo de la barra de navegación
+        top="7rem",
         right="1.5rem",
-        z_index="1500", # Un z-index alto para que flote sobre todo
-        transition="transform 0.5s ease-in-out, opacity 0.5s", # Animación suave
-        # Controlamos la animación con transform y opacity
-        transform=rx.cond(
-            AppState.pending_request_notification,
-            "translateY(0)", # Posición visible
-            "translateY(-20px)" # Posición oculta (ligeramente arriba)
-        ),
+        z_index="1500",
+        transition="transform 0.5s ease-in-out, opacity 0.5s",
+        transform=rx.cond(AppState.pending_request_notification, "translateY(0)", "translateY(-20px)"),
         opacity=rx.cond(AppState.pending_request_notification, "1", "0"),
         pointer_events=rx.cond(AppState.pending_request_notification, "auto", "none"),
     )
-# --- ✨ FIN: NUEVO BANNER PERSONALIZADO ✨ ---
 
 def fixed_color_mode_button() -> rx.Component:
     """Botón flotante para cambiar el modo de color."""
@@ -85,8 +74,7 @@ def fixed_color_mode_button() -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    [CORREGIDO] Estructura de página base que ahora muestra el panel de admin
-    a Vendedores, Administradores y Empleados.
+    Estructura de página base que ahora incluye el banner y el activador para las solicitudes.
     """
     loading_screen = rx.center(rx.spinner(size="3"), height="100vh", width="100%", background=rx.color("gray", 2))
 
@@ -113,8 +101,6 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         rx.cond(
             ~AppState.is_hydrated,
             loading_screen,
-            # --- ✨ ¡ESTA ES LA CORRECCIÓN CLAVE! ✨ ---
-            # Se añade AppState.is_empleado a la condición
             rx.cond(
                 AppState.is_admin | AppState.is_vendedor | AppState.is_empleado, 
                 admin_layout, 
@@ -122,7 +108,6 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             )
         ),
         
-        # Polling para el rol de usuario (se mantiene igual)
         rx.cond(
             AppState.is_authenticated & ~AppState.is_admin,
             rx.fragment(
@@ -150,18 +135,15 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             )
         ),
         
-        # --- ✨ INICIO: SE AÑADEN EL BANNER Y SU MECANISMO DE ACTIVACIÓN ✨ ---
         rx.cond(
             AppState.is_vendedor | AppState.is_admin,
             rx.fragment(
-                # Botón oculto que se activa periódicamente
                 rx.button(
                     "Employment Polling Trigger",
                     on_click=AppState.poll_employment_requests,
                     id="employment_poller_button",
                     display="none",
                 ),
-                # Script que activa el botón
                 rx.box(
                     on_mount=rx.call_script(
                         """
@@ -180,9 +162,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             )
         ),
         
-        # El componente del banner que acabamos de crear
         persistent_employment_request_banner(),
-        # --- ✨ FIN: NUEVO BLOQUE ✨ ---
         
         fixed_color_mode_button(),
     )
