@@ -5935,7 +5935,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def responder_solicitud_empleo(self, request_id: int, aceptada: bool):
-        """El candidato acepta o rechaza una solicitud de empleo."""
+        """[CORREGIDO] El candidato acepta o rechaza una solicitud de empleo y limpia el aviso global."""
         if not self.authenticated_user_info:
             return rx.toast.error("Debes iniciar sesión.")
 
@@ -5944,11 +5944,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if not request or request.candidate_id != self.authenticated_user_info.id:
                 return rx.toast.error("Solicitud no válida.")
-            
-            # --- ✨ INICIO: LÓGICA AÑADIDA PARA LIMPIAR EL AVISO ✨ ---
+
             # Limpiamos la notificación sin importar si se acepta o rechaza
             self.pending_request_notification = None
-            # --- ✨ FIN: LÓGICA AÑADIDA ✨ ---
 
             if aceptada:
                 existing_link = session.exec(
@@ -5976,10 +5974,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                     url="/admin/employees"
                 )
                 session.add(notification)
+                
                 session.commit()
                 
                 yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
-                yield rx.reload() # Recarga la página para aplicar el nuevo rol de empleado
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                # Reemplazamos rx.reload() por una llamada a script compatible.
+                yield rx.call_script("window.location.reload()") # Forza la recarga de la página
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
             else: # Si es rechazada
                 request.status = RequestStatus.REJECTED
