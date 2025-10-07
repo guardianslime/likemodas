@@ -118,14 +118,17 @@ class EmploymentRequest(rx.Model, table=True):
     """Guarda una solicitud de empleo de un Vendedor a un Candidato."""
     __tablename__ = "employmentrequest"
     
-    requester_id: int = Field(foreign_key="userinfo.id") # Quien envía (Vendedor)
-    candidate_id: int = Field(foreign_key="userinfo.id") # Quien recibe
+    requester_id: int = Field(foreign_key="userinfo.id")
+    candidate_id: int = Field(foreign_key="userinfo.id")
     status: RequestStatus = Field(default=RequestStatus.PENDING)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+    
+    # --- ✨ NUEVO CAMPO AÑADIDO ---
+    # Almacenamos el nombre del solicitante en el momento de la creación.
+    requester_username: str
 
-    # Relaciones para acceder a los datos del Vendedor y Candidato
-    requester: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.requester_id]"})
-    candidate: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.candidate_id]"})
+    # Se eliminan las relaciones 'requester' y 'candidate' para simplificar
+    # y evitar errores de carga diferida (lazy-loading).
 
 # --- 2. AÑADIR EL NUEVO MODELO EmpleadoVendedorLink ---
 class EmpleadoVendedorLink(rx.Model, table=True):
