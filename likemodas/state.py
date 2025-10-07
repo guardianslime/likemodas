@@ -208,8 +208,10 @@ class AdminPostRowData(rx.Base):
     price_cop: str
     publish_active: bool
     main_image_url: str = ""
-    variants: list[AdminVariantData] = [] # Utiliza el DTO actualizado
-
+    variants: list[AdminVariantData] = []
+    # --- ✨ AÑADE ESTOS DOS NUEVOS CAMPOS ✨ ---
+    creator_name: Optional[str] = None # Nombre del empleado que creó el post
+    owner_name: str # Nombre del vendedor dueño del post
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -1655,17 +1657,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def submit_and_publish(self, form_data: dict):
         """
-        [VERSIÓN COMPLETA Y CORREGIDA]
-        Manejador para crear y publicar un nuevo producto. Asigna la propiedad
-        de la publicación basándose en el 'context_user_id', permitiendo que los
-        empleados publiquen en nombre de sus vendedores.
+        [CORREGIDO] Manejador para crear y publicar un nuevo producto, guardando
+        tanto el ID del dueño (vendedor) como el del creador (empleado, si aplica).
         """
-        # 1. Determinar el propietario del post usando el contexto
-        # ¡Este es el cambio fundamental!
         owner_id = self.context_user_id
-        
-        if not owner_id:
-            return rx.toast.error("Error de sesión o contexto no válido. No se puede publicar.")
+        if not owner_id or not self.authenticated_user_info:
+            return rx.toast.error("Error de sesión o contexto no válido.")
+
+        # --- ✨ INICIO: LÓGICA PARA DETERMINAR EL CREADOR ✨ ---
+        creator_id_to_save = None
+        # Si el ID del usuario logueado es diferente al del dueño del post, es un empleado.
+        if self.authenticated_user_info.id != owner_id:
+            creator_id_to_save = self.authenticated_user_info.id
+        # --- ✨ FIN DE LA LÓGICA ✨ ---
 
         # 2. Extraer y validar los datos del formulario
         title = form_data.get("title", "").strip()
@@ -1714,7 +1718,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         # 4. Crear y guardar el nuevo producto en la base de datos
         with rx.session() as session:
             new_post = BlogPostModel(
-                userinfo_id=owner_id,  # <-- Se usa el ID del contexto
+                userinfo_id=owner_id,          # ID del Vendedor (dueño)
+                creator_id=creator_id_to_save, # ID del Empleado (si aplica) o None
                 title=title,
                 content=content,
                 price=price_float,
@@ -4087,10 +4092,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def my_admin_posts(self) -> list[AdminPostRowData]:
         """
-        Propiedad que devuelve los posts del admin, pre-procesando
-        una URL única para el QR.
+        [CORREGIDO] Propiedad que devuelve los posts del contexto actual (vendedor o vigilado),
+        incluyendo ahora el nombre del creador si es un empleado.
         """
-        if not self.authenticated_user_info:
+        # Usamos el context_user_id como la fuente de verdad para saber de quién son los posts
+        owner_id = self.context_user_id
+        if not owner_id:
             return []
 
         base_url = get_config().deploy_url
@@ -4098,13 +4105,27 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
-                .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
+                # --- ✨ INICIO: LÍNEAS AÑADIDAS PARA CARGAR DATOS DEL CREADOR ✨ ---
+                .options(
+                    sqlalchemy.orm.joinedload(BlogPostModel.creator).joinedload(UserInfo.user),
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+                )
+                # --- ✨ FIN: LÍNEAS AÑADIDAS ✨ ---
+                .where(BlogPostModel.userinfo_id == owner_id)
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
             admin_posts = []
             for p in posts_from_db:
                 main_image = p.variants[0].get("image_url", "") if p.variants else ""
+                
+                # --- ✨ LÓGICA PARA OBTENER EL NOMBRE DEL CREADOR ✨ ---
+                creator_username = None
+                if p.creator and p.creator.user:
+                    creator_username = p.creator.user.username
+
+                owner_username = p.userinfo.user.username if p.userinfo and p.userinfo.user else "Vendedor"
+                # --- ✨ FIN DE LA LÓGICA ✨ ---
 
                 variants_dto_list = []
                 if p.variants:
@@ -4112,19 +4133,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                         attrs = v.get("attributes", {})
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
                         variant_uuid = v.get("variant_uuid", "")
-
-                        # --- INICIO DE LA MODIFICACIÓN ---
-                        # Generamos una única URL pública.
                         unified_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else ""
-                        # --- FIN DE LA MODIFICACIÓN ---
-
                         variants_dto_list.append(
                             AdminVariantData(
                                 variant_uuid=variant_uuid,
                                 stock=v.get("stock", 0),
                                 attributes_str=attrs_str,
                                 attributes=attrs,
-                                qr_url=unified_url # <-- Usamos la nueva variable
+                                qr_url=unified_url
                             )
                         )
 
@@ -4136,10 +4152,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                         publish_active=p.publish_active,
                         main_image_url=main_image,
                         variants=variants_dto_list,
+                        # --- ✨ PASAMOS LOS NUEVOS DATOS AL DTO ✨ ---
+                        creator_name=creator_username,
+                        owner_name=owner_username
                     )
                 )
             return admin_posts
-
 
             # --- FIN DE LA CORRECCIÓN ---
 
@@ -5887,6 +5905,33 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield self.load_empleados()
                 return rx.toast.info("Has descartado la solicitud.")
+            
+    # Nueva variable para guardar la solicitud a mostrar en el aviso global
+    pending_request_notification: Optional[EmploymentRequest] = None
+
+    @rx.event
+    def poll_employment_requests(self):
+        """
+        Busca periódicamente la primera solicitud de empleo pendiente
+        para mostrarla en el aviso global.
+        """
+        # Solo se ejecuta si el usuario es un vendedor/admin y no hay ya una notificación activa
+        if not (self.is_vendedor or self.is_admin) or self.pending_request_notification:
+            return
+
+        with rx.session() as session:
+            # Busca la primera solicitud pendiente para el usuario actual
+            first_pending = session.exec(
+                sqlmodel.select(EmploymentRequest)
+                .options(sqlalchemy.orm.joinedload(EmploymentRequest.requester).joinedload(UserInfo.user))
+                .where(
+                    EmploymentRequest.candidate_id == self.authenticated_user_info.id,
+                    EmploymentRequest.status == RequestStatus.PENDING
+                )
+            ).first()
+            
+            if first_pending:
+                self.pending_request_notification = first_pending
 
     @rx.event
     def responder_solicitud_empleo(self, request_id: int, aceptada: bool):
@@ -5899,6 +5944,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if not request or request.candidate_id != self.authenticated_user_info.id:
                 return rx.toast.error("Solicitud no válida.")
+            
+            # --- ✨ INICIO: LÓGICA AÑADIDA PARA LIMPIAR EL AVISO ✨ ---
+            # Limpiamos la notificación sin importar si se acepta o rechaza
+            self.pending_request_notification = None
+            # --- ✨ FIN: LÓGICA AÑADIDA ✨ ---
 
             if aceptada:
                 existing_link = session.exec(
@@ -5929,12 +5979,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 
                 yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
-                yield rx.reload()
+                yield rx.reload() # Recarga la página para aplicar el nuevo rol de empleado
             
             else: # Si es rechazada
                 request.status = RequestStatus.REJECTED
                 session.add(request)
                 session.commit()
+                # Recargamos la lista de solicitudes en el perfil para que desaparezca
                 yield self.on_load_profile_page()
                 return rx.toast.info("Has rechazado la oferta de empleo.")
 

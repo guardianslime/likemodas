@@ -120,7 +120,20 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
                 spacing="2", align="center",
             )
         ),
-        rx.table.cell(post.title),
+        # --- ✨ INICIO DE LA MODIFICACIÓN: CELDA DEL TÍTULO ✨ ---
+        rx.table.cell(
+            rx.vstack(
+                rx.text(post.title, weight="bold"),
+                # Se muestra quién lo creó solo si fue un empleado
+                rx.cond(
+                    post.creator_name,
+                    rx.text(f"Creado por: {post.creator_name}", size="2", color_scheme="gray"),
+                ),
+                align_items="start",
+                spacing="0"
+            )
+        ),
+        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
         rx.table.cell(post.price_cop),
         rx.table.cell(
             rx.hstack(
@@ -205,7 +218,9 @@ def blog_admin_page() -> rx.Component:
                 rx.table.row(
                     rx.table.column_header_cell("Imagen"),
                     rx.table.column_header_cell("Estado"),
-                    rx.table.column_header_cell("Título"),
+                    # --- ✨ MODIFICACIÓN: CAMBIAR EL NOMBRE DE LA COLUMNA ✨ ---
+                    rx.table.column_header_cell("Publicación"),
+                    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                     rx.table.column_header_cell("Precio"),
                     rx.table.column_header_cell("Acciones"),
                     rx.table.column_header_cell("QR"),
@@ -218,6 +233,7 @@ def blog_admin_page() -> rx.Component:
     )
 
     mobile_view = rx.box(
+        # La vista móvil no necesita cambios, ya que el título y el creador están juntos
         rx.vstack(
             rx.foreach(AppState.my_admin_posts, mobile_post_card),
             spacing="4",

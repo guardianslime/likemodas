@@ -4,6 +4,62 @@ from ..state import AppState
 from .nav import public_navbar
 from .sidebar import sliding_admin_sidebar
 
+# --- ✨ INICIO: AÑADE ESTA NUEVA FUNCIÓN COMPLETA ✨ ---
+def employment_request_toast() -> rx.Component:
+    """
+    Un aviso (toast) personalizado y persistente que muestra una
+    solicitud de empleo pendiente con opciones para aceptar o rechazar.
+    """
+    return rx.toast.custom(
+        rx.hstack(
+            rx.icon("user-plus", size=24),
+            rx.vstack(
+                rx.text(
+                    "¡Nueva solicitud de empleo!",
+                    weight="bold"
+                ),
+                rx.text(
+                    # Usamos rx.cond para evitar errores si el dato aún no ha cargado
+                    rx.cond(
+                        AppState.pending_request_notification,
+                        "De: " + AppState.pending_request_notification.requester_username,
+                        "Cargando..."
+                    ),
+                    size="2"
+                ),
+                align_items="start",
+                spacing="0"
+            ),
+            rx.spacer(),
+            rx.hstack(
+                rx.button(
+                    "Rechazar",
+                    size="1",
+                    color_scheme="red",
+                    variant="soft",
+                    # Llama al evento para responder la solicitud
+                    on_click=AppState.responder_solicitud_empleo(AppState.pending_request_notification.id, False)
+                ),
+                rx.button(
+                    "Aceptar",
+                    size="1",
+                    color_scheme="green",
+                    # Llama al evento para responder la solicitud
+                    on_click=AppState.responder_solicitud_empleo(AppState.pending_request_notification.id, True)
+                ),
+            ),
+            spacing="4",
+            align="center",
+        ),
+        # El aviso dura "infinito" hasta que el usuario interactúe con él
+        duration=float('inf'),
+        # Lo mostramos solo si la variable de estado tiene una solicitud
+        is_visible=AppState.pending_request_notification != None,
+        # ID único para nuestro aviso
+        id="employment_toast"
+    )
+# --- ✨ FIN: NUEVA FUNCIÓN ✨ ---
+
 def fixed_color_mode_button() -> rx.Component:
     """Botón flotante para cambiar el modo de color."""
     return rx.box(
@@ -82,6 +138,38 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 )
             )
         ),
+        # --- ✨ INICIO: AÑADE ESTE NUEVO BLOQUE COMPLETO ✨ ---
+        # Polling para las solicitudes de empleo (solo para vendedores/admins)
+        rx.cond(
+            AppState.is_vendedor | AppState.is_admin,
+            rx.fragment(
+                rx.button(
+                    "Employment Polling Trigger",
+                    on_click=AppState.poll_employment_requests,
+                    id="employment_poller_button",
+                    display="none",
+                ),
+                rx.box(
+                    on_mount=rx.call_script(
+                        """
+                        if (!window.likemodas_employment_poller) {
+                            window.likemodas_employment_poller = setInterval(() => {
+                                const trigger = document.getElementById('employment_poller_button');
+                                if (trigger) {
+                                    trigger.click();
+                                }
+                            }, 12000); // Verifica cada 12 segundos
+                        }
+                        """
+                    ),
+                    display="none",
+                )
+            )
+        ),
+        
+        # El componente del aviso que se mostrará
+        employment_request_toast(),
+        # --- ✨ FIN: NUEVO BLOQUE ✨ ---
         
         fixed_color_mode_button(),
     )

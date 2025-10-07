@@ -4,7 +4,10 @@ import reflex as rx
 from ..state import AppState
 from ..ui.base import base_page
 from ..ui.password_input import password_input
+# --- ✨ INICIO: AÑADE ESTAS DOS LÍNEAS DE IMPORTACIÓN ✨ ---
 from ..account.profile_page import tfa_activation_modal
+from ..account.profile_page import seccion_solicitudes_empleo # <--- Importa la sección
+# --- ✨ FIN: AÑADE ESTAS DOS LÍNEAS DE IMPORTACIÓN ✨ ---
 
 def admin_profile_page_content() -> rx.Component:
     """Página de perfil para administradores con mejoras estéticas y de alineación."""
@@ -118,6 +121,9 @@ def admin_profile_page_content() -> rx.Component:
                 columns={"initial": "1", "lg": "2"}, spacing="5", width="100%",
             ),
             security_section,
+            # --- ✨ INICIO DE LA MODIFICACIÓN: AÑADE EL COMPONENTE AQUÍ ✨ ---
+            seccion_solicitudes_empleo(), # <-- Esta línea mostrará las solicitudes pendientes
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
             spacing="5", width="100%", max_width="1200px",
         ),
         align="center", width="100%", padding_y="2em"
