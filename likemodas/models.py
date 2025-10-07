@@ -183,7 +183,13 @@ class UserInfo(rx.Model, table=True):
 
     # --- Relaciones con otros Modelos (la mayoría se mantienen igual) ---
     user: Optional["LocalUser"] = Relationship()
-    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    posts: List["BlogPostModel"] = Relationship(
+        back_populates="userinfo",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "foreign_keys": "[BlogPostModel.userinfo_id]"  # <--- ¡LÍNEA CLAVE AÑADIDA!
+        }
+    )
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
@@ -275,10 +281,10 @@ class PasswordResetToken(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
 class BlogPostModel(rx.Model, table=True):
-    userinfo_id: int = Field(foreign_key="userinfo.id") # Este es el VENDEDOR/DUEÑO
-    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-    # Nuevo campo para guardar quién creó el post (si fue un empleado)
-    creator_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
+
+    userinfo_id: int = Field(foreign_key="userinfo.id") # Dueño
+    creator_id: Optional[int] = Field(default=None, foreign_key="userinfo.id") # Creador (empleado)
+    
     # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     
     title: str
@@ -298,7 +304,13 @@ class BlogPostModel(rx.Model, table=True):
     price_includes_iva: bool = Field(default=True, nullable=False)
     is_imported: bool = Field(default=False, nullable=False)
 
-    userinfo: "UserInfo" = Relationship(back_populates="posts")
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Le decimos a la relación 'userinfo' (el dueño) que se vincule a través de 'userinfo_id'
+    userinfo: "UserInfo" = Relationship(
+        back_populates="posts",
+        sa_relationship_kwargs={"foreign_keys": "[BlogPostModel.userinfo_id]"} # <--- ¡LÍNEA CLAVE AÑADIDA!
+    )
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
     # Relación para poder cargar los datos del creador fácilmente
     creator: Optional["UserInfo"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[BlogPostModel.creator_id]"})
