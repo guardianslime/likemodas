@@ -1687,27 +1687,29 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     
 
+    @rx.event
     def submit_and_publish(self, form_data: dict):
         """
-        [VERSIÓN FINAL CORREGIDA]
-        Manejador para crear y publicar un nuevo producto, ahora con una lógica de contexto
-        robusta que permite a los empleados publicar en nombre de sus vendedores.
+        [CORREGIDO] Manejador para crear y publicar un nuevo producto, con lógica de
+        contexto robusta que funciona tanto para vendedores como para empleados.
         """
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-        owner_id = self.context_user_id
-        
-        # Si el contexto no está claro, pero sabemos que es un empleado, lo buscamos.
-        if not owner_id and self.is_empleado:
-            vendedor_info = self.mi_vendedor_info
-            if vendedor_info:
-                owner_id = vendedor_info.id
+        owner_id = None
+        creator_id_to_save = None
 
+        # --- ✨ Lógica de contexto robusta ✨ ---
+        if not self.authenticated_user_info:
+            return rx.toast.error("Error de sesión. No se puede publicar.")
+
+        if self.is_empleado:
+            if not self.mi_vendedor_info:
+                return rx.toast.error("Error de contexto: No se pudo encontrar al empleador.")
+            owner_id = self.mi_vendedor_info.id
+            creator_id_to_save = self.authenticated_user_info.id
+        else: # Si es un Vendedor o Admin publicando para sí mismo
+            owner_id = self.authenticated_user_info.id
+        
         if not owner_id:
             return rx.toast.error("Error de sesión o contexto no válido. No se puede publicar.")
-        
-        creator_id_to_save = None
-        if self.authenticated_user_info.id != owner_id:
-            creator_id_to_save = self.authenticated_user_info.id
         # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
         # 2. Extraer y validar los datos del formulario
@@ -4131,26 +4133,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def my_admin_posts(self) -> list[AdminPostRowData]:
         """
-        [CORREGIDO] Propiedad que devuelve los posts del contexto actual (vendedor o vigilado),
-        incluyendo ahora el nombre del creador si es un empleado.
+        [CORREGIDO] Devuelve los posts del contexto actual, determinando correctamente
+        la identidad del vendedor (sea él mismo o el empleador de un empleado).
         """
-        # Usamos el context_user_id como la fuente de verdad para saber de quién son los posts
-        owner_id = self.context_user_id
+        owner_id = None
+        # --- ✨ Lógica de contexto robusta ✨ ---
+        if self.is_empleado and self.mi_vendedor_info:
+            owner_id = self.mi_vendedor_info.id
+        elif self.authenticated_user_info:
+            owner_id = self.authenticated_user_info.id
+        
         if not owner_id:
             return []
 
         base_url = get_config().deploy_url
 
         with rx.session() as session:
+            # La consulta ahora usa el `owner_id` correcto
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
-                # --- ✨ INICIO: LÍNEAS AÑADIDAS PARA CARGAR DATOS DEL CREADOR ✨ ---
                 .options(
                     sqlalchemy.orm.joinedload(BlogPostModel.creator).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
                 )
-                # --- ✨ FIN: LÍNEAS AÑADIDAS ✨ ---
-                .where(BlogPostModel.userinfo_id == owner_id)
+                .where(BlogPostModel.userinfo_id == owner_id) # <-- CORRECCIÓN CLAVE
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
@@ -5736,20 +5742,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_admin_store(self):
         """
-        Carga todas las publicaciones del usuario admin Y la lista de todos los
-        usuarios para la búsqueda de compradores.
+        [CORREGIDO] Carga las publicaciones para la "Tienda (Punto de Venta)"
+        usando la identidad correcta del vendedor.
         """
-        if not self.is_admin:
+        if not (self.is_admin or self.is_vendedor or self.is_empleado):
             return rx.redirect("/")
 
-        # ✨ LÍNEA AÑADIDA: Llama al evento que carga todos los usuarios ✨
         yield AppState.load_all_users
 
+        owner_id = None
+        # --- ✨ Lógica de contexto robusta ✨ ---
+        if self.is_empleado and self.mi_vendedor_info:
+            owner_id = self.mi_vendedor_info.id
+        elif self.authenticated_user_info:
+            owner_id = self.authenticated_user_info.id
+
+        if not owner_id:
+            self.admin_store_posts = []
+            return
+
         with rx.session() as session:
-            # ... (el resto de la lógica para cargar posts se mantiene igual) ...
+            # La consulta ahora usa el `owner_id` correcto
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
-                .where(BlogPostModel.userinfo_id == self.authenticated_user_info.id)
+                .where(BlogPostModel.userinfo_id == owner_id) # <-- CORRECCIÓN CLAVE
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
