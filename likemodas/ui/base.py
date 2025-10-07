@@ -135,32 +135,6 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             )
         ),
         
-        rx.cond(
-            AppState.is_vendedor | AppState.is_admin,
-            rx.fragment(
-                rx.button(
-                    "Employment Polling Trigger",
-                    on_click=AppState.poll_employment_requests,
-                    id="employment_poller_button",
-                    display="none",
-                ),
-                rx.box(
-                    on_mount=rx.call_script(
-                        """
-                        if (!window.likemodas_employment_poller) {
-                            window.likemodas_employment_poller = setInterval(() => {
-                                const trigger = document.getElementById('employment_poller_button');
-                                if (trigger) {
-                                    trigger.click();
-                                }
-                            }, 12000);
-                        }
-                        """
-                    ),
-                    display="none",
-                )
-            )
-        ),
         
         persistent_employment_request_banner(),
         

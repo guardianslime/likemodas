@@ -5481,21 +5481,24 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _load_notifications_logic(self):
         """
-        Lógica para cargar notificaciones. Ahora actualiza 'user_notifications'.
+        [VERSIÓN FINAL Y ROBUSTA]
+        Lógica central que se ejecuta con cada sondeo (polling).
+        1. Carga las notificaciones para la campana.
+        2. Busca una solicitud de empleo pendiente y, si la encuentra,
+        crea un DTO para mostrar el banner global.
         """
         if not self.authenticated_user_info:
-            # --- ✅ USAMOS EL NUEVO NOMBRE ---
             self.user_notifications = []
             return
-            
+
         with rx.session() as session:
+            # --- TAREA 1: Cargar notificaciones para la campana (lógica original) ---
             notifications_db = session.exec(
                 sqlmodel.select(NotificationModel)
                 .where(NotificationModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
             ).all()
-            
-            # --- ✅ USAMOS EL NUEVO NOMBRE ---
+
             self.user_notifications = [
                 NotificationDTO(
                     id=n.id,
@@ -5505,6 +5508,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                     created_at_formatted=n.created_at_formatted
                 ) for n in notifications_db
             ]
+
+            # --- TAREA 2: Lógica para el banner de solicitud de empleo (nueva) ---
+            # Si ya se está mostrando un banner, no buscamos otro para evitar parpadeos.
+            if self.pending_request_notification:
+                return
+
+            # Buscamos la primera solicitud pendiente para este usuario.
+            first_pending_request = session.exec(
+                sqlmodel.select(EmploymentRequest).where(
+                    EmploymentRequest.candidate_id == self.authenticated_user_info.id,
+                    EmploymentRequest.status == RequestStatus.PENDING
+                )
+            ).first()
+
+            # Si encontramos una, creamos el DTO limpio y lo guardamos en el estado.
+            # Esto hará que el banner aparezca en la interfaz.
+            if first_pending_request:
+                self.pending_request_notification = PendingRequestDTO(
+                    id=first_pending_request.id,
+                    requester_username=first_pending_request.requester_username
+                )
 
     # Los métodos load_notifications y poll_notifications no cambian,
     # ya que simplemente llaman a _load_notifications_logic.
