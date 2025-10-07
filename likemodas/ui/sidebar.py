@@ -100,7 +100,7 @@ def sliding_admin_sidebar() -> rx.Component:
                 margin_bottom="1em",
             )
         ),
-        # --- ✨ INICIO: NUEVO BANNER PARA "MODO EMPLEADO" ✨ ---
+        # --- ✨ INICIO DE LA MODIFICACIÓN: BANNER "MODO EMPLEADO" MEJORADO ✨ ---
         rx.cond(
             AppState.is_empleado,
             rx.box(
@@ -109,11 +109,25 @@ def sliding_admin_sidebar() -> rx.Component:
                     rx.vstack(
                         rx.text("Modo Empleado", size="2", weight="bold"),
                         rx.text(
-                            "Trabajando para: " + AppState.mi_vendedor_info.user.username,
+                            # Usamos rx.cond para evitar errores si la info no ha cargado
+                            rx.cond(
+                                AppState.mi_vendedor_info,
+                                "Trabajando para: " + AppState.mi_vendedor_info.user.username,
+                                "Cargando..."
+                            ),
                             size="1"
                         ),
                         spacing="0",
                         align_items="start"
+                    ),
+                    rx.spacer(),
+                    # Botón para salir del modo empleado (desvincularse)
+                    rx.icon_button(
+                        rx.icon("circle-x", size=16),
+                        on_click=AppState.leave_employment, # <-- Llama a la nueva función
+                        size="1",
+                        variant="ghost",
+                        color_scheme="red",
                     ),
                     align="center",
                 ),
@@ -124,7 +138,7 @@ def sliding_admin_sidebar() -> rx.Component:
                 margin_bottom="1em",
             )
         ),
-        # --- ✨ FIN: NUEVO BANNER ✨ ---
+        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
 
         sidebar_items(),
         rx.spacer(),

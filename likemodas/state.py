@@ -1533,30 +1533,56 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_empleado(self, empleado_userinfo_id: int):
-        """[CORREGIDO] Elimina la vinculación de un empleado de forma directa."""
-        # El que ejecuta esta acción es siempre el vendedor (o un admin en su nombre).
-        # Usamos el context_user_id que siempre apunta al vendedor.
-        vendedor_id = self.context_user_id
-        if not vendedor_id:
-            return rx.toast.error("Error de contexto. No se pudo identificar al vendedor.")
+        """
+        [CORREGIDO] Elimina la vinculación de un empleado. Ahora funciona tanto si la
+        inicia el vendedor como si la inicia el propio empleado.
+        """
+        if not self.authenticated_user_info:
+            return rx.toast.error("Debes iniciar sesión.")
 
         with rx.session() as session:
-            # Buscamos el enlace específico entre este vendedor y este empleado.
+            # Buscamos el enlace donde el usuario a desvincular es el empleado.
             link_to_delete = session.exec(
                 sqlmodel.select(EmpleadoVendedorLink).where(
-                    EmpleadoVendedorLink.vendedor_id == vendedor_id,
                     EmpleadoVendedorLink.empleado_id == empleado_userinfo_id
                 )
             ).one_or_none()
+
+            if not link_to_delete:
+                return rx.toast.error("No se encontró la relación de empleado.")
+
+            # Verificamos los permisos: la acción la puede hacer el vendedor o el propio empleado.
+            is_vendedor_del_empleado = self.authenticated_user_info.id == link_to_delete.vendedor_id
+            is_el_propio_empleado = self.authenticated_user_info.id == empleado_userinfo_id
+
+            if not is_vendedor_del_empleado and not is_el_propio_empleado:
+                return rx.toast.error("No tienes permisos para realizar esta acción.")
+
+            session.delete(link_to_delete)
+            session.commit()
             
-            if link_to_delete:
-                session.delete(link_to_delete)
-                session.commit()
-                # Recargamos la lista de empleados para que el cambio se vea en la UI.
+            # Si el que se desvincula es el propio empleado, recargamos su página
+            if is_el_propio_empleado:
+                yield rx.toast.info("Has dejado de ser empleado.")
+                yield rx.call_script("window.location.reload()")
+            else: # Si fue el vendedor, solo actualizamos su lista
                 yield self.load_empleados()
                 yield rx.toast.info("Empleado desvinculado correctamente.")
-            else:
-                yield rx.toast.error("No se encontró la relación para desvincular.")
+    
+    # --- ✨ INICIO: AÑADE ESTA NUEVA FUNCIÓN ✨ ---
+    @rx.event
+    def leave_employment(self):
+        """
+        Permite que un empleado se desvincule de su empleador.
+        Llama a la función `remove_empleado` pasándose a sí mismo como argumento.
+        """
+        if not self.is_empleado or not self.authenticated_user_info:
+            return rx.toast.error("Esta acción no es válida.")
+        
+        # Llama a la lógica principal de desvinculación
+        yield from self.remove_empleado(self.authenticated_user_info.id)
+    # --- ✨ FIN: NUEVA FUNCIÓN ✨ ---
+
 
     @rx.event
     def start_vigilancia(self, vendedor_userinfo_id: int):
@@ -1661,22 +1687,28 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     
 
-    @rx.event
     def submit_and_publish(self, form_data: dict):
         """
-        [CORREGIDO] Manejador para crear y publicar un nuevo producto, guardando
-        tanto el ID del dueño (vendedor) como el del creador (empleado, si aplica).
+        [VERSIÓN FINAL CORREGIDA]
+        Manejador para crear y publicar un nuevo producto, ahora con una lógica de contexto
+        robusta que permite a los empleados publicar en nombre de sus vendedores.
         """
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
         owner_id = self.context_user_id
-        if not owner_id or not self.authenticated_user_info:
-            return rx.toast.error("Error de sesión o contexto no válido.")
+        
+        # Si el contexto no está claro, pero sabemos que es un empleado, lo buscamos.
+        if not owner_id and self.is_empleado:
+            vendedor_info = self.mi_vendedor_info
+            if vendedor_info:
+                owner_id = vendedor_info.id
 
-        # --- ✨ INICIO: LÓGICA PARA DETERMINAR EL CREADOR ✨ ---
+        if not owner_id:
+            return rx.toast.error("Error de sesión o contexto no válido. No se puede publicar.")
+        
         creator_id_to_save = None
-        # Si el ID del usuario logueado es diferente al del dueño del post, es un empleado.
         if self.authenticated_user_info.id != owner_id:
             creator_id_to_save = self.authenticated_user_info.id
-        # --- ✨ FIN DE LA LÓGICA ✨ ---
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
         # 2. Extraer y validar los datos del formulario
         title = form_data.get("title", "").strip()
