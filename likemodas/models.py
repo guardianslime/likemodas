@@ -109,6 +109,24 @@ class GastoCategoria(str, enum.Enum):
     SUMINISTROS = "Suministros"
     OTROS = "Otros"
 
+class RequestStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+
+class EmploymentRequest(rx.Model, table=True):
+    """Guarda una solicitud de empleo de un Vendedor a un Candidato."""
+    __tablename__ = "employmentrequest"
+    
+    requester_id: int = Field(foreign_key="userinfo.id") # Quien envía (Vendedor)
+    candidate_id: int = Field(foreign_key="userinfo.id") # Quien recibe
+    status: RequestStatus = Field(default=RequestStatus.PENDING)
+    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+
+    # Relaciones para acceder a los datos del Vendedor y Candidato
+    requester: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.requester_id]"})
+    candidate: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.candidate_id]"})
+
 # --- 2. AÑADIR EL NUEVO MODELO EmpleadoVendedorLink ---
 class EmpleadoVendedorLink(rx.Model, table=True):
     """

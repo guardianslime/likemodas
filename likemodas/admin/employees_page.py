@@ -16,7 +16,8 @@ def user_search_result_card(user: UserInfo) -> rx.Component:
                 align_items="start"
             ),
             rx.spacer(),
-            rx.button("Añadir como Empleado", on_click=AppState.add_empleado(user.id), size="2", color_scheme="violet")
+            # --- CORRECCIÓN DEL BOTÓN ---
+            rx.button("Enviar Solicitud", on_click=AppState.enviar_solicitud_empleo(user.id), size="2", color_scheme="violet")
         )
     )
 

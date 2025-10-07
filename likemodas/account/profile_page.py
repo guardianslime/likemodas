@@ -2,6 +2,8 @@
 
 import reflex as rx
 import reflex_local_auth
+
+from likemodas.models import EmploymentRequest
 from ..state import AppState
 from ..account.layout import account_layout
 from ..ui.password_input import password_input
@@ -39,6 +41,39 @@ def tfa_activation_modal() -> rx.Component:
         on_open_change=AppState.set_show_tfa_activation_modal,
     )
 
+def seccion_solicitudes_empleo() -> rx.Component:
+    """Componente para mostrar las solicitudes de empleo recibidas."""
+    def solicitud_card(req: EmploymentRequest) -> rx.Component:
+        return rx.card(
+            rx.hstack(
+                rx.vstack(
+                    rx.text(
+                        "Solicitud de empleo recibida de:",
+                        size="2", color_scheme="gray"
+                    ),
+                    rx.text(
+                        req.requester.user.username if req.requester and req.requester.user else "Vendedor", 
+                        weight="bold"
+                    ),
+                    align_items="start"
+                ),
+                rx.spacer(),
+                rx.hstack(
+                    rx.button("Rechazar", on_click=AppState.responder_solicitud_empleo(req.id, False), color_scheme="red", variant="soft"),
+                    rx.button("Aceptar", on_click=AppState.responder_solicitud_empleo(req.id, True), color_scheme="green"),
+                )
+            )
+        )
+
+    return rx.cond(
+        AppState.solicitudes_de_empleo_recibidas,
+        rx.vstack(
+            rx.heading("Solicitudes de Empleo Pendientes", size="6"),
+            rx.foreach(AppState.solicitudes_de_empleo_recibidas, solicitud_card),
+            spacing="4",
+            width="100%"
+        )
+    )
 
 @reflex_local_auth.require_login
 def profile_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
@@ -141,6 +176,7 @@ def profile_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
                 columns={"initial": "1", "md": "2"}, spacing="5", width="100%",
             ),
             security_section,
+            seccion_solicitudes_empleo(), # <-- AÑADE ESTA LÍNEA AQUÍ
             danger_zone,
             spacing="5", 
             width="100%", 

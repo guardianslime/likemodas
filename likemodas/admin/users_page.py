@@ -16,22 +16,20 @@ def user_status_badge(user: UserManagementDTO) -> rx.Component: # <-- Usa el DTO
         )
     )
 
-def user_row(user: UserManagementDTO) -> rx.Component:
+def user_row(user: UserManagementDTO) -> rx.Component: # <-- Usa el DTO
     """Componente para renderizar una fila de la tabla de usuarios."""
     return rx.table.row(
-        rx.table.cell(user.username),
+        rx.table.cell(user.username), # Acceso directo
         rx.table.cell(user.email),
         rx.table.cell(rx.badge(user.role)),
         rx.table.cell(user_status_badge(user)),
         rx.table.cell(
             rx.hstack(
-                # Botón para cambiar rol de Admin
                 rx.button(
                     rx.cond(user.role == UserRole.ADMIN, "Quitar Admin", "Hacer Admin"),
                     on_click=AppState.toggle_admin_role(user.id),
                     size="1"
                 ),
-                # Botón para Vendedor
                 rx.button(
                     rx.cond(user.role == UserRole.VENDEDOR, "Quitar Vendedor", "Hacer Vendedor"),
                     on_click=AppState.toggle_vendedor_role(user.id),
@@ -39,7 +37,6 @@ def user_row(user: UserManagementDTO) -> rx.Component:
                     color_scheme="violet",
                     is_disabled=(user.role == UserRole.ADMIN)
                 ),
-                # --- BOTÓN "VIGILAR" AÑADIDO AQUÍ ---
                 rx.cond(
                     user.role == UserRole.VENDEDOR,
                     rx.button(
@@ -50,7 +47,6 @@ def user_row(user: UserManagementDTO) -> rx.Component:
                         size="1"
                     )
                 ),
-                # Botón para vetar/quitar veto
                 rx.cond(
                     user.is_banned,
                     rx.button("Quitar Veto", on_click=AppState.unban_user(user.id), color_scheme="green", size="1"),
@@ -89,7 +85,6 @@ def user_management_page() -> rx.Component:
                     )
                 ),
                 rx.table.body(
-                    # Itera sobre la propiedad computada que ahora devuelve DTOs
                     rx.foreach(AppState.filtered_all_users, user_row)
                 ),
                 variant="surface",

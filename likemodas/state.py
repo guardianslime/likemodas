@@ -8,7 +8,7 @@ from sqlmodel import text # Importar text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Dict, Optional, Tuple
-from .models import EmpleadoVendedorLink, LocalAuthSession
+from .models import EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, RequestStatus
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
@@ -576,20 +576,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def vendedor_users(self) -> list[UserManagementDTO]:
-        """
-        [CORREGIDO] Filtra y devuelve solo los DTOs de usuarios 
-        con rol de Vendedor desde la lista 'managed_users'.
-        """
-        # Usa el nuevo nombre de la variable
+        """Filtra y devuelve solo los DTOs de usuarios con rol de Vendedor."""
         return [u for u in self.managed_users if u.role == UserRole.VENDEDOR]
 
     @rx.var
     def customer_users(self) -> list[UserManagementDTO]:
-        """
-        [CORREGIDO] Filtra y devuelve solo los DTOs de usuarios 
-        con rol de Cliente desde la lista 'managed_users'.
-        """
-        # Usa el nuevo nombre de la variable
+        """Filtra y devuelve solo los DTOs de usuarios con rol de Cliente."""
         return [u for u in self.managed_users if u.role == UserRole.CUSTOMER]
 
     # --- Manejadores de Eventos (Nuevos y Modificados) ---
@@ -1573,6 +1565,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.search_query_all_users = query
 
     # --- 2. PROPIEDAD COMPUTADA PARA FILTRAR USUARIOS ---
+    # REEMPLAZA las propiedades computadas que causaban el error
     @rx.var
     def filtered_all_users(self) -> list[UserManagementDTO]:
         """Filtra la lista de DTOs de usuarios según la barra de búsqueda."""
@@ -1588,32 +1581,33 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- 3. NUEVO MANEJADOR DE EVENTOS PARA CAMBIAR ROL DE VENDEDOR ---
     @rx.event
     def toggle_vendedor_role(self, userinfo_id: int):
-        """[CORRECCIÓN DEFINITIVA] Cambia el rol y actualiza la lista de DTOs."""
+        """[CORRECCIÓN DEFINITIVA] Cambia el rol de un usuario y actualiza la lista de DTOs."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
+
         with rx.session() as session:
             user_info = session.get(UserInfo, userinfo_id)
             if user_info and user_info.user:
-                # ... (lógica de cambio de rol en la BD) ...
+                if user_info.id == self.authenticated_user_info.id:
+                    return rx.toast.warning("No puedes cambiar tu propio rol.")
+                
                 new_role = UserRole.CUSTOMER if user_info.role == UserRole.VENDEDOR else UserRole.VENDEDOR
                 if user_info.role in [UserRole.CUSTOMER, UserRole.VENDEDOR]:
                     user_info.role = new_role
                     session.add(user_info)
                     session.commit()
-                    session.refresh(user_info)
 
-                    # --- ¡CORRECCIÓN CLAVE! ---
-                    # Actualiza el DTO en la lista del estado, en lugar de recargar todo.
+                    # Actualiza el DTO en la lista del estado, en lugar de recargar todo
                     for i, u in enumerate(self.managed_users):
                         if u.id == userinfo_id:
                             self.managed_users[i].role = new_role
                             break
-                    # --- FIN DE LA CORRECCIÓN ---
                     
                     toast_message = f"{user_info.user.username} ahora es un {new_role.value.capitalize()}."
                     return rx.toast.info(toast_message)
                 else:
                     return rx.toast.error("Solo se puede alternar el rol entre Cliente y Vendedor.")
+
 
 
     # --- 4. NUEVO MANEJADOR PARA POLLING DE ROL (Redirección automática) ---
@@ -1638,6 +1632,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # Forzamos una recarga completa de la página.
                 yield rx.toast.info("Tu rol ha sido actualizado. Redirigiendo...")
                 yield rx.reload()
+
+    
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
@@ -5551,6 +5547,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             self.contact_entries = session.exec(sqlmodel.select(ContactEntryModel).order_by(ContactEntryModel.id.desc())).all()
     
+
+    # REEMPLAZA la variable all_users
+    managed_users: list[UserManagementDTO] = []
+
+    # REEMPLAZA el manejador de eventos load_all_users
     @rx.event
     def load_all_users(self):
         """
@@ -5578,12 +5579,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 for u in users_from_db
             ]
 
+
     @rx.event
     def toggle_admin_role(self, userinfo_id: int):
-        """
-        [CORRECCIÓN DEFINITIVA] Cambia el rol de un usuario a/desde Admin
-        y actualiza la lista de DTOs en el estado localmente.
-        """
+        """[CORRECCIÓN DEFINITIVA] Cambia el rol de un usuario a/desde Admin y actualiza el DTO."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
             
@@ -5597,20 +5596,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 user_info.role = new_role
                 session.add(user_info)
                 session.commit()
-                session.refresh(user_info)
 
-                # --- CORRECCIÓN CLAVE: Actualiza el DTO en la lista del estado directamente ---
+                # Actualiza el DTO en la lista del estado
                 for i, u in enumerate(self.managed_users):
                     if u.id == userinfo_id:
                         self.managed_users[i].role = new_role
                         break
 
+
     @rx.event
     def ban_user(self, userinfo_id: int, days: int = 7):
-        """
-        [CORRECCIÓN DEFINITIVA] Veta a un usuario por un número de días
-        y actualiza el estado localmente.
-        """
+        """[CORRECCIÓN DEFINITIVA] Veta a un usuario y actualiza el DTO."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
         
@@ -5624,9 +5620,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 user_info.ban_expires_at = datetime.now(timezone.utc) + timedelta(days=days)
                 session.add(user_info)
                 session.commit()
-                session.refresh(user_info)
 
-                # --- CORRECCIÓN CLAVE: Actualiza el DTO en la lista del estado directamente ---
+                # Actualiza el DTO en la lista del estado
                 for i, u in enumerate(self.managed_users):
                     if u.id == userinfo_id:
                         self.managed_users[i].is_banned = True
@@ -5634,10 +5629,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def unban_user(self, userinfo_id: int):
-        """
-        [CORRECCIÓN DEFINITIVA] Quita el veto a un usuario
-        y actualiza el estado localmente.
-        """
+        """[CORRECCIÓN DEFINITIVA] Quita el veto a un usuario y actualiza el DTO."""
         if not self.is_admin:
             return rx.toast.error("No tienes permisos.")
 
@@ -5648,9 +5640,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 user_info.ban_expires_at = None
                 session.add(user_info)
                 session.commit()
-                session.refresh(user_info)
                 
-                # --- CORRECCIÓN CLAVE: Actualiza el DTO en la lista del estado directamente ---
+                # Actualiza el DTO en la lista del estado
                 for i, u in enumerate(self.managed_users):
                     if u.id == userinfo_id:
                         self.managed_users[i].is_banned = False
@@ -5778,23 +5769,37 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_profile_page(self):
-        """Carga los datos del usuario actual en el formulario de perfil."""
+        """
+        [CORREGIDO Y COMPLETO] Carga los datos del perfil del usuario actual
+        y también busca las solicitudes de empleo pendientes que ha recibido.
+        """
         if not self.authenticated_user_info:
+            # Si no está autenticado, no hay nada que cargar.
             return
-        
+
         with rx.session() as session:
+            # 1. Cargar la información básica del perfil
             user_info = session.get(UserInfo, self.authenticated_user_info.id)
             if user_info and user_info.user:
-                # --- ✨ CORRECCIÓN DE ERROR: Pasamos el string del nombre de archivo directamente ✨ ---
                 self.profile_info = UserProfileData(
                     username=user_info.user.username,
                     email=user_info.email,
                     phone=user_info.phone or "",
                     avatar_url=user_info.avatar_url or "",
-                    tfa_enabled=user_info.tfa_enabled  # <- AÑADE ESTA LÍNEA
+                    tfa_enabled=user_info.tfa_enabled
                 )
                 self.profile_username = user_info.user.username
                 self.profile_phone = user_info.phone or ""
+            
+            # 2. Cargar las solicitudes de empleo pendientes para este usuario
+            self.solicitudes_de_empleo_recibidas = session.exec(
+                sqlmodel.select(EmploymentRequest)
+                .options(sqlalchemy.orm.joinedload(EmploymentRequest.requester).joinedload(UserInfo.user))
+                .where(
+                    EmploymentRequest.candidate_id == self.authenticated_user_info.id,
+                    EmploymentRequest.status == RequestStatus.PENDING
+                )
+            ).all()
 
     @rx.event
     async def handle_avatar_upload(self, files: list[rx.UploadFile]):
