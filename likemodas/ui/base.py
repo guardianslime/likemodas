@@ -1,64 +1,76 @@
+# likemodas/ui/base.py
+
 import reflex as rx
 from reflex.style import toggle_color_mode
 from ..state import AppState
 from .nav import public_navbar
 from .sidebar import sliding_admin_sidebar
 
-# --- ✨ INICIO: AÑADE ESTA NUEVA FUNCIÓN COMPLETA ✨ ---
-def employment_request_toast() -> rx.Component:
+# --- ✨ INICIO: NUEVO BANNER PERSONALIZADO ✨ ---
+def persistent_employment_request_banner() -> rx.Component:
     """
-    Un aviso (toast) personalizado y persistente que muestra una
-    solicitud de empleo pendiente con opciones para aceptar o rechazar.
+    Un banner personalizado y persistente que flota en la parte superior derecha
+    y muestra una solicitud de empleo pendiente con opciones para aceptar o rechazar.
+    Funciona en versiones antiguas de Reflex.
     """
-    return rx.toast.custom(
-        rx.hstack(
-            rx.icon("user-plus", size=24),
-            rx.vstack(
-                rx.text(
-                    "¡Nueva solicitud de empleo!",
-                    weight="bold"
-                ),
-                rx.text(
-                    # Usamos rx.cond para evitar errores si el dato aún no ha cargado
-                    rx.cond(
-                        AppState.pending_request_notification,
-                        "De: " + AppState.pending_request_notification.requester_username,
-                        "Cargando..."
+    return rx.box(
+        # Usamos rx.cond para mostrar el banner solo si hay una notificación pendiente
+        rx.cond(
+            AppState.pending_request_notification,
+            rx.card(
+                rx.hstack(
+                    rx.icon("user-plus", size=24),
+                    rx.vstack(
+                        rx.text("¡Nueva solicitud de empleo!", weight="bold"),
+                        rx.text(
+                            "De: " + AppState.pending_request_notification.requester_username,
+                            size="2"
+                        ),
+                        align_items="start",
+                        spacing="0"
                     ),
-                    size="2"
+                    rx.spacer(),
+                    rx.hstack(
+                        rx.button(
+                            "Rechazar",
+                            size="1",
+                            color_scheme="red",
+                            variant="soft",
+                            on_click=AppState.responder_solicitud_empleo(AppState.pending_request_notification.id, False)
+                        ),
+                        rx.button(
+                            "Aceptar",
+                            size="1",
+                            color_scheme="green",
+                            on_click=AppState.responder_solicitud_empleo(AppState.pending_request_notification.id, True)
+                        ),
+                    ),
+                    spacing="4",
+                    align="center",
+                    width="100%",
                 ),
-                align_items="start",
-                spacing="0"
+                # Estilos del banner
+                padding="1em",
+                width="100%",
+                max_width="450px",
             ),
-            rx.spacer(),
-            rx.hstack(
-                rx.button(
-                    "Rechazar",
-                    size="1",
-                    color_scheme="red",
-                    variant="soft",
-                    # Llama al evento para responder la solicitud
-                    on_click=AppState.responder_solicitud_empleo(AppState.pending_request_notification.id, False)
-                ),
-                rx.button(
-                    "Aceptar",
-                    size="1",
-                    color_scheme="green",
-                    # Llama al evento para responder la solicitud
-                    on_click=AppState.responder_solicitud_empleo(AppState.pending_request_notification.id, True)
-                ),
-            ),
-            spacing="4",
-            align="center",
         ),
-        # El aviso dura "infinito" hasta que el usuario interactúe con él
-        duration=float('inf'),
-        # Lo mostramos solo si la variable de estado tiene una solicitud
-        is_visible=AppState.pending_request_notification != None,
-        # ID único para nuestro aviso
-        id="employment_toast"
+        # Estilos para posicionar el banner
+        position="fixed",
+        top="7rem", # Lo ubicamos debajo de la barra de navegación
+        right="1.5rem",
+        z_index="1500", # Un z-index alto para que flote sobre todo
+        transition="transform 0.5s ease-in-out, opacity 0.5s", # Animación suave
+        # Controlamos la animación con transform y opacity
+        transform=rx.cond(
+            AppState.pending_request_notification,
+            "translateY(0)", # Posición visible
+            "translateY(-20px)" # Posición oculta (ligeramente arriba)
+        ),
+        opacity=rx.cond(AppState.pending_request_notification, "1", "0"),
+        pointer_events=rx.cond(AppState.pending_request_notification, "auto", "none"),
     )
-# --- ✨ FIN: NUEVA FUNCIÓN ✨ ---
+# --- ✨ FIN: NUEVO BANNER PERSONALIZADO ✨ ---
 
 def fixed_color_mode_button() -> rx.Component:
     """Botón flotante para cambiar el modo de color."""
@@ -73,8 +85,8 @@ def fixed_color_mode_button() -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    [CORREGIDO] Estructura de página base que ahora diferencia entre 
-    Admin/Vendedor y el resto de usuarios.
+    [CORREGIDO] Estructura de página base que ahora incluye el banner
+    personalizado y el mecanismo de sondeo para las solicitudes de empleo.
     """
     loading_screen = rx.center(rx.spinner(size="3"), height="100vh", width="100%", background=rx.color("gray", 2))
 
@@ -101,17 +113,14 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         rx.cond(
             ~AppState.is_hydrated,
             loading_screen,
-            # --- ¡ESTA ES LA CORRECCIÓN CLAVE! ---
-            # Ahora se comprueba si el usuario es Admin O Vendedor.
             rx.cond(
                 AppState.is_admin | AppState.is_vendedor, 
                 admin_layout, 
                 public_layout
             )
-            # --- FIN DE LA CORRECCIÓN ---
         ),
         
-        # El sistema de polling para la redirección automática (esto ya es correcto)
+        # Polling para el rol de usuario (se mantiene igual)
         rx.cond(
             AppState.is_authenticated & ~AppState.is_admin,
             rx.fragment(
@@ -130,7 +139,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                                 if (trigger) {
                                     trigger.click();
                                 }
-                            }, 10000); // Verifica cada 10 segundos
+                            }, 10000);
                         }
                         """
                     ),
@@ -138,17 +147,19 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 )
             )
         ),
-        # --- ✨ INICIO: AÑADE ESTE NUEVO BLOQUE COMPLETO ✨ ---
-        # Polling para las solicitudes de empleo (solo para vendedores/admins)
+        
+        # --- ✨ INICIO: SE AÑADEN EL BANNER Y SU MECANISMO DE ACTIVACIÓN ✨ ---
         rx.cond(
             AppState.is_vendedor | AppState.is_admin,
             rx.fragment(
+                # Botón oculto que se activa periódicamente
                 rx.button(
                     "Employment Polling Trigger",
                     on_click=AppState.poll_employment_requests,
                     id="employment_poller_button",
                     display="none",
                 ),
+                # Script que activa el botón
                 rx.box(
                     on_mount=rx.call_script(
                         """
@@ -158,7 +169,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                                 if (trigger) {
                                     trigger.click();
                                 }
-                            }, 12000); // Verifica cada 12 segundos
+                            }, 12000);
                         }
                         """
                     ),
@@ -167,8 +178,8 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             )
         ),
         
-        # El componente del aviso que se mostrará
-        employment_request_toast(),
+        # El componente del banner que acabamos de crear
+        persistent_employment_request_banner(),
         # --- ✨ FIN: NUEVO BLOQUE ✨ ---
         
         fixed_color_mode_button(),
