@@ -128,7 +128,7 @@ class EmploymentRequest(rx.Model, table=True):
     requester: "UserInfo" = Relationship(back_populates="solicitudes_enviadas", sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.requester_id]"})
     candidate: "UserInfo" = Relationship(back_populates="solicitudes_recibidas", sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.candidate_id]"})
 
-    # --- ✨ AÑADE ESTA NUEVA PROPIEDAD AQUÍ ✨ ---
+    # --- ✨ CORRECCIÓN AQUÍ: AÑADE ESTA NUEVA PROPIEDAD ✨ ---
     @property
     def created_at_formatted(self) -> str:
         """Devuelve la fecha de creación formateada."""
@@ -275,7 +275,12 @@ class PasswordResetToken(rx.Model, table=True):
     created_at: datetime = Field(default_factory=get_utc_now, sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
 
 class BlogPostModel(rx.Model, table=True):
-    userinfo_id: int = Field(foreign_key="userinfo.id")
+    userinfo_id: int = Field(foreign_key="userinfo.id") # Este es el VENDEDOR/DUEÑO
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # Nuevo campo para guardar quién creó el post (si fue un empleado)
+    creator_id: Optional[int] = Field(default=None, foreign_key="userinfo.id")
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+    
     title: str
     content: str
     price: float = 0.0
@@ -294,6 +299,10 @@ class BlogPostModel(rx.Model, table=True):
     is_imported: bool = Field(default=False, nullable=False)
 
     userinfo: "UserInfo" = Relationship(back_populates="posts")
+    # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+    # Relación para poder cargar los datos del creador fácilmente
+    creator: Optional["UserInfo"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[BlogPostModel.creator_id]"})
+    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     saved_by_users: List["UserInfo"] = Relationship(back_populates="saved_posts", link_model=SavedPostLink)
     comments: List["CommentModel"] = Relationship(back_populates="blog_post", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 

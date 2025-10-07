@@ -1,4 +1,5 @@
 # likemodas/ui/qr_scanner.py (VERSIÓN CON DEPURACIÓN)
+
 import reflex as rx
 
 class JsQrScanner(rx.Component):
