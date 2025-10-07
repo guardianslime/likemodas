@@ -5767,6 +5767,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_profile_phone(self, phone: str):
         self.profile_phone = phone
 
+    # --- AÑADE ESTA LÍNEA DENTRO DE TU CLASE AppState ---
+    solicitudes_de_empleo_recibidas: list[EmploymentRequest] = []
+
     @rx.event
     def on_load_profile_page(self):
         """
