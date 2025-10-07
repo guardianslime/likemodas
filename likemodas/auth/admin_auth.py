@@ -34,8 +34,8 @@ def require_admin(page):
 
 def require_panel_access(page):
     """
-    [NUEVO Y CORREGIDO] Decorador para proteger páginas del panel de control.
-    Permite el acceso a usuarios que sean Administradores O Vendedores.
+    [CORREGIDO] Decorador para proteger páginas del panel de control.
+    Permite el acceso a Administradores, Vendedores Y AHORA TAMBIÉN a Empleados.
     """
     @wraps(page)
     def protected_page(*args, **kwargs):
@@ -51,10 +51,10 @@ def require_panel_access(page):
 
         return rx.cond(
             AppState.is_hydrated,
-            # --- ¡LÓGICA CLAVE CORREGIDA! ---
-            # Se comprueba si el usuario es admin O vendedor.
+            # --- ✨ ¡LÓGICA CLAVE CORREGIDA! ✨ ---
+            # Se añade la comprobación de si el usuario es un empleado.
             rx.cond(
-                AppState.is_admin | AppState.is_vendedor,
+                AppState.is_admin | AppState.is_vendedor | AppState.is_empleado,
                 page(*args, **kwargs),
                 error_content
             ),

@@ -1533,11 +1533,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def remove_empleado(self, empleado_userinfo_id: int):
-        """Elimina la vinculación de un empleado."""
-        with rx.session() as session:
-            # El ID del vendedor puede ser el del contexto (si es un vendedor) o el del empleador (si es un empleado desvinculándose)
-            vendedor_id = self.context_user_id if not self.is_empleado else self.mi_vendedor_info.id
+        """[CORREGIDO] Elimina la vinculación de un empleado de forma directa."""
+        # El que ejecuta esta acción es siempre el vendedor (o un admin en su nombre).
+        # Usamos el context_user_id que siempre apunta al vendedor.
+        vendedor_id = self.context_user_id
+        if not vendedor_id:
+            return rx.toast.error("Error de contexto. No se pudo identificar al vendedor.")
 
+        with rx.session() as session:
+            # Buscamos el enlace específico entre este vendedor y este empleado.
             link_to_delete = session.exec(
                 sqlmodel.select(EmpleadoVendedorLink).where(
                     EmpleadoVendedorLink.vendedor_id == vendedor_id,
@@ -1548,8 +1552,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             if link_to_delete:
                 session.delete(link_to_delete)
                 session.commit()
+                # Recargamos la lista de empleados para que el cambio se vea en la UI.
                 yield self.load_empleados()
-                yield rx.toast.info("Empleado desvinculado.")
+                yield rx.toast.info("Empleado desvinculado correctamente.")
+            else:
+                yield rx.toast.error("No se encontró la relación para desvincular.")
 
     @rx.event
     def start_vigilancia(self, vendedor_userinfo_id: int):

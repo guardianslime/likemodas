@@ -85,8 +85,8 @@ def fixed_color_mode_button() -> rx.Component:
 
 def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
-    [CORREGIDO] Estructura de página base que ahora incluye el banner
-    personalizado y el mecanismo de sondeo para las solicitudes de empleo.
+    [CORREGIDO] Estructura de página base que ahora muestra el panel de admin
+    a Vendedores, Administradores y Empleados.
     """
     loading_screen = rx.center(rx.spinner(size="3"), height="100vh", width="100%", background=rx.color("gray", 2))
 
@@ -113,8 +113,10 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
         rx.cond(
             ~AppState.is_hydrated,
             loading_screen,
+            # --- ✨ ¡ESTA ES LA CORRECCIÓN CLAVE! ✨ ---
+            # Se añade AppState.is_empleado a la condición
             rx.cond(
-                AppState.is_admin | AppState.is_vendedor, 
+                AppState.is_admin | AppState.is_vendedor | AppState.is_empleado, 
                 admin_layout, 
                 public_layout
             )

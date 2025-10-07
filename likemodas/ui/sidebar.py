@@ -29,17 +29,15 @@ def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool]
 
 def sidebar_items() -> rx.Component:
     """
-    [CORREGIDO] Genera los enlaces del sidebar de forma dinámica, ocultando
-    "Gestión de Usuarios" para los Vendedores.
+    [CORREGIDO] Genera los enlaces del sidebar, mostrando los elementos de
+    gestión también a los empleados.
     """
-    # Elementos que ven los Vendedores y los Empleados
     elementos_base = rx.fragment(
         sidebar_item("Mis Publicaciones", "newspaper", "/blog"),
         sidebar_item("Crear Publicación", "square-plus", navigation.routes.BLOG_POST_ADD_ROUTE),
         sidebar_item("Tienda (Punto de Venta)", "store", "/admin/store"),
     )
 
-    # Elementos de gestión que solo ven los Vendedores (y Admins), pero NO los Empleados
     elementos_gestion_vendedor = rx.fragment(
         sidebar_item("Finanzas", "line-chart", "/admin/finance"),
         sidebar_item("Gestión de Empleados", "user-cog", "/admin/employees"),
@@ -49,18 +47,18 @@ def sidebar_items() -> rx.Component:
         sidebar_item("Solicitudes de Soporte", "mailbox", navigation.routes.SUPPORT_TICKETS_ROUTE),
     )
 
-    # Elementos exclusivos para un Administrador (cuando NO está en modo vigilancia)
     elementos_exclusivos_admin = rx.fragment(
         sidebar_item("Gestión de Usuarios", "users", "/admin/users"),
     )
 
     return rx.vstack(
         elementos_base,
-        rx.cond(
-            ~AppState.is_empleado,  # Si NO es un empleado (es Vendedor o Admin)
-            elementos_gestion_vendedor
-        ),
-        # La lógica para los elementos de admin ahora es independiente
+        
+        # --- ✨ CORRECCIÓN CLAVE: SE ELIMINA LA CONDICIÓN QUE OCULTABA ESTO ✨ ---
+        # Ahora los empleados también verán estos elementos de gestión.
+        elementos_gestion_vendedor,
+
+        # La lógica para los elementos exclusivos de admin se mantiene igual
         rx.cond(
             AppState.is_admin & ~AppState.is_vigilando,
             elementos_exclusivos_admin
@@ -102,6 +100,32 @@ def sliding_admin_sidebar() -> rx.Component:
                 margin_bottom="1em",
             )
         ),
+        # --- ✨ INICIO: NUEVO BANNER PARA "MODO EMPLEADO" ✨ ---
+        rx.cond(
+            AppState.is_empleado,
+            rx.box(
+                rx.hstack(
+                    rx.icon("briefcase", size=16),
+                    rx.vstack(
+                        rx.text("Modo Empleado", size="2", weight="bold"),
+                        rx.text(
+                            "Trabajando para: " + AppState.mi_vendedor_info.user.username,
+                            size="1"
+                        ),
+                        spacing="0",
+                        align_items="start"
+                    ),
+                    align="center",
+                ),
+                bg=rx.color("cyan", 4),
+                padding="0.5em",
+                border_radius="md",
+                width="100%",
+                margin_bottom="1em",
+            )
+        ),
+        # --- ✨ FIN: NUEVO BANNER ✨ ---
+
         sidebar_items(),
         rx.spacer(),
         rx.vstack(
