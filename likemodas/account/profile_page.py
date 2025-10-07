@@ -10,7 +10,6 @@ from ..ui.password_input import password_input
 
 def tfa_activation_modal() -> rx.Component:
     """Modal para mostrar el QR y confirmar la activación de 2FA."""
-    # ... (Este componente no necesita cambios y se mantiene igual)
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.title("Activar Autenticación de Dos Factores"),
@@ -44,8 +43,8 @@ def tfa_activation_modal() -> rx.Component:
 def seccion_solicitudes_empleo() -> rx.Component:
     """Componente para mostrar las solicitudes de empleo recibidas."""
     
-    # --- FUNCIÓN INTERNA CORREGIDA ---
     def solicitud_card(req: EmploymentRequest) -> rx.Component:
+        """Card individual para una solicitud de empleo."""
         return rx.card(
             rx.hstack(
                 rx.vstack(
@@ -53,10 +52,6 @@ def seccion_solicitudes_empleo() -> rx.Component:
                         "Solicitud de empleo recibida de:",
                         size="2", color_scheme="gray"
                     ),
-                    # --- ¡CORRECCIÓN CLAVE AQUÍ! ---
-                    # Se reemplaza el 'if/else' de Python por 'rx.cond'.
-                    # Esta condición anidada comprueba de forma segura si existen
-                    # el solicitante y su usuario antes de intentar mostrar el nombre.
                     rx.text(
                         rx.cond(
                             req.requester & req.requester.user,
@@ -85,9 +80,8 @@ def seccion_solicitudes_empleo() -> rx.Component:
         )
     )
 
-
 @reflex_local_auth.require_login
-def profile_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
+def profile_page_content() -> rx.Component:
     """Página de CLIENTE para gestionar perfil, con estética mejorada y sección 2FA."""
     admin_redirect_view = rx.center(
         rx.vstack(rx.spinner(size="3"), rx.text("Redirigiendo...")),
@@ -187,7 +181,7 @@ def profile_page_content() -> rx.Component: # <-- NOMBRE CORREGIDO
                 columns={"initial": "1", "md": "2"}, spacing="5", width="100%",
             ),
             security_section,
-            seccion_solicitudes_empleo(), # <-- AÑADE ESTA LÍNEA AQUÍ
+            seccion_solicitudes_empleo(), # <-- Esta es la sección que muestra las solicitudes
             danger_zone,
             spacing="5", 
             width="100%", 

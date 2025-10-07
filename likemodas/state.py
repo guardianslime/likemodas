@@ -5836,17 +5836,21 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_request)
 
             # Crear una notificación para el candidato
-            requester_user = session.get(UserInfo, requester_id)
+            # Se carga la relación 'user' para evitar errores al acceder al nombre
+            requester_info = session.exec(
+                sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
+                .where(UserInfo.id == requester_id)
+            ).one()
+            
             notification = NotificationModel(
                 userinfo_id=candidate_userinfo_id,
-                message=f"¡{requester_user.user.username} quiere contratarte como empleado!",
-                url="/my-account/profile" # La solicitud aparecerá en su perfil
+                message=f"¡{requester_info.user.username} quiere contratarte como empleado!",
+                url="/my-account/profile"
             )
             session.add(notification)
             session.commit()
         
-        # Limpia los resultados de búsqueda para que la tarjeta del usuario desaparezca
-        self.search_results_users = []
+        self.search_results_users = [] # Limpiar resultados de búsqueda
         return rx.toast.success("Solicitud de empleo enviada.")
 
     @rx.event
@@ -5858,12 +5862,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             request = session.get(EmploymentRequest, request_id)
 
-            # Validar que la solicitud existe y es para el usuario actual
             if not request or request.candidate_id != self.authenticated_user_info.id:
                 return rx.toast.error("Solicitud no válida.")
 
             if aceptada:
-                # Verificar que el candidato no sea ya empleado de alguien más
                 existing_link = session.exec(
                     sqlmodel.select(EmpleadoVendedorLink).where(EmpleadoVendedorLink.empleado_id == request.candidate_id)
                 ).first()
@@ -5871,10 +5873,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                     request.status = RequestStatus.REJECTED
                     session.add(request)
                     session.commit()
-                    yield self.on_load_profile_page() # Recargar la lista de solicitudes
+                    yield self.on_load_profile_page()
                     return rx.toast.error("Ya eres empleado de otro vendedor. Solicitud rechazada.")
 
-                # Crear el vínculo de empleo
                 new_link = EmpleadoVendedorLink(
                     vendedor_id=request.requester_id,
                     empleado_id=request.candidate_id
@@ -5883,7 +5884,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 request.status = RequestStatus.ACCEPTED
                 session.add(request)
                 
-                # Notificar al Vendedor
                 candidate_user = session.get(UserInfo, request.candidate_id)
                 notification = NotificationModel(
                     userinfo_id=request.requester_id,
@@ -5894,13 +5894,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 
                 yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
-                yield rx.reload() # Recarga la página para aplicar el nuevo rol de empleado
+                yield rx.reload()
             
             else: # Si es rechazada
                 request.status = RequestStatus.REJECTED
                 session.add(request)
                 session.commit()
-                yield self.on_load_profile_page() # Recargar la lista de solicitudes
+                yield self.on_load_profile_page()
                 return rx.toast.info("Has rechazado la oferta de empleo.")
 
     @rx.event
