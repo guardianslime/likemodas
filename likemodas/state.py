@@ -5970,16 +5970,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def poll_employment_requests(self):
         """
-        [CORREGIDO] Busca periódicamente la primera solicitud de empleo pendiente
-        y se asegura de cargar los datos del remitente para mostrarla en el aviso global.
+        Busca periódicamente la primera solicitud de empleo pendiente y se asegura de
+        cargar los datos del remitente para mostrarla en el aviso global.
         """
+        # Si no estamos autenticados o ya hay un aviso mostrándose, no hacemos nada.
         if not self.authenticated_user_info or self.pending_request_notification:
             return
 
         with rx.session() as session:
             # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
             # Añadimos .options(...) para forzar la carga de la relación 'requester' y su 'user' anidado.
-            # Esto asegura que `first_pending.requester.user.username` esté disponible.
+            # Esto asegura que el nombre de usuario del solicitante esté disponible después.
             first_pending = session.exec(
                 sqlmodel.select(EmploymentRequest)
                 .options(
@@ -5992,7 +5993,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             ).first()
             # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-            
+
             # Esta parte se asegura de que el banner solo se muestre si tenemos todos los datos.
             if first_pending and first_pending.requester and first_pending.requester.user:
                 self.pending_request_notification = first_pending
