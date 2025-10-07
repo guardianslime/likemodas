@@ -1441,20 +1441,37 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_search_query_users(self, query: str):
         self.search_query_users = query
 
+    # --- AÑADE ESTA NUEVA VARIABLE DE ESTADO ---
+    solicitudes_de_empleo_enviadas: list[EmploymentRequest] = []
+
+    # --- REEMPLAZA LA FUNCIÓN `load_empleados` ---
     @rx.event
     def load_empleados(self):
-        """Carga la lista de empleados asociados al vendedor en contexto."""
-        if not self.context_user_id:
-            self.empleados = []
+        """
+        [CORREGIDO] Carga la lista de empleados Y el historial de solicitudes enviadas
+        asociadas al vendedor en contexto.
+        """
+        if not (self.is_vendedor or self.is_admin):
+            return rx.redirect("/")
+        
+        user_id_to_check = self.context_user_id or self.authenticated_user_info.id
+        if not user_id_to_check:
             return
-            
+
         with rx.session() as session:
+            # Cargar empleados actuales (sin cambios)
             links = session.exec(
                 sqlmodel.select(EmpleadoVendedorLink)
                 .options(sqlalchemy.orm.joinedload(EmpleadoVendedorLink.empleado).joinedload(UserInfo.user))
-                .where(EmpleadoVendedorLink.vendedor_id == self.context_user_id)
+                .where(EmpleadoVendedorLink.vendedor_id == user_id_to_check)
             ).all()
             self.empleados = [link.empleado for link in links if link.empleado and link.empleado.user]
+
+            # --- LÓGICA AÑADIDA: Cargar historial de solicitudes ---
+            self.solicitudes_de_empleo_enviadas = session.exec(
+                sqlmodel.select(EmploymentRequest).where(EmploymentRequest.requester_id == user_id_to_check)
+                .order_by(sqlmodel.desc(EmploymentRequest.created_at))
+            ).all()
 
     @rx.event
     def search_users_for_employment(self):
@@ -5804,20 +5821,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             ).all()
 
+    # --- REEMPLAZA LA FUNCIÓN `enviar_solicitud_empleo` ---
     @rx.event
     def enviar_solicitud_empleo(self, candidate_userinfo_id: int):
-        """El Vendedor envía una solicitud de empleo a un candidato."""
+        """[CORREGIDO] El Vendedor envía una solicitud de empleo, guardando su nombre de usuario."""
         if not (self.is_vendedor or self.is_admin) or not self.authenticated_user_info:
             return rx.toast.error("No tienes permisos para enviar solicitudes.")
 
         requester_id = self.authenticated_user_info.id
 
         with rx.session() as session:
-            # Verificar que no se envíe una solicitud a uno mismo
             if requester_id == candidate_userinfo_id:
                 return rx.toast.error("No puedes enviarte una solicitud a ti mismo.")
 
-            # Verificar si ya existe una solicitud pendiente
             existing_request = session.exec(
                 sqlmodel.select(EmploymentRequest).where(
                     EmploymentRequest.requester_id == requester_id,
@@ -5828,24 +5844,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             if existing_request:
                 return rx.toast.info("Ya has enviado una solicitud pendiente a este usuario.")
 
-            # Es necesario cargar la relación 'user' del solicitante para obtener su nombre de usuario
-            requester_info = session.exec(
-                sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
-                .where(UserInfo.id == requester_id)
-            ).one()
-            
+            requester_info = session.get(UserInfo, requester_id)
             if not requester_info or not requester_info.user:
                 return rx.toast.error("Error al identificar al solicitante.")
-
-            # Crear la nueva solicitud guardando el nombre del solicitante
+            
+            # --- CORRECCIÓN: Guardar el nombre de usuario directamente ---
             new_request = EmploymentRequest(
                 requester_id=requester_id,
                 candidate_id=candidate_userinfo_id,
-                requester_username=requester_info.user.username
+                requester_username=requester_info.user.username # Se guarda el nombre
             )
             session.add(new_request)
 
-            # Crear una notificación para el candidato
             notification = NotificationModel(
                 userinfo_id=candidate_userinfo_id,
                 message=f"¡{requester_info.user.username} quiere contratarte como empleado!",
@@ -5854,10 +5864,29 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(notification)
             session.commit()
         
-        self.search_results_users = [] # Limpiar resultados de búsqueda
+        self.search_results_users = []
         yield rx.toast.success("Solicitud de empleo enviada.")
-        # Recargar los datos para que la nueva solicitud aparezca en el historial del Vendedor
+        # Recargar la lista para que aparezca en el historial
         yield self.load_empleados()
+
+    # --- AÑADE ESTA NUEVA FUNCIÓN ---
+    @rx.event
+    def descartar_solicitud_empleo(self, request_id: int):
+        """Permite al vendedor 'descartar' (rechazar) una solicitud pendiente que envió."""
+        if not (self.is_vendedor or self.is_admin) or not self.authenticated_user_info:
+            return rx.toast.error("No tienes permisos.")
+
+        with rx.session() as session:
+            request = session.get(EmploymentRequest, request_id)
+            if not request or request.requester_id != self.authenticated_user_info.id:
+                return rx.toast.error("Solicitud no válida o no te pertenece.")
+            
+            if request.status == RequestStatus.PENDING:
+                request.status = RequestStatus.REJECTED
+                session.add(request)
+                session.commit()
+                yield self.load_empleados()
+                return rx.toast.info("Has descartado la solicitud.")
 
     @rx.event
     def responder_solicitud_empleo(self, request_id: int, aceptada: bool):
