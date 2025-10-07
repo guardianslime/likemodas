@@ -5805,6 +5805,51 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
 
     @rx.event
+    def enviar_solicitud_empleo(self, candidate_userinfo_id: int):
+        """El Vendedor envía una solicitud de empleo a un candidato."""
+        if not (self.is_vendedor or self.is_admin) or not self.authenticated_user_info:
+            return rx.toast.error("No tienes permisos para enviar solicitudes.")
+
+        requester_id = self.authenticated_user_info.id
+
+        with rx.session() as session:
+            # Verificar que no se envíe una solicitud a uno mismo
+            if requester_id == candidate_userinfo_id:
+                return rx.toast.error("No puedes enviarte una solicitud a ti mismo.")
+
+            # Verificar si ya existe una solicitud pendiente
+            existing_request = session.exec(
+                sqlmodel.select(EmploymentRequest).where(
+                    EmploymentRequest.requester_id == requester_id,
+                    EmploymentRequest.candidate_id == candidate_userinfo_id,
+                    EmploymentRequest.status == RequestStatus.PENDING
+                )
+            ).first()
+            if existing_request:
+                return rx.toast.info("Ya has enviado una solicitud pendiente a este usuario.")
+
+            # Crear la nueva solicitud
+            new_request = EmploymentRequest(
+                requester_id=requester_id,
+                candidate_id=candidate_userinfo_id
+            )
+            session.add(new_request)
+
+            # Crear una notificación para el candidato
+            requester_user = session.get(UserInfo, requester_id)
+            notification = NotificationModel(
+                userinfo_id=candidate_userinfo_id,
+                message=f"¡{requester_user.user.username} quiere contratarte como empleado!",
+                url="/my-account/profile" # La solicitud aparecerá en su perfil
+            )
+            session.add(notification)
+            session.commit()
+        
+        # Limpia los resultados de búsqueda para que la tarjeta del usuario desaparezca
+        self.search_results_users = []
+        return rx.toast.success("Solicitud de empleo enviada.")
+
+    @rx.event
     def responder_solicitud_empleo(self, request_id: int, aceptada: bool):
         """El candidato acepta o rechaza una solicitud de empleo."""
         if not self.authenticated_user_info:
