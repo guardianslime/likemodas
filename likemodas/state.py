@@ -349,6 +349,13 @@ class GastoDataDTO(rx.Base):
     categoria: str
     valor_cop: str
 
+# --- ✨ INICIO: AÑADE ESTA NUEVA CLASE DTO ✨ ---
+class PendingRequestDTO(rx.Base):
+    """Un objeto de datos simple para la notificación de solicitud de empleo."""
+    id: int
+    requester_username: str
+# --- ✨ FIN: AÑADE ESTA NUEVA CLASE DTO ✨ ---
+
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
@@ -5964,39 +5971,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Nueva variable para guardar la solicitud a mostrar en el aviso global
     # 1. --- Variable para guardar la solicitud a mostrar en el aviso ---
     # 1. --- Variable de estado (añadir si no existe) ---
-    pending_request_notification: Optional[EmploymentRequest] = None
+    pending_request_notification: Optional[PendingRequestDTO] = None
 
     # 2. --- Nueva función para buscar solicitudes ---
     @rx.event
     def poll_employment_requests(self):
         """
-        Busca periódicamente la primera solicitud de empleo pendiente y se asegura de
-        cargar los datos del remitente para mostrarla en el aviso global.
+        [VERSIÓN ROBUSTA] Busca periódicamente la primera solicitud de empleo pendiente
+        y guarda un DTO limpio en el estado para evitar errores de sesión.
         """
-        # Si no estamos autenticados o ya hay un aviso mostrándose, no hacemos nada.
         if not self.authenticated_user_info or self.pending_request_notification:
             return
 
         with rx.session() as session:
-            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-            # Añadimos .options(...) para forzar la carga de la relación 'requester' y su 'user' anidado.
-            # Esto asegura que el nombre de usuario del solicitante esté disponible después.
+            # La consulta a la base de datos sigue siendo simple
             first_pending = session.exec(
-                sqlmodel.select(EmploymentRequest)
-                .options(
-                    sqlalchemy.orm.joinedload(EmploymentRequest.requester)
-                    .joinedload(UserInfo.user)
-                )
-                .where(
+                sqlmodel.select(EmploymentRequest).where(
                     EmploymentRequest.candidate_id == self.authenticated_user_info.id,
                     EmploymentRequest.status == RequestStatus.PENDING
                 )
             ).first()
-            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
-            # Esta parte se asegura de que el banner solo se muestre si tenemos todos los datos.
-            if first_pending and first_pending.requester and first_pending.requester.user:
-                self.pending_request_notification = first_pending
+            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+            # Si encontramos una solicitud, creamos nuestro DTO simple
+            if first_pending:
+                self.pending_request_notification = PendingRequestDTO(
+                    id=first_pending.id,
+                    requester_username=first_pending.requester_username
+                )
+            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
     # 3. --- Función 'responder_solicitud_empleo' (reemplazar la existente) ---
     @rx.event
@@ -6014,11 +6017,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not request or request.candidate_id != self.authenticated_user_info.id:
                 return rx.toast.error("Solicitud no válida.")
 
-            # Limpia el aviso global para que desaparezca inmediatamente después de la acción.
+            # --- ✨ VERIFICACIÓN CLAVE ✨ ---
+            # Esta línea es crucial y debe estar aquí. Limpia el aviso para que desaparezca.
             self.pending_request_notification = None
+            # --- ✨ FIN DE LA VERIFICACIÓN ✨ ---
 
+            # El resto de la lógica de la función para aceptar/rechazar se mantiene igual...
             if aceptada:
-                # Verifica si el usuario ya es empleado de otro vendedor.
+                # ... (lógica para aceptar)
                 existing_link = session.exec(
                     sqlmodel.select(EmpleadoVendedorLink).where(EmpleadoVendedorLink.empleado_id == request.candidate_id)
                 ).first()
@@ -6026,10 +6032,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                     request.status = RequestStatus.REJECTED
                     session.add(request)
                     session.commit()
-                    yield self.on_load_profile_page() # Actualiza la lista en el perfil.
+                    yield self.on_load_profile_page()
                     return rx.toast.error("Ya eres empleado de otro vendedor. Solicitud rechazada.")
 
-                # Crea el nuevo vínculo de empleado.
                 new_link = EmpleadoVendedorLink(
                     vendedor_id=request.requester_id,
                     empleado_id=request.candidate_id
@@ -6038,7 +6043,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 request.status = RequestStatus.ACCEPTED
                 session.add(request)
                 
-                # Notifica al vendedor que su solicitud fue aceptada.
                 candidate_user = session.get(UserInfo, request.candidate_id)
                 notification = NotificationModel(
                     userinfo_id=request.requester_id,
@@ -6050,7 +6054,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 
                 yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
-                # Recarga toda la página para que se aplique el nuevo contexto de "Empleado".
                 yield rx.call_script("window.location.reload()")
             
             else: # Si la solicitud es rechazada
@@ -6058,7 +6061,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(request)
                 session.commit()
                 
-                # Actualiza la lista de solicitudes en la página de perfil para que esta desaparezca.
                 yield self.on_load_profile_page()
                 yield rx.toast.info("Has rechazado la oferta de empleo.")
 
