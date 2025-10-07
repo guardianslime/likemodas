@@ -114,6 +114,7 @@ class RequestStatus(str, enum.Enum):
     ACCEPTED = "accepted"
     REJECTED = "rejected"
 
+# --- REEMPLAZA LA CLASE EmploymentRequest ---
 class EmploymentRequest(rx.Model, table=True):
     """Guarda una solicitud de empleo de un Vendedor a un Candidato."""
     __tablename__ = "employmentrequest"
@@ -122,13 +123,12 @@ class EmploymentRequest(rx.Model, table=True):
     candidate_id: int = Field(foreign_key="userinfo.id")
     status: RequestStatus = Field(default=RequestStatus.PENDING)
     created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
-    
-    # --- ✨ NUEVO CAMPO AÑADIDO ---
-    # Almacenamos el nombre del solicitante en el momento de la creación.
     requester_username: str
 
-    # Se eliminan las relaciones 'requester' y 'candidate' para simplificar
-    # y evitar errores de carga diferida (lazy-loading).
+    # --- CORRECCIÓN CLAVE: Se añade 'back_populates' ---
+    requester: "UserInfo" = Relationship(back_populates="solicitudes_enviadas", sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.requester_id]"})
+    candidate: "UserInfo" = Relationship(back_populates="solicitudes_recibidas", sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.candidate_id]"})
+
 
 # --- 2. AÑADIR EL NUEVO MODELO EmpleadoVendedorLink ---
 class EmpleadoVendedorLink(rx.Model, table=True):
@@ -156,45 +156,29 @@ class EmpleadoVendedorLink(rx.Model, table=True):
 
 # --- Modelos de Base de Datos ---
 
+# --- REEMPLAZA LA CLASE UserInfo ---
 class UserInfo(rx.Model, table=True):
     __tablename__ = "userinfo"
     email: str
     user_id: int = Field(foreign_key="localuser.id", unique=True)
     role: UserRole = Field(default=UserRole.CUSTOMER, sa_column=Column(String, server_default=UserRole.CUSTOMER.value, nullable=False))
     
-    # --- Campos del Perfil de Usuario ---
+    # ... (todos tus otros campos como avatar_url, phone, is_verified, etc. se mantienen igual)
     avatar_url: Optional[str] = Field(default=None)
     phone: Optional[str] = Field(default=None)
-    
-    # --- Campos del Estado del Usuario ---
     is_verified: bool = Field(default=False, nullable=False)
     is_banned: bool = Field(default=False, nullable=False)
     ban_expires_at: Optional[datetime] = Field(default=None)
-    
-    # --- Campos de Timestamps ---
     created_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"server_default": sqlalchemy.func.now()}, nullable=False)
     updated_at: datetime = Field(default_factory=get_utc_now, sa_type=sqlalchemy.DateTime(timezone=True), sa_column_kwargs={"onupdate": sqlalchemy.func.now(), "server_default": sqlalchemy.func.now()}, nullable=False)
-    
-    # --- Campos de Vendedor ---
     seller_barrio: Optional[str] = Field(default=None)
-    # --- ✨ ASEGÚRATE DE AÑADIR ESTA LÍNEA SI FALTA ✨ ---
     seller_city: Optional[str] = Field(default=None) 
     seller_address: Optional[str] = Field(default=None)
-
-    # --- NUEVOS CAMPOS PARA 2FA ---
     tfa_secret: Optional[str] = Field(default=None)
     tfa_enabled: bool = Field(default=False, nullable=False)
-    # --- FIN DE NUEVOS CAMPOS ---
 
-    # --- Relaciones con otros Modelos ---
-
+    # --- Relaciones con otros Modelos (la mayoría se mantienen igual) ---
     user: Optional["LocalUser"] = Relationship()
-    posts: List["BlogPostModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    
-    # Relación corregida con LocalUser (sin cascada de este lado)
-    user: Optional["LocalUser"] = Relationship()
-
-    # Relaciones donde UserInfo es el "padre" (el lado "uno") y debe controlar el borrado
     posts: List["BlogPostModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
@@ -203,28 +187,28 @@ class UserInfo(rx.Model, table=True):
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     comments: List["CommentModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    
-    # Relación muchos a muchos para publicaciones guardadas
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
-
     gastos: List["Gasto"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
-    # --- INICIO DE ADICIONES ---
-    # Relación para que un Vendedor pueda acceder a su lista de empleados
+    # Relaciones de Empleado/Vendedor (se mantienen igual)
     empleados: List["EmpleadoVendedorLink"] = Relationship(
         sa_relationship_kwargs={
             "primaryjoin": "UserInfo.id==EmpleadoVendedorLink.vendedor_id",
-            "cascade": "all, delete-orphan", # Si se borra el vendedor, se borra el vínculo
+            "cascade": "all, delete-orphan",
         }
     )
-    
-    # Relación para que un Empleado pueda encontrar a su Vendedor
     empleador_link: Optional["EmpleadoVendedorLink"] = Relationship(
         sa_relationship_kwargs={
             "primaryjoin": "UserInfo.id==EmpleadoVendedorLink.empleado_id",
-            "uselist": False, # Indica que es una relación de uno a uno (o uno-a-cero)
+            "uselist": False,
         }
     )
+
+    # --- ✨ NUEVAS RELACIONES AÑADIDAS AQUÍ ✨ ---
+    # Estas son las relaciones inversas que faltaban
+    solicitudes_enviadas: List["EmploymentRequest"] = Relationship(back_populates="requester", sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.requester_id]"})
+    solicitudes_recibidas: List["EmploymentRequest"] = Relationship(back_populates="candidate", sa_relationship_kwargs={"foreign_keys": "[EmploymentRequest.candidate_id]"})
+
 
     # --- Propiedades Calculadas (no son columnas en la BD) ---
 
