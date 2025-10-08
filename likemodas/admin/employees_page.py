@@ -110,7 +110,6 @@ def employees_management_page() -> rx.Component:
         spacing="5", align_items="stretch"
     )
 
-    # Columna Derecha: Historial de solicitudes con buscador
     right_column = rx.vstack(
         rx.heading("Historial de Solicitudes", size="6"),
         rx.input(
@@ -125,7 +124,6 @@ def employees_management_page() -> rx.Component:
                 rx.vstack(rx.foreach(AppState.filtered_solicitudes_enviadas, sent_request_card), spacing="3", width="100%"),
                 rx.text("No has enviado ninguna solicitud.", color_scheme="gray", margin_top="1em")
             ),
-            # Ajustamos la altura para diferentes tamaños de pantalla
             height=["50vh", "50vh", "65vh"],
             type="auto", 
             scrollbars="vertical", 
@@ -138,17 +136,20 @@ def employees_management_page() -> rx.Component:
         rx.heading("Gestión de Empleados", size="8", text_align="center"),
         rx.text("Busca usuarios y asígnalos como empleados para que puedan gestionar tus publicaciones.", color_scheme="gray", text_align="center"),
         rx.divider(margin_y="1.5em"),
-        # Usamos un Grid para el layout principal que se adapta a móvil y PC
+        
         rx.grid(
             left_column,
             right_column,
-            columns=["1", "1", "2"], # 1 columna en móvil, 2 en pantallas grandes
+            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+            # Se cambia la lista ['1', '1', '2'] por el formato de diccionario
+            columns={"initial": "1", "md": "2"},
+            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
             spacing="8",
             width="100%",
             align_items="start",
         ),
         width="100%",
-        max_width="1400px", # Limitamos el ancho máximo para mejor legibilidad
+        max_width="1400px",
         align="center",
         padding="2em"
     )
