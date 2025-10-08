@@ -95,90 +95,109 @@ def employees_management_page() -> rx.Component:
             ),
             rx.divider(margin_y="1.5em"),
 
-            # --- ✨ INICIO DE LA REESTRUCTURACIÓN DEL LAYOUT ✨ ---
-            # Ahora todo está en un Vstack principal para un diseño de una sola columna.
-            
-            # SECCIÓN: AÑADIR NUEVO EMPLEADO
-            rx.card(
-                rx.vstack(
-                    rx.heading("Añadir Nuevo Empleado", size="5"),
-                    rx.form(
-                        rx.hstack(
-                            rx.input(placeholder="Buscar por nombre o email...", value=AppState.search_query_users, on_change=AppState.set_search_query_users, width="100%"),
-                            rx.button("Buscar", type="submit")
+            # --- SECCIONES SUPERIORES: Añadir y ver empleados (1 columna) ---
+            rx.grid(
+                rx.card(
+                    rx.vstack(
+                        rx.heading("Añadir Nuevo Empleado", size="5"),
+                        rx.form(
+                            rx.hstack(
+                                rx.input(placeholder="Buscar por nombre o email...", value=AppState.search_query_users, on_change=AppState.set_search_query_users, width="100%"),
+                                rx.button("Buscar", type="submit")
+                            ),
+                            on_submit=AppState.search_users_for_employment, width="100%",
                         ),
-                        on_submit=AppState.search_users_for_employment, width="100%",
-                    ),
+                        rx.cond(
+                            AppState.search_results_users,
+                            rx.vstack(
+                                rx.foreach(AppState.search_results_users, user_search_result_card),
+                                spacing="3", margin_top="1em", width="100%"
+                            )
+                        ),
+                        spacing="4", width="100%"
+                    ), width="100%"
+                ),
+                rx.vstack(
+                    rx.heading("Mis Empleados Actuales", size="6"),
                     rx.cond(
-                        AppState.search_results_users,
-                        rx.vstack(
-                            rx.foreach(AppState.search_results_users, user_search_result_card),
-                            spacing="3", margin_top="1em", width="100%"
-                        )
+                        AppState.empleados,
+                        rx.vstack(rx.foreach(AppState.empleados, current_employee_card), spacing="3", width="100%"),
+                        rx.text("Aún no tienes empleados asignados.", color_scheme="gray", margin_top="1em")
                     ),
-                    spacing="4", width="100%"
-                ), width="100%"
+                    align_items="stretch", spacing="4"
+                ),
+                columns={"initial": "1", "md": "2"},
+                spacing="6",
+                width="100%",
             ),
 
-            # SECCIÓN: MIS EMPLEADOS ACTUALES
-            rx.heading("Mis Empleados Actuales", size="6", margin_top="1.5em", width="100%", text_align="left"),
-            rx.cond(
-                AppState.empleados,
-                rx.vstack(rx.foreach(AppState.empleados, current_employee_card), spacing="3", width="100%"),
-                rx.text("Aún no tienes empleados asignados.", color_scheme="gray", margin_top="1em")
-            ),
             rx.divider(margin_y="1.5em"),
 
-            # SECCIÓN: HISTORIAL DE SOLICITUDES
-            rx.heading("Historial de Solicitudes", size="6", width="100%", text_align="left"),
-            rx.input(
-                placeholder="Buscar por nombre de candidato...",
-                value=AppState.search_query_sent_requests,
-                on_change=AppState.set_search_query_sent_requests,
-            ),
-            rx.hstack(
+            # --- ✨ INICIO DE LA CORRECCIÓN: Grid de 2 columnas para historiales ✨ ---
+            rx.grid(
+                # Columna Izquierda: Historial de Solicitudes
                 rx.vstack(
-                    rx.text("Desde:", size="2"),
-                    rx.input(type="date", value=AppState.request_history_start_date, on_change=AppState.set_request_history_start_date),
-                    align_items="stretch",
+                    rx.heading("Historial de Solicitudes", size="6"),
+                    rx.input(
+                        placeholder="Buscar por nombre de candidato...",
+                        value=AppState.search_query_sent_requests,
+                        on_change=AppState.set_search_query_sent_requests,
+                    ),
+                    rx.hstack(
+                        rx.vstack(
+                            rx.text("Desde:", size="2"),
+                            rx.input(type="date", value=AppState.request_history_start_date, on_change=AppState.set_request_history_start_date),
+                            align_items="stretch",
+                        ),
+                        rx.vstack(
+                            rx.text("Hasta:", size="2"),
+                            rx.input(type="date", value=AppState.request_history_end_date, on_change=AppState.set_request_history_end_date),
+                            align_items="stretch",
+                        ),
+                        spacing="3", width="100%", margin_top="0.5em",
+                    ),
+                    rx.scroll_area(
+                        rx.cond(
+                            AppState.filtered_solicitudes_enviadas,
+                            rx.vstack(rx.foreach(AppState.filtered_solicitudes_enviadas, sent_request_card), spacing="3", width="100%"),
+                            rx.text("No se encontraron solicitudes.", color_scheme="gray", padding="1em")
+                        ),
+                        height="50vh", type="auto", scrollbars="vertical", padding_right="1em",
+                    ),
+                    spacing="4", align_items="stretch", width="100%"
                 ),
-                rx.vstack(
-                    rx.text("Hasta:", size="2"),
-                    rx.input(type="date", value=AppState.request_history_end_date, on_change=AppState.set_request_history_end_date),
-                    align_items="stretch",
-                ),
-                spacing="3", width="100%", margin_top="0.5em",
-            ),
-            rx.scroll_area(
-                rx.cond(
-                    AppState.filtered_solicitudes_enviadas,
-                    rx.vstack(rx.foreach(AppState.filtered_solicitudes_enviadas, sent_request_card), spacing="3", width="100%"),
-                    rx.text("No se encontraron solicitudes.", color_scheme="gray", padding="1em")
-                ),
-                height="40vh", type="auto", scrollbars="vertical", padding_right="1em",
-            ),
-            rx.divider(margin_y="1.5em"),
 
-            # SECCIÓN: HISTORIAL DE ACTIVIDAD
-            rx.heading("Historial de Actividad de Empleados", size="6", width="100%", text_align="left"),
-            rx.input(
-                placeholder="Buscar en historial por acción o empleado...",
-                value=AppState.activity_search_query,
-                on_change=AppState.set_activity_search_query,
-            ),
-            rx.scroll_area(
-                rx.cond(
-                    AppState.filtered_employee_activity,
-                    rx.vstack(rx.foreach(AppState.filtered_employee_activity, activity_log_card), spacing="3", width="100%"),
-                    rx.text("No hay actividad registrada.", color_scheme="gray", padding="1em")
+                # Columna Derecha: Historial de Actividad
+                rx.vstack(
+                    rx.heading("Historial de Actividad de Empleados", size="6"),
+                    rx.input(
+                        placeholder="Buscar en historial por acción o empleado...",
+                        value=AppState.activity_search_query,
+                        on_change=AppState.set_activity_search_query,
+                    ),
+                    # Aquí irían los filtros de fecha si decides añadirlos
+                    rx.scroll_area(
+                        rx.cond(
+                            AppState.filtered_employee_activity,
+                            rx.vstack(rx.foreach(AppState.filtered_employee_activity, activity_log_card), spacing="3", width="100%"),
+                            rx.text("No hay actividad registrada.", color_scheme="gray", padding="1em")
+                        ),
+                        height="60vh", # Un poco más alto para aprovechar el espacio
+                        type="auto", scrollbars="vertical", padding_right="1em", margin_top="1em"
+                    ),
+                    spacing="4", align_items="stretch", width="100%"
                 ),
-                height="40vh", type="auto", scrollbars="vertical", padding_right="1em", margin_top="1em"
+                
+                # Configuración del Grid
+                columns={"initial": "1", "lg": "2"}, # 1 columna en móvil/tablet, 2 en pantallas grandes
+                spacing="8",
+                width="100%",
+                align_items="start",
             ),
-            
-            # --- ✨ FIN DE LA REESTRUCTURACIÓN DEL LAYOUT ✨ ---
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
             width="100%",
-            max_width="960px", # Limitamos el ancho para que no se estire demasiado
+            max_width="1600px", # Aumentamos el ancho máximo para dar más espacio a las columnas
             spacing="5",
         ),
         padding="2em",
