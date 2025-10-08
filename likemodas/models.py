@@ -287,6 +287,10 @@ class BlogPostModel(rx.Model, table=True):
     
     last_modified_by_id: Optional[int] = Field(default=None, foreign_key="userinfo.id") # Quien lo modificó por última vez
     # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
+    # --- ✨ ASEGÚRATE DE TENER ESTA RELACIÓN ✨ ---
+    last_modified_by: Optional["UserInfo"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[BlogPostModel.last_modified_by_id]"})
+    # --- ✨ FIN ✨ ---
     
     title: str
     content: str

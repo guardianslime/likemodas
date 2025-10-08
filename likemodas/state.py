@@ -218,9 +218,12 @@ class AdminPostRowData(rx.Base):
     publish_active: bool
     main_image_url: str = ""
     variants: list[AdminVariantData] = []
-    # --- ✨ AÑADE ESTOS DOS NUEVOS CAMPOS ✨ ---
-    creator_name: Optional[str] = None # Nombre del empleado que creó el post
-    owner_name: str # Nombre del vendedor dueño del post
+    creator_name: Optional[str] = None
+    owner_name: str
+    
+    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+    last_modified_by_name: Optional[str] = None # Quien lo modificó por última vez
+    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -4226,15 +4229,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def my_admin_posts(self) -> list[AdminPostRowData]:
         """
-        [CORREGIDO] Devuelve los posts del contexto actual, determinando correctamente
-        la identidad del vendedor (sea él mismo o el empleador de un empleado).
+        [CORREGIDO] Devuelve los posts del contexto actual, incluyendo
+        quién lo creó y quién lo modificó por última vez.
         """
-        owner_id = None
-        # --- ✨ Lógica de contexto robusta ✨ ---
-        if self.is_empleado and self.mi_vendedor_info:
-            owner_id = self.mi_vendedor_info.id
-        elif self.authenticated_user_info:
-            owner_id = self.authenticated_user_info.id
+        owner_id = self.context_user_info.id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else None)
         
         if not owner_id:
             return []
@@ -4242,14 +4240,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         base_url = get_config().deploy_url
 
         with rx.session() as session:
-            # La consulta ahora usa el `owner_id` correcto
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
+                    # Cargamos de antemano toda la información de usuario necesaria
+                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.creator).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user)
+                    sqlalchemy.orm.joinedload(BlogPostModel.last_modified_by).joinedload(UserInfo.user)
                 )
-                .where(BlogPostModel.userinfo_id == owner_id) # <-- CORRECCIÓN CLAVE
+                .where(BlogPostModel.userinfo_id == owner_id)
                 .order_by(BlogPostModel.created_at.desc())
             ).all()
 
@@ -4257,13 +4256,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             for p in posts_from_db:
                 main_image = p.variants[0].get("image_url", "") if p.variants else ""
                 
-                # --- ✨ LÓGICA PARA OBTENER EL NOMBRE DEL CREADOR ✨ ---
-                creator_username = None
-                if p.creator and p.creator.user:
-                    creator_username = p.creator.user.username
-
+                creator_username = p.creator.user.username if p.creator and p.creator.user else None
                 owner_username = p.userinfo.user.username if p.userinfo and p.userinfo.user else "Vendedor"
-                # --- ✨ FIN DE LA LÓGICA ✨ ---
+                
+                # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL MODIFICADOR ✨ ---
+                modifier_username = p.last_modified_by.user.username if p.last_modified_by and p.last_modified_by.user else None
+                # --- ✨ FIN: OBTENEMOS EL NOMBRE DEL MODIFICADOR ✨ ---
 
                 variants_dto_list = []
                 if p.variants:
@@ -4290,9 +4288,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                         publish_active=p.publish_active,
                         main_image_url=main_image,
                         variants=variants_dto_list,
-                        # --- ✨ PASAMOS LOS NUEVOS DATOS AL DTO ✨ ---
                         creator_name=creator_username,
-                        owner_name=owner_username
+                        owner_name=owner_username,
+                        # --- ✨ INICIO: PASAMOS EL DATO AL DTO ✨ ---
+                        last_modified_by_name=modifier_username
+                        # --- ✨ FIN: PASAMOS EL DATO AL DTO ✨ ---
                     )
                 )
             return admin_posts
