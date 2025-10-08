@@ -3789,12 +3789,15 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def show_product_detail(self, product_id: int):
         """
-        [VERSIÓN 4.2 - Corregida] Muestra el detalle financiero de un producto, llenando
-        correctamente la estructura de datos para el modal.
+        [VERSIÓN CORREGIDA] Muestra el detalle financiero de un producto,
+        permitiendo el acceso a Vendedores y Empleados.
         """
-        if not self.is_admin:
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Cambiamos 'if not self.is_admin:' por una condición que incluye todos los roles del panel.
+        if not (self.is_admin or self.is_vendedor or self.is_empleado):
             yield rx.redirect("/")
             return
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
         self.selected_product_detail = None
         self.show_product_detail_modal = True
@@ -3807,6 +3810,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.show_product_detail_modal = False
                 return
 
+            # ... (el resto de la lógica de la función para calcular finanzas se mantiene exactamente igual)
             variant_sales_aggregator = defaultdict(lambda: {
                 "units": 0, "revenue": 0.0, "net_profit": 0.0, "cogs": 0.0, "daily_profit": defaultdict(float)
             })
@@ -3871,7 +3875,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 product_profit_cop=format_to_cop(product_total_net_profit),
                 shipping_collected_cop=format_to_cop(product_shipping_collected),
                 shipping_profit_loss_cop=format_to_cop(product_shipping_profit_loss),
-                # --- ✅ CORRECCIÓN FINAL AQUÍ: Se usa el nombre de campo correcto ✅ ---
                 total_profit_cop=format_to_cop(grand_total_profit),
                 variants=product_variants_data
             )
@@ -4245,11 +4248,15 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def my_admin_posts(self) -> list[AdminPostRowData]:
         """
-        [CORREGIDO] Devuelve los posts del contexto actual, incluyendo
-        quién lo creó y quién lo modificó por última vez.
+        [VERSIÓN CORREGIDA Y SIMPLIFICADA] Devuelve los posts del contexto actual.
+        Ahora usa directamente el 'context_user_id' para determinar el dueño.
         """
-        owner_id = self.context_user_info.id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else None)
-        
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Usamos el 'context_user_id' como la fuente de verdad principal.
+        # Si no existe (un caso raro), usamos el ID del usuario logueado como respaldo.
+        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
         if not owner_id:
             return []
 
@@ -4259,7 +4266,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
-                    # Cargamos de antemano toda la información de usuario necesaria
                     sqlalchemy.orm.joinedload(BlogPostModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.creator).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(BlogPostModel.last_modified_by).joinedload(UserInfo.user)
@@ -4274,10 +4280,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 creator_username = p.creator.user.username if p.creator and p.creator.user else None
                 owner_username = p.userinfo.user.username if p.userinfo and p.userinfo.user else "Vendedor"
-                
-                # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL MODIFICADOR ✨ ---
                 modifier_username = p.last_modified_by.user.username if p.last_modified_by and p.last_modified_by.user else None
-                # --- ✨ FIN: OBTENEMOS EL NOMBRE DEL MODIFICADOR ✨ ---
 
                 variants_dto_list = []
                 if p.variants:
@@ -4306,14 +4309,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         variants=variants_dto_list,
                         creator_name=creator_username,
                         owner_name=owner_username,
-                        # --- ✨ INICIO: PASAMOS EL DATO AL DTO ✨ ---
                         last_modified_by_name=modifier_username
-                        # --- ✨ FIN: PASAMOS EL DATO AL DTO ✨ ---
                     )
                 )
             return admin_posts
-
-            # --- FIN DE LA CORRECCIÓN ---
 
     # --- INICIO DE LA CORRECCIÓN CLAVE ---
     @rx.event
