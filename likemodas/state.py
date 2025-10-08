@@ -6119,7 +6119,23 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def poll_admin_notifications(self):
-        """Evento de sondeo que se llamará periódicamente desde el panel de vendedor."""
+        """
+        [VERSIÓN FINAL] Evento de sondeo para el panel.
+        1. Carga las notificaciones para la campana.
+        2. Sincroniza el contexto del empleado para asegurar que siempre tenga
+        el ID de su vendedor, incluso después de aceptar una invitación.
+        """
+        # --- ✨ INICIO: LÓGICA DE SINCRONIZACIÓN DE CONTEXTO ✨ ---
+        if self.is_authenticated and self.authenticated_user_info:
+            # Si el usuario es un empleado pero su contexto no está definido (p.ej. tras aceptar invitación)
+            if self.is_empleado and self.context_user_id != self.mi_vendedor_info.id:
+                # Forzamos la actualización del contexto con el ID de su vendedor
+                self.context_user_id = self.mi_vendedor_info.id
+                # Forzamos la recarga de las publicaciones con el nuevo contexto
+                yield AppState.load_mis_publicaciones
+        # --- ✨ FIN: LÓGICA DE SINCRONIZACIÓN DE CONTEXTO ✨ ---
+        
+        # La lógica existente para cargar las notificaciones se mantiene
         self._load_admin_notifications_logic()
 
     @rx.event
@@ -6335,7 +6351,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 session.commit()
                 yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
-                yield rx.call_script("window.location.reload()")
+                yield AppState.poll_admin_notifications
             
             else: # Si la solicitud es rechazada
                 request.status = RequestStatus.REJECTED
