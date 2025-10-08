@@ -1018,13 +1018,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def handle_direct_sale_checkout(self):
         """
-        Procesa y finaliza una venta directa, manejando tanto a compradores 
-        registrados como anónimos. Si no se selecciona un comprador, la venta 
-        se registra a nombre del propio vendedor como una venta de "mostrador".
+        Procesa y finaliza una venta directa, con permisos corregidos
+        para Vendedores y Empleados.
         """
-        # 1. Validaciones iniciales de permisos y estado del carrito
-        if not self.is_admin or not self.authenticated_user_info:
+        # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS CLAVE ✨ ---
+        if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
             return rx.toast.error("No tienes permisos para realizar esta acción.")
+        # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS CLAVE ✨ ---
+
         if not self.direct_sale_cart:
             return rx.toast.error("El carrito de venta está vacío.")
 
@@ -3440,8 +3441,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def save_seller_profile(self, form_data: dict):
         """Guarda la ciudad, el barrio y la dirección del vendedor."""
-        if not self.is_admin or not self.authenticated_user_info:
-             return rx.toast.error("Acción no permitida.")
+        # --- ✨ CORRECCIÓN DE PERMISOS: Permitir a Vendedor y Admin, pero no a Empleado ✨ ---
+        if not (self.is_admin or self.is_vendedor) or not self.authenticated_user_info:
+            return rx.toast.error("Acción no permitida.")
 
         address = form_data.get("seller_address", "")
         # Validar que tanto la ciudad como el barrio estén seleccionados
@@ -5438,10 +5440,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def ship_confirmed_online_order(self, purchase_id: int):
-        """
-        Notifica el envío de un pedido online ya confirmado, utilizando la lógica unificada.
-        """
-        if not self.is_admin: 
+        """Notifica el envío de un pedido online, con permisos corregidos."""
+        # --- ✨ CORRECCIÓN DE PERMISOS ✨ ---
+        if not (self.is_admin or self.is_vendedor or self.is_empleado): 
             return rx.toast.error("Acción no permitida.")
         
         # Valida que se haya ingresado un tiempo de entrega
@@ -5469,10 +5470,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def ship_pending_cod_order(self, purchase_id: int):
-        """
-        Envía un pedido Contra Entrega, utilizando la lógica unificada.
-        """
-        if not self.is_admin: 
+        """Envía un pedido Contra Entrega, con permisos corregidos."""
+        # --- ✨ CORRECCIÓN DE PERMISOS ✨ ---
+        if not (self.is_admin or self.is_vendedor or self.is_empleado):
             return rx.toast.error("Acción no permitida.")
         
         # La validación del tiempo es idéntica
