@@ -2996,42 +2996,44 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def start_editing_post(self, post_id: int):
         """
-        [CORREGIDO] Inicia la edición de un post, ahora con permisos para empleados.
+        [CORREGIDO] Inicia la edición de un post, con permisos unificados para Vendedor y Empleado.
         """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
 
+        # --- ✨ INICIO: LÓGICA DE PERMISOS UNIFICADA ✨ ---
+        # Determinamos cuál es el ID del "dueño" del contexto actual.
+        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        if not owner_id:
+            return rx.toast.error("No se pudo verificar la identidad del usuario.")
+        # --- ✨ FIN: LÓGICA DE PERMISOS UNIFICADA ✨ ---
+
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id)
             
-            # --- ✨ CORRECCIÓN DE PERMISOS CLAVE ✨ ---
-            # Permite la acción si el dueño del post es el usuario en contexto.
-            # Esto funciona para el vendedor, y también para el empleado (cuyo contexto es el vendedor).
-            if not db_post or db_post.userinfo_id != self.context_user_id:
+            # Comparamos el dueño del post con el dueño del contexto.
+            if not db_post or db_post.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para editar esta publicación.")
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
+            # El resto de la lógica para cargar los datos en el formulario se mantiene igual...
             self.post_to_edit_id = db_post.id
             self.edit_post_title = db_post.title
             self.edit_post_content = db_post.content
             self.edit_price_str = str(db_post.price or 0.0)
             self.edit_profit_str = str(db_post.profit or "")
             self.edit_category = db_post.category
-
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
             self.edit_is_moda_completa = db_post.is_moda_completa_eligible
             self.edit_combines_shipping = db_post.combines_shipping
             self.edit_shipping_combination_limit_str = str(db_post.shipping_combination_limit or "3")
             self.edit_is_imported = db_post.is_imported
             self.edit_price_includes_iva = db_post.price_includes_iva
-
             self.edit_post_images_in_form = sorted(list(set(v.get("image_url", "") for v in (db_post.variants or []) if v.get("image_url"))))
             
             reconstructed_map = defaultdict(list)
             for variant_db in (db_post.variants or []):
                 img_url = variant_db.get("image_url")
                 if not img_url: continue
-
                 try:
                     image_group_index = self.edit_post_images_in_form.index(img_url)
                     reconstructed_map[image_group_index].append(
@@ -3039,17 +3041,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                             attributes=variant_db.get("attributes", {}),
                             stock=variant_db.get("stock", 0),
                             image_url=img_url,
-                            variant_uuid=variant_db.get("variant_uuid", str(uuid.uuid4())) # Asegurar que tenga UUID
                         )
                     )
                 except ValueError:
                     continue
-
             self.edit_variants_map = dict(reconstructed_map)
             
             if self.edit_post_images_in_form:
                 yield self.select_edit_image_for_editing(0)
-
             self.is_editing_post = True
 
     
@@ -3132,11 +3131,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def save_edited_post(self):
         """
-        [CORREGIDO] Guarda una publicación editada, ahora con permisos para empleados
-        y registrando quién la modificó.
+        [CORREGIDO] Guarda una publicación editada, con permisos unificados y registrando al modificador.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             return rx.toast.error("Error: No se pudo guardar la publicación.")
+        
+        # --- ✨ INICIO: LÓGICA DE PERMISOS UNIFICADA ✨ ---
+        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        if not owner_id:
+            return rx.toast.error("No se pudo verificar la identidad del usuario.")
+        # --- ✨ FIN: LÓGICA DE PERMISOS UNIFICADA ✨ ---
 
         # ... (La lógica de validación de precios y construcción de variantes se mantiene igual)
         try:
@@ -3146,29 +3150,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
         except ValueError:
             return rx.toast.error("Precio, ganancia, costo de envío y límite deben ser números válidos.")
-
         all_variants_for_db = []
         for image_group_index, variant_list in self.edit_variants_map.items():
             main_image_for_group = self.unique_edit_form_images[image_group_index]
             for variant_form_data in variant_list:
                 new_variant_dict = {
-                    "attributes": variant_form_data.attributes,
-                    "stock": variant_form_data.stock,
+                    "attributes": variant_form_data.attributes, "stock": variant_form_data.stock,
                     "image_url": variant_form_data.image_url or main_image_for_group,
                     "variant_uuid": getattr(variant_form_data, 'variant_uuid', str(uuid.uuid4()))
                 }
                 all_variants_for_db.append(new_variant_dict)
-
         if not all_variants_for_db:
             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
 
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
             
-            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS CLAVE ✨ ---
-            if not post_to_update or post_to_update.userinfo_id != self.context_user_id:
+            if not post_to_update or post_to_update.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para guardar esta publicación.")
-            # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS CLAVE ✨ ---
                 
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
@@ -3186,7 +3185,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.add(post_to_update)
             
-            # --- ✨ AÑADIR REGISTRO DE ACTIVIDAD ✨ ---
             log_entry = ActivityLog(
                 actor_id=self.authenticated_user_info.id,
                 owner_id=post_to_update.userinfo_id,
@@ -3194,12 +3192,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 description=f"Modificó la publicación '{post_to_update.title}'"
             )
             session.add(log_entry)
-            # --- ✨ FIN DEL REGISTRO ✨ ---
-
             session.commit()
 
         yield self.cancel_editing_post(False)
-        # Usamos el nuevo evento de carga para actualizar la lista
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
 
