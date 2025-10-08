@@ -98,7 +98,13 @@ app.add_page(base_page(returns_page.return_exchange_page_content()), route=navig
 # Nota: Estas páginas ya llaman a su propio layout, por lo que algunas usan base_page y otras no, lo cual es correcto.
 app.add_page(admin_profile_page_content(), route="/admin/profile", title="Perfil de Administrador", on_load=AppState.on_load_profile_page)
 app.add_page(my_location_page_content(), route="/admin/my-location", on_load=AppState.on_load_seller_profile, title="Mi Ubicación de Origen")
-app.add_page(base_page(blog_admin_page()), route="/blog", title="Mis Publicaciones")
+app.add_page(
+    base_page(blog_admin_page()), 
+    route="/blog", 
+    title="Mis Publicaciones",
+    # --- ✨ AÑADE ESTE EVENTO ON_LOAD ✨ ---
+    on_load=AppState.load_mis_publicaciones
+)
 app.add_page(base_page(finance_page.finance_page_content()), route="/admin/finance", on_load=AppState.on_load_finance_data, title="Finanzas")
 app.add_page(base_page(user_management_page()), route="/admin/users", on_load=AppState.load_all_users, title="Gestión de Usuarios")
 app.add_page(base_page(blog_post_add_content()), route=navigation.routes.BLOG_POST_ADD_ROUTE, title="Añadir Producto")

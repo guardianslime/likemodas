@@ -223,7 +223,7 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
 
 @require_panel_access
 def blog_admin_page() -> rx.Component:
-    """Página de 'Mis Publicaciones' para el vendedor, ahora completamente responsiva."""
+    """Página de 'Mis Publicaciones' que ahora usa la lista de estado explícita."""
     desktop_view = rx.box(
         rx.table.root(
             rx.table.header(
@@ -236,7 +236,8 @@ def blog_admin_page() -> rx.Component:
                     rx.table.column_header_cell("QR"),
                 )
             ),
-            rx.table.body(rx.foreach(AppState.my_admin_posts, desktop_post_row)),
+            # --- ✨ CORRECCIÓN: Usamos la nueva variable de estado ✨ ---
+            rx.table.body(rx.foreach(AppState.mis_publicaciones_list, desktop_post_row)),
             variant="surface", width="100%",
         ),
         display=["none", "none", "block", "block"],
@@ -244,7 +245,8 @@ def blog_admin_page() -> rx.Component:
 
     mobile_view = rx.box(
         rx.vstack(
-            rx.foreach(AppState.my_admin_posts, mobile_post_card),
+            # --- ✨ CORRECCIÓN: Usamos la nueva variable de estado ✨ ---
+            rx.foreach(AppState.mis_publicaciones_list, mobile_post_card),
             spacing="4",
             width="100%",
         ),
@@ -270,7 +272,8 @@ def blog_admin_page() -> rx.Component:
                 ),
                 rx.divider(margin_y="1.5em"),
                 rx.cond(
-                    AppState.my_admin_posts,
+                    # --- ✨ CORRECCIÓN: Usamos la nueva variable de estado ✨ ---
+                    AppState.mis_publicaciones_list,
                     rx.fragment(desktop_view, mobile_view),
                     rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
                 ),
