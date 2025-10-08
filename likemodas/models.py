@@ -427,7 +427,10 @@ class PurchaseModel(rx.Model, table=True):
     delivery_confirmation_sent_at: Optional[datetime] = Field(default=None)
     user_confirmed_delivery_at: Optional[datetime] = Field(default=None)
 
-    userinfo: "UserInfo" = Relationship(back_populates="purchases")
+    userinfo: "UserInfo" = Relationship(
+        back_populates="purchases",
+        sa_relationship_kwargs={"foreign_keys": "[PurchaseModel.userinfo_id]"}
+    )
     items: List["PurchaseItemModel"] = Relationship(back_populates="purchase")
 
     class Config:
