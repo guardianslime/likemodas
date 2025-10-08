@@ -285,6 +285,7 @@ class BlogPostModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id") # Dueño
     creator_id: Optional[int] = Field(default=None, foreign_key="userinfo.id") # Creador (empleado)
     
+    last_modified_by_id: Optional[int] = Field(default=None, foreign_key="userinfo.id") # Quien lo modificó por última vez
     # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
     
     title: str
@@ -377,6 +378,9 @@ class ShippingAddressModel(rx.Model, table=True):
 
 class PurchaseModel(rx.Model, table=True):
     userinfo_id: int = Field(foreign_key="userinfo.id")
+
+    action_by_id: Optional[int] = Field(default=None, foreign_key="userinfo.id") # El último usuario (vendedor/empleado) que actuó sobre el pedido
+
     purchase_date: datetime = Field(default_factory=get_utc_now, nullable=False)
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float
@@ -536,7 +540,8 @@ class SupportMessageModel(rx.Model, table=True):
 
 class Gasto(rx.Model, table=True):
     """Representa un gasto operativo registrado por un administrador."""
-    userinfo_id: int = Field(foreign_key="userinfo.id")
+    userinfo_id: int = Field(foreign_key="userinfo.id") # El dueño del gasto (el Vendedor)
+    creator_id: Optional[int] = Field(default=None, foreign_key="userinfo.id") # Quien lo registró (el Empleado)
     fecha: datetime = Field(default_factory=get_utc_now, nullable=False)
     descripcion: str
     categoria: GastoCategoria = Field(default=GastoCategoria.OTROS, nullable=False)
