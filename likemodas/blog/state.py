@@ -23,22 +23,6 @@ class BlogAdminState(AppState):
         """
         self.post_form_data[field] = value
 
-    @rx.var
-    def my_blog_posts(self) -> list[BlogPostModel]:
-        """
-        Devuelve solo las publicaciones del usuario actual.
-        """
-        if not hasattr(self, "user_info") or self.user_info is None:
-            return []
-        
-        with rx.session() as session:
-            posts = session.exec(
-                select(BlogPostModel)
-                .where(BlogPostModel.userinfo_id == self.user_info.id)
-                .order_by(BlogPostModel.created_at.desc())
-            ).all()
-            return posts
-
     async def delete_post(self, post_id: int):
         """
         Manejador de evento para eliminar una publicación de forma segura.
