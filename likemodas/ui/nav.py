@@ -220,11 +220,10 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
-        # ✨ CORRECCIÓN CLAVE 2: Lógica de polling oculta ✨
-        # Esta sección ahora está correctamente estructurada para ser invisible
-        # y no afectar el diseño de la página.
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Ahora, este bloque solo se ejecutará para los compradores.
         rx.cond(
-            AppState.is_authenticated,
+            AppState.is_authenticated & ~(AppState.is_admin | AppState.is_vendedor | AppState.is_empleado),
             rx.fragment(
                 rx.button(
                     "Polling Trigger",
@@ -249,6 +248,7 @@ def public_navbar() -> rx.Component:
                 )
             )
         ),
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
