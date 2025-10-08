@@ -3053,12 +3053,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_to_update.shipping_combination_limit = limit
                 post_to_update.variants = all_variants_for_db
 
-            session.add(post_to_update)
-            session.commit()
+                # --- ✨ CORRECCIÓN CLAVE: Guardamos el ID del editor ✨ ---
+                post_to_update.last_modified_by_id = self.authenticated_user_info.id
+                
+                session.add(post_to_update)
+                session.commit()
 
-            yield self.cancel_editing_post(False)
-            yield AppState.on_load_admin_store # Recargar la tienda principal para reflejar cambios
-            yield rx.toast.success("Publicación actualizada correctamente.")
+        yield self.cancel_editing_post(False)
+        yield AppState.on_load_admin_store
+        yield rx.toast.success("Publicación actualizada correctamente.")
 
 
     # --- ⚙️ INICIO: NUEVOS HELPERS Y PROPIEDADES PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
@@ -3972,9 +3975,12 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def handle_add_gasto(self, form_data: dict):
-        """Manejador para crear un nuevo registro de gasto."""
-        if not self.is_admin:
+        """Manejador para crear un nuevo registro de gasto, ahora con atribución."""
+        if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
+
+        owner_id = self.context_user_info.id if self.context_user_info else self.authenticated_user_info.id
+        creator_id = self.authenticated_user_info.id
 
         descripcion = form_data.get("descripcion")
         categoria = form_data.get("categoria")
@@ -3985,14 +3991,14 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         try:
             valor_float = float(valor_str)
-            if valor_float <= 0:
-                raise ValueError()
+            if valor_float <= 0: raise ValueError()
         except (ValueError, TypeError):
             return rx.toast.error("El valor debe ser un número positivo.")
         
         with rx.session() as session:
             new_gasto = Gasto(
-                userinfo_id=self.authenticated_user_info.id,
+                userinfo_id=owner_id,       # El gasto pertenece al vendedor
+                creator_id=creator_id,      # Fue creado por el usuario logueado
                 descripcion=descripcion,
                 categoria=categoria,
                 valor=valor_float
@@ -4000,11 +4006,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_gasto)
             session.commit()
 
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-        # Se usa la referencia de la clase AppState para encadenar el evento.
         yield AppState.load_gastos
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-        
         yield rx.toast.success("Gasto registrado exitosamente.")
 
     # --- FIN: NUEVOS EVENT HANDLERS Y VARS PARA GASTOS ---
@@ -5254,6 +5256,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         purchase.status = PurchaseStatus.SHIPPED
         purchase.estimated_delivery_date = datetime.now(timezone.utc) + total_delta
         purchase.delivery_confirmation_sent_at = datetime.now(timezone.utc)
+        # --- ✨ CORRECCIÓN CLAVE: Guardamos el ID del usuario que actúa ✨ ---
+        purchase.action_by_id = self.authenticated_user_info.id
         session.add(purchase)
 
         # 3. Construye el mensaje de notificación para el cliente
@@ -5377,29 +5381,25 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def confirm_cod_payment_received(self, purchase_id: int):
-        """
-        Permite al admin registrar que el pago Contra Entrega fue recibido.
-        Esto NO cambia el estado de la entrega, solo registra la fecha de confirmación del pago.
-        """
-        if not self.is_admin:
+        """Confirma el pago de un pedido Contra Entrega, registrando al actor."""
+        if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            
-            # La condición correcta: la orden debe ser 'Contra Entrega' y ya debe haber sido 'Enviada'.
             if purchase and purchase.payment_method == "Contra Entrega" and purchase.status in [PurchaseStatus.SHIPPED, PurchaseStatus.DELIVERED]:
-                # 1. Se registra únicamente la fecha en que se confirmó el pago.
                 purchase.confirmed_at = datetime.now(timezone.utc)
+                
+                # --- ✨ CORRECCIÓN CLAVE: Guardamos el ID del usuario que confirma ✨ ---
+                purchase.action_by_id = self.authenticated_user_info.id
+
                 session.add(purchase)
                 session.commit()
                 
-                # 2. Se notifica al admin y se recarga la vista para que vea el cambio.
-                yield rx.toast.success(f"Pago de la compra #{purchase_id} registrado.")
+                yield rx.toast.success(f"Pago de la compra #{purchase.id} registrado.")
                 yield AppState.load_active_purchases
             else:
-                # Si la orden no cumple las condiciones, se muestra un error.
-                yield rx.toast.error("Esta acción no es válida para este pedido o su estado actual.")
+                yield rx.toast.error("Esta acción no es válida para este pedido.")
 
     search_query_admin_history: str = ""
 

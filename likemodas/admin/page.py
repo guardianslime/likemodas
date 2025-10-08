@@ -1,13 +1,11 @@
-# likemodas/admin/page.py (VERSIÓN FINAL Y DEFINITIVA)
+# likemodas/admin/page.py (VERSIÓN FINAL CON AUDITORÍA)
 
 import reflex as rx
 from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
-# --- 1. Importa el decorador correcto ---
 from ..auth.admin_auth import require_panel_access
 
-
-# --- COMPONENTE REUTILIZABLE PARA MOSTRAR ITEMS ---
+# ... (purchase_item_display_admin y purchase_items_view no cambian) ...
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     """Muestra un item individual detallado, reutilizable en ambas vistas."""
     return rx.hstack(
@@ -47,9 +45,9 @@ def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.C
         width="100%",
     )
 
-
+# --- ✨ INICIO: COMPONENTES DE COMPRA CORREGIDOS CON AUDITORÍA ✨ ---
 def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra activa y sus acciones dinámicas."""
+    """Muestra los detalles de una compra activa, con auditoría."""
     set_delivery_and_shipping_form = rx.vstack(
         rx.divider(),
         rx.grid(
@@ -95,7 +93,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 ), width="100%",
             ),
             rx.divider(),
-            
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 purchase_items_view(
@@ -142,13 +139,30 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     rx.callout("Envío notificado. Esperando confirmación del cliente.", icon="check", width="100%", margin_top="1em")
                 )
             ),
+            
+            rx.cond(
+                purchase.action_by_name,
+                rx.box(
+                    rx.hstack(
+                        rx.icon("user-check", size=14, color_scheme="gray"),
+                        rx.text(
+                            "Última acción por: ",
+                            rx.text.strong(purchase.action_by_name),
+                            size="2", color_scheme="gray"
+                        ),
+                        justify="center",
+                        spacing="2"
+                    ),
+                    width="100%",
+                    margin_top="1em",
+                )
+            ),
             spacing="4", width="100%",
         ), width="100%",
     )
 
-
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra en el historial."""
+    """Muestra los detalles de una compra en el historial, con auditoría."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -182,17 +196,32 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
+            rx.cond(
+                purchase.action_by_name,
+                rx.box(
+                    rx.hstack(
+                        rx.icon("user-check", size=12, color_scheme="gray"),
+                        rx.text(
+                            "Gestionado por: ",
+                            rx.text.strong(purchase.action_by_name),
+                            size="2", color_scheme="gray"
+                        ),
+                        spacing="2"
+                    ),
+                    width="100%",
+                    margin_y="0.5em",
+                )
+            ),
             rx.link(
-                rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="1em"),
+                rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="0.5em"),
                 href=f"/invoice?id={purchase.id}",
                 target="_blank",
             ),
             spacing="4", width="100%",
         ), width="100%",
     )
+# --- ✨ FIN: COMPONENTES DE COMPRA CORREGIDOS ✨ ---
 
-
-# --- 2. Usa el nuevo decorador ---
 @require_panel_access 
 def admin_confirm_content() -> rx.Component:
     """Página de admin para gestionar órdenes activas."""
@@ -208,8 +237,6 @@ def admin_confirm_content() -> rx.Component:
         ), width="100%"
     )
 
-
-# --- 2. Usa el nuevo decorador ---
 @require_panel_access 
 def payment_history_content() -> rx.Component:
     """Página de admin para ver el historial de pagos."""

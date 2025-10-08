@@ -2,12 +2,14 @@
 
 import reflex as rx
 from ..state import AppState, ProductFinanceDTO, VariantDetailFinanceDTO, GastoDataDTO
-from ..auth.admin_auth import require_panel_access  # <-- CORRECCIÓN: Importa el decorador correcto
+from ..auth.admin_auth import require_panel_access
 from reflex.components.recharts import (
     LineChart, Line, XAxis, YAxis, CartesianGrid, 
     tooltip, Legend, ResponsiveContainer
 )
 
+# --- Las funciones stat_card, charts y modales no necesitan cambios ---
+# ... (stat_card, general_finance_chart, mobile_finance_card, product_finance_table_row, etc. se mantienen igual)
 def stat_card(title: str, value: str, icon: str) -> rx.Component:
     """Muestra una tarjeta de estadística en el dashboard."""
     return rx.card(
@@ -272,7 +274,7 @@ def product_detail_modal() -> rx.Component:
         on_open_change=AppState.set_show_product_detail_modal,
         style={"max_width": "1300px", "width": "95%"}
     )
-    
+
 def gasto_form() -> rx.Component:
     """Formulario rediseñado para registrar un nuevo gasto."""
     return rx.form(
@@ -311,18 +313,29 @@ def gasto_form() -> rx.Component:
         reset_on_submit=True,
     )
 
+
+# --- ✨ INICIO: COMPONENTES DE GASTOS CORREGIDOS ✨ ---
 def desktop_gasto_row(gasto: GastoDataDTO) -> rx.Component:
-    """Renderiza una fila de la tabla de gastos para escritorio."""
+    """Renderiza una fila de la tabla de gastos para escritorio, con el creador."""
     return rx.table.row(
         rx.table.cell(gasto.fecha_formateada),
-        rx.table.cell(gasto.descripcion),
+        rx.table.cell(
+            rx.vstack(
+                rx.text(gasto.descripcion),
+                rx.cond(
+                    gasto.creator_name,
+                    rx.text(f"Registrado por: {gasto.creator_name}", size="1", color_scheme="gray"),
+                ),
+                align_items="start", spacing="0"
+            )
+        ),
         rx.table.cell(rx.badge(gasto.categoria)),
         rx.table.cell(gasto.valor_cop, text_align="right", weight="bold"),
         align="center"
     )
 
 def mobile_gasto_card(gasto: GastoDataDTO) -> rx.Component:
-    """Renderiza una tarjeta de gasto mejorada para vista móvil."""
+    """Renderiza una tarjeta de gasto mejorada para vista móvil, con el creador."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -338,9 +351,19 @@ def mobile_gasto_card(gasto: GastoDataDTO) -> rx.Component:
                 align="center",
                 margin_top="0.5em"
             ),
+            rx.cond(
+                gasto.creator_name,
+                rx.hstack(
+                    rx.spacer(),
+                    rx.text(f"Por: {gasto.creator_name}", size="1", color_scheme="gray"),
+                    width="100%",
+                    margin_top="0.5em",
+                ),
+            ),
             spacing="2"
         )
     )
+# --- ✨ FIN: COMPONENTES DE GASTOS CORREGIDOS ✨ ---
 
 def gastos_module() -> rx.Component:
     """Módulo completo y rediseñado para la gestión de gastos."""
@@ -409,7 +432,6 @@ def gastos_module() -> rx.Component:
         )
     )
 
-# --- CORRECCIÓN: Usa el decorador correcto ---
 @require_panel_access
 def finance_page_content() -> rx.Component:
     """Página del dashboard financiero con la UI mejorada y nuevas métricas."""

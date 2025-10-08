@@ -1,16 +1,13 @@
-# likemodas/blog/admin_page.py
+# likemodas/blog/admin_page.py (Versión Completa y Corregida)
 
 import reflex as rx
-from ..auth.admin_auth import require_panel_access # <-- 1. Importa el decorador correcto
+from ..auth.admin_auth import require_panel_access
 from .. import navigation
 from ..state import AppState, AdminPostRowData, AdminVariantData
 from ..ui.qr_display import qr_code_display
 from .forms import blog_post_edit_form
 
-# ==============================================================================
-# TODOS LOS COMPONENTES DE LA PÁGINA SE DEFINEN AQUÍ
-# ==============================================================================
-
+# ... (las funciones edit_post_dialog y qr_display_modal no cambian) ...
 def edit_post_dialog() -> rx.Component:
     """El diálogo modal que contiene el formulario de edición."""
     return rx.dialog.root(
@@ -25,7 +22,6 @@ def edit_post_dialog() -> rx.Component:
             ),
             rx.dialog.title("Editar Publicación"),
             rx.dialog.description("Modifica los detalles de tu producto y guárdalos."),
-            # Se llama al formulario que sí está en forms.py
             blog_post_edit_form(),
             style={"max_width": "960px", "width": "90%"},
         ),
@@ -103,8 +99,10 @@ def qr_display_modal() -> rx.Component:
         on_open_change=AppState.set_show_qr_display_modal,
     )
 
+
+# --- ✨ INICIO: COMPONENTES DE PUBLICACIÓN CORREGIDOS ✨ ---
 def desktop_post_row(post: AdminPostRowData) -> rx.Component:
-    """Componente para una fila de la tabla de administración en escritorio."""
+    """Componente para una fila de la tabla de administración, con auditoría."""
     return rx.table.row(
         rx.table.cell(
             rx.cond(
@@ -120,20 +118,23 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
                 spacing="2", align="center",
             )
         ),
-        # --- ✨ INICIO DE LA MODIFICACIÓN: CELDA DEL TÍTULO ✨ ---
         rx.table.cell(
             rx.vstack(
                 rx.text(post.title, weight="bold"),
-                # Se muestra quién lo creó solo si fue un empleado
+                # Muestra quién lo creó si fue un empleado
                 rx.cond(
                     post.creator_name,
-                    rx.text(f"Creado por: {post.creator_name}", size="2", color_scheme="gray"),
+                    rx.text(f"Creado por: {post.creator_name}", size="1", color_scheme="gray"),
+                ),
+                # Muestra quién lo modificó por última vez
+                rx.cond(
+                    post.last_modified_by_name,
+                    rx.text(f"Modificado por: {post.last_modified_by_name}", size="1", color_scheme="gray"),
                 ),
                 align_items="start",
                 spacing="0"
             )
         ),
-        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
         rx.table.cell(post.price_cop),
         rx.table.cell(
             rx.hstack(
@@ -163,7 +164,7 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
     )
 
 def mobile_post_card(post: AdminPostRowData) -> rx.Component:
-    """Componente de tarjeta optimizado para la vista móvil."""
+    """Componente de tarjeta optimizado para la vista móvil, con auditoría."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -178,6 +179,20 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
                 align="center", width="100%",
             ),
             rx.divider(margin_y="0.75em"),
+            # Información de auditoría para móvil
+            rx.vstack(
+                rx.cond(
+                    post.creator_name,
+                    rx.text(f"Creado por: {post.creator_name}", size="1", color_scheme="gray", width="100%", text_align="left"),
+                ),
+                rx.cond(
+                    post.last_modified_by_name,
+                    rx.text(f"Última mod. por: {post.last_modified_by_name}", size="1", color_scheme="gray", width="100%", text_align="left"),
+                ),
+                spacing="0",
+                width="100%",
+                margin_bottom="0.75em",
+            ),
             rx.hstack(
                 rx.text("Estado:", weight="medium", size="2"),
                 rx.spacer(),
@@ -204,12 +219,9 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
             spacing="2", width="100%",
         )
     )
+# --- ✨ FIN: COMPONENTES DE PUBLICACIÓN CORREGIDOS ✨ ---
 
-# ==============================================================================
-# FUNCIÓN PRINCIPAL DE LA PÁGINA
-# ==============================================================================
-
-@require_panel_access # <-- 2. Usa el nuevo decorador
+@require_panel_access
 def blog_admin_page() -> rx.Component:
     """Página de 'Mis Publicaciones' para el vendedor, ahora completamente responsiva."""
     desktop_view = rx.box(
@@ -218,9 +230,7 @@ def blog_admin_page() -> rx.Component:
                 rx.table.row(
                     rx.table.column_header_cell("Imagen"),
                     rx.table.column_header_cell("Estado"),
-                    # --- ✨ MODIFICACIÓN: CAMBIAR EL NOMBRE DE LA COLUMNA ✨ ---
                     rx.table.column_header_cell("Publicación"),
-                    # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                     rx.table.column_header_cell("Precio"),
                     rx.table.column_header_cell("Acciones"),
                     rx.table.column_header_cell("QR"),
@@ -233,7 +243,6 @@ def blog_admin_page() -> rx.Component:
     )
 
     mobile_view = rx.box(
-        # La vista móvil no necesita cambios, ya que el título y el creador están juntos
         rx.vstack(
             rx.foreach(AppState.my_admin_posts, mobile_post_card),
             spacing="4",
