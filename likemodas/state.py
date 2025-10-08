@@ -1849,7 +1849,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Filtra el historial de actividad por búsqueda de texto y rango de fechas."""
         logs = self._activity_logs
         
-        # 1. Filtrado por texto de búsqueda (nombre, descripción o tipo de acción)
+        # 1. Filtrado por texto de búsqueda (sin cambios)
         if self.activity_search_query.strip():
             query = self.activity_search_query.lower()
             logs = [
@@ -1859,10 +1859,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 or query in log.action_type.lower()
             ]
 
+        # --- ✨ INICIO: LÓGICA DE FILTRADO POR FECHA AÑADIDA ✨ ---
+        
         # 2. Filtrado por fecha de inicio
         if self.activity_start_date:
             try:
-                # Convertimos la fecha del filtro a un objeto datetime consciente de la zona horaria
                 start_dt = datetime.fromisoformat(self.activity_start_date).replace(tzinfo=pytz.UTC)
                 # Comparamos con la fecha original del registro
                 logs = [log for log in logs if log.created_at.replace(tzinfo=pytz.UTC) >= start_dt]
@@ -1872,14 +1873,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         # 3. Filtrado por fecha de fin
         if self.activity_end_date:
             try:
-                # Convertimos la fecha del filtro a un objeto datetime
                 end_dt = datetime.fromisoformat(self.activity_end_date).replace(tzinfo=pytz.UTC)
-                # Añadimos un día para que el filtro incluya el día final completo (hasta las 23:59:59)
+                # Añadimos un día para que el filtro incluya el día final completo
                 end_dt_inclusive = end_dt + timedelta(days=1)
                 # Comparamos que la fecha del registro sea MENOR que el inicio del día siguiente
                 logs = [log for log in logs if log.created_at.replace(tzinfo=pytz.UTC) < end_dt_inclusive]
             except ValueError:
                 pass # Ignora fechas con formato incorrecto
+                
+        # --- ✨ FIN: LÓGICA DE FILTRADO POR FECHA AÑADIDA ✨ ---
         
         return logs
 
