@@ -195,12 +195,17 @@ def sliding_admin_sidebar() -> rx.Component:
             align_items="center", spacing="0",
         ),
         rx.cond(
-            AppState.is_admin,
-            rx.fragment(
-                rx.button(on_click=AppState.poll_for_new_orders, id="admin_notification_poller", display="none"),
-                rx.box(on_mount=rx.call_script("if (!window.likemodas_admin_poller) { window.likemodas_admin_poller = setInterval(() => { const trigger = document.getElementById('admin_notification_poller'); if (trigger) { trigger.click(); } }, 15000); }"), display="none")
-            )
-        ),
+        AppState.is_admin,
+        rx.fragment(
+            rx.button(
+                # --- ✨ CAMBIA EL on_click AQUÍ 👇 ---
+                on_click=AppState.poll_admin_notifications, 
+                id="admin_notification_poller", 
+                display="none"
+            ),
+            rx.box(on_mount=rx.call_script("if (!window.likemodas_admin_poller) { window.likemodas_admin_poller = setInterval(() => { const trigger = document.getElementById('admin_notification_poller'); if (trigger) { trigger.click(); } }, 15000); }"), display="none")
+        )
+    ),
         position="fixed", top="0", left="0", height="100dvh",
         display="flex", align_items="center",
         transform=rx.cond(AppState.show_admin_sidebar, "translateX(0)", f"translateX(-{SIDEBAR_WIDTH})"),

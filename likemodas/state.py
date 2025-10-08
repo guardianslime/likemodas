@@ -349,13 +349,6 @@ class GastoDataDTO(rx.Base):
     categoria: str
     valor_cop: str
 
-# --- ✨ INICIO: AÑADE ESTA NUEVA CLASE DTO ✨ ---
-class PendingRequestDTO(rx.Base):
-    """Un objeto de datos simple para la notificación de solicitud de empleo."""
-    id: int
-    requester_username: str
-# --- ✨ FIN: AÑADE ESTA NUEVA CLASE DTO ✨ ---
-
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
@@ -4529,7 +4522,28 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:  # Pago Contra Entrega
                 self.cart.clear()
                 self.default_shipping_address = None
-                yield AppState.notify_admin_of_new_purchase
+
+                # --- 🔴 ELIMINA LA LÍNEA ANTIGUA 🔴 ---
+                # yield AppState.notify_admin_of_new_purchase
+
+                # --- ✨ INICIO: NUEVA LÓGICA DE NOTIFICACIÓN ✨ ---
+                with rx.session() as session:
+                    # Agrupamos los productos por vendedor para enviar notificaciones individuales
+                    seller_groups = defaultdict(list)
+                    for item in items_to_create:
+                        post_owner_id = post_map[item.blog_post_id].userinfo_id
+                        seller_groups[post_owner_id].append(item.blog_post_id)
+
+                    for seller_id, product_ids in seller_groups.items():
+                        notification = NotificationModel(
+                            userinfo_id=seller_id,
+                            message=f"¡Nueva orden (#{new_purchase.id}) recibida! Tienes productos pendientes de confirmar.",
+                            url="/admin/confirm-payments"
+                        )
+                        session.add(notification)
+                    session.commit()
+                # --- ✨ FIN: NUEVA LÓGICA DE NOTIFICACIÓN ✨ ---
+
                 yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
                 yield rx.redirect("/my-purchases")
                 return
@@ -5889,6 +5903,66 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_profile_phone(self, phone: str):
         self.profile_phone = phone
 
+    # --- ✨ INICIO: NUEVAS VARIABLES DE ESTADO PARA NOTIFICACIONES DEL VENDEDOR ✨ ---
+    admin_notifications: List[NotificationDTO] = []
+
+    @rx.var
+    def admin_unread_count(self) -> int:
+        """Calcula el número de notificaciones no leídas para el vendedor."""
+        return sum(1 for n in self.admin_notifications if not n.is_read)
+    # --- ✨ FIN: NUEVAS VARIABLES DE ESTADO ✨ ---
+
+    # ... (resto de tus funciones)
+
+    # --- ✨ INICIO: NUEVA LÓGICA PARA CARGAR NOTIFICACIONES DEL VENDEDOR ✨ ---
+    def _load_admin_notifications_logic(self):
+        """
+        Carga todas las notificaciones relevantes para el contexto actual
+        (sea Vendedor, Empleado o Admin en vigilancia).
+        """
+        user_id_to_check = self.context_user_id if self.context_user_id else (self.authenticated_user_info.id if self.authenticated_user_info else None)
+
+        if not user_id_to_check:
+            self.admin_notifications = []
+            return
+
+        with rx.session() as session:
+            notifications_db = session.exec(
+                sqlmodel.select(NotificationModel)
+                .where(NotificationModel.userinfo_id == user_id_to_check)
+                .order_by(sqlmodel.col(NotificationModel.created_at).desc())
+            ).all()
+
+            self.admin_notifications = [
+                NotificationDTO.from_orm(n) for n in notifications_db
+            ]
+    
+    @rx.event
+    def poll_admin_notifications(self):
+        """Evento de sondeo que se llamará periódicamente desde el panel de vendedor."""
+        self._load_admin_notifications_logic()
+
+    @rx.event
+    def mark_all_admin_as_read(self):
+        """Marca todas las notificaciones del vendedor como leídas."""
+        if not self.admin_notifications:
+            return
+            
+        unread_ids = [n.id for n in self.admin_notifications if not n.is_read]
+        if not unread_ids:
+            return
+            
+        with rx.session() as session:
+            stmt = sqlmodel.update(NotificationModel).where(NotificationModel.id.in_(unread_ids)).values(is_read=True)
+            session.exec(stmt)
+            session.commit()
+        
+        # Actualiza la UI al instante
+        for i in range(len(self.admin_notifications)):
+            if self.admin_notifications[i].id in unread_ids:
+                self.admin_notifications[i].is_read = True
+    # --- ✨ FIN: NUEVA LÓGICA DE CARGA ✨ ---
+
     # --- AÑADE ESTA LÍNEA DENTRO DE TU CLASE AppState ---
     solicitudes_de_empleo_recibidas: list[EmploymentRequest] = []
 
@@ -5992,11 +6066,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 yield self.load_empleados()
                 return rx.toast.info("Has descartado la solicitud.")
-            
-    # Nueva variable para guardar la solicitud a mostrar en el aviso global
-    # 1. --- Variable para guardar la solicitud a mostrar en el aviso ---
-    # 1. --- Variable de estado (añadir si no existe) ---
-    pending_request_notification: Optional[PendingRequestDTO] = None
 
     # 2. --- Nueva función para buscar solicitudes ---
     @rx.event
@@ -6068,6 +6137,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 request.status = RequestStatus.ACCEPTED
                 session.add(request)
                 
+                # --- ✨ AÑADE ESTE BLOQUE DE NOTIFICACIÓN ✨ ---
                 candidate_user = session.get(UserInfo, request.candidate_id)
                 notification = NotificationModel(
                     userinfo_id=request.requester_id,
@@ -6075,17 +6145,27 @@ class AppState(reflex_local_auth.LocalAuthState):
                     url="/admin/employees"
                 )
                 session.add(notification)
-                
+                # --- ✨ FIN DEL BLOQUE ✨ ---
+
                 session.commit()
-                
                 yield rx.toast.success("¡Has aceptado la oferta! Tu cuenta se recargará.")
                 yield rx.call_script("window.location.reload()")
             
             else: # Si la solicitud es rechazada
                 request.status = RequestStatus.REJECTED
                 session.add(request)
+
+                # --- ✨ AÑADE ESTE BLOQUE DE NOTIFICACIÓN ✨ ---
+                candidate_user = session.get(UserInfo, request.candidate_id)
+                notification = NotificationModel(
+                    userinfo_id=request.requester_id,
+                    message=f"{candidate_user.user.username} ha rechazado tu solicitud de empleo.",
+                    url="/admin/employees"
+                )
+                session.add(notification)
+                # --- ✨ FIN DEL BLOQUE ✨ ---
+
                 session.commit()
-                
                 yield self.on_load_profile_page()
                 yield rx.toast.info("Has rechazado la oferta de empleo.")
 

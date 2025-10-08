@@ -5,6 +5,7 @@ from reflex.style import toggle_color_mode
 from ..state import AppState
 from .nav import public_navbar
 from .sidebar import sliding_admin_sidebar
+from .admin_nav import admin_top_bar
 
 def persistent_employment_request_banner() -> rx.Component:
     """
@@ -78,17 +79,25 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     """
     loading_screen = rx.center(rx.spinner(size="3"), height="100vh", width="100%", background=rx.color("gray", 2))
 
+    # --- ✨ REEMPLAZA LA VARIABLE admin_layout POR ESTA VERSIÓN ✨ ---
     admin_layout = rx.box(
         sliding_admin_sidebar(),
         rx.grid(
-            rx.box(display=["none", "none", "block"]),
-            rx.box(child, width="100%", height="100%", padding_x=["1em", "2em"], padding_y="2em"),
+            rx.box(display=["none", "none", "block"]), # Espaciador para el sidebar
+            # Contenido principal ahora en un Vstack
+            rx.vstack(
+                admin_top_bar(), # La nueva barra superior
+                rx.box(child, width="100%", height="100%", padding_x=["1em", "2em"], padding_y="1em"),
+                spacing="4",
+                width="100%",
+                height="100%",
+                align="stretch",
+            ),
             columns={"initial": "1", "lg": "5em 1fr"},
             width="100%",
         ),
         width="100%",
         min_height="100vh",
-        on_mount=rx.cond(AppState.is_admin, AppState.on_load_profile_page, None)
     )
 
     public_layout = rx.box(
@@ -134,9 +143,6 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 )
             )
         ),
-        
-        
-        persistent_employment_request_banner(),
         
         fixed_color_mode_button(),
     )
