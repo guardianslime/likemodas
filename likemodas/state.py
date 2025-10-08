@@ -5523,38 +5523,30 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _load_notifications_logic(self):
         """
-        [VERSIÓN CORREGIDA]
-        Carga las notificaciones para la campana del COMPRADOR.
-        Ahora incluye una barrera para NO ejecutarse si el usuario es un vendedor/admin.
+        [VERSIÓN CON FILTRADO DE URL]
+        Carga notificaciones para el comprador, excluyendo explícitamente
+        aquellas que pertenecen al panel de administración.
         """
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Si el usuario tiene un rol de panel, esta función no debe hacer nada.
         if self.is_admin or self.is_vendedor or self.is_empleado:
             self.user_notifications = []
             return
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-
         if not self.authenticated_user_info:
             self.user_notifications = []
             return
 
         with rx.session() as session:
+            # --- CORRECCIÓN CLAVE: Añadimos el filtro por URL ---
             notifications_db = session.exec(
                 sqlmodel.select(NotificationModel)
-                .where(NotificationModel.userinfo_id == self.authenticated_user_info.id)
+                .where(
+                    NotificationModel.userinfo_id == self.authenticated_user_info.id,
+                    ~NotificationModel.url.startswith("/admin") # El '~' significa 'NO'
+                )
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
                 .limit(20)
             ).all()
+            self.user_notifications = [NotificationDTO.from_orm(n) for n in notifications_db]
 
-            self.user_notifications = [
-                NotificationDTO(
-                    id=n.id,
-                    message=n.message,
-                    is_read=n.is_read,
-                    url=n.url,
-                    created_at_formatted=n.created_at_formatted
-                ) for n in notifications_db
-            ]
 
     # Los métodos load_notifications y poll_notifications no cambian,
     # ya que simplemente llaman a _load_notifications_logic.
@@ -5930,39 +5922,36 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _load_admin_notifications_logic(self):
         """
-        [VERSIÓN FINAL Y COMPLETA]
-        Carga todas las notificaciones para el panel del vendedor.
-        1. Carga notificaciones generales para la campana.
-        2. Busca la solicitud de empleo más urgente para mostrarla en el banner global.
+        [VERSIÓN CON FILTRADO DE URL]
+        Carga únicamente las notificaciones cuyo URL empieza con '/admin',
+        asegurando que solo se muestren alertas relevantes para el vendedor.
         """
         user_id_to_check = self.context_user_id if self.is_vigilando else (self.authenticated_user_info.id if self.authenticated_user_info else None)
-
         if not user_id_to_check:
             self.admin_notifications = []
             return
 
         with rx.session() as session:
-            # TAREA 1: Cargar notificaciones para la campana
+            # --- CORRECCIÓN CLAVE: Añadimos el filtro por URL ---
             notifications_db = session.exec(
                 sqlmodel.select(NotificationModel)
-                .where(NotificationModel.userinfo_id == user_id_to_check)
+                .where(
+                    NotificationModel.userinfo_id == user_id_to_check,
+                    NotificationModel.url.startswith("/admin")
+                )
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
                 .limit(20)
             ).all()
             self.admin_notifications = [NotificationDTO.from_orm(n) for n in notifications_db]
 
-            # TAREA 2: Lógica para el banner global
-            if self.pending_request_notification:
-                return
-
-            if self.is_vendedor or self.is_admin:
+            # La lógica del banner de empleo se mantiene igual
+            if not self.pending_request_notification and (self.is_vendedor or self.is_admin):
                 first_pending_request = session.exec(
                     sqlmodel.select(EmploymentRequest).where(
                         EmploymentRequest.candidate_id == user_id_to_check,
                         EmploymentRequest.status == RequestStatus.PENDING
                     )
                 ).first()
-
                 if first_pending_request:
                     self.pending_request_notification = PendingRequestDTO(
                         id=first_pending_request.id,
