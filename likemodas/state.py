@@ -6201,7 +6201,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
 
     # --- REEMPLAZA LA FUNCIÓN `enviar_solicitud_empleo` ---
-    rx.event
+    @rx.event
     def enviar_solicitud_empleo(self, candidate_userinfo_id: int):
         """[CORREGIDO] El Vendedor envía una solicitud de empleo, notificando con la URL correcta."""
         if not (self.is_vendedor or self.is_admin) or not self.authenticated_user_info:
@@ -6234,21 +6234,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             session.add(new_request)
 
-            # --- ✨ CORRECCIÓN DE URL AQUÍ ✨ ---
-            # La notificación que se le envía al candidato ahora apunta al perfil de administrador.
             notification = NotificationModel(
                 userinfo_id=candidate_userinfo_id,
                 message=f"¡{requester_info.user.username} quiere contratarte como empleado!",
                 url="/admin/profile"
             )
             session.add(notification)
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
             session.commit()
         
         self.search_results_users = []
         yield rx.toast.success("Solicitud de empleo enviada.")
-        yield self.load_empleados()
+        
+        # --- ✨ CORRECCIÓN CLAVE: Usamos 'yield from' para encadenar eventos que también usan 'yield' ✨ ---
+        yield from self.load_empleados()
 
     # --- AÑADE ESTA NUEVA FUNCIÓN ---
     @rx.event
