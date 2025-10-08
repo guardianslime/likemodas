@@ -9,7 +9,7 @@ from sqlmodel import text # Importar text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Dict, Optional, Tuple
-from .models import EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, RequestStatus
+from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalAuthSession, RequestStatus
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
@@ -383,6 +383,16 @@ class SentRequestDTO(rx.Base):
     candidate_name: str
     created_at_formatted: str
     # Guardamos la fecha real para poder filtrar sobre ella
+    created_at: datetime
+
+class ActivityLogDTO(rx.Base):
+    id: int
+    actor_name: str
+    action_type: str
+    description: str
+    created_at_formatted: str
+    
+    # --- ✨ AÑADE ESTA LÍNEA PARA LA FECHA ORIGINAL ✨ ---
     created_at: datetime
 
 class AppState(reflex_local_auth.LocalAuthState):
@@ -1539,6 +1549,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(sqlmodel.desc(EmploymentRequest.created_at))
             ).all()
 
+        yield self.load_employee_activity
+
     @rx.var
     def filtered_solicitudes_enviadas(self) -> list[SentRequestDTO]:
         """Filtra el historial por nombre y rango de fechas, y lo convierte a DTOs."""
@@ -1791,7 +1803,86 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.info("Tu rol ha sido actualizado. Redirigiendo...")
                 yield rx.reload()
 
-    
+    # Variables de estado para el nuevo historial
+    _activity_logs: list[ActivityLogDTO] = []
+    activity_search_query: str = ""
+    activity_start_date: str = ""
+    activity_end_date: str = ""
+
+    def set_activity_search_query(self, query: str):
+        self.activity_search_query = query
+    def set_activity_start_date(self, date: str):
+        self.activity_start_date = date
+    def set_activity_end_date(self, date: str):
+        self.activity_end_date = date
+
+    @rx.event
+    def load_employee_activity(self):
+        """Carga el historial de actividad para el vendedor en contexto."""
+        user_id_to_check = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        if not user_id_to_check:
+            return
+
+        with rx.session() as session:
+            logs_db = session.exec(
+                sqlmodel.select(ActivityLog)
+                .options(sqlalchemy.orm.joinedload(ActivityLog.actor).joinedload(UserInfo.user))
+                .where(ActivityLog.owner_id == user_id_to_check)
+                .order_by(sqlmodel.desc(ActivityLog.created_at))
+                .limit(100)
+            ).all()
+
+            self._activity_logs = [
+                ActivityLogDTO(
+                    id=log.id,
+                    actor_name=log.actor.user.username if log.actor and log.actor.user else "N/A",
+                    action_type=log.action_type,
+                    description=log.description,
+                    created_at_formatted=log.created_at_formatted,
+                    # --- ✨ AÑADE ESTA LÍNEA PARA GUARDAR LA FECHA ORIGINAL ✨ ---
+                    created_at=log.created_at
+                ) for log in logs_db
+            ]
+
+
+    @rx.var
+    def filtered_employee_activity(self) -> list[ActivityLogDTO]:
+        """Filtra el historial de actividad por búsqueda de texto y rango de fechas."""
+        logs = self._activity_logs
+        
+        # 1. Filtrado por texto de búsqueda (nombre, descripción o tipo de acción)
+        if self.activity_search_query.strip():
+            query = self.activity_search_query.lower()
+            logs = [
+                log for log in logs
+                if query in log.actor_name.lower() 
+                or query in log.description.lower() 
+                or query in log.action_type.lower()
+            ]
+
+        # 2. Filtrado por fecha de inicio
+        if self.activity_start_date:
+            try:
+                # Convertimos la fecha del filtro a un objeto datetime consciente de la zona horaria
+                start_dt = datetime.fromisoformat(self.activity_start_date).replace(tzinfo=pytz.UTC)
+                # Comparamos con la fecha original del registro
+                logs = [log for log in logs if log.created_at.replace(tzinfo=pytz.UTC) >= start_dt]
+            except ValueError:
+                pass # Ignora fechas con formato incorrecto
+
+        # 3. Filtrado por fecha de fin
+        if self.activity_end_date:
+            try:
+                # Convertimos la fecha del filtro a un objeto datetime
+                end_dt = datetime.fromisoformat(self.activity_end_date).replace(tzinfo=pytz.UTC)
+                # Añadimos un día para que el filtro incluya el día final completo (hasta las 23:59:59)
+                end_dt_inclusive = end_dt + timedelta(days=1)
+                # Comparamos que la fecha del registro sea MENOR que el inicio del día siguiente
+                logs = [log for log in logs if log.created_at.replace(tzinfo=pytz.UTC) < end_dt_inclusive]
+            except ValueError:
+                pass # Ignora fechas con formato incorrecto
+        
+        return logs
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
@@ -1883,6 +1974,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 is_imported=self.is_imported,
             )
             session.add(new_post)
+
+            # --- ✨ AÑADIR REGISTRO DE ACTIVIDAD ✨ ---
+            log_entry = ActivityLog(
+                actor_id=self.authenticated_user_info.id,
+                owner_id=owner_id,
+                action_type="Creación de Publicación",
+                description=f"Creó la publicación '{new_post.title}'"
+            )
+            session.add(log_entry)
+            # --- ✨ FIN DEL REGISTRO ✨ ---
+
             session.commit()
 
         # 5. Limpiar el formulario y redirigir
@@ -3076,6 +3178,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 post_to_update.last_modified_by_id = self.authenticated_user_info.id
                 
                 session.add(post_to_update)
+
+                # --- ✨ AÑADIR REGISTRO DE ACTIVIDAD ✨ ---
+                log_entry = ActivityLog(
+                    actor_id=self.authenticated_user_info.id,
+                    owner_id=post_to_update.userinfo_id,
+                    action_type="Edición de Publicación",
+                    description=f"Modificó la publicación '{post_to_update.title}'"
+                )
+                session.add(log_entry)
+                # --- ✨ FIN DEL REGISTRO ✨ ---
+
                 session.commit()
 
         yield self.cancel_editing_post(False)
@@ -4034,6 +4147,16 @@ class AppState(reflex_local_auth.LocalAuthState):
                 valor=valor_float
             )
             session.add(new_gasto)
+
+            # --- ✨ AÑADIR REGISTRO DE ACTIVIDAD ✨ ---
+            log_entry = ActivityLog(
+                actor_id=creator_id,
+                owner_id=owner_id,
+                action_type="Registro de Gasto",
+                description=f"Registró un gasto de {format_to_cop(valor_float)}: '{descripcion}'"
+            )
+            session.add(log_entry)
+
             session.commit()
 
         yield AppState.load_gastos
@@ -4325,7 +4448,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return admin_posts
 
     # --- INICIO DE LA CORRECCIÓN CLAVE ---
-    
+
     @rx.event
     def delete_post(self, post_id: int):
         """

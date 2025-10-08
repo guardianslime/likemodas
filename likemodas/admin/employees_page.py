@@ -4,6 +4,7 @@ import reflex as rx
 from ..state import AppState, SentRequestDTO
 from ..models import UserInfo, EmploymentRequest, RequestStatus
 from ..auth.admin_auth import require_panel_access
+from ..state import AppState, SentRequestDTO, ActivityLogDTO
 
 def user_search_result_card(user: UserInfo) -> rx.Component:
     """Tarjeta para un usuario en los resultados de búsqueda."""
@@ -157,6 +158,58 @@ def employees_management_page() -> rx.Component:
             max_width="1400px",
             spacing="5",
         ),
-        padding="2em",
+        # --- ✨ AÑADE ESTA LÍNEA PARA INCLUIR LA NUEVA SECCIÓN ✨ ---
+        rx.divider(margin_y="1.5em"),
+        activity_log_section(),
+
         width="100%",
+        max_width="1400px",
+        align="center",
+        padding="2em",
+        spacing="6"
+    )
+
+def activity_log_card(log: ActivityLogDTO) -> rx.Component:
+    """Tarjeta compacta para un registro de actividad."""
+    return rx.box(
+        rx.hstack(
+            rx.vstack(
+                rx.text(log.description, size="3", weight="bold"),
+                rx.text(f"Realizado por: {log.actor_name}", size="2", color_scheme="gray"),
+                align_items="start", spacing="1"
+            ),
+            rx.spacer(),
+            rx.vstack(
+                rx.badge(log.action_type),
+                rx.text(log.created_at_formatted, size="1", color_scheme="gray"),
+                align_items="end", spacing="2"
+            ),
+        ),
+        padding="0.75em",
+        border="1px solid",
+        border_color=rx.color("gray", 5),
+        border_radius="var(--radius-3)",
+    )
+
+def activity_log_section() -> rx.Component:
+    """Sección completa para el historial de actividad de empleados."""
+    return rx.vstack(
+        rx.heading("Historial de Actividad de Empleados", size="6"),
+        rx.input(
+            placeholder="Buscar en historial por acción o empleado...",
+            value=AppState.activity_search_query,
+            on_change=AppState.set_activity_search_query,
+            margin_bottom="1em",
+        ),
+        # Aquí irían los filtros de fecha, si los implementas
+        rx.scroll_area(
+            rx.cond(
+                AppState.filtered_employee_activity,
+                rx.vstack(rx.foreach(AppState.filtered_employee_activity, activity_log_card), spacing="3", width="100%"),
+                rx.text("No hay actividad registrada.", color_scheme="gray", padding="1em")
+            ),
+            height=["40vh", "40vh", "65vh"],
+            type="auto", scrollbars="vertical", padding_right="1em"
+        ),
+        spacing="4", align_items="stretch", width="100%"
     )
