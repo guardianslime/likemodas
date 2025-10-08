@@ -357,6 +357,12 @@ class GastoDataDTO(rx.Base):
     categoria: str
     valor_cop: str
 
+class PendingRequestDTO(rx.Base):
+    """Un objeto de datos simple para la notificación de solicitud de empleo."""
+    id: int
+    requester_username: str
+
+
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
@@ -5503,9 +5509,17 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _load_notifications_logic(self):
         """
-        [VERSIÓN LIMPIA]
-        Carga las notificaciones únicamente para la campana del COMPRADOR.
+        [VERSIÓN CORREGIDA]
+        Carga las notificaciones para la campana del COMPRADOR.
+        Ahora incluye una barrera para NO ejecutarse si el usuario es un vendedor/admin.
         """
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Si el usuario tiene un rol de panel, esta función no debe hacer nada.
+        if self.is_admin or self.is_vendedor or self.is_empleado:
+            self.user_notifications = []
+            return
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
         if not self.authenticated_user_info:
             self.user_notifications = []
             return
@@ -5900,25 +5914,47 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO: NUEVA LÓGICA PARA CARGAR NOTIFICACIONES DEL VENDEDOR ✨ ---
     def _load_admin_notifications_logic(self):
         """
-        Carga todas las notificaciones relevantes para el contexto actual
-        (sea Vendedor, Empleado o Admin en vigilancia).
+        [VERSIÓN FINAL Y COMPLETA]
+        Carga todas las notificaciones para el panel del vendedor.
+        1. Carga notificaciones generales para la campana.
+        2. Busca la solicitud de empleo más urgente para mostrarla en el banner global.
         """
-        user_id_to_check = self.context_user_id if self.context_user_id else (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        user_id_to_check = self.context_user_id if self.is_vigilando else (self.authenticated_user_info.id if self.authenticated_user_info else None)
 
         if not user_id_to_check:
             self.admin_notifications = []
             return
 
         with rx.session() as session:
+            # TAREA 1: Cargar notificaciones para la campana (sin cambios)
             notifications_db = session.exec(
                 sqlmodel.select(NotificationModel)
                 .where(NotificationModel.userinfo_id == user_id_to_check)
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
+                .limit(20)
             ).all()
+            self.admin_notifications = [NotificationDTO.from_orm(n) for n in notifications_db]
 
-            self.admin_notifications = [
-                NotificationDTO.from_orm(n) for n in notifications_db
-            ]
+            # --- ✨ INICIO: LÓGICA PARA EL BANNER GLOBAL ✨ ---
+            # Si ya hay un banner mostrándose, no hacemos nada más.
+            if self.pending_request_notification:
+                return
+
+            # Buscamos la primera solicitud de empleo pendiente.
+            first_pending_request = session.exec(
+                sqlmodel.select(EmploymentRequest).where(
+                    EmploymentRequest.candidate_id == user_id_to_check,
+                    EmploymentRequest.status == RequestStatus.PENDING
+                )
+            ).first()
+
+            # Si la encontramos, creamos el DTO y actualizamos el estado para mostrar el banner.
+            if first_pending_request:
+                self.pending_request_notification = PendingRequestDTO(
+                    id=first_pending_request.id,
+                    requester_username=first_pending_request.requester_username
+                )
+            # --- ✨ FIN: LÓGICA PARA EL BANNER GLOBAL ✨ ---
     
     @rx.event
     def poll_admin_notifications(self):

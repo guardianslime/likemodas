@@ -9,7 +9,7 @@ from .admin_nav import admin_top_bar
 
 def persistent_employment_request_banner() -> rx.Component:
     """
-    Un banner personalizado y persistente que flota en la parte superior derecha
+    Un banner personalizado y persistente que flota en la parte superior
     y muestra una solicitud de empleo pendiente con opciones para aceptar o rechazar.
     """
     return rx.box(
@@ -53,7 +53,7 @@ def persistent_employment_request_banner() -> rx.Component:
             ),
         ),
         position="fixed",
-        top="7rem",
+        top="7rem", # Lo bajamos un poco para que no choque con la nueva campana
         right="1.5rem",
         z_index="1500",
         transition="transform 0.5s ease-in-out, opacity 0.5s",
@@ -147,6 +147,7 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
             admin_top_bar()
         ),
         # --- ✨ FIN DEL BLOQUE ✨ ---
+        persistent_employment_request_banner(),
 
         fixed_color_mode_button(),
     )
