@@ -2655,34 +2655,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_main_page_data(self):
         """
-        Actúa como un 'router'. Lee la URL y decide qué manejador de eventos
-        (para QR o para carga normal) debe ejecutarse a continuación.
+        [VERSIÓN CORREGIDA] Carga SIEMPRE la galería de productos de fondo.
+        Si la URL contiene un 'variant_uuid', programa la apertura del modal
+        para DESPUÉS de que la galería se haya cargado.
         """
+        variant_uuid_to_load = None
         full_url = ""
         try:
             full_url = self.router.url
         except Exception:
             pass
 
+        # Primero, extraemos el UUID de la variante si existe en la URL
         if full_url and "variant_uuid=" in full_url:
             try:
-                parsed_url = urlparse(full_url)
-                query_params = parse_qs(parsed_url.query)
+                query_params = parse_qs(urlparse(full_url).query)
                 variant_uuid_list = query_params.get("variant_uuid")
                 if variant_uuid_list:
-                    return AppState.handle_public_qr_load(variant_uuid_list[0])
+                    variant_uuid_to_load = variant_uuid_list[0]
             except Exception as e:
-                logging.error(f"Error parseando URL de QR: {e}")
+                logger.error(f"Error parseando URL de QR: {e}")
 
-        try:
-            parsed_url = urlparse(full_url)
-            query_params = parse_qs(parsed_url.query)
-            category_list = query_params.get("category")
-            self.current_category = category_list[0] if category_list else "todos"
-        except Exception:
-            self.current_category = "todos"
+        # --- ✨ CORRECCIÓN CLAVE: La carga de la galería AHORA se ejecuta siempre ✨ ---
+        # Primero, cargamos todas las publicaciones de la galería
+        yield AppState.load_gallery_and_shipping
 
-        return AppState.load_gallery_and_shipping
+        # Después de que la galería ya está cargando, si encontramos un UUID,
+        # llamamos al evento que se encarga de abrir el modal.
+        if variant_uuid_to_load:
+            yield AppState.handle_public_qr_load(variant_uuid_to_load)
 
 
     min_price: str = ""
@@ -4008,14 +4009,32 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def close_product_detail_modal(self):
-        """Cierra el modal de detalle del producto y resetea su estado."""
+        """
+        Cierra el modal de detalle del producto, resetea su estado y
+        limpia la URL si se accedió mediante un QR.
+        """
         self.show_detail_modal = False
         self.product_in_modal = None
-        # Añadimos también el reseteo de las otras variables para asegurar la limpieza completa
         self.selected_product_detail = None
         self.selected_variant_detail = None
         self.selected_variant_index = -1
         self.product_detail_chart_data = []
+
+        # --- ✨ INICIO: LÓGICA PARA LIMPIAR LA URL ✨ ---
+        full_url = ""
+        try:
+            full_url = self.router.url
+        except Exception:
+            pass
+
+        # Si la URL actual contiene el parámetro del QR, redirigimos a la
+        # ruta base ('/' o '/admin/store') para limpiarla.
+        if full_url and "variant_uuid=" in full_url:
+            if self.is_admin or self.is_vendedor or self.is_empleado:
+                return rx.redirect("/admin/store")
+            else:
+                return rx.redirect("/")
+        # --- ✨ FIN: LÓGICA PARA LIMPIAR LA URL ✨ ---
 
     @rx.event
     def set_show_product_detail_modal(self, open: bool):
