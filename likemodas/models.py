@@ -205,7 +205,13 @@ class UserInfo(rx.Model, table=True):
     comments: List["CommentModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     saved_posts: List["BlogPostModel"] = Relationship(back_populates="saved_by_users", link_model=SavedPostLink)
-    gastos: List["Gasto"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    gastos: List["Gasto"] = Relationship(
+        back_populates="userinfo",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "foreign_keys": "[Gasto.userinfo_id]"
+        }
+    )
 
     # Relaciones de Empleado/Vendedor (se mantienen igual)
     empleados: List["EmpleadoVendedorLink"] = Relationship(
