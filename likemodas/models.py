@@ -385,6 +385,8 @@ class PurchaseModel(rx.Model, table=True):
 
     action_by_id: Optional[int] = Field(default=None, foreign_key="userinfo.id") # El último usuario (vendedor/empleado) que actuó sobre el pedido
 
+    action_by: Optional["UserInfo"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[PurchaseModel.action_by_id]"})
+
     purchase_date: datetime = Field(default_factory=get_utc_now, nullable=False)
     confirmed_at: Optional[datetime] = Field(default=None)
     total_price: float

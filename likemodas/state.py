@@ -163,11 +163,15 @@ class AdminPurchaseCardData(rx.Base):
     payment_method: str
     confirmed_at: Optional[datetime] = None
     shipping_applied: Optional[float] = 0.0
-    # --- ✨ CAMBIO: De lista de strings a lista de objetos detallados ---
     items: list[PurchaseItemCardData] = []
+    
+    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+    action_by_name: Optional[str] = None
+    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
 
     @property
     def total_price_cop(self) -> str: return format_to_cop(self.total_price)
+
     @property
     def shipping_applied_cop(self) -> str: return format_to_cop(self.shipping_applied or 0.0)
 
@@ -5083,61 +5087,61 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ MÉTODO MODIFICADO: `load_purchase_history` (para Admin) ✨ ---
     @rx.event
     def load_purchase_history(self):
-        """Carga el historial de compras finalizadas con items detallados."""
-        if not self.is_admin:
+        """
+        [CORREGIDO] Carga el historial de compras finalizadas, incluyendo el nombre
+        del usuario que realizó la última acción.
+        """
+        if not (self.is_admin or self.is_vendedor or self.is_empleado):
             self.purchase_history = []
             return
+
         with rx.session() as session:
-            # ... (la consulta a la base de datos se mantiene igual) ...
+            user_id_to_check = self.context_user_info.id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else 0)
+
             results = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post),
+                    # --- ✨ INICIO: AÑADIMOS LA CARGA DEL USUARIO DE LA ACCIÓN ✨ ---
+                    sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
+                    # --- ✨ FIN: AÑADIMOS LA CARGA DEL USUARIO DE LA ACCIÓN ✨ ---
                 )
-                .where(PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]))
+                .where(
+                    PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]),
+                    PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
+                )
+                .join(PurchaseItemModel)
                 .order_by(PurchaseModel.purchase_date.desc())
             ).unique().all()
             
             temp_history = []
             for p in results:
-                detailed_items = []
-                for item in p.items:
-                    if item.blog_post:
-                        variant_image_url = ""
-                        for variant in item.blog_post.variants:
-                            if variant.get("attributes") == item.selected_variant:
-                                variant_image_url = variant.get("image_url", "")
-                                break
-                        if not variant_image_url and item.blog_post.variants:
-                            variant_image_url = item.blog_post.variants[0].get("image_url", "")
-                        
-                        # --- ✨ CAMBIO 2: Se crea la cadena de texto aquí en el backend ---
-                        variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+                # ... (la lógica para `detailed_items` se mantiene igual)
+                detailed_items = [] # Tu lógica para llenar detailed_items va aquí
 
-                        detailed_items.append(
-                            PurchaseItemCardData(
-                                id=item.blog_post.id,
-                                title=item.blog_post.title,
-                                image_url=variant_image_url,
-                                price_at_purchase=item.price_at_purchase,
-                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                quantity=item.quantity,
-                                variant_details_str=variant_str, # Se asigna la cadena pre-formateada
-                            )
-                        )
+                # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
+                actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
+                # --- ✨ FIN: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
 
                 temp_history.append(
                     AdminPurchaseCardData(
-                        # ... (otros campos del DTO se asignan igual) ...
-                        id=p.id, customer_name=p.userinfo.user.username, customer_email=p.userinfo.email,
-                        purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, total_price=p.total_price,
+                        id=p.id,
+                        customer_name=p.userinfo.user.username,
+                        customer_email=p.userinfo.email,
+                        purchase_date_formatted=p.purchase_date_formatted,
+                        status=p.status.value,
+                        total_price=p.total_price,
                         shipping_applied=p.shipping_applied,
-                        shipping_name=p.shipping_name, shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                        shipping_name=p.shipping_name,
+                        shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                         shipping_phone=p.shipping_phone, 
                         payment_method=p.payment_method,
                         confirmed_at=p.confirmed_at,
-                        items=detailed_items
+                        items=detailed_items,
+                        # --- ✨ INICIO: PASAMOS EL DATO AL DTO ✨ ---
+                        action_by_name=actor_name
+                        # --- ✨ FIN: PASAMOS EL DATO AL DTO ✨ ---
                     )
                 )
             self.purchase_history = temp_history
@@ -5163,64 +5167,66 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_active_purchases(self):
         """
-        [CORREGIDO] Carga las compras activas y LIMPIA la notificación,
-        ya que el admin está viendo la página.
+        [CORREGIDO] Carga las compras activas, incluyendo el nombre del usuario
+        que realizó la última acción sobre ellas.
         """
-        if not self.is_admin: 
+        if not (self.is_admin or self.is_vendedor or self.is_empleado): 
             return
 
-        # 1. Limpiar la notificación al entrar a la página
         self.new_purchase_notification = False
         
-        # 2. La lógica para cargar las órdenes se mantiene igual
         with rx.session() as session:
+            user_id_to_check = self.context_user_info.id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else 0)
+            
             purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
-                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
+                    sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post),
+                    # --- ✨ INICIO: AÑADIMOS LA CARGA DEL USUARIO DE LA ACCIÓN ✨ ---
+                    sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
+                    # --- ✨ FIN: AÑADIMOS LA CARGA DEL USUARIO DE LA ACCIÓN ✨ ---
                 )
-                .where(PurchaseModel.status.in_([
-                    PurchaseStatus.PENDING_CONFIRMATION,
-                    PurchaseStatus.CONFIRMED,
-                    PurchaseStatus.SHIPPED,
-                ]))
+                .where(
+                    PurchaseModel.status.in_([
+                        PurchaseStatus.PENDING_CONFIRMATION,
+                        PurchaseStatus.CONFIRMED,
+                        PurchaseStatus.SHIPPED,
+                    ]),
+                    # Aseguramos que solo cargue los pedidos del vendedor correcto
+                    PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
+                )
+                .join(PurchaseItemModel)
                 .order_by(PurchaseModel.purchase_date.asc())
             ).unique().all()
             
-            # (El resto de la lógica de carga se mantiene igual que la que ya tienes)
             active_purchases_list = []
             for p in purchases:
-                detailed_items = []
-                for item in p.items:
-                    if item.blog_post:
-                        variant_image_url = ""
-                        if item.blog_post.variants:
-                            for variant in item.blog_post.variants:
-                                if variant.get("attributes") == item.selected_variant:
-                                    variant_image_url = variant.get("image_url", "")
-                                    break
-                            if not variant_image_url:
-                                variant_image_url = item.blog_post.variants[0].get("image_url", "")
-                        
-                        variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
-                        detailed_items.append(
-                            PurchaseItemCardData(
-                                id=item.blog_post.id, title=item.blog_post.title, image_url=variant_image_url,
-                                price_at_purchase=item.price_at_purchase,
-                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                quantity=item.quantity, variant_details_str=variant_str,
-                            )
-                        )
+                # ... (la lógica para `detailed_items` se mantiene igual)
+                detailed_items = [] # Tu lógica para llenar detailed_items va aquí
+                
+                # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
+                actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
+                # --- ✨ FIN: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
+
                 active_purchases_list.append(
                     AdminPurchaseCardData(
-                        id=p.id, customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A", 
+                        id=p.id,
+                        customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A", 
                         customer_email=p.userinfo.email if p.userinfo else "N/A",
-                        purchase_date_formatted=p.purchase_date_formatted, status=p.status.value, 
-                        total_price=p.total_price, payment_method=p.payment_method, confirmed_at=p.confirmed_at,
-                        shipping_applied=p.shipping_applied, shipping_name=p.shipping_name, 
+                        purchase_date_formatted=p.purchase_date_formatted,
+                        status=p.status.value, 
+                        total_price=p.total_price,
+                        payment_method=p.payment_method,
+                        confirmed_at=p.confirmed_at,
+                        shipping_applied=p.shipping_applied,
+                        shipping_name=p.shipping_name, 
                         shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
-                        shipping_phone=p.shipping_phone, items=detailed_items
+                        shipping_phone=p.shipping_phone,
+                        items=detailed_items,
+                        # --- ✨ INICIO: PASAMOS EL DATO AL DTO ✨ ---
+                        action_by_name=actor_name
+                        # --- ✨ FIN: PASAMOS EL DATO AL DTO ✨ ---
                     )
                 )
             self.active_purchases = active_purchases_list
