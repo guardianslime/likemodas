@@ -569,7 +569,10 @@ class Gasto(rx.Model, table=True):
     categoria: GastoCategoria = Field(default=GastoCategoria.OTROS, nullable=False)
     valor: float
 
-    userinfo: "UserInfo" = Relationship(back_populates="gastos")
+    userinfo: "UserInfo" = Relationship(
+        back_populates="gastos",
+        sa_relationship_kwargs={"foreign_keys": "[Gasto.userinfo_id]"}
+    )
 
     # --- ✨ ASEGÚRATE DE TENER ESTA RELACIÓN ✨ ---
     creator: Optional["UserInfo"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[Gasto.creator_id]"})
