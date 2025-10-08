@@ -361,6 +361,10 @@ class GastoDataDTO(rx.Base):
     categoria: str
     valor_cop: str
 
+    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+    creator_name: Optional[str] = None # Quien registró el gasto
+    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+
 # --- ✨ INICIO: AÑADE ESTA CLASE DTO DE VUELTA ✨ ---
 class PendingRequestDTO(rx.Base):
     """Un objeto de datos simple para la notificación de solicitud de empleo."""
@@ -3955,14 +3959,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def load_gastos(self):
-        """Carga todos los gastos registrados por el administrador actual."""
-        if not self.is_admin:
+        """Carga todos los gastos registrados, incluyendo el nombre del creador."""
+        if not (self.is_admin or self.is_vendedor or self.is_empleado):
+            return
+
+        owner_id = self.context_user_info.id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        if not owner_id:
             return
 
         with rx.session() as session:
             gastos_db = session.exec(
                 sqlmodel.select(Gasto)
-                .where(Gasto.userinfo_id == self.authenticated_user_info.id)
+                .options(sqlalchemy.orm.joinedload(Gasto.creator).joinedload(UserInfo.user))
+                .where(Gasto.userinfo_id == owner_id)
                 .order_by(Gasto.fecha.desc())
             ).all()
 
@@ -3972,7 +3981,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     fecha_formateada=g.fecha_formateada,
                     descripcion=g.descripcion,
                     categoria=g.categoria.value,
-                    valor_cop=g.valor_cop
+                    valor_cop=g.valor_cop,
+                    # --- ✨ INICIO: AÑADIMOS EL NOMBRE DEL CREADOR AL DTO ✨ ---
+                    creator_name=g.creator.user.username if g.creator and g.creator.user else "N/A"
+                    # --- ✨ FIN: AÑADIMOS EL NOMBRE DEL CREADOR AL DTO ✨ ---
                 ) for g in gastos_db
             ]
 

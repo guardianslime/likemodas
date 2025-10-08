@@ -553,6 +553,10 @@ class Gasto(rx.Model, table=True):
 
     userinfo: "UserInfo" = Relationship(back_populates="gastos")
 
+    # --- ✨ ASEGÚRATE DE TENER ESTA RELACIÓN ✨ ---
+    creator: Optional["UserInfo"] = Relationship(sa_relationship_kwargs={"foreign_keys": "[Gasto.creator_id]"})
+    # --- ✨ FIN ✨ -
+
     @property
     def fecha_formateada(self) -> str:
         return format_utc_to_local(self.fecha)
