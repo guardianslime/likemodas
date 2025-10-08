@@ -45,18 +45,19 @@ def sent_request_card(req: EmploymentRequest) -> rx.Component:
     return rx.card(
         rx.hstack(
             rx.vstack(
-                # --- ✨ CORRECCIÓN: Mostrar nombre del candidato ---
                 rx.text(
                     "Enviada a: ",
                     rx.text.strong(
                         rx.cond(
-                            req.candidate and req.candidate.user,
+                            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+                            # Se reemplaza 'and' por el operador de bits '&'
+                            req.candidate & req.candidate.user,
+                            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
                             req.candidate.user.username,
                             f"(Usuario #{req.candidate_id})"
                         )
                     )
                 ),
-                # --- ✨ CORRECCIÓN: Usar la propiedad formateada ---
                 rx.text(f"Fecha: {req.created_at_formatted}", size="2", color_scheme="gray"),
                 align_items="start"
             ),
