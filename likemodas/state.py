@@ -1524,8 +1524,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- REEMPLAZA LA FUNCIÓN `load_empleados` ---
     @rx.event
     def load_empleados(self):
-        """Carga empleados y el historial de solicitudes, incluyendo los datos del candidato."""
-        if not (self.is_vendedor or self.is_admin):
+        """Carga empleados, historial de solicitudes y el nuevo historial de actividad."""
+        if not (self.is_vendedor or self.is_admin or self.is_empleado):
             return
 
         user_id_to_check = self.context_user_id if self.is_vigilando else (self.authenticated_user_info.id if self.authenticated_user_info else None)
@@ -1533,7 +1533,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         with rx.session() as session:
-            # La carga de empleados actuales no cambia
             links = session.exec(
                 sqlmodel.select(EmpleadoVendedorLink)
                 .options(sqlalchemy.orm.joinedload(EmpleadoVendedorLink.empleado).joinedload(UserInfo.user))
@@ -1541,7 +1540,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
             self.empleados = [link.empleado for link in links if link.empleado and link.empleado.user]
 
-            # Ahora cargamos los datos crudos en la variable privada
             self._solicitudes_de_empleo_enviadas = session.exec(
                 sqlmodel.select(EmploymentRequest)
                 .options(sqlalchemy.orm.joinedload(EmploymentRequest.candidate).joinedload(UserInfo.user))
@@ -1549,7 +1547,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(sqlmodel.desc(EmploymentRequest.created_at))
             ).all()
 
-        yield self.load_employee_activity
+        # --- ✨ CORRECCIÓN CLAVE: Se llama al evento sin paréntesis ✨ ---
+        yield AppState.load_employee_activity
 
     @rx.var
     def filtered_solicitudes_enviadas(self) -> list[SentRequestDTO]:
