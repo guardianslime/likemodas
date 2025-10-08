@@ -45,10 +45,18 @@ def sent_request_card(req: EmploymentRequest) -> rx.Component:
     return rx.card(
         rx.hstack(
             rx.vstack(
-                # En lugar de candidate_id, cargaremos el nombre del candidato en una futura mejora.
-                # Por ahora, usamos el ID que es seguro.
-                rx.text(f"Enviada a: (Usuario #{req.candidate_id})", weight="bold"),
-                # --- ✨ CORRECCIÓN AQUÍ: Usamos la nueva propiedad formateada ---
+                # --- ✨ CORRECCIÓN: Mostrar nombre del candidato ---
+                rx.text(
+                    "Enviada a: ",
+                    rx.text.strong(
+                        rx.cond(
+                            req.candidate and req.candidate.user,
+                            req.candidate.user.username,
+                            f"(Usuario #{req.candidate_id})"
+                        )
+                    )
+                ),
+                # --- ✨ CORRECCIÓN: Usar la propiedad formateada ---
                 rx.text(f"Fecha: {req.created_at_formatted}", size="2", color_scheme="gray"),
                 align_items="start"
             ),
@@ -102,13 +110,21 @@ def employees_management_page() -> rx.Component:
         ),
 
         rx.heading("Solicitudes Enviadas", size="6", margin_top="2em"),
+        rx.input(
+            placeholder="Buscar solicitud por nombre...",
+            value=AppState.search_query_sent_requests,
+            on_change=AppState.set_search_query_sent_requests,
+            margin_bottom="1em",
+        ),
         rx.cond(
-            AppState.solicitudes_de_empleo_enviadas,
-            rx.vstack(rx.foreach(AppState.solicitudes_de_empleo_enviadas, sent_request_card), spacing="3", width="100%"),
+            AppState.filtered_solicitudes_enviadas,
+            rx.vstack(rx.foreach(AppState.filtered_solicitudes_enviadas, sent_request_card), spacing="3", width="100%"),
             rx.text("No has enviado ninguna solicitud.", color_scheme="gray", margin_top="1em")
         ),
+        # --- ✨ FIN: MODIFICACIÓN EN VISTA MÓVIL ✨ ---
+
         spacing="6", width="100%",
-        display=["flex", "flex", "none"] # Visible en móvil y tablet
+        display=["flex", "flex", "none"]
     )
 
     # Vista para PC
@@ -149,20 +165,27 @@ def employees_management_page() -> rx.Component:
         ),
         rx.vstack(
             rx.heading("Historial de Solicitudes", size="6"),
+            rx.input(
+                placeholder="Buscar por nombre de candidato...",
+                value=AppState.search_query_sent_requests,
+                on_change=AppState.set_search_query_sent_requests,
+                margin_bottom="1em",
+            ),
             rx.scroll_area(
                 rx.cond(
-                    AppState.solicitudes_de_empleo_enviadas,
-                    rx.vstack(rx.foreach(AppState.solicitudes_de_empleo_enviadas, sent_request_card), spacing="3", width="100%"),
+                    AppState.filtered_solicitudes_enviadas,
+                    rx.vstack(rx.foreach(AppState.filtered_solicitudes_enviadas, sent_request_card), spacing="3", width="100%"),
                     rx.text("No has enviado ninguna solicitud.", color_scheme="gray", margin_top="1em")
                 ),
                 max_height="60vh", type="auto", scrollbars="vertical", padding_right="1em"
             ),
             spacing="4", align_items="start"
         ),
+        # --- ✨ FIN: MODIFICACIÓN EN VISTA DE ESCRITORIO ✨ ---
         columns="2",
         spacing="8",
         width="100%",
-        display=["none", "none", "grid"] # Visible solo en PC
+        display=["none", "none", "grid"]
     )
 
     return rx.vstack(

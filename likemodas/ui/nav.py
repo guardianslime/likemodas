@@ -91,6 +91,7 @@ def public_navbar() -> rx.Component:
     """La barra de navegación pública, corregida para búsqueda en vivo y sin bugs de diseño."""
     icon_color = rx.color_mode_cond("black", "white")
     
+    # ... (el código de hamburger_menu, authenticated_icons y placeholder_icons no cambia)
     hamburger_menu = rx.menu.root(
         rx.menu.trigger(
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
@@ -114,9 +115,7 @@ def public_navbar() -> rx.Component:
                     rx.menu.item("Mis Compras", on_click=lambda: rx.redirect("/my-purchases"), color_scheme="violet"),
                     rx.menu.item(
                         "Cerrar Sesión",
-                        # --- ✨ ESTA LÍNEA ES CORRECTA ✨ ---
-                        # Llama al evento de logout del estado, que gestiona la cookie y la redirección.
-                        on_click=AppState.do_logout, # [cite: 921]
+                        on_click=AppState.do_logout,
                         color_scheme="red"
                     ),
                 )
@@ -175,37 +174,22 @@ def public_navbar() -> rx.Component:
                 on_change=AppState.set_search_term,
                 width="100%",
                 radius="medium",
-                
-                # --- INICIO DE LA CORRECCIÓN ---
-                # La causa del error está aquí. Tu código local probablemente tiene "..."
-                # en lugar de los valores correctos de rx.color(...).
-                
-                # 1. Usamos una variante neutral que se adapta bien al fondo.
-                variant="surface", 
-                
-                # 2. ¡ESTA ES LA LÍNEA CLAVE!
-                # Le decimos al componente que use "violet" para todos sus estados interactivos.
+                variant="surface",
                 color_scheme="violet",
-
-                # 3. Mantenemos el estilo de fondo para que coincida con la barra
                 style={
                     "background_color": rx.color_mode_cond(
                         light=rx.color("gray", 3),
                         dark=rx.color("gray", 2)
                     ),
-                    # Borde sutil por defecto
                     "border": f"1.5px solid {rx.color('gray', 6)}",
-                    # Transición suave para los cambios de color
                     "transition": "border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                    # Estilo al pasar el mouse por encima
                     "_hover": {
                         "border_color": rx.color("violet", 7),
                     },
-                    # Estilo al hacer clic (focus), aquí aplicamos el color morado
                     "_focus": {
                         "border_color": rx.color("violet", 9),
                         "box_shadow": f"0 0 0 1px {rx.color('violet', 9)}",
-                        "outline": "none",  # Quita el borde azul por defecto del navegador
+                        "outline": "none",
                     },
                 },
             ),
@@ -221,7 +205,7 @@ def public_navbar() -> rx.Component:
         ),
         
         # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Ahora, este bloque solo se ejecutará para los compradores.
+        # Ahora, este bloque solo se ejecutará para los compradores (no-admins, no-vendedores, etc.).
         rx.cond(
             AppState.is_authenticated & ~(AppState.is_admin | AppState.is_vendedor | AppState.is_empleado),
             rx.fragment(

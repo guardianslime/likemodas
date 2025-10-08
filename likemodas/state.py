@@ -1461,22 +1461,33 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- AÑADE ESTA NUEVA VARIABLE DE ESTADO ---
     solicitudes_de_empleo_enviadas: list[EmploymentRequest] = []
 
+    @rx.var
+    def filtered_solicitudes_enviadas(self) -> list[EmploymentRequest]:
+        """Filtra el historial de solicitudes enviadas por nombre de candidato."""
+        if not self.search_query_sent_requests.strip():
+            return self.solicitudes_de_empleo_enviadas
+
+        query = self.search_query_sent_requests.lower()
+        return [
+            req for req in self.solicitudes_de_empleo_enviadas
+            if req.candidate and req.candidate.user and query in req.candidate.user.username.lower()
+        ]
+
     # --- REEMPLAZA LA FUNCIÓN `load_empleados` ---
     @rx.event
     def load_empleados(self):
         """
-        [CORREGIDO] Carga la lista de empleados Y el historial de solicitudes enviadas
-        asociadas al vendedor en contexto.
+        [CORREGIDO] Carga empleados y el historial de solicitudes, incluyendo
+        los datos del candidato para mostrarlos en la UI.
         """
         if not (self.is_vendedor or self.is_admin):
             return rx.redirect("/")
-        
+
         user_id_to_check = self.context_user_id or self.authenticated_user_info.id
         if not user_id_to_check:
             return
 
         with rx.session() as session:
-            # Cargar empleados actuales (sin cambios)
             links = session.exec(
                 sqlmodel.select(EmpleadoVendedorLink)
                 .options(sqlalchemy.orm.joinedload(EmpleadoVendedorLink.empleado).joinedload(UserInfo.user))
@@ -1484,9 +1495,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
             self.empleados = [link.empleado for link in links if link.empleado and link.empleado.user]
 
-            # --- LÓGICA AÑADIDA: Cargar historial de solicitudes ---
+            # --- ✨ CORRECCIÓN CLAVE: Carga ansiosa (eager loading) del candidato ✨ ---
             self.solicitudes_de_empleo_enviadas = session.exec(
-                sqlmodel.select(EmploymentRequest).where(EmploymentRequest.requester_id == user_id_to_check)
+                sqlmodel.select(EmploymentRequest)
+                .options(sqlalchemy.orm.joinedload(EmploymentRequest.candidate).joinedload(UserInfo.user))
+                .where(EmploymentRequest.requester_id == user_id_to_check)
                 .order_by(sqlmodel.desc(EmploymentRequest.created_at))
             ).all()
 
@@ -5986,6 +5999,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- AÑADE ESTA LÍNEA DENTRO DE TU CLASE AppState ---
     solicitudes_de_empleo_recibidas: list[EmploymentRequest] = []
 
+    search_query_sent_requests: str = ""
+
+    # En likemodas/state.py, dentro de AppState
+    def set_search_query_sent_requests(self, query: str):
+        self.search_query_sent_requests = query
+
     @rx.event
     def on_load_profile_page(self):
         """
@@ -6021,9 +6040,9 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
 
     # --- REEMPLAZA LA FUNCIÓN `enviar_solicitud_empleo` ---
-    @rx.event
+    rx.event
     def enviar_solicitud_empleo(self, candidate_userinfo_id: int):
-        """[CORREGIDO] El Vendedor envía una solicitud de empleo, guardando su nombre de usuario."""
+        """[CORREGIDO] El Vendedor envía una solicitud de empleo, notificando con la URL correcta."""
         if not (self.is_vendedor or self.is_admin) or not self.authenticated_user_info:
             return rx.toast.error("No tienes permisos para enviar solicitudes.")
 
@@ -6047,25 +6066,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not requester_info or not requester_info.user:
                 return rx.toast.error("Error al identificar al solicitante.")
             
-            # --- CORRECCIÓN: Guardar el nombre de usuario directamente ---
             new_request = EmploymentRequest(
                 requester_id=requester_id,
                 candidate_id=candidate_userinfo_id,
-                requester_username=requester_info.user.username # Se guarda el nombre
+                requester_username=requester_info.user.username
             )
             session.add(new_request)
 
+            # --- ✨ CORRECCIÓN DE URL AQUÍ ✨ ---
+            # La notificación que se le envía al candidato ahora apunta al perfil de administrador.
             notification = NotificationModel(
                 userinfo_id=candidate_userinfo_id,
                 message=f"¡{requester_info.user.username} quiere contratarte como empleado!",
-                url="/my-account/profile"
+                url="/admin/profile"
             )
             session.add(notification)
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             session.commit()
         
         self.search_results_users = []
         yield rx.toast.success("Solicitud de empleo enviada.")
-        # Recargar la lista para que aparezca en el historial
         yield self.load_empleados()
 
     # --- AÑADE ESTA NUEVA FUNCIÓN ---
