@@ -1,5 +1,6 @@
 # likemodas/state.py (Versión Completa y Definitiva)
 from __future__ import annotations
+import pytz
 import reflex as rx
 import reflex_local_auth
 import sqlmodel
@@ -363,6 +364,15 @@ class PendingRequestDTO(rx.Base):
     id: int
     requester_username: str
 # --- ✨ FIN: AÑADE ESTA CLASE DTO DE VUELTA ✨ --
+
+class SentRequestDTO(rx.Base):
+    """DTO para mostrar el historial de solicitudes enviadas de forma segura."""
+    id: int
+    status: str
+    candidate_name: str
+    created_at_formatted: str
+    # Guardamos la fecha real para poder filtrar sobre ella
+    created_at: datetime
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -1472,22 +1482,37 @@ class AppState(reflex_local_auth.LocalAuthState):
             req for req in self.solicitudes_de_empleo_enviadas
             if req.candidate and req.candidate.user and query in req.candidate.user.username.lower()
         ]
+    
+    # Almacenará los datos crudos de la BD
+    _solicitudes_de_empleo_enviadas: list[EmploymentRequest] = []
+
+    # Variables para los filtros del historial
+    search_query_sent_requests: str = ""
+    request_history_start_date: str = ""
+    request_history_end_date: str = ""
+
+    def set_search_query_sent_requests(self, query: str):
+        self.search_query_sent_requests = query
+
+    def set_request_history_start_date(self, date: str):
+        self.request_history_start_date = date
+
+    def set_request_history_end_date(self, date: str):
+        self.request_history_end_date = date
 
     # --- REEMPLAZA LA FUNCIÓN `load_empleados` ---
     @rx.event
     def load_empleados(self):
-        """
-        [CORREGIDO] Carga empleados y el historial de solicitudes, incluyendo
-        los datos del candidato para mostrarlos en la UI.
-        """
+        """Carga empleados y el historial de solicitudes, incluyendo los datos del candidato."""
         if not (self.is_vendedor or self.is_admin):
-            return rx.redirect("/")
+            return
 
-        user_id_to_check = self.context_user_id or self.authenticated_user_info.id
+        user_id_to_check = self.context_user_id if self.is_vigilando else (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not user_id_to_check:
             return
 
         with rx.session() as session:
+            # La carga de empleados actuales no cambia
             links = session.exec(
                 sqlmodel.select(EmpleadoVendedorLink)
                 .options(sqlalchemy.orm.joinedload(EmpleadoVendedorLink.empleado).joinedload(UserInfo.user))
@@ -1495,13 +1520,55 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
             self.empleados = [link.empleado for link in links if link.empleado and link.empleado.user]
 
-            # --- ✨ CORRECCIÓN CLAVE: Carga ansiosa (eager loading) del candidato ✨ ---
-            self.solicitudes_de_empleo_enviadas = session.exec(
+            # Ahora cargamos los datos crudos en la variable privada
+            self._solicitudes_de_empleo_enviadas = session.exec(
                 sqlmodel.select(EmploymentRequest)
                 .options(sqlalchemy.orm.joinedload(EmploymentRequest.candidate).joinedload(UserInfo.user))
                 .where(EmploymentRequest.requester_id == user_id_to_check)
                 .order_by(sqlmodel.desc(EmploymentRequest.created_at))
             ).all()
+
+    @rx.var
+    def filtered_solicitudes_enviadas(self) -> list[SentRequestDTO]:
+        """Filtra el historial por nombre y rango de fechas, y lo convierte a DTOs."""
+        solicitudes = self._solicitudes_de_empleo_enviadas
+
+        # Filtrar por nombre
+        if self.search_query_sent_requests.strip():
+            query = self.search_query_sent_requests.lower()
+            solicitudes = [
+                req for req in solicitudes
+                if req.candidate and req.candidate.user and query in req.candidate.user.username.lower()
+            ]
+
+        # Filtrar por fecha de inicio
+        if self.request_history_start_date:
+            try:
+                start_dt = datetime.fromisoformat(self.request_history_start_date).replace(tzinfo=pytz.UTC)
+                solicitudes = [req for req in solicitudes if req.created_at.replace(tzinfo=pytz.UTC) >= start_dt]
+            except ValueError:
+                pass # Ignora fechas inválidas
+
+        # Filtrar por fecha de fin
+        if self.request_history_end_date:
+            try:
+                end_dt = datetime.fromisoformat(self.request_history_end_date).replace(tzinfo=pytz.UTC)
+                # Añadimos un día para que el filtro incluya el día final completo
+                end_dt_inclusive = end_dt + timedelta(days=1)
+                solicitudes = [req for req in solicitudes if req.created_at.replace(tzinfo=pytz.UTC) < end_dt_inclusive]
+            except ValueError:
+                pass # Ignora fechas inválidas
+
+        # Convertir los resultados filtrados a DTOs para la UI
+        return [
+            SentRequestDTO(
+                id=req.id,
+                status=req.status.value,
+                candidate_name=req.candidate.user.username if req.candidate and req.candidate.user else "N/A",
+                created_at_formatted=req.created_at_formatted,
+                created_at=req.created_at
+            ) for req in solicitudes
+        ]
 
     @rx.event
     def search_users_for_employment(self):

@@ -1,7 +1,7 @@
-# En likemodas/admin/employees_page.py (VERSIÓN COMPLETA Y CORREGIDA)
+# En likemodas/admin/employees_page.py (VERSIÓN FINAL CON DISEÑO MEJORADO)
 
 import reflex as rx
-from ..state import AppState
+from ..state import AppState, SentRequestDTO
 from ..models import UserInfo, EmploymentRequest, RequestStatus
 from ..auth.admin_auth import require_panel_access
 
@@ -35,43 +35,44 @@ def current_employee_card(user: UserInfo) -> rx.Component:
         )
     )
 
-def sent_request_card(req: EmploymentRequest) -> rx.Component:
-    """Tarjeta para una solicitud de empleo enviada (CORREGIDA)."""
+def sent_request_card(req: SentRequestDTO) -> rx.Component:
+    """Tarjeta COMPACTA para una solicitud de empleo enviada, usando el DTO."""
     status_colors = {
         RequestStatus.PENDING.value: "yellow",
         RequestStatus.ACCEPTED.value: "green",
         RequestStatus.REJECTED.value: "red",
     }
-    return rx.card(
+    # Usamos rx.box con estilos en lugar de rx.card para más control
+    return rx.box(
         rx.hstack(
             rx.vstack(
                 rx.text(
                     "Enviada a: ",
-                    rx.text.strong(
-                        # Muestra el nombre del candidato si está disponible
-                        rx.cond(
-                            req.candidate & req.candidate.user,
-                            req.candidate.user.username,
-                            f"(Usuario #{req.candidate_id})"
-                        )
-                    )
+                    rx.text.strong(req.candidate_name),
+                    size="3"
                 ),
-                # Muestra la fecha formateada desde la propiedad del modelo
-                rx.text(f"Fecha: {req.created_at_formatted}", size="2", color_scheme="gray"),
-                align_items="start"
+                rx.text(req.created_at_formatted, size="2", color_scheme="gray"),
+                align_items="start", spacing="1"
             ),
             rx.spacer(),
-            rx.badge(req.status.title(), color_scheme=status_colors.get(req.status, "gray")),
-            rx.cond(
-                req.status == RequestStatus.PENDING,
-                rx.button("Descartar", on_click=AppState.descartar_solicitud_empleo(req.id), color_scheme="gray", variant="soft", size="1")
-            )
-        )
+            rx.vstack(
+                rx.badge(req.status.title(), color_scheme=status_colors.get(req.status, "gray")),
+                rx.cond(
+                    req.status == RequestStatus.PENDING.value,
+                    rx.button("Descartar", on_click=AppState.descartar_solicitud_empleo(req.id), color_scheme="gray", variant="soft", size="1", margin_top="0.5em")
+                ),
+                align_items="end", spacing="2"
+            ),
+        ),
+        padding="0.75em",
+        border="1px solid",
+        border_color=rx.color("gray", 5),
+        border_radius="var(--radius-3)",
     )
 
 @require_panel_access
 def employees_management_page() -> rx.Component:
-    """Página de gestión de empleados, con layout mejorado y responsivo."""
+    """Página de gestión de empleados, con layout centrado y filtros de fecha."""
     
     # Columna Izquierda: Añadir y ver empleados
     left_column = rx.vstack(
@@ -80,12 +81,7 @@ def employees_management_page() -> rx.Component:
                 rx.heading("Añadir Nuevo Empleado", size="5"),
                 rx.form(
                     rx.hstack(
-                        rx.input(
-                            placeholder="Buscar por nombre de usuario o email...",
-                            value=AppState.search_query_users,
-                            on_change=AppState.set_search_query_users,
-                            width="100%"
-                        ),
+                        rx.input(placeholder="Buscar por nombre o email...", value=AppState.search_query_users, on_change=AppState.set_search_query_users, width="100%"),
                         rx.button("Buscar", type="submit")
                     ),
                     on_submit=AppState.search_users_for_employment,
@@ -110,46 +106,57 @@ def employees_management_page() -> rx.Component:
         spacing="5", align_items="stretch"
     )
 
+    # Columna Derecha: Historial de solicitudes con filtros
     right_column = rx.vstack(
         rx.heading("Historial de Solicitudes", size="6"),
         rx.input(
             placeholder="Buscar por nombre de candidato...",
             value=AppState.search_query_sent_requests,
             on_change=AppState.set_search_query_sent_requests,
-            margin_bottom="1em",
+        ),
+        rx.hstack(
+            rx.vstack(
+                rx.text("Desde:", size="2"),
+                rx.input(type="date", value=AppState.request_history_start_date, on_change=AppState.set_request_history_start_date),
+                align_items="stretch",
+            ),
+            rx.vstack(
+                rx.text("Hasta:", size="2"),
+                rx.input(type="date", value=AppState.request_history_end_date, on_change=AppState.set_request_history_end_date),
+                align_items="stretch",
+            ),
+            spacing="3", width="100%",
         ),
         rx.scroll_area(
             rx.cond(
                 AppState.filtered_solicitudes_enviadas,
                 rx.vstack(rx.foreach(AppState.filtered_solicitudes_enviadas, sent_request_card), spacing="3", width="100%"),
-                rx.text("No has enviado ninguna solicitud.", color_scheme="gray", margin_top="1em")
+                rx.text("No se encontraron solicitudes con los filtros actuales.", color_scheme="gray", padding="1em")
             ),
-            height=["50vh", "50vh", "65vh"],
-            type="auto", 
-            scrollbars="vertical", 
-            padding_right="1em"
+            height=["40vh", "40vh", "58vh"],
+            type="auto", scrollbars="vertical", padding_right="1em"
         ),
         spacing="4", align_items="stretch"
     )
 
-    return rx.vstack(
-        rx.heading("Gestión de Empleados", size="8", text_align="center"),
-        rx.text("Busca usuarios y asígnalos como empleados para que puedan gestionar tus publicaciones.", color_scheme="gray", text_align="center"),
-        rx.divider(margin_y="1.5em"),
-        
-        rx.grid(
-            left_column,
-            right_column,
-            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-            # Se cambia la lista ['1', '1', '2'] por el formato de diccionario
-            columns={"initial": "1", "md": "2"},
-            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-            spacing="8",
+    # Contenedor principal que centra todo el contenido
+    return rx.center(
+        rx.vstack(
+            rx.heading("Gestión de Empleados", size="8", text_align="center"),
+            rx.text("Busca usuarios y asígnalos como empleados para que puedan gestionar tus publicaciones.", color_scheme="gray", text_align="center", max_width="600px"),
+            rx.divider(margin_y="1.5em"),
+            rx.grid(
+                left_column,
+                right_column,
+                columns={"initial": "1", "lg": "2"},
+                spacing="6",
+                width="100%",
+                align_items="start",
+            ),
             width="100%",
-            align_items="start",
+            max_width="1400px",
+            spacing="5",
         ),
+        padding="2em",
         width="100%",
-        max_width="1400px",
-        align="center",
-        padding="2em"
     )
