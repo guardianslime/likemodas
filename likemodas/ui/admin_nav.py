@@ -55,17 +55,17 @@ def admin_notification_icon() -> rx.Component:
     )
 
 def admin_top_bar() -> rx.Component:
-    """La barra superior para el panel de admin/vendedor."""
-    return rx.hstack(
-        rx.spacer(),
-        admin_notification_icon(),
-        rx.button(
-            rx.color_mode_cond(light=rx.icon(tag="sun"), dark=rx.icon(tag="moon")),
-            on_click=toggle_color_mode,
-            variant="ghost", radius="full",
-        ),
-        spacing="4",
-        align="center",
-        width="100%",
-        padding_right="1em",
+    """
+    [VERSIÓN CORREGIDA]
+    Este componente ahora solo renderiza la campana de notificaciones
+    y la posiciona de forma fija en la esquina superior derecha.
+    """
+    return rx.box(
+        admin_notification_icon(),  # La campana que ya creamos
+
+        # Estilos para hacerlo flotante
+        position="fixed",
+        top="1.5rem",
+        right="1.5rem",
+        z_index="1100", # Un z-index alto para que flote sobre otros elementos
     )

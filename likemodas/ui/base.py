@@ -83,16 +83,12 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
     admin_layout = rx.box(
         sliding_admin_sidebar(),
         rx.grid(
-            rx.box(display=["none", "none", "block"]), # Espaciador para el sidebar
-            # Contenido principal ahora en un Vstack
-            rx.vstack(
-                admin_top_bar(), # La nueva barra superior
-                rx.box(child, width="100%", height="100%", padding_x=["1em", "2em"], padding_y="1em"),
-                spacing="4",
-                width="100%",
-                height="100%",
-                align="stretch",
-            ),
+            rx.box(display=["none", "none", "block"]),  # Espaciador
+
+            # ANTES: Aquí había un rx.vstack que contenía admin_top_bar()
+            # AHORA: Dejamos solo el contenido principal de la página.
+            rx.box(child, width="100%", height="100%", padding_x=["1em", "2em"], padding_y="2em"),
+
             columns={"initial": "1", "lg": "5em 1fr"},
             width="100%",
         ),
@@ -143,6 +139,14 @@ def base_page(child: rx.Component, *args, **kwargs) -> rx.Component:
                 )
             )
         ),
-        
+        # --- ✨ INICIO: AÑADE ESTE BLOQUE AQUÍ ✨ ---
+        # Añadimos la campana flotante del vendedor, con una condición
+        # para que solo se muestre si el usuario está en el panel.
+        rx.cond(
+            AppState.is_admin | AppState.is_vendedor | AppState.is_empleado,
+            admin_top_bar()
+        ),
+        # --- ✨ FIN DEL BLOQUE ✨ ---
+
         fixed_color_mode_button(),
     )
