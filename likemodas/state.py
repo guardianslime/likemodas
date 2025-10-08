@@ -357,11 +357,12 @@ class GastoDataDTO(rx.Base):
     categoria: str
     valor_cop: str
 
+# --- ✨ INICIO: AÑADE ESTA CLASE DTO DE VUELTA ✨ ---
 class PendingRequestDTO(rx.Base):
     """Un objeto de datos simple para la notificación de solicitud de empleo."""
     id: int
     requester_username: str
-
+# --- ✨ FIN: AÑADE ESTA CLASE DTO DE VUELTA ✨ --
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -5902,6 +5903,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ INICIO: NUEVAS VARIABLES DE ESTADO PARA NOTIFICACIONES DEL VENDEDOR ✨ ---
     admin_notifications: List[NotificationDTO] = []
+    # --- ✨ INICIO: AÑADE ESTA VARIABLE DE ESTADO DE VUELTA ✨ ---
+    pending_request_notification: Optional[PendingRequestDTO] = None
+    # --- ✨ FIN: AÑADE ESTA VARIABLE DE ESTADO DE VUELTA ✨ ---
 
     @rx.var
     def admin_unread_count(self) -> int:
@@ -5911,7 +5915,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # ... (resto de tus funciones)
 
-    # --- ✨ INICIO: NUEVA LÓGICA PARA CARGAR NOTIFICACIONES DEL VENDEDOR ✨ ---
     def _load_admin_notifications_logic(self):
         """
         [VERSIÓN FINAL Y COMPLETA]
@@ -5926,7 +5929,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         with rx.session() as session:
-            # TAREA 1: Cargar notificaciones para la campana (sin cambios)
+            # TAREA 1: Cargar notificaciones para la campana
             notifications_db = session.exec(
                 sqlmodel.select(NotificationModel)
                 .where(NotificationModel.userinfo_id == user_id_to_check)
@@ -5935,26 +5938,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).all()
             self.admin_notifications = [NotificationDTO.from_orm(n) for n in notifications_db]
 
-            # --- ✨ INICIO: LÓGICA PARA EL BANNER GLOBAL ✨ ---
-            # Si ya hay un banner mostrándose, no hacemos nada más.
+            # TAREA 2: Lógica para el banner global
             if self.pending_request_notification:
                 return
 
-            # Buscamos la primera solicitud de empleo pendiente.
-            first_pending_request = session.exec(
-                sqlmodel.select(EmploymentRequest).where(
-                    EmploymentRequest.candidate_id == user_id_to_check,
-                    EmploymentRequest.status == RequestStatus.PENDING
-                )
-            ).first()
+            if self.is_vendedor or self.is_admin:
+                first_pending_request = session.exec(
+                    sqlmodel.select(EmploymentRequest).where(
+                        EmploymentRequest.candidate_id == user_id_to_check,
+                        EmploymentRequest.status == RequestStatus.PENDING
+                    )
+                ).first()
 
-            # Si la encontramos, creamos el DTO y actualizamos el estado para mostrar el banner.
-            if first_pending_request:
-                self.pending_request_notification = PendingRequestDTO(
-                    id=first_pending_request.id,
-                    requester_username=first_pending_request.requester_username
-                )
-            # --- ✨ FIN: LÓGICA PARA EL BANNER GLOBAL ✨ ---
+                if first_pending_request:
+                    self.pending_request_notification = PendingRequestDTO(
+                        id=first_pending_request.id,
+                        requester_username=first_pending_request.requester_username
+                    )
+
     
     @rx.event
     def poll_admin_notifications(self):
