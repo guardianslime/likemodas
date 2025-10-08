@@ -2168,20 +2168,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         Busca un post por su ID y lo carga en el estado para mostrar sus QR en el modal.
         """
-        # Buscamos el post en la lista que ya tenemos cargada en el estado
-        post_data = next((p for p in self.my_admin_posts if p.id == post_id), None)
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Cambiamos 'self.my_admin_posts' por la nueva variable 'self.mis_publicaciones_list'
+        post_data = next((p for p in self.mis_publicaciones_list if p.id == post_id), None)
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
         
         if post_data:
             self.post_for_qr_display = post_data
             self.show_qr_display_modal = True
         else:
             return rx.toast.error("No se pudo encontrar la publicación.")
-
-    def set_show_qr_display_modal(self, state: bool):
-        """Controla la apertura y cierre del modal desde la UI."""
-        self.show_qr_display_modal = state
-        if not state:
-            self.post_for_qr_display = None # Limpia el estado al cerrar
 
     # --- FIN DE LA SECCIÓN PARA EL MODAL DE VISUALIZACIÓN DE QR --
 
@@ -2291,19 +2287,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_qr_scanner_modal = False   # Cierra el modal si hay un error
         return rx.toast.error(f"Error de cámara: {error_message}", duration=6000)
 
-    @rx.event
-    def open_qr_modal(self, post_id: int):
-        """
-        Busca un post por su ID y lo carga en el estado para mostrar sus QR en el modal.
-        """
-        # Buscamos el post en la lista que ya tenemos cargada en el estado
-        post_data = next((p for p in self.my_admin_posts if p.id == post_id), None)
-        
-        if post_data:
-            self.post_for_qr_display = post_data
-            self.show_qr_display_modal = True
-        else:
-            return rx.toast.error("No se pudo encontrar la publicación.")
+
 
     def set_show_qr_display_modal(self, state: bool):
         """Controla la apertura y cierre del modal desde la UI."""
