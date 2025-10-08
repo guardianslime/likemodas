@@ -119,7 +119,15 @@ class UserInfoDTO(rx.Base):
     id: int; user_id: int; username: str; email: str; role: str
 
 class NotificationDTO(rx.Base):
-    id: int; message: str; is_read: bool; url: Optional[str]; created_at_formatted: str
+    id: int
+    message: str
+    is_read: bool
+    url: Optional[str]
+    created_at_formatted: str
+
+    # --- ✨ AÑADE ESTA CLASE DE CONFIGURACIÓN AQUÍ DENTRO ✨ ---
+    class Config:
+        orm_mode = True
 
 class ContactEntryDTO(rx.Base):
     id: int; first_name: str; last_name: Optional[str]; email: Optional[str]
@@ -5495,22 +5503,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def _load_notifications_logic(self):
         """
-        [VERSIÓN FINAL Y ROBUSTA]
-        Lógica central que se ejecuta con cada sondeo (polling).
-        1. Carga las notificaciones para la campana.
-        2. Busca una solicitud de empleo pendiente y, si la encuentra,
-        crea un DTO para mostrar el banner global.
+        [VERSIÓN LIMPIA]
+        Carga las notificaciones únicamente para la campana del COMPRADOR.
         """
         if not self.authenticated_user_info:
             self.user_notifications = []
             return
 
         with rx.session() as session:
-            # --- TAREA 1: Cargar notificaciones para la campana (lógica original que ya funciona) ---
             notifications_db = session.exec(
                 sqlmodel.select(NotificationModel)
                 .where(NotificationModel.userinfo_id == self.authenticated_user_info.id)
                 .order_by(sqlmodel.col(NotificationModel.created_at).desc())
+                .limit(20)
             ).all()
 
             self.user_notifications = [
@@ -5522,28 +5527,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     created_at_formatted=n.created_at_formatted
                 ) for n in notifications_db
             ]
-
-            # --- TAREA 2: Lógica para el banner de solicitud de empleo (integrada aquí) ---
-            # Si ya se está mostrando un banner, no buscamos otro para evitar parpadeos.
-            if self.pending_request_notification:
-                return
-
-            # Solo buscamos solicitudes si el usuario es un Vendedor o Admin
-            if self.is_vendedor or self.is_admin:
-                first_pending_request = session.exec(
-                    sqlmodel.select(EmploymentRequest).where(
-                        EmploymentRequest.candidate_id == self.authenticated_user_info.id,
-                        EmploymentRequest.status == RequestStatus.PENDING
-                    )
-                ).first()
-
-                # Si encontramos una, creamos el DTO limpio y lo guardamos en el estado.
-                # Esto hará que el banner aparezca en la interfaz de forma reactiva.
-                if first_pending_request:
-                    self.pending_request_notification = PendingRequestDTO(
-                        id=first_pending_request.id,
-                        requester_username=first_pending_request.requester_username
-                    )
 
     # Los métodos load_notifications y poll_notifications no cambian,
     # ya que simplemente llaman a _load_notifications_logic.
