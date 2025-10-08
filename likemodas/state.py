@@ -4371,11 +4371,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_mis_publicaciones(self):
         """
-        Carga explícitamente las publicaciones para la página 'Mis Publicaciones'
-        basándose en el contexto del usuario.
+        [VERSIÓN FINAL Y CORREGIDA] Carga las publicaciones para la página 'Mis Publicaciones'
+        incluyendo la lógica para generar los datos de las variantes y los códigos QR.
         """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
-
+        
         if not owner_id:
             self.mis_publicaciones_list = []
             return
@@ -4396,12 +4396,32 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             admin_posts = []
             for p in posts_from_db:
-                # ... (La lógica para construir el DTO AdminPostRowData se mantiene igual)
                 main_image = p.variants[0].get("image_url", "") if p.variants else ""
+                
                 creator_username = p.creator.user.username if p.creator and p.creator.user else None
                 owner_username = p.userinfo.user.username if p.userinfo and p.userinfo.user else "Vendedor"
                 modifier_username = p.last_modified_by.user.username if p.last_modified_by and p.last_modified_by.user else None
-                variants_dto_list = [] # Lógica para llenar variants_dto_list
+
+                # --- ✨ INICIO: LÓGICA RESTAURADA PARA GENERAR DATOS DE VARIANTES Y QR ✨ ---
+                variants_dto_list = []
+                if p.variants:
+                    for v in p.variants:
+                        attrs = v.get("attributes", {})
+                        attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
+                        variant_uuid = v.get("variant_uuid", "")
+                        # La URL para el QR ahora apunta a la página principal pública
+                        unified_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else ""
+                        
+                        variants_dto_list.append(
+                            AdminVariantData(
+                                variant_uuid=variant_uuid,
+                                stock=v.get("stock", 0),
+                                attributes_str=attrs_str,
+                                attributes=attrs,
+                                qr_url=unified_url
+                            )
+                        )
+                # --- ✨ FIN: LÓGICA RESTAURADA ✨ ---
 
                 admin_posts.append(
                     AdminPostRowData(
@@ -4410,14 +4430,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price_cop=p.price_cop,
                         publish_active=p.publish_active,
                         main_image_url=main_image,
-                        variants=variants_dto_list,
+                        variants=variants_dto_list, # Ahora se pasa la lista con datos
                         creator_name=creator_username,
                         owner_name=owner_username,
                         last_modified_by_name=modifier_username
                     )
                 )
-
-            # Guardamos el resultado en la nueva variable de estado
             self.mis_publicaciones_list = admin_posts
 
     @rx.event
