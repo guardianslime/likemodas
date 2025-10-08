@@ -2894,13 +2894,21 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def start_editing_post(self, post_id: int):
-        if not self.is_admin:
+        """
+        [CORREGIDO] Inicia la edición de un post, ahora con permisos para empleados.
+        """
+        if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
 
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id)
-            if not db_post or (db_post.userinfo_id != self.authenticated_user_info.id and not self.is_admin):
-                return rx.toast.error("No se encontró la publicación o no tienes permisos.")
+            
+            # --- ✨ CORRECCIÓN DE PERMISOS CLAVE ✨ ---
+            # Permite la acción si el dueño del post es el usuario en contexto.
+            # Esto funciona para el vendedor, y también para el empleado (cuyo contexto es el vendedor).
+            if not db_post or db_post.userinfo_id != self.context_user_id:
+                return rx.toast.error("No tienes permiso para editar esta publicación.")
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
             self.post_to_edit_id = db_post.id
             self.edit_post_title = db_post.title
@@ -4317,39 +4325,32 @@ class AppState(reflex_local_auth.LocalAuthState):
             return admin_posts
 
     # --- INICIO DE LA CORRECCIÓN CLAVE ---
+    
     @rx.event
     def delete_post(self, post_id: int):
         """
-        [VERSIÓN CORREGIDA] Elimina una publicación de forma segura, 
-        solo si no tiene compras asociadas.
+        [CORREGIDO] Elimina una publicación, con permisos para empleados
+        y eliminando la restricción de si tiene compras asociadas.
         """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
 
         with rx.session() as session:
-            # 1. Verificar si existen compras para este post
-            existing_purchases = session.exec(
-                sqlmodel.select(PurchaseItemModel).where(PurchaseItemModel.blog_post_id == post_id)
-            ).first()
-
-            if existing_purchases:
-                # Si hay compras, no se permite el borrado
-                return rx.toast.error(
-                    "Esta publicación no se puede eliminar porque está asociada a compras existentes. Puedes desactivarla en su lugar."
-                )
-
-            # 2. Si no hay compras, proceder con el borrado
             post_to_delete = session.get(BlogPostModel, post_id)
-            if post_to_delete and (post_to_delete.userinfo_id == self.authenticated_user_info.id or self.is_admin):
-                session.delete(post_to_delete)
-                session.commit()
-                yield rx.toast.success("Publicación eliminada correctamente.")
-                # Recargar las listas para que la UI se actualice
-                yield AppState.on_load_admin_store
-                yield AppState.load_main_page_data
-            else:
+
+            # --- ✨ CORRECCIÓN DE PERMISOS CLAVE ✨ ---
+            if not post_to_delete or post_to_delete.userinfo_id != self.context_user_id:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
-    # --- FIN DE LA CORRECCIÓN CLAVE ---
+                return
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            
+            # --- Eliminamos la restricción de compras existentes ---
+            
+            session.delete(post_to_delete)
+            session.commit()
+            
+            yield rx.toast.success("Publicación eliminada correctamente.")
+            yield AppState.on_load_admin_store
 
     @rx.event
     def toggle_publish_status(self, post_id: int):

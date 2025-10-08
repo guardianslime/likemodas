@@ -585,3 +585,21 @@ class Gasto(rx.Model, table=True):
     @property
     def valor_cop(self) -> str:
         return format_to_cop(self.valor)
+
+class ActivityLog(rx.Model, table=True):
+    """Registra una acción realizada por un usuario en el panel."""
+    # Quién realizó la acción (el empleado o el vendedor)
+    actor_id: int = Field(foreign_key="userinfo.id")
+    # A qué vendedor pertenecen los datos afectados
+    owner_id: int = Field(foreign_key="userinfo.id")
+    
+    action_type: str  # Ej: "Creación de Publicación", "Edición de Gasto"
+    description: str  # Ej: "Creó la publicación 'Camisa a Rayas'"
+    created_at: datetime = Field(default_factory=get_utc_now, nullable=False)
+
+    actor: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[ActivityLog.actor_id]"})
+    owner: "UserInfo" = Relationship(sa_relationship_kwargs={"foreign_keys": "[ActivityLog.owner_id]"})
+
+    @property
+    def created_at_formatted(self) -> str:
+        return format_utc_to_local(self.created_at)
