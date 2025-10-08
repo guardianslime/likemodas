@@ -4249,11 +4249,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     def my_admin_posts(self) -> list[AdminPostRowData]:
         """
         [VERSIÓN CORREGIDA Y SIMPLIFICADA] Devuelve los posts del contexto actual.
-        Ahora usa directamente el 'context_user_id' para determinar el dueño.
+        Ahora usa directamente el 'context_user_id' como la única fuente de verdad.
         """
         # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Usamos el 'context_user_id' como la fuente de verdad principal.
-        # Si no existe (un caso raro), usamos el ID del usuario logueado como respaldo.
+        # Usamos el 'context_user_id' que se establece al iniciar sesión.
+        # Si no existe (p.ej. un vendedor que no está en modo vigilancia),
+        # usamos el ID del propio usuario logueado como respaldo.
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
@@ -4263,6 +4264,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         base_url = get_config().deploy_url
 
         with rx.session() as session:
+            # La consulta ahora usa el 'owner_id' correcto y consistente
             posts_from_db = session.exec(
                 sqlmodel.select(BlogPostModel)
                 .options(
