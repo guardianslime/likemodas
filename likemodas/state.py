@@ -4371,26 +4371,23 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VERSIÓN FINAL CORREGIDA] Procesa la compra, enrutando a Sistecredito, 
         Wompi (Online) o Contra Entrega según la selección del usuario.
         """
-        # --- 1. Validaciones Iniciales ---
         if not self.is_authenticated or not self.default_shipping_address:
             yield rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
             return
-
         if not self.authenticated_user_info:
             yield rx.toast.error("Error de sesión. Vuelve a iniciar sesión.")
             return
-
         if not self.cart:
             yield rx.toast.info("Tu carrito está vacío.")
             return
 
         summary = self.cart_summary
+        
+        # --- ✨ CORRECCIÓN CLAVE: Inicializamos la lista aquí al principio ✨ ---
+        items_to_create = []
 
-        # --- 2. Enrutamiento basado en el método de pago ---
         if self.payment_method == "Sistecredito":
-            # --- INICIO: LÓGICA PARA SISTECREDITO ---
             with rx.session() as session:
-                # Verificación de Stock
                 product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
                 posts_to_check = session.exec(
                     sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
@@ -4401,7 +4398,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     parts = cart_key.split('-')
                     prod_id = int(parts[0])
                     selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
-                    
                     post = post_map.get(prod_id)
                     if not post:
                         yield rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
@@ -4420,7 +4416,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
                         return
 
-                # Creación de la Orden para Sistecredito
                 new_purchase = PurchaseModel(
                     userinfo_id=self.authenticated_user_info.id,
                     total_price=summary["grand_total"],
@@ -4437,12 +4432,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 session.refresh(new_purchase)
 
-                # Creación de Items y Deducción de Stock
                 for cart_key, quantity_in_cart in self.cart.items():
                     parts = cart_key.split('-')
                     prod_id = int(parts[0])
                     selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
-                    
                     post_to_update = post_map.get(prod_id)
                     if post_to_update:
                         for variant in post_to_update.variants:
@@ -4459,7 +4452,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         ))
                 session.commit()
 
-                # Preparar y enviar la solicitud a la API de Sistecredito
                 purchase_data_for_api = {
                     "purchase_id": new_purchase.id,
                     "total_price": new_purchase.total_price * 100,
@@ -4484,7 +4476,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     session.commit()
                     self.sistecredito_polling_purchase_id = new_purchase.id
                     self.cart.clear()
-                    # --- ✨ CORRECCIÓN AQUÍ ---
                     yield rx.redirect("/processing-payment")
                     return
                 else:
@@ -4493,15 +4484,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                     session.commit()
                     yield rx.toast.error("No se pudo iniciar el pago con Sistecredito. Inténtalo de nuevo.")
                     return
-            # --- FIN: LÓGICA PARA SISTECREDITO ---
         
-        else:
-            # --- INICIO: LÓGICA EXISTENTE PARA WOMPI Y CONTRA ENTREGA ---
+        else: # Lógica para Wompi (Online) y Contra Entrega
             purchase_id_for_payment = None
             total_price_for_payment = None
 
             with rx.session() as session:
-                # Verificación de Stock
                 product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
                 posts_to_check = session.exec(
                     sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids)).with_for_update()
@@ -4512,7 +4500,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     parts = cart_key.split('-')
                     prod_id = int(parts[0])
                     selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
-                    
                     post = post_map.get(prod_id)
                     if not post:
                         yield rx.toast.error("Uno de los productos ya no está disponible. Compra cancelada.")
@@ -4531,12 +4518,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
                         return
 
-                # Creación de la Orden
-                initial_status = (
-                    PurchaseStatus.PENDING_PAYMENT
-                    if self.payment_method == "Online"
-                    else PurchaseStatus.PENDING_CONFIRMATION
-                )
+                initial_status = PurchaseStatus.PENDING_PAYMENT if self.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
                 
                 new_purchase = PurchaseModel(
                     userinfo_id=self.authenticated_user_info.id,
@@ -4557,12 +4539,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase_id_for_payment = new_purchase.id
                 total_price_for_payment = new_purchase.total_price
 
-                # Creación de Items y Deducción de Stock
                 for cart_key, quantity_in_cart in self.cart.items():
                     parts = cart_key.split('-')
                     prod_id = int(parts[0])
                     selection_attrs = dict(part.split(':', 1) for part in parts[2:] if ':' in part)
-                    
                     post_to_update = post_map.get(prod_id)
                     if post_to_update:
                         for variant in post_to_update.variants:
@@ -4570,17 +4550,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 variant["stock"] -= quantity_in_cart
                                 break
                         session.add(post_to_update)
-
-                        session.add(PurchaseItemModel(
+                        item = PurchaseItemModel(
                             purchase_id=new_purchase.id,
                             blog_post_id=post_to_update.id,
                             quantity=quantity_in_cart,
                             price_at_purchase=post_to_update.price,
                             selected_variant=selection_attrs,
-                        ))
+                        )
+                        session.add(item)
+                        items_to_create.append(item)
                 session.commit()
 
-            # --- Lógica de Pago para Wompi (Online) ---
             if self.payment_method == "Online":
                 if purchase_id_for_payment is None:
                     yield rx.toast.error("Error crítico: No se pudo obtener el ID de la compra.")
@@ -4593,37 +4573,25 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 if payment_info:
                     payment_url, payment_link_id = payment_info
-
                     with rx.session() as session:
                         purchase_to_update = session.get(PurchaseModel, purchase_id_for_payment)
                         if purchase_to_update:
                             purchase_to_update.wompi_payment_link_id = payment_link_id
                             session.add(purchase_to_update)
                             session.commit()
-
                     self.cart.clear()
                     self.default_shipping_address = None
-                    
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    # En lugar de rx.redirect(..., external=True), usamos rx.call_script
-                    # para decirle al navegador que vaya a la URL externa de Wompi.
                     yield rx.call_script(f"window.location.href = '{payment_url}'")
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-                    return # [cite: 1813]
+                    return
                 else:
-                    yield rx.toast.error("No se pudo generar el enlace de pago. Por favor, intenta de nuevo desde tu historial de compras.") # [cite: 1814, 1815]
+                    yield rx.toast.error("No se pudo generar el enlace de pago. Intenta de nuevo desde tu historial de compras.")
                     return
 
             else:  # Pago Contra Entrega
                 self.cart.clear()
                 self.default_shipping_address = None
-
-                # --- 🔴 ELIMINA LA LÍNEA ANTIGUA 🔴 ---
-                # yield AppState.notify_admin_of_new_purchase
-
-                # --- ✨ INICIO: NUEVA LÓGICA DE NOTIFICACIÓN ✨ ---
+                
                 with rx.session() as session:
-                    # Agrupamos los productos por vendedor para enviar notificaciones individuales
                     seller_groups = defaultdict(list)
                     for item in items_to_create:
                         post_owner_id = post_map[item.blog_post_id].userinfo_id
@@ -4637,7 +4605,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                         session.add(notification)
                     session.commit()
-                # --- ✨ FIN: NUEVA LÓGICA DE NOTIFICACIÓN ✨ ---
 
                 yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
                 yield rx.redirect("/my-purchases")
