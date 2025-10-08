@@ -193,7 +193,14 @@ class UserInfo(rx.Model, table=True):
     verification_tokens: List["VerificationToken"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     shipping_addresses: List["ShippingAddressModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     contact_entries: List["ContactEntryModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    purchases: List["PurchaseModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    # Versión corregida, especificando la clave foránea:
+    purchases: List["PurchaseModel"] = Relationship(
+        back_populates="userinfo",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "foreign_keys": "[PurchaseModel.userinfo_id]"
+        }
+    )
     notifications: List["NotificationModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     comments: List["CommentModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     comment_votes: List["CommentVoteModel"] = Relationship(back_populates="userinfo", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
