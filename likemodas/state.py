@@ -252,9 +252,20 @@ class InvoiceItemData(rx.Base):
     def total_cop(self) -> str: return format_to_cop(self.price * self.quantity)
 
 class InvoiceData(rx.Base):
-    id: int; purchase_date_formatted: str; status: str; items: list[InvoiceItemData]
-    customer_name: str; customer_email: str; shipping_full_address: str; shipping_phone: str
-    subtotal_cop: str; shipping_applied_cop: str; iva_cop: str; total_price_cop: str
+    id: int
+    purchase_date_formatted: str
+    status: str
+    items: list[InvoiceItemData]
+    # --- ✨ INICIO: CORRECCIÓN DE CAMPOS OPCIONALES ✨ ---
+    customer_name: Optional[str] = None
+    customer_email: Optional[str] = None
+    shipping_full_address: Optional[str] = None
+    shipping_phone: Optional[str] = None
+    # --- ✨ FIN: CORRECCIÓN DE CAMPOS OPCIONALES ✨ ---
+    subtotal_cop: str
+    shipping_applied_cop: str
+    iva_cop: str
+    total_price_cop: str
 
 class SupportMessageData(rx.Base):
     author_id: int; author_username: str; content: str; created_at_formatted: str
@@ -1235,12 +1246,23 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().one_or_none()
 
             if not purchase: return None
-            if not self.is_admin and (not self.authenticated_user_info or self.authenticated_user_info.id != purchase.userinfo_id):
+
+            # Un empleado puede ver facturas de su vendedor, y un vendedor las suyas
+            is_owner = self.context_user_id == purchase.items[0].blog_post.userinfo_id if purchase.items else False
+            is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
+            if not is_owner and not is_buyer:
                 return None
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
             shipping_cost = purchase.shipping_applied or 0.0
             iva_amount = subtotal_base_products * 0.19
+
+            # --- ✨ INICIO: MANEJO SEGURO DE DATOS NULOS ✨ ---
+            full_address = "N/A (Venta Directa)"
+            if purchase.shipping_address and purchase.shipping_neighborhood and purchase.shipping_city:
+                full_address = f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}"
+
+            customer_email = purchase.userinfo.email if purchase.userinfo else "N/A"
             
             invoice_items = []
             for item in purchase.items:
@@ -5279,8 +5301,28 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_history = []
             for p in results:
-                # ... (la lógica para `detailed_items` se mantiene igual)
-                detailed_items = [] # Tu lógica para llenar detailed_items va aquí
+            # --- ✨ INICIO: LÓGICA DE ITEMS RESTAURADA ✨ ---
+                detailed_items = []
+                for item in p.items:
+                    if item.blog_post:
+                        variant_image_url = ""
+                        for variant in item.blog_post.variants:
+                            if variant.get("attributes") == item.selected_variant:
+                                variant_image_url = variant.get("image_url", "")
+                                break
+                        if not variant_image_url and item.blog_post.variants:
+                            variant_image_url = item.blog_post.variants[0].get("image_url", "")
+
+                        variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+                        detailed_items.append(
+                            PurchaseItemCardData(
+                                id=item.blog_post.id, title=item.blog_post.title, image_url=variant_image_url,
+                                price_at_purchase=item.price_at_purchase,
+                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                                quantity=item.quantity, variant_details_str=variant_str,
+                            )
+                        )
+                # --- ✨ FIN: LÓGICA DE ITEMS RESTAURADA ✨ ---
 
                 # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
@@ -5369,9 +5411,29 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().all()
             
             active_purchases_list = []
-            for p in purchases:
-                # ... (la lógica para `detailed_items` se mantiene igual)
-                detailed_items = [] # Tu lógica para llenar detailed_items va aquí
+        for p in purchases:
+            # --- ✨ INICIO: LÓGICA DE ITEMS RESTAURADA ✨ ---
+            detailed_items = []
+            for item in p.items:
+                if item.blog_post:
+                    variant_image_url = ""
+                    for variant in item.blog_post.variants:
+                        if variant.get("attributes") == item.selected_variant:
+                            variant_image_url = variant.get("image_url", "")
+                            break
+                    if not variant_image_url and item.blog_post.variants:
+                        variant_image_url = item.blog_post.variants[0].get("image_url", "")
+                    
+                    variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+                    detailed_items.append(
+                        PurchaseItemCardData(
+                            id=item.blog_post.id, title=item.blog_post.title, image_url=variant_image_url,
+                            price_at_purchase=item.price_at_purchase,
+                            price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                            quantity=item.quantity, variant_details_str=variant_str,
+                        )
+                    )
+            # --- ✨ FIN: LÓGICA DE ITEMS RESTAURADA ✨ ---
                 
                 # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
