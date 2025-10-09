@@ -100,6 +100,20 @@ def sliding_direct_sale_cart() -> rx.Component:
         ),
         # --- ✨ FIN: NUEVO CAMPO ✨ ---
 
+        # --- ✨ INICIO: NUEVO CAMPO PARA CORREO ELECTRÓNICO ✨ ---
+        rx.vstack(
+            rx.text("Email del Cliente (Opcional):", weight="bold", size="2"),
+            rx.input(
+                placeholder="correo@ejemplo.com",
+                type="email",
+                value=AppState.direct_sale_anonymous_buyer_email,
+                on_change=AppState.set_direct_sale_anonymous_buyer_email,
+                is_disabled=AppState.direct_sale_buyer_id,
+            ),
+            align_items="start", width="100%"
+        ),
+        # --- ✨ FIN: NUEVO CAMPO ✨ ---
+
         rx.divider(),
         rx.scroll_area(
             rx.vstack(

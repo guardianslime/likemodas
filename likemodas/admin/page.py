@@ -157,6 +157,23 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     margin_top="1em",
                 )
             ),
+
+            # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
+            rx.cond(
+                purchase.action_by_name,
+                rx.box(
+                    rx.hstack(
+                        rx.icon("user-check", size=14, color_scheme="gray"),
+                        rx.text(
+                            "Gestionado por: ",
+                            rx.text.strong(purchase.action_by_name),
+                            size="2", color_scheme="gray"
+                        ),
+                        justify="center", spacing="2"
+                    ),
+                    width="100%", margin_top="1em",
+                )
+            ),
             spacing="4", width="100%",
         ), width="100%",
     )
@@ -212,6 +229,24 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     margin_y="0.5em",
                 )
             ),
+            # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
+            rx.cond(
+                purchase.action_by_name,
+                rx.box(
+                    rx.hstack(
+                        rx.icon("user-check", size=12, color_scheme="gray"),
+                        rx.text(
+                            "Venta procesada por: ",
+                            rx.text.strong(purchase.action_by_name),
+                            size="2", color_scheme="gray"
+                        ),
+                        spacing="2"
+                    ),
+                    width="100%", margin_y="0.5em",
+                )
+            ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
             rx.link(
                 rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="0.5em"),
                 href=f"/invoice?id={purchase.id}",

@@ -951,9 +951,15 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO: NUEVAS VARIABLES PARA VENTA DIRECTA ✨ ---
     direct_sale_anonymous_buyer_name: str = ""
 
+    # --- ✨ AÑADE ESTAS DOS LÍNEAS ✨ ---
+    direct_sale_anonymous_buyer_email: str = ""
+
     def set_direct_sale_anonymous_buyer_name(self, name: str):
         self.direct_sale_anonymous_buyer_name = name
     # --- ✨ FIN: NUEVAS VARIABLES ✨ ---
+
+    def set_direct_sale_anonymous_buyer_email(self, email: str):
+        self.direct_sale_anonymous_buyer_email = email
 
     def set_direct_sale_buyer(self, user_info_id: str):
         """Establece el comprador seleccionado para la venta."""
@@ -1036,8 +1042,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_direct_sale_checkout(self):
         """
-        [VERSIÓN FINAL] Procesa la venta directa, asignando comprador correctamente
-        y usando el nombre anónimo si se proporciona.
+        [VERSIÓN FINAL] Procesa la venta directa, guardando nombre y correo anónimos
+        y asignando correctamente al comprador y al actor de la venta.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
             yield rx.toast.error("No tienes permisos para realizar esta acción.")
@@ -1048,19 +1054,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         purchase_id_for_toast = None
+        actor_id = self.authenticated_user_info.id # Quién está realizando la venta
 
         with rx.session() as session:
-            # --- ✨ INICIO: LÓGICA DE COMPRADOR Y DUEÑO CORREGIDA ✨ ---
-            # 1. Determinamos quién es el dueño de la sesión (el vendedor o el jefe del empleado)
-            owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+            owner_id = self.context_user_id or self.authenticated_user_info.id
             if not owner_id:
                 yield rx.toast.error("Error: No se pudo determinar el contexto del vendedor.")
                 return
 
-            # 2. El 'comprador' es el usuario seleccionado, o si no, el propio dueño (venta de mostrador)
             buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else owner_id
-
             buyer_info = session.get(UserInfo, buyer_id)
+
             if not buyer_info or not buyer_info.user:
                 yield rx.toast.error("El comprador o el contexto del vendedor no son válidos.")
                 return
@@ -1098,17 +1102,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             
             # --- ✨ INICIO: LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ✨ ---
-            final_shipping_name = "Cliente (Venta Directa)" # Valor por defecto
+            final_shipping_name = "Cliente (Venta Directa)"
             if self.direct_sale_buyer_id:
-                # Si se seleccionó un usuario registrado
                 final_shipping_name = buyer_info.user.username
             elif self.direct_sale_anonymous_buyer_name.strip():
-                # Si se escribió un nombre en el nuevo campo
                 final_shipping_name = self.direct_sale_anonymous_buyer_name.strip()
-            # --- ✨ FIN: LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ✨ ---
 
             now = datetime.now(timezone.utc)
-            # --- ✨ ASIGNACIÓN ÚNICA DE shipping_name ✨ ---
             new_purchase = PurchaseModel(
                 userinfo_id=buyer_id,
                 total_price=sum(item.subtotal for item in self.direct_sale_cart_details),
@@ -1118,9 +1118,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 purchase_date=now,
                 user_confirmed_delivery_at=now,
                 shipping_applied=0,
-                shipping_name=final_shipping_name,  # Se asigna el nombre una sola vez aquí
+                shipping_name=final_shipping_name,
                 is_direct_sale=True,
+                action_by_id=actor_id, # Guardamos quién hizo la venta
+                anonymous_customer_email=self.direct_sale_anonymous_buyer_email.strip() if self.direct_sale_anonymous_buyer_email.strip() else None,
             )
+
             # --- FIN DE LA ASIGNACIÓN ÚNICA ---
             session.add(new_purchase)
             session.commit()
@@ -5326,8 +5329,14 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
-                # --- ✨ FIN: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
 
+                # --- ✨ CORRECCIÓN DE DATOS DEL CLIENTE ✨ ---
+                customer_name_display = p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A"
+                customer_email_display = p.userinfo.email if p.userinfo else "N/A"
+                if p.is_direct_sale and p.userinfo_id == self.context_user_id:
+                    customer_name_display = p.shipping_name
+                    customer_email_display = p.anonymous_customer_email or "Sin Correo"
+               
                 # --- ✨ INICIO: MANEJO DE VALORES NULOS ✨ ---
                 full_address = "N/A (Venta Directa)"
                 if p.shipping_address and p.shipping_neighborhood and p.shipping_city:
@@ -5433,11 +5442,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                             quantity=item.quantity, variant_details_str=variant_str,
                         )
                     )
-            # --- ✨ FIN: LÓGICA DE ITEMS RESTAURADA ✨ ---
-                
-                # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
+
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
-                # --- ✨ FIN: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
+
+                # --- ✨ CORRECCIÓN DE DATOS DEL CLIENTE ✨ ---
+                customer_name_display = p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A"
+                customer_email_display = p.userinfo.email if p.userinfo else "N/A"
+                if p.is_direct_sale and not p.userinfo_id == self.context_user_id:
+                    customer_name_display = p.shipping_name
+                    customer_email_display = p.anonymous_customer_email or "Sin Correo"
 
                 active_purchases_list.append(
                     AdminPurchaseCardData(
