@@ -530,6 +530,30 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 session.refresh(new_user_info)
 
+                # --- ✨ INICIO: LÓGICA DE VINCULACIÓN DE COMPRAS ANÓNIMAS ✨ ---
+                # Busca todas las compras de Venta Directa que coincidan con el email del nuevo usuario
+                anonymous_purchases_to_claim = session.exec(
+                    sqlmodel.select(PurchaseModel).where(
+                        PurchaseModel.anonymous_customer_email == email,
+                        PurchaseModel.is_direct_sale == True
+                    )
+                ).all()
+
+                if anonymous_purchases_to_claim:
+                    for purchase in anonymous_purchases_to_claim:
+                        # Asigna la compra al nuevo ID de usuario (new_user_info.id)
+                        purchase.userinfo_id = new_user_info.id
+                        # Opcional: Limpiamos el correo anónimo ya que ahora está vinculado
+                        purchase.anonymous_customer_email = None
+                        session.add(purchase)
+                    
+                    # Guardamos todos los cambios en la base de datos
+                    session.commit()
+                    
+                    # Notificamos al usuario
+                    yield rx.toast.info(f"¡Hemos vinculado {len(anonymous_purchases_to_claim)} compra(s) anteriores a tu nueva cuenta!")
+                # --- ✨ FIN: LÓGICA DE VINCULACIÓN ✨ ---
+
                 token_str = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=24)
                 verification_token = VerificationToken(token=token_str, userinfo_id=new_user_info.id, expires_at=expires)
@@ -1265,7 +1289,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             if purchase.shipping_address and purchase.shipping_neighborhood and purchase.shipping_city:
                 full_address = f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}"
 
-            customer_email = purchase.userinfo.email if purchase.userinfo else "N/A"
+            # --- CORRECCIÓN DE DATOS DEL CLIENTE PARA LA FACTURA ---
+            customer_name_display = "N/A"
+            customer_email_display = "Sin Correo"
+            if purchase.is_direct_sale:
+                customer_name_display = purchase.shipping_name
+                customer_email_display = purchase.anonymous_customer_email or "Sin Correo"
+            elif purchase.userinfo and purchase.userinfo.user:
+                customer_name_display = purchase.userinfo.user.username
+                customer_email_display = purchase.userinfo.email
             
             invoice_items = []
             for item in purchase.items:
@@ -5330,12 +5362,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
 
-                # --- ✨ CORRECCIÓN DE DATOS DEL CLIENTE ✨ ---
-                customer_name_display = p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A"
-                customer_email_display = p.userinfo.email if p.userinfo else "N/A"
-                if p.is_direct_sale and p.userinfo_id == self.context_user_id:
+                # --- CORRECCIÓN DE DATOS DEL CLIENTE ---
+                customer_name_display = "N/A"
+                customer_email_display = "Sin Correo"
+                if p.is_direct_sale:
                     customer_name_display = p.shipping_name
                     customer_email_display = p.anonymous_customer_email or "Sin Correo"
+                elif p.userinfo and p.userinfo.user:
+                    customer_name_display = p.userinfo.user.username
+                    customer_email_display = p.userinfo.email
                
                 # --- ✨ INICIO: MANEJO DE VALORES NULOS ✨ ---
                 full_address = "N/A (Venta Directa)"
@@ -5445,12 +5480,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
 
-                # --- ✨ CORRECCIÓN DE DATOS DEL CLIENTE ✨ ---
-                customer_name_display = p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A"
-                customer_email_display = p.userinfo.email if p.userinfo else "N/A"
-                if p.is_direct_sale and not p.userinfo_id == self.context_user_id:
+                # --- CORRECCIÓN DE DATOS DEL CLIENTE ---
+                customer_name_display = "N/A"
+                customer_email_display = "Sin Correo"
+                if p.is_direct_sale:
                     customer_name_display = p.shipping_name
                     customer_email_display = p.anonymous_customer_email or "Sin Correo"
+                elif p.userinfo and p.userinfo.user:
+                    customer_name_display = p.userinfo.user.username
+                    customer_email_display = p.userinfo.email
 
                 active_purchases_list.append(
                     AdminPurchaseCardData(
@@ -5668,13 +5706,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def filtered_admin_purchases(self) -> list[AdminPurchaseCardData]:
         if not self.search_query_admin_history.strip():
-            # Usa el nuevo nombre de la variable
             return self.purchase_history
         q = self.search_query_admin_history.lower()
+        
         return [
-            # Usa el nuevo nombre de la variable
             p for p in self.purchase_history
-            if q in f"#{p.id}" or q in p.customer_name.lower() or q in p.customer_email.lower()
+            if q in f"#{p.id}" 
+            or q in p.customer_name.lower() 
+            or q in p.customer_email.lower()
+            # --- ✨ LÍNEA AÑADIDA PARA BUSCAR EN CORREO ANÓNIMO ✨ ---
+            or (p.anonymous_customer_email and q in p.anonymous_customer_email.lower())
         ]
 
     @rx.event
