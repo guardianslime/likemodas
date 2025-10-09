@@ -1094,7 +1094,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
             session.refresh(new_purchase)
 
-            # 6. Vincular los items creados con la compra recién guardada
+            # --- ✨ INICIO: Guardamos el ID mientras la sesión está activa ✨ ---
+            purchase_id_for_toast = new_purchase.id
+            # --- ✨ FIN: Guardamos el ID mientras la sesión está activa ✨ ---
+
             for purchase_item in items_to_create:
                 purchase_item.purchase_id = new_purchase.id
                 session.add(purchase_item)
@@ -1104,10 +1107,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         # 7. Limpiar el estado de la UI y notificar el éxito
         self.direct_sale_cart.clear()
         self.direct_sale_buyer_id = None
-        self.show_direct_sale_sidebar = False  # Oculta el sidebar
+        self.show_direct_sale_sidebar = False
         
-        yield rx.toast.success(f"Venta #{new_purchase.id} confirmada exitosamente.")
-        yield AppState.load_purchase_history  # Actualiza el historial de ventas del vendedor
+        # --- ✨ INICIO: Usamos la variable guardada en lugar del objeto ✨ ---
+        if purchase_id_for_toast:
+            yield rx.toast.success(f"Venta #{purchase_id_for_toast} confirmada exitosamente.")
+        # --- ✨ FIN: Usamos la variable guardada en lugar del objeto ✨ ---
+        
+        yield AppState.load_purchase_history
 
     
     @rx.var
