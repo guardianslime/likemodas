@@ -157,24 +157,22 @@ class AdminPurchaseCardData(rx.Base):
     purchase_date_formatted: str
     status: str
     total_price: float
-    shipping_name: str
-    shipping_full_address: str
-    shipping_phone: str
+    # --- ✨ INICIO: CAMPOS OPCIONALES CORREGIDOS ✨ ---
+    shipping_name: Optional[str] = None
+    shipping_full_address: Optional[str] = None
+    shipping_phone: Optional[str] = None
+    # --- ✨ FIN: CAMPOS OPCIONALES CORREGIDOS ✨ ---
     payment_method: str
     confirmed_at: Optional[datetime] = None
     shipping_applied: Optional[float] = 0.0
     items: list[PurchaseItemCardData] = []
-    
-    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
     action_by_name: Optional[str] = None
-    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
 
     @property
     def total_price_cop(self) -> str: return format_to_cop(self.total_price)
-
+    
     @property
     def shipping_applied_cop(self) -> str: return format_to_cop(self.shipping_applied or 0.0)
-
 
 # DTO para un item individual en el historial de compras
 class PurchaseItemCardData(rx.Base):
@@ -957,8 +955,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         disponibilidad, la añade al `direct_sale_cart`.
         """
         # 1. Validaciones iniciales de permisos y estado del modal
-        if not self.is_admin:
+        # --- ✨ INICIO: CORRECCIÓN DE PERMISOS CLAVE ✨ ---
+        if not (self.is_admin or self.is_vendedor or self.is_empleado):
             return rx.toast.error("Acción no permitida.")
+        # --- ✨ FIN: CORRECCIÓN DE PERMISOS CLAVE ✨ ---
         if not self.product_in_modal or not self.current_modal_variant:
             return rx.toast.error("Error al identificar el producto.")
 
@@ -1033,12 +1033,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         purchase_id_for_toast = None
 
         with rx.session() as session:
+            # --- ✨ INICIO: LÓGICA DE COMPRADOR CORREGIDA ✨ ---
+            # Si se seleccionó un comprador, se usa ese ID.
+            # Si no, se usa el ID del vendedor en contexto (el jefe del empleado o el propio vendedor).
             buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else self.context_user_id
+            # --- ✨ FIN: LÓGICA DE COMPRADOR CORREGIDA ✨ ---
+            
+            if not buyer_id:
+                yield rx.toast.error("Error: No se pudo determinar el contexto del vendedor.")
+                return
+
             buyer_info = session.get(UserInfo, buyer_id)
 
             if not buyer_info or not buyer_info.user:
-                # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
-                yield rx.toast.error("El comprador seleccionado no es válido.")
+                yield rx.toast.error("El comprador o el contexto del vendedor no son válidos.")
                 return
 
             # ... (El resto de la lógica interna de la función se mantiene igual)
@@ -5256,6 +5264,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
                 # --- ✨ FIN: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
+
+                # --- ✨ INICIO: MANEJO DE VALORES NULOS ✨ ---
+                full_address = "N/A (Venta Directa)"
+                if p.shipping_address and p.shipping_neighborhood and p.shipping_city:
+                    full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}"
+                # --- ✨ FIN: MANEJO DE VALORES NULOS ✨ ---
 
                 temp_history.append(
                     AdminPurchaseCardData(
