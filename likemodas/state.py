@@ -1303,10 +1303,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             customer_name_display = "N/A"
             customer_email_display = "Sin Correo"
             if purchase.is_direct_sale:
-                customer_name_display = purchase.shipping_name
+                # Para Venta Directa, SIEMPRE usamos los datos guardados en la compra
+                customer_name_display = purchase.shipping_name or "Cliente"
                 customer_email_display = purchase.anonymous_customer_email or "Sin Correo"
             elif purchase.userinfo and purchase.userinfo.user:
-                customer_name_display = purchase.userinfo.user.username
+                # Para compras normales, usamos los datos del usuario registrado
+                customer_name_display = purchase.shipping_name # El nombre de envío es el correcto aquí
                 customer_email_display = purchase.userinfo.email
             
             invoice_items = []
@@ -5376,9 +5378,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 customer_name_display = "N/A"
                 customer_email_display = "Sin Correo"
                 if p.is_direct_sale:
-                    customer_name_display = p.shipping_name
+                    # Para Venta Directa, SIEMPRE usamos los datos guardados en la compra
+                    customer_name_display = p.shipping_name or "Cliente"
                     customer_email_display = p.anonymous_customer_email or "Sin Correo"
                 elif p.userinfo and p.userinfo.user:
+                    # Para compras normales, usamos los datos del usuario registrado
                     customer_name_display = p.userinfo.user.username
                     customer_email_display = p.userinfo.email
                

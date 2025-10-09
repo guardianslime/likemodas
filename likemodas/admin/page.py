@@ -7,7 +7,7 @@ from ..auth.admin_auth import require_panel_access
 
 # ... (purchase_item_display_admin y purchase_items_view no cambian) ...
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
-    """Muestra un item individual y abre el modal correcto al hacer clic en la imagen."""
+    """Muestra un item individual y abre el modal del producto al hacer clic en la imagen."""
     return rx.hstack(
         rx.box(
             rx.image(
@@ -18,8 +18,8 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
                 object_fit="cover",
                 border_radius="sm",
             ),
-            # --- ✨ CORRECCIÓN CLAVE: Se llama a la función correcta ✨ ---
-            on_click=AppState.open_product_detail_modal_from_admin(item.id),
+            # --- ✨ CORRECCIÓN CLAVE: Se llama a la función correcta y universal ✨ ---
+            on_click=AppState.open_product_detail_modal(item.id),
             cursor="pointer",
             _hover={"opacity": 0.8},
             transition="opacity 0.2s"
