@@ -3108,21 +3108,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def save_edited_post(self):
         """
-        [CORREGIDO] Guarda una publicación editada, con permisos unificados y registrando al modificador.
+        Guarda una publicación editada, con permisos unificados y sintaxis corregida.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
-            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
             yield rx.toast.error("Error: No se pudo guardar la publicación.")
             return
         
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
-            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
             yield rx.toast.error("No se pudo verificar la identidad del usuario.")
             return
-        # --- ✨ FIN: LÓGICA DE PERMISOS UNIFICADA ✨ ---
 
-        # ... (La lógica de validación de precios y construcción de variantes se mantiene igual)
         try:
             price = float(self.edit_price_str or 0.0)
             profit = float(self.edit_profit_str) if self.edit_profit_str else None
@@ -3131,27 +3127,33 @@ class AppState(reflex_local_auth.LocalAuthState):
         except ValueError:
             yield rx.toast.error("Precio, ganancia, costo de envío y límite deben ser números válidos.")
             return
+
         all_variants_for_db = []
+        # Tu lógica para construir all_variants_for_db
         for image_group_index, variant_list in self.edit_variants_map.items():
-            main_image_for_group = self.unique_edit_form_images[image_group_index]
-            for variant_form_data in variant_list:
-                new_variant_dict = {
-                    "attributes": variant_form_data.attributes, "stock": variant_form_data.stock,
-                    "image_url": variant_form_data.image_url or main_image_for_group,
-                    "variant_uuid": getattr(variant_form_data, 'variant_uuid', str(uuid.uuid4()))
-                }
-                all_variants_for_db.append(new_variant_dict)
+            if image_group_index < len(self.unique_edit_form_images):
+                main_image_for_group = self.unique_edit_form_images[image_group_index]
+                for variant_form_data in variant_list:
+                    new_variant_dict = {
+                        "attributes": variant_form_data.attributes,
+                        "stock": variant_form_data.stock,
+                        "image_url": variant_form_data.image_url or main_image_for_group,
+                        "variant_uuid": getattr(variant_form_data, 'variant_uuid', str(uuid.uuid4()))
+                    }
+                    all_variants_for_db.append(new_variant_dict)
+
         if not all_variants_for_db:
-            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
             yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
             return
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-            
+
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
             
             if not post_to_update or post_to_update.userinfo_id != owner_id:
-                return rx.toast.error("No tienes permiso para guardar esta publicación.")
+                # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
+                yield rx.toast.error("No tienes permiso para guardar esta publicación.")
+                return
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
