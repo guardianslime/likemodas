@@ -1016,48 +1016,45 @@ class AppState(reflex_local_auth.LocalAuthState):
                 del self.direct_sale_cart[cart_key]
 
     @rx.event
-    def handle_direct_sale_checkout(self):
+    async def handle_direct_sale_checkout(self):
         """
         Procesa y finaliza una venta directa, con permisos corregidos
-        para Vendedores y Empleados.
+        y evitando el error DetachedInstanceError.
         """
-        # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS CLAVE ✨ ---
         if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
             return rx.toast.error("No tienes permisos para realizar esta acción.")
-        # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS CLAVE ✨ ---
 
         if not self.direct_sale_cart:
             return rx.toast.error("El carrito de venta está vacío.")
 
+        purchase_id_for_toast = None
+
         with rx.session() as session:
-            # 2. Determinar el comprador
-            # Si no se ha seleccionado un comprador (`direct_sale_buyer_id` es None),
-            # la venta se asocia al propio vendedor (venta anónima/invitado).
-            buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else self.authenticated_user_info.id
+            # Determina el comprador (si no se selecciona, es el vendedor)
+            buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else self.context_user_id
             buyer_info = session.get(UserInfo, buyer_id)
 
             if not buyer_info or not buyer_info.user:
                 return rx.toast.error("El comprador seleccionado no es válido.")
 
-            # 3. Calcular totales y preparar la orden
-            # Para ventas directas, el envío es 0 y el subtotal es el total.
             subtotal = sum(item.subtotal for item in self.direct_sale_cart_details)
             items_to_create = []
 
-            # 4. Verificar stock y preparar los items para la base de datos
+            # Lógica para verificar stock y preparar los items
+            product_ids = list(set([int(key.split('-')[0]) for key in self.direct_sale_cart.keys()]))
+            posts_to_check = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
+            post_map = {p.id: p for p in posts_to_check}
+
             for item in self.direct_sale_cart_details:
-                post = session.get(BlogPostModel, item.product_id)
+                post = post_map.get(item.product_id)
                 if not post:
                     return rx.toast.error(f"El producto '{item.title}' ya no existe. Venta cancelada.")
 
                 variant_updated = False
                 for variant in post.variants:
-                    # Encuentra la variante exacta que coincide con la selección
                     if variant.get("attributes") == item.variant_details:
                         if variant.get("stock", 0) < item.quantity:
                             return rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
-                        
-                        # Descuenta el stock
                         variant["stock"] -= item.quantity
                         variant_updated = True
                         break
@@ -1065,7 +1062,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if not variant_updated:
                     return rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
                 
-                session.add(post)  # Marca el post para ser actualizado con el nuevo stock
+                session.add(post)
                 items_to_create.append(
                     PurchaseItemModel(
                         blog_post_id=item.product_id,
@@ -1075,44 +1072,41 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
                 )
 
-            # 5. Crear el registro de la compra (PurchaseModel)
+            # Crea el registro de la compra
             now = datetime.now(timezone.utc)
             new_purchase = PurchaseModel(
                 userinfo_id=buyer_info.id,
                 total_price=subtotal,
-                status=PurchaseStatus.DELIVERED,  # Se considera entregada inmediatamente
+                status=PurchaseStatus.DELIVERED,
                 payment_method="Venta Directa",
                 confirmed_at=now,
                 purchase_date=now,
                 user_confirmed_delivery_at=now,
                 shipping_applied=0,
-                # Si es una venta anónima, se usa un texto genérico.
                 shipping_name=buyer_info.user.username if self.direct_sale_buyer_id is not None else "Cliente Venta Directa",
-                is_direct_sale=True,  # Marca esta compra como una venta directa
+                is_direct_sale=True,
             )
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
 
-            # --- ✨ INICIO: Guardamos el ID mientras la sesión está activa ✨ ---
+            # Guarda el ID antes de que la sesión se cierre
             purchase_id_for_toast = new_purchase.id
-            # --- ✨ FIN: Guardamos el ID mientras la sesión está activa ✨ ---
 
+            # Vincula los items a la compra
             for purchase_item in items_to_create:
                 purchase_item.purchase_id = new_purchase.id
                 session.add(purchase_item)
             
             session.commit()
 
-        # 7. Limpiar el estado de la UI y notificar el éxito
+        # La sesión ya está cerrada aquí
         self.direct_sale_cart.clear()
         self.direct_sale_buyer_id = None
         self.show_direct_sale_sidebar = False
         
-        # --- ✨ INICIO: Usamos la variable guardada en lugar del objeto ✨ ---
         if purchase_id_for_toast:
             yield rx.toast.success(f"Venta #{purchase_id_for_toast} confirmada exitosamente.")
-        # --- ✨ FIN: Usamos la variable guardada en lugar del objeto ✨ ---
         
         yield AppState.load_purchase_history
 
@@ -1660,13 +1654,12 @@ class AppState(reflex_local_auth.LocalAuthState):
     def remove_empleado(self, empleado_userinfo_id: int):
         """
         [CORREGIDO] Elimina la vinculación de un empleado. Ahora funciona tanto si la
-        inicia el vendedor como si la inicia el propio empleado.
+        inicia el vendedor como si la inicia el propio empleado, usando yield from.
         """
         if not self.authenticated_user_info:
             return rx.toast.error("Debes iniciar sesión.")
 
         with rx.session() as session:
-            # Buscamos el enlace donde el usuario a desvincular es el empleado.
             link_to_delete = session.exec(
                 sqlmodel.select(EmpleadoVendedorLink).where(
                     EmpleadoVendedorLink.empleado_id == empleado_userinfo_id
@@ -1676,7 +1669,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not link_to_delete:
                 return rx.toast.error("No se encontró la relación de empleado.")
 
-            # Verificamos los permisos: la acción la puede hacer el vendedor o el propio empleado.
             is_vendedor_del_empleado = self.authenticated_user_info.id == link_to_delete.vendedor_id
             is_el_propio_empleado = self.authenticated_user_info.id == empleado_userinfo_id
 
@@ -1686,12 +1678,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.delete(link_to_delete)
             session.commit()
             
-            # Si el que se desvincula es el propio empleado, recargamos su página
             if is_el_propio_empleado:
                 yield rx.toast.info("Has dejado de ser empleado.")
                 yield rx.call_script("window.location.reload()")
-            else: # Si fue el vendedor, solo actualizamos su lista
-                yield self.load_empleados()
+            else: # Si fue el vendedor
+                # --- ✨ CORRECCIÓN CLAVE: Usamos 'yield from' para encadenar eventos ✨ ---
+                yield from self.load_empleados()
                 yield rx.toast.info("Empleado desvinculado correctamente.")
     
     # --- ✨ INICIO: AÑADE ESTA NUEVA FUNCIÓN ✨ ---
