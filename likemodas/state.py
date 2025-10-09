@@ -452,6 +452,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def is_admin(self) -> bool:
         return self.authenticated_user_info is not None and self.authenticated_user_info.role == UserRole.ADMIN.value
+    
+    @rx.event
+    def open_product_detail_modal_from_admin(self, post_id: int):
+        """
+        Abre el modal de detalle del producto desde el panel de administración.
+        Es una variante de 'open_product_detail_modal' para este contexto específico.
+        """
+        # Llama a la lógica existente para abrir el modal.
+        # El 'yield from' es por si la función original necesita ceder eventos.
+        yield from self.open_product_detail_modal(post_id)
 
     @rx.event
     def handle_registration_email(self, form_data: dict):
@@ -5362,7 +5372,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
 
-                # --- CORRECCIÓN DE DATOS DEL CLIENTE ---
+                # --- LÓGICA DE DATOS DE CLIENTE CORREGIDA Y SIMPLIFICADA ---
                 customer_name_display = "N/A"
                 customer_email_display = "Sin Correo"
                 if p.is_direct_sale:
@@ -5480,13 +5490,15 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
 
-                # --- CORRECCIÓN DE DATOS DEL CLIENTE ---
+                # --- LÓGICA DE DATOS DE CLIENTE CORREGIDA Y SIMPLIFICADA ---
                 customer_name_display = "N/A"
                 customer_email_display = "Sin Correo"
                 if p.is_direct_sale:
+                    # Para Venta Directa, siempre usamos los datos guardados en la compra
                     customer_name_display = p.shipping_name
                     customer_email_display = p.anonymous_customer_email or "Sin Correo"
                 elif p.userinfo and p.userinfo.user:
+                    # Para compras normales, usamos los datos del usuario registrado
                     customer_name_display = p.userinfo.user.username
                     customer_email_display = p.userinfo.email
 
