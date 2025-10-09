@@ -3142,8 +3142,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 }
                 all_variants_for_db.append(new_variant_dict)
         if not all_variants_for_db:
-            return rx.toast.error("No se encontraron variantes configuradas para guardar.")
-
+            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
+            yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
+            return
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
             
