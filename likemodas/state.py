@@ -1097,15 +1097,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             # --- ✨ FIN: LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ✨ ---
 
             now = datetime.now(timezone.utc)
+            # --- ✨ ASIGNACIÓN ÚNICA DE shipping_name ✨ ---
             new_purchase = PurchaseModel(
-                userinfo_id=buyer_info.id, total_price=subtotal,
-                status=PurchaseStatus.DELIVERED, payment_method="Venta Directa",
-                shipping_name=final_shipping_name, # Se usa el nombre final determinado
-                confirmed_at=now, purchase_date=now, user_confirmed_delivery_at=now,
+                userinfo_id=buyer_id,
+                total_price=sum(item.subtotal for item in self.direct_sale_cart_details),
+                status=PurchaseStatus.DELIVERED,
+                payment_method="Venta Directa",
+                confirmed_at=now,
+                purchase_date=now,
+                user_confirmed_delivery_at=now,
                 shipping_applied=0,
-                shipping_name=buyer_info.user.username if self.direct_sale_buyer_id is not None else "Cliente Venta Directa",
+                shipping_name=final_shipping_name,  # Se asigna el nombre una sola vez aquí
                 is_direct_sale=True,
             )
+            # --- FIN DE LA ASIGNACIÓN ÚNICA ---
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
