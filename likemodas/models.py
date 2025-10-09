@@ -218,12 +218,16 @@ class UserInfo(rx.Model, table=True):
         sa_relationship_kwargs={
             "primaryjoin": "UserInfo.id==EmpleadoVendedorLink.vendedor_id",
             "cascade": "all, delete-orphan",
+            # ✨ AÑADE ESTA LÍNEA PARA RESOLVER LA ADVERTENCIA ✨
+            "overlaps": "empleado,vendedor",
         }
     )
     empleador_link: Optional["EmpleadoVendedorLink"] = Relationship(
         sa_relationship_kwargs={
             "primaryjoin": "UserInfo.id==EmpleadoVendedorLink.empleado_id",
             "uselist": False,
+            # ✨ AÑADE ESTA LÍNEA PARA RESOLVER LA ADVERTENCIA ✨
+            "overlaps": "empleado,vendedor",
         }
     )
 
