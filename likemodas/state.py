@@ -1018,29 +1018,32 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_direct_sale_checkout(self):
         """
-        Procesa y finaliza una venta directa, con permisos corregidos
-        y evitando el error DetachedInstanceError.
+        Procesa y finaliza una venta directa, con permisos y sintaxis corregidos.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
-            return rx.toast.error("No tienes permisos para realizar esta acción.")
+            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
+            yield rx.toast.error("No tienes permisos para realizar esta acción.")
+            return
 
         if not self.direct_sale_cart:
-            return rx.toast.error("El carrito de venta está vacío.")
+            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
+            yield rx.toast.error("El carrito de venta está vacío.")
+            return
 
         purchase_id_for_toast = None
 
         with rx.session() as session:
-            # Determina el comprador (si no se selecciona, es el vendedor)
             buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else self.context_user_id
             buyer_info = session.get(UserInfo, buyer_id)
 
             if not buyer_info or not buyer_info.user:
-                return rx.toast.error("El comprador seleccionado no es válido.")
+                # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
+                yield rx.toast.error("El comprador seleccionado no es válido.")
+                return
 
+            # ... (El resto de la lógica interna de la función se mantiene igual)
             subtotal = sum(item.subtotal for item in self.direct_sale_cart_details)
             items_to_create = []
-
-            # Lógica para verificar stock y preparar los items
             product_ids = list(set([int(key.split('-')[0]) for key in self.direct_sale_cart.keys()]))
             posts_to_check = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
             post_map = {p.id: p for p in posts_to_check}
@@ -1048,40 +1051,33 @@ class AppState(reflex_local_auth.LocalAuthState):
             for item in self.direct_sale_cart_details:
                 post = post_map.get(item.product_id)
                 if not post:
-                    return rx.toast.error(f"El producto '{item.title}' ya no existe. Venta cancelada.")
-
+                    yield rx.toast.error(f"El producto '{item.title}' ya no existe. Venta cancelada.")
+                    return
                 variant_updated = False
                 for variant in post.variants:
                     if variant.get("attributes") == item.variant_details:
                         if variant.get("stock", 0) < item.quantity:
-                            return rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
+                            yield rx.toast.error(f"Stock insuficiente para '{item.title}'. Venta cancelada.")
+                            return
                         variant["stock"] -= item.quantity
                         variant_updated = True
                         break
-                
                 if not variant_updated:
-                    return rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
-                
+                    yield rx.toast.error(f"La variante de '{item.title}' no fue encontrada. Venta cancelada.")
+                    return
                 session.add(post)
                 items_to_create.append(
                     PurchaseItemModel(
-                        blog_post_id=item.product_id,
-                        quantity=item.quantity,
-                        price_at_purchase=item.price,
-                        selected_variant=item.variant_details,
+                        blog_post_id=item.product_id, quantity=item.quantity,
+                        price_at_purchase=item.price, selected_variant=item.variant_details,
                     )
                 )
 
-            # Crea el registro de la compra
             now = datetime.now(timezone.utc)
             new_purchase = PurchaseModel(
-                userinfo_id=buyer_info.id,
-                total_price=subtotal,
-                status=PurchaseStatus.DELIVERED,
-                payment_method="Venta Directa",
-                confirmed_at=now,
-                purchase_date=now,
-                user_confirmed_delivery_at=now,
+                userinfo_id=buyer_info.id, total_price=subtotal,
+                status=PurchaseStatus.DELIVERED, payment_method="Venta Directa",
+                confirmed_at=now, purchase_date=now, user_confirmed_delivery_at=now,
                 shipping_applied=0,
                 shipping_name=buyer_info.user.username if self.direct_sale_buyer_id is not None else "Cliente Venta Directa",
                 is_direct_sale=True,
@@ -1089,18 +1085,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_purchase)
             session.commit()
             session.refresh(new_purchase)
-
-            # Guarda el ID antes de que la sesión se cierre
             purchase_id_for_toast = new_purchase.id
-
-            # Vincula los items a la compra
             for purchase_item in items_to_create:
                 purchase_item.purchase_id = new_purchase.id
                 session.add(purchase_item)
-            
             session.commit()
 
-        # La sesión ya está cerrada aquí
         self.direct_sale_cart.clear()
         self.direct_sale_buyer_id = None
         self.show_direct_sale_sidebar = False
@@ -3116,17 +3106,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # ✨ --- REEMPLAZA POR COMPLETO LA FUNCIÓN `save_edited_post` --- ✨
     @rx.event
-    def save_edited_post(self):
+    async def save_edited_post(self):
         """
         [CORREGIDO] Guarda una publicación editada, con permisos unificados y registrando al modificador.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
-            return rx.toast.error("Error: No se pudo guardar la publicación.")
+            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
+            yield rx.toast.error("Error: No se pudo guardar la publicación.")
+            return
         
-        # --- ✨ INICIO: LÓGICA DE PERMISOS UNIFICADA ✨ ---
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
-            return rx.toast.error("No se pudo verificar la identidad del usuario.")
+            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
+            yield rx.toast.error("No se pudo verificar la identidad del usuario.")
+            return
         # --- ✨ FIN: LÓGICA DE PERMISOS UNIFICADA ✨ ---
 
         # ... (La lógica de validación de precios y construcción de variantes se mantiene igual)
@@ -3136,7 +3129,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
             limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
         except ValueError:
-            return rx.toast.error("Precio, ganancia, costo de envío y límite deben ser números válidos.")
+            yield rx.toast.error("Precio, ganancia, costo de envío y límite deben ser números válidos.")
+            return
         all_variants_for_db = []
         for image_group_index, variant_list in self.edit_variants_map.items():
             main_image_for_group = self.unique_edit_form_images[image_group_index]
