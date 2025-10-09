@@ -85,6 +85,21 @@ def sliding_direct_sale_cart() -> rx.Component:
             ),
             align_items="start", width="100%"
         ),
+
+        # --- ✨ INICIO: NUEVO CAMPO PARA NOMBRE DE COMPRADOR ✨ ---
+        rx.vstack(
+            rx.text("O Ingresa un Nombre (Opcional):", weight="bold", size="2"),
+            rx.input(
+                placeholder="Nombre del cliente...",
+                value=AppState.direct_sale_anonymous_buyer_name,
+                on_change=AppState.set_direct_sale_anonymous_buyer_name,
+                # Se deshabilita si ya se seleccionó un comprador registrado
+                is_disabled=AppState.direct_sale_buyer_id,
+            ),
+            align_items="start", width="100%"
+        ),
+        # --- ✨ FIN: NUEVO CAMPO ✨ ---
+
         rx.divider(),
         rx.scroll_area(
             rx.vstack(

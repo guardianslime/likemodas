@@ -937,6 +937,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Actualiza el término de búsqueda para los compradores."""
         self.search_query_all_buyers = query
 
+    # --- ✨ INICIO: NUEVAS VARIABLES PARA VENTA DIRECTA ✨ ---
+    direct_sale_anonymous_buyer_name: str = ""
+
+    def set_direct_sale_anonymous_buyer_name(self, name: str):
+        self.direct_sale_anonymous_buyer_name = name
+    # --- ✨ FIN: NUEVAS VARIABLES ✨ ---
+
     def set_direct_sale_buyer(self, user_info_id: str):
         """Establece el comprador seleccionado para la venta."""
         try:
@@ -1018,33 +1025,31 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def handle_direct_sale_checkout(self):
         """
-        Procesa y finaliza una venta directa, con permisos y sintaxis corregidos.
+        [VERSIÓN FINAL] Procesa la venta directa, asignando comprador correctamente
+        y usando el nombre anónimo si se proporciona.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado) or not self.authenticated_user_info:
-            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
             yield rx.toast.error("No tienes permisos para realizar esta acción.")
             return
 
         if not self.direct_sale_cart:
-            # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
             yield rx.toast.error("El carrito de venta está vacío.")
             return
 
         purchase_id_for_toast = None
 
         with rx.session() as session:
-            # --- ✨ INICIO: LÓGICA DE COMPRADOR CORREGIDA ✨ ---
-            # Si se seleccionó un comprador, se usa ese ID.
-            # Si no, se usa el ID del vendedor en contexto (el jefe del empleado o el propio vendedor).
-            buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else self.context_user_id
-            # --- ✨ FIN: LÓGICA DE COMPRADOR CORREGIDA ✨ ---
-            
-            if not buyer_id:
+            # --- ✨ INICIO: LÓGICA DE COMPRADOR Y DUEÑO CORREGIDA ✨ ---
+            # 1. Determinamos quién es el dueño de la sesión (el vendedor o el jefe del empleado)
+            owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+            if not owner_id:
                 yield rx.toast.error("Error: No se pudo determinar el contexto del vendedor.")
                 return
 
-            buyer_info = session.get(UserInfo, buyer_id)
+            # 2. El 'comprador' es el usuario seleccionado, o si no, el propio dueño (venta de mostrador)
+            buyer_id = self.direct_sale_buyer_id if self.direct_sale_buyer_id is not None else owner_id
 
+            buyer_info = session.get(UserInfo, buyer_id)
             if not buyer_info or not buyer_info.user:
                 yield rx.toast.error("El comprador o el contexto del vendedor no son válidos.")
                 return
@@ -1080,11 +1085,22 @@ class AppState(reflex_local_auth.LocalAuthState):
                         price_at_purchase=item.price, selected_variant=item.variant_details,
                     )
                 )
+            
+            # --- ✨ INICIO: LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ✨ ---
+            final_shipping_name = "Cliente (Venta Directa)" # Valor por defecto
+            if self.direct_sale_buyer_id:
+                # Si se seleccionó un usuario registrado
+                final_shipping_name = buyer_info.user.username
+            elif self.direct_sale_anonymous_buyer_name.strip():
+                # Si se escribió un nombre en el nuevo campo
+                final_shipping_name = self.direct_sale_anonymous_buyer_name.strip()
+            # --- ✨ FIN: LÓGICA PARA DETERMINAR EL NOMBRE DEL COMPRADOR ✨ ---
 
             now = datetime.now(timezone.utc)
             new_purchase = PurchaseModel(
                 userinfo_id=buyer_info.id, total_price=subtotal,
                 status=PurchaseStatus.DELIVERED, payment_method="Venta Directa",
+                shipping_name=final_shipping_name, # Se usa el nombre final determinado
                 confirmed_at=now, purchase_date=now, user_confirmed_delivery_at=now,
                 shipping_applied=0,
                 shipping_name=buyer_info.user.username if self.direct_sale_buyer_id is not None else "Cliente Venta Directa",
