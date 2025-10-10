@@ -895,7 +895,69 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.success("Autenticación de dos factores desactivada.")
             else:
                 yield rx.toast.error("La contraseña es incorrecta.")
-            
+
+    # --- Inicio: Nuevas variables para el modal de veto ---
+    show_ban_modal: bool = False
+    user_to_ban: Optional[UserManagementDTO] = None
+    ban_duration_value: str = "7"
+    ban_duration_unit: str = "días"
+
+    # --- Nuevos manejadores de eventos para el modal ---
+    def open_ban_modal(self, user: UserManagementDTO):
+        """Abre el modal y establece el usuario que se va a vetar."""
+        self.user_to_ban = user
+        self.show_ban_modal = True
+
+    def close_ban_modal(self):
+        """Cierra el modal y resetea las variables."""
+        self.show_ban_modal = False
+        self.user_to_ban = None
+        self.ban_duration_value = "7"
+        self.ban_duration_unit = "días"
+
+    def set_ban_duration_value(self, value: str):
+        self.ban_duration_value = value
+
+    def set_ban_duration_unit(self, unit: str):
+        self.ban_duration_unit = unit
+
+    @rx.event
+    def confirm_ban(self):
+        """Aplica el veto al usuario con la duración y unidad seleccionadas."""
+        if not self.is_admin or not self.user_to_ban:
+            return rx.toast.error("Acción no permitida.")
+
+        try:
+            duration = int(self.ban_duration_value)
+            if duration <= 0:
+                return rx.toast.error("La duración debe ser un número positivo.")
+        except (ValueError, TypeError):
+            return rx.toast.error("Por favor, introduce un número válido.")
+
+        delta = timedelta(days=0)
+        if self.ban_duration_unit == "días":
+            delta = timedelta(days=duration)
+        elif self.ban_duration_unit == "meses":
+            delta = timedelta(days=duration * 30)  # Aproximación
+        elif self.ban_duration_unit == "años":
+            delta = timedelta(days=duration * 365) # Aproximación
+
+        with rx.session() as session:
+            user_info = session.get(UserInfo, self.user_to_ban.id)
+            if user_info:
+                user_info.is_banned = True
+                user_info.ban_expires_at = datetime.now(timezone.utc) + delta
+                session.add(user_info)
+                session.commit()
+
+                # Actualiza el DTO en el estado para reflejar el cambio en la UI
+                for i, u in enumerate(self.managed_users):
+                    if u.id == self.user_to_ban.id:
+                        self.managed_users[i].is_banned = True
+                        break
+        
+        yield self.close_ban_modal()
+        yield rx.toast.success(f"{self.user_to_ban.username} ha sido vetado.")
 
      # --- INICIO: NUEVAS VARIABLES PARA VENTA DIRECTA ---
 
