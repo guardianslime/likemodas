@@ -4627,8 +4627,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             return
 
         summary = self.cart_summary
-        
-        # --- ✨ CORRECCIÓN CLAVE: Inicializamos la lista aquí al principio ✨ ---
         items_to_create = []
 
         if self.payment_method == "Sistecredito":
@@ -4730,15 +4728,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.error("No se pudo iniciar el pago con Sistecredito. Inténtalo de nuevo.")
                     return
         
-        # --- LÓGICA PARA WOMPI Y CONTRA ENTREGA (CORREGIDA) ---
-        else: 
+        else:  # Lógica para Wompi (Online) y Contra Entrega
             purchase_id_for_payment = None
             total_price_for_payment = None
-            
-            # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
-            # Creamos el diccionario para agrupar por vendedor ANTES del commit.
             seller_groups = defaultdict(list)
-            # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
 
             with rx.session() as session:
                 product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
@@ -4769,10 +4762,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
                         return
                     
-                    # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
-                    # Llenamos el diccionario de vendedores aquí, mientras los objetos están "vivos".
                     seller_groups[post.userinfo_id].append(post.id)
-                    # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
 
                 initial_status = PurchaseStatus.PENDING_PAYMENT if self.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
                 
@@ -4814,7 +4804,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                             selected_variant=selection_attrs,
                         )
                         session.add(item)
-                        items_to_create.append(item) # Esto es para la notificación
+                
+                # ✨ Lógica de Notificación movida aquí DENTRO de la sesión ✨
+                if self.payment_method == "Contra Entrega":
+                    for seller_id, product_ids in seller_groups.items():
+                        notification = NotificationModel(
+                            userinfo_id=seller_id,
+                            message=f"¡Nueva orden (#{new_purchase.id}) recibida! Tienes productos pendientes de confirmar.",
+                            url="/admin/confirm-payments"
+                        )
+                        session.add(notification)
+                    # Activamos la bandera para el punto rojo en el menú
+                    self.new_purchase_notification = True
+
                 session.commit()
 
             if self.payment_method == "Online":
@@ -4846,20 +4848,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:  # Pago Contra Entrega
                 self.cart.clear()
                 self.default_shipping_address = None
-                
-                # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
-                # Ahora usamos el diccionario `seller_groups` que creamos antes.
-                with rx.session() as session:
-                    for seller_id, product_ids in seller_groups.items():
-                        notification = NotificationModel(
-                            userinfo_id=seller_id,
-                            message=f"¡Nueva orden (#{new_purchase.id}) recibida! Tienes productos pendientes de confirmar.",
-                            url="/admin/confirm-payments"
-                        )
-                        session.add(notification)
-                    session.commit()
-                # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
-
                 yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
                 yield rx.redirect("/my-purchases")
                 return

@@ -9,6 +9,7 @@ from ..auth.admin_auth import require_panel_access
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     """Muestra un item individual y abre el modal del producto al hacer clic en la imagen."""
     return rx.hstack(
+        # ✨ INICIO DE LA CORRECCIÓN ✨
         rx.box(
             rx.image(
                 src=rx.get_upload_url(item.image_url),
@@ -18,12 +19,13 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
                 object_fit="cover",
                 border_radius="sm",
             ),
-            # --- ✨ CORRECCIÓN CLAVE: Se llama a la función correcta y universal ✨ ---
+            # Se añade el evento on_click para abrir el modal
             on_click=AppState.open_product_detail_modal(item.id),
             cursor="pointer",
             _hover={"opacity": 0.8},
             transition="opacity 0.2s"
         ),
+        # ✨ FIN DE LA CORRECCIÓN ✨
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
             rx.text(item.variant_details_str, size="2", color_scheme="gray"),
