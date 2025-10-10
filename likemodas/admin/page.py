@@ -4,6 +4,8 @@ import reflex as rx
 from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
 from ..auth.admin_auth import require_panel_access
+# ✨ IMPORTA EL MODAL AQUÍ ✨
+from ..blog.public_page import product_detail_modal
 
 # ... (purchase_item_display_admin y purchase_items_view no cambian) ...
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
@@ -269,7 +271,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
 @require_panel_access 
 def admin_confirm_content() -> rx.Component:
     """Página de admin para gestionar órdenes activas."""
-    return rx.center(
+    page_content = rx.center(
         rx.vstack(
             rx.heading("Gestionar Órdenes Activas", size="8"),
             rx.cond(
@@ -280,11 +282,18 @@ def admin_confirm_content() -> rx.Component:
             align="center", spacing="5", padding="2em", width="100%", max_width="960px", 
         ), width="100%"
     )
+    
+    # ✨ CORRECCIÓN: Envolvemos la página en un fragmento y añadimos el modal ✨
+    return rx.fragment(
+        page_content,
+        product_detail_modal(is_for_direct_sale=True)
+    )
+
 
 @require_panel_access 
 def payment_history_content() -> rx.Component:
     """Página de admin para ver el historial de pagos."""
-    return rx.center(
+    page_content = rx.center(
         rx.vstack(
             rx.heading("Historial de Pagos", size="8"),
             rx.input(
@@ -300,4 +309,10 @@ def payment_history_content() -> rx.Component:
             ),
             align="center", spacing="6", padding="2em", width="100%", max_width="960px",
         ), width="100%"
+    )
+    
+    # ✨ CORRECCIÓN: Hacemos lo mismo para la página de historial ✨
+    return rx.fragment(
+        page_content,
+        product_detail_modal(is_for_direct_sale=True)
     )

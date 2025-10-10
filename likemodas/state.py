@@ -5697,19 +5697,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
+            # La condición se asegura que solo actúe sobre pedidos enviados o ya entregados
             if purchase and purchase.payment_method == "Contra Entrega" and purchase.status in [PurchaseStatus.SHIPPED, PurchaseStatus.DELIVERED]:
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 purchase.action_by_id = self.authenticated_user_info.id
 
-                # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
-                # Cambiamos el estado a "Entregado" para que se mueva al historial.
+                # ✨ ---- INICIO DE LA CORRECCIÓN CLAVE ---- ✨
+                # Esta es la línea que faltaba. Cambia el estado para moverlo al historial.
                 purchase.status = PurchaseStatus.DELIVERED
-                # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
+                # ✨ ---- FIN DE LA CORRECCIÓN CLAVE ---- ✨
 
                 session.add(purchase)
                 session.commit()
                 
                 yield rx.toast.success(f"Pago de la compra #{purchase.id} registrado.")
+                # Esta línea refresca la lista de órdenes activas, haciendo que el pedido desaparezca.
                 yield AppState.load_active_purchases
             else:
                 yield rx.toast.error("Esta acción no es válida para este pedido.")
