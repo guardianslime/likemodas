@@ -1284,11 +1284,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if not purchase: return None
 
-            # Un empleado puede ver facturas de su vendedor, y un vendedor las suyas
-            is_owner = self.context_user_id == purchase.items[0].blog_post.userinfo_id if purchase.items else False
+            # ✨ --- INICIO DE LA CORRECCIÓN DE PERMISOS --- ✨
+            # Verificamos si el usuario actual es el comprador O si es el vendedor/empleado de ALGÚN producto en la compra.
+            seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
+            
+            is_seller_or_employee = self.context_user_id in seller_ids_in_purchase
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
-            if not is_owner and not is_buyer:
-                return None
+
+            if not is_seller_or_employee and not is_buyer:
+                return None # Si no es ni comprador ni vendedor/empleado, se deniega el acceso.
+            # ✨ --- FIN DE LA CORRECCIÓN DE PERMISOS --- ✨
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
             shipping_cost = purchase.shipping_applied or 0.0
@@ -1299,17 +1304,17 @@ class AppState(reflex_local_auth.LocalAuthState):
             if purchase.shipping_address and purchase.shipping_neighborhood and purchase.shipping_city:
                 full_address = f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}"
 
-            # --- CORRECCIÓN DE DATOS DEL CLIENTE PARA LA FACTURA ---
+            # ✨ --- INICIO DE LA CORRECCIÓN DE DATOS DE CLIENTE EN FACTURA --- ✨
             customer_name_display = "N/A"
             customer_email_display = "Sin Correo"
+
             if purchase.is_direct_sale:
-                # Para Venta Directa, SIEMPRE usamos los datos guardados en la compra
-                customer_name_display = purchase.shipping_name or "Cliente"
+                customer_name_display = purchase.shipping_name or "Cliente Directo"
                 customer_email_display = purchase.anonymous_customer_email or "Sin Correo"
             elif purchase.userinfo and purchase.userinfo.user:
-                # Para compras normales, usamos los datos del usuario registrado
-                customer_name_display = purchase.shipping_name # El nombre de envío es el correcto aquí
+                customer_name_display = purchase.shipping_name # Usamos el nombre de envío
                 customer_email_display = purchase.userinfo.email
+            # ✨ --- FIN DE LA CORRECCIÓN DE DATOS --- ✨
             
             invoice_items = []
             for item in purchase.items:
@@ -5371,17 +5376,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
 
-                # --- LÓGICA DE DATOS DE CLIENTE CORREGIDA Y SIMPLIFICADA ---
+                # ✨ --- INICIO DE LA CORRECCIÓN DE DATOS DE CLIENTE --- ✨
                 customer_name_display = "N/A"
                 customer_email_display = "Sin Correo"
+
                 if p.is_direct_sale:
-                    # Para Venta Directa, SIEMPRE usamos los datos guardados en la compra
-                    customer_name_display = p.shipping_name or "Cliente"
+                    # Para Venta Directa, usamos los datos guardados en la compra
+                    customer_name_display = p.shipping_name or "Cliente Directo"
                     customer_email_display = p.anonymous_customer_email or "Sin Correo"
                 elif p.userinfo and p.userinfo.user:
                     # Para compras normales, usamos los datos del usuario registrado
                     customer_name_display = p.userinfo.user.username
                     customer_email_display = p.userinfo.email
+                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
                
                 # --- ✨ INICIO: MANEJO DE VALORES NULOS ✨ ---
                 full_address = "N/A (Venta Directa)"
@@ -5732,7 +5739,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if q in f"#{p.id}" 
             or q in p.customer_name.lower() 
             or q in p.customer_email.lower()
-            # --- ✨ LÍNEA AÑADIDA PARA BUSCAR EN CORREO ANÓNIMO ✨ ---
+            # ✨ --- AÑADE ESTA LÍNEA PARA BUSCAR EN EL CORREO ANÓNIMO --- ✨
             or (p.anonymous_customer_email and q in p.anonymous_customer_email.lower())
         ]
 
