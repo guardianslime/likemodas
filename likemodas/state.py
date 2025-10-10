@@ -6669,31 +6669,77 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def handle_account_deletion(self, form_data: dict):
-        """Elimina permanentemente la cuenta del usuario."""
+        """
+        [VERSIÓN FINAL] Anonimiza la cuenta de un usuario en lugar de eliminarla.
+        Conserva el historial de compras y comentarios, pero elimina los datos personales.
+        """
         if not self.authenticated_user:
-            # --- CORRECCIÓN ---
             yield rx.toast.error("Debes iniciar sesión.")
             return
             
         password = form_data.get("password")
         if not password:
-            # --- CORRECCIÓN ---
-            yield rx.toast.error("Debes ingresar tu contraseña para eliminar la cuenta.")
+            yield rx.toast.error("Debes ingresar tu contraseña para confirmar.")
             return
 
         with rx.session() as session:
+            # 1. Obtenemos los registros del usuario que vamos a modificar
             local_user = session.get(LocalUser, self.authenticated_user.id)
-            if not bcrypt.checkpw(password.encode("utf-8"), local_user.password_hash):
-                # --- CORRECCIÓN ---
+            user_info = session.exec(
+                sqlmodel.select(UserInfo)
+                .options(
+                    sqlalchemy.orm.selectinload(UserInfo.purchases),
+                    sqlalchemy.orm.selectinload(UserInfo.comments),
+                )
+                .where(UserInfo.id == self.authenticated_user_info.id)
+            ).one_or_none()
+
+            # 2. Verificamos la contraseña
+            if not local_user or not user_info or not bcrypt.checkpw(password.encode("utf-8"), local_user.password_hash):
                 yield rx.toast.error("La contraseña es incorrecta.")
                 return
                 
-            session.delete(local_user)
+            # --- ✨ INICIO DE LA LÓGICA DE ANONIMIZACIÓN ✨ ---
+            
+            anonymized_username = f"usuario_eliminado_{user_info.id}"
+            anonymized_email = f"deleted_{user_info.id}@likemodas.com"
+
+            # 3. Anonimizar el historial de compras (eliminando datos de envío)
+            for purchase in user_info.purchases:
+                purchase.shipping_name = "Dato Eliminado"
+                purchase.shipping_city = None
+                purchase.shipping_neighborhood = None
+                purchase.shipping_address = "Dato Eliminado"
+                purchase.shipping_phone = None
+                session.add(purchase)
+
+            # 4. Anonimizar los comentarios (cambiando el nombre de autor)
+            for comment in user_info.comments:
+                comment.author_username = "Usuario Eliminado"
+                comment.author_initial = "U"
+                session.add(comment)
+
+            # 5. Anonimizar el perfil principal (UserInfo)
+            user_info.email = anonymized_email
+            user_info.phone = None
+            user_info.avatar_url = None
+            # Opcional: Marcarlo como baneado para más seguridad
+            user_info.is_banned = True 
+            session.add(user_info)
+            
+            # 6. Anonimizar los datos de login (LocalUser)
+            local_user.username = anonymized_username
+            # Se genera un hash de contraseña aleatorio e imposible de usar
+            local_user.password_hash = bcrypt.hashpw(secrets.token_bytes(32), bcrypt.gensalt())
+            session.add(local_user)
+            
+            # 7. Confirmamos todos los cambios en la base de datos
             session.commit()
+
+            # --- ✨ FIN DE LA LÓGICA DE ANONIMIZACIÓN ✨ ---
             
         yield rx.toast.success("Tu cuenta ha sido eliminada permanentemente.")
         yield AppState.do_logout
-        # --- CORRECCIÓN ---
         yield rx.redirect("/")
 
     # --- ✨ FIN: SECCIÓN DE PERFIL DE USUARIO CORREGIDA ✨ ---
