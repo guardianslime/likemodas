@@ -33,7 +33,14 @@ def ban_user_modal() -> rx.Component:
                     ),
                     rx.flex(
                         rx.dialog.close(
-                            rx.button("Cancelar", variant="soft", color_scheme="gray", on_click=AppState.close_ban_modal)
+                            # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
+                            rx.button(
+                                "Cancelar", 
+                                variant="soft", 
+                                color_scheme="gray", 
+                                on_click=AppState.close_ban_modal,
+                                type="button"  # Añadimos type="button" para que no envíe el formulario.
+                            )
                         ),
                         rx.button("Confirmar Veto", type="submit", color_scheme="red"),
                         spacing="3",

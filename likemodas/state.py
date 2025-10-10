@@ -938,9 +938,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.ban_duration_unit == "días":
             delta = timedelta(days=duration)
         elif self.ban_duration_unit == "meses":
-            delta = timedelta(days=duration * 30)  # Aproximación
+            delta = timedelta(days=duration * 30)
         elif self.ban_duration_unit == "años":
-            delta = timedelta(days=duration * 365) # Aproximación
+            delta = timedelta(days=duration * 365)
+
+        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
+        # Guardamos el nombre de usuario ANTES de que se borre del estado.
+        username_to_ban = self.user_to_ban.username
 
         with rx.session() as session:
             user_info = session.get(UserInfo, self.user_to_ban.id)
@@ -950,14 +954,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.add(user_info)
                 session.commit()
 
-                # Actualiza el DTO en el estado para reflejar el cambio en la UI
                 for i, u in enumerate(self.managed_users):
                     if u.id == self.user_to_ban.id:
                         self.managed_users[i].is_banned = True
                         break
         
+        # Cerramos el modal (esto borra self.user_to_ban)
         yield self.close_ban_modal()
-        yield rx.toast.success(f"{self.user_to_ban.username} ha sido vetado.")
+        # Y LUEGO mostramos el toast, usando la variable que guardamos.
+        yield rx.toast.success(f"'{username_to_ban}' ha sido vetado.")
 
      # --- INICIO: NUEVAS VARIABLES PARA VENTA DIRECTA ---
 
