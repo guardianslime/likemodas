@@ -4730,9 +4730,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                     yield rx.toast.error("No se pudo iniciar el pago con Sistecredito. Inténtalo de nuevo.")
                     return
         
-        else: # Lógica para Wompi (Online) y Contra Entrega
+        # --- LÓGICA PARA WOMPI Y CONTRA ENTREGA (CORREGIDA) ---
+        else: 
             purchase_id_for_payment = None
             total_price_for_payment = None
+            
+            # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
+            # Creamos el diccionario para agrupar por vendedor ANTES del commit.
+            seller_groups = defaultdict(list)
+            # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
 
             with rx.session() as session:
                 product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
@@ -4762,6 +4768,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     if not variant_found:
                         yield rx.toast.error(f"La variante para '{post.title}' ya no existe. Compra cancelada.")
                         return
+                    
+                    # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
+                    # Llenamos el diccionario de vendedores aquí, mientras los objetos están "vivos".
+                    seller_groups[post.userinfo_id].append(post.id)
+                    # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
 
                 initial_status = PurchaseStatus.PENDING_PAYMENT if self.payment_method == "Online" else PurchaseStatus.PENDING_CONFIRMATION
                 
@@ -4803,7 +4814,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                             selected_variant=selection_attrs,
                         )
                         session.add(item)
-                        items_to_create.append(item)
+                        items_to_create.append(item) # Esto es para la notificación
                 session.commit()
 
             if self.payment_method == "Online":
@@ -4836,12 +4847,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.cart.clear()
                 self.default_shipping_address = None
                 
+                # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
+                # Ahora usamos el diccionario `seller_groups` que creamos antes.
                 with rx.session() as session:
-                    seller_groups = defaultdict(list)
-                    for item in items_to_create:
-                        post_owner_id = post_map[item.blog_post_id].userinfo_id
-                        seller_groups[post_owner_id].append(item.blog_post_id)
-
                     for seller_id, product_ids in seller_groups.items():
                         notification = NotificationModel(
                             userinfo_id=seller_id,
@@ -4850,6 +4858,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                         session.add(notification)
                     session.commit()
+                # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
 
                 yield rx.toast.success("¡Gracias por tu compra! Tu orden está pendiente de confirmación.")
                 yield rx.redirect("/my-purchases")
@@ -5694,7 +5703,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def confirm_cod_payment_received(self, purchase_id: int):
-        """Confirma el pago de un pedido Contra Entrega, registrando al actor."""
+        """Confirma el pago de un pedido Contra Entrega, registrando al actor y cambiando el estado."""
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         
@@ -5702,9 +5711,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.payment_method == "Contra Entrega" and purchase.status in [PurchaseStatus.SHIPPED, PurchaseStatus.DELIVERED]:
                 purchase.confirmed_at = datetime.now(timezone.utc)
-                
-                # --- ✨ CORRECCIÓN CLAVE: Guardamos el ID del usuario que confirma ✨ ---
                 purchase.action_by_id = self.authenticated_user_info.id
+
+                # ✨ INICIO DE LA CORRECCIÓN CLAVE ✨
+                # Cambiamos el estado a "Entregado" para que se mueva al historial.
+                purchase.status = PurchaseStatus.DELIVERED
+                # ✨ FIN DE LA CORRECCIÓN CLAVE ✨
 
                 session.add(purchase)
                 session.commit()
