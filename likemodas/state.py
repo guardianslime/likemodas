@@ -113,6 +113,8 @@ class UserManagementDTO(rx.Base):
     role: UserRole
     is_banned: bool
     is_verified: bool
+    # ✨ AÑADE ESTA LÍNEA ✨
+    created_at: datetime 
 
 # ✨ --- FIN DE LA SOLUCIÓN --- ✨
 
@@ -1697,8 +1699,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def search_users_for_employment(self):
         """
-        [CORREGIDO] Busca usuarios que puedan ser contratados,
-        incluyendo ahora tanto a Clientes como a otros Vendedores.
+        [CORREGIDO] Busca usuarios que puedan ser contratados, excluyendo a los
+        que han sido eliminados/vetados.
         """
         self.search_results_users = []
         query = self.search_query_users.strip()
@@ -1706,21 +1708,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             return rx.toast.info("Introduce un nombre de usuario o email para buscar.")
 
         with rx.session() as session:
-            # Subconsulta para encontrar IDs de usuarios que ya son empleados de alguien
             subquery = sqlmodel.select(EmpleadoVendedorLink.empleado_id)
             
             results = session.exec(
                 sqlmodel.select(UserInfo)
                 .join(LocalUser)
                 .where(
-                    # --- ¡CORRECCIÓN CLAVE! ---
-                    # Ahora busca usuarios cuyo rol sea CUSTOMER O VENDEDOR
                     UserInfo.role.in_([UserRole.CUSTOMER, UserRole.VENDEDOR]),
-                    
-                    # Excluye a los que ya son empleados
                     UserInfo.id.notin_(subquery),
                     
-                    # Condición de búsqueda por nombre o email
+                    # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
+                    # Esta línea excluye a los usuarios eliminados/vetados
+                    UserInfo.is_banned == False,
+                    
                     (LocalUser.username.ilike(f"%{query}%")) | (UserInfo.email.ilike(f"%{query}%"))
                 )
             ).all()
@@ -1833,19 +1833,48 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Actualiza el término de búsqueda para la tabla de gestión de usuarios."""
         self.search_query_all_users = query
 
-    # --- 2. PROPIEDAD COMPUTADA PARA FILTRAR USUARIOS ---
-    # REEMPLAZA las propiedades computadas que causaban el error
+    # --- Variables de estado para el nuevo filtro de usuarios ---
+    user_filter_start_date: str = ""
+    user_filter_end_date: str = ""
+
+    def set_user_filter_start_date(self, date: str):
+        self.user_filter_start_date = date
+
+    def set_user_filter_end_date(self, date: str):
+        self.user_filter_end_date = date
+
+    # --- Reemplaza tu propiedad @rx.var filtered_all_users ---
     @rx.var
     def filtered_all_users(self) -> list[UserManagementDTO]:
-        """Filtra la lista de DTOs de usuarios según la barra de búsqueda."""
-        if not self.search_query_all_users.strip():
-            return self.managed_users
-        
-        query = self.search_query_all_users.lower()
-        return [
-            u for u in self.managed_users
-            if (query in u.username.lower() or query in u.email.lower())
-        ]
+        """Filtra la lista de DTOs de usuarios por búsqueda de texto y rango de fechas."""
+        users_to_filter = self.managed_users
+
+        # 1. Filtrado por texto
+        if self.search_query_all_users.strip():
+            query = self.search_query_all_users.lower()
+            users_to_filter = [
+                u for u in users_to_filter
+                if (query in u.username.lower() or query in u.email.lower())
+            ]
+
+        # 2. Filtrado por fecha de inicio
+        if self.user_filter_start_date:
+            try:
+                start_dt = datetime.fromisoformat(self.user_filter_start_date).replace(tzinfo=pytz.UTC)
+                users_to_filter = [u for u in users_to_filter if u.created_at.replace(tzinfo=pytz.UTC) >= start_dt]
+            except ValueError:
+                pass
+
+        # 3. Filtrado por fecha de fin
+        if self.user_filter_end_date:
+            try:
+                end_dt = datetime.fromisoformat(self.user_filter_end_date).replace(tzinfo=pytz.UTC)
+                end_dt_inclusive = end_dt + timedelta(days=1)
+                users_to_filter = [u for u in users_to_filter if u.created_at.replace(tzinfo=pytz.UTC) < end_dt_inclusive]
+            except ValueError:
+                pass
+
+        return users_to_filter
 
     # --- 3. NUEVO MANEJADOR DE EVENTOS PARA CAMBIAR ROL DE VENDEDOR ---
     @rx.event
@@ -6030,19 +6059,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     # REEMPLAZA el manejador de eventos load_all_users
     @rx.event
     def load_all_users(self):
-        """
-        [CORRECCIÓN DEFINITIVA] Carga todos los usuarios y los convierte en DTOs seguros para el estado.
-        """
+        """Carga todos los usuarios y los convierte en DTOs, incluyendo la fecha de creación."""
         if not self.is_admin:
             self.managed_users = []
             return rx.redirect("/")
-        
+
         with rx.session() as session:
             users_from_db = session.exec(
                 sqlmodel.select(UserInfo).options(sqlalchemy.orm.joinedload(UserInfo.user))
             ).all()
-            
-            # Convierte los objetos complejos de la BD en DTOs simples y seguros
+
             self.managed_users = [
                 UserManagementDTO(
                     id=u.id,
@@ -6051,6 +6077,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     role=u.role,
                     is_banned=u.is_banned,
                     is_verified=u.is_verified,
+                    # ✨ AÑADE ESTA LÍNEA ✨
+                    created_at=u.created_at
                 )
                 for u in users_from_db
             ]

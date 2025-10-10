@@ -58,12 +58,13 @@ def user_row(user: UserManagementDTO) -> rx.Component: # <-- Usa el DTO
     )
 
 def user_management_page() -> rx.Component:
-    """Página principal de gestión de usuarios con búsqueda."""
+    """Página principal de gestión de usuarios con búsqueda y filtro de fechas."""
     return rx.container(
         rx.vstack(
             rx.heading("Gestión de Usuarios", size="7"),
             rx.text("Administra los roles y el estado de todos los usuarios registrados."),
             
+            # Barra de búsqueda por texto
             rx.input(
                 placeholder="Buscar por nombre de usuario o email...",
                 value=AppState.search_query_all_users,
@@ -72,6 +73,33 @@ def user_management_page() -> rx.Component:
                 max_width="400px",
                 margin_y="1em"
             ),
+            
+            # ✨ --- INICIO DE LA CORRECCIÓN: AÑADIR FILTROS DE FECHA --- ✨
+            rx.hstack(
+                rx.vstack(
+                    rx.text("Registrado desde:", size="2"),
+                    rx.input(
+                        type="date", 
+                        value=AppState.user_filter_start_date, 
+                        on_change=AppState.set_user_filter_start_date
+                    ),
+                    align_items="stretch"
+                ),
+                rx.vstack(
+                    rx.text("Registrado hasta:", size="2"),
+                    rx.input(
+                        type="date", 
+                        value=AppState.user_filter_end_date, 
+                        on_change=AppState.set_user_filter_end_date
+                    ),
+                    align_items="stretch"
+                ),
+                spacing="4",
+                width="100%",
+                max_width="400px",
+                justify="start",
+            ),
+            # ✨ --- FIN DE LA CORRECCIÓN --- ✨
             
             rx.divider(margin_y="1.5em"),
             rx.table.root(
