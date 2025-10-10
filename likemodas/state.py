@@ -1342,20 +1342,25 @@ class AppState(reflex_local_auth.LocalAuthState):
                         )
                     )
             
+            # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+            # Al crear el objeto final, ahora usamos las variables correctas que calculamos arriba.
             return InvoiceData(
                 id=purchase.id,
                 purchase_date_formatted=purchase.purchase_date_formatted,
                 status=purchase.status.value,
                 items=invoice_items,
-                customer_name=purchase.shipping_name,
-                customer_email=purchase.userinfo.email if purchase.userinfo else "N/A",
-                shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}",
+                # Se reemplazan las líneas antiguas por estas:
+                customer_name=customer_name_display,
+                customer_email=customer_email_display,
+                # El resto de los campos se mantiene igual
+                shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}" if purchase.shipping_address else "N/A (Venta Directa)",
                 shipping_phone=purchase.shipping_phone,
                 subtotal_cop=format_to_cop(subtotal_base_products),
                 shipping_applied_cop=format_to_cop(shipping_cost),
                 iva_cop=format_to_cop(iva_amount),
                 total_price_cop=format_to_cop(purchase.total_price),
             )
+            # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
             
             
     @rx.var
