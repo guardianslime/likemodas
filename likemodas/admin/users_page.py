@@ -16,13 +16,11 @@ def user_status_badge(user: UserManagementDTO) -> rx.Component:
         )
     )
 
-# --- ✨ NUEVO COMPONENTE PARA LA VISTA MÓVIL ✨ ---
 def mobile_user_card(user: UserManagementDTO) -> rx.Component:
     """Componente de tarjeta para mostrar un usuario en la vista móvil."""
     return rx.card(
         rx.vstack(
             rx.hstack(
-                # En el DTO no tenemos el avatar, usamos el inicial por ahora.
                 rx.avatar(fallback=user.username[0].upper() if user.username else "?", size="4"),
                 rx.vstack(
                     rx.heading(user.username, size="4", trim="end", no_of_lines=1),
@@ -36,7 +34,8 @@ def mobile_user_card(user: UserManagementDTO) -> rx.Component:
             rx.hstack(
                 rx.text("Rol:", weight="medium", size="2"),
                 rx.spacer(),
-                rx.badge(user.role.value),
+                # ✨ CORRECCIÓN AQUÍ: Se elimina .value ✨
+                rx.badge(user.role),
                 align="center", width="100%",
             ),
             rx.hstack(
@@ -68,7 +67,7 @@ def mobile_user_card(user: UserManagementDTO) -> rx.Component:
                     rx.button("Quitar Veto", on_click=AppState.unban_user(user.id), color_scheme="green", size="1"),
                     rx.button("Vetar (7 días)", on_click=AppState.ban_user(user.id, 7), color_scheme="red", size="1"),
                 ),
-                spacing="2", wrap="wrap", # Permite que los botones se ajusten en varias líneas
+                spacing="2", wrap="wrap",
             ),
             spacing="3", width="100%",
         )
@@ -79,7 +78,8 @@ def desktop_user_row(user: UserManagementDTO) -> rx.Component:
     return rx.table.row(
         rx.table.cell(user.username),
         rx.table.cell(user.email),
-        rx.table.cell(rx.badge(user.role.value)),
+        # ✨ CORRECCIÓN AQUÍ: Se elimina .value ✨
+        rx.table.cell(rx.badge(user.role)),
         rx.table.cell(user_status_badge(user)),
         rx.table.cell(
             rx.hstack(
@@ -173,7 +173,6 @@ def user_management_page() -> rx.Component:
             
             rx.divider(margin_y="1.5em"),
             
-            # Contenedor para las vistas responsivas
             rx.fragment(
                 desktop_view,
                 mobile_view,
