@@ -154,6 +154,8 @@ class AdminPurchaseCardData(rx.Base):
     id: int
     customer_name: str
     customer_email: str
+    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
+    anonymous_customer_email: Optional[str] = None
     purchase_date_formatted: str
     status: str
     total_price: float
