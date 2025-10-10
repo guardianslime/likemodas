@@ -21,7 +21,17 @@ def mobile_user_card(user: UserManagementDTO) -> rx.Component:
     return rx.card(
         rx.vstack(
             rx.hstack(
-                rx.avatar(fallback=user.username[0].upper() if user.username else "?", size="4"),
+                # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+                rx.avatar(
+                    # Se reemplaza el if/else de Python por rx.cond
+                    fallback=rx.cond(
+                        user.username,
+                        user.username[0].upper(),
+                        "?"
+                    ), 
+                    size="4"
+                ),
+                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
                 rx.vstack(
                     rx.heading(user.username, size="4", trim="end", no_of_lines=1),
                     rx.text(user.email, size="2", color_scheme="gray", trim="end", no_of_lines=1),

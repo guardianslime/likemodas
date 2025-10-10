@@ -9,10 +9,15 @@ from ..auth.admin_auth import require_panel_access
 def user_search_result_card(user: UserInfo) -> rx.Component:
     return rx.card(
         rx.hstack(
-            # ✨ CORRECCIÓN: Ahora intenta mostrar el avatar real del usuario ✨
             rx.avatar(
                 src=rx.get_upload_url(user.avatar_url),
-                fallback=rx.cond(user.user, user.user.username[0].upper(), "?")
+                # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+                fallback=rx.cond(
+                    user.user, # La condición principal se mantiene
+                    user.user.username[0].upper(),
+                    "?"
+                )
+                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
             ),
             rx.vstack(
                 rx.text(rx.cond(user.user, user.user.username, "Usuario Inválido"), weight="bold"),
