@@ -1699,8 +1699,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def search_users_for_employment(self):
         """
-        [CORREGIDO] Busca usuarios que puedan ser contratados, excluyendo a los
-        que han sido eliminados/vetados.
+        [CORREGIDO] Busca usuarios que puedan ser contratados, cargando sus datos
+        de perfil y excluyendo a los que han sido eliminados/vetados.
         """
         self.search_results_users = []
         query = self.search_query_users.strip()
@@ -1712,15 +1712,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             results = session.exec(
                 sqlmodel.select(UserInfo)
+                # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+                # Añadimos .options() para cargar la relación 'user' y tener acceso al nombre de usuario.
+                .options(sqlalchemy.orm.joinedload(UserInfo.user))
+                # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
                 .join(LocalUser)
                 .where(
                     UserInfo.role.in_([UserRole.CUSTOMER, UserRole.VENDEDOR]),
                     UserInfo.id.notin_(subquery),
-                    
-                    # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
-                    # Esta línea excluye a los usuarios eliminados/vetados
                     UserInfo.is_banned == False,
-                    
                     (LocalUser.username.ilike(f"%{query}%")) | (UserInfo.email.ilike(f"%{query}%"))
                 )
             ).all()
