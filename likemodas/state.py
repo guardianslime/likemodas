@@ -5323,24 +5323,22 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_purchase_history(self):
         """
-        [CORREGIDO] Carga el historial de compras finalizadas, incluyendo el nombre
-        del usuario que realizó la última acción.
+        [CORRECCIÓN DEFINITIVA] Carga el historial de compras, mostrando los datos 
+        correctos del cliente gracias a la relación de modelo corregida.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado):
             self.purchase_history = []
             return
 
         with rx.session() as session:
-            user_id_to_check = self.context_user_info.id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else 0)
+            user_id_to_check = self.context_user_id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else 0)
 
             results = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post),
-                    # --- ✨ INICIO: AÑADIMOS LA CARGA DEL USUARIO DE LA ACCIÓN ✨ ---
                     sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
-                    # --- ✨ FIN: AÑADIMOS LA CARGA DEL USUARIO DE LA ACCIÓN ✨ ---
                 )
                 .where(
                     PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]),
@@ -5352,18 +5350,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_history = []
             for p in results:
-            # --- ✨ INICIO: LÓGICA DE ITEMS RESTAURADA ✨ ---
+                # La lógica para 'detailed_items' y 'actor_name' se mantiene igual
                 detailed_items = []
                 for item in p.items:
                     if item.blog_post:
-                        variant_image_url = ""
-                        for variant in item.blog_post.variants:
-                            if variant.get("attributes") == item.selected_variant:
-                                variant_image_url = variant.get("image_url", "")
-                                break
-                        if not variant_image_url and item.blog_post.variants:
-                            variant_image_url = item.blog_post.variants[0].get("image_url", "")
-
+                        variant_image_url = next((v.get("image_url", "") for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), 
+                                                item.blog_post.variants[0].get("image_url", "") if item.blog_post.variants else "")
                         variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
                         detailed_items.append(
                             PurchaseItemCardData(
@@ -5373,49 +5365,42 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 quantity=item.quantity, variant_details_str=variant_str,
                             )
                         )
-                # --- ✨ FIN: LÓGICA DE ITEMS RESTAURADA ✨ ---
-
-                # --- ✨ INICIO: OBTENEMOS EL NOMBRE DEL USUARIO DE LA ACCIÓN ✨ ---
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
 
-                # ✨ --- INICIO DE LA CORRECCIÓN DE DATOS DE CLIENTE --- ✨
-                customer_name_display = "N/A"
+                # ✨ --- INICIO DE LA NUEVA LÓGICA DE DATOS DE CLIENTE --- ✨
+                customer_name_display = p.shipping_name or "Cliente"
                 customer_email_display = "Sin Correo"
 
                 if p.is_direct_sale:
-                    # Para Venta Directa, usamos los datos guardados en la compra
-                    customer_name_display = p.shipping_name or "Cliente Directo"
+                    # Para Venta Directa, el email anónimo tiene la máxima prioridad.
                     customer_email_display = p.anonymous_customer_email or "Sin Correo"
                 elif p.userinfo and p.userinfo.user:
-                    # Para compras normales, usamos los datos del usuario registrado
-                    customer_name_display = p.userinfo.user.username
+                    # Para compras normales, usamos el email del usuario comprador.
                     customer_email_display = p.userinfo.email
-                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
-               
-                # --- ✨ INICIO: MANEJO DE VALORES NULOS ✨ ---
-                full_address = "N/A (Venta Directa)"
+                # ✨ --- FIN DE LA NUEVA LÓGICA --- ✨
+
+                full_address = "N/A"
                 if p.shipping_address and p.shipping_neighborhood and p.shipping_city:
                     full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}"
-                # --- ✨ FIN: MANEJO DE VALORES NULOS ✨ ---
 
                 temp_history.append(
                     AdminPurchaseCardData(
                         id=p.id,
-                        customer_name=p.userinfo.user.username,
-                        customer_email=p.userinfo.email,
+                        customer_name=customer_name_display,
+                        customer_email=customer_email_display,
+                        # Pasamos el email anónimo al DTO para la búsqueda
+                        anonymous_customer_email=p.anonymous_customer_email,
                         purchase_date_formatted=p.purchase_date_formatted,
                         status=p.status.value,
                         total_price=p.total_price,
                         shipping_applied=p.shipping_applied,
                         shipping_name=p.shipping_name,
-                        shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                        shipping_full_address=full_address,
                         shipping_phone=p.shipping_phone, 
                         payment_method=p.payment_method,
                         confirmed_at=p.confirmed_at,
                         items=detailed_items,
-                        # --- ✨ INICIO: PASAMOS EL DATO AL DTO ✨ ---
                         action_by_name=actor_name
-                        # --- ✨ FIN: PASAMOS EL DATO AL DTO ✨ ---
                     )
                 )
             self.purchase_history = temp_history
