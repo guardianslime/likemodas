@@ -52,7 +52,7 @@ def seccion_solicitudes_empleo() -> rx.Component:
                         "Solicitud de empleo recibida de:",
                         size="2", color_scheme="gray"
                     ),
-                    rx.hstack( # Usamos hstack para alinear nombre y fecha
+                    rx.hstack(
                         rx.text(
                             rx.cond(
                                 req.requester & req.requester.user,
@@ -62,7 +62,6 @@ def seccion_solicitudes_empleo() -> rx.Component:
                             weight="bold"
                         ),
                         rx.spacer(),
-                        # --- ✨ CORRECCIÓN AQUÍ: Usamos la nueva propiedad formateada ---
                         rx.text(req.created_at_formatted, size="2", color_scheme="gray"),
                     ),
                     align_items="start"
@@ -132,29 +131,45 @@ def profile_page_content() -> rx.Component:
         )
     )
 
+    # --- ZONA DE PELIGRO CORREGIDA ---
     danger_zone = rx.card(
-        rx.form(
-            rx.vstack(
-                rx.hstack(rx.icon("triangle-alert", color_scheme="red", size=24), rx.heading("Zona de Peligro", color_scheme="red", size="6")),
-                rx.text("La eliminación de tu cuenta es permanente. Esta acción no se puede deshacer.", color_scheme="gray"),
-                rx.divider(border_color="var(--red-a6)"),
-                rx.text("Confirma tu contraseña para proceder:", margin_top="1em"),
-                password_input(name="password", placeholder="Contraseña actual...", required=True),
-                rx.alert_dialog.root(
-                    rx.alert_dialog.trigger(rx.button("Eliminar mi Cuenta Permanentemente", color_scheme="red", type="button", width="100%")),
-                    rx.alert_dialog.content(
-                        rx.alert_dialog.title("¿Estás absolutamente seguro?"),
-                        rx.alert_dialog.description("Todos tus datos, compras y comentarios serán eliminados para siempre."),
-                        rx.flex(
-                            rx.alert_dialog.cancel(rx.button("Cancelar", variant="soft")),
-                            rx.alert_dialog.action(rx.button("Sí, entiendo, eliminar mi cuenta", type="submit")),
-                            spacing="3", margin_top="1em", justify="end",
+        rx.vstack(
+            rx.hstack(rx.icon("triangle-alert", color_scheme="red", size=24), rx.heading("Zona de Peligro", color_scheme="red", size="6")),
+            rx.text("La eliminación de tu cuenta es permanente. Esta acción no se puede deshacer.", color_scheme="gray"),
+            rx.divider(border_color="var(--red-a6)"),
+            
+            # El botón para abrir el diálogo de confirmación.
+            rx.alert_dialog.root(
+                rx.alert_dialog.trigger(
+                    rx.button("Eliminar mi Cuenta Permanentemente", color_scheme="red", type="button", width="100%", margin_top="1em")
+                ),
+                rx.alert_dialog.content(
+                    rx.alert_dialog.title("¿Estás absolutamente seguro?"),
+                    rx.alert_dialog.description(
+                        "Todos tus datos serán eliminados. Para confirmar, introduce tu contraseña."
+                    ),
+                    # FORMULARIO INTERNO: La clave de la solución está aquí.
+                    rx.form(
+                        rx.vstack(
+                            # El campo de contraseña se mueve DENTRO del diálogo.
+                            password_input(name="password", placeholder="Contraseña actual...", required=True, margin_top="1em"),
+                            
+                            # Botones de acción del diálogo
+                            rx.flex(
+                                rx.alert_dialog.cancel(rx.button("Cancelar", variant="soft")),
+                                rx.alert_dialog.action(
+                                    rx.button("Sí, entiendo, eliminar mi cuenta", type="submit", color_scheme="red")
+                                ),
+                                spacing="3", margin_top="1em", justify="end",
+                            ),
+                            align="stretch",
                         ),
+                        # El evento on_submit se asigna a este formulario interno.
+                        on_submit=AppState.handle_account_deletion,
                     ),
                 ),
-                align="start", spacing="4",
             ),
-            on_submit=AppState.handle_account_deletion,
+            align="start", spacing="4",
         ),
         style={"border": "1px solid var(--red-a7)"}
     )
@@ -187,7 +202,7 @@ def profile_page_content() -> rx.Component:
             ),
             security_section,
             seccion_solicitudes_empleo(),
-            danger_zone,
+            danger_zone, # Usamos la versión corregida de danger_zone
             spacing="5", 
             width="100%", 
             max_width="1200px", 
