@@ -152,7 +152,9 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     rx.image(
                         src=rx.get_upload_url(AppState.current_modal_image_filename),
                         alt=AppState.product_in_modal.title,
-                        width="100%", height="100%", object_fit="cover",
+                        width="100%",
+                        height="100%",
+                        object_fit="cover",
                     ),
                     rx.box(
                         rx.icon("image_off", size=48), 
@@ -161,8 +163,16 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         bg=rx.color("gray", 3)
                     ),
                 ),
-                position="relative", width="100%", height=FIXED_HEIGHT, 
-                border_radius="var(--radius-3)", overflow="hidden",
+                position="relative",
+                width="100%",
+                # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+                # Se define una altura responsiva:
+                # - "380px" para móvil (initial) para que la imagen no se corte.
+                # - FIXED_HEIGHT ("500px") para pantallas medianas (md) en adelante.
+                height={"initial": "380px", "md": FIXED_HEIGHT},
+                # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
+                border_radius="var(--radius-3)",
+                overflow="hidden",
             ),
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
@@ -187,7 +197,8 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     spacing="3", padding="0.5em", width="100%", overflow_x="auto",
                 )
             ),
-            spacing="3", width="100%",
+            spacing="3",
+            width="100%",
         )
 
     def _modal_info_section() -> rx.Component:
