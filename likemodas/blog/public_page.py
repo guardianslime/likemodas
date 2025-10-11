@@ -1,4 +1,6 @@
 import reflex as rx
+
+from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, CommentData, ModalSelectorDTO
 
 # --- IMPORTS CORREGIDOS ---
@@ -213,11 +215,21 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
                     variant="solid", size="2"
                 ),
+                # ✨ --- INICIO: BADGE DE ENVÍO COMBINADO EN MODAL --- ✨
+                rx.cond(
+                    AppState.product_in_modal.combines_shipping,
+                    rx.tooltip(
+                        rx.badge("Envío Combinado", color_scheme="teal", variant="solid", size="2"),
+                        content=f"Permite combinar hasta {AppState.product_in_modal.shipping_combination_limit} productos en un solo envío."
+                    ),
+                ),
+                # ✨ --- FIN --- ✨
                 rx.cond(
                     AppState.product_in_modal.is_moda_completa_eligible,
                     rx.tooltip(
                         rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
-                        content="Este item cuenta para el envío gratis en compras sobre $200.000"
+                        # ✨ --- TOOLTIP DINÁMICO --- ✨
+                        content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(AppState.product_in_modal.free_shipping_threshold)}"
                     ),
                 ),
                 rx.cond(

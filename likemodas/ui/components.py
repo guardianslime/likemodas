@@ -165,12 +165,22 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         variant="soft",
                                         size="2",
                                     ),
+                                    # ✨ --- INICIO: BADGE DE ENVÍO COMBINADO --- ✨
+                                    rx.cond(
+                                        post.combines_shipping,
+                                        rx.tooltip(
+                                            rx.badge("Combinado", color_scheme="teal", variant="soft", size="2"),
+                                            content=f"Combina hasta {post.shipping_combination_limit} productos en un envío."
+                                        ),
+                                    ),
+                                    # ✨ --- FIN --- ✨
                                     rx.cond(
                                         post.is_moda_completa_eligible,
                                         rx.tooltip(
                                             rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                            content="Este item cuenta para el envío gratis en compras sobre $200.000"
-                                        )
+                                            # ✨ --- TOOLTIP DINÁMICO --- ✨
+                                            content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(post.free_shipping_threshold)}"
+                                        ),
                                     ),
                                     spacing="3",
                                     align="center",

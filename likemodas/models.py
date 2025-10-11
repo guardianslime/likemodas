@@ -321,6 +321,11 @@ class BlogPostModel(rx.Model, table=True):
     category: Category = Field(default=Category.OTROS, sa_column=Column(String, nullable=False, server_default=Category.OTROS.value))
     shipping_cost: Optional[float] = Field(default=None)
     is_moda_completa_eligible: bool = Field(default=True, nullable=False)
+
+    # ✨ --- INICIO: AÑADE ESTE NUEVO CAMPO --- ✨
+    free_shipping_threshold: Optional[float] = Field(default=None)
+    # ✨ --- FIN: AÑADE ESTE NUEVO CAMPO --- ✨
+
     combines_shipping: bool = Field(default=False, nullable=False)
     shipping_combination_limit: Optional[int] = Field(default=None)
     price_includes_iva: bool = Field(default=True, nullable=False)

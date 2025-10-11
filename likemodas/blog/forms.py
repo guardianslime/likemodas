@@ -333,7 +333,19 @@ def blog_post_add_form() -> rx.Component:
                                 # ✨ --- FIN DE LA CORRECCIÓN 1 --- ✨
                                 align="center", spacing="3", height="100%",
                             ),
-                            rx.text("Envío gratis en compras > $200.000.", size="1", color_scheme="gray"),
+                            # ✨ --- INICIO: CAMPO DE TEXTO CONDICIONAL --- ✨
+                            rx.cond(
+                                AppState.is_moda_completa,
+                                rx.input(
+                                    placeholder="Umbral de envío gratis",
+                                    value=AppState.free_shipping_threshold_str,
+                                    on_change=AppState.set_free_shipping_threshold_str,
+                                    type="number",
+                                    margin_top="0.5em"
+                                )
+                            ),
+                            # ✨ --- FIN --- ✨
+                            rx.text("Envío gratis en compras > $XXX.XXX", size="1", color_scheme="gray"),
                             align_items="stretch",
                         ),
                         rx.vstack(

@@ -140,6 +140,8 @@ class ContactEntryDTO(rx.Base):
 class ProductCardData(rx.Base):
     id: int; title: str; price: float = 0.0; price_cop: str = ""; variants: list[dict] = []
     attributes: dict = {}; shipping_cost: Optional[float] = None; is_moda_completa_eligible: bool = False
+    free_shipping_threshold: Optional[float] = None; combines_shipping: bool = False
+    shipping_combination_limit: Optional[int] = None; 
     shipping_display_text: str = ""; is_imported: bool = False; userinfo_id: int
     average_rating: float = 0.0; rating_count: int = 0
     class Config: orm_mode = True
@@ -148,7 +150,9 @@ class ProductDetailData(rx.Base):
     id: int; title: str; content: str; price_cop: str; variants: list[dict] = []
     created_at_formatted: str; average_rating: float = 0.0; rating_count: int = 0
     seller_name: str = ""; seller_id: int = 0; attributes: dict = {}; shipping_cost: Optional[float] = None
-    is_moda_completa_eligible: bool = False; shipping_display_text: str = ""; is_imported: bool = False
+    is_moda_completa_eligible: bool = False; free_shipping_threshold: Optional[float] = None
+    combines_shipping: bool = False; shipping_combination_limit: Optional[int] = None
+    shipping_display_text: str = ""; is_imported: bool = False
     seller_score: int = 0
     class Config: orm_mode = True
 
@@ -2092,6 +2096,26 @@ class AppState(reflex_local_auth.LocalAuthState):
         # --- ✨ FIN: LÓGICA DE FILTRADO POR FECHA AÑADIDA ✨ ---
         
         return logs
+    
+    # --- Variables para el formulario de "Crear Publicación" ---
+    is_moda_completa: bool = False
+    free_shipping_threshold_str: str = "200000"
+
+    def set_is_moda_completa(self, value: bool):
+        self.is_moda_completa = value
+
+    def set_free_shipping_threshold_str(self, value: str):
+        self.free_shipping_threshold_str = value
+
+    # --- Variables para el formulario de "Editar Publicación" ---
+    edit_is_moda_completa: bool = False
+    edit_free_shipping_threshold_str: str = "200000"
+
+    def set_edit_is_moda_completa(self, value: bool):
+        self.edit_is_moda_completa = value
+        
+    def set_edit_free_shipping_threshold_str(self, value: str):
+        self.edit_free_shipping_threshold_str = value
 
     @rx.event
     def submit_and_publish(self, form_data: dict):
@@ -2138,7 +2162,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             profit_float = float(profit_str) if profit_str else None
             shipping_cost = float(shipping_cost_str) if shipping_cost_str else None
             limit = int(limit_str) if self.combines_shipping and limit_str else None
-            
+            threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
+
             if self.combines_shipping and (limit is None or limit <= 0):
                 return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
         except (ValueError, TypeError):
@@ -2178,6 +2203,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 publish_date=datetime.now(timezone.utc),
                 shipping_cost=shipping_cost,
                 is_moda_completa_eligible=self.is_moda_completa,
+                free_shipping_threshold=threshold,
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
@@ -3110,6 +3136,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
+                        free_shipping_threshold=p.free_shipping_threshold,
+                        combines_shipping=p.combines_shipping,
+                        shipping_combination_limit=p.shipping_combination_limit,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         is_imported=p.is_imported,
                     )
@@ -3714,11 +3744,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.admin_delivery_time[purchase_id][unit] = value
     
     # --- ✨ PASO 3: REEMPLAZAR LA PROPIEDAD cart_summary ✨ ---
+    # En: likemodas/state.py
+
     @rx.var
     def cart_summary(self) -> dict:
         """
-        Calcula el resumen del carrito, ahora pasando la ciudad del vendedor y comprador
-        para un cálculo de envío preciso.
+        [CORREGIDO] Calcula el resumen del carrito, usando el umbral dinámico de "Moda Completa"
+        y pasando la ciudad del vendedor y comprador para un cálculo de envío preciso.
         """
         if not self.cart:
             return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
@@ -3735,14 +3767,30 @@ class AppState(reflex_local_auth.LocalAuthState):
             subtotal_base = sum(post_map.get(item.product_id).base_price * item.quantity for item in cart_items_details if post_map.get(item.product_id))
             iva = subtotal_base * 0.19
             subtotal_con_iva = subtotal_base + iva
-            free_shipping_achieved = subtotal_con_iva >= 200000
+
+            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE --- ✨
+            # 1. Se elimina la línea 'free_shipping_achieved = subtotal_con_iva >= 200000'
+            
+            free_shipping_achieved = False
+            moda_completa_items = [
+                post_map.get(item.product_id) 
+                for item in cart_items_details 
+                if post_map.get(item.product_id) and post_map.get(item.product_id).is_moda_completa_eligible
+            ]
+            
+            if moda_completa_items:
+                # 2. Se asegura de que haya umbrales válidos antes de buscar el máximo
+                valid_thresholds = [p.free_shipping_threshold for p in moda_completa_items if p.free_shipping_threshold and p.free_shipping_threshold > 0]
+                if valid_thresholds:
+                    highest_threshold = max(valid_thresholds)
+                    if subtotal_con_iva >= highest_threshold:
+                        free_shipping_achieved = True
+            # --- ✨ FIN DE LA CORRECCIÓN CLAVE --- ✨
             
             final_shipping_cost = 0.0
             if not free_shipping_achieved and self.default_shipping_address:
-                # --- INICIO DE LA MODIFICACIÓN ---
                 buyer_city = self.default_shipping_address.city
                 buyer_barrio = self.default_shipping_address.neighborhood
-                # --- FIN DE LA MODIFICACIÓN ---
 
                 seller_groups = defaultdict(list)
                 for item in cart_items_details:
@@ -3753,26 +3801,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                 seller_ids = list(seller_groups.keys())
                 sellers_info = session.exec(sqlmodel.select(UserInfo).where(UserInfo.id.in_(seller_ids))).all()
-                # --- INICIO DE LA MODIFICACIÓN ---
-                # Ahora obtenemos tanto la ciudad como el barrio del vendedor
                 seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
-                # --- FIN DE LA MODIFICACIÓN ---
 
                 for seller_id, items_from_seller in seller_groups.items():
                     combinable_items = [p for p in items_from_seller if p.combines_shipping]
                     individual_items = [p for p in items_from_seller if not p.combines_shipping]
-                    # --- INICIO DE LA MODIFICACIÓN ---
                     seller_data = seller_data_map.get(seller_id)
                     seller_city = seller_data.get("city") if seller_data else None
                     seller_barrio = seller_data.get("barrio") if seller_data else None
-                    # --- FIN DE LA MODIFICACIÓN ---
 
                     for individual_item in individual_items:
                         cost = calculate_dynamic_shipping(
                             base_cost=individual_item.shipping_cost or 0.0,
                             seller_barrio=seller_barrio,
                             buyer_barrio=buyer_barrio,
-                            # --- Pasamos los nuevos argumentos ---
                             seller_city=seller_city,
                             buyer_city=buyer_city
                         )
@@ -3787,7 +3829,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                             base_cost=highest_base_cost,
                             seller_barrio=seller_barrio,
                             buyer_barrio=buyer_barrio,
-                            # --- Pasamos los nuevos argumentos ---
                             seller_city=seller_city,
                             buyer_city=buyer_city
                         )
@@ -3796,7 +3837,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             grand_total = subtotal_con_iva + final_shipping_cost
             
             return { "subtotal": subtotal_base, "shipping_cost": final_shipping_cost, "iva": iva, "grand_total": grand_total, "free_shipping_achieved": free_shipping_achieved }
-    # --- ✨ FIN DEL PASO 3 ✨ ---
         
     # --- 👇 AÑADE ESTAS TRES NUEVAS PROPIEDADES 👇 ---
     @rx.var
@@ -5441,6 +5481,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
+                        free_shipping_threshold=p.free_shipping_threshold,
+                        combines_shipping=p.combines_shipping,
+                        shipping_combination_limit=p.shipping_combination_limit,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         is_imported=p.is_imported
                     )
@@ -6319,6 +6363,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
+                        free_shipping_threshold=p.free_shipping_threshold,
+                        combines_shipping=p.combines_shipping,
+                        shipping_combination_limit=p.shipping_combination_limit,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         is_imported=p.is_imported
                     )
@@ -7155,6 +7203,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                             rating_count=p.rating_count,
                             shipping_cost=p.shipping_cost,
                             is_moda_completa_eligible=p.is_moda_completa_eligible,
+                            # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
+                            free_shipping_threshold=p.free_shipping_threshold,
+                            combines_shipping=p.combines_shipping,
+                            shipping_combination_limit=p.shipping_combination_limit,
                             shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                             is_imported=p.is_imported
                         )
@@ -7411,6 +7463,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 rating_count=p.rating_count,
                                 shipping_cost=p.shipping_cost,
                                 is_moda_completa_eligible=p.is_moda_completa_eligible,
+                                # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
+                                free_shipping_threshold=p.free_shipping_threshold,
+                                combines_shipping=p.combines_shipping,
+                                shipping_combination_limit=p.shipping_combination_limit,
                                 shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                                 is_imported=p.is_imported
                             )
