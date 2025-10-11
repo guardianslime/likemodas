@@ -18,7 +18,10 @@ def mobile_search_overlay() -> rx.Component:
                     placeholder="Buscar productos...",
                     value=AppState.search_term,
                     on_change=AppState.set_search_term,
-                    variant="unstyled",
+                    # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+                    # Se cambia "unstyled" por "surface", que es una variante válida.
+                    variant="surface",
+                    # ✨ --- FIN DE LA CORRECCIÓN --- ✨
                     width="100%",
                     _focus={"outline": "none"},
                     autofocus=True,
