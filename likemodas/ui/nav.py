@@ -53,19 +53,25 @@ def notification_icon() -> rx.Component:
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
-            rx.box(
-                rx.icon("bell", size=28, color=icon_color),
-                rx.cond(
-                    AppState.unread_count > 0,
-                    rx.box(
-                        rx.text(AppState.unread_count, size="1", weight="bold"),
-                        position="absolute", top="-5px", right="-5px",
-                        padding="0 0.4em", border_radius="full",
-                        bg="red", color="white",
-                    )
+            # ✨ CORRECCIÓN: Usamos un rx.icon_button para un estilo consistente ✨
+            rx.icon_button(
+                rx.box(
+                    # ✨ CORRECCIÓN: Tamaño del ícono estandarizado a 24px ✨
+                    rx.icon("bell", size=24, color=icon_color),
+                    rx.cond(
+                        AppState.unread_count > 0,
+                        rx.box(
+                            rx.text(AppState.unread_count, size="1", weight="bold"),
+                            position="absolute", top="-5px", right="-5px",
+                            padding="0 0.4em", border_radius="full",
+                            bg="red", color="white",
+                        )
+                    ),
+                    position="relative",
                 ),
-                position="relative", padding="0.5em", cursor="pointer"
-            ),
+                variant="ghost",
+                color_scheme="gray",
+            )
         ),
         rx.menu.content(
             rx.cond(
@@ -175,50 +181,60 @@ def public_navbar() -> rx.Component:
     )
     
     authenticated_icons = rx.hstack(
-        notification_icon(),
-        rx.link(
-            rx.box(
-                rx.icon("shopping-cart", size=22, color=icon_color),
-                rx.cond(
-                    AppState.cart_items_count > 0,
-                    rx.box(
-                        rx.text(AppState.cart_items_count, size="1", weight="bold"),
-                        position="absolute", top="-5px", right="-5px",
-                        padding="0 0.4em", border_radius="full", bg="red", color="white",
-                    )
-                ),
-                position="relative", padding="0.5em"
-            ),
-            href="/cart"
-        ),
-        # ✨ INICIO: ICONO DE BÚSQUEDA PARA MÓVIL ✨
+        # 1. El icono de búsqueda ahora es el primero (solo visible en móvil)
         rx.icon_button(
-            rx.icon("search", color=icon_color),
+            rx.icon("search", size=24, color=icon_color),
             on_click=AppState.toggle_mobile_search,
             variant="ghost",
-            # Se muestra solo en pantallas pequeñas (móvil y tablet)
+            color_scheme="gray",
             display=["flex", "flex", "none", "none"]
         ),
-        # ✨ FIN: ICONO DE BÚSQUEDA PARA MÓVIL ✨
+        # 2. El carrito de compras es el segundo
+        rx.link(
+            rx.icon_button(
+                rx.box(
+                    rx.icon("shopping-cart", size=24, color=icon_color),
+                    rx.cond(
+                        AppState.cart_items_count > 0,
+                        rx.box(
+                            rx.text(AppState.cart_items_count, size="1", weight="bold"),
+                            position="absolute", top="-5px", right="-5px",
+                            padding="0 0.4em", border_radius="full", bg="red", color="white",
+                        )
+                    ),
+                    position="relative",
+                ),
+                variant="ghost",
+                color_scheme="gray",
+            ),
+            href="/cart",
+        ),
+        # 3. La campana de notificaciones es la última
+        notification_icon(),
         align="center",
-        spacing="3",
+        spacing="2", # Reducimos un poco el espaciado para que se vea mejor
         justify="end",
     )
     
     placeholder_icons = rx.hstack(
-        rx.box(width="44px", height="44px", padding="0.5em"),
-        rx.box(width="38px", height="44px", padding="0.5em"),
-        # ✨ Se añade el icono de búsqueda aquí también para mantener la alineación ✨
+        # El icono de búsqueda para usuarios no logueados
         rx.icon_button(
-            rx.icon("search", color=icon_color),
+            rx.icon("search", size=24, color=icon_color),
             on_click=AppState.toggle_mobile_search,
             variant="ghost",
+            color_scheme="gray",
             display=["flex", "flex", "none", "none"]
         ),
+        # Placeholder para el carrito
+        rx.icon_button(rx.icon("shopping-cart", size=24, color="transparent"), variant="ghost", disabled=True),
+        # Placeholder para la campana
+        rx.icon_button(rx.icon("bell", size=24, color="transparent"), variant="ghost", disabled=True),
         align="center",
-        spacing="3",
+        spacing="2",
         justify="end",
     )
+
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     navbar_content = rx.box(
         rx.grid(
@@ -227,7 +243,7 @@ def public_navbar() -> rx.Component:
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
-            # ✨ BARRA DE BÚSQUEDA PARA ESCRITORIO ✨
+            # La barra de búsqueda grande sigue aquí, solo visible en escritorio
             rx.input(
                 placeholder="Buscar productos...",
                 value=AppState.search_term,
@@ -236,18 +252,12 @@ def public_navbar() -> rx.Component:
                 radius="medium",
                 variant="surface",
                 color_scheme="violet",
-                # Se oculta en pantallas pequeñas (móvil y tablet)
                 display=["none", "none", "block", "block"],
                 style={
-                    "background_color": rx.color_mode_cond(
-                        light=rx.color("gray", 3),
-                        dark=rx.color("gray", 2)
-                    ),
+                    "background_color": rx.color_mode_cond(light=rx.color("gray", 3), dark=rx.color("gray", 2)),
                     "border": f"1.5px solid {rx.color('gray', 6)}",
                     "transition": "border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                    "_hover": {
-                        "border_color": rx.color("violet", 7),
-                    },
+                    "_hover": {"border_color": rx.color("violet", 7)},
                     "_focus": {
                         "border_color": rx.color("violet", 9),
                         "box_shadow": f"0 0 0 1px {rx.color('violet', 9)}",
