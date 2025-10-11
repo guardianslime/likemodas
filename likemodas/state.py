@@ -142,7 +142,10 @@ class ProductCardData(rx.Base):
     attributes: dict = {}; shipping_cost: Optional[float] = None; is_moda_completa_eligible: bool = False
     free_shipping_threshold: Optional[float] = None; combines_shipping: bool = False
     shipping_combination_limit: Optional[int] = None; 
-    shipping_display_text: str = ""; is_imported: bool = False; userinfo_id: int
+    shipping_display_text: str = ""; 
+    moda_completa_tooltip_text: str = ""
+    envio_combinado_tooltip_text: str = ""
+    is_imported: bool = False; userinfo_id: int
     average_rating: float = 0.0; rating_count: int = 0
     class Config: orm_mode = True
 
@@ -152,6 +155,9 @@ class ProductDetailData(rx.Base):
     seller_name: str = ""; seller_id: int = 0; attributes: dict = {}; shipping_cost: Optional[float] = None
     is_moda_completa_eligible: bool = False; free_shipping_threshold: Optional[float] = None
     combines_shipping: bool = False; shipping_combination_limit: Optional[int] = None
+    moda_completa_tooltip_text: str = ""
+    envio_combinado_tooltip_text: str = ""
+    # ✨ --- FIN --- ✨
     shipping_display_text: str = ""; is_imported: bool = False
     seller_score: int = 0
     class Config: orm_mode = True
@@ -3121,25 +3127,28 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_posts = []
             for p in results:
+                # ✨ --- INICIO: LÓGICA PARA CREAR LOS TEXTOS --- ✨
+                moda_completa_text = ""
+                if p.is_moda_completa_eligible and p.free_shipping_threshold:
+                    moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}"
+
+                combinado_text = ""
+                if p.combines_shipping and p.shipping_combination_limit:
+                    combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío."
+                # ✨ --- FIN DE LA LÓGICA --- ✨
+
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
-                        userinfo_id=p.userinfo_id,
-                        title=p.title,
-                        price=p.price,
-                        price_cop=p.price_cop,
-                        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                        # Se reemplaza 'image_urls=p.image_urls' por 'variants=p.variants'
-                        variants=p.variants or [],
-                        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count,
-                        shipping_cost=p.shipping_cost,
+                        # ... (otros campos)
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
                         free_shipping_threshold=p.free_shipping_threshold,
                         combines_shipping=p.combines_shipping,
                         shipping_combination_limit=p.shipping_combination_limit,
+                        # ✨ --- INICIO: PASAR LOS TEXTOS AL DTO --- ✨
+                        moda_completa_tooltip_text=moda_completa_text,
+                        envio_combinado_tooltip_text=combinado_text,
+                        # ✨ --- FIN --- ✨
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                         is_imported=p.is_imported,
                     )
