@@ -150,11 +150,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                             rx.vstack(
                                 rx.text(
                                     post.title, 
-                                    weight="bold", 
-                                    size="6", 
-                                    white_space="normal",
-                                    text_overflow="initial",
-                                    overflow="visible",
+                                    weight="bold", size="6", white_space="normal",
+                                    text_overflow="initial", overflow="visible",
                                 ),
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(post.price_cop, size="5", weight="medium"),
@@ -162,10 +159,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     rx.badge(
                                         post.shipping_display_text,
                                         color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
-                                        variant="soft",
-                                        size="2",
+                                        variant="soft", size="2",
                                     ),
-                                    # ✨ --- INICIO: BADGE DE ENVÍO COMBINADO --- ✨
                                     rx.cond(
                                         post.combines_shipping,
                                         rx.tooltip(
@@ -173,28 +168,21 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                             content=f"Combina hasta {post.shipping_combination_limit} productos en un envío."
                                         ),
                                     ),
-                                    # ✨ --- FIN --- ✨
                                     rx.cond(
                                         post.is_moda_completa_eligible,
                                         rx.tooltip(
                                             rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
+                                            
                                             # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-                                            # Se reemplaza la llamada directa a format_to_cop
-                                            # por la nueva función segura del estado.
-                                            content=rx.text(
-                                                "Este item cuenta para el envío gratis en compras sobre ",
-                                                AppState.format_price_safely(post.free_shipping_threshold),
-                                            ),
+                                            # Construimos el texto concatenando el string con la Var.
+                                            # Esto crea una nueva Var de texto que es válida.
+                                            content="Este item cuenta para el envío gratis en compras sobre " + AppState.format_price_safely(post.free_shipping_threshold),
                                             # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
                                         ),
                                     ),
-                                    spacing="3",
-                                    align="center",
+                                    spacing="3", align="center",
                                 ),
-                                # --- CORRECCIÓN AQUÍ ---
-                                spacing="1", # Cambiado de "1.5" a "1"
-                                align_items="start", 
-                                width="100%"
+                                spacing="1", align_items="start", width="100%"
                             ),
                             spacing="2", 
                             width="100%",
@@ -203,9 +191,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         ),
                         rx.spacer(),
                     ),
-                    width="290px",
-                    height="auto",
-                    min_height="450px",
+                    width="290px", height="auto", min_height="450px",
                     bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                     border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                     border_radius="8px", box_shadow="md", padding="1em",
