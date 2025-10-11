@@ -4,6 +4,47 @@ from .. import navigation
 from ..state import AppState
 from ..models import Category
 
+# --- ✨ INICIO: NUEVO COMPONENTE PARA LA BÚSQUEDA MÓVIL ✨ ---
+def mobile_search_overlay() -> rx.Component:
+    """
+    Una capa que se superpone para mostrar la barra de búsqueda en móviles.
+    """
+    return rx.cond(
+        AppState.show_mobile_search,
+        rx.box(
+            rx.hstack(
+                rx.icon("search", color=rx.color("gray", 10)),
+                rx.input(
+                    placeholder="Buscar productos...",
+                    value=AppState.search_term,
+                    on_change=AppState.set_search_term,
+                    variant="unstyled",
+                    width="100%",
+                    _focus={"outline": "none"},
+                    autofocus=True,
+                ),
+                rx.icon_button(
+                    rx.icon("x"),
+                    on_click=AppState.toggle_mobile_search,
+                    variant="ghost",
+                    color_scheme="gray"
+                ),
+                spacing="4",
+                align="center",
+                width="100%",
+            ),
+            position="fixed",
+            top="0",
+            left="0",
+            right="0",
+            padding="0.75rem 1rem",
+            bg=rx.color("gray", 2),
+            z_index="1000",
+            style={"backdrop_filter": "blur(10px)"},
+        )
+    )
+# --- ✨ FIN: NUEVO COMPONENTE ---
+
 def notification_icon() -> rx.Component:
     """Componente para el icono y menú de notificaciones."""
     icon_color = rx.color_mode_cond("black", "white")
@@ -88,10 +129,9 @@ def notification_icon() -> rx.Component:
 
 
 def public_navbar() -> rx.Component:
-    """La barra de navegación pública, corregida para búsqueda en vivo y sin bugs de diseño."""
+    """La barra de navegación pública, ahora responsiva con un icono de búsqueda en móvil."""
     icon_color = rx.color_mode_cond("black", "white")
     
-    # ... (el código de hamburger_menu, authenticated_icons y placeholder_icons no cambia)
     hamburger_menu = rx.menu.root(
         rx.menu.trigger(
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
@@ -148,6 +188,15 @@ def public_navbar() -> rx.Component:
             ),
             href="/cart"
         ),
+        # ✨ INICIO: ICONO DE BÚSQUEDA PARA MÓVIL ✨
+        rx.icon_button(
+            rx.icon("search", color=icon_color),
+            on_click=AppState.toggle_mobile_search,
+            variant="ghost",
+            # Se muestra solo en pantallas pequeñas (móvil y tablet)
+            display=["flex", "flex", "none", "none"]
+        ),
+        # ✨ FIN: ICONO DE BÚSQUEDA PARA MÓVIL ✨
         align="center",
         spacing="3",
         justify="end",
@@ -156,18 +205,26 @@ def public_navbar() -> rx.Component:
     placeholder_icons = rx.hstack(
         rx.box(width="44px", height="44px", padding="0.5em"),
         rx.box(width="38px", height="44px", padding="0.5em"),
+        # ✨ Se añade el icono de búsqueda aquí también para mantener la alineación ✨
+        rx.icon_button(
+            rx.icon("search", color=icon_color),
+            on_click=AppState.toggle_mobile_search,
+            variant="ghost",
+            display=["flex", "flex", "none", "none"]
+        ),
         align="center",
         spacing="3",
         justify="end",
     )
 
-    return rx.box(
+    navbar_content = rx.box(
         rx.grid(
             rx.hstack(
                 hamburger_menu,
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
+            # ✨ BARRA DE BÚSQUEDA PARA ESCRITORIO ✨
             rx.input(
                 placeholder="Buscar productos...",
                 value=AppState.search_term,
@@ -176,6 +233,8 @@ def public_navbar() -> rx.Component:
                 radius="medium",
                 variant="surface",
                 color_scheme="violet",
+                # Se oculta en pantallas pequeñas (móvil y tablet)
+                display=["none", "none", "block", "block"],
                 style={
                     "background_color": rx.color_mode_cond(
                         light=rx.color("gray", 3),
@@ -204,8 +263,6 @@ def public_navbar() -> rx.Component:
             gap="1.5rem",
         ),
         
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Ahora, este bloque solo se ejecutará para los compradores (no-admins, no-vendedores, etc.).
         rx.cond(
             AppState.is_authenticated & ~(AppState.is_admin | AppState.is_vendedor | AppState.is_empleado),
             rx.fragment(
@@ -232,11 +289,16 @@ def public_navbar() -> rx.Component:
                 )
             )
         ),
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
         position="fixed", top="0", left="0", right="0",
         width="100%", padding="0.75rem 1.5rem", z_index="999",
         bg=rx.color("gray", 2),
         style={"backdrop_filter": "blur(10px)"},
         on_mount=[AppState.load_notifications],
+    )
+
+    # ✨ Envolvemos todo en un fragmento para incluir el overlay de búsqueda ✨
+    return rx.fragment(
+        navbar_content,
+        mobile_search_overlay(),
     )

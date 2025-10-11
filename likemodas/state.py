@@ -5374,6 +5374,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             # ✨ CORRECCIÓN AQUÍ
             yield AppState.load_purchases
 
+    # --- Inicio: Nuevas variables para la búsqueda en móvil ---
+    show_mobile_search: bool = False
+
+    def toggle_mobile_search(self):
+        """Muestra u oculta la barra de búsqueda en la vista móvil."""
+        self.show_mobile_search = not self.show_mobile_search
+    # --- Fin: Nuevas variables ---
+
     # 1. La variable para el término de búsqueda de la tienda de administración.
     search_term: str = ""
 
