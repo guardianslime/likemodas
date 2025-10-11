@@ -1,10 +1,11 @@
+# En: likemodas/ui/nav.py
+
 import reflex as rx
 import reflex_local_auth
 from .. import navigation
 from ..state import AppState
 from ..models import Category
 
-# --- ✨ INICIO: NUEVO COMPONENTE PARA LA BÚSQUEDA MÓVIL ✨ ---
 def mobile_search_overlay() -> rx.Component:
     """
     Una capa que se superpone para mostrar la barra de búsqueda en móviles.
@@ -18,10 +19,7 @@ def mobile_search_overlay() -> rx.Component:
                     placeholder="Buscar productos...",
                     value=AppState.search_term,
                     on_change=AppState.set_search_term,
-                    # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
-                    # Se cambia "unstyled" por "surface", que es una variante válida.
                     variant="surface",
-                    # ✨ --- FIN DE LA CORRECCIÓN --- ✨
                     width="100%",
                     _focus={"outline": "none"},
                     autofocus=True,
@@ -46,17 +44,14 @@ def mobile_search_overlay() -> rx.Component:
             style={"backdrop_filter": "blur(10px)"},
         )
     )
-# --- ✨ FIN: NUEVO COMPONENTE ---
 
 def notification_icon() -> rx.Component:
     """Componente para el icono y menú de notificaciones."""
     icon_color = rx.color_mode_cond("black", "white")
     return rx.menu.root(
         rx.menu.trigger(
-            # ✨ CORRECCIÓN: Usamos un rx.icon_button para un estilo consistente ✨
             rx.icon_button(
                 rx.box(
-                    # ✨ CORRECCIÓN: Tamaño del ícono estandarizado a 24px ✨
                     rx.icon("bell", size=24, color=icon_color),
                     rx.cond(
                         AppState.unread_count > 0,
@@ -127,12 +122,10 @@ def notification_icon() -> rx.Component:
                 rx.menu.item("No tienes notificaciones.")
             ),
             bg=rx.color("gray", 2),
-            # ✨ --- INICIO DE LA CORRECCIÓN 1 --- ✨
             style={
                 "backdrop_filter": "blur(10px)",
-                "z_index": "1100",  # Se añade un z-index alto para que se superponga a todo
+                "z_index": "1100",
             },
-            # ✨ --- FIN DE LA CORRECCIÓN 1 --- ✨
             max_height="400px",
             overflow_y="auto",
             min_width="350px",
@@ -143,7 +136,7 @@ def notification_icon() -> rx.Component:
 
 
 def public_navbar() -> rx.Component:
-    """La barra de navegación pública, ahora responsiva con un icono de búsqueda en móvil."""
+    """La barra de navegación pública, con íconos reordenados y de tamaño uniforme."""
     icon_color = rx.color_mode_cond("black", "white")
     
     hamburger_menu = rx.menu.root(
@@ -215,12 +208,9 @@ def public_navbar() -> rx.Component:
         notification_icon(),
         align="center",
         spacing={"initial": "3", "md": "4"},
-        # ✨ --- INICIO DE LA CORRECCIÓN 2 --- ✨
-        # Cambiamos "end" por "space-between" para distribuir los íconos
-        justify="space-between",
-        # Hacemos que el contenedor ocupe todo el ancho de su columna
+        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
+        justify="between",
         width="100%",
-        # ✨ --- FIN DE LA CORRECCIÓN 2 --- ✨
     )
     
     placeholder_icons = rx.hstack(
@@ -235,12 +225,10 @@ def public_navbar() -> rx.Component:
         rx.icon_button(rx.icon("bell", size=24, color="transparent"), variant="ghost", disabled=True),
         align="center",
         spacing={"initial": "3", "md": "4"},
-        # ✨ Se aplica la misma corrección aquí para consistencia ✨
-        justify="space-between",
+        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
+        justify="between",
         width="100%",
     )
-
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     navbar_content = rx.box(
         rx.grid(
@@ -249,7 +237,6 @@ def public_navbar() -> rx.Component:
                 rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
                 align="center", spacing="4", justify="start",
             ),
-            # La barra de búsqueda grande sigue aquí, solo visible en escritorio
             rx.input(
                 placeholder="Buscar productos...",
                 value=AppState.search_term,
@@ -316,7 +303,6 @@ def public_navbar() -> rx.Component:
         on_mount=[AppState.load_notifications],
     )
 
-    # ✨ Envolvemos todo en un fragmento para incluir el overlay de búsqueda ✨
     return rx.fragment(
         navbar_content,
         mobile_search_overlay(),
