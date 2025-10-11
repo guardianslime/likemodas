@@ -3746,16 +3746,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ PASO 3: REEMPLAZAR LA PROPIEDAD cart_summary ✨ ---
     # En: likemodas/state.py
 
-    def format_price_safely(self, price: rx.Var[Optional[float]]) -> rx.Var[str]:
-        """
-        Formatea un precio a COP de forma segura para la UI, manejando valores
-        nulos o cero antes de pasarlos a la función de formateo.
-        """
-        return rx.cond(
-            (price > 0),  # Simplificamos la condición, rx.cond maneja los nulos.
-            format_to_cop(price),
-            "$ 0"
-        )
 
     @rx.var
     def cart_summary(self) -> dict:
