@@ -174,9 +174,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                             rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
                                             
                                             # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-                                            # Construimos el texto concatenando el string con la Var.
-                                            # Esto crea una nueva Var de texto que es válida.
-                                            content="Este item cuenta para el envío gratis en compras sobre " + AppState.format_price_safely(post.free_shipping_threshold),
+                                            content=rx.text(
+                                                "Este item cuenta para el envío gratis en compras sobre ",
+                                                AppState.format_price_safely(post.free_shipping_threshold),
+                                            ),
                                             # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
                                         ),
                                     ),
