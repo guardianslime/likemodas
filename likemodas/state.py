@@ -1821,7 +1821,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def remove_empleado(self, empleado_userinfo_id: int):
         """
         [CORREGIDO] Elimina la vinculación de un empleado. Ahora funciona tanto si la
-        inicia el vendedor como si la inicia el propio empleado, usando yield from.
+        inicia el vendedor como si la inicia el propio empleado, reseteando el contexto.
         """
         if not self.authenticated_user_info:
             return rx.toast.error("Debes iniciar sesión.")
@@ -1842,16 +1842,27 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not is_vendedor_del_empleado and not is_el_propio_empleado:
                 return rx.toast.error("No tienes permisos para realizar esta acción.")
 
+            # Eliminamos el vínculo de la base de datos
             session.delete(link_to_delete)
             session.commit()
+        
+        # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+        # Verificamos si la acción fue iniciada por el propio empleado
+        if is_el_propio_empleado:
+            # 1. Reseteamos su contexto para que vuelva a ser él mismo.
+            self.context_user_id = self.authenticated_user_info.id
             
-            if is_el_propio_empleado:
-                yield rx.toast.info("Has dejado de ser empleado.")
-                yield rx.call_script("window.location.reload()")
-            else: # Si fue el vendedor
-                # --- ✨ CORRECCIÓN CLAVE: Usamos 'yield from' para encadenar eventos ✨ ---
-                yield from self.load_empleados()
-                yield rx.toast.info("Empleado desvinculado correctamente.")
+            # 2. Limpiamos cualquier dato del vendedor que tuviera cargado.
+            self.mis_publicaciones_list = []
+            
+            # 3. Enviamos un toast y lo redirigimos a una página personal.
+            yield rx.toast.info("Has dejado de ser empleado.")
+            yield rx.redirect("/my-account/profile") # Lo enviamos a su perfil.
+        else: 
+            # Si la acción fue iniciada por el vendedor, solo actualizamos su lista.
+            yield self.load_empleados()
+            yield rx.toast.info("Empleado desvinculado correctamente.")
+        # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
     
     # --- ✨ INICIO: AÑADE ESTA NUEVA FUNCIÓN ✨ ---
     @rx.event
