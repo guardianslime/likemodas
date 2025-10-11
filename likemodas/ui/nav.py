@@ -127,7 +127,12 @@ def notification_icon() -> rx.Component:
                 rx.menu.item("No tienes notificaciones.")
             ),
             bg=rx.color("gray", 2),
-            style={"backdrop_filter": "blur(10px)"},
+            # ✨ --- INICIO DE LA CORRECCIÓN 1 --- ✨
+            style={
+                "backdrop_filter": "blur(10px)",
+                "z_index": "1100",  # Se añade un z-index alto para que se superponga a todo
+            },
+            # ✨ --- FIN DE LA CORRECCIÓN 1 --- ✨
             max_height="400px",
             overflow_y="auto",
             min_width="350px",
@@ -209,10 +214,13 @@ def public_navbar() -> rx.Component:
         ),
         notification_icon(),
         align="center",
-        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
-        # Se cambia el espaciado a un valor responsivo.
         spacing={"initial": "3", "md": "4"},
-        justify="end",
+        # ✨ --- INICIO DE LA CORRECCIÓN 2 --- ✨
+        # Cambiamos "end" por "space-between" para distribuir los íconos
+        justify="space-between",
+        # Hacemos que el contenedor ocupe todo el ancho de su columna
+        width="100%",
+        # ✨ --- FIN DE LA CORRECCIÓN 2 --- ✨
     )
     
     placeholder_icons = rx.hstack(
@@ -226,10 +234,10 @@ def public_navbar() -> rx.Component:
         rx.icon_button(rx.icon("shopping-cart", size=24, color="transparent"), variant="ghost", disabled=True),
         rx.icon_button(rx.icon("bell", size=24, color="transparent"), variant="ghost", disabled=True),
         align="center",
-        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
-        # Se aplica el mismo espaciado para consistencia.
         spacing={"initial": "3", "md": "4"},
-        justify="end",
+        # ✨ Se aplica la misma corrección aquí para consistencia ✨
+        justify="space-between",
+        width="100%",
     )
 
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
