@@ -138,29 +138,53 @@ class ContactEntryDTO(rx.Base):
     message: str; created_at_formatted: str; userinfo_id: Optional[int]
 
 class ProductCardData(rx.Base):
-    id: int; title: str; price: float = 0.0; price_cop: str = ""; variants: list[dict] = []
-    attributes: dict = {}; shipping_cost: Optional[float] = None; is_moda_completa_eligible: bool = False
-    free_shipping_threshold: Optional[float] = None; combines_shipping: bool = False
-    shipping_combination_limit: Optional[int] = None; 
-    shipping_display_text: str = ""; 
+    id: int
+    title: str
+    price: float = 0.0
+    price_cop: str = ""
+    variants: list[dict] = []
+    attributes: dict = {}
+    shipping_cost: Optional[float] = None
+    is_moda_completa_eligible: bool = False
+    free_shipping_threshold: Optional[float] = None
+    combines_shipping: bool = False
+    shipping_combination_limit: Optional[int] = None
+    shipping_display_text: str = ""
     moda_completa_tooltip_text: str = ""
     envio_combinado_tooltip_text: str = ""
-    is_imported: bool = False; userinfo_id: int
-    average_rating: float = 0.0; rating_count: int = 0
-    class Config: orm_mode = True
+    is_imported: bool = False
+    userinfo_id: int
+    average_rating: float = 0.0
+    rating_count: int = 0
+    
+    class Config:
+        orm_mode = True
 
 class ProductDetailData(rx.Base):
-    id: int; title: str; content: str; price_cop: str; variants: list[dict] = []
-    created_at_formatted: str; average_rating: float = 0.0; rating_count: int = 0
-    seller_name: str = ""; seller_id: int = 0; attributes: dict = {}; shipping_cost: Optional[float] = None
-    is_moda_completa_eligible: bool = False; free_shipping_threshold: Optional[float] = None
-    combines_shipping: bool = False; shipping_combination_limit: Optional[int] = None
+    id: int
+    title: str
+    content: str
+    price_cop: str
+    variants: list[dict] = []
+    created_at_formatted: str
+    average_rating: float = 0.0
+    rating_count: int = 0
+    seller_name: str = ""
+    seller_id: int = 0
+    attributes: dict = {}
+    shipping_cost: Optional[float] = None
+    is_moda_completa_eligible: bool = False
+    free_shipping_threshold: Optional[float] = None
+    combines_shipping: bool = False
+    shipping_combination_limit: Optional[int] = None
     moda_completa_tooltip_text: str = ""
     envio_combinado_tooltip_text: str = ""
-    # ✨ --- FIN --- ✨
-    shipping_display_text: str = ""; is_imported: bool = False
+    shipping_display_text: str = ""
+    is_imported: bool = False
     seller_score: int = 0
-    class Config: orm_mode = True
+
+    class Config:
+        orm_mode = True
 
 # DTO para la tarjeta de historial del admin
 class AdminPurchaseCardData(rx.Base):
