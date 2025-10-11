@@ -1,5 +1,6 @@
 # likemodas/state.py (Versión Completa y Definitiva)
 from __future__ import annotations
+import json
 import pytz
 import reflex as rx
 import reflex_local_auth
@@ -4259,15 +4260,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.selected_variant_index = -1
         self.product_detail_chart_data = []
 
-        # --- ✨ INICIO: LÓGICA PARA LIMPIAR LA URL ✨ ---
+        # ✨ --- INICIO DE LA MODIFICACIÓN --- ✨
+        # Restauramos el título original de la página de inicio.
+        yield rx.call_script("document.title = 'Likemodas'")
+        # ✨ --- FIN DE LA MODIFICACIÓN --- ✨
+
         full_url = ""
         try:
             full_url = self.router.url
         except Exception:
             pass
 
-        # Si la URL actual contiene el parámetro del QR, redirigimos a la
-        # ruta base ('/' o '/admin/store') para limpiarla.
         if full_url and "variant_uuid=" in full_url:
             if self.is_admin or self.is_vendedor or self.is_empleado:
                 return rx.redirect("/admin/store")
@@ -7242,6 +7245,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not db_post or not db_post.publish_active:
                 self.show_detail_modal = False
                 return rx.toast.error("Producto no encontrado.")
+
+            # ✨ --- INICIO DE LA MODIFICACIÓN --- ✨
+            # Usamos json.dumps para crear un string de JavaScript seguro
+            js_title = json.dumps(db_post.title)
+            yield rx.call_script(f"document.title = {js_title}")
+            # ✨ --- FIN DE LA MODIFICACIÓN --- ✨
 
             # --- INICIO DE LA CORRECCIÓN ---
 
