@@ -169,16 +169,11 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         ),
                                     ),
                                     rx.cond(
-                                        post.is_moda_completa_eligible,
+                                        AppState.product_in_modal.is_moda_completa_eligible,
                                         rx.tooltip(
-                                            rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                            
-                                            # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-                                            content=rx.text(
-                                                "Este item cuenta para el envío gratis en compras sobre ",
-                                                AppState.format_price_safely(post.free_shipping_threshold),
-                                            ),
-                                            # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
+                                            rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
+                                            # ✨ --- APLICA LA MISMA CORRECCIÓN AQUÍ --- ✨
+                                            content="Este item cuenta para el envío gratis en compras sobre " + AppState.format_price_safely(AppState.product_in_modal.free_shipping_threshold)
                                         ),
                                     ),
                                     spacing="3", align="center",
