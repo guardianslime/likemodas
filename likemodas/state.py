@@ -3747,6 +3747,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     # En: likemodas/state.py
 
     @rx.var
+    def format_price_safely(self, price: rx.Var[Optional[float]]) -> rx.Var[str]:
+        """
+        Formatea un precio a COP de forma segura para la UI, manejando valores
+        nulos o cero antes de pasarlos a la función de formateo.
+        """
+        return rx.cond(
+            (price.to(int) > 0),
+            format_to_cop(price),
+            "$ 0"
+        )
+
+    @rx.var
     def cart_summary(self) -> dict:
         """
         [CORREGIDO] Calcula el resumen del carrito, usando el umbral dinámico de "Moda Completa"

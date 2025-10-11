@@ -178,8 +178,14 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         post.is_moda_completa_eligible,
                                         rx.tooltip(
                                             rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                            # ✨ --- TOOLTIP DINÁMICO --- ✨
-                                            content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(post.free_shipping_threshold)}"
+                                            # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+                                            # Se reemplaza la llamada directa a format_to_cop
+                                            # por la nueva función segura del estado.
+                                            content=rx.text(
+                                                "Este item cuenta para el envío gratis en compras sobre ",
+                                                AppState.format_price_safely(post.free_shipping_threshold),
+                                            ),
+                                            # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
                                         ),
                                     ),
                                     spacing="3",
