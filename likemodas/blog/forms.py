@@ -301,6 +301,7 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Incluye IVA (19%)", as_="div", size="3", weight="bold"),
                             rx.hstack(
                                 rx.switch(is_checked=AppState.price_includes_iva, on_change=AppState.set_price_includes_iva, size="3"),
+                                # ✨ Este ya estaba correcto, pero lo confirmamos ✨
                                 rx.text(rx.cond(AppState.price_includes_iva, "Sí", "No"), size="3"),
                                 align="center", spacing="3", height="100%",
                             ),
@@ -313,7 +314,7 @@ def blog_post_add_form() -> rx.Component:
                                 align="center", spacing="3", height="100%",
                             ),
                         ),
-                        columns="2", spacing="4", width="100%", margin_top="1em" # Añadimos margen superior
+                        columns="2", spacing="4", width="100%", margin_top="1em"
                     ),
                     rx.grid(
                         rx.vstack(
@@ -326,7 +327,10 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Moda Completa", as_="div", size="3", weight="bold"),
                             rx.hstack(
                                 rx.switch(is_checked=AppState.is_moda_completa, on_change=AppState.set_is_moda_completa, size="3"),
-                                rx.text("Activo", size="3"),
+                                # ✨ --- INICIO DE LA CORRECCIÓN 1 --- ✨
+                                # Se reemplaza el texto estático por uno condicional.
+                                rx.text(rx.cond(AppState.is_moda_completa, "Activo", "Inactivo"), size="3"),
+                                # ✨ --- FIN DE LA CORRECCIÓN 1 --- ✨
                                 align="center", spacing="3", height="100%",
                             ),
                             rx.text("Envío gratis en compras > $200.000.", size="1", color_scheme="gray"),
@@ -336,7 +340,10 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Envío Combinado", as_="div", size="3", weight="bold"),
                             rx.hstack(
                                 rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping, size="3"),
-                                rx.text("Activo", size="3"),
+                                # ✨ --- INICIO DE LA CORRECCIÓN 2 --- ✨
+                                # Se reemplaza el texto estático por uno condicional.
+                                rx.text(rx.cond(AppState.combines_shipping, "Activo", "Inactivo"), size="3"),
+                                # ✨ --- FIN DE LA CORRECCIÓN 2 --- ✨
                                 align="center", spacing="3", height="100%",
                             ),
                             rx.text("Permite que varios productos usen un solo envío.", size="1", color_scheme="gray"),
