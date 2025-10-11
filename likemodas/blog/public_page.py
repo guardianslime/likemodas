@@ -230,10 +230,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     rx.tooltip(
                         rx.badge("Moda Completa", color_scheme="violet", variant="solid", size="2"),
                         # ✨ --- APLICA LA MISMA CORRECCIÓN AQUÍ --- ✨
-                        content=rx.text(
-                            "Este item cuenta para el envío gratis en compras sobre ",
-                            AppState.format_price_safely(AppState.product_in_modal.free_shipping_threshold),
-                        )
+                        content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(AppState.product_in_modal.free_shipping_threshold)}"
                     ),
                 ),
                 rx.cond(

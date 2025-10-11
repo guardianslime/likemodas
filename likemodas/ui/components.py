@@ -173,12 +173,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         rx.tooltip(
                                             rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
                                             
-                                            # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-                                            content=rx.text(
-                                                "Este item cuenta para el envío gratis en compras sobre ",
-                                                AppState.format_price_safely(post.free_shipping_threshold),
-                                            ),
-                                            # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
+                                            # ✨ --- CORRECCIÓN DEFINITIVA AQUÍ --- ✨
+                                            content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(post.free_shipping_threshold)}"
                                         ),
                                     ),
                                     spacing="3", align="center",

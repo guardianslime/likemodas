@@ -1,22 +1,19 @@
-# likemodas/utils/formatting.py
+# En: likemodas/utils/formatting.py
 
 from typing import Optional
+import reflex as rx # ✨ 1. AÑADE ESTA IMPORTACIÓN ✨
 
-def format_to_cop(price: Optional[float]) -> str:
+def format_to_cop(price: rx.Var[Optional[float]]) -> rx.Var[str]:
     """
-    Formatea un número a moneda COP ($ 55.000) sin depender del locale del sistema.
+    [CORREGIDO] Formatea un número o una Var a moneda COP de forma segura.
+    Usa rx.cond para manejar valores nulos o cero en la interfaz.
     """
-    if price is None or price < 1:
-        return "$ 0"
-    
-    # 1. Formatea el número con comas como separador de miles y sin decimales.
-    #    Ejemplo: 55000 -> "55,000"
-    formatted_number = f"{price:,.0f}"
-    
-    # 2. Reemplaza la coma por un punto para el estándar colombiano.
-    #    Ejemplo: "55,000" -> "55.000"
-    colombian_format = formatted_number.replace(',', '.')
-    
-    # 3. Añade el símbolo de peso y un espacio.
-    #    Ejemplo: "55.000" -> "$ 55.000"
-    return f"$ {colombian_format}"
+    # ✨ 2. REEMPLAZA LA LÓGICA ANTERIOR CON ESTA ✨
+    return rx.cond(
+        price > 0,
+        "$" + rx.call_script(
+            f"{{_val: {price.to(str)}}}.toLocaleString('es-CO', {{ style: 'decimal', maximumFractionDigits: 0 }})",
+            _val=0,
+        ),
+        "$ 0"
+    )
