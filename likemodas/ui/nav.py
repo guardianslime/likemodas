@@ -181,7 +181,6 @@ def public_navbar() -> rx.Component:
     )
     
     authenticated_icons = rx.hstack(
-        # 1. El icono de búsqueda ahora es el primero (solo visible en móvil)
         rx.icon_button(
             rx.icon("search", size=24, color=icon_color),
             on_click=AppState.toggle_mobile_search,
@@ -189,7 +188,6 @@ def public_navbar() -> rx.Component:
             color_scheme="gray",
             display=["flex", "flex", "none", "none"]
         ),
-        # 2. El carrito de compras es el segundo
         rx.link(
             rx.icon_button(
                 rx.box(
@@ -209,15 +207,15 @@ def public_navbar() -> rx.Component:
             ),
             href="/cart",
         ),
-        # 3. La campana de notificaciones es la última
         notification_icon(),
         align="center",
-        spacing="2", # Reducimos un poco el espaciado para que se vea mejor
+        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
+        # Se cambia el espaciado a un valor responsivo.
+        spacing={"initial": "3", "md": "4"},
         justify="end",
     )
     
     placeholder_icons = rx.hstack(
-        # El icono de búsqueda para usuarios no logueados
         rx.icon_button(
             rx.icon("search", size=24, color=icon_color),
             on_click=AppState.toggle_mobile_search,
@@ -225,12 +223,12 @@ def public_navbar() -> rx.Component:
             color_scheme="gray",
             display=["flex", "flex", "none", "none"]
         ),
-        # Placeholder para el carrito
         rx.icon_button(rx.icon("shopping-cart", size=24, color="transparent"), variant="ghost", disabled=True),
-        # Placeholder para la campana
         rx.icon_button(rx.icon("bell", size=24, color="transparent"), variant="ghost", disabled=True),
         align="center",
-        spacing="2",
+        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
+        # Se aplica el mismo espaciado para consistencia.
+        spacing={"initial": "3", "md": "4"},
         justify="end",
     )
 
