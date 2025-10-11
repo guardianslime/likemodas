@@ -178,13 +178,14 @@ def public_navbar() -> rx.Component:
         ),
     )
     
+    # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA DE ICONOS ✨ ---
     authenticated_icons = rx.hstack(
         rx.icon_button(
             rx.icon("search", size=24, color=icon_color),
             on_click=AppState.toggle_mobile_search,
             variant="ghost",
             color_scheme="gray",
-            display=["flex", "flex", "none", "none"]
+            display=["flex", "flex", "none", "none"] # Visible solo en móvil/tablet
         ),
         rx.link(
             rx.icon_button(
@@ -207,9 +208,10 @@ def public_navbar() -> rx.Component:
         ),
         notification_icon(),
         align="center",
-        spacing={"initial": "3", "md": "4"},
-        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
-        justify="between",
+        # Se revierte a "end" para agrupar los íconos a la derecha.
+        justify="end", 
+        # Se ajusta el espaciado para que sea mayor en PC.
+        spacing={"initial": "2", "md": "4"},
         width="100%",
     )
     
@@ -221,12 +223,12 @@ def public_navbar() -> rx.Component:
             color_scheme="gray",
             display=["flex", "flex", "none", "none"]
         ),
+        # Se mantiene el orden, pero con los cambios de estilo.
         rx.icon_button(rx.icon("shopping-cart", size=24, color="transparent"), variant="ghost", disabled=True),
         rx.icon_button(rx.icon("bell", size=24, color="transparent"), variant="ghost", disabled=True),
         align="center",
-        spacing={"initial": "3", "md": "4"},
-        # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
-        justify="between",
+        justify="end",
+        spacing={"initial": "2", "md": "4"},
         width="100%",
     )
 
