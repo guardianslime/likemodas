@@ -3675,6 +3675,28 @@ class AppState(reflex_local_auth.LocalAuthState):
                 session.commit()
                 return rx.toast.success("¡Ubicación de origen guardada!")
             
+    @rx.event
+    def renounce_seller_role(self):
+        """
+        Permite a un usuario con rol de VENDEDOR renunciar y volver a ser CUSTOMER.
+        """
+        # 1. Verificación de permisos: Solo un vendedor puede ejecutar esto.
+        if not self.is_vendedor or not self.authenticated_user_info:
+            return rx.toast.error("Acción no permitida.")
+
+        with rx.session() as session:
+            # 2. Encontrar al usuario en la base de datos.
+            user_info = session.get(UserInfo, self.authenticated_user_info.id)
+            if user_info:
+                # 3. Cambiar su rol a Cliente.
+                user_info.role = UserRole.CUSTOMER
+                session.add(user_info)
+                session.commit()
+
+        # 4. Notificar y redirigir a su nuevo perfil de cliente.
+        yield rx.toast.success("Has vuelto al rol de cliente. Serás redirigido.")
+        yield rx.redirect("/my-account/profile")
+            
     # --- ✨ 1. AÑADE LAS NUEVAS VARIABLES DE ESTADO ✨ ---
     payment_method: str = "online" # Valor por defecto para el carrito
     # --- ✨ AÑADE ESTA LÍNEA AQUÍ ✨ ---

@@ -9,6 +9,43 @@ from ..account.profile_page import tfa_activation_modal
 from ..account.profile_page import seccion_solicitudes_empleo # <--- Importa la sección
 # --- ✨ FIN: AÑADE ESTAS DOS LÍNEAS DE IMPORTACIÓN ✨ ---
 
+# ✨ --- NUEVO COMPONENTE PARA LA OPCIÓN DE RENUNCIAR --- ✨
+def renounce_seller_section() -> rx.Component:
+    """
+    Una sección de "Zona de Peligro" específica para que los vendedores
+    puedan renunciar a su rol.
+    """
+    return rx.card(
+        rx.vstack(
+            rx.hstack(rx.icon("user-minus", color_scheme="orange", size=24), rx.heading("Volver a ser Cliente", color_scheme="orange", size="6")),
+            rx.text(
+                "Si decides dejar de ser vendedor, perderás acceso al panel de gestión y tus publicaciones se ocultarán. Esta acción es irreversible y solo un administrador podrá concederte el rol de vendedor nuevamente.",
+                color_scheme="gray",
+            ),
+            rx.divider(border_color="var(--orange-a6)"),
+            rx.alert_dialog.root(
+                rx.alert_dialog.trigger(
+                    rx.button("Quiero dejar de ser Vendedor", color_scheme="orange", variant="soft", width="100%", margin_top="1em")
+                ),
+                rx.alert_dialog.content(
+                    rx.alert_dialog.title("¿Estás seguro?"),
+                    rx.alert_dialog.description(
+                        "Esta acción no se puede deshacer. Para volver a ser vendedor, necesitarás la aprobación de un administrador."
+                    ),
+                    rx.flex(
+                        rx.alert_dialog.cancel(rx.button("Cancelar")),
+                        rx.alert_dialog.action(
+                            rx.button("Sí, entiendo, continuar", on_click=AppState.renounce_seller_role, color_scheme="red")
+                        ),
+                        spacing="3", margin_top="1em", justify="end",
+                    ),
+                ),
+            ),
+            align="start", spacing="4",
+        ),
+        style={"border": "1px solid var(--orange-a7)"}
+    )
+
 def admin_profile_page_content() -> rx.Component:
     """Página de perfil para administradores con mejoras estéticas y de alineación."""
 
@@ -53,8 +90,18 @@ def admin_profile_page_content() -> rx.Component:
 
     page_content = rx.vstack(
         rx.vstack(
-            # --- 1. CENTRAR TÍTULOS ---
-            rx.heading("Perfil de Administrador", size="8", text_align="center", width="100%"),
+            # ✨ --- INICIO DE LA CORRECCIÓN DEL TÍTULO --- ✨
+            rx.heading(
+                rx.cond(
+                    AppState.is_admin, 
+                    "Perfil de Administrador", 
+                    "Perfil de Vendedor"
+                ), 
+                size="8", 
+                text_align="center", 
+                width="100%"
+            ),
+            # ✨ --- FIN DE LA CORRECCIÓN DEL TÍTULO --- ✨
             rx.text(
                 "Gestiona tu información personal y de seguridad para la plataforma.",
                 size="4", color_scheme="gray", text_align="center", width="100%"
@@ -121,9 +168,16 @@ def admin_profile_page_content() -> rx.Component:
                 columns={"initial": "1", "lg": "2"}, spacing="5", width="100%",
             ),
             security_section,
-            # --- ✨ INICIO DE LA MODIFICACIÓN: AÑADE EL COMPONENTE AQUÍ ✨ ---
-            seccion_solicitudes_empleo(), # <-- Esta línea mostrará las solicitudes pendientes
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+            seccion_solicitudes_empleo(),
+
+            # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+            # Esta nueva sección solo se mostrará si el usuario es un Vendedor.
+            rx.cond(
+                AppState.is_vendedor,
+                renounce_seller_section()
+            ),
+            # ✨ --- FIN DE LA CORRECCIÓN --- ✨
+            
             spacing="5", width="100%", max_width="1200px",
         ),
         align="center", width="100%", padding_y="2em"
