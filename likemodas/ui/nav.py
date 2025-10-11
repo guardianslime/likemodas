@@ -260,12 +260,15 @@ def public_navbar() -> rx.Component:
                     },
                 },
             ),
+            # El contenedor de los íconos
             rx.cond(
                 AppState.is_authenticated,
                 authenticated_icons,
                 placeholder_icons
             ),
-            columns="auto 1fr auto",
+            # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+            columns={"initial": "auto 1fr", "md": "auto 1fr auto"},
+            # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
             align_items="center",
             width="100%",
             gap="1.5rem",
