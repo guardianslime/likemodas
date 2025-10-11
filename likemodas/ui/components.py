@@ -174,9 +174,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                             rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
                                             
                                             # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-                                            # Se usa el operador '+' para concatenar el string de Python con la Var de Reflex.
-                                            # Esto crea una nueva Var de texto combinada que es válida.
-                                            content="Este item cuenta para el envío gratis en compras sobre " + format_to_cop(post.free_shipping_threshold),
+                                            content=rx.text(
+                                                "Este item cuenta para el envío gratis en compras sobre ",
+                                                AppState.format_price_safely(post.free_shipping_threshold),
+                                            ),
                                             # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
                                         ),
                                     ),
