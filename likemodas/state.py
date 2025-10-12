@@ -3292,10 +3292,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def lightbox_slides(self) -> list[dict[str, str]]:
         """
-        ✨ CORRECCIÓN: Ahora solo devuelve los nombres de archivo.
-        La URL completa se construirá en el frontend.
+        ✨ CORRECCIÓN: Volvemos a construir la URL completa aquí.
+        El error de serialización que esto causaba antes ya fue resuelto con 'dill'.
         """
-        return [{"src": url} for url in self.carousel_image_urls]
+        return [{"src": rx.get_upload_url(url)} for url in self.carousel_image_urls]
 
     @rx.event
     def open_lightbox(self, index: int):
