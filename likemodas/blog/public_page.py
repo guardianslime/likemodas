@@ -149,37 +149,42 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_image_section() -> rx.Component:
         """
-        La sección de imagen del modal, ahora con un carrusel Swiper.js interactivo
-        y un efecto lightbox controlado por CSS.
+        Sección de imagen del modal, ahora protegida con renderizado condicional
+        para esperar a que los datos del producto estén listos.
         """
-        # Contenedor principal que aplicará los estilos del lightbox de forma condicional.
         return rx.box(
-            swiper_gallery(
-                # Itera sobre las variantes del producto para crear cada diapositiva.
-                rx.foreach(
-                    AppState.product_in_modal.variants,
-                    lambda variant: swiper_slide(
-                        rx.image(
-                            src=rx.get_upload_url(variant.get("image_url", "")),
-                            alt=AppState.product_in_modal.title,
-                            width="100%",
-                            height="100%",
-                            object_fit="contain",
-                        )
+            # --- INICIO DE LA CORRECCIÓN ---
+            # Solo intentamos renderizar el carrusel si `product_in_modal` ya tiene datos.
+            rx.cond(
+                AppState.product_in_modal,
+                swiper_gallery(
+                    rx.foreach(
+                        AppState.product_in_modal.variants,
+                        lambda variant: swiper_slide(
+                            rx.image(
+                                src=rx.get_upload_url(variant.get("image_url", "")),
+                                alt=AppState.product_in_modal.title,
+                                width="100%",
+                                height="100%",
+                                object_fit="contain",
+                            )
+                        ),
                     ),
+                    # El resto de las propiedades se mantienen igual
+                    navigation=True,
+                    pagination={"clickable": True},
+                    loop=True,
+                    initial_slide=AppState.lightbox_initial_slide,
+                    on_slide_change=AppState.handle_slide_change,
+                    on_click=AppState.toggle_lightbox,
+                    class_name="product-swiper",
+                    width="100%",
+                    height="100%",
                 ),
-
-                # El resto de las propiedades se mantienen igual
-                navigation=True,
-                pagination={"clickable": True},
-                loop=True,
-                initial_slide=AppState.lightbox_initial_slide,
-                on_slide_change=AppState.handle_slide_change,
-                on_click=AppState.toggle_lightbox,
-                class_name="product-swiper",
-                width="100%",
-                height="100%",
+                # Mientras los datos cargan, mostramos un spinner.
+                rx.center(rx.spinner(size="3"), height="100%")
             ),
+            # --- FIN DE LA CORRECCIÓN ---
             
             # --- La Clave del Efecto Lightbox: Estilo Condicional ---
             style=rx.cond(
