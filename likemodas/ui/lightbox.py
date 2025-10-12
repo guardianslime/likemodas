@@ -6,8 +6,8 @@ from typing import List, Dict
 
 class LightboxWrapper(NoSSRComponent):
     """
-    Componente intermediario que construye las URLs en el frontend
-    y ahora comprueba si se está ejecutando en el navegador.
+    Componente intermediario que ahora es consciente del servidor/cliente
+    para evitar errores de hidratación en React.
     """
     library = "yet-another-react-lightbox"
     tag = "LikemodasLightbox"
@@ -26,29 +26,33 @@ class LightboxWrapper(NoSSRComponent):
 
     def _get_custom_code(self) -> str:
         # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-        # Añadimos una comprobación inicial: "typeof window !== 'undefined'"
-        # Esto asegura que el código que accede a 'window' solo se ejecute en el navegador
-        # y no en el servidor durante la compilación, evitando el error 'window is not defined'.
+        # Modificamos el componente JS para que devuelva 'null' si se ejecuta en el servidor.
         return """
-if (typeof window !== 'undefined' && !window.LikemodasLightbox) {
-  window.LikemodasLightbox = (props) => {
-    const { slides, upload_route, ...rest } = props;
+const LikemodasLightbox = (props) => {
+  // 1. Si 'window' no está definido, significa que estamos en el servidor.
+  // En ese caso, no renderizamos nada (null). Esto soluciona el error de hidratación.
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
-    if (!slides || !upload_route) {
-      return null;
-    }
+  // 2. El resto de la lógica solo se ejecuta en el navegador del cliente.
+  const { slides, upload_route, ...rest } = props;
 
-    const finalSlides = slides.map(slide => ({
-      ...slide,
-      src: `${upload_route}/${slide.src}`
-    }));
+  if (!slides || !upload_route) {
+    return null;
+  }
 
-    return React.createElement(Lightbox, {
-      ...rest,
-      slides: finalSlides,
-    });
-  };
-}
+  const finalSlides = slides.map(slide => ({
+    ...slide,
+    src: `${upload_route}/${slide.src}`
+  }));
+  
+  // 3. Devolvemos el componente Lightbox real con los datos procesados.
+  return React.createElement(Lightbox, {
+    ...rest,
+    slides: finalSlides,
+  });
+};
 """
         # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
 
