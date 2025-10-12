@@ -238,16 +238,14 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             open=AppState.show_detail_modal,
             on_open_change=AppState.close_product_detail_modal,
         ),
-        # El componente Lightbox, ahora con la nueva propiedad
         lightbox(
             open=AppState.lightbox_is_open,
             close=AppState.close_lightbox,
             slides=AppState.lightbox_slides,
             index=AppState.lightbox_current_index,
-            
-            # ✨ --- AÑADE ESTA LÍNEA --- ✨
-            # Le pasamos la ruta de subida a nuestro componente wrapper.
-            upload_route=AppState.router.upload_files_route,
+            # ✨ --- CORRECCIÓN FINAL --- ✨
+            # Le pasamos la ruta de subida como un string simple.
+            upload_route="/upload",
         )
     )
 
