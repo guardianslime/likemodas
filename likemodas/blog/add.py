@@ -15,7 +15,6 @@ def post_preview() -> rx.Component:
     [CORRECCIÓN DEFINITIVA] Previsualización totalmente reactiva al formulario.
     """
     def format_preview_price(price_str: rx.Var[str]) -> rx.Var[str]:
-        # Esta función auxiliar está bien como está.
         return rx.cond(price_str, format_to_cop(price_str.to(float)), "$ 0")
 
     return rx.box(
@@ -41,13 +40,13 @@ def post_preview() -> rx.Component:
                         weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible",
                     ),
                     star_rating_display_safe(0, 0, size=24),
-                    rx.text(format_preview_price(AppState.price_str), size="5", weight="medium"), # Corregido para usar price_str
+                    rx.text(format_preview_price(AppState.price_str), size="5", weight="medium"),
                     rx.hstack(
                         rx.badge(
+                            # ✨ --- CORRECCIÓN 1: Usar f-string para el costo de envío --- ✨
                             rx.cond(
                                 AppState.shipping_cost_str,
-                                # ✨ --- CORRECCIÓN 1: Usar "+" en lugar de f-string --- ✨
-                                "Envío: " + format_to_cop(AppState.shipping_cost_str.to(float)),
+                                f"Envío: {format_to_cop(AppState.shipping_cost_str.to(float))}",
                                 "Envío a convenir"
                             ),
                             color_scheme="gray", variant="soft", size="2",
@@ -56,8 +55,8 @@ def post_preview() -> rx.Component:
                             AppState.is_moda_completa,
                             rx.tooltip(
                                 rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                # ✨ --- CORRECCIÓN 2: Usar "+" en lugar de f-string --- ✨
-                                content="Este item cuenta para el envío gratis en compras sobre " + format_to_cop(AppState.free_shipping_threshold_str.to(float)),
+                                # ✨ --- CORRECCIÓN 2: Usar f-string para el tooltip de Moda Completa --- ✨
+                                content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(AppState.free_shipping_threshold_str.to(float))}",
                             ),
                         ),
                         spacing="3", align="center",
@@ -66,7 +65,7 @@ def post_preview() -> rx.Component:
                         AppState.combines_shipping,
                         rx.tooltip(
                             rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
-                            # Este ya funcionaba, pero lo estandarizamos por consistencia
+                            # ✨ --- CORRECCIÓN 3 (Referencia): Esta parte ya estaba bien --- ✨
                             content=f"Combina hasta {AppState.shipping_combination_limit_str} productos en un envío.",
                         ),
                     ),
