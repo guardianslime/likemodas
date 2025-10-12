@@ -7373,6 +7373,44 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.modal_selected_variant_index = index
         self.modal_selected_attributes = {} # Limpia la selección de talla anterior
 
+    # --- Nuevas Variables de Estado ---
+    # Controla si la galería se muestra en modo lightbox (pantalla completa).
+    is_lightbox_active: bool = False
+
+    # Almacena el índice de la diapositiva que se debe mostrar al abrir el lightbox.
+    lightbox_initial_slide: int = 0
+
+    # Mantiene un registro del índice de la diapositiva actualmente visible.
+    active_slide_index: int = 0
+
+    # --- Nuevos Manejadores de Eventos ---
+
+    @rx.event
+    def toggle_lightbox(self, clicked_index: int):
+        """
+        Activa o desactiva el modo lightbox. Se dispara con el evento `on_click` del carrusel.
+        """
+        # Si se hace clic fuera de una diapositiva (ej. en el fondo), se cierra el lightbox.
+        if clicked_index is None:
+            if self.is_lightbox_active:
+                self.is_lightbox_active = False
+            return
+
+        # Invierte el estado actual del lightbox.
+        self.is_lightbox_active = not self.is_lightbox_active
+        
+        # Si estamos abriendo el lightbox, establecemos la diapositiva inicial a la que se le hizo clic.
+        if self.is_lightbox_active:
+            self.lightbox_initial_slide = clicked_index
+            self.active_slide_index = clicked_index
+
+    @rx.event
+    def handle_slide_change(self, new_index: int):
+        """
+        Actualiza el estado con el nuevo índice de la diapositiva activa. Se dispara con `on_slide_change`.
+        """
+        self.active_slide_index = new_index
+
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         # Reiniciar el estado inicial para el modal
@@ -7380,6 +7418,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.show_detail_modal = True
         self.modal_selected_attributes = {}
         self.modal_selected_variant_index = 0
+        # Reinicia el estado del lightbox cada vez que se abre un nuevo modal.
+        self.is_lightbox_active = False
+        self.lightbox_initial_slide = 0
+        self.active_slide_index = 0
+        # --- FIN DE LA MODIFICACIÓN ---
         self.product_comments = []
         self.my_review_for_product = None
         self.review_rating = 0
