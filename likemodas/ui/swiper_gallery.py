@@ -6,11 +6,14 @@ from typing import Any, List, Dict, Union
 LIBRARY = "swiper"
 
 class SwiperGallery(NoSSRComponent):
-    """Wrapper para el componente principal de Swiper, ahora autoconfigurable."""
+    """
+    Wrapper para el componente principal de Swiper.
+    Esta clase es la única que contiene la lógica de importación de JavaScript.
+    """
     library = LIBRARY
-    tag = "CustomSwiper" # Mantenemos el nombre único para evitar colisiones.
+    tag = "CustomSwiper"
 
-    # Las props no cambian.
+    # Las props y los handlers no cambian.
     navigation: rx.Var[bool]
     pagination: rx.Var[Dict[str, bool]]
     loop: rx.Var[bool]
@@ -18,19 +21,17 @@ class SwiperGallery(NoSSRComponent):
     slides_per_view: rx.Var[Union[int, str]]
     initial_slide: rx.Var[int]
     class_name: rx.Var[str]
-
-    # Los handlers no cambian.
     on_slide_change: rx.EventHandler[lambda swiper: [swiper.activeIndex]]
     on_click: rx.EventHandler[lambda swiper, event: [swiper.clickedIndex]]
 
     def add_imports(self) -> dict:
-        # Se movió la importación de CSS al código JS para mayor robustez.
+        # El CSS se importa en el JS, por lo que esto se deja vacío.
         return {}
 
     def _get_custom_code(self) -> str | None:
         """
-        Inyecta código JS que importa todo lo necesario y crea un componente
-        wrapper que maneja los módulos automáticamente.
+        Inyecta el código JavaScript UNA SOLA VEZ.
+        Importa todo lo necesario y lo exporta con alias únicos.
         """
         return """
 import React from 'react';
@@ -42,36 +43,34 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
-// Creamos nuestro componente único que envuelve al Swiper real.
-export const CustomSwiper = (props) => {
-  const { children, ...rest } = props;
-  
-  // LÓGICA CLAVE: Construimos la lista de módulos a usar
-  // basándonos en las props que llegan desde Python.
-  const modules_to_use = [];
-  if (props.navigation) {
-    modules_to_use.push(Navigation);
-  }
-  if (props.pagination) {
-    modules_to_use.push(Pagination);
-  }
-
-  return (
-    <Swiper modules={modules_to_use} {...rest}>
-      {children}
-    </Swiper>
-  );
+// Exportamos los componentes originales PERO con un alias (un nuevo nombre único).
+export { 
+    Swiper as CustomSwiper, 
+    SwiperSlide as CustomSwiperSlide, 
+    Navigation as CustomSwiperNavigation, 
+    Pagination as CustomSwiperPagination 
 };
-
-// También exportamos SwiperSlide con un nombre único.
-export { SwiperSlide as CustomSwiperSlide };
 """
 
+# Las otras clases ahora son simples punteros. No necesitan heredar de SwiperBase
+# ni tener su propio _get_custom_code, porque SwiperGallery ya provee todo.
 class SwiperSlide(NoSSRComponent):
     """Wrapper para el componente SwiperSlide."""
     library = LIBRARY
     tag = "CustomSwiperSlide"
 
-# Solo necesitamos exportar los componentes que se renderizan.
+class SwiperNavigation(NoSSRComponent):
+    """Wrapper para el módulo de Navegación."""
+    library = LIBRARY
+    tag = "CustomSwiperNavigation"
+
+class SwiperPagination(NoSSRComponent):
+    """Wrapper para el módulo de Paginación."""
+    library = LIBRARY
+    tag = "CustomSwiperPagination"
+
+# Las funciones "create" no necesitan cambiar.
 swiper_gallery = SwiperGallery.create
 swiper_slide = SwiperSlide.create
+swiper_navigation = SwiperNavigation.create
+swiper_pagination = SwiperPagination.create
