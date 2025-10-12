@@ -3274,38 +3274,37 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.product_in_modal and self.product_in_modal.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.product_in_modal.image_urls)) % len(self.product_in_modal.image_urls)
 
-    # --- Estado y Lógica para el Carrusel y Lightbox ---
+    # --- Estado y Lógica para el Carrusel y Lightbox (VERSIÓN CORREGIDA) ---
     lightbox_is_open: bool = False
     lightbox_current_index: int = 0
 
     @rx.var
     def carousel_image_urls(self) -> list[str]:
-        """
-        Devuelve una lista de URLs de imagen únicas para el carrusel.
-        """
         if not self.product_in_modal or not self.product_in_modal.variants:
             return []
-        seen_urls = set()
-        unique_urls = []
+        seen_urls, unique_urls = set(), []
         for variant in self.product_in_modal.variants:
-            image_url = variant.get("image_url")
-            if image_url and image_url not in seen_urls:
+            if (image_url := variant.get("image_url")) and image_url not in seen_urls:
                 seen_urls.add(image_url)
                 unique_urls.append(image_url)
         return unique_urls
 
     @rx.var
     def lightbox_slides(self) -> list[dict[str, str]]:
-        """Prepara los datos en el formato que espera yet-another-react-lightbox."""
         return [{"src": rx.get_upload_url(url)} for url in self.carousel_image_urls]
 
+    # ✨ --- INICIO DE LA SOLUCIÓN DEFINITIVA --- ✨
     @rx.event
-    def handle_carousel_click(self, index: int):
+    def open_lightbox_proxy(self):
         """
-        Manejador intermediario que no toma argumentos directos en la llamada.
-        Recibe el 'index' del evento de JavaScript y lo pasa al manejador real.
+        Manejador intermediario SIN ARGUMENTOS en su firma para ser compatible con rx.cond.
+        Captura el payload del evento (el índice) manualmente.
         """
-        return AppState.open_lightbox(index)
+        # 1. Obtenemos el payload del evento (que en este caso es solo el índice)
+        index = self.get_event_payload()
+        # 2. Llamamos a nuestra función lógica original con el índice recuperado
+        return self.open_lightbox(index)
+    # ✨ --- FIN DE LA SOLUCIÓN DEFINITIVA --- ✨
 
     @rx.event
     def open_lightbox(self, index: int):
