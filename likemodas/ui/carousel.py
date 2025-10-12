@@ -1,22 +1,15 @@
-# likemodas/ui/carousel.py (EJEMPLO CORRECTO)
+# likemodas/ui/carousel.py (CORREGIDO)
 
 import reflex as rx
-# La importación correcta
 from reflex.components.component import NoSSRComponent
 
-# La clase hereda de NoSSRComponent
 class Carousel(NoSSRComponent):
     """Un componente que envuelve react-responsive-carousel."""
 
-    # --- VERIFICACIÓN CRÍTICA ---
-    # 1. ¿Existe esta línea? Debe ser el nombre exacto del paquete en npm.
     library = "react-responsive-carousel"
-
-    # 2. ¿Existe esta línea? Debe ser el nombre exacto del componente a importar.
     tag = "Carousel"
-    # --- FIN DE LA VERIFICACIÓN ---
 
-    # Las propiedades (props) que tu componente aceptará.
+    # Propiedades (props) que tu componente ya aceptaba
     show_arrows: rx.Var[bool]
     show_status: rx.Var[bool]
     show_indicators: rx.Var[bool]
@@ -26,6 +19,14 @@ class Carousel(NoSSRComponent):
     interval: rx.Var[int]
     width: rx.Var[str]
 
-    # El método para importar el CSS necesario.
+    # ✨ LÍNEA AÑADIDA: Declaramos el disparador de eventos ✨
+    # Esto le dice a Reflex que "on_click_item" es un evento válido que
+    # enviará un argumento (el índice de la imagen clickeada).
+    on_click_item: rx.event.EventSpec[lambda index: [index]]
+
+    # El método para importar el CSS necesario (sin cambios)
     def add_imports(self) -> dict[str, str] | None:
         return {"": "react-responsive-carousel/lib/styles/carousel.min.css"}
+
+# La creación de la instancia se mantiene igual
+carousel = Carousel.create
