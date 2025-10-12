@@ -170,7 +170,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             )
                         ),
                     ),
-                    # El resto de las propiedades se mantienen igual
+                    # El resto de las propiedades que ya tenías
                     navigation=True,
                     pagination={"clickable": True},
                     loop=True,
@@ -181,15 +181,15 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     width="100%",
                     height="100%",
                 ),
-                # Mientras los datos cargan, mostramos un spinner para una mejor UX.
+                # Mientras los datos cargan, mostramos un spinner para mejorar la experiencia.
                 rx.center(rx.spinner(size="3"), height="100%")
             ),
             # --- FIN DE LA CORRECCIÓN ---
 
-            # El estilo condicional para el efecto lightbox se mantiene igual.
+            # El estilo condicional para el efecto lightbox se mantiene exactamente igual.
             style=rx.cond(
                 AppState.is_lightbox_active,
-                { # Estilos para LIGHTBOX...
+                {   # Estilos para LIGHTBOX (pantalla completa).
                     "position": "fixed",
                     "top": "0",
                     "left": "0",
@@ -202,7 +202,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     "align_items": "center",
                     "justify_content": "center",
                 },
-                { # Estilos por defecto...
+                {   # Estilos por defecto (dentro del modal).
                     "position": "relative",
                     "width": "100%",
                     "height": "500px",
