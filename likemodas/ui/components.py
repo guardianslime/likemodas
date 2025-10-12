@@ -161,12 +161,10 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
                                         variant="soft", size="2",
                                     ),
-                                    # ✨ --- INICIO: BADGE DE ENVÍO COMBINADO --- ✨
                                     rx.cond(
                                         post.combines_shipping,
                                         rx.tooltip(
                                             rx.badge("Combinado", color_scheme="teal", variant="soft", size="2"),
-                                            # ✨ CORRECCIÓN: Simplemente muestra el texto pre-formateado ✨
                                             content=post.envio_combinado_tooltip_text
                                         ),
                                     ),
@@ -174,8 +172,9 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         post.is_moda_completa_eligible,
                                         rx.tooltip(
                                             rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                            # ✨ --- CORRECCIÓN CLAVE AQUÍ --- ✨
-                                            content="Este item cuenta para el envío gratis en compras sobre " + format_to_cop(post.free_shipping_threshold)
+                                            # ✨ --- ¡ESTA ES LA CORRECCIÓN CLAVE! --- ✨
+                                            # Se reemplaza el operador '+' por una f-string.
+                                            content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(post.free_shipping_threshold)}"
                                         ),
                                     ),
                                     spacing="3", align="center",
