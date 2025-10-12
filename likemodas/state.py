@@ -3279,9 +3279,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     lightbox_current_index: int = 0
 
     @rx.var
+    def carousel_image_urls(self) -> list[str]:
+        """
+        Devuelve una lista de URLs de imagen únicas para el carrusel.
+        """
+        if not self.product_in_modal or not self.product_in_modal.variants:
+            return []
+        seen_urls = set()
+        unique_urls = []
+        for variant in self.product_in_modal.variants:
+            image_url = variant.get("image_url")
+            if image_url and image_url not in seen_urls:
+                seen_urls.add(image_url)
+                unique_urls.append(image_url)
+        return unique_urls
+
+    @rx.var
     def lightbox_slides(self) -> list[dict[str, str]]:
         """Prepara los datos en el formato que espera yet-another-react-lightbox."""
         return [{"src": rx.get_upload_url(url)} for url in self.carousel_image_urls]
+
+    # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+    @rx.event
+    def _handle_carousel_click(self, index: int):
+        """
+        Manejador intermediario que no toma argumentos directos en la llamada.
+        Recibe el 'index' del evento de JavaScript y lo pasa al manejador real.
+        """
+        return AppState.open_lightbox(index)
+    # ✨ --- FIN DE LA CORRECCIÓN --- ✨
 
     @rx.event
     def open_lightbox(self, index: int):
@@ -3296,11 +3322,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def set_lightbox_index(self, view_object: dict):
-        """
-        Sincroniza el índice del lightbox con AppState cuando el usuario
-        navega dentro de la vista expandida.
-        """
-        # La biblioteca pasa un objeto; necesitamos extraer el índice
+        """Sincroniza el índice del lightbox con AppState."""
         self.lightbox_current_index = view_object.get("index", 0)
 
     @rx.var
