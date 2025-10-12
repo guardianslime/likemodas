@@ -46,6 +46,7 @@ def post_preview() -> rx.Component:
                         rx.badge(
                             rx.cond(
                                 AppState.shipping_cost_str,
+                                # ✨ --- CORRECCIÓN 1: Usar f-string --- ✨
                                 f"Envío: {format_to_cop(AppState.shipping_cost_str.to(float))}",
                                 "Envío a convenir"
                             ),
@@ -55,7 +56,7 @@ def post_preview() -> rx.Component:
                             AppState.is_moda_completa,
                             rx.tooltip(
                                 rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                # ✨ --- CORRECCIÓN CLAVE 1 --- ✨
+                                # ✨ --- CORRECCIÓN 2: Usar f-string --- ✨
                                 content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(AppState.free_shipping_threshold_str.to(float))}",
                             ),
                         ),
@@ -65,7 +66,7 @@ def post_preview() -> rx.Component:
                         AppState.combines_shipping,
                         rx.tooltip(
                             rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
-                            # ✨ --- CORRECCIÓN CLAVE 2 --- ✨
+                            # ✨ --- CORRECCIÓN 3: Usar f-string --- ✨
                             content=f"Combina hasta {AppState.shipping_combination_limit_str} productos en un envío.",
                         ),
                     ),
