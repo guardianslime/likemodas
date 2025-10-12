@@ -2,36 +2,31 @@ import reflex as rx
 from reflex.components.component import NoSSRComponent
 from typing import Any, List, Dict, Union
 
-# El nombre del paquete que se instalará con npm/bun.
-# Esto es lo que se pasará a `npm install`.
-# Ahora es el correcto y no causará el error de git.
+# El único paquete que se necesita instalar desde npm.
 LIBRARY = "swiper"
 
-class SwiperNavigation(NoSSRComponent):
-    # 1. Se especifica el paquete principal a instalar.
+class SwiperBase(NoSSRComponent):
+    """Una clase base que comparte la librería y el código JS personalizado."""
     library = LIBRARY
-    tag = "Navigation"
 
-    def _get_imports(self) -> dict[str, str]:
-        # 2. Se especifica la ruta de importación correcta para el JS.
-        return {"swiper/modules": [self.tag]}
+    def _get_custom_code(self) -> str | None:
+        """
+        Inyecta código JavaScript personalizado en el frontend.
+        Esto nos da control total sobre las importaciones, evitando el error.
+        """
+        return """
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination } from 'swiper/modules';
 
-class SwiperPagination(NoSSRComponent):
-    library = LIBRARY
-    tag = "Pagination"
+// Exportamos los componentes para que Reflex pueda encontrarlos por su 'tag'.
+export { Swiper, SwiperSlide, Navigation, Pagination };
+"""
 
-    def _get_imports(self) -> dict[str, str]:
-        return {"swiper/modules": [self.tag]}
-
-class SwiperGallery(NoSSRComponent):
-    library = LIBRARY
+class SwiperGallery(SwiperBase):
+    """Wrapper para el componente principal de Swiper."""
     tag = "Swiper"
 
-    def _get_imports(self) -> dict[str, str]:
-        # Le decimos a Reflex que importe este componente desde la sub-ruta 'swiper/react'.
-        return {"swiper/react": [self.tag]}
-
-    # Las props y los handlers se mantienen exactamente igual.
+    # Las props y los handlers no cambian.
     modules: rx.Var[List[Any]]
     navigation: rx.Var[bool]
     pagination: rx.Var[Dict[str, bool]]
@@ -43,6 +38,7 @@ class SwiperGallery(NoSSRComponent):
     on_slide_change: rx.EventHandler[lambda swiper: [swiper.activeIndex]]
     on_click: rx.EventHandler[lambda swiper, event: [swiper.clickedIndex]]
 
+    # La importación de CSS tampoco cambia.
     def add_imports(self) -> dict[str, str]:
         return {
             "": [
@@ -52,15 +48,19 @@ class SwiperGallery(NoSSRComponent):
             ]
         }
 
-class SwiperSlide(NoSSRComponent):
-    library = LIBRARY
+class SwiperSlide(SwiperBase):
+    """Wrapper para el componente SwiperSlide."""
     tag = "SwiperSlide"
 
-    def _get_imports(self) -> dict[str, str]:
-        # Le decimos a Reflex que importe este componente desde la sub-ruta 'swiper/react'.
-        return {"swiper/react": [self.tag]}
+class SwiperNavigation(SwiperBase):
+    """Wrapper para el módulo de Navegación."""
+    tag = "Navigation"
 
-# Las funciones "create" se mantienen igual.
+class SwiperPagination(SwiperBase):
+    """Wrapper para el módulo de Paginación."""
+    tag = "Pagination"
+
+# Las funciones "create" se mantienen igual para facilitar su uso.
 swiper_gallery = SwiperGallery.create
 swiper_slide = SwiperSlide.create
 swiper_navigation = SwiperNavigation.create
