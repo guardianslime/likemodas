@@ -12,7 +12,12 @@ from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_galler
 from ..ui.reputation_icon import reputation_icon
 from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars 
-from ..ui.swiper_gallery import swiper_gallery, swiper_slide
+from ..ui.swiper_gallery import (
+    swiper_gallery, 
+    swiper_slide,
+    swiper_navigation, # <-- Importa el módulo de navegación
+    swiper_pagination # <-- Importa el módulo de paginación
+)
 
 from ..models import UserReputation # Asegúrate de que este import esté
 
@@ -164,21 +169,23 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             alt=AppState.product_in_modal.title,
                             width="100%",
                             height="100%",
-                            object_fit="contain", # 'contain' es mejor para un lightbox.
+                            object_fit="contain",
                         )
                     ),
                 ),
                 
-                # --- Vinculación de Props y Eventos ---
-                navigation=True, # Habilita las flechas de navegación.
-                pagination={"clickable": True}, # Habilita los puntos de paginación.
-                loop=True, # Habilita el desplazamiento infinito.
-                initial_slide=AppState.lightbox_initial_slide, # Establece la diapositiva inicial.
-                
-                # Vincula los eventos del componente a los manejadores en AppState.
+                # --- INICIO DE LA CORRECCIÓN ---
+                # Le pasamos a Swiper los módulos que necesita para funcionar.
+                modules=[swiper_navigation(), swiper_pagination()],
+                # --- FIN DE LA CORRECCIÓN ---
+
+                # El resto de las propiedades se mantienen igual
+                navigation=True,
+                pagination={"clickable": True},
+                loop=True,
+                initial_slide=AppState.lightbox_initial_slide,
                 on_slide_change=AppState.handle_slide_change,
                 on_click=AppState.toggle_lightbox,
-                
                 class_name="product-swiper",
                 width="100%",
                 height="100%",

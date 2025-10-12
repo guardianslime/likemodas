@@ -2,20 +2,27 @@ import reflex as rx
 from reflex.components.component import NoSSRComponent
 from typing import Any, List, Dict, Union
 
-# Hereda de NoSSRComponent para compatibilidad en producción.
+# --- INICIO DE LA CORRECCIÓN 1: Importar los módulos ---
+# Creamos wrappers simples para los módulos que Swiper necesita.
+class SwiperNavigation(NoSSRComponent):
+    library = "swiper/modules"
+    tag = "Navigation"
+
+class SwiperPagination(NoSSRComponent):
+    library = "swiper/modules"
+    tag = "Pagination"
+# --- FIN DE LA CORRECCIÓN 1 ---
+
 class SwiperGallery(NoSSRComponent):
     """
     Componente de Reflex que envuelve la biblioteca Swiper.js (swiper/react)
-    para crear carruseles de imágenes interactivos y personalizables.
     """
-    # El nombre exacto del paquete en npm.
-    library = "swiper"
-    
-    # El nombre del componente principal que se importará.
+    # --- INICIO DE LA CORRECCIÓN 2: Ruta de la librería ---
+    # Apuntamos a 'swiper/react' en lugar de solo 'swiper'.
+    library = "swiper/react"
+    # --- FIN DE LA CORRECCIÓN 2 ---
     tag = "Swiper"
 
-    # --- Mapeo de props de React a Vars de Reflex ---
-    # Esto define la API de nuestro componente en Python.
     modules: rx.Var[List[Any]]
     navigation: rx.Var[bool]
     pagination: rx.Var[Dict[str, bool]]
@@ -25,16 +32,9 @@ class SwiperGallery(NoSSRComponent):
     initial_slide: rx.Var[int]
     class_name: rx.Var[str]
 
-    # --- Mapeo de manejadores de eventos ---
-    # Permite la comunicación desde el frontend (JS) hacia el backend (Python).
-    
-    # Se dispara cuando la diapositiva activa cambia. Envía el nuevo índice.
     on_slide_change: rx.EventHandler[lambda swiper: [swiper.activeIndex]]
-    
-    # Se dispara al hacer clic. Envía el índice de la diapositiva clickeada.
     on_click: rx.EventHandler[lambda swiper, event: [swiper.clickedIndex]]
 
-    # Este método le dice a Reflex qué archivos CSS son necesarios.
     def add_imports(self) -> dict[str, str]:
         return {
             "": [
@@ -44,11 +44,15 @@ class SwiperGallery(NoSSRComponent):
             ]
         }
 
-# Clase separada para las diapositivas individuales.
 class SwiperSlide(NoSSRComponent):
-    library = "swiper"
+    # --- INICIO DE LA CORRECCIÓN 3: Ruta de la librería ---
+    library = "swiper/react"
+    # --- FIN DE LA CORRECCIÓN 3 ---
     tag = "SwiperSlide"
 
-# Funciones "create" para una API más limpia.
 swiper_gallery = SwiperGallery.create
 swiper_slide = SwiperSlide.create
+# --- INICIO DE LA CORRECCIÓN 4: Exportar los módulos ---
+swiper_navigation = SwiperNavigation.create
+swiper_pagination = SwiperPagination.create
+# --- FIN DE LA CORRECCIÓN 4 ---
