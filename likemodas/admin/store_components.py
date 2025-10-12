@@ -1,28 +1,61 @@
-# likemodas/admin/store_components.py (CORREGIDO)
+# En: likemodas/admin/store_components.py
 
 import reflex as rx
 from ..state import AppState, ProductCardData
+# ✨ Se importa el componente de estrellas que faltaba ✨
+from ..ui.components import star_rating_display_safe
 
 def admin_product_card(post: ProductCardData) -> rx.Component:
     """
-    Tarjeta de producto para la vista de admin. Ahora lee desde 'variants'.
+    Tarjeta de producto para la vista de admin, ahora con diseño y datos consistentes.
     """
     return rx.box(
         rx.vstack(
             rx.vstack(
                 rx.box(
                     rx.cond(
-                        # --- 👇 LÍNEA CORREGIDA 👇 ---
                         post.variants & (post.variants.length() > 0),
-                        # --- 👇 LÍNEA CORREGIDA 👇 ---
                         rx.image(src=rx.get_upload_url(post.variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
                         rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                     ),
-                    width="260px", height="260px"
+                    # ... (badge de importado se mantiene) ...
                 ),
-                rx.text(post.title, weight="bold", size="6"),
-                rx.text(post.price_cop, size="6"),
-                rx.box(height="21px"),
+                rx.vstack(
+                    rx.text(post.title, weight="bold", size="6"),
+                    star_rating_display_safe(post.average_rating, post.rating_count, size=24),
+                    rx.text(post.price_cop, size="5", weight="medium"),
+                    
+                    # --- ✨ INICIO: SE APLICA EL MISMO DISEÑO CORREGIDO AQUÍ ✨ ---
+                    rx.vstack(
+                        rx.hstack(
+                            rx.badge(
+                                post.shipping_display_text,
+                                color_scheme="gray", variant="soft", size="2"
+                            ),
+                            rx.cond(
+                                post.is_moda_completa_eligible,
+                                rx.tooltip(
+                                    rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
+                                    content=post.moda_completa_tooltip_text,
+                                ),
+                            ),
+                            spacing="3", align="center",
+                        ),
+                        rx.cond(
+                            post.combines_shipping,
+                            rx.tooltip(
+                                rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
+                                content=post.envio_combinado_tooltip_text,
+                            ),
+                        ),
+                        spacing="1",
+                        align_items="start",
+                        width="100%",
+                    ),
+                    # --- ✨ FIN DEL DISEÑO CORREGIDO ✨ ---
+
+                    spacing="1", align_items="start", width="100%"
+                ),
                 spacing="2", align="start"
             ),
             rx.spacer(),

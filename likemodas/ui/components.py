@@ -156,21 +156,16 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(post.price_cop, size="5", weight="medium"),
                                 
-                                # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO ✨ ---
+                                # --- ✨ INICIO DE LA CORRECCIÓN DE DISEÑO Y TOOLTIPS ✨ ---
                                 rx.vstack(
-                                    # Primera fila de insignias
+                                    # Primera fila de insignias (sin tooltip en "Envío")
                                     rx.hstack(
-                                        # Tooltip para el Envío
-                                        rx.tooltip(
-                                            rx.badge(
-                                                post.shipping_display_text,
-                                                color_scheme="gray", variant="soft", size="2"
-                                            ),
-                                            content=post.shipping_display_text,
+                                        rx.badge(
+                                            post.shipping_display_text,
+                                            color_scheme="gray", variant="soft", size="2"
                                         ),
                                         rx.cond(
                                             post.is_moda_completa_eligible,
-                                            # Tooltip para Moda Completa
                                             rx.tooltip(
                                                 rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
                                                 content=post.moda_completa_tooltip_text,
@@ -178,19 +173,19 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         ),
                                         spacing="3", align="center",
                                     ),
-                                    # Segunda fila, que ahora estará debajo
+                                    # Segunda fila (con tooltip)
                                     rx.cond(
                                         post.combines_shipping,
-                                        # Tooltip para Envío Combinado
                                         rx.tooltip(
                                             rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
                                             content=post.envio_combinado_tooltip_text,
                                         ),
                                     ),
-                                    spacing="1", # Espacio vertical entre las filas
+                                    spacing="1",
                                     align_items="start",
+                                    width="100%", # Asegura que ocupe el ancho
                                 ),
-                                # --- ✨ FIN DE LA MODIFICACIÓN DE DISEÑO ✨ ---
+                                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
                                 spacing="1", align_items="start", width="100%"
                             ),
