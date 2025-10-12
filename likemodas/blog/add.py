@@ -46,8 +46,8 @@ def post_preview() -> rx.Component:
                         rx.badge(
                             rx.cond(
                                 AppState.shipping_cost_str,
-                                # ✨ --- CORRECCIÓN 1: Usar f-string --- ✨
-                                f"Envío: {format_to_cop(AppState.shipping_cost_str.to(float))}",
+                                # ✨ --- CORRECCIÓN 1: Usar "+" en lugar de f-string --- ✨
+                                "Envío: " + format_to_cop(AppState.shipping_cost_str.to(float)),
                                 "Envío a convenir"
                             ),
                             color_scheme="gray", variant="soft", size="2",
@@ -56,8 +56,8 @@ def post_preview() -> rx.Component:
                             AppState.is_moda_completa,
                             rx.tooltip(
                                 rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                # ✨ --- CORRECCIÓN 2: Usar f-string --- ✨
-                                content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(AppState.free_shipping_threshold_str.to(float))}",
+                                # ✨ --- CORRECCIÓN 2: Usar "+" en lugar de f-string --- ✨
+                                content="Este item cuenta para el envío gratis en compras sobre " + format_to_cop(AppState.free_shipping_threshold_str.to(float)),
                             ),
                         ),
                         spacing="3", align="center",
@@ -66,7 +66,7 @@ def post_preview() -> rx.Component:
                         AppState.combines_shipping,
                         rx.tooltip(
                             rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
-                            # ✨ --- CORRECCIÓN 3: Usar f-string --- ✨
+                            # Este ya funcionaba, pero lo estandarizamos por consistencia
                             content=f"Combina hasta {AppState.shipping_combination_limit_str} productos en un envío.",
                         ),
                     ),
