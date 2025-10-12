@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (VERSIÓN DEFINITIVA)
+# likemodas/blog/public_page.py (VERSIÓN FINAL Y DEFINITIVA)
 
 import reflex as rx
 
@@ -238,12 +238,15 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             open=AppState.show_detail_modal,
             on_open_change=AppState.close_product_detail_modal,
         ),
+        # ✨ --- CORRECCIÓN FINAL --- ✨
+        # Se elimina la propiedad 'on_view' que estaba causando el error.
         lightbox(
             open=AppState.lightbox_is_open,
             close=AppState.close_lightbox,
             slides=AppState.lightbox_slides,
             index=AppState.lightbox_current_index,
         )
+        # ✨ --- FIN DE LA CORRECCIÓN --- ✨
     )
 
 def public_qr_scanner_modal() -> rx.Component:

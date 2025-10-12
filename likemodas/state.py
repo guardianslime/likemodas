@@ -3274,7 +3274,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.product_in_modal and self.product_in_modal.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.product_in_modal.image_urls)) % len(self.product_in_modal.image_urls)
 
-    # --- Estado y Lógica para el Carrusel y Lightbox (VERSIÓN SIMPLIFICADA Y FINAL) ---
+    # --- Estado y Lógica para el Carrusel y Lightbox (VERSIÓN FINAL) ---
     lightbox_is_open: bool = False
     lightbox_current_index: int = 0
 
@@ -3292,8 +3292,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def lightbox_slides(self) -> list[dict[str, str]]:
         return [{"src": rx.get_upload_url(url)} for url in self.carousel_image_urls]
-
-    # ✨ El manejador proxy se ha eliminado. Solo dejamos los manejadores lógicos originales. ✨
 
     @rx.event
     def open_lightbox(self, index: int):
