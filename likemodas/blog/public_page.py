@@ -242,7 +242,12 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             close=AppState.close_lightbox,
             slides=AppState.lightbox_slides,
             index=AppState.lightbox_current_index,
+            
+            # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+            # Cambiamos 'on={...}' por la nueva propiedad 'on_view'.
+            # Esto le da al compilador de Reflex una instrucción clara.
             on_view=AppState.set_lightbox_index,
+            # ✨ --- FIN DE LA CORRECCIÓN --- ✨
         )
     )
 
