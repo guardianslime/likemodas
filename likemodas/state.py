@@ -7362,22 +7362,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.show_detail_modal = False
                 return rx.toast.error("Producto no encontrado.")
 
-            # ✨ --- INICIO DE LA MODIFICACIÓN --- ✨
-            # Usamos json.dumps para crear un string de JavaScript seguro
             js_title = json.dumps(db_post.title)
             yield rx.call_script(f"document.title = {js_title}")
-            # ✨ --- FIN DE LA MODIFICACIÓN --- ✨
 
-            # --- INICIO DE LA CORRECCIÓN ---
-
-            # 1. Obtenemos los datos del comprador y vendedor, incluyendo la CIUDAD
             buyer_barrio = self.default_shipping_address.neighborhood if self.default_shipping_address else None
             buyer_city = self.default_shipping_address.city if self.default_shipping_address else None
             
             seller_barrio = db_post.userinfo.seller_barrio if db_post.userinfo else None
             seller_city = db_post.userinfo.seller_city if db_post.userinfo else None
 
-            # 2. Llamamos a la función con TODOS los argumentos requeridos
             final_shipping_cost = calculate_dynamic_shipping(
                 base_cost=db_post.shipping_cost or 0.0,
                 seller_barrio=seller_barrio,
@@ -7388,12 +7381,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             shipping_text = f"Envío: {format_to_cop(final_shipping_cost)}" if final_shipping_cost > 0 else "Envío a convenir"
             
-            # --- FIN DE LA CORRECCIÓN ---
-            
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             
-            # El resto de la función para construir el DTO y cargar comentarios no cambia...
+            # --- ✨ INICIO DE LA LÓGICA FALTANTE QUE CAUSA EL ERROR ✨ ---
+            # Este es el bloque que faltaba. Aquí se crean las variables antes de usarlas.
+            
+            moda_completa_text = ""
+            if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold:
+                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}"
+
+            combinado_text = ""
+            if db_post.combines_shipping and db_post.shipping_combination_limit:
+                combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío."
+            
+            # --- ✨ FIN DE LA LÓGICA FALTANTE ✨ ---
+
             self.product_in_modal = ProductDetailData(
                 id=db_post.id,
                 title=db_post.title,
@@ -7410,14 +7413,15 @@ class AppState(reflex_local_auth.LocalAuthState):
                 seller_name=seller_name,
                 seller_id=seller_id,
                 seller_score=db_post.seller_score,
+                
+                # Ahora estas variables sí existen y la advertencia desaparecerá
                 free_shipping_threshold=db_post.free_shipping_threshold,
                 moda_completa_tooltip_text=moda_completa_text,
-
-                # Estas son las líneas importantes a añadir/verificar
                 combines_shipping=db_post.combines_shipping,
                 shipping_combination_limit=db_post.shipping_combination_limit,
                 envio_combinado_tooltip_text=combinado_text,
             )
+
             # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
             
             if self.product_in_modal.variants:
