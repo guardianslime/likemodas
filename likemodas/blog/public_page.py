@@ -30,12 +30,10 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
             Carousel.create(
-                # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
                 rx.foreach(
-                    # Ahora el foreach nos da también el índice de cada imagen
                     AppState.carousel_image_urls,
+                    # La función lambda ahora recibe 'index' para usarlo en el on_click
                     lambda image_url, index: rx.box(
-                        # La imagen ahora está dentro de un rx.box
                         rx.image(
                             src=rx.get_upload_url(image_url),
                             alt=AppState.product_in_modal.title,
@@ -43,24 +41,28 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             height="100%",
                             object_fit="cover",
                         ),
-                        # El evento on_click se añade al rx.box, que sí es 100% compatible
+                        # El evento on_click se maneja en el rx.box nativo
                         on_click=AppState.open_lightbox(index),
                         cursor="pointer",
                         width="100%",
                         height="100%",
                     )
                 ),
-                # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
-                
-                # Se elimina la propiedad on_click_item de aquí
                 show_arrows=True,
                 show_indicators=True,
                 infinite_loop=True,
                 show_thumbs=False,
                 width="100%",
-                height={"initial": "380px", "md": FIXED_HEIGHT},
+
+                # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+                # Se elimina la propiedad 'height' directa y se mueve a 'style'.
+                # La propiedad 'style' sí sabe cómo interpretar este diccionario responsivo.
+                style={
+                    "height": {"initial": "380px", "md": FIXED_HEIGHT}
+                },
+                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
             ),
-            # La lógica de las miniaturas de abajo no cambia
+            # La lógica de las miniaturas inferiores no cambia
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
