@@ -1,54 +1,59 @@
-# likemodas/ui/lightbox.py (SOLUCIÓN DEFINITIVA Y FINAL)
+# likemodas/ui/lightbox.py (SOLUCIÓN FINAL Y DEFINITIVA)
 
 import reflex as rx
 from reflex.components.component import NoSSRComponent
-from typing import List
+from typing import List, Dict
 
-class FsLightboxWrapper(NoSSRComponent):
+class LightboxWrapper(NoSSRComponent):
     """
-    Wrapper final para FsLightbox que comprueba si ya existe
-    globalmente para evitar errores de re-declaración.
+    Componente intermediario que ahora es consciente del servidor/cliente
+    para evitar errores de hidratación en React.
     """
-    library = "fslightbox-react"
-    tag = "LikemodasFsLightbox"
+    library = "yet-another-react-lightbox"
+    tag = "LikemodasLightbox"
 
-    # Propiedades que nuestro wrapper recibirá desde Python
-    toggler: rx.Var[bool]
-    sources: rx.Var[List[str]]
-    slide: rx.Var[int]
-    on_close: rx.event.EventSpec
+    open: rx.Var[bool]
+    close: rx.event.EventSpec
+    slides: rx.Var[List[Dict[str, str]]]
+    index: rx.Var[int]
     upload_route: rx.Var[str]
 
+    def add_imports(self) -> dict[str, str] | None:
+        return {"": "yet-another-react-lightbox/styles.css"}
+
     def _get_imports(self) -> dict[str, str | list[str]]:
-        # Importamos el FsLightbox real para usarlo dentro de nuestro wrapper
-        return {"react": "default as React", self.library: "default as FsLightbox"}
+        return {"react": "default as React", self.library: "default as Lightbox"}
 
     def _get_custom_code(self) -> str:
         # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-        # Comprobamos si el componente YA ha sido declarado en el objeto global 'window'.
-        # Si no existe, lo creamos y lo asignamos a 'window' para que las futuras
-        # comprobaciones lo encuentren y no intenten re-declararlo.
-        # Esto soluciona el error 'Identifier has already been declared'.
+        # Modificamos el componente JS para que devuelva 'null' si se ejecuta en el servidor.
         return """
-if (typeof window !== 'undefined' && !window.LikemodasFsLightbox) {
-  window.LikemodasFsLightbox = (props) => {
-    // Esta parte interna no cambia.
-    const { sources, upload_route, ...rest } = props;
+const LikemodasLightbox = (props) => {
+  // 1. Si 'window' no está definido, significa que estamos en el servidor.
+  // En ese caso, no renderizamos nada (null). Esto soluciona el error de hidratación.
+  if (typeof window === 'undefined') {
+    return null;
+  }
 
-    if (!sources || !upload_route) {
-      return null;
-    }
+  // 2. El resto de la lógica solo se ejecuta en el navegador del cliente.
+  const { slides, upload_route, ...rest } = props;
 
-    const finalSources = sources.map(src => `${upload_route}/${src}`);
-    
-    return React.createElement(FsLightbox, {
-      ...rest,
-      sources: finalSources,
-    });
-  };
-}
+  if (!slides || !upload_route) {
+    return null;
+  }
+
+  const finalSlides = slides.map(slide => ({
+    ...slide,
+    src: `${upload_route}/${slide.src}`
+  }));
+  
+  // 3. Devolvemos el componente Lightbox real con los datos procesados.
+  return React.createElement(Lightbox, {
+    ...rest,
+    slides: finalSlides,
+  });
+};
 """
         # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
 
-# La instancia que usaremos en nuestra app ahora es de nuestro wrapper
-fslightbox = FsLightboxWrapper.create
+lightbox = LightboxWrapper.create
