@@ -1,4 +1,4 @@
-# Archivo: likemodas/ui/lightbox.py (CORRECCIÓN FINAL)
+# Archivo: likemodas/ui/lightbox.py (SOLUCIÓN FINAL)
 
 import reflex as rx
 from reflex.components.component import NoSSRComponent
@@ -14,11 +14,7 @@ class Lightbox(NoSSRComponent):
     slides: rx.Var[List[Dict[str, str]]]
     index: rx.Var[int]
 
-    # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
-    # Volvemos a la propiedad 'on' que espera un diccionario.
-    # Esto coincide exactamente con el prop 'on' de la librería de React.
-    on: rx.Var[Dict]
-    # ✨ --- FIN DE LA CORRECCIÓN --- ✨
+    # ✨ SE ELIMINA LA PROPIEDAD 'on' / 'on_view' DE AQUÍ ✨
 
     def add_imports(self) -> dict[str, str] | None:
         return {"": "yet-another-react-lightbox/styles.css"}

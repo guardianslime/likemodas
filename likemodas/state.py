@@ -3306,18 +3306,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Cierra el lightbox."""
         self.lightbox_is_open = False
 
-    # (Mantenemos el manejador para la navegación DENTRO del lightbox)
-    @rx.event
-    def handle_lightbox_view_change(self):
-        """Proxy SIN ARGUMENTOS. Captura el 'view_object' y lo pasa a la función lógica."""
-        view_object = self.get_event_payload()
-        return self.set_lightbox_index(view_object)
-
-    @rx.event
-    def set_lightbox_index(self, view_object: dict):
-        """Sincroniza el índice del lightbox con AppState."""
-        self.lightbox_current_index = view_object.get("index", 0)
-
     @rx.var
     def carousel_image_urls(self) -> list[str]:
         """

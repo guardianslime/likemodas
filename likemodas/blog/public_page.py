@@ -243,11 +243,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             close=AppState.close_lightbox,
             slides=AppState.lightbox_slides,
             index=AppState.lightbox_current_index,
-            # ✨ --- CORRECCIÓN FINAL --- ✨
-            # Le pasamos un diccionario con la clave 'view' que espera la librería,
-            # y como valor, nuestro manejador proxy que no tiene argumentos.
-            on={"view": AppState.handle_lightbox_view_change},
-            # ✨ --- FIN DE LA CORRECCIÓN --- ✨
         )
     )
 
