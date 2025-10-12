@@ -3299,15 +3299,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Prepara los datos en el formato que espera yet-another-react-lightbox."""
         return [{"src": rx.get_upload_url(url)} for url in self.carousel_image_urls]
 
-    # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
     @rx.event
-    def _handle_carousel_click(self, index: int):
+    def handle_carousel_click(self, index: int):
         """
         Manejador intermediario que no toma argumentos directos en la llamada.
         Recibe el 'index' del evento de JavaScript y lo pasa al manejador real.
         """
         return AppState.open_lightbox(index)
-    # ✨ --- FIN DE LA CORRECCIÓN --- ✨
 
     @rx.event
     def open_lightbox(self, index: int):

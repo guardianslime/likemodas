@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (COMPLETO Y CORREGIDO)
+# likemodas/blog/public_page.py (COMPLETO Y FINAL)
 
 import reflex as rx
 
@@ -17,7 +17,6 @@ from ..ui.carousel import Carousel
 from ..ui.lightbox import lightbox
 
 
-# ... (Las funciones render_update_item, review_submission_form, y render_comment_item se mantienen sin cambios) ...
 def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(rx.vstack(rx.hstack(rx.icon("pencil", size=16, margin_right="0.5em"),rx.text("Actualización:", weight="bold"),star_rating_display_safe(comment.rating, 1, size=20),rx.spacer(),rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),width="100%"),rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),align_items="start", spacing="1"),padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),border_radius="md", margin_top="1em", margin_left="2.5em")
 def review_submission_form() -> rx.Component:
@@ -43,10 +42,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         object_fit="cover",
                     )
                 ),
-                # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
-                # Llamamos al nuevo manejador intermediario que no tiene argumentos
-                on_click_item=AppState._handle_carousel_click,
-                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
+                on_click_item=AppState.handle_carousel_click,
                 show_arrows=True,
                 show_indicators=True,
                 infinite_loop=True,
