@@ -181,32 +181,32 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     width="100%",
                     height="100%",
                 ),
-                # Mientras los datos cargan, mostramos un spinner.
+                # Mientras los datos cargan, mostramos un spinner para una mejor UX.
                 rx.center(rx.spinner(size="3"), height="100%")
             ),
             # --- FIN DE LA CORRECCIÓN ---
-            
-            # --- La Clave del Efecto Lightbox: Estilo Condicional ---
+
+            # El estilo condicional para el efecto lightbox se mantiene igual.
             style=rx.cond(
                 AppState.is_lightbox_active,
-                {   # Estilos para el modo LIGHTBOX (pantalla completa).
+                { # Estilos para LIGHTBOX...
                     "position": "fixed",
                     "top": "0",
                     "left": "0",
                     "width": "100vw",
                     "height": "100vh",
                     "background": "rgba(0, 0, 0, 0.85)",
-                    "z_index": "2000", # Asegura que esté por encima de todo.
+                    "z_index": "2000",
                     "padding": "2rem",
                     "display": "flex",
                     "align_items": "center",
                     "justify_content": "center",
                 },
-                {   # Estilos por defecto (dentro del modal).
+                { # Estilos por defecto...
                     "position": "relative",
                     "width": "100%",
-                    "height": "500px", # Altura fija dentro del modal.
-                    "cursor": "zoom-in", # Pista visual para el usuario.
+                    "height": "500px",
+                    "cursor": "zoom-in",
                 }
             ),
         )
