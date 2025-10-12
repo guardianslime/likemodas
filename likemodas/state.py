@@ -7406,11 +7406,19 @@ class AppState(reflex_local_auth.LocalAuthState):
                 shipping_cost=db_post.shipping_cost,
                 is_moda_completa_eligible=db_post.is_moda_completa_eligible,
                 is_imported=db_post.is_imported,
-                shipping_display_text=shipping_text, # Usamos el costo calculado
+                shipping_display_text=shipping_text,
                 seller_name=seller_name,
                 seller_id=seller_id,
                 seller_score=db_post.seller_score,
+                free_shipping_threshold=db_post.free_shipping_threshold,
+                moda_completa_tooltip_text=moda_completa_text,
+
+                # Estas son las líneas importantes a añadir/verificar
+                combines_shipping=db_post.combines_shipping,
+                shipping_combination_limit=db_post.shipping_combination_limit,
+                envio_combinado_tooltip_text=combinado_text,
             )
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
             
             if self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
