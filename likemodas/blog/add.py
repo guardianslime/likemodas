@@ -12,11 +12,9 @@ from ..ui.components import star_rating_display_safe
 
 def post_preview() -> rx.Component:
     """
-    [CORRECCIÓN DEFINITIVA] Previsualización totalmente reactiva al formulario.
+    [VERSIÓN FINAL Y ROBUSTA]
+    Previsualización que consume texto pre-formateado directamente desde AppState.
     """
-    def format_preview_price(price_str: rx.Var[str]) -> rx.Var[str]:
-        return rx.cond(price_str, format_to_cop(price_str.to(float)), "$ 0")
-
     return rx.box(
         rx.vstack(
             rx.vstack(
@@ -40,23 +38,19 @@ def post_preview() -> rx.Component:
                         weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible",
                     ),
                     star_rating_display_safe(0, 0, size=24),
-                    rx.text(format_preview_price(AppState.price_str), size="5", weight="medium"),
+                    rx.text(format_to_cop(AppState.price_str.to(float)), size="5", weight="medium"),
                     rx.hstack(
+                        # ✨ CORRECCIÓN 1: Mostrar directamente la variable computada del estado ✨
                         rx.badge(
-                            # ✨ --- CORRECCIÓN 1: Usar f-string para el costo de envío --- ✨
-                            rx.cond(
-                                AppState.shipping_cost_str,
-                                f"Envío: {format_to_cop(AppState.shipping_cost_str.to(float))}",
-                                "Envío a convenir"
-                            ),
+                            AppState.shipping_cost_badge_text_preview,
                             color_scheme="gray", variant="soft", size="2",
                         ),
                         rx.cond(
                             AppState.is_moda_completa,
                             rx.tooltip(
                                 rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                # ✨ --- CORRECCIÓN 2: Usar f-string para el tooltip de Moda Completa --- ✨
-                                content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(AppState.free_shipping_threshold_str.to(float))}",
+                                # ✨ CORRECCIÓN 2: Mostrar directamente la variable computada del estado ✨
+                                content=AppState.moda_completa_tooltip_text_preview,
                             ),
                         ),
                         spacing="3", align="center",
@@ -65,8 +59,8 @@ def post_preview() -> rx.Component:
                         AppState.combines_shipping,
                         rx.tooltip(
                             rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
-                            # ✨ --- CORRECCIÓN 3 (Referencia): Esta parte ya estaba bien --- ✨
-                            content=f"Combina hasta {AppState.shipping_combination_limit_str} productos en un envío.",
+                            # ✨ CORRECCIÓN 3: Mostrar directamente la variable computada del estado ✨
+                            content=AppState.envio_combinado_tooltip_text_preview,
                         ),
                     ),
                     spacing="1", 

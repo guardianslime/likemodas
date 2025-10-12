@@ -3121,7 +3121,37 @@ class AppState(reflex_local_auth.LocalAuthState):
     posts: list[ProductCardData] = []
     is_loading: bool = True
 
+    # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA LA PREVISUALIZACIÓN ✨ ---
 
+    @rx.var
+    def shipping_cost_badge_text_preview(self) -> str:
+        """Devuelve el texto formateado para el badge del costo de envío."""
+        if not self.shipping_cost_str.strip():
+            return "Envío a convenir"
+        try:
+            # La función format_to_cop llamada desde el backend devuelve un string de Python
+            cost = float(self.shipping_cost_str)
+            formatted_cost = format_to_cop(cost)
+            return f"Envío: {formatted_cost}"
+        except (ValueError, TypeError):
+            return "Envío: $ Error"
+
+    @rx.var
+    def moda_completa_tooltip_text_preview(self) -> str:
+        """Devuelve el texto formateado para el tooltip de Moda Completa."""
+        try:
+            threshold = float(self.free_shipping_threshold_str)
+            formatted_threshold = format_to_cop(threshold)
+            return f"Este item cuenta para el envío gratis en compras sobre {formatted_threshold}"
+        except (ValueError, TypeError):
+            return "El umbral de envío gratis tiene un valor inválido."
+
+    @rx.var
+    def envio_combinado_tooltip_text_preview(self) -> str:
+        """Devuelve el texto formateado para el tooltip de Envío Combinado."""
+        return f"Combina hasta {self.shipping_combination_limit_str} productos en un envío."
+
+    # --- ✨ FIN: NUEVAS VARIABLES COMPUTADAS ✨ ---
 
     @rx.event
     def on_load(self):
