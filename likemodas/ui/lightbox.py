@@ -1,4 +1,5 @@
-# Archivo: likemodas/ui/lightbox.py
+# Archivo: likemodas/ui/lightbox.py (CORREGIDO)
+
 import reflex as rx
 from reflex.components.component import NoSSRComponent
 from typing import List, Dict
@@ -14,12 +15,14 @@ class Lightbox(NoSSRComponent):
     slides: rx.Var[List[Dict[str, str]]]
     index: rx.Var[int]
 
-    # Evento para sincronizar el índice cuando el usuario navega dentro del lightbox
-    on: rx.Var[Dict]
+    # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+    # En lugar de la propiedad genérica 'on', declaramos un disparador de evento específico.
+    # Esto es más claro para el compilador de Reflex.
+    on_view: rx.event.EventSpec
+    # ✨ --- FIN DE LA CORRECCIÓN --- ✨
 
     def add_imports(self) -> dict[str, str] | None:
-        # Importa los estilos base para el lightbox
         return {"": "yet-another-react-lightbox/styles.css"}
 
-# Crea una instancia para un uso más sencillo
+# La instancia se mantiene igual
 lightbox = Lightbox.create

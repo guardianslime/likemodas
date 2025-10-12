@@ -377,7 +377,11 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             close=AppState.close_lightbox,
             slides=AppState.lightbox_slides,
             index=AppState.lightbox_current_index,
-            on={"view": AppState.set_lightbox_index},
+            
+            # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
+            # Cambiamos 'on={...}' por la nueva propiedad 'on_view'
+            on_view=AppState.set_lightbox_index,
+            # ✨ --- FIN DE LA CORRECCIÓN --- ✨
         )
     )
 
