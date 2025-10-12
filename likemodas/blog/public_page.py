@@ -11,8 +11,7 @@ from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 from ..ui.reputation_icon import reputation_icon
 from ..ui.vote_buttons import vote_buttons
-from ..ui.seller_score import seller_score_stars 
-from ..ui.swiper_gallery import swiper_gallery, swiper_slide
+from ..ui.seller_score import seller_score_stars
 
 from ..models import UserReputation # Asegúrate de que este import esté
 
@@ -148,67 +147,61 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 # ✨ PASO 1: AÑADIR EL NUEVO PARÁMETRO A LA FUNCIÓN
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_image_section() -> rx.Component:
-        """
-        Sección de imagen del modal, ahora protegida con renderizado condicional
-        para esperar a que los datos del producto estén listos.
-        """
-        return rx.box(
-            # --- INICIO DE LA CORRECCIÓN ---
-            # Solo intentamos renderizar el carrusel si `product_in_modal` ya tiene datos.
-            rx.cond(
-                AppState.product_in_modal,
-                swiper_gallery(
-                    rx.foreach(
-                        AppState.product_in_modal.variants,
-                        lambda variant: swiper_slide(
-                            rx.image(
-                                src=rx.get_upload_url(variant.get("image_url", "")),
-                                alt=AppState.product_in_modal.title,
-                                width="100%",
-                                height="100%",
-                                object_fit="contain",
-                            )
-                        ),
+        FIXED_HEIGHT = "500px"
+        return rx.vstack(
+            rx.box(
+                rx.cond(
+                    AppState.current_modal_image_filename,
+                    rx.image(
+                        src=rx.get_upload_url(AppState.current_modal_image_filename),
+                        alt=AppState.product_in_modal.title,
+                        width="100%",
+                        height="100%",
+                        object_fit="cover",
                     ),
-                    # El resto de las propiedades que ya tenías
-                    navigation=True,
-                    pagination={"clickable": True},
-                    loop=True,
-                    initial_slide=AppState.lightbox_initial_slide,
-                    on_slide_change=AppState.handle_slide_change,
-                    on_click=AppState.toggle_lightbox,
-                    class_name="product-swiper",
-                    width="100%",
-                    height="100%",
+                    rx.box(
+                        rx.icon("image_off", size=48), 
+                        width="100%", height="100%", display="flex", 
+                        align_items="center", justify_content="center", 
+                        bg=rx.color("gray", 3)
+                    ),
                 ),
-                # Mientras los datos cargan, mostramos un spinner para mejorar la experiencia.
-                rx.center(rx.spinner(size="3"), height="100%")
+                position="relative",
+                width="100%",
+                # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+                # Se define una altura responsiva:
+                # - "380px" para móvil (initial) para que la imagen no se corte.
+                # - FIXED_HEIGHT ("500px") para pantallas medianas (md) en adelante.
+                height={"initial": "380px", "md": FIXED_HEIGHT},
+                # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
+                border_radius="var(--radius-3)",
+                overflow="hidden",
             ),
-            # --- FIN DE LA CORRECCIÓN ---
-
-            # El estilo condicional para el efecto lightbox se mantiene exactamente igual.
-            style=rx.cond(
-                AppState.is_lightbox_active,
-                {   # Estilos para LIGHTBOX (pantalla completa).
-                    "position": "fixed",
-                    "top": "0",
-                    "left": "0",
-                    "width": "100vw",
-                    "height": "100vh",
-                    "background": "rgba(0, 0, 0, 0.85)",
-                    "z_index": "2000",
-                    "padding": "2rem",
-                    "display": "flex",
-                    "align_items": "center",
-                    "justify_content": "center",
-                },
-                {   # Estilos por defecto (dentro del modal).
-                    "position": "relative",
-                    "width": "100%",
-                    "height": "500px",
-                    "cursor": "zoom-in",
-                }
+            rx.cond(
+                AppState.unique_modal_variants.length() > 1,
+                rx.hstack(
+                    rx.foreach(
+                        AppState.unique_modal_variants,
+                        lambda item: rx.box(
+                            rx.image(
+                                src=rx.get_upload_url(item.variant.get("image_url")),
+                                width="60px", height="60px", object_fit="cover", border_radius="md"
+                            ),
+                            border_width=rx.cond(
+                                AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"
+                            ),
+                            border_color=rx.cond(
+                                AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"
+                            ),
+                            padding="2px", border_radius="lg", cursor="pointer",
+                            on_click=AppState.set_modal_variant_index(item.index),
+                        )
+                    ),
+                    spacing="3", padding="0.5em", width="100%", overflow_x="auto",
+                )
             ),
+            spacing="3",
+            width="100%",
         )
 
     def _modal_info_section() -> rx.Component:
