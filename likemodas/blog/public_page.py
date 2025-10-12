@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (VERSIÓN DEFINITIVA CON FSLIGHTBOX)
+# likemodas/blog/public_page.py (VERSIÓN FINAL Y DEFINITIVA)
 
 import reflex as rx
 
@@ -12,9 +12,9 @@ from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars
 from ..models import UserReputation 
 from ..ui.carousel import Carousel
-# ✨ Cambiamos la importación para usar el nuevo componente ✨
-from ..ui.lightbox import fslightbox
+from ..ui.lightbox import fslightbox # Usamos la nueva importación
 
+# ... (todas las funciones auxiliares como render_comment_item, _modal_image_section, etc., se mantienen exactamente igual que en tus archivos) ...
 def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(rx.vstack(rx.hstack(rx.icon("pencil", size=16, margin_right="0.5em"),rx.text("Actualización:", weight="bold"),star_rating_display_safe(comment.rating, 1, size=20),rx.spacer(),rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),width="100%"),rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),align_items="start", spacing="1"),padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),border_radius="md", margin_top="1em", margin_left="2.5em")
 def review_submission_form() -> rx.Component:
@@ -240,12 +240,13 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             on_open_change=AppState.close_product_detail_modal,
         ),
         
-        # ✨ --- Llamada al nuevo componente fslightbox --- ✨
         fslightbox(
             toggler=AppState.lightbox_is_open,
             sources=AppState.lightbox_sources,
             slide=AppState.lightbox_current_index + 1,
             on_close=AppState.close_lightbox,
+            # ✨ --- AÑADE ESTA LÍNEA --- ✨
+            upload_route="/upload",
         )
     )
 
