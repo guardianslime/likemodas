@@ -1,4 +1,4 @@
-# likemodas/ui/carousel.py (CORREGIDO)
+# likemodas/ui/carousel.py (CORREGIDO PARA REFLEX 0.8.5)
 
 import reflex as rx
 from reflex.components.component import NoSSRComponent
@@ -19,10 +19,10 @@ class Carousel(NoSSRComponent):
     interval: rx.Var[int]
     width: rx.Var[str]
 
-    # ✨ LÍNEA AÑADIDA: Declaramos el disparador de eventos ✨
-    # Esto le dice a Reflex que "on_click_item" es un evento válido que
-    # enviará un argumento (el índice de la imagen clickeada).
-    on_click_item: rx.event.EventSpec[lambda index: [index]]
+    # ✨ LÍNEA CORREGIDA: Se elimina la parte '[...]' ✨
+    # Para la versión 0.8.5 de Reflex, solo necesitas declarar el tipo del evento.
+    # Reflex pasará automáticamente el argumento 'index' a tu manejador en AppState.
+    on_click_item: rx.event.EventSpec
 
     # El método para importar el CSS necesario (sin cambios)
     def add_imports(self) -> dict[str, str] | None:
