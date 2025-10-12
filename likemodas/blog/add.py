@@ -12,10 +12,10 @@ from ..ui.components import star_rating_display_safe
 
 def post_preview() -> rx.Component:
     """
-    [CORREGIDO] Componente de previsualización que ahora es totalmente reactivo
-    al formulario de AppState.
+    [CORRECCIÓN DEFINITIVA] Previsualización totalmente reactiva al formulario.
     """
     def format_preview_price(price_str: rx.Var[str]) -> rx.Var[str]:
+        # Esta función auxiliar está bien como está.
         return rx.cond(price_str, format_to_cop(price_str.to(float)), "$ 0")
 
     return rx.box(
@@ -41,7 +41,7 @@ def post_preview() -> rx.Component:
                         weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible",
                     ),
                     star_rating_display_safe(0, 0, size=24),
-                    rx.text(format_preview_price(AppState.price), size="5", weight="medium"),
+                    rx.text(format_preview_price(AppState.price_str), size="5", weight="medium"), # Corregido para usar price_str
                     rx.hstack(
                         rx.badge(
                             rx.cond(
