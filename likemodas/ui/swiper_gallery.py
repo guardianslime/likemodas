@@ -3,15 +3,17 @@ from reflex.components.component import NoSSRComponent
 from typing import Any, List, Dict, Union
 
 # El nombre del paquete que se instalará con npm/bun.
+# Esto es lo que se pasará a `npm install`.
 # Ahora es el correcto y no causará el error de git.
 LIBRARY = "swiper"
 
 class SwiperNavigation(NoSSRComponent):
+    # 1. Se especifica el paquete principal a instalar.
     library = LIBRARY
     tag = "Navigation"
 
     def _get_imports(self) -> dict[str, str]:
-        # Le decimos a Reflex que importe este componente desde la sub-ruta 'swiper/modules'.
+        # 2. Se especifica la ruta de importación correcta para el JS.
         return {"swiper/modules": [self.tag]}
 
 class SwiperPagination(NoSSRComponent):
@@ -19,13 +21,9 @@ class SwiperPagination(NoSSRComponent):
     tag = "Pagination"
 
     def _get_imports(self) -> dict[str, str]:
-        # Le decimos a Reflex que importe este componente desde la sub-ruta 'swiper/modules'.
         return {"swiper/modules": [self.tag]}
 
 class SwiperGallery(NoSSRComponent):
-    """
-    Componente de Reflex que envuelve la biblioteca Swiper.js (swiper/react)
-    """
     library = LIBRARY
     tag = "Swiper"
 
