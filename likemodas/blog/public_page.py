@@ -40,10 +40,8 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         object_fit="cover",
                     )
                 ),
-                # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
-                # Usamos el nuevo manejador proxy que no tiene argumentos en su firma
-                on_click_item=AppState.open_lightbox_proxy,
-                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
+                # Llamamos al nuevo manejador proxy para el carrusel
+                on_click_item=AppState.handle_carousel_click,
                 show_arrows=True,
                 show_indicators=True,
                 infinite_loop=True,
@@ -242,12 +240,8 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             close=AppState.close_lightbox,
             slides=AppState.lightbox_slides,
             index=AppState.lightbox_current_index,
-            
-            # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
-            # Cambiamos 'on={...}' por la nueva propiedad 'on_view'.
-            # Esto le da al compilador de Reflex una instrucción clara.
-            on_view=AppState.set_lightbox_index,
-            # ✨ --- FIN DE LA CORRECCIÓN --- ✨
+            # Llamamos al nuevo manejador proxy para el lightbox
+            on_view=AppState.handle_lightbox_view_change,
         )
     )
 

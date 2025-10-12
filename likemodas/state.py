@@ -3274,12 +3274,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.product_in_modal and self.product_in_modal.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.product_in_modal.image_urls)) % len(self.product_in_modal.image_urls)
 
-    # --- Estado y Lógica para el Carrusel y Lightbox (VERSIÓN CORREGIDA) ---
+    # --- Estado y Lógica para el Carrusel y Lightbox (VERSIÓN DEFINITIVA) ---
     lightbox_is_open: bool = False
     lightbox_current_index: int = 0
 
     @rx.var
     def carousel_image_urls(self) -> list[str]:
+        """Devuelve una lista de URLs de imagen únicas para el carrusel."""
         if not self.product_in_modal or not self.product_in_modal.variants:
             return []
         seen_urls, unique_urls = set(), []
@@ -3291,21 +3292,36 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def lightbox_slides(self) -> list[dict[str, str]]:
+        """Prepara los datos en el formato que espera yet-another-react-lightbox."""
         return [{"src": rx.get_upload_url(url)} for url in self.carousel_image_urls]
 
-    # ✨ --- INICIO DE LA SOLUCIÓN DEFINITIVA --- ✨
-    @rx.event
-    def open_lightbox_proxy(self):
-        """
-        Manejador intermediario SIN ARGUMENTOS en su firma para ser compatible con rx.cond.
-        Captura el payload del evento (el índice) manualmente.
-        """
-        # 1. Obtenemos el payload del evento (que en este caso es solo el índice)
-        index = self.get_event_payload()
-        # 2. Llamamos a nuestra función lógica original con el índice recuperado
-        return self.open_lightbox(index)
-    # ✨ --- FIN DE LA SOLUCIÓN DEFINITIVA --- ✨
 
+    # ✨ --- INICIO DE LA SOLUCIÓN --- ✨
+
+    # 1. MANEJADOR PROXY PARA EL CLIC EN EL CARRUSEL
+    @rx.event
+    def handle_carousel_click(self):
+        """
+        Proxy SIN ARGUMENTOS. Captura el 'index' del payload del evento
+        y lo pasa a la función lógica real.
+        """
+        index = self.get_event_payload()
+        return self.open_lightbox(index)
+
+    # 2. MANEJADOR PROXY PARA EL CAMBIO DE VISTA EN EL LIGHTBOX
+    @rx.event
+    def handle_lightbox_view_change(self):
+        """
+        Proxy SIN ARGUMENTOS. Captura el 'view_object' del payload del evento
+        y lo pasa a la función lógica real.
+        """
+        view_object = self.get_event_payload()
+        return self.set_lightbox_index(view_object)
+
+    # ✨ --- FIN DE LA SOLUCIÓN --- ✨
+
+
+    # Las funciones lógicas originales se mantienen sin cambios
     @rx.event
     def open_lightbox(self, index: int):
         """Abre el lightbox en la imagen especificada por el índice."""
