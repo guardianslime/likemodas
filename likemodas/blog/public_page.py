@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (VERSIÓN FINAL Y DEFINITIVA)
+# likemodas/blog/public_page.py (VERSIÓN DEFINITIVA CON FSLIGHTBOX)
 
 import reflex as rx
 
@@ -12,6 +12,7 @@ from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars
 from ..models import UserReputation 
 from ..ui.carousel import Carousel
+# ✨ Cambiamos la importación para usar el nuevo componente ✨
 from ..ui.lightbox import fslightbox
 
 def render_update_item(comment: CommentData) -> rx.Component:
@@ -238,17 +239,14 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             open=AppState.show_detail_modal,
             on_open_change=AppState.close_product_detail_modal,
         ),
-        # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-        # Reemplazamos el antiguo componente por el nuevo fslightbox
+        
+        # ✨ --- Llamada al nuevo componente fslightbox --- ✨
         fslightbox(
             toggler=AppState.lightbox_is_open,
             sources=AppState.lightbox_sources,
-            # Importante: fslightbox usa un índice que empieza en 1, no en 0.
             slide=AppState.lightbox_current_index + 1,
-            # El evento onClose es simple y no debería dar problemas.
             on_close=AppState.close_lightbox,
         )
-        # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
     )
 
 def public_qr_scanner_modal() -> rx.Component:
