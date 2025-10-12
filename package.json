@@ -1,8 +1,8 @@
 {
   "dependencies": {
+    "fslightbox-react": "^2.0.0",
     "html5-qrcode": "^2.3.8",
     "jsqr": "^1.4.0",
-    "react-qr-code": "^2.0.18",
-    "fslightbox-react": "^1.7.6"
+    "react-qr-code": "^2.0.18"
   }
 }

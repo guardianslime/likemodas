@@ -1,57 +1,181 @@
-# likemodas/blog/public_page.py (VERSIÓN FINAL Y DEFINITIVA)
-
+from httpx import post
 import reflex as rx
 
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, CommentData, ModalSelectorDTO
+
+# --- IMPORTS CORREGIDOS ---
+# Se añaden los componentes para la votación, reputación y puntuación del vendedor
 from ..ui.components import product_gallery_component, star_rating_display_safe
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 from ..ui.reputation_icon import reputation_icon
 from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars
-from ..models import UserReputation 
-from ..ui.carousel import Carousel
-from ..ui.lightbox import fslightbox # Usamos la nueva importación
 
-# ... (todas las funciones auxiliares como render_comment_item, _modal_image_section, etc., se mantienen exactamente igual que en tus archivos) ...
+from ..models import UserReputation # Asegúrate de que este import esté
+
 def render_update_item(comment: CommentData) -> rx.Component:
-    return rx.box(rx.vstack(rx.hstack(rx.icon("pencil", size=16, margin_right="0.5em"),rx.text("Actualización:", weight="bold"),star_rating_display_safe(comment.rating, 1, size=20),rx.spacer(),rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),width="100%"),rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),align_items="start", spacing="1"),padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),border_radius="md", margin_top="1em", margin_left="2.5em")
-def review_submission_form() -> rx.Component:
-    return rx.cond(AppState.show_review_form,rx.form(rx.vstack(rx.heading(rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), size="5"),rx.text("Tu valoración:"),rx.hstack(rx.foreach(rx.Var.range(5),lambda i: rx.icon("star", color=rx.cond(AppState.review_rating > i, "gold", rx.color("gray", 8)),on_click=AppState.set_review_rating(i + 1), cursor="pointer", size=32))),rx.text_area(name="review_content", placeholder="Escribe tu opinión aquí...", value=AppState.review_content,on_change=AppState.set_review_content, width="100%"),rx.button(rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%", color_scheme="violet"),spacing="3", padding="1.5em", border="1px solid",border_color=rx.color("gray", 6), border_radius="md", width="100%"),on_submit=AppState.submit_review,),rx.cond(AppState.review_limit_reached,rx.callout("Has alcanzado el límite de actualizaciones para esta compra.",icon="info", margin_top="1.5em", width="100%"),))
-def render_comment_item(comment: CommentData) -> rx.Component:
-    update_count = rx.cond(comment.updates, comment.updates.length(), 0)
-    crown_map_var = rx.Var.create({UserReputation.WOOD.value: "🪵",UserReputation.COPPER.value: "🥉",UserReputation.SILVER.value: "🥈",UserReputation.GOLD.value: "🥇",UserReputation.DIAMOND.value: "💎",})
-    fallback_str = rx.cond(crown_map_var.contains(comment.author_reputation),crown_map_var[comment.author_reputation],comment.author_initial)
-    return rx.box(rx.vstack(rx.hstack(rx.avatar(src=rx.cond(comment.author_avatar_url != "",rx.get_upload_url(comment.author_avatar_url),""), fallback=fallback_str, size="2"),rx.text(comment.author_username, weight="bold"),rx.spacer(),star_rating_display_safe(comment.rating, 1, size=20),width="100%"),rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),rx.hstack(vote_buttons(comment.id,comment.likes,comment.dislikes,comment.user_vote,),rx.spacer(),rx.cond(comment.updates,rx.button(rx.cond(AppState.expanded_comments.get(comment.id, False), "Ocultar historial",rx.text("Ver historial (", rx.text(update_count, as_="span"), " actualizaciones)")),on_click=AppState.toggle_comment_updates(comment.id),variant="soft", size="1",)),width="100%",justify="between",align="center",margin_top="0.75em",),rx.cond(AppState.expanded_comments.get(comment.id, False),rx.cond(comment.updates, rx.foreach(comment.updates, render_update_item))),rx.hstack(rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),width="100%", justify="end", spacing="1", margin_top="1em"),align_items="start", spacing="2"),padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%")
+    return rx.box(
+        rx.vstack(
+            rx.hstack(
+                rx.icon("pencil", size=16, margin_right="0.5em"),
+                rx.text("Actualización:", weight="bold"),
+                star_rating_display_safe(comment.rating, 1, size=20),
+                rx.spacer(),
+                rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),
+                width="100%"
+            ),
+            rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),
+            align_items="start", spacing="1"
+        ),
+        padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),
+        border_radius="md", margin_top="1em", margin_left="2.5em"
+    )
 
+def review_submission_form() -> rx.Component:
+    return rx.cond(
+        AppState.show_review_form,
+        rx.form(
+            rx.vstack(
+                rx.heading(rx.cond(AppState.my_review_for_product, "Actualiza tu opinión", "Deja tu opinión"), size="5"),
+                rx.text("Tu valoración:"),
+                rx.hstack(
+                    rx.foreach(
+                        rx.Var.range(5),
+                        lambda i: rx.icon(
+                            "star", color=rx.cond(AppState.review_rating > i, "gold", rx.color("gray", 8)),
+                            on_click=AppState.set_review_rating(i + 1), cursor="pointer", size=32
+                        )
+                    )
+                ),
+                rx.text_area(
+                    name="review_content", placeholder="Escribe tu opinión aquí...", value=AppState.review_content,
+                    on_change=AppState.set_review_content, width="100%",
+                ),
+                rx.button(rx.cond(AppState.my_review_for_product, "Actualizar Opinión", "Enviar Opinión"), type="submit", width="100%", color_scheme="violet"),
+                spacing="3", padding="1.5em", border="1px solid",
+                border_color=rx.color("gray", 6), border_radius="md", width="100%",
+            ),
+            on_submit=AppState.submit_review,
+        ),
+        rx.cond(
+            AppState.review_limit_reached,
+            rx.callout(
+                "Has alcanzado el límite de actualizaciones para esta compra.",
+                icon="info", margin_top="1.5em", width="100%"
+            ),
+        )
+    )
+
+def render_comment_item(comment: CommentData) -> rx.Component:
+    """
+    Renderiza un comentario principal con avatar, votaciones, reputación y su historial.
+    """
+    update_count = rx.cond(comment.updates, comment.updates.length(), 0)
+    
+    crown_map_var = rx.Var.create({
+        UserReputation.WOOD.value: "🪵",
+        UserReputation.COPPER.value: "🥉",
+        UserReputation.SILVER.value: "🥈",
+        UserReputation.GOLD.value: "🥇",
+        UserReputation.DIAMOND.value: "💎",
+    })
+    
+    fallback_str = rx.cond(
+        crown_map_var.contains(comment.author_reputation),
+        crown_map_var[comment.author_reputation],
+        comment.author_initial
+    )
+    
+    return rx.box(
+        rx.vstack(
+            rx.hstack(
+                rx.avatar(
+                    src=rx.cond(
+                        comment.author_avatar_url != "",
+                        rx.get_upload_url(comment.author_avatar_url),
+                        ""
+                    ), 
+                    fallback=fallback_str, 
+                    size="2"
+                ),
+                rx.text(comment.author_username, weight="bold"),
+                rx.spacer(),
+                star_rating_display_safe(comment.rating, 1, size=20),
+                width="100%",
+            ),
+            rx.text(comment.content, margin_top="0.5em", white_space="pre-wrap"),
+            rx.hstack(
+                vote_buttons(
+                    comment.id,
+                    comment.likes,
+                    comment.dislikes,
+                    comment.user_vote,
+                ),
+                rx.spacer(),
+                rx.cond(
+                    comment.updates,
+                    rx.button(
+                        rx.cond(
+                            AppState.expanded_comments.get(comment.id, False), "Ocultar historial",
+                            rx.text("Ver historial (", rx.text(update_count, as_="span"), " actualizaciones)")
+                        ),
+                        on_click=AppState.toggle_comment_updates(comment.id),
+                        variant="soft", size="1",
+                    )
+                ),
+                width="100%",
+                justify="between",
+                align="center",
+                margin_top="0.75em",
+            ),
+            rx.cond(
+                AppState.expanded_comments.get(comment.id, False),
+                rx.cond(comment.updates, rx.foreach(comment.updates, render_update_item))
+            ),
+            rx.hstack(
+                rx.text(f"Publicado: {comment.created_at_formatted}", size="2", color_scheme="gray"),
+                width="100%", justify="end", spacing="1", margin_top="1em"
+            ),
+            align_items="start", spacing="2"
+        ),
+        padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
+    )
+
+
+# ✨ PASO 1: AÑADIR EL NUEVO PARÁMETRO A LA FUNCIÓN
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_image_section() -> rx.Component:
         FIXED_HEIGHT = "500px"
         return rx.vstack(
-            Carousel.create(
-                rx.foreach(
-                    AppState.carousel_image_urls,
-                    lambda image_url, index: rx.box(
-                        rx.image(
-                            src=rx.get_upload_url(image_url),
-                            alt=AppState.product_in_modal.title,
-                            width="100%",
-                            height="100%",
-                            object_fit="cover",
-                        ),
-                        on_click=AppState.open_lightbox(index),
-                        cursor="pointer",
+            rx.box(
+                rx.cond(
+                    AppState.current_modal_image_filename,
+                    rx.image(
+                        src=rx.get_upload_url(AppState.current_modal_image_filename),
+                        alt=AppState.product_in_modal.title,
                         width="100%",
                         height="100%",
-                    )
+                        object_fit="cover",
+                    ),
+                    rx.box(
+                        rx.icon("image_off", size=48), 
+                        width="100%", height="100%", display="flex", 
+                        align_items="center", justify_content="center", 
+                        bg=rx.color("gray", 3)
+                    ),
                 ),
-                show_arrows=True,
-                show_indicators=True,
-                infinite_loop=True,
-                show_thumbs=False,
+                position="relative",
                 width="100%",
-                style={"height": {"initial": "380px", "md": FIXED_HEIGHT}},
+                # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+                # Se define una altura responsiva:
+                # - "380px" para móvil (initial) para que la imagen no se corte.
+                # - FIXED_HEIGHT ("500px") para pantallas medianas (md) en adelante.
+                height={"initial": "380px", "md": FIXED_HEIGHT},
+                # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
+                border_radius="var(--radius-3)",
+                overflow="hidden",
             ),
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
@@ -92,6 +216,9 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
                     variant="solid", size="2"
                 ),
+                
+                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+                # Añadimos el badge de "Envío Combinado" aquí, en la posición que pediste.
                 rx.cond(
                     AppState.product_in_modal.combines_shipping,
                     rx.tooltip(
@@ -99,6 +226,8 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         content=AppState.product_in_modal.envio_combinado_tooltip_text
                     ),
                 ),
+                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
                 rx.cond(
                     AppState.product_in_modal.is_moda_completa_eligible,
                     rx.tooltip(
@@ -170,6 +299,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             rx.hstack(
                 rx.button(
                     "Añadir al Carrito",
+                    # ✨ PASO 2: USAR EL NUEVO PARÁMETRO EN LA CONDICIÓN
                     on_click=rx.cond(
                         is_for_direct_sale,
                         AppState.add_to_direct_sale_cart(AppState.product_in_modal.id),
@@ -201,56 +331,52 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             align="start", height="100%",
         )
 
-    return rx.fragment(
-        rx.dialog.root(
-            rx.dialog.content(
-                rx.dialog.close(
-                    rx.icon_button(
-                        rx.icon("x"),
-                        variant="soft",
-                        color_scheme="gray",
-                        style={"position": "absolute","top": "1rem","right": "1rem","z_index": "10",},
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.dialog.close(
+                rx.icon_button(
+                    rx.icon("x"),
+                    variant="soft",
+                    color_scheme="gray",
+                    style={
+                        "position": "absolute",
+                        "top": "1rem",
+                        "right": "1rem",
+                        "z_index": "10",
+                    },
+                )
+            ),
+            rx.cond(
+                AppState.product_in_modal,
+                rx.vstack(
+                    rx.grid(
+                        _modal_image_section(),
+                        _modal_info_section(),
+                        columns={"initial": "1", "md": "2"},
+                        spacing="6", align_items="start", width="100%",
+                    ),
+                    rx.divider(margin_y="1.5em"),
+                    review_submission_form(),
+                    rx.cond(
+                        AppState.product_comments,
+                        rx.vstack(
+                            rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
+                            rx.foreach(AppState.product_comments, render_comment_item),
+                            spacing="1", width="100%", max_height="400px", overflow_y="auto"
+                        )
                     )
                 ),
-                rx.cond(
-                    AppState.product_in_modal,
-                    rx.vstack(
-                        rx.grid(
-                            _modal_image_section(),
-                            _modal_info_section(),
-                            columns={"initial": "1", "md": "2"},
-                            spacing="6", align_items="start", width="100%",
-                        ),
-                        rx.divider(margin_y="1.5em"),
-                        review_submission_form(),
-                        rx.cond(
-                            AppState.product_comments,
-                            rx.vstack(
-                                rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
-                                rx.foreach(AppState.product_comments, render_comment_item),
-                                spacing="1", width="100%", max_height="400px", overflow_y="auto"
-                            )
-                        )
-                    ),
-                    skeleton_product_detail_view(),
-                ),
-                style={"max_width": "1200px", "min_height": "600px"},
+                skeleton_product_detail_view(),
             ),
-            open=AppState.show_detail_modal,
-            on_open_change=AppState.close_product_detail_modal,
+            style={"max_width": "1200px", "min_height": "600px"},
         ),
-        
-        fslightbox(
-            toggler=AppState.lightbox_is_open,
-            sources=AppState.lightbox_sources,
-            slide=AppState.lightbox_current_index + 1,
-            on_close=AppState.close_lightbox,
-            # ✨ --- AÑADE ESTA LÍNEA --- ✨
-            upload_route="/upload",
-        )
+        open=AppState.show_detail_modal,
+        on_open_change=AppState.close_product_detail_modal,
     )
 
+# --- AÑADE ESTA NUEVA FUNCIÓN ---
 def public_qr_scanner_modal() -> rx.Component:
+    """Modal de escaneo QR para clientes."""
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.title("Buscar Producto por QR"),
@@ -258,6 +384,7 @@ def public_qr_scanner_modal() -> rx.Component:
                 "Usa la cámara de tu celular para escanear el código y ver los detalles del producto."
             ),
             rx.vstack(
+                # Botón para abrir la cámara
                 rx.upload(
                     rx.button(
                         rx.hstack(rx.icon("camera"), rx.text("Escanear con la Cámara")),
@@ -271,6 +398,7 @@ def public_qr_scanner_modal() -> rx.Component:
                     ],
                     width="100%",
                 ),
+                # Botón para subir desde galería
                 rx.upload(
                     rx.button(
                         rx.hstack(rx.icon("image"), rx.text("Subir desde Galería")),
@@ -293,6 +421,7 @@ def public_qr_scanner_modal() -> rx.Component:
         open=AppState.show_public_qr_scanner_modal,
         on_open_change=AppState.set_show_public_qr_scanner_modal,
     )
+# --- FIN DE LA NUEVA FUNCIÓN ---
 
 def blog_public_page_content() -> rx.Component:
     main_content = rx.center(
@@ -306,9 +435,13 @@ def blog_public_page_content() -> rx.Component:
         ),
         width="100%"
     )
+
     return rx.fragment(
         floating_filter_panel(),
         main_content,
+        # ✨ PASO 3: ASEGURARSE DE QUE LA PÁGINA PÚBLICA LLAME AL MODAL EN MODO PÚBLICO
         product_detail_modal(is_for_direct_sale=False),
+        # --- AÑADE ESTA LÍNEA AL FINAL ---
         public_qr_scanner_modal(),
     )
+

@@ -3274,58 +3274,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.product_in_modal and self.product_in_modal.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.product_in_modal.image_urls)) % len(self.product_in_modal.image_urls)
 
-    # --- Estado y Lógica para el Carrusel y Lightbox (CON FSLIGHTBOX) ---
-    lightbox_is_open: bool = False
-    lightbox_current_index: int = 0
-
-    @rx.var
-    def carousel_image_urls(self) -> list[str]:
-        if not self.product_in_modal or not self.product_in_modal.variants:
-            return []
-        seen_urls, unique_urls = set(), []
-        for variant in self.product_in_modal.variants:
-            if (image_url := variant.get("image_url")) and image_url not in seen_urls:
-                seen_urls.add(image_url)
-                unique_urls.append(image_url)
-        return unique_urls
-
-    @rx.var
-    def lightbox_sources(self) -> list[str]:
-        """
-        ✨ CORRECCIÓN: Ahora solo devuelve los nombres de archivo.
-        La URL completa se construirá en el frontend.
-        """
-        return self.carousel_image_urls
-
-    @rx.event
-    def open_lightbox(self, index: int):
-        """Abre el lightbox en la imagen especificada por el índice."""
-        self.lightbox_current_index = index
-        self.lightbox_is_open = True
-
-    @rx.event
-    def close_lightbox(self):
-        """Cierra el lightbox."""
-        self.lightbox_is_open = False
-
-    @rx.var
-    def carousel_image_urls(self) -> list[str]:
-        """
-        Devuelve una lista de URLs de imagen únicas para el carrusel,
-        evitando duplicados si varias variantes comparten la misma imagen.
-        """
-        if not self.product_in_modal or not self.product_in_modal.variants:
-            return []
-        seen_urls = set()
-        unique_urls = []
-        for variant in self.product_in_modal.variants:
-            image_url = variant.get("image_url")
-            if image_url and image_url not in seen_urls:
-                seen_urls.add(image_url)
-                unique_urls.append(image_url)
-        return unique_urls
-
-
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
     def set_price(self, price: str): self.price_str = price
