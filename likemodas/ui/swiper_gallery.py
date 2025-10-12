@@ -2,38 +2,15 @@ import reflex as rx
 from reflex.components.component import NoSSRComponent
 from typing import Any, List, Dict, Union
 
-# El paquete a instalar sigue siendo "swiper".
+# El único paquete que se necesita instalar desde npm.
 LIBRARY = "swiper"
 
-class SwiperBase(NoSSRComponent):
-    """Clase base que comparte la librería y el código JS personalizado."""
+class SwiperGallery(NoSSRComponent):
+    """Wrapper para el componente principal de Swiper, ahora autoconfigurable."""
     library = LIBRARY
+    tag = "CustomSwiper" # Mantenemos el nombre único para evitar colisiones.
 
-    def _get_custom_code(self) -> str | None:
-        """
-        Inyecta código JavaScript personalizado para importar los componentes
-        de Swiper y exportarlos con nombres únicos para evitar colisiones.
-        """
-        return """
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination } from 'swiper/modules';
-
-// Exportamos los componentes originales PERO con un alias (un nuevo nombre único).
-export { 
-    Swiper as CustomSwiper, 
-    SwiperSlide as CustomSwiperSlide, 
-    Navigation as CustomSwiperNavigation, 
-    Pagination as CustomSwiperPagination 
-};
-"""
-
-class SwiperGallery(SwiperBase):
-    """Wrapper para el componente principal de Swiper."""
-    # Le decimos a Reflex que busque el componente con el nuevo nombre único.
-    tag = "CustomSwiper"
-
-    # Las props y handlers no cambian.
-    modules: rx.Var[List[Any]]
+    # Las props no cambian.
     navigation: rx.Var[bool]
     pagination: rx.Var[Dict[str, bool]]
     loop: rx.Var[bool]
@@ -41,32 +18,60 @@ class SwiperGallery(SwiperBase):
     slides_per_view: rx.Var[Union[int, str]]
     initial_slide: rx.Var[int]
     class_name: rx.Var[str]
+
+    # Los handlers no cambian.
     on_slide_change: rx.EventHandler[lambda swiper: [swiper.activeIndex]]
     on_click: rx.EventHandler[lambda swiper, event: [swiper.clickedIndex]]
 
-    def add_imports(self) -> dict[str, str]:
-        return {
-            "": [
-                "swiper/css",
-                "swiper/css/navigation",
-                "swiper/css/pagination",
-            ]
-        }
+    def add_imports(self) -> dict:
+        # Se movió la importación de CSS al código JS para mayor robustez.
+        return {}
 
-class SwiperSlide(SwiperBase):
+    def _get_custom_code(self) -> str | None:
+        """
+        Inyecta código JS que importa todo lo necesario y crea un componente
+        wrapper que maneja los módulos automáticamente.
+        """
+        return """
+import React from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination } from 'swiper/modules';
+
+// Importamos el CSS directamente en el JavaScript.
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+
+// Creamos nuestro componente único que envuelve al Swiper real.
+export const CustomSwiper = (props) => {
+  const { children, ...rest } = props;
+  
+  // LÓGICA CLAVE: Construimos la lista de módulos a usar
+  // basándonos en las props que llegan desde Python.
+  const modules_to_use = [];
+  if (props.navigation) {
+    modules_to_use.push(Navigation);
+  }
+  if (props.pagination) {
+    modules_to_use.push(Pagination);
+  }
+
+  return (
+    <Swiper modules={modules_to_use} {...rest}>
+      {children}
+    </Swiper>
+  );
+};
+
+// También exportamos SwiperSlide con un nombre único.
+export { SwiperSlide as CustomSwiperSlide };
+"""
+
+class SwiperSlide(NoSSRComponent):
     """Wrapper para el componente SwiperSlide."""
+    library = LIBRARY
     tag = "CustomSwiperSlide"
 
-class SwiperNavigation(SwiperBase):
-    """Wrapper para el módulo de Navegación."""
-    tag = "CustomSwiperNavigation"
-
-class SwiperPagination(SwiperBase):
-    """Wrapper para el módulo de Paginación."""
-    tag = "CustomSwiperPagination"
-
-# Las funciones "create" no necesitan cambiar. Reflex maneja los nombres internamente.
+# Solo necesitamos exportar los componentes que se renderizan.
 swiper_gallery = SwiperGallery.create
 swiper_slide = SwiperSlide.create
-swiper_navigation = SwiperNavigation.create
-swiper_pagination = SwiperPagination.create

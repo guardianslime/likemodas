@@ -12,12 +12,7 @@ from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_galler
 from ..ui.reputation_icon import reputation_icon
 from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars 
-from ..ui.swiper_gallery import (
-    swiper_gallery, 
-    swiper_slide,
-    swiper_navigation, # <-- Importa el módulo de navegación
-    swiper_pagination # <-- Importa el módulo de paginación
-)
+from ..ui.swiper_gallery import swiper_gallery, swiper_slide
 
 from ..models import UserReputation # Asegúrate de que este import esté
 
@@ -173,11 +168,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         )
                     ),
                 ),
-                
-                # --- INICIO DE LA CORRECCIÓN ---
-                # Le pasamos a Swiper los módulos que necesita para funcionar.
-                modules=[swiper_navigation(), swiper_pagination()],
-                # --- FIN DE LA CORRECCIÓN ---
 
                 # El resto de las propiedades se mantienen igual
                 navigation=True,
