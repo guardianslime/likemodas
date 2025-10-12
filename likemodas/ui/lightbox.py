@@ -1,4 +1,4 @@
-# likemodas/ui/lightbox.py (SOLUCIÓN DEFINITIVA)
+# likemodas/ui/lightbox.py (SOLUCIÓN FINAL Y DEFINITIVA)
 
 import reflex as rx
 from reflex.components.component import NoSSRComponent
@@ -6,7 +6,8 @@ from typing import List, Dict
 
 class LightboxWrapper(NoSSRComponent):
     """
-    Componente intermediario personalizado que construye las URLs en el frontend.
+    Componente intermediario que construye las URLs en el frontend
+    y ahora comprueba si se está ejecutando en el navegador.
     """
     library = "yet-another-react-lightbox"
     tag = "LikemodasLightbox"
@@ -25,10 +26,11 @@ class LightboxWrapper(NoSSRComponent):
 
     def _get_custom_code(self) -> str:
         # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-        # Envolvemos toda la declaración en una comprobación.
-        # Si 'window.LikemodasLightbox' ya existe, este bloque de código no se ejecuta de nuevo.
+        # Añadimos una comprobación inicial: "typeof window !== 'undefined'"
+        # Esto asegura que el código que accede a 'window' solo se ejecute en el navegador
+        # y no en el servidor durante la compilación, evitando el error 'window is not defined'.
         return """
-if (!window.LikemodasLightbox) {
+if (typeof window !== 'undefined' && !window.LikemodasLightbox) {
   window.LikemodasLightbox = (props) => {
     const { slides, upload_route, ...rest } = props;
 
