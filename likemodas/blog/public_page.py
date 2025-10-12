@@ -1,4 +1,4 @@
-# likemodas/blog/public_page.py (COMPLETO Y FINAL)
+# likemodas/blog/public_page.py (VERSIÓN DEFINITIVA)
 
 import reflex as rx
 
@@ -14,7 +14,6 @@ from ..models import UserReputation
 from ..ui.carousel import Carousel
 from ..ui.lightbox import lightbox
 
-# (Las funciones auxiliares como render_comment_item, etc., no necesitan cambios)
 def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(rx.vstack(rx.hstack(rx.icon("pencil", size=16, margin_right="0.5em"),rx.text("Actualización:", weight="bold"),star_rating_display_safe(comment.rating, 1, size=20),rx.spacer(),rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),width="100%"),rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),align_items="start", spacing="1"),padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),border_radius="md", margin_top="1em", margin_left="2.5em")
 def review_submission_form() -> rx.Component:
@@ -32,7 +31,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             Carousel.create(
                 rx.foreach(
                     AppState.carousel_image_urls,
-                    # La función lambda ahora recibe 'index' para usarlo en el on_click
                     lambda image_url, index: rx.box(
                         rx.image(
                             src=rx.get_upload_url(image_url),
@@ -41,7 +39,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             height="100%",
                             object_fit="cover",
                         ),
-                        # El evento on_click se maneja en el rx.box nativo
                         on_click=AppState.open_lightbox(index),
                         cursor="pointer",
                         width="100%",
@@ -53,16 +50,8 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 infinite_loop=True,
                 show_thumbs=False,
                 width="100%",
-
-                # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
-                # Se elimina la propiedad 'height' directa y se mueve a 'style'.
-                # La propiedad 'style' sí sabe cómo interpretar este diccionario responsivo.
-                style={
-                    "height": {"initial": "380px", "md": FIXED_HEIGHT}
-                },
-                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
+                style={"height": {"initial": "380px", "md": FIXED_HEIGHT}},
             ),
-            # La lógica de las miniaturas inferiores no cambia
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
                 rx.hstack(
@@ -254,8 +243,11 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             close=AppState.close_lightbox,
             slides=AppState.lightbox_slides,
             index=AppState.lightbox_current_index,
-            # Llamamos al nuevo manejador proxy para el lightbox
-            on_view=AppState.handle_lightbox_view_change,
+            # ✨ --- CORRECCIÓN FINAL --- ✨
+            # Le pasamos un diccionario con la clave 'view' que espera la librería,
+            # y como valor, nuestro manejador proxy que no tiene argumentos.
+            on={"view": AppState.handle_lightbox_view_change},
+            # ✨ --- FIN DE LA CORRECCIÓN --- ✨
         )
     )
 
