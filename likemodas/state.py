@@ -2893,7 +2893,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def load_gallery_and_shipping(self):
-        """Manejador específico para la carga normal de la galería y el cálculo de envíos."""
+        """
+        [VERSIÓN CORREGIDA]
+        Manejador que carga la galería y calcula los envíos, ahora construyendo
+        manualmente el DTO para incluir los textos de los tooltips.
+        """
         self.is_loading = True
         yield
 
@@ -2908,9 +2912,45 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             temp_posts = []
             for p in results:
+                # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+                # En lugar de .from_orm(p), construimos el objeto manualmente
+                # para poder añadir los textos calculados.
+                
+                # 1. Calculamos los textos de los tooltips (lógica que ya teníamos)
+                moda_completa_text = ""
+                if p.is_moda_completa_eligible and p.free_shipping_threshold:
+                    moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}"
+
+                combinado_text = ""
+                if p.combines_shipping and p.shipping_combination_limit:
+                    combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío."
+
+                # 2. Creamos el DTO pasando todos los valores explícitamente
                 temp_posts.append(
-                    ProductCardData.from_orm(p) # Usamos from_orm para simplificar
+                    ProductCardData(
+                        id=p.id,
+                        userinfo_id=p.userinfo_id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=p.price_cop,
+                        variants=p.variants or [],
+                        attributes={},
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        shipping_cost=p.shipping_cost,
+                        is_moda_completa_eligible=p.is_moda_completa_eligible,
+                        free_shipping_threshold=p.free_shipping_threshold,
+                        combines_shipping=p.combines_shipping,
+                        shipping_combination_limit=p.shipping_combination_limit,
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        is_imported=p.is_imported,
+                        # Se asignan los textos calculados a los campos del DTO
+                        moda_completa_tooltip_text=moda_completa_text,
+                        envio_combinado_tooltip_text=combinado_text,
+                    )
                 )
+                # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
             self._raw_posts = temp_posts
 
         yield AppState.recalculate_all_shipping_costs
