@@ -155,30 +155,35 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 ),
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(post.price_cop, size="5", weight="medium"),
-                                rx.hstack(
-                                    rx.badge(
-                                        post.shipping_display_text,
-                                        color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
-                                        variant="soft", size="2",
+                                # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO (IDÉNTICA A LA ANTERIOR) ✨ ---
+                                rx.vstack(
+                                    rx.hstack(
+                                        rx.badge(
+                                            post.shipping_display_text,
+                                            color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
+                                            variant="soft", size="2",
+                                        ),
+                                        rx.cond(
+                                            post.is_moda_completa_eligible,
+                                            rx.tooltip(
+                                                rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
+                                                content=post.moda_completa_tooltip_text,
+                                            ),
+                                        ),
+                                        spacing="3", align="center",
                                     ),
                                     rx.cond(
                                         post.combines_shipping,
                                         rx.tooltip(
-                                            rx.badge("Combinado", color_scheme="teal", variant="soft", size="2"),
-                                            content=post.envio_combinado_tooltip_text
+                                            rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
+                                            content=post.envio_combinado_tooltip_text,
                                         ),
                                     ),
-                                    rx.cond(
-                                        post.is_moda_completa_eligible,
-                                        rx.tooltip(
-                                            rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                            # ✨ --- ¡ESTA ES LA CORRECCIÓN CLAVE! --- ✨
-                                            # Se reemplaza el operador '+' por una f-string.
-                                            content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(post.free_shipping_threshold)}"
-                                        ),
-                                    ),
-                                    spacing="3", align="center",
+                                    spacing="1", # Espacio vertical
+                                    align_items="start",
                                 ),
+                                # --- ✨ FIN DE LA MODIFICACIÓN DE DISEÑO ✨ ---
+                                
                                 spacing="1", align_items="start", width="100%"
                             ),
                             spacing="2", 
