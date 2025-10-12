@@ -3274,7 +3274,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         if self.product_in_modal and self.product_in_modal.image_urls:
             self.current_image_index = (self.current_image_index - 1 + len(self.product_in_modal.image_urls)) % len(self.product_in_modal.image_urls)
 
-    # --- Estado y Lógica para el Carrusel y Lightbox (VERSIÓN FINAL) ---
+    # --- Estado y Lógica para el Carrusel y Lightbox (CON FSLIGHTBOX) ---
     lightbox_is_open: bool = False
     lightbox_current_index: int = 0
 
@@ -3290,12 +3290,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         return unique_urls
 
     @rx.var
-    def lightbox_slides(self) -> list[dict[str, str]]:
-        """
-        ✨ CORRECCIÓN: Volvemos a construir la URL completa aquí.
-        El error de serialización que esto causaba antes ya fue resuelto con 'dill'.
-        """
-        return [{"src": rx.get_upload_url(url)} for url in self.carousel_image_urls]
+    def lightbox_sources(self) -> list[str]:
+        """Prepara las URLs completas para fslightbox."""
+        return [rx.get_upload_url(url) for url in self.carousel_image_urls]
 
     @rx.event
     def open_lightbox(self, index: int):

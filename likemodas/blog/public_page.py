@@ -12,7 +12,7 @@ from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars
 from ..models import UserReputation 
 from ..ui.carousel import Carousel
-from ..ui.lightbox import lightbox
+from ..ui.lightbox import fslightbox
 
 def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(rx.vstack(rx.hstack(rx.icon("pencil", size=16, margin_right="0.5em"),rx.text("Actualización:", weight="bold"),star_rating_display_safe(comment.rating, 1, size=20),rx.spacer(),rx.text(f"Fecha: {comment.created_at_formatted}", size="2", color_scheme="gray"),width="100%"),rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),align_items="start", spacing="1"),padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),border_radius="md", margin_top="1em", margin_left="2.5em")
@@ -238,15 +238,17 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             open=AppState.show_detail_modal,
             on_open_change=AppState.close_product_detail_modal,
         ),
-        lightbox(
-            open=AppState.lightbox_is_open,
-            close=AppState.close_lightbox,
-            slides=AppState.lightbox_slides,
-            index=AppState.lightbox_current_index,
-            # ✨ --- CORRECCIÓN FINAL --- ✨
-            # Le pasamos la ruta de subida como un string simple.
-            upload_route="/upload",
+        # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
+        # Reemplazamos el antiguo componente por el nuevo fslightbox
+        fslightbox(
+            toggler=AppState.lightbox_is_open,
+            sources=AppState.lightbox_sources,
+            # Importante: fslightbox usa un índice que empieza en 1, no en 0.
+            slide=AppState.lightbox_current_index + 1,
+            # El evento onClose es simple y no debería dar problemas.
+            on_close=AppState.close_lightbox,
         )
+        # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
     )
 
 def public_qr_scanner_modal() -> rx.Component:
