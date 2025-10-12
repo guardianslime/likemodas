@@ -39,34 +39,32 @@ def post_preview() -> rx.Component:
                     ),
                     star_rating_display_safe(0, 0, size=24),
                     rx.text(format_to_cop(AppState.price_str.to(float)), size="5", weight="medium"),
-                    # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO ✨ ---
+                    # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO (IDÉNTICA A LA ANTERIOR) ✨ ---
                     rx.vstack(
+                        # Primera fila
                         rx.hstack(
                             rx.badge(
-                                rx.cond(
-                                    AppState.shipping_cost_str,
-                                    f"Envío: {format_to_cop(AppState.shipping_cost_str.to(float))}",
-                                    "Envío a convenir"
-                                ),
+                                AppState.shipping_cost_badge_text_preview,
                                 color_scheme="gray", variant="soft", size="2",
                             ),
                             rx.cond(
                                 AppState.is_moda_completa,
                                 rx.tooltip(
                                     rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                    content=f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(AppState.free_shipping_threshold_str.to(float))}",
+                                    content=AppState.moda_completa_tooltip_text_preview,
                                 ),
                             ),
                             spacing="3", align="center",
                         ),
+                        # Segunda fila
                         rx.cond(
                             AppState.combines_shipping,
                             rx.tooltip(
                                 rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
-                                content=f"Combina hasta {AppState.shipping_combination_limit_str} productos en un envío.",
+                                content=AppState.envio_combinado_tooltip_text_preview,
                             ),
                         ),
-                        spacing="1", # Espacio vertical entre las filas de insignias
+                        spacing="1", # Espacio vertical
                         align_items="start",
                     ),
                     # --- ✨ FIN DE LA MODIFICACIÓN DE DISEÑO ✨ ---

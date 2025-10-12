@@ -148,23 +148,22 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 position="relative", width="260px", height="260px",
                             ),
                             rx.vstack(
-                                rx.text(
-                                    post.title, 
-                                    weight="bold", size="6", white_space="normal",
-                                    text_overflow="initial", overflow="visible",
-                                ),
+                                rx.text(post.title, weight="bold", size="6"),
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(post.price_cop, size="5", weight="medium"),
-                                # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO (IDÉNTICA A LA ANTERIOR) ✨ ---
+                                
+                                # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO ✨ ---
+                                # Se agrupan las insignias en un Vstack para separarlas verticalmente.
                                 rx.vstack(
+                                    # Primera fila de insignias
                                     rx.hstack(
                                         rx.badge(
                                             post.shipping_display_text,
-                                            color_scheme=rx.cond(post.shipping_cost == 0.0, "green", "gray"),
-                                            variant="soft", size="2",
+                                            color_scheme="gray", variant="soft", size="2"
                                         ),
                                         rx.cond(
                                             post.is_moda_completa_eligible,
+                                            # Se envuelve el badge en un tooltip
                                             rx.tooltip(
                                                 rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
                                                 content=post.moda_completa_tooltip_text,
@@ -172,18 +171,20 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         ),
                                         spacing="3", align="center",
                                     ),
+                                    # Segunda fila, que ahora estará debajo
                                     rx.cond(
                                         post.combines_shipping,
+                                        # Se envuelve el badge en un tooltip
                                         rx.tooltip(
                                             rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
                                             content=post.envio_combinado_tooltip_text,
                                         ),
                                     ),
-                                    spacing="1", # Espacio vertical
+                                    spacing="1", # Espacio vertical entre las filas
                                     align_items="start",
                                 ),
                                 # --- ✨ FIN DE LA MODIFICACIÓN DE DISEÑO ✨ ---
-                                
+
                                 spacing="1", align_items="start", width="100%"
                             ),
                             spacing="2", 
