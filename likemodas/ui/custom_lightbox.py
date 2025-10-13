@@ -6,7 +6,7 @@ from typing import List, Dict
 
 class CustomLightbox(NoSSRComponent):
     """
-    [VERSIÓN FINAL] Componente que envuelve 'yet-another-react-lightbox'
+    [VERSIÓN FINAL Y CORREGIDA] Componente que envuelve 'yet-another-react-lightbox'
     y utiliza un wrapper de JavaScript personalizado para manejar los plugins.
     """
     library = "yet-another-react-lightbox"
@@ -16,9 +16,9 @@ class CustomLightbox(NoSSRComponent):
     open: rx.Var[bool]
     
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Cambiamos la lista vacía [] por una tupla vacía () para la correcta
-    # definición de un evento sin argumentos en esta versión de Reflex.
-    close: rx.EventHandler[()]
+    # Se utiliza la sintaxis lambda para definir un evento sin argumentos,
+    # que es la forma más compatible para esta versión de Reflex.
+    close: rx.EventHandler[lambda: []]
     # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     
     slides: rx.Var[List[Dict[str, str]]]
@@ -44,9 +44,8 @@ class CustomLightbox(NoSSRComponent):
 
     def get_custom_code(self) -> str:
         """
-        Este código crea un componente intermedio en React.
-        Intercepta la prop 'plugins', busca el string "zoom", y lo reemplaza
-        por el objeto 'Zoom' real antes de pasárselo al componente Lightbox.
+        Crea un componente intermedio en React para interceptar la prop 'plugins'
+        y reemplazar el string 'zoom' por el objeto Zoom real.
         """
         return """
 const LikemodasLightboxWrapper = (props) => {
