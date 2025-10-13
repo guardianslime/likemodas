@@ -3692,21 +3692,28 @@ class AppState(reflex_local_auth.LocalAuthState):
         if filename in self.post_images_in_form:
             self.post_images_in_form.remove(filename)
 
-
-
+    # Reemplaza las propiedades @rx.var 'current_modal_variant' y 'current_modal_image_filename'
     @rx.var
     def current_modal_variant(self) -> Optional[dict]:
-        """Devuelve la variante seleccionada actualmente en el modal."""
-        if self.product_in_modal and self.product_in_modal.variants:
-            if 0 <= self.modal_selected_variant_index < len(self.product_in_modal.variants):
-                return self.product_in_modal.variants[self.modal_selected_variant_index]
+        """
+        [VERSIÓN CORREGIDA] Devuelve el diccionario de la variante correcta
+        basado en el índice visual seleccionado.
+        """
+        unique_variants = self.unique_modal_variants
+        if not self.product_in_modal or not unique_variants:
+            return None
+
+        # Usa el índice visual para encontrar el item correcto en la lista de imágenes únicas
+        if 0 <= self.modal_selected_variant_index < len(unique_variants):
+            # El DTO 'UniqueVariantItem' contiene el diccionario completo de la variante original.
+            return unique_variants[self.modal_selected_variant_index].variant
         return None
 
     @rx.var
     def current_modal_image_filename(self) -> str:
         """
-        Devuelve SOLO el nombre del archivo de la variante seleccionada.
-        Esto es un string simple y seguro para el backend.
+        [VERSIÓN CORREGIDA] Devuelve el nombre del archivo de imagen de la
+        variante actualmente seleccionada.
         """
         variant = self.current_modal_variant
         return variant.get("image_url", "") if variant else ""
@@ -4011,20 +4018,32 @@ class AppState(reflex_local_auth.LocalAuthState):
                     )
             return cart_items_data
     
-    modal_selected_variant_index: int = 0
+    # Reemplaza la línea "modal_selected_variant_index: int = 0" por estas dos:
+    _internal_variant_data_index: int = 0
+    modal_selected_variant_index: int = 0 # Este ahora será nuestro ÍNDICE VISUAL
 
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    def set_modal_variant_index(self, index: int):
+    def set_modal_variant_index(self, visual_index: int):
         """
-        Llamado cuando el carrusel cambia de slide (ya sea por clic o por deslizamiento).
-        Actualiza el índice y reinicia las selecciones de atributos para la nueva imagen.
+        [VERSIÓN CORREGIDA]
+        Recibe el ÍNDICE VISUAL (de la lista de miniaturas/slides) y lo usa como
+        la única fuente de verdad para sincronizar todo el estado del modal.
         """
-        self.modal_selected_variant_index = index
-        self.modal_selected_attributes = {}
+        # Actualiza el índice visual, que controla el carrusel y las miniaturas.
+        self.modal_selected_variant_index = visual_index
 
-        if self.product_in_modal and self.product_in_modal.variants:
-            if 0 <= index < len(self.product_in_modal.variants):
-                self._set_default_attributes_from_variant(self.product_in_modal.variants[index])
+        # A partir del índice visual, encontramos el índice de datos original.
+        unique_variants = self.unique_modal_variants
+        if 0 <= visual_index < len(unique_variants):
+            # Obtenemos el DTO UniqueVariantItem de nuestra lista de imágenes únicas
+            selected_item = unique_variants[visual_index]
+
+            # Guardamos el índice de datos original internamente
+            self._internal_variant_data_index = selected_item.index
+
+            # Actualizamos los atributos seleccionables (Talla, etc.)
+            self.modal_selected_attributes = {}
+            self._set_default_attributes_from_variant(selected_item.variant)
 
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):

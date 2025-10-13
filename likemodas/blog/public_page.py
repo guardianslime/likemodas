@@ -143,13 +143,14 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     # --- INICIO DE LA NUEVA LÓGICA DE MINIATURAS MANUALES ---
     def _manual_thumbnails() -> rx.Component:
         """
-        Renderiza una fila horizontal de miniaturas personalizadas,
-        recreando la funcionalidad original de admin21.txt.
+        [VERSIÓN CORREGIDA] Renderiza las miniaturas y usa el ÍNDICE VISUAL (i)
+        para el evento on_click y para resaltar la selección.
         """
         return rx.hstack(
             rx.foreach(
                 AppState.unique_modal_variants,
-                lambda item: rx.box(
+                # Usamos 'i' como el índice de la lista de miniaturas (0, 1, 2...)
+                lambda item, i: rx.box(
                     rx.image(
                         src=rx.get_upload_url(item.variant.get("image_url")),
                         width="60px",
@@ -157,25 +158,21 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         object_fit="cover",
                         border_radius="var(--radius-3)",
                     ),
-                    # Estilo para resaltar la miniatura seleccionada
-                    border_width=rx.cond(
-                        AppState.current_modal_image_filename == item.variant.get("image_url"), "3px", "1px"
-                    ),
-                    border_color=rx.cond(
-                        AppState.current_modal_image_filename == item.variant.get("image_url"), "var(--accent-9)", "var(--gray-a6)"
-                    ),
+                    # Compara el índice de la miniatura (i) con el estado
+                    border_width=rx.cond(AppState.modal_selected_variant_index == i, "3px", "1px"),
+                    border_color=rx.cond(AppState.modal_selected_variant_index == i, "var(--accent-9)", "var(--gray-a6)"),
                     padding="2px",
                     border_radius="var(--radius-4)",
                     cursor="pointer",
                     transition="border-color 0.2s ease-in-out",
-                    # Evento que le dice al carrusel principal que cambie de imagen
-                    on_click=AppState.set_modal_variant_index(item.index),
+                    # El evento on_click ahora pasa el índice visual (i)
+                    on_click=AppState.set_modal_variant_index(i),
                 )
             ),
             spacing="3",
             padding="0.5em",
             width="100%",
-            overflow_x="auto", # Permite scroll horizontal si hay muchas miniaturas
+            overflow_x="auto",
             margin_top="0.5rem",
         )
 
