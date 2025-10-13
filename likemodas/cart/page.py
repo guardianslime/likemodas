@@ -1,11 +1,10 @@
 # likemodas/cart/page.py (CORREGIDO)
-
 import reflex as rx
 import reflex_local_auth
-from typing import Any, List, Dict
+from typing import List, Dict
 
-# --- ✨ ESTA ES LA LÍNEA QUE FALTABA Y SOLUCIONA EL ERROR ✨ ---
-from reflex import Var, cast
+# --- ✨ ESTA ES LA CORRECCIÓN FINAL Y DEFINITIVA ✨ ---
+from reflex.vars import Var, cast
 
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState
