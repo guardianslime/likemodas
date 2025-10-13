@@ -447,7 +447,6 @@ def lightbox_modal() -> rx.Component:
         spacing="2",
     )
 
-    # Ya no se envuelve en rx.theme, los colores se manejarán internamente.
     return rx.dialog.root(
         rx.dialog.content(
             controls,
@@ -467,8 +466,6 @@ def lightbox_modal() -> rx.Component:
                                     transform=f"scale({AppState.lightbox_zoom_level})",
                                 ),
                                 overflow="auto",
-                                # --- ✨ CORRECCIÓN DE LAYOUT: Ajuste de tamaños para PC ---
-                                # Usamos 100% para que el contenedor se ajuste a la diapositiva del carrusel.
                                 height="100%",
                                 width="100%",
                                 display="flex",
@@ -481,19 +478,31 @@ def lightbox_modal() -> rx.Component:
                     show_arrows=~AppState.is_lightbox_locked,
                     show_indicators=False, show_thumbs=False, show_status=False,
                     infinite_loop=True, use_keyboard_arrows=True,
-                    width="100%", # El carrusel debe ocupar el 100% de su contenedor (el rx.center)
+                    width="100%",
                     style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
                 width="100%",
                 height="100%",
             ),
-            # --- ✨ CORRECCIÓN DE TEMA: Fondo y estilos adaptables ---
+            
+            # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA DE ESTILO ✨ ---
             style={
-                "max_width": "100vw", "width": "100vw", "height": "100vh",
-                # El fondo ahora cambia según el modo de color de la página.
+                # Fuerza al diálogo a ocupar toda la pantalla sin desbordarse
+                "position": "fixed",
+                "inset": "0",
+                "width": "auto",
+                "height": "auto",
+                
+                # Reseteos para un look de pantalla completa
+                "max_width": "none",
+                "padding": "0",
+                "margin": "0",
+                "border_radius": "0",
+
+                # Fondo adaptable que ya funciona
                 "background_color": rx.color_mode_cond("white", "black"),
-                "padding": "0", "margin": "0", "border_radius": "0",
             },
+            # --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA DE ESTILO ✨ ---
         ),
         open=AppState.is_lightbox_open,
         on_open_change=AppState.close_lightbox,
