@@ -7429,10 +7429,30 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def close_lightbox(self, open_state: bool):
         """
-        Cierra el lightbox. Este método es llamado por el on_open_change del diálogo
-        y recibe el nuevo estado (True o False).
+        Cierra el lightbox y reinicia los estados de zoom y bloqueo.
         """
         self.is_lightbox_open = open_state
+        # --- ✨ AÑADE ESTAS LÍNEAS DE REINICIO ✨ ---
+        if not open_state:
+            self.is_lightbox_locked = False
+            self.lightbox_zoom_level = 1.0
+
+    # --- Variables para el Zoom y Bloqueo del Lightbox ---
+    is_lightbox_locked: bool = False
+    lightbox_zoom_level: float = 1.0
+
+    # --- Manejadores de Eventos para Zoom y Bloqueo ---
+    def toggle_lightbox_lock(self):
+        """Activa o desactiva el deslizamiento del carrusel en el lightbox."""
+        self.is_lightbox_locked = not self.is_lightbox_locked
+
+    def zoom_in(self):
+        """Aumenta el nivel de zoom para PC."""
+        self.lightbox_zoom_level = min(self.lightbox_zoom_level + 0.5, 3.0)
+
+    def zoom_out(self):
+        """Disminuye el nivel de zoom para PC."""
+        self.lightbox_zoom_level = max(self.lightbox_zoom_level - 0.5, 1.0)
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):

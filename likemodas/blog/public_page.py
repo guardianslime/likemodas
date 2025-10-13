@@ -428,35 +428,35 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN FINAL Y ESTABLE]
-    Lightbox con carrusel, zoom en PC al pasar el ratón, y pinch-to-zoom nativo del navegador en móvil.
+    [VERSIÓN FINAL CON ZOOM Y BLOQUEO]
+    Lightbox con carrusel, controles de zoom manuales para PC,
+    y un botón de bloqueo para facilitar el pinch-to-zoom en móvil.
     """
+    # --- Controles de UI para el Lightbox ---
+    controls = rx.hstack(
+        # Botón de Bloqueo/Desbloqueo para móvil
+        rx.icon_button(
+            rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("unlock")),
+            on_click=AppState.toggle_lightbox_lock,
+            variant="soft", color_scheme="gray",
+        ),
+        # Botones de Zoom para PC
+        rx.icon_button(rx.icon("zoom-out"), on_click=AppState.zoom_out, variant="soft", color_scheme="gray", display=["none", "none", "flex"]),
+        rx.icon_button(rx.icon("zoom-in"), on_click=AppState.zoom_in, variant="soft", color_scheme="gray", display=["none", "none", "flex"]),
+        
+        # Botón de Cerrar
+        rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", size="4")),
+        
+        position="absolute",
+        top="1rem",
+        right="1rem",
+        z_index="1500",
+        spacing="2",
+    )
+
     return rx.dialog.root(
         rx.dialog.content(
-            # Botones de control (Cerrar y Zoom en PC)
-            rx.dialog.close(
-                rx.icon_button(
-                    rx.icon("x"), variant="soft", color_scheme="gray", size="4",
-                    style={"position": "absolute", "top": "1rem", "right": "1rem", "zIndex": "1500"},
-                )
-            ),
-            # --- ✨ Botones de Zoom para PC (Opcional, si quieres control manual) ✨ ---
-            # Si quieres los botones de +/- zoom, puedes dejarlos. Si prefieres solo
-            # el hover en PC y el pinch-to-zoom en móvil, puedes eliminar este bloque.
-            # Los he dejado aquí por si los quieres, pero ya NO usarán los métodos de state.py
-            # sino que el navegador hará el zoom completo de la página.
-            # rx.hstack(
-            #     rx.icon_button(rx.icon("zoom-out"), on_click=rx.js("window.zoomOut()"), variant="soft", color_scheme="gray"),
-            #     rx.icon_button(rx.icon("zoom-in"), on_click=rx.js("window.zoomIn()"), variant="soft", color_scheme="gray"),
-            #     position="absolute",
-            #     top="1rem",
-            #     right="4rem",
-            #     z_index="1500",
-            #     display=["none", "none", "flex", "flex"], # Solo visibles en escritorio
-            #     spacing="2",
-            # ),
-
-            # Carrusel de imágenes
+            controls, # Añadimos los controles a la interfaz
             rx.center(
                 carousel(
                     rx.foreach(
@@ -466,64 +466,41 @@ def lightbox_modal() -> rx.Component:
                                 rx.image(
                                     src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
                                     alt=AppState.product_in_modal.title,
-                                    max_height="90vh",
-                                    max_width="90vw",
+                                    max_height="100%", # La imagen se ajusta al contenedor
+                                    max_width="100%",
                                     object_fit="contain",
-                                    cursor="zoom-in",
-                                    # --- Zoom en PC al pasar el ratón ---
-                                    # Esto sigue funcionando perfectamente para PC.
+                                    # --- Lógica de Zoom de PC ---
+                                    transform=f"scale({AppState.lightbox_zoom_level})",
                                     transition="transform 0.2s ease-out",
-                                    _hover={"transform": "scale(1.5)", "cursor": "zoom-out"},
-                                    # --- ELIMINADO: on_double_click ---
-                                    # Ya no necesitamos el doble toque, el pinch-to-zoom nativo lo reemplaza.
                                 ),
-                                # Este overflow="hidden" es crucial para el zoom de PC (hover)
-                                # para que no se desborde del box.
-                                overflow="hidden",
-                                height="100%",
-                                width="100%",
+                                # Este contenedor permite "panear" con scroll cuando hay zoom
+                                overflow="auto",
+                                height="90vh",
+                                width="90vw",
                                 display="flex",
                                 align_items="center",
                                 justify_content="center",
-                                # --- ✨ CLAVE para el Pinch-to-Zoom Nativo ✨ ---
-                                # Eliminamos cualquier touch-action o user-select que pudiera
-                                # bloquear el zoom del navegador en móviles.
-                                # También aseguramos que el contenido sea "scalable".
-                                style={
-                                    "touchAction": "manipulation", # Permite gestos táctiles
-                                    "userSelect": "auto",         # Permite selección/zoom
-                                    "WebkitTouchCallout": "none", # Para iOS
-                                    "WebkitUserSelect": "auto",   # Para iOS
-                                    # No poner overflow: "hidden" en el box que contiene la imagen
-                                    # si no queremos que bloquee el zoom nativo en móvil.
-                                    # Pero lo necesitamos para el efecto hover. Es un balance.
-                                    # Lo mejor es dejarlo en "hidden" y que el navegador haga el zoom.
-                                }
                             ),
                     ),
                     selected_item=AppState.lightbox_start_index,
-                    show_arrows=True,
-                    show_indicators=False,
-                    show_thumbs=False,
-                    show_status=False,
-                    infinite_loop=True,
-                    emulate_touch=True,
-                    use_keyboard_arrows=True,
+                    # --- Lógica de Bloqueo de Deslizamiento ---
+                    swipeable=~AppState.is_lightbox_locked,
+                    show_arrows=~AppState.is_lightbox_locked, # También ocultamos las flechas al bloquear
+                    
+                    # Configuración estándar
+                    show_indicators=False, show_thumbs=False, show_status=False,
+                    infinite_loop=True, use_keyboard_arrows=True,
                     width="100vw",
                     style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
                 width="100%",
                 height="100%",
             ),
-            # --- ✨ CLAVE para el Pinch-to-Zoom Nativo en el contenedor del diálogo ✨ ---
-            # Aseguramos que el contenido del diálogo tenga un viewport que permita el zoom.
-            # Establecemos el ancho del diálogo pero permitimos que el navegador controle el zoom.
+            # Estilos del fondo
             style={
                 "maxWidth": "100vw", "width": "100vw", "height": "100vh",
                 "backgroundColor": "rgba(0, 0, 0, 0.85)",
                 "padding": "0", "margin": "0", "borderRadius": "0",
-                "touchAction": "auto", # Muy importante para no bloquear el zoom nativo
-                "userSelect": "auto",
             },
         ),
         open=AppState.is_lightbox_open,
