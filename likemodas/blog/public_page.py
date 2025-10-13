@@ -65,9 +65,6 @@ def review_submission_form() -> rx.Component:
     )
 
 def render_comment_item(comment: CommentData) -> rx.Component:
-    """
-    Renderiza un comentario principal con avatar, votaciones, reputación y su historial.
-    """
     update_count = rx.cond(comment.updates, comment.updates.length(), 0)
     
     crown_map_var = rx.Var.create({
@@ -146,24 +143,10 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         Muestra las imágenes del producto usando el componente Carrusel.
         Hacer clic en el carrusel abre la vista lightbox.
         """
-        
-        @rx.var
-        def inline_carousel_slides() -> list[dict]:
-            """Transforma los datos de las variantes para el carrusel principal."""
-            if not AppState.unique_modal_variants:
-                return []
-            return [
-                {
-                    "src": rx.get_upload_url(item.variant.get("image_url", "")),
-                    "alt": AppState.product_in_modal.title if AppState.product_in_modal else ""
-                }
-                for item in AppState.unique_modal_variants
-            ]
-
         return rx.box(
             Carousel.create(
                 rx.foreach(
-                    inline_carousel_slides,
+                    AppState.inline_carousel_slides,
                     lambda slide: rx.image(
                         src=slide["src"],
                         alt=slide["alt"],

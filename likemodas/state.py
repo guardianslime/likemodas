@@ -7414,6 +7414,22 @@ class AppState(reflex_local_auth.LocalAuthState):
         else:
             return rx.toast.error("No se pudieron cargar las imágenes para la vista ampliada.")
 
+    # --- ✨ INICIO: CORRECCIÓN PARA EL CARRUSEL ✨ ---
+    @rx.var
+    def inline_carousel_slides(self) -> list[dict]:
+        """Transforma los datos de las variantes para el carrusel principal en el modal."""
+        if not self.unique_modal_variants:
+            return []
+        # Esta es la misma lógica que tenías antes, pero ahora en el lugar correcto.
+        return [
+            {
+                "src": rx.get_upload_url(item.variant.get("image_url", "")),
+                "alt": self.product_in_modal.title if self.product_in_modal else ""
+            }
+            for item in self.unique_modal_variants
+        ]
+    # --- ✨ FIN: CORRECCIÓN PARA EL CARRUSEL ✨ ---
+
     @rx.event
     def close_lightbox(self):
         """Cierra el modal lightbox y reinicia sus variables de estado."""
