@@ -437,48 +437,49 @@ def lightbox_modal() -> rx.Component:
             rx.icon_button(
                 rx.cond(
                     AppState.is_lightbox_locked,
-                    rx.icon("lock", size=22),      # <-- Tamaño explícito del icono
-                    rx.icon("lock-open", size=22) # <-- Tamaño explícito del icono
+                    rx.icon("lock"),
+                    rx.icon("lock-open")
                 ),
                 on_click=AppState.toggle_lightbox_lock,
                 variant="ghost",
                 color_scheme="gray",
-                size="3",
+                size="2",  # <-- MÁS PEQUEÑO Y UNIFORME
             ),
             # Botones de Zoom para PC
             rx.icon_button(
-                rx.icon("zoom-out", size=22), # <-- Tamaño explícito del icono
+                rx.icon("zoom-out"),
                 on_click=AppState.zoom_out,
-                variant="ghost", color_scheme="gray", size="3", display=["none", "none", "flex"]
+                variant="ghost", color_scheme="gray", size="2", display=["none", "none", "flex"]
             ),
             rx.icon_button(
-                rx.icon("zoom-in", size=22), # <-- Tamaño explícito del icono
+                rx.icon("zoom-in"),
                 on_click=AppState.zoom_in,
-                variant="ghost", color_scheme="gray", size="3", display=["none", "none", "flex"]
+                variant="ghost", color_scheme="gray", size="2", display=["none", "none", "flex"]
             ),
             
             # Botón de Cerrar
             rx.dialog.close(
                 rx.icon_button(
-                    rx.icon("x", size=22), # <-- Tamaño explícito del icono
-                    variant="ghost", color_scheme="gray", size="3"
+                    rx.icon("x"), 
+                    variant="ghost", color_scheme="gray", size="2" # <-- MÁS PEQUEÑO Y UNIFORME
                 )
             ),
             
-            spacing="1",
+            spacing="2", # <-- MÁS ESPACIO ENTRE ICONOS
         ),
         
-        # Estilos para la barra de controles (sin cambios)
-        padding_x="0.5rem",
-        padding_y="0.25rem",
+        # Estilos para la barra de controles
+        padding_x="0.5rem",   # <-- Más espacio horizontal interno
+        padding_y="0.3rem",   # <-- Espacio vertical interno
         bg=rx.color_mode_cond("rgba(255, 255, 255, 0.6)", "rgba(0, 0, 0, 0.4)"),
         border_radius="full",
         position="absolute",
-        top="1rem",
-        right="1rem",
+        top="1.5rem",         # Un poco más abajo para respirar
+        right="1.5rem",        # Un poco más separado del borde
         z_index="1500",
         style={"backdrop_filter": "blur(8px)"},
     )
+    # --- ✨ FIN DE LA CORRECCIÓN ESTÉTICA DEFINITIVA ✨ ---
 
     return rx.dialog.root(
         rx.dialog.content(
