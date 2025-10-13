@@ -2,7 +2,10 @@
 
 import reflex as rx
 import reflex_local_auth
-from typing import Any, List, Dict  # <--- ✨ 1. AÑADE ESTA IMPORTACIÓN
+from typing import Any, List, Dict
+
+# --- ✨ ESTA ES LA LÍNEA QUE FALTABA Y SOLUCIONA EL ERROR ✨ ---
+from reflex import Var, cast
 
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState
@@ -38,16 +41,16 @@ def display_default_address() -> rx.Component:
             )
         ),
         rx.button(
-            "Finalizar Compra", 
-            on_click=AppState.handle_checkout, 
+            "Finalizar Compra",
+            on_click=AppState.handle_checkout,
             width="100%", size="3", margin_top="1em",
             is_disabled=~AppState.default_shipping_address,
-            color_scheme="violet" 
+            color_scheme="violet"
         ),
         width="100%", spacing="4",
     )
 
-def cart_item_row(item: rx.Var[Dict[str, Any]]) -> rx.Component:
+def cart_item_row(item: Var[Dict[str, Any]]) -> rx.Component:
     """Renderiza una fila en la tabla del carrito."""
     return rx.table.row(
         rx.table.cell(
@@ -68,9 +71,8 @@ def cart_item_row(item: rx.Var[Dict[str, Any]]) -> rx.Component:
                 ),
                 rx.vstack(
                     rx.text(item["title"], weight="bold"),
-                    # --- ✨ 2. APLICA LA CORRECCIÓN CON rx.cast ✨ ---
                     rx.foreach(
-                        rx.cast(item["variant_details"], List[Dict[str, str]]),
+                        cast(item["variant_details"], List[Dict[str, str]]),
                         lambda detail: rx.text(detail["key"], ": ", detail["value"], size="2", color_scheme="gray")
                     ),
                     align_items="start",
@@ -128,7 +130,7 @@ def cart_page_content() -> rx.Component:
                         rx.heading(AppState.grand_total_cop, size="6"),
                         width="100%"
                     ),
-                    
+
                     rx.divider(),
                     rx.vstack(
                         rx.heading("Método de Pago", size="5", width="100%"),
