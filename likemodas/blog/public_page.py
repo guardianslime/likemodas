@@ -436,7 +436,9 @@ def lightbox_modal() -> rx.Component:
     controls = rx.hstack(
         # Botón de Bloqueo/Desbloqueo para móvil
         rx.icon_button(
-            rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("unlock")),
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")), # <-- El cambio está aquí
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             on_click=AppState.toggle_lightbox_lock,
             variant="soft", color_scheme="gray",
         ),
