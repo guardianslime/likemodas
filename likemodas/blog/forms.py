@@ -276,24 +276,29 @@ def blog_post_add_form() -> rx.Component:
                         required=True, size="3", on_change=AppState.set_category,
                     ),
                     rx.grid(
+                        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                         rx.vstack(
                             rx.text("Precio (COP)", as_="div", size="3", weight="bold"),
                             rx.input(
                                 placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3",
-                                # ✨ CORRECCIÓN AQUÍ ✨
+                                # value MUESTRA el estado
                                 value=AppState.price,
-                                on_change=AppState.set_price_from_input
+                                # on_change EJECUTA el método para actualizar el estado
+                                on_change=AppState.set_price_from_input,
                             ),
                         ),
                         rx.vstack(
-                        rx.text("Ganancia (COP)", as_="div", size="3", weight="bold"),
-                        rx.input(
-                            placeholder="Ej: 15000 (sin puntos)", type="number", size="3",
-                            name="profit",  # <-- ✨ CORRECCIÓN CLAVE AÑADIDA AQUÍ
-                            value=AppState.profit_str,
-                            on_change=AppState.set_profit_str
+                            rx.text("Ganancia (COP)", as_="div", size="3", weight="bold"),
+                            rx.input(
+                                placeholder="Ej: 15000 (sin puntos)", type="number", size="3",
+                                name="profit",
+                                # value MUESTRA el estado
+                                value=AppState.profit_str,
+                                # on_change EJECUTA el método para actualizar el estado
+                                on_change=AppState.set_profit_str,
+                            ),
                         ),
-                    ),
+                        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                         columns="2", spacing="4", width="100%",
                     ),
                     rx.grid(
