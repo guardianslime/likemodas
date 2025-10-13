@@ -7376,7 +7376,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO: CORRECCIÓN DEFINITIVA PARA StateSerializationError ✨ ---
     @rx.var
     def material_selector_placeholder(self) -> str:
-        """Crea el texto completo para el placeholder del selector de material."""
+        """Crea el texto completo y seguro para el placeholder del selector de material."""
         return f"{self.material_label}..."
     # --- ✨ FIN: CORRECCIÓN DEFINITIVA ✨ ---
 
