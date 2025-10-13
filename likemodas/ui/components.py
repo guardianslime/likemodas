@@ -152,15 +152,9 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     post.title, 
                                     weight="bold", size="6", white_space="normal",
                                     text_overflow="initial", overflow="visible",
-                                    # Si hay color guardado, lo usa; si no, usa el color del tema actual.
-                                    color=rx.cond(post.title_color, post.title_color, rx.color_mode_cond("black", "white")),
                                 ),
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
-                                rx.text(
-                                    post.price_cop, size="5", weight="medium",
-                                    # Si hay color guardado, lo usa; si no, usa un gris del tema.
-                                    color=rx.cond(post.price_color, post.price_color, rx.color("gray", 11)),
-                                ),
+                                rx.text(post.price_cop, size="5", weight="medium"),
                                 
                                 # --- ✨ INICIO DE LA CORRECCIÓN DE DISEÑO Y TOOLTIPS ✨ ---
                                 rx.vstack(
@@ -203,16 +197,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.spacer(),
                     ),
                     width="290px", height="auto", min_height="450px",
-        
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    # Si el post tiene un color guardado, lo usamos; si no, usamos el color del tema.
-                    bg=rx.cond(
-                        post.card_bg_color,
-                        post.card_bg_color,
-                        rx.color_mode_cond("#f9f9f9", "#111111")
-                    ),
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
+                    bg=rx.color_mode_cond("#f9f9f9", "#111111"),
                     border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                     border_radius="8px", box_shadow="md", padding="1em",
                 )
