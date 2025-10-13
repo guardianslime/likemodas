@@ -43,7 +43,7 @@ def post_preview() -> rx.Component:
                     star_rating_display_safe(0, 0, size=24),
                     rx.text(
                         # ✨ CORRECCIÓN: Ahora lee de AppState.price, que es actualizado por el formulario.
-                        format_to_cop(rx.cond(AppState.price, AppState.price.to(float), 0.0)),
+                        rx.text(AppState.price_cop_preview, size="5", weight="medium"),
                         size="5",
                         weight="medium"
                     ),

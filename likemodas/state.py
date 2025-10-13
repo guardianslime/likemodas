@@ -3325,6 +3325,22 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_edit_profit_str(self, profit: str):
         self.edit_profit_str = profit
     # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
+
+    # --- ✨ INICIO DEL CÓDIGO A AÑADIR ✨ ---
+    @rx.var
+    def price_cop_preview(self) -> rx.Var[str]:
+        """
+        Una variable computada que formatea el precio para la previsualización.
+        La UI solo leerá esta variable, simplificando las actualizaciones.
+        """
+        # Si el campo de precio está vacío o no es válido, muestra "$ 0"
+        try:
+            price_float = rx.cond(self.price, self.price.to(float), 0.0)
+        except Exception:
+            price_float = 0.0
+            
+        return format_to_cop(price_float)
+    # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
     
     # Imágenes
     edit_post_images_in_form: list[str] = []
