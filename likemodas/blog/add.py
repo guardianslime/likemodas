@@ -143,7 +143,8 @@ def blog_post_add_content() -> rx.Component:
                         # Fondo
                         rx.hstack(
                             rx.text("Fondo", flex_grow="1"),
-                            rx.color_picker(
+                            # ✨ CORRECCIÓN AQUÍ ✨
+                            color_picker(
                                 value=AppState.card_bg_color,
                                 on_change=AppState.set_card_bg_color,
                             ),
@@ -152,7 +153,8 @@ def blog_post_add_content() -> rx.Component:
                         # Título
                         rx.hstack(
                             rx.text("Título", flex_grow="1"),
-                            rx.color_picker(
+                            # ✨ CORRECCIÓN AQUÍ ✨
+                            color_picker(
                                 value=AppState.title_color,
                                 on_change=AppState.set_title_color,
                             ),
@@ -161,7 +163,8 @@ def blog_post_add_content() -> rx.Component:
                         # Precio
                         rx.hstack(
                             rx.text("Precio", flex_grow="1"),
-                            rx.color_picker(
+                            # ✨ CORRECCIÓN AQUÍ ✨
+                            color_picker(
                                 value=AppState.price_color,
                                 on_change=AppState.set_price_color,
                             ),
