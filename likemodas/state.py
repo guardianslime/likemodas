@@ -7373,6 +7373,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.modal_selected_variant_index = index
         self.modal_selected_attributes = {} # Limpia la selección de talla anterior
 
+    # --- ✨ INICIO: CORRECCIÓN DEFINITIVA PARA StateSerializationError ✨ ---
+    @rx.var
+    def material_selector_placeholder(self) -> str:
+        """Crea el texto completo para el placeholder del selector de material."""
+        return f"{self.material_label}..."
+    # --- ✨ FIN: CORRECCIÓN DEFINITIVA ✨ ---
+
     # --- ✨ INICIO: Gestión de Estado para el Lightbox ✨ ---
 
     # Controla la visibilidad del modal lightbox a pantalla completa.

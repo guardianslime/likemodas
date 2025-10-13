@@ -40,7 +40,6 @@ def attribute_editor(
         rx.hstack(
             rx.select(
                 options_list,
-                # --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
                 placeholder=f"Seleccionar {title.lower()}...",
                 value=temp_value_var,
                 on_change=temp_value_setter,
@@ -141,7 +140,7 @@ def variant_stock_manager_edit() -> rx.Component:
         ),
         align_items="stretch", width="100%",
     )
-    
+
 def blog_post_add_form() -> rx.Component:
     tipo_selector = searchable_select(
         placeholder="Tipo...", options=AppState.filtered_attr_tipos,
@@ -149,8 +148,10 @@ def blog_post_add_form() -> rx.Component:
         search_value=AppState.search_attr_tipo, on_change_search=AppState.set_search_attr_tipo,
         filter_name="attr_tipo_filter",
     )
+    # --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
     material_selector = searchable_select(
-        placeholder=f"{AppState.material_label}...", options=AppState.filtered_attr_materiales,
+        placeholder=AppState.material_selector_placeholder, 
+        options=AppState.filtered_attr_materiales,
         on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
         filter_name="attr_material_filter",
@@ -407,7 +408,6 @@ def blog_post_add_form() -> rx.Component:
 
 
 def blog_post_edit_form() -> rx.Component:
-    """El formulario para editar una publicación, ahora con estado centralizado y robusto."""
     caracteristicas_ropa_edit = attribute_editor(
         title="Talla", options_list=LISTA_TALLAS_ROPA,
         temp_value_var=AppState.edit_temp_talla,
