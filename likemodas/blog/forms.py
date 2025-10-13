@@ -145,8 +145,9 @@ def blog_post_add_form() -> rx.Component:
         search_value=AppState.search_attr_tipo, on_change_search=AppState.set_search_attr_tipo,
         filter_name="attr_tipo_filter",
     )
+    # --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
     material_selector = searchable_select(
-        placeholder=AppState.material_selector_placeholder, 
+        placeholder=AppState.material_selector_placeholder,
         options=AppState.filtered_attr_materiales,
         on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
