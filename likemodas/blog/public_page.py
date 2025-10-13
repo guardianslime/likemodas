@@ -149,8 +149,9 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         src=slide["src"],
                         alt=slide["alt"],
                         width="100%",
-                        height={"initial": "380px", "md": "500px"},
-                        object_fit="cover",
+                        # Altura condicional para pantalla completa
+                        height=rx.cond(AppState.is_fullscreen, "85vh", ["380px", "500px", "500px"]),
+                        object_fit=rx.cond(AppState.is_fullscreen, "contain", "cover"),
                     )
                 ),
                 show_arrows=True,
@@ -159,12 +160,19 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 show_thumbs=False,
                 width="100%",
             ),
-            on_click=AppState.open_lightbox(0),
-            cursor="zoom-in",
-            _hover={"opacity": 0.9},
+            # Botón para expandir/contraer
+            rx.icon_button(
+                rx.icon(tag=rx.cond(AppState.is_fullscreen, "minimize-2", "maximize-2")),
+                on_click=AppState.toggle_fullscreen,
+                position="absolute",
+                top="1rem",
+                right="3.5rem", # A la izquierda del botón de cerrar
+                z_index="1000",
+                variant="soft",
+                color_scheme="gray",
+            ),
+            position="relative", # Necesario para el posicionamiento del botón
             width="100%",
-            border_radius="var(--radius-3)",
-            overflow="hidden",
         )
 
     def _modal_info_section() -> rx.Component:
