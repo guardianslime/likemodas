@@ -428,49 +428,60 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN DEFINITIVA Y ESTABLE]
-    Define un diálogo de pantalla completa (lightbox) que reutiliza el carrusel
-    confiable y añade un efecto de zoom al pasar el ratón en PC.
+    [VERSIÓN FINAL CON ZOOM]
+    Lightbox que reutiliza el carrusel confiable y añade controles de zoom
+    explícitos para PC y doble toque para móvil.
     """
+    zoom_controls = rx.hstack(
+        rx.icon_button(rx.icon("zoom-out"), on_click=AppState.zoom_out, variant="soft", color_scheme="gray"),
+        rx.icon_button(rx.icon("zoom-in"), on_click=AppState.zoom_in, variant="soft", color_scheme="gray"),
+        # Posicionamiento de los botones
+        position="absolute",
+        top="1rem",
+        right="4rem", # A la izquierda del botón de cerrar
+        z_index="1500",
+        display=["none", "none", "flex", "flex"], # Solo visibles en escritorio
+        spacing="2",
+    )
+
     return rx.dialog.root(
         rx.dialog.content(
-            # Botón para cerrar
+            # Botones de control (Cerrar y Zoom)
             rx.dialog.close(
                 rx.icon_button(
                     rx.icon("x"), variant="soft", color_scheme="gray", size="4",
-                    style={
-                        "position": "absolute", "top": "1rem", "right": "1rem",
-                        "zIndex": "1500", "cursor": "pointer",
-                    },
+                    style={"position": "absolute", "top": "1rem", "right": "1rem", "zIndex": "1500"},
                 )
             ),
+            zoom_controls, # Añadimos los botones de zoom a la interfaz
+
             # Carrusel
             rx.center(
                 carousel(
                     rx.foreach(
                         AppState.unique_modal_variants,
-                        lambda variant_item: 
-                            # --- ✨ INICIO DE LA LÓGICA DE ZOOM ✨ ---
-                            # 1. Contenedor que recorta la imagen cuando se agranda
-                            rx.box(
-                                rx.image(
-                                    src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
-                                    alt=AppState.product_in_modal.title,
-                                    max_height="90vh",
-                                    max_width="90vw",
-                                    object_fit="contain",
-                                    # 2. Transición suave para el efecto
-                                    transition="transform 0.3s ease-in-out",
-                                    # 3. La propiedad que agranda la imagen al pasar el ratón
-                                    _hover={"transform": "scale(1.25)"},
-                                ),
-                                # 4. Propiedad clave para que el zoom no se desborde
-                                overflow="hidden",
-                                border_radius="var(--radius-3)", # Opcional: bordes redondeados
+                        lambda variant_item: rx.box(
+                            rx.image(
+                                src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                                alt=AppState.product_in_modal.title,
+                                max_height="90vh",
+                                max_width="90vw",
+                                object_fit="contain",
+                                cursor="zoom-in",
+                                # --- Lógica de Transformación para el Zoom ---
+                                transform=f"scale({AppState.lightbox_zoom_level})",
+                                transition="transform 0.2s ease-out",
+                                # --- Evento para el zoom en móvil ---
+                                on_double_click=AppState.toggle_zoom,
                             ),
-                            # --- ✨ FIN DE LA LÓGICA DE ZOOM ✨ ---
+                            overflow="hidden",
+                            height="100%", # Asegura que el contenedor ocupe el espacio
+                            width="100%",
+                            display="flex",
+                            align_items="center",
+                            justify_content="center",
+                        ),
                     ),
-                    # --- Configuración del Carrusel ---
                     selected_item=AppState.lightbox_start_index,
                     show_arrows=True,
                     show_indicators=False,
@@ -492,7 +503,6 @@ def lightbox_modal() -> rx.Component:
                 "padding": "0", "margin": "0", "borderRadius": "0",
             },
         ),
-        # El on_open_change ahora funcionará con la corrección en state.py
         open=AppState.is_lightbox_open,
         on_open_change=AppState.close_lightbox,
     )
