@@ -432,14 +432,22 @@ def lightbox_modal() -> rx.Component:
     fondo adaptable a modo claro/oscuro y controles siempre visibles.
     """
     controls = rx.hstack(
+        # Botón de Bloqueo/Desbloqueo
         rx.icon_button(
             rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")),
             on_click=AppState.toggle_lightbox_lock,
-            variant="soft", color_scheme="gray",
+            variant="ghost",  # <-- Cambio de estilo
+            color_scheme="gray",
+            size="3",         # <-- Ajuste de tamaño
         ),
-        rx.icon_button(rx.icon("zoom-out"), on_click=AppState.zoom_out, variant="soft", color_scheme="gray", display=["none", "none", "flex"]),
-        rx.icon_button(rx.icon("zoom-in"), on_click=AppState.zoom_in, variant="soft", color_scheme="gray", display=["none", "none", "flex"]),
-        rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", size="4")),
+        # Botones de Zoom para PC
+        rx.icon_button(rx.icon("zoom-out"), on_click=AppState.zoom_out, variant="ghost", color_scheme="gray", size="3", display=["none", "none", "flex"]),
+        rx.icon_button(rx.icon("zoom-in"), on_click=AppState.zoom_in, variant="ghost", color_scheme="gray", size="3", display=["none", "none", "flex"]),
+        
+        # Botón de Cerrar (lo dejamos un poco más grande)
+        rx.dialog.close(rx.icon_button(rx.icon("x"), variant="ghost", color_scheme="gray", size="4")),
+        
+        # Estilos de posicionamiento (sin cambios)
         position="absolute",
         top="1rem",
         right="1rem",
