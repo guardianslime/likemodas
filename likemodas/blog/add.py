@@ -2,6 +2,9 @@
 
 import reflex as rx
 
+# --- ✨ 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN AL INICIO DEL ARCHIVO ✨ ---
+from reflex_color_picker import color_picker
+# --- ✨ FIN DEL CAMBIO ✨ ---
 from likemodas.utils.formatting import format_to_cop
 from ..auth.admin_auth import require_panel_access # <-- 1. Importa el decorador correcto
 from .forms import blog_post_add_form
@@ -90,7 +93,7 @@ def post_preview() -> rx.Component:
     )
 
 
-@require_panel_access # <-- 2. Usa el nuevo decorador
+@require_panel_access
 def blog_post_add_content() -> rx.Component:
     """
     Página de creación de publicación con un desplazamiento manual hacia la derecha
@@ -99,11 +102,14 @@ def blog_post_add_content() -> rx.Component:
     return rx.hstack(
         rx.grid(
             # Columna del Formulario
+            # ... (esta parte no cambia) ...
+
+            # Columna de Previsualización
             rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                post_preview(), # Tu previsualización existente
+                post_preview(),
 
-                # --- ✨ INICIO DEL NUEVO BLOQUE DE CÓDIGO ✨ ---
+                # --- ✨ 2. CORRECCIÓN DENTRO DEL BLOQUE DE LA PALETA DE COLORES ✨ ---
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Personalizar Tarjeta", weight="bold", size="4"),
@@ -115,11 +121,13 @@ def blog_post_add_content() -> rx.Component:
                     ),
                     rx.cond(
                         AppState.show_color_picker,
-                        rx.color_picker(
+                        # ANTES: rx.color_picker(...)
+                        # AHORA: color_picker(...)
+                        color_picker(
                             value=AppState.card_bg_color,
                             on_change=AppState.set_card_bg_color,
                             format="hex",
-                            variant="classic", # Un estilo más compacto
+                            variant="classic",
                         ),
                     ),
                     rx.hstack(
@@ -142,7 +150,7 @@ def blog_post_add_content() -> rx.Component:
                     align_items="stretch",
                     width="100%",
                 ),
-                # --- ✨ FIN DEL NUEVO BLOQUE DE CÓDIGO ✨ ---
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
                 display=["none", "none", "flex", "flex"],
                 width="100%",
