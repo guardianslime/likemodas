@@ -428,8 +428,8 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN DEFINITIVA] Lightbox con zoom, layout corregido para PC
-    y visibilidad de iconos garantizada en todos los temas.
+    [VERSIÓN DEFINITIVA] Lightbox con layout de PC corregido,
+    fondo adaptable a modo claro/oscuro y controles siempre visibles.
     """
     controls = rx.hstack(
         rx.icon_button(
@@ -447,64 +447,57 @@ def lightbox_modal() -> rx.Component:
         spacing="2",
     )
 
-    # --- ✨ INICIO DE LA CORRECCIÓN DE TEMA ✨ ---
-    # Envolvemos todo el lightbox en un rx.theme con apariencia "dark".
-    # Esto asegura que los iconos siempre sean claros y visibles sobre el fondo oscuro.
-    return rx.theme(
-        rx.dialog.root(
-            rx.dialog.content(
-                controls,
-                rx.center(
-                    carousel(
-                        rx.foreach(
-                            AppState.unique_modal_variants,
-                            lambda variant_item:
-                                rx.box(
-                                    rx.image(
-                                        src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
-                                        alt=AppState.product_in_modal.title,
-                                        max_height="90vh",
-                                        max_width="90vw",
-                                        object_fit="contain",
-                                        transition="transform 0.2s ease-out",
-                                        transform=f"scale({AppState.lightbox_zoom_level})",
-                                    ),
-                                    overflow="auto",
-                                    height="100vh", # Ajustamos para que ocupe toda la altura
-                                    width="100%",
-                                    display="flex",
-                                    align_items="center",
-                                    justify_content="center",
+    # Ya no se envuelve en rx.theme, los colores se manejarán internamente.
+    return rx.dialog.root(
+        rx.dialog.content(
+            controls,
+            rx.center(
+                carousel(
+                    rx.foreach(
+                        AppState.unique_modal_variants,
+                        lambda variant_item:
+                            rx.box(
+                                rx.image(
+                                    src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                                    alt=AppState.product_in_modal.title,
+                                    max_height="90vh",
+                                    max_width="90vw",
+                                    object_fit="contain",
+                                    transition="transform 0.2s ease-out",
+                                    transform=f"scale({AppState.lightbox_zoom_level})",
                                 ),
-                        ),
-                        selected_item=AppState.lightbox_start_index,
-                        swipeable=~AppState.is_lightbox_locked,
-                        show_arrows=~AppState.is_lightbox_locked,
-                        show_indicators=False, show_thumbs=False, show_status=False,
-                        infinite_loop=True, use_keyboard_arrows=True,
-                        
-                        # --- ✨ INICIO DE LA CORRECCIÓN DE LAYOUT ✨ ---
-                        # Cambiamos "100vw" por "100%" para respetar la barra de scroll.
-                        width="100%",
-                        # --- ✨ FIN DE LA CORRECCIÓN DE LAYOUT ✨ ---
-
-                        style={"& .thumbs-wrapper": {"display": "none"}},
+                                overflow="auto",
+                                # --- ✨ CORRECCIÓN DE LAYOUT: Ajuste de tamaños para PC ---
+                                # Usamos 100% para que el contenedor se ajuste a la diapositiva del carrusel.
+                                height="100%",
+                                width="100%",
+                                display="flex",
+                                align_items="center",
+                                justify_content="center",
+                            ),
                     ),
-                    width="100%",
-                    height="100%",
+                    selected_item=AppState.lightbox_start_index,
+                    swipeable=~AppState.is_lightbox_locked,
+                    show_arrows=~AppState.is_lightbox_locked,
+                    show_indicators=False, show_thumbs=False, show_status=False,
+                    infinite_loop=True, use_keyboard_arrows=True,
+                    width="100%", # El carrusel debe ocupar el 100% de su contenedor (el rx.center)
+                    style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
-                style={
-                    "maxWidth": "100vw", "width": "100vw", "height": "100vh",
-                    "backgroundColor": "transparent", # El fondo lo da el overlay del diálogo
-                    "padding": "0", "margin": "0", "borderRadius": "0",
-                },
+                width="100%",
+                height="100%",
             ),
-            open=AppState.is_lightbox_open,
-            on_open_change=AppState.close_lightbox,
+            # --- ✨ CORRECCIÓN DE TEMA: Fondo y estilos adaptables ---
+            style={
+                "max_width": "100vw", "width": "100vw", "height": "100vh",
+                # El fondo ahora cambia según el modo de color de la página.
+                "background_color": rx.color_mode_cond("white", "black"),
+                "padding": "0", "margin": "0", "border_radius": "0",
+            },
         ),
-        appearance="dark", # Forza el modo oscuro solo para el lightbox y sus hijos
+        open=AppState.is_lightbox_open,
+        on_open_change=AppState.close_lightbox,
     )
-    # --- ✨ FIN DE LA CORRECCIÓN DE TEMA ✨ ---
 
 
 # ✅ PASO 2: ASEGÚRATE DE QUE blog_public_page_content VENGA DESPUÉS
