@@ -1,1 +1,0 @@
-import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`M21 2H3v16h5v4l4-4h5l4-4V2zm-10 9V7m5 4V7`,key:`c0yzno`}]],n=e(`twitch`,t);export{t as __iconNode,n as default};

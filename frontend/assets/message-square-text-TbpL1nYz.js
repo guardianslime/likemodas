@@ -1,1 +1,0 @@
-import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z`,key:`1lielz`}],[`path`,{d:`M13 8H7`,key:`14i4kc`}],[`path`,{d:`M17 12H7`,key:`16if0g`}]],n=e(`message-square-text`,t);export{t as __iconNode,n as default};

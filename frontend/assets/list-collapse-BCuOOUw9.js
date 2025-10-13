@@ -1,1 +1,0 @@
-import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`M10 12h11`,key:`6m4ad9`}],[`path`,{d:`M10 18h11`,key:`11hvi2`}],[`path`,{d:`M10 6h11`,key:`c7qv1k`}],[`path`,{d:`m3 10 3-3-3-3`,key:`i7pm08`}],[`path`,{d:`m3 20 3-3-3-3`,key:`20gx1n`}]],n=e(`list-collapse`,t);export{t as __iconNode,n as default};

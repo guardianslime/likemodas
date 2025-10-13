@@ -1,1 +1,0 @@
-import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`circle`,{cx:`7`,cy:`7`,r:`5`,key:`x29byf`}],[`circle`,{cx:`17`,cy:`17`,r:`5`,key:`1op1d2`}],[`path`,{d:`M12 17h10`,key:`ls21zv`}],[`path`,{d:`m3.46 10.54 7.08-7.08`,key:`1rehiu`}]],n=e(`tablets`,t);export{t as __iconNode,n as default};

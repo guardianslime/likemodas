@@ -1,1 +1,0 @@
-import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`circle`,{cx:`12`,cy:`12`,r:`10`,key:`1mglay`}],[`path`,{d:`m14 16-4-4 4-4`,key:`ojs7w8`}]],n=e(`circle-chevron-left`,t);export{t as __iconNode,n as default};

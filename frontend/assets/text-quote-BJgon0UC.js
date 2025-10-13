@@ -1,1 +1,0 @@
-import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`M17 6H3`,key:`16j9eg`}],[`path`,{d:`M21 12H8`,key:`scolzb`}],[`path`,{d:`M21 18H8`,key:`1wfozv`}],[`path`,{d:`M3 12v6`,key:`fv4c87`}]],n=e(`text-quote`,t);export{t as __iconNode,n as default};
