@@ -3708,6 +3708,24 @@ class AppState(reflex_local_auth.LocalAuthState):
             # El DTO 'UniqueVariantItem' contiene el diccionario completo de la variante original.
             return unique_variants[self.modal_selected_variant_index].variant
         return None
+    
+    @rx.var
+    def lightbox_slides(self) -> list[dict[str, str]]:
+        """
+        Prepara la lista de imágenes en el formato que espera 'yet-another-react-lightbox'.
+        Ej: [{"src": "url1"}, {"src": "url2"}]
+        """
+        if not self.product_in_modal:
+            return []
+        
+        # Obtenemos la URL base para construir la ruta completa de la imagen
+        base_url = rx.get_upload_url("")
+        
+        return [
+            # Usamos un diccionario con la clave "src" para cada imagen
+            {"src": f"{base_url}/{item.variant.get('image_url')}"}
+            for item in self.unique_modal_variants
+        ]
 
     @rx.var
     def current_modal_image_filename(self) -> str:

@@ -12,6 +12,7 @@ from ..ui.seller_score import seller_score_stars
 from ..models import UserReputation
 from ..ui.carousel import Carousel
 from ..ui.custom_carousel import carousel
+from ..ui.custom_lightbox import custom_lightbox
 
 
 def render_update_item(comment: CommentData) -> rx.Component:
@@ -140,72 +141,49 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     )
 
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
-    # --- INICIO DE LA NUEVA LÓGICA DE MINIATURAS MANUALES ---
     def _manual_thumbnails() -> rx.Component:
-        """
-        [VERSIÓN CORREGIDA] Renderiza las miniaturas y usa el ÍNDICE VISUAL (i)
-        para el evento on_click y para resaltar la selección.
-        """
+        # Esta función interna no cambia
         return rx.hstack(
             rx.foreach(
                 AppState.unique_modal_variants,
-                # Usamos 'i' como el índice de la lista de miniaturas (0, 1, 2...)
                 lambda item, i: rx.box(
                     rx.image(
                         src=rx.get_upload_url(item.variant.get("image_url")),
-                        width="60px",
-                        height="60px",
-                        object_fit="cover",
-                        border_radius="var(--radius-3)",
+                        height="60px", width="60px", object_fit="cover", border_radius="var(--radius-3)",
                     ),
-                    # Compara el índice de la miniatura (i) con el estado
                     border_width=rx.cond(AppState.modal_selected_variant_index == i, "3px", "1px"),
                     border_color=rx.cond(AppState.modal_selected_variant_index == i, "var(--accent-9)", "var(--gray-a6)"),
-                    padding="2px",
-                    border_radius="var(--radius-4)",
-                    cursor="pointer",
-                    transition="border-color 0.2s ease-in-out",
-                    # El evento on_click ahora pasa el índice visual (i)
+                    padding="2px", border_radius="var(--radius-4)", cursor="pointer",
                     on_click=AppState.set_modal_variant_index(i),
                 )
             ),
-            spacing="3",
-            padding="0.5em",
-            width="100%",
-            overflow_x="auto",
-            margin_top="0.5rem",
+            spacing="3", padding="0.5em", width="100%", overflow_x="auto", margin_top="0.5rem",
         )
 
     def _modal_image_section() -> rx.Component:
-        """
-        Sección de imagen que ahora combina el carrusel principal (para swipe y flechas)
-        con las miniaturas manuales personalizadas debajo.
-        """
-        FIXED_HEIGHT = "500px"
+        # --- ✨ INICIO DE LA CORRECCIÓN DE IMAGEN MÓVIL ✨ ---
         return rx.vstack(
-            # --- SECCIÓN DEL CARRUSEL PRINCIPAL (SIN MINIATURAS PROPIAS) ---
             carousel(
                 rx.foreach(
                     AppState.unique_modal_variants,
-                    lambda variant_item, index: rx.box(
+                    lambda variant_item, i: rx.box(
                         rx.image(
                             src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
                             alt=AppState.product_in_modal.title,
                             width="100%",
                             height="100%",
-                            object_fit="cover",
+                            # Se cambia a "contain" para que la imagen siempre sea visible
+                            object_fit="contain",
                         ),
-                        on_click=AppState.open_lightbox(index),
+                        on_click=AppState.open_lightbox(i),
                         cursor="pointer",
-                        _hover={"opacity": 0.8},
-                        height=FIXED_HEIGHT,
+                        # Altura responsiva para el contenedor de la imagen
+                        height={"base": "350px", "md": "500px"},
                     ),
                 ),
-                # Apagamos las miniaturas de la biblioteca para usar las nuestras
                 show_thumbs=False,
-                # Mantenemos las otras funcionalidades
                 show_arrows=AppState.unique_modal_variants.length() > 1,
-                show_indicators=False, # Las miniaturas sirven de indicadores
+                show_indicators=False,
                 show_status=False,
                 infinite_loop=True,
                 emulate_touch=True,
@@ -213,32 +191,28 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 selected_item=AppState.modal_selected_variant_index,
                 on_change=AppState.set_modal_variant_index,
             ),
-
-            # --- SECCIÓN DE MINIATURAS MANUALES ---
-            # Solo mostramos las miniaturas si hay más de una imagen
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
                 _manual_thumbnails(),
             ),
-
             spacing="2",
             width="100%",
             position="relative",
         )
-    # --- FIN DE LA NUEVA LÓGICA ---
+        # --- ✨ FIN DE LA CORRECCIÓN DE IMAGEN MÓVIL ✨ ---
 
     def _modal_info_section() -> rx.Component:
-        # Esta función interna no necesita cambios, puedes mantener la que ya tienes
-        # o usar esta para asegurarte.
+        # --- ✨ INICIO DE LA CORRECCIÓN DE BADGES MÓVIL ✨ ---
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=32),
-            rx.hstack(
+            
+            # Usamos rx.flex con wrap="wrap" para que los badges se reorganicen en móvil
+            rx.flex(
                 rx.badge(
                     AppState.product_in_modal.shipping_display_text,
-                    color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
                     variant="solid", size="2"
                 ),
                 rx.cond(
@@ -259,7 +233,10 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     AppState.product_in_modal.is_imported,
                     rx.badge("Importado", color_scheme="purple", variant="solid", size="2"),
                 ),
-                spacing="4", align="center", margin_y="1em",
+                spacing="3",
+                align="center",
+                wrap="wrap", # La propiedad clave para la responsividad
+                margin_y="1em",
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
             rx.vstack(
@@ -452,65 +429,35 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    Define un diálogo de pantalla completa (lightbox) que contiene un carrusel.
-    Se activa a través del estado y se inicia en la imagen seleccionada.
+    Define un diálogo de pantalla completa (lightbox) que ahora usa
+    'yet-another-react-lightbox' para habilitar la funcionalidad de zoom.
     """
-    return rx.dialog.root(
-        rx.dialog.content(
-            rx.dialog.close(
-                rx.icon_button(
-                    rx.icon("x"),
-                    variant="soft",
-                    color_scheme="gray",
-                    size="4",
-                    style={
-                        "position": "absolute",
-                        "top": "1rem",
-                        "right": "1rem",
-                        "zIndex": "1500",
-                        "cursor": "pointer",
-                    },
-                )
-            ),
-            rx.center(
-                carousel(
-                    rx.foreach(
-                        AppState.unique_modal_variants,
-                        lambda variant_item: rx.image(
-                            src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
-                            alt=AppState.product_in_modal.title,
-                            max_height="90vh",
-                            max_width="90vw",
-                            object_fit="contain",
-                        ),
-                    ),
-                    selected_item=AppState.lightbox_start_index,
-                    show_arrows=True,
-                    show_indicators=False,
-                    show_thumbs=False,
-                    show_status=False,
-                    infinite_loop=True,
-                    emulate_touch=True,
-                    use_keyboard_arrows=True,
-                    width="100vw",
-                    # Esta línea oculta el contenedor de miniaturas que causaba el rectángulo gris
-                    style={"& .thumbs-wrapper": {"display": "none"}},
-                ),
-                width="100%",
-                height="100%",
-            ),
-            style={
-                "maxWidth": "100vw",
-                "width": "100vw",
-                "height": "100vh",
-                "backgroundColor": "rgba(0, 0, 0, 0.85)",
-                "padding": "0",
-                "margin": "0",
-                "borderRadius": "0",
-            },
-        ),
+    return custom_lightbox(
+        # Estado para abrir/cerrar
         open=AppState.is_lightbox_open,
-        on_open_change=AppState.close_lightbox,
+        close=AppState.close_lightbox,
+
+        # Datos de las imágenes
+        slides=AppState.lightbox_slides,
+        index=AppState.lightbox_start_index,
+
+        # Activamos el plugin de Zoom
+        plugins=[rx.Var.create("{Zoom}", _var_is_local=False)],
+
+        # Configuraciones adicionales para el zoom
+        zoom={"max_zoom_factor": 4, "double_click_delay": 300},
+
+        # Estilos para el fondo
+        styles={
+            "container": {
+                "backgroundColor": "rgba(0, 0, 0, 0.85)"
+            }
+        },
+
+        # Ocultar elementos innecesarios
+        carousel={"finite": True},
+        controller={"close_on_pull_down": True, "close_on_backdrop_click": True},
+        no_scroll={"disabled": False},
     )
 
 
