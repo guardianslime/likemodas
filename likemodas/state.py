@@ -157,6 +157,8 @@ class ProductCardData(rx.Base):
     userinfo_id: int
     average_rating: float = 0.0
     rating_count: int = 0
+    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
+    card_bg_color: Optional[str] = None
     
     class Config:
         orm_mode = True
@@ -183,6 +185,8 @@ class ProductDetailData(rx.Base):
     shipping_display_text: str = ""
     is_imported: bool = False
     seller_score: int = 0
+    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
+    card_bg_color: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -2238,6 +2242,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
+                # --- ✨ AÑADE ESTA NUEVA LÍNEA AQUÍ ✨ ---
+                card_bg_color=self.card_bg_color  # Guarda el color seleccionado
             )
             session.add(new_post)
 
@@ -2956,6 +2962,19 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         yield AppState.recalculate_all_shipping_costs
         self.is_loading = False
+
+    # --- ✨ AÑADE ESTAS NUEVAS VARIABLES DE ESTADO ✨ ---
+    card_bg_color: str = "#FFFFFF"  # Color por defecto inicial
+    show_color_picker: bool = False
+
+    # --- ✨ AÑADE ESTOS NUEVOS MÉTODOS ✨ ---
+    def set_card_bg_color(self, color: str):
+        """Actualiza el color de fondo seleccionado."""
+        self.card_bg_color = color
+
+    def toggle_color_picker(self):
+        """Muestra u oculta la paleta de colores."""
+        self.show_color_picker = not self.show_color_picker
     
     @rx.event
     def load_main_page_data(self):

@@ -517,26 +517,23 @@ def lightbox_modal() -> rx.Component:
                 ),
                 width="100%",
                 height="100%",
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                # Se aplica el color guardado del producto al fondo del área de la imagen.
+                # Si no hay color, se usa el color de fondo del tema actual.
+                bg=rx.cond(
+                    AppState.product_in_modal.card_bg_color,
+                    AppState.product_in_modal.card_bg_color,
+                    rx.color_mode_cond("white", "black")
+                ),
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             ),
-            
-            # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA DE ESTILO ✨ ---
             style={
-                # Fuerza al diálogo a ocupar toda la pantalla sin desbordarse
-                "position": "fixed",
-                "inset": "0",
-                "width": "auto",
-                "height": "auto",
-                
-                # Reseteos para un look de pantalla completa
-                "max_width": "none",
-                "padding": "0",
-                "margin": "0",
-                "border_radius": "0",
-
-                # Fondo adaptable que ya funciona
-                "background_color": rx.color_mode_cond("white", "black"),
+                "position": "fixed", "inset": "0", "width": "auto", "height": "auto",
+                "max_width": "none", "padding": "0", "margin": "0", "border_radius": "0",
+                # Hacemos que el fondo general del diálogo sea semi-transparente para dar efecto de profundidad.
+                "background_color": "rgba(0, 0, 0, 0.5)",
+                "backdrop_filter": "blur(4px)",
             },
-            # --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA DE ESTILO ✨ ---
         ),
         open=AppState.is_lightbox_open,
         on_open_change=AppState.close_lightbox,

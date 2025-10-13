@@ -197,7 +197,16 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.spacer(),
                     ),
                     width="290px", height="auto", min_height="450px",
-                    bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+        
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                    # Si el post tiene un color guardado, lo usamos; si no, usamos el color del tema.
+                    bg=rx.cond(
+                        post.card_bg_color,
+                        post.card_bg_color,
+                        rx.color_mode_cond("#f9f9f9", "#111111")
+                    ),
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
                     border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
                     border_radius="8px", box_shadow="md", padding="1em",
                 )

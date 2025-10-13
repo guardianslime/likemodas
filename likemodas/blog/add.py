@@ -83,7 +83,8 @@ def post_preview() -> rx.Component:
             rx.spacer(),
         ),
         width="290px", height="auto", min_height="450px",
-        bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+        # ✨ CORRECCIÓN: Usa AppState.card_bg_color en lugar del color por defecto del tema
+        bg=AppState.card_bg_color,
         border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
         border_radius="8px", box_shadow="md", padding="1em",
     )
@@ -99,15 +100,50 @@ def blog_post_add_content() -> rx.Component:
         rx.grid(
             # Columna del Formulario
             rx.vstack(
-                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                blog_post_add_form(),
-                width="100%",
-                spacing="4",
-            ),
-            # Columna de Previsualización
-            rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                post_preview(),
+                post_preview(), # Tu previsualización existente
+
+                # --- ✨ INICIO DEL NUEVO BLOQUE DE CÓDIGO ✨ ---
+                rx.vstack(
+                    rx.divider(margin_y="1em"),
+                    rx.text("Personalizar Tarjeta", weight="bold", size="4"),
+                    rx.button(
+                        rx.cond(AppState.show_color_picker, "Ocultar Paleta", "Elegir Color de Fondo"),
+                        on_click=AppState.toggle_color_picker,
+                        variant="soft",
+                        width="100%",
+                    ),
+                    rx.cond(
+                        AppState.show_color_picker,
+                        rx.color_picker(
+                            value=AppState.card_bg_color,
+                            on_change=AppState.set_card_bg_color,
+                            format="hex",
+                            variant="classic", # Un estilo más compacto
+                        ),
+                    ),
+                    rx.hstack(
+                        rx.text("Color Seleccionado:"),
+                        rx.box(
+                            width="30px",
+                            height="30px",
+                            bg=AppState.card_bg_color,
+                            border_radius="md",
+                            border="1px solid var(--gray-a6)",
+                        ),
+                        align="center",
+                        spacing="3",
+                    ),
+                    spacing="3",
+                    padding="1em",
+                    border="1px dashed var(--gray-a6)",
+                    border_radius="md",
+                    margin_top="1.5em",
+                    align_items="stretch",
+                    width="100%",
+                ),
+                # --- ✨ FIN DEL NUEVO BLOQUE DE CÓDIGO ✨ ---
+
                 display=["none", "none", "flex", "flex"],
                 width="100%",
                 spacing="4",
