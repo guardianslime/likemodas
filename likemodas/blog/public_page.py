@@ -429,37 +429,24 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    Define un diálogo de pantalla completa (lightbox) que ahora usa
-    'yet-another-react-lightbox' para habilitar la funcionalidad de zoom.
+    Define un diálogo de pantalla completa (lightbox) que ahora usa el
+    wrapper de componente personalizado para el zoom.
     """
     return custom_lightbox(
-        # Estado para abrir/cerrar
         open=AppState.is_lightbox_open,
         close=AppState.close_lightbox,
-        
-        # Datos de las imágenes
         slides=AppState.lightbox_slides,
         index=AppState.lightbox_start_index,
         
-        # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
-        # Activamos el plugin de Zoom usando la sintaxis correcta para tu versión
-        plugins=[rx.Var.create("Zoom", is_string=False)],
-        # --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨ ---
+        # --- ✨ CORRECCIÓN CLAVE ✨ ---
+        # Ahora simplemente pasamos un string simple. La lógica compleja
+        # está encapsulada en el componente CustomLightbox.
+        plugins=["zoom"],
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         
-        # Configuraciones adicionales para el zoom
         zoom={"max_zoom_factor": 4, "double_click_delay": 300},
-        
-        # Estilos para el fondo
-        styles={
-            "container": {
-                "backgroundColor": "rgba(0, 0, 0, 0.85)"
-            }
-        },
-        
-        # Ocultar elementos innecesarios
-        carousel={"finite": True},
+        styles={"container": {"backgroundColor": "rgba(0, 0, 0, 0.85)"}},
         controller={"close_on_pull_down": True, "close_on_backdrop_click": True},
-        no_scroll={"disabled": False},
     )
 
 
