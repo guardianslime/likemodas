@@ -192,7 +192,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
                     rx.cond(
                         AppState.is_fullscreen,
-                        # Vista de pantalla completa: solo el carrusel
                         rx.grid(
                             _modal_image_section(),
                             columns="1",
@@ -200,7 +199,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             align_items="start",
                             width="100%",
                         ),
-                        # Vista normal: dos columnas
                         rx.grid(
                             _modal_image_section(),
                             _modal_info_section(),
