@@ -430,10 +430,11 @@ def lightbox_modal() -> rx.Component:
     """
     [VERSIÓN DEFINITIVA Y ESTABLE]
     Define un diálogo de pantalla completa (lightbox) que reutiliza el carrusel
-    confiable ('react-responsive-carousel') y añade un efecto de zoom al pasar el ratón.
+    confiable y añade un efecto de zoom al pasar el ratón en PC.
     """
     return rx.dialog.root(
         rx.dialog.content(
+            # Botón para cerrar
             rx.dialog.close(
                 rx.icon_button(
                     rx.icon("x"), variant="soft", color_scheme="gray", size="4",
@@ -443,26 +444,33 @@ def lightbox_modal() -> rx.Component:
                     },
                 )
             ),
+            # Carrusel
             rx.center(
                 carousel(
                     rx.foreach(
                         AppState.unique_modal_variants,
-                        lambda variant_item: rx.box(  # Contenedor para el efecto de zoom
-                            rx.image(
-                                src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
-                                alt=AppState.product_in_modal.title,
-                                max_height="90vh",
-                                max_width="90vw",
-                                object_fit="contain",
-                                # --- Lógica de Zoom para PC ---
-                                transition="transform 0.3s ease-in-out",
-                                _hover={"transform": "scale(1.25)"},
+                        lambda variant_item: 
+                            # --- ✨ INICIO DE LA LÓGICA DE ZOOM ✨ ---
+                            # 1. Contenedor que recorta la imagen cuando se agranda
+                            rx.box(
+                                rx.image(
+                                    src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                                    alt=AppState.product_in_modal.title,
+                                    max_height="90vh",
+                                    max_width="90vw",
+                                    object_fit="contain",
+                                    # 2. Transición suave para el efecto
+                                    transition="transform 0.3s ease-in-out",
+                                    # 3. La propiedad que agranda la imagen al pasar el ratón
+                                    _hover={"transform": "scale(1.25)"},
+                                ),
+                                # 4. Propiedad clave para que el zoom no se desborde
+                                overflow="hidden",
+                                border_radius="var(--radius-3)", # Opcional: bordes redondeados
                             ),
-                            # El overflow hidden es crucial para que el zoom no se desborde
-                            overflow="hidden",
-                        ),
+                            # --- ✨ FIN DE LA LÓGICA DE ZOOM ✨ ---
                     ),
-                    # --- Configuración del Carrusel del Lightbox ---
+                    # --- Configuración del Carrusel ---
                     selected_item=AppState.lightbox_start_index,
                     show_arrows=True,
                     show_indicators=False,
@@ -472,19 +480,19 @@ def lightbox_modal() -> rx.Component:
                     emulate_touch=True,
                     use_keyboard_arrows=True,
                     width="100vw",
-                    # Corrige el problema del rectángulo gris que teníamos al principio
                     style={"& .thumbs-wrapper": {"display": "none"}},
                 ),
                 width="100%",
                 height="100%",
             ),
-            # Estilos para el fondo oscuro del lightbox
+            # Estilos del fondo
             style={
                 "maxWidth": "100vw", "width": "100vw", "height": "100vh",
                 "backgroundColor": "rgba(0, 0, 0, 0.85)",
                 "padding": "0", "margin": "0", "borderRadius": "0",
             },
         ),
+        # El on_open_change ahora funcionará con la corrección en state.py
         open=AppState.is_lightbox_open,
         on_open_change=AppState.close_lightbox,
     )

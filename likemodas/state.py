@@ -7427,12 +7427,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.lightbox_start_index = index
         self.is_lightbox_open = True
 
-    def close_lightbox(self):
+    def close_lightbox(self, open_state: bool):
         """
-        Cierra el lightbox. Ya no necesita recibir el estado,
-        simplemente establece la variable is_lightbox_open a False.
+        Cierra el lightbox. Este método es llamado por el on_open_change del diálogo
+        y recibe el nuevo estado (True o False).
         """
-        self.is_lightbox_open = False
+        self.is_lightbox_open = open_state
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):
