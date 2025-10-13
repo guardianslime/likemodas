@@ -12,7 +12,6 @@ from ..ui.seller_score import seller_score_stars
 from ..models import UserReputation
 from ..ui.carousel import Carousel
 from ..ui.custom_carousel import carousel
-from ..ui.custom_lightbox import custom_lightbox
 
 
 def render_update_item(comment: CommentData) -> rx.Component:
@@ -429,20 +428,65 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN SIMPLIFICADA DE PRUEBA]
-    Define un lightbox básico sin la funcionalidad de zoom para depurar el error #306.
+    [VERSIÓN DEFINITIVA Y ESTABLE]
+    Define un diálogo de pantalla completa (lightbox) que reutiliza el carrusel
+    confiable ('react-responsive-carousel') y añade un efecto de zoom al pasar el ratón.
     """
-    return custom_lightbox(
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.dialog.close(
+                rx.icon_button(
+                    rx.icon("x"), variant="soft", color_scheme="gray", size="4",
+                    style={
+                        "position": "absolute", "top": "1rem", "right": "1rem",
+                        "zIndex": "1500", "cursor": "pointer",
+                    },
+                )
+            ),
+            rx.center(
+                carousel(
+                    rx.foreach(
+                        AppState.unique_modal_variants,
+                        lambda variant_item: rx.box(  # Contenedor para el efecto de zoom
+                            rx.image(
+                                src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                                alt=AppState.product_in_modal.title,
+                                max_height="90vh",
+                                max_width="90vw",
+                                object_fit="contain",
+                                # --- Lógica de Zoom para PC ---
+                                transition="transform 0.3s ease-in-out",
+                                _hover={"transform": "scale(1.25)"},
+                            ),
+                            # El overflow hidden es crucial para que el zoom no se desborde
+                            overflow="hidden",
+                        ),
+                    ),
+                    # --- Configuración del Carrusel del Lightbox ---
+                    selected_item=AppState.lightbox_start_index,
+                    show_arrows=True,
+                    show_indicators=False,
+                    show_thumbs=False,
+                    show_status=False,
+                    infinite_loop=True,
+                    emulate_touch=True,
+                    use_keyboard_arrows=True,
+                    width="100vw",
+                    # Corrige el problema del rectángulo gris que teníamos al principio
+                    style={"& .thumbs-wrapper": {"display": "none"}},
+                ),
+                width="100%",
+                height="100%",
+            ),
+            # Estilos para el fondo oscuro del lightbox
+            style={
+                "maxWidth": "100vw", "width": "100vw", "height": "100vh",
+                "backgroundColor": "rgba(0, 0, 0, 0.85)",
+                "padding": "0", "margin": "0", "borderRadius": "0",
+            },
+        ),
         open=AppState.is_lightbox_open,
-        close=AppState.close_lightbox,
-        slides=AppState.lightbox_slides,
-        index=AppState.lightbox_start_index,
-        
-        # Estilos para el fondo oscuro
-        styles={"container": {"backgroundColor": "rgba(0, 0, 0, 0.85)"}},
-        
-        # Opciones para permitir el cierre al hacer clic fuera
-        controller={"close_on_backdrop_click": True},
+        on_open_change=AppState.close_lightbox,
     )
 
 

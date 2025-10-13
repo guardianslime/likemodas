@@ -1,11 +1,8 @@
-# En: likemodas/ui/qr_scanner.py
+# likemodas/ui/qr_scanner.py (VERSIÓN CON DEPURACIÓN)
 
 import reflex as rx
 
-# --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-# Cambiamos rx.Component por rx.NoSSRComponent para evitar el error de hidratación.
-class JsQrScanner(rx.NoSSRComponent):
-# --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+class JsQrScanner(rx.Component):
     """
     Un componente de Reflex que envuelve la librería 'jsqr' usando una
     implementación de React personalizada para un control total.
@@ -16,13 +13,13 @@ class JsQrScanner(rx.NoSSRComponent):
     on_scan_success: rx.EventHandler[lambda decoded_text: [decoded_text]]
     on_camera_error: rx.EventHandler[lambda error_message: [error_message]]
 
-    def get_imports(self) -> dict[str, str | list[str]]:
+    def _get_imports(self) -> dict[str, str | list[str]]:
         return {
             "react": ["default as React"],
             "jsqr": ["default as jsQR"]
         }
 
-    def get_custom_code(self) -> str:
+    def _get_custom_code(self) -> str:
         return """
 const JsQrScannerComponent = (props) => {
     const videoRef = React.useRef(null);
@@ -55,7 +52,10 @@ const JsQrScannerComponent = (props) => {
             const code = jsQR(imageData.data, imageData.width, imageData.height);
 
             if (code) {
+                // --- INICIO DE LA LÍNEA DE DEPURACIÓN ---
+                // Mostramos en la consola del navegador la URL que hemos encontrado.
                 console.log("QR Code detected:", code.data);
+                // --- FIN DE LA LÍNEA DE DEPURACIÓN ---
 
                 if (props.on_scan_success) {
                     props.on_scan_success(code.data);

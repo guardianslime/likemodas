@@ -3717,12 +3717,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         if not self.product_in_modal:
             return []
-        
-        # Obtenemos la URL base para construir la ruta completa de la imagen
+
         base_url = rx.get_upload_url("")
-        
+
         return [
-            # Usamos un diccionario con la clave "src" para cada imagen
             {"src": f"{base_url}/{item.variant.get('image_url')}"}
             for item in self.unique_modal_variants
         ]
