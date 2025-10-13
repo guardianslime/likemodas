@@ -1,4 +1,5 @@
 # likemodas/state.py (Versión Completa y Definitiva)
+
 from __future__ import annotations
 import json
 import pytz
@@ -7372,6 +7373,24 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         self.modal_selected_variant_index = index
         self.modal_selected_attributes = {} # Limpia la selección de talla anterior
+
+    # --- Estado para el Lightbox ---
+    is_lightbox_open: bool = False
+    lightbox_start_index: int = 0
+
+    @rx.event
+    def open_lightbox(self, index: int):
+        """
+        Abre el lightbox y establece la imagen inicial.
+        """
+        self.lightbox_start_index = index
+        self.is_lightbox_open = True
+
+    def close_lightbox(self, open_state: bool):
+        """
+        Cierra el lightbox. Este método es llamado por el on_open_change del diálogo.
+        """
+        self.is_lightbox_open = open_state
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):

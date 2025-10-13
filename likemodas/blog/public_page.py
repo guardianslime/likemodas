@@ -1,4 +1,4 @@
-
+# likemodas/blog/public_page.py
 
 import reflex as rx
 from likemodas.utils.formatting import format_to_cop
@@ -11,6 +11,7 @@ from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars
 from ..models import UserReputation
 from ..ui.carousel import Carousel
+from ..ui.custom_carousel import carousel
 
 
 def render_update_item(comment: CommentData) -> rx.Component:
@@ -141,30 +142,47 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
 
     def _modal_image_section() -> rx.Component:
-        return rx.box(
-            Carousel.create(
+        """
+        Sección de imagen del modal, ahora renderiza un carrusel interactivo.
+        Cada imagen del carrusel puede ser clickeada para abrir el lightbox.
+        """
+        FIXED_HEIGHT = "500px"
+
+        return rx.vstack(
+            carousel(
                 rx.foreach(
-                    AppState.inline_carousel_slides,
-                    lambda slide: rx.image(
-                        src=slide["src"],
-                        alt=slide["alt"],
-                        width="100%",
-                        height={"initial": "380px", "md": "500px"},
-                        object_fit="cover",
-                        border_radius="var(--radius-3)",
-                    )
+                    AppState.unique_modal_variants,
+                    lambda variant_item, index: rx.box(
+                        rx.image(
+                            src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                            alt=AppState.product_in_modal.title,
+                            width="100%",
+                            height="100%",
+                            object_fit="cover",
+                        ),
+                        on_click=AppState.open_lightbox(index),
+                        cursor="pointer",
+                        _hover={"opacity": 0.8},
+                        height=FIXED_HEIGHT,
+                    ),
                 ),
+                # --- Configuración del Carrusel ---
                 show_arrows=True,
                 show_indicators=True,
+                show_thumbs=True,   # Muestra miniaturas de navegación
+                show_status=False,
                 infinite_loop=True,
-                show_thumbs=False,
+                emulate_touch=True,      # Permite arrastrar con el ratón en PC
+                use_keyboard_arrows=True,
                 width="100%",
+                # Vincula el slide seleccionado a una variable de estado para sincronización
+                selected_item=AppState.modal_selected_variant_index,
+                on_change=AppState.set_modal_variant_index,
             ),
-            on_click=AppState.open_lightbox(0),
-            cursor="zoom-in",
-            _hover={"opacity": 0.9},
+            # Estilos para el contenedor del carrusel
             width="100%",
-            height={"initial": "380px", "md": "500px"},
+            height={"base": "300px", "md": FIXED_HEIGHT},
+            position="relative",
         )
 
     def _modal_info_section() -> rx.Component:
@@ -291,45 +309,70 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         )
 
     def lightbox_modal() -> rx.Component:
+        """
+        Define un diálogo de pantalla completa (lightbox) que contiene un carrusel.
+        Se activa a través del estado y se inicia en la imagen seleccionada.
+        """
         return rx.dialog.root(
             rx.dialog.content(
+                # Botón para cerrar el lightbox, posicionado en la esquina
                 rx.dialog.close(
                     rx.icon_button(
                         rx.icon("x"),
                         variant="soft",
                         color_scheme="gray",
+                        size="4",
                         style={
-                            "position": "absolute", "top": "1rem", "right": "1rem", "z_index": "1000"
+                            "position": "absolute",
+                            "top": "1rem",
+                            "right": "1rem",
+                            "zIndex": "1500",
+                            "cursor": "pointer",
                         },
-                        on_click=AppState.close_lightbox,
                     )
                 ),
-                Carousel.create(
-                    rx.foreach(
-                        AppState.transformed_lightbox_images,
-                        lambda slide: rx.image(
-                            src=slide["src"],
-                            alt=slide["alt"],
-                            width="100%",
-                            height="80vh",
-                            object_fit="contain",
-                        )
+                # Contenedor para centrar el carrusel dentro del lightbox
+                rx.center(
+                    carousel(
+                        rx.foreach(
+                            AppState.unique_modal_variants,
+                            lambda variant_item: rx.image(
+                                src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                                alt=AppState.product_in_modal.title,
+                                max_height="90vh",
+                                max_width="90vw",
+                                object_fit="contain",
+                            ),
+                        ),
+                        # --- Configuración del Carrusel del Lightbox ---
+                        selected_item=AppState.lightbox_start_index,
+                        show_arrows=True,
+                        show_indicators=False,  # Ocultamos indicadores para un look más limpio
+                        show_thumbs=False,      # Ocultamos miniaturas
+                        show_status=False,
+                        infinite_loop=True,
+                        emulate_touch=True,
+                        use_keyboard_arrows=True,
+                        width="100vw",
                     ),
-                    show_arrows=True,
-                    show_indicators=True,
-                    infinite_loop=True,
-                    show_thumbs=False,
                     width="100%",
-                    selected_item=AppState.lightbox_start_index,
+                    height="100%",
                 ),
+                # Estilos para hacer que el contenido del diálogo ocupe toda la pantalla
                 style={
-                    "max_width": "95vw", "width": "95vw", "height": "95vh",
-                    "background_color": "rgba(0, 0, 0, 0.8)",
-                    "backdrop_filter": "blur(10px)",
-                    "padding": "1rem",
+                    "maxWidth": "100vw",
+                    "width": "100vw",
+                    "height": "100vh",
+                    "backgroundColor": "rgba(0, 0, 0, 0.85)",
+                    "padding": "0",
+                    "margin": "0",
+                    "borderRadius": "0",
                 },
             ),
-            open=AppState.lightbox_is_open,
+            # Vincula la visibilidad del diálogo a la variable de estado
+            open=AppState.is_lightbox_open,
+            # Llama al evento para cerrar cuando el diálogo se cierra
+            on_open_change=AppState.close_lightbox,
         )
 
     return rx.fragment(
@@ -440,4 +483,5 @@ def blog_public_page_content() -> rx.Component:
         main_content,
         product_detail_modal(is_for_direct_sale=False),
         public_qr_scanner_modal(),
+        lightbox_modal(),  # <-- AÑADIR ESTA LÍNEA
     )
