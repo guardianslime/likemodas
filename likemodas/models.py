@@ -331,6 +331,10 @@ class BlogPostModel(rx.Model, table=True):
     price_includes_iva: bool = Field(default=True, nullable=False)
     is_imported: bool = Field(default=False, nullable=False)
 
+    # --- ✨ AÑADE ESTA NUEVA LÍNEA AQUÍ ✨ ---
+    card_bg_color: Optional[str] = Field(default=None)
+    # --- ✨ FIN DEL CAMBIO ✨ --
+
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # Le decimos a la relación 'userinfo' (el dueño) que se vincule a través de 'userinfo_id'
     userinfo: "UserInfo" = Relationship(

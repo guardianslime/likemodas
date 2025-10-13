@@ -4217,7 +4217,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     def categories(self) -> list[str]: return [c.value for c in Category]
     def set_title(self, value: str): self.title = value
     def set_content(self, value: str): self.content = value
-    def set_price_from_input(self, value: str): self.price = value
+    def set_price_from_input(self, value: str):
+        """Actualiza el precio y valida que la ganancia no sea mayor."""
+        self.price = value
+        try:
+            price_float = float(value) if value else 0.0
+            profit_float = float(self.profit_str) if self.profit_str else 0.0
+            # Si la ganancia actual es mayor que el nuevo precio, se ajusta la ganancia.
+            if profit_float > price_float:
+                self.profit_str = value
+        except (ValueError, TypeError):
+            # Permite que el campo esté temporalmente vacío o inválido mientras se escribe.
+            pass
+
     def set_category(self, value: str):
         """
         Establece la categoría del producto y reinicia todos los estados
@@ -4263,8 +4275,18 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     profit_str: str = ""
 
-    def set_profit_str(self, profit: str):
-        self.profit_str = profit
+    def set_profit_str(self, value: str):
+        """Actualiza la ganancia, validando que no sea mayor que el precio."""
+        self.profit_str = value
+        try:
+            price_float = float(self.price) if self.price else 0.0
+            profit_float = float(value) if value else 0.0
+            # Si la nueva ganancia es mayor que el precio, se ajusta al valor del precio.
+            if profit_float > price_float:
+                self.profit_str = self.price
+        except (ValueError, TypeError):
+            # Permite que el campo esté temporalmente vacío o inválido mientras se escribe.
+            pass
 
     edit_profit_str: str = ""
     def set_edit_profit_str(self, profit: str):
