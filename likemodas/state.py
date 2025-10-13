@@ -3318,6 +3318,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_post_content: str = ""
     edit_price_str: str = ""
     edit_category: str = ""
+
+    # --- ✨ AÑADE ESTAS DOS LÍNEAS QUE FALTAN AQUÍ ✨ ---
+    edit_profit_str: str = ""
+
+    def set_edit_profit_str(self, profit: str):
+        self.edit_profit_str = profit
+    # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
     
     # Imágenes
     edit_post_images_in_form: list[str] = []
