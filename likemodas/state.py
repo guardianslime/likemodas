@@ -2973,6 +2973,46 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ AÑADE ESTAS NUEVAS VARIABLES DE ESTADO ✨ ---
     card_bg_color: str = "#FFFFFF"  # Color por defecto inicial
+
+    # --- ✨ INICIO DEL CÓDIGO A AÑADIR ✨ ---
+    # Asegúrate de que todas estas variables y métodos estén presentes
+
+    # Variables para los 3 color pickers del formulario.
+    card_bg_color: str = "#FFFFFF"
+    title_color: str = "#111111"  # <-- La variable que causa el error
+    price_color: str = "#555555"  # <-- Esta también faltará después
+    show_color_picker: bool = False
+
+    # Métodos (setters) para cada color picker.
+    def set_card_bg_color(self, color: str):
+        self.card_bg_color = color
+
+    def set_title_color(self, color: str):
+        self.title_color = color
+        
+    def set_price_color(self, color: str):
+        self.price_color = color
+
+    def toggle_color_picker(self):
+        self.show_color_picker = not self.show_color_picker
+
+    # Métodos para aplicar los presets.
+    @rx.event
+    def apply_light_theme_preset(self):
+        """Aplica los colores predefinidos para un tema claro."""
+        self.card_bg_color = "#FFFFFF"
+        self.title_color = "#111111"
+        self.price_color = "#555555"
+
+    @rx.event
+    def apply_dark_theme_preset(self):
+        """Aplica los colores predefinidos para un tema oscuro."""
+        self.card_bg_color = "#111111"
+        self.title_color = "#F9F9F9"
+        self.price_color = "#AAAAAA"
+
+    # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
+
     show_color_picker: bool = False
 
     # --- ✨ AÑADE ESTOS NUEVOS MÉTODOS ✨ ---
