@@ -2,7 +2,6 @@
 
 import reflex as rx
 import reflex_local_auth
-from typing import List, Dict
 
 from ..state import AppState, UserPurchaseHistoryCardData, PurchaseItemCardData
 from ..account.layout import account_layout
@@ -88,7 +87,7 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                         # --- ✨ CORRECCIÓN FINAL Y DEFINITIVA AQUÍ ✨ ---
                         rx.link(
                             rx.button("Imprimir Factura", variant="outline", width="100%"), 
-                            href="/invoice?id=" + purchase.id, 
+                            href="/invoice?id=" + purchase.id.to(str), 
                             is_external=False, 
                             target="_blank", 
                             width="100%"
