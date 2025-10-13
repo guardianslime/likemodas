@@ -159,6 +159,9 @@ class ProductCardData(rx.Base):
     rating_count: int = 0
     # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     card_bg_color: Optional[str] = None
+    # --- ✨ AÑADE ESTAS LÍNEAS ✨ ---
+    title_color: Optional[str] = None
+    price_color: Optional[str] = None
     
     class Config:
         orm_mode = True
@@ -187,6 +190,9 @@ class ProductDetailData(rx.Base):
     seller_score: int = 0
     # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     card_bg_color: Optional[str] = None
+    # --- ✨ AÑADE ESTAS LÍNEAS ✨ ---
+    title_color: Optional[str] = None
+    price_color: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -2242,8 +2248,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
-                # --- ✨ AÑADE ESTA NUEVA LÍNEA AQUÍ ✨ ---
-                card_bg_color=self.card_bg_color  # Guarda el color seleccionado
+                # --- ✨ AÑADE ESTAS LÍNEAS AL FINAL ✨ ---
+                card_bg_color=self.card_bg_color,
+                title_color=self.title_color,
+                price_color=self.price_color
             )
             session.add(new_post)
 
@@ -4875,6 +4883,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.shipping_combination_limit_str = "3"
         self.variant_form_data = []
         self.generated_variants_map = {}
+        # --- ✨ AÑADE ESTAS LÍNEAS AL FINAL ✨ ---
+        self.card_bg_color = "#FFFFFF"
+        self.title_color = "#111111"
+        self.price_color = "#555555"
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""

@@ -36,12 +36,21 @@ def post_preview() -> rx.Component:
                     position="relative", width="260px", height="260px",
                 ),
                 rx.vstack(
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                     rx.text(
                         rx.cond(AppState.title, AppState.title, "Título del Producto"),
-                        weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible",
+                        weight="bold", size="6", white_space="normal",
+                        text_overflow="initial", overflow="visible",
+                        # Se aplica el color del estado
+                        color=AppState.title_color,
                     ),
                     star_rating_display_safe(0, 0, size=24),
-                    rx.text(AppState.price_cop_preview, size="5", weight="medium"), # <-- Asegúrate de que usa price_cop_preview
+                    rx.text(
+                        AppState.price_cop_preview,
+                        size="5", weight="medium",
+                        # Se aplica el color del estado
+                        color=AppState.price_color,
+                    ),
                     # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO (IDÉNTICA A LA ANTERIOR) ✨ ---
                     rx.vstack(
                         # Primera fila
@@ -115,33 +124,54 @@ def blog_post_add_content() -> rx.Component:
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Personalizar Tarjeta", weight="bold", size="4"),
-                    rx.button(
-                        rx.cond(AppState.show_color_picker, "Ocultar Paleta", "Elegir Color de Fondo"),
-                        on_click=AppState.toggle_color_picker,
-                        variant="soft",
+                    
+                    # Presets de Modo Claro / Oscuro
+                    rx.segmented_control.root(
+                        rx.segmented_control.item("Modo Claro", value="light"),
+                        rx.segmented_control.item("Modo Oscuro", value="dark"),
+                        on_change=lambda mode: rx.cond(
+                            mode == "light",
+                            AppState.apply_light_theme_preset(),
+                            AppState.apply_dark_theme_preset()
+                        ),
+                        default_value="light",
                         width="100%",
                     ),
-                    rx.cond(
-                        AppState.show_color_picker,
-                        color_picker(
-                            value=AppState.card_bg_color,
-                            on_change=AppState.set_card_bg_color,
-                            format="hex",
-                            variant="classic",
+                    
+                    # Color Pickers individuales
+                    rx.vstack(
+                        # Fondo
+                        rx.hstack(
+                            rx.text("Fondo", flex_grow="1"),
+                            rx.color_picker(
+                                value=AppState.card_bg_color,
+                                on_change=AppState.set_card_bg_color,
+                            ),
+                            align="center", justify="between", width="100%",
                         ),
-                    ),
-                    rx.hstack(
-                        rx.text("Color Seleccionado:"),
-                        rx.box(
-                            width="30px",
-                            height="30px",
-                            bg=AppState.card_bg_color,
-                            border_radius="md",
-                            border="1px solid var(--gray-a6)",
+                        # Título
+                        rx.hstack(
+                            rx.text("Título", flex_grow="1"),
+                            rx.color_picker(
+                                value=AppState.title_color,
+                                on_change=AppState.set_title_color,
+                            ),
+                            align="center", justify="between", width="100%",
                         ),
-                        align="center",
+                        # Precio
+                        rx.hstack(
+                            rx.text("Precio", flex_grow="1"),
+                            rx.color_picker(
+                                value=AppState.price_color,
+                                on_change=AppState.set_price_color,
+                            ),
+                            align="center", justify="between", width="100%",
+                        ),
                         spacing="3",
+                        width="100%",
+                        margin_top="1em"
                     ),
+                    
                     spacing="3",
                     padding="1em",
                     border="1px dashed var(--gray-a6)",
