@@ -5,19 +5,16 @@ from ..state import AppState, SentRequestDTO, ActivityLogDTO
 from ..models import UserInfo, EmploymentRequest, RequestStatus
 from ..auth.admin_auth import require_panel_access
 
-# --- Las funciones de tarjeta (card) no cambian ---
 def user_search_result_card(user: UserInfo) -> rx.Component:
     return rx.card(
         rx.hstack(
             rx.avatar(
                 src=rx.get_upload_url(user.avatar_url),
-                # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
                 fallback=rx.cond(
-                    user.user, # La condición principal se mantiene
+                    user.user,
                     user.user.username[0].upper(),
                     "?"
                 )
-                # ✨ --- FIN DE LA CORRECCIÓN --- ✨
             ),
             rx.vstack(
                 rx.text(rx.cond(user.user, user.user.username, "Usuario Inválido"), weight="bold"),
@@ -74,7 +71,8 @@ def activity_log_card(log: ActivityLogDTO) -> rx.Component:
         rx.hstack(
             rx.vstack(
                 rx.text(log.description, size="3", weight="bold"),
-                rx.text(f"Realizado por: {log.actor_name}", size="2", color_scheme="gray"),
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                rx.text("Realizado por: ", log.actor_name, size="2", color_scheme="gray"),
                 align_items="start", spacing="1"
             ),
             rx.spacer(),
@@ -89,8 +87,6 @@ def activity_log_card(log: ActivityLogDTO) -> rx.Component:
 
 @require_panel_access
 def employees_management_page() -> rx.Component:
-    """Página de gestión de empleados con layout vertical general y grids internos."""
-
     return rx.center(
         rx.vstack(
             rx.heading("Gestión de Empleados", size="8", text_align="center"),
@@ -99,7 +95,6 @@ def employees_management_page() -> rx.Component:
                 color_scheme="gray", text_align="center", max_width="600px"
             ),
             rx.divider(margin_y="1.5em"),
-            
             rx.grid(
                 rx.card(
                     rx.vstack(
@@ -138,9 +133,7 @@ def employees_management_page() -> rx.Component:
                 spacing="6",
                 width="100%",
             ),
-
             rx.divider(margin_y="1.5em"),
-
             rx.vstack(
                 rx.heading("Historial de Solicitudes", size="6", width="100%", text_align="left"),
                 rx.input(placeholder="Buscar por nombre de candidato...", value=AppState.search_query_sent_requests, on_change=AppState.set_search_query_sent_requests),
@@ -165,14 +158,10 @@ def employees_management_page() -> rx.Component:
                 ),
                 align_items="stretch", width="100%",
             ),
-
             rx.divider(margin_y="1.5em"),
-
             rx.vstack(
                 rx.heading("Historial de Actividad de Empleados", size="6", width="100%", text_align="left"),
                 rx.input(placeholder="Buscar por acción o empleado...", value=AppState.activity_search_query, on_change=AppState.set_activity_search_query),
-                
-                # --- ✨ INICIO: FILTRO DE FECHA AÑADIDO AQUÍ ✨ ---
                 rx.hstack(
                     rx.vstack(
                         rx.text("Desde:", size="2"),
@@ -186,8 +175,6 @@ def employees_management_page() -> rx.Component:
                     ),
                     spacing="3", width="100%", margin_top="0.5em",
                 ),
-                # --- ✨ FIN: FILTRO DE FECHA AÑADIDO AQUÍ ✨ ---
-
                 rx.grid(
                     rx.foreach(AppState.filtered_employee_activity, activity_log_card),
                     columns={"initial": "1", "md": "2"},
@@ -197,7 +184,6 @@ def employees_management_page() -> rx.Component:
                 ),
                 align_items="stretch", width="100%",
             ),
-            
             width="100%",
             max_width="1400px",
             spacing="5",

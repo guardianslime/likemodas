@@ -7,9 +7,8 @@ from ..state import AppState, AdminPostRowData, AdminVariantData
 from ..ui.qr_display import qr_code_display
 from .forms import blog_post_edit_form
 
-# ... (las funciones edit_post_dialog y qr_display_modal no cambian) ...
+# ... (edit_post_dialog y qr_display_modal no cambian)...
 def edit_post_dialog() -> rx.Component:
-    """El diálogo modal que contiene el formulario de edición."""
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.close(
@@ -30,7 +29,6 @@ def edit_post_dialog() -> rx.Component:
     )
 
 def qr_display_modal() -> rx.Component:
-    """El diálogo modal que muestra los códigos QR para cada variante."""
     printable_area_style = {
         "id": "printable-qr-area",
         "@media print": {
@@ -47,7 +45,7 @@ def qr_display_modal() -> rx.Component:
             rx.hstack(
                 rx.vstack(
                     rx.text(variant.attributes_str, weight="bold", size="4"),
-                    rx.text(f"Stock: {variant.stock}"),
+                    rx.text("Stock: ", variant.stock),
                     align_items="start", spacing="1", flex_grow="1",
                 ),
                 rx.spacer(),
@@ -99,10 +97,7 @@ def qr_display_modal() -> rx.Component:
         on_open_change=AppState.set_show_qr_display_modal,
     )
 
-
-# --- ✨ INICIO: COMPONENTES DE PUBLICACIÓN CORREGIDOS ✨ ---
 def desktop_post_row(post: AdminPostRowData) -> rx.Component:
-    """Componente para una fila de la tabla de administración, con auditoría."""
     return rx.table.row(
         rx.table.cell(
             rx.cond(
@@ -121,15 +116,14 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
         rx.table.cell(
             rx.vstack(
                 rx.text(post.title, weight="bold"),
-                # Muestra quién lo creó si fue un empleado
+                # --- ✨ CORRECCIONES AQUÍ ✨ ---
                 rx.cond(
                     post.creator_name,
-                    rx.text(f"Creado por: {post.creator_name}", size="1", color_scheme="gray"),
+                    rx.text("Creado por: ", post.creator_name, size="1", color_scheme="gray"),
                 ),
-                # Muestra quién lo modificó por última vez
                 rx.cond(
                     post.last_modified_by_name,
-                    rx.text(f"Modificado por: {post.last_modified_by_name}", size="1", color_scheme="gray"),
+                    rx.text("Modificado por: ", post.last_modified_by_name, size="1", color_scheme="gray"),
                 ),
                 align_items="start",
                 spacing="0"
@@ -143,7 +137,8 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
                     rx.alert_dialog.trigger(rx.button("Eliminar", color_scheme="red", variant="soft", size="2")),
                     rx.alert_dialog.content(
                         rx.alert_dialog.title("Confirmar Eliminación"),
-                        rx.alert_dialog.description(f"¿Seguro que quieres eliminar '{post.title}'?"),
+                        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                        rx.alert_dialog.description("¿Seguro que quieres eliminar '", post.title, "'?"),
                         rx.flex(
                             rx.alert_dialog.cancel(rx.button("Cancelar")),
                             rx.alert_dialog.action(rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))),
@@ -164,7 +159,6 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
     )
 
 def mobile_post_card(post: AdminPostRowData) -> rx.Component:
-    """Componente de tarjeta optimizado para la vista móvil, con auditoría."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -179,15 +173,15 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
                 align="center", width="100%",
             ),
             rx.divider(margin_y="0.75em"),
-            # Información de auditoría para móvil
             rx.vstack(
+                # --- ✨ CORRECCIONES AQUÍ ✨ ---
                 rx.cond(
                     post.creator_name,
-                    rx.text(f"Creado por: {post.creator_name}", size="1", color_scheme="gray", width="100%", text_align="left"),
+                    rx.text("Creado por: ", post.creator_name, size="1", color_scheme="gray", width="100%", text_align="left"),
                 ),
                 rx.cond(
                     post.last_modified_by_name,
-                    rx.text(f"Última mod. por: {post.last_modified_by_name}", size="1", color_scheme="gray", width="100%", text_align="left"),
+                    rx.text("Última mod. por: ", post.last_modified_by_name, size="1", color_scheme="gray", width="100%", text_align="left"),
                 ),
                 spacing="0",
                 width="100%",
@@ -206,7 +200,8 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
                     rx.alert_dialog.trigger(rx.button("Eliminar", color_scheme="red", width="100%", size="2")),
                     rx.alert_dialog.content(
                         rx.alert_dialog.title("Confirmar Eliminación"),
-                        rx.alert_dialog.description(f"¿Seguro que quieres eliminar '{post.title}'?"),
+                        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                        rx.alert_dialog.description("¿Seguro que quieres eliminar '", post.title, "'?"),
                         rx.flex(
                             rx.alert_dialog.cancel(rx.button("Cancelar")),
                             rx.alert_dialog.action(rx.button("Sí, Eliminar", on_click=lambda: AppState.delete_post(post.id))),
@@ -219,11 +214,9 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
             spacing="2", width="100%",
         )
     )
-# --- ✨ FIN: COMPONENTES DE PUBLICACIÓN CORREGIDOS ✨ ---
 
 @require_panel_access
 def blog_admin_page() -> rx.Component:
-    """Página de 'Mis Publicaciones' que ahora usa la lista de estado explícita."""
     desktop_view = rx.box(
         rx.table.root(
             rx.table.header(
@@ -236,7 +229,6 @@ def blog_admin_page() -> rx.Component:
                     rx.table.column_header_cell("QR"),
                 )
             ),
-            # --- ✨ CORRECCIÓN: Usamos la nueva variable de estado ✨ ---
             rx.table.body(rx.foreach(AppState.mis_publicaciones_list, desktop_post_row)),
             variant="surface", width="100%",
         ),
@@ -245,7 +237,6 @@ def blog_admin_page() -> rx.Component:
 
     mobile_view = rx.box(
         rx.vstack(
-            # --- ✨ CORRECCIÓN: Usamos la nueva variable de estado ✨ ---
             rx.foreach(AppState.mis_publicaciones_list, mobile_post_card),
             spacing="4",
             width="100%",
@@ -272,7 +263,6 @@ def blog_admin_page() -> rx.Component:
                 ),
                 rx.divider(margin_y="1.5em"),
                 rx.cond(
-                    # --- ✨ CORRECCIÓN: Usamos la nueva variable de estado ✨ ---
                     AppState.mis_publicaciones_list,
                     rx.fragment(desktop_view, mobile_view),
                     rx.center(rx.text("Aún no tienes publicaciones."), height="50vh")
