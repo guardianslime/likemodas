@@ -2971,16 +2971,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.recalculate_all_shipping_costs
         self.is_loading = False
 
-    # --- ✨ AÑADE ESTAS NUEVAS VARIABLES DE ESTADO ✨ ---
-    card_bg_color: str = "#FFFFFF"  # Color por defecto inicial
-
-    # --- ✨ INICIO DEL CÓDIGO A AÑADIR ✨ ---
-    # Asegúrate de que todas estas variables y métodos estén presentes
-
-    # Variables para los 3 color pickers del formulario.
-    card_bg_color: str = "#FFFFFF"
-    title_color: str = "#111111"  # <-- La variable que causa el error
-    price_color: str = "#555555"  # <-- Esta también faltará después
+    # 1. REEMPLAZA las variables de color con estos valores iniciales para el modo claro.
+    card_bg_color: str = "#FFFFFF"  # Fondo blanco
+    title_color: str = "#1C1C1C"  # Título en gris muy oscuro (casi negro)
+    price_color: str = "#6F6F6F"  # Precio en gris oscuro
     show_color_picker: bool = False
 
     # Métodos (setters) para cada color picker.
@@ -3001,15 +2995,15 @@ class AppState(reflex_local_auth.LocalAuthState):
     def apply_light_theme_preset(self):
         """Aplica los colores predefinidos para un tema claro."""
         self.card_bg_color = "#FFFFFF"
-        self.title_color = "#111111"
-        self.price_color = "#555555"
+        self.title_color = "#1C1C1C"
+        self.price_color = "#6F6F6F"
 
     @rx.event
     def apply_dark_theme_preset(self):
         """Aplica los colores predefinidos para un tema oscuro."""
-        self.card_bg_color = "#111111"
-        self.title_color = "#F9F9F9"
-        self.price_color = "#AAAAAA"
+        self.card_bg_color = "#1C1C1C"  # Fondo gris muy oscuro
+        self.title_color = "#F5F5F5"  # Título en gris muy claro (casi blanco)
+        self.price_color = "#A0A0A0"  # Precio en gris claro
 
     # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
 
