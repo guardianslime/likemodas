@@ -140,14 +140,53 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     )
 
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
+    # --- INICIO DE LA NUEVA LÓGICA DE MINIATURAS MANUALES ---
+    def _manual_thumbnails() -> rx.Component:
+        """
+        Renderiza una fila horizontal de miniaturas personalizadas,
+        recreando la funcionalidad original de admin21.txt.
+        """
+        return rx.hstack(
+            rx.foreach(
+                AppState.unique_modal_variants,
+                lambda item: rx.box(
+                    rx.image(
+                        src=rx.get_upload_url(item.variant.get("image_url")),
+                        width="60px",
+                        height="60px",
+                        object_fit="cover",
+                        border_radius="var(--radius-3)",
+                    ),
+                    # Estilo para resaltar la miniatura seleccionada
+                    border_width=rx.cond(
+                        AppState.current_modal_image_filename == item.variant.get("image_url"), "3px", "1px"
+                    ),
+                    border_color=rx.cond(
+                        AppState.current_modal_image_filename == item.variant.get("image_url"), "var(--accent-9)", "var(--gray-a6)"
+                    ),
+                    padding="2px",
+                    border_radius="var(--radius-4)",
+                    cursor="pointer",
+                    transition="border-color 0.2s ease-in-out",
+                    # Evento que le dice al carrusel principal que cambie de imagen
+                    on_click=AppState.set_modal_variant_index(item.index),
+                )
+            ),
+            spacing="3",
+            padding="0.5em",
+            width="100%",
+            overflow_x="auto", # Permite scroll horizontal si hay muchas miniaturas
+            margin_top="0.5rem",
+        )
+
     def _modal_image_section() -> rx.Component:
         """
-        Sección de imagen del modal que renderiza un carrusel interactivo,
-        asegurando que las miniaturas se muestren horizontalmente en la parte inferior.
+        Sección de imagen que ahora combina el carrusel principal (para swipe y flechas)
+        con las miniaturas manuales personalizadas debajo.
         """
         FIXED_HEIGHT = "500px"
-
         return rx.vstack(
+            # --- SECCIÓN DEL CARRUSEL PRINCIPAL (SIN MINIATURAS PROPIAS) ---
             carousel(
                 rx.foreach(
                     AppState.unique_modal_variants,
@@ -165,49 +204,31 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         height=FIXED_HEIGHT,
                     ),
                 ),
-                # --- Configuración del Carrusel ---
-                show_arrows=True,
-                show_indicators=AppState.unique_modal_variants.length() > 1,
-                show_thumbs=AppState.unique_modal_variants.length() > 1, # Solo muestra thumbs si hay más de 1 imagen
+                # Apagamos las miniaturas de la biblioteca para usar las nuestras
+                show_thumbs=False,
+                # Mantenemos las otras funcionalidades
+                show_arrows=AppState.unique_modal_variants.length() > 1,
+                show_indicators=False, # Las miniaturas sirven de indicadores
                 show_status=False,
                 infinite_loop=True,
                 emulate_touch=True,
-                use_keyboard_arrows=True,
                 width="100%",
                 selected_item=AppState.modal_selected_variant_index,
                 on_change=AppState.set_modal_variant_index,
-                
-                # --- ✨ INICIO DE LA MEJORA DE ESTILO ✨ ---
-                # Este bloque de estilo asegura que las miniaturas se vean
-                # exactamente como esperas: horizontales, centradas y con un borde de selección.
-                style={
-                    "& .thumbs-wrapper": {
-                        "margin": "10px auto !important",
-                    },
-                    "& .thumbs": {
-                        "display": "flex",
-                        "flex_direction": "row !important", # Fuerza la dirección horizontal
-                        "justify_content": "center !important",
-                        "list_style": "none",
-                        "padding": "0",
-                    },
-                    "& .thumb": {
-                        "margin": "0 5px", # Espacio entre miniaturas
-                        "border": "3px solid transparent",
-                        "border_radius": "var(--radius-3)",
-                        "cursor": "pointer",
-                        "transition": "border-color 0.2s ease-in-out",
-                    },
-                    "& .thumb.selected, & .thumb:hover": {
-                        "border_color": "var(--accent-9)", # Usa el color de acento de tu tema
-                    },
-                },
-                # --- ✨ FIN DE LA MEJORA DE ESTILO ✨ ---
             ),
+
+            # --- SECCIÓN DE MINIATURAS MANUALES ---
+            # Solo mostramos las miniaturas si hay más de una imagen
+            rx.cond(
+                AppState.unique_modal_variants.length() > 1,
+                _manual_thumbnails(),
+            ),
+
+            spacing="2",
             width="100%",
-            height={"base": "auto", "md": "auto"}, # Hacemos la altura automática para que se ajuste a las miniaturas
             position="relative",
         )
+    # --- FIN DE LA NUEVA LÓGICA ---
 
     def _modal_info_section() -> rx.Component:
         # Esta función interna no necesita cambios, puedes mantener la que ya tienes
@@ -346,7 +367,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             rx.cond(
                 AppState.product_in_modal,
                 rx.vstack(
-                    # El contenido principal (imágenes e info) se mantiene igual
                     rx.grid(
                         _modal_image_section(),
                         _modal_info_section(),
@@ -355,27 +375,30 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         align_items="start",
                         width="100%",
                     ),
-                    # El contenido secundario (opiniones) ahora va dentro de un ScrollArea
-                    rx.scroll_area(
-                        rx.vstack(
-                            rx.divider(margin_y="1.5em"),
-                            review_submission_form(),
-                            rx.cond(
-                                AppState.product_comments,
+                    # --- ✨ CORRECCIÓN PARA EL ESPACIO DE COMENTARIOS ✨ ---
+                    # El `rx.cond` ahora envuelve toda la sección, incluyendo el ScrollArea.
+                    # Si no hay comentarios, no se renderiza nada, eliminando el espacio vacío.
+                    rx.cond(
+                        AppState.product_comments,
+                        rx.scroll_area(
+                            rx.vstack(
+                                rx.divider(margin_y="1.5em"),
+                                review_submission_form(),
                                 rx.vstack(
                                     rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
                                     rx.foreach(AppState.product_comments, render_comment_item),
                                     spacing="1", width="100%",
-                                )
+                                ),
+                                spacing="4",
+                                width="100%",
+                                padding_right="1em",
                             ),
-                            spacing="4",
-                            width="100%",
-                            padding_right="1em" # Espacio para la barra de scroll
-                        ),
-                        type="auto",
-                        scrollbars="vertical",
-                        style={"height": "400px", "margin_top": "1rem"},
+                            type="auto",
+                            scrollbars="vertical",
+                            style={"height": "400px", "margin_top": "1rem"},
+                        )
                     ),
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 ),
                 skeleton_product_detail_view(),
             ),
@@ -384,7 +407,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         open=AppState.show_detail_modal,
         on_open_change=AppState.close_product_detail_modal,
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
 def public_qr_scanner_modal() -> rx.Component:
     return rx.dialog.root(
