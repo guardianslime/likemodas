@@ -40,8 +40,8 @@ def attribute_editor(
         rx.hstack(
             rx.select(
                 options_list,
-                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-                placeholder=rx.text("Seleccionar ", title.lower(), "..."),
+                # --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
+                placeholder=f"Seleccionar {title.lower()}...",
                 value=temp_value_var,
                 on_change=temp_value_setter,
             ),
@@ -67,7 +67,6 @@ def variant_stock_manager() -> rx.Component:
                             rx.vstack(
                                 rx.foreach(
                                     variant.attributes.items(),
-                                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                                     lambda item: rx.text(item[0], ": ", rx.text.strong(item[1])),
                                 ),
                                 align_items="start", flex_grow=1,
@@ -117,7 +116,6 @@ def variant_stock_manager_edit() -> rx.Component:
                             rx.vstack(
                                 rx.foreach(
                                     variant.attributes.items(),
-                                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                                     lambda item: rx.text(item[0], ": ", rx.text.strong(item[1])),
                                 ),
                                 align_items="start", flex_grow=1,
@@ -143,11 +141,8 @@ def variant_stock_manager_edit() -> rx.Component:
         ),
         align_items="stretch", width="100%",
     )
-
-# ... (El resto del archivo, `blog_post_add_form` y `blog_post_edit_form`, no necesita cambios)
-# ...
+    
 def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos con características dinámicas y con buscador."""
     tipo_selector = searchable_select(
         placeholder="Tipo...", options=AppState.filtered_attr_tipos,
         on_change_select=AppState.set_attr_tipo, value_select=AppState.attr_tipo,
@@ -155,7 +150,7 @@ def blog_post_add_form() -> rx.Component:
         filter_name="attr_tipo_filter",
     )
     material_selector = searchable_select(
-        placeholder=AppState.material_label + "...", options=AppState.filtered_attr_materiales,
+        placeholder=f"{AppState.material_label}...", options=AppState.filtered_attr_materiales,
         on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
         filter_name="attr_material_filter",
