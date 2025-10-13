@@ -431,28 +431,38 @@ def lightbox_modal() -> rx.Component:
     [VERSIÓN DEFINITIVA] Lightbox con layout de PC corregido,
     fondo adaptable a modo claro/oscuro y controles siempre visibles.
     """
-    controls = rx.hstack(
-        # Botón de Bloqueo/Desbloqueo
-        rx.icon_button(
-            rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")),
-            on_click=AppState.toggle_lightbox_lock,
-            variant="ghost",  # <-- Cambio de estilo
-            color_scheme="gray",
-            size="3",         # <-- Ajuste de tamaño
+    controls = rx.box(
+        rx.hstack(
+            # Botón de Bloqueo/Desbloqueo
+            rx.icon_button(
+                rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")),
+                on_click=AppState.toggle_lightbox_lock,
+                variant="ghost",
+                color_scheme="gray",
+                size="3",  # <-- Tamaño unificado
+            ),
+            # Botones de Zoom para PC
+            rx.icon_button(rx.icon("zoom-out"), on_click=AppState.zoom_out, variant="ghost", color_scheme="gray", size="3", display=["none", "none", "flex"]),
+            rx.icon_button(rx.icon("zoom-in"), on_click=AppState.zoom_in, variant="ghost", color_scheme="gray", size="3", display=["none", "none", "flex"]),
+            
+            # Botón de Cerrar
+            rx.dialog.close(rx.icon_button(rx.icon("x"), variant="ghost", color_scheme="gray", size="3")), # <-- Tamaño unificado
+            
+            spacing="1", # Reducimos el espacio entre iconos
         ),
-        # Botones de Zoom para PC
-        rx.icon_button(rx.icon("zoom-out"), on_click=AppState.zoom_out, variant="ghost", color_scheme="gray", size="3", display=["none", "none", "flex"]),
-        rx.icon_button(rx.icon("zoom-in"), on_click=AppState.zoom_in, variant="ghost", color_scheme="gray", size="3", display=["none", "none", "flex"]),
         
-        # Botón de Cerrar (lo dejamos un poco más grande)
-        rx.dialog.close(rx.icon_button(rx.icon("x"), variant="ghost", color_scheme="gray", size="4")),
-        
-        # Estilos de posicionamiento (sin cambios)
+        # Estilos para la barra de controles
+        padding_x="0.5rem",
+        padding_y="0.25rem",
+        # Fondo semitransparente que se adapta al tema
+        bg=rx.color_mode_cond("rgba(255, 255, 255, 0.6)", "rgba(0, 0, 0, 0.4)"),
+        border_radius="full", # Bordes completamente redondeados
         position="absolute",
         top="1rem",
         right="1rem",
         z_index="1500",
-        spacing="2",
+        # Efecto "blur" para el fondo (se ve muy bien)
+        style={"backdrop_filter": "blur(8px)"},
     )
 
     return rx.dialog.root(
