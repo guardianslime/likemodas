@@ -11,12 +11,16 @@ class CustomLightbox(NoSSRComponent):
     """
     library = "yet-another-react-lightbox"
     
-    # El tag ahora apunta a nuestro componente JS personalizado
     tag = "LikemodasLightboxWrapper"
 
-    # Las propiedades que pasamos desde Python se mantienen igual
     open: rx.Var[bool]
-    close: rx.EventHandler[[]]
+    
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Cambiamos la lista vacía [] por una tupla vacía () para la correcta
+    # definición de un evento sin argumentos en esta versión de Reflex.
+    close: rx.EventHandler[()]
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+    
     slides: rx.Var[List[Dict[str, str]]]
     index: rx.Var[int]
     plugins: rx.Var[List]
