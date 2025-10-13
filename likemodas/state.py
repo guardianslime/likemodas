@@ -1,4 +1,4 @@
-# likemodas/state.py (Versión Completa y Definitiva)
+# likemodas/state.py (Versión Final y Definitiva)
 from __future__ import annotations
 import json
 import pytz
@@ -6,7 +6,7 @@ import reflex as rx
 import reflex_local_auth
 import sqlmodel
 from sqlmodel import select
-from sqlmodel import text # Importar text
+from sqlmodel import text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Dict, Optional, Tuple
@@ -14,16 +14,13 @@ from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalA
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
-
 import os
-
 import bcrypt
 import re
 import asyncio
 import math
 import httpx 
-import uuid # Asegúrate de importar la biblioteca uuid
-# from pyzbar.pyzbar import decode
+import uuid
 from PIL import Image
 import pyotp
 import qrcode
@@ -32,20 +29,15 @@ import io
 from .services.encryption_service import encrypt_secret, decrypt_secret
 import csv
 from urllib.parse import urlparse, parse_qs
-import cv2  # <-- AÑADE ESTA IMPORTACIÓN
-import numpy as np # <-- AÑADE ESTA IMPORTACIÓN
-
+import cv2
+import numpy as np
 import logging
 import sys
-
 from collections import defaultdict
 from reflex.config import get_config
-from urllib.parse import urlparse, parse_qs
-
 
 from .data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 from .logic.shipping_calculator import calculate_dynamic_shipping
-
 from . import navigation
 from .models import (
     CommentVoteModel, UserInfo, UserReputation, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
@@ -65,41 +57,24 @@ from .data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
-# --- AÑADE ESTA CONFIGURACIÓN DE LOGGING AQUÍ ---
-# Esto configura el logger para que escriba directamente en la salida estándar,
-# lo que Railway capturará de forma fiable.
-# Esto configura el logger para que escriba directamente en la consola.
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
 logger = logging.getLogger(__name__)
-# --- FIN DE LA CONFIGURACIÓN ---
 
 def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
-    """Genera el texto de envío basado en el costo."""
     if shipping_cost == 0.0:
         return "Envío Gratis"
     if shipping_cost is not None and shipping_cost > 0:
-        return f"Envío: {format_to_cop(shipping_cost)}"
+        return format_to_cop(shipping_cost)
     return "Envío a convenir"
 
 # --- DTOs (Data Transfer Objects) ---
-
-# ✨ --- INICIO DE LA SOLUCIÓN AL NameError --- ✨
-# Definimos los DTOs para el nuevo carrito ANTES de la clase AppState.
-
+# ... (Todos tus DTOs permanecen igual que en tu archivo)
 class DirectSaleVariantDTO(rx.Base):
-    """DTO para una variante individual dentro de un grupo en el carrito de venta directa."""
-    cart_key: str  # Clave única para identificar esta variante específica
-    attributes_str: str  # Texto descriptivo, ej: "Talla: M"
+    cart_key: str
+    attributes_str: str
     quantity: int
 
 class DirectSaleGroupDTO(rx.Base):
-    """DTO para un producto agrupado en el carrito de venta directa."""
     product_id: int
     title: str
     image_url: str
@@ -107,17 +82,13 @@ class DirectSaleGroupDTO(rx.Base):
     variants: list[DirectSaleVariantDTO] = []
 
 class UserManagementDTO(rx.Base):
-    """DTO para mostrar un usuario en la tabla de gestión de administradores."""
     id: int
     username: str
     email: str
     role: UserRole
     is_banned: bool
     is_verified: bool
-    # ✨ AÑADE ESTA LÍNEA ✨
     created_at: datetime 
-
-# ✨ --- FIN DE LA SOLUCIÓN --- ✨
 
 class UserInfoDTO(rx.Base):
     id: int; user_id: int; username: str; email: str; role: str
@@ -128,8 +99,6 @@ class NotificationDTO(rx.Base):
     is_read: bool
     url: Optional[str]
     created_at_formatted: str
-
-    # --- ✨ AÑADE ESTA CLASE DE CONFIGURACIÓN AQUÍ DENTRO ✨ ---
     class Config:
         orm_mode = True
 
@@ -156,7 +125,6 @@ class ProductCardData(rx.Base):
     userinfo_id: int
     average_rating: float = 0.0
     rating_count: int = 0
-    
     class Config:
         orm_mode = True
 
@@ -182,38 +150,9 @@ class ProductDetailData(rx.Base):
     shipping_display_text: str = ""
     is_imported: bool = False
     seller_score: int = 0
-
     class Config:
         orm_mode = True
 
-# DTO para la tarjeta de historial del admin
-class AdminPurchaseCardData(rx.Base):
-    id: int
-    customer_name: str
-    customer_email: str
-    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
-    anonymous_customer_email: Optional[str] = None
-    purchase_date_formatted: str
-    status: str
-    total_price: float
-    # --- ✨ INICIO: CAMPOS OPCIONALES CORREGIDOS ✨ ---
-    shipping_name: Optional[str] = None
-    shipping_full_address: Optional[str] = None
-    shipping_phone: Optional[str] = None
-    # --- ✨ FIN: CAMPOS OPCIONALES CORREGIDOS ✨ ---
-    payment_method: str
-    confirmed_at: Optional[datetime] = None
-    shipping_applied: Optional[float] = 0.0
-    items: list[PurchaseItemCardData] = []
-    action_by_name: Optional[str] = None
-
-    @property
-    def total_price_cop(self) -> str: return format_to_cop(self.total_price)
-    
-    @property
-    def shipping_applied_cop(self) -> str: return format_to_cop(self.shipping_applied or 0.0)
-
-# DTO para un item individual en el historial de compras
 class PurchaseItemCardData(rx.Base):
     id: int
     title: str
@@ -221,12 +160,31 @@ class PurchaseItemCardData(rx.Base):
     price_at_purchase: float
     price_at_purchase_cop: str
     quantity: int
-    # --- ✨ CAMBIO 1: Se añade un campo para la cadena de texto pre-formateada ---
     variant_details_str: str = ""
-
     @property
     def subtotal_cop(self) -> str:
         return format_to_cop(self.price_at_purchase * self.quantity)
+
+class AdminPurchaseCardData(rx.Base):
+    id: int
+    customer_name: str
+    customer_email: str
+    anonymous_customer_email: Optional[str] = None
+    purchase_date_formatted: str
+    status: str
+    total_price: float
+    shipping_name: Optional[str] = None
+    shipping_full_address: Optional[str] = None
+    shipping_phone: Optional[str] = None
+    payment_method: str
+    confirmed_at: Optional[datetime] = None
+    shipping_applied: Optional[float] = 0.0
+    items: list[PurchaseItemCardData] = []
+    action_by_name: Optional[str] = None
+    @property
+    def total_price_cop(self) -> str: return format_to_cop(self.total_price)
+    @property
+    def shipping_applied_cop(self) -> str: return format_to_cop(self.shipping_applied or 0.0)
 
 class UserPurchaseHistoryCardData(rx.Base):
     id: int; userinfo_id: int; purchase_date_formatted: str; status: str
@@ -235,24 +193,17 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_phone: str; items: list[PurchaseItemCardData]
     estimated_delivery_date_formatted: str
 
-# --- ✨ INICIO DE LA SOLUCIÓN ✨ ---
-# Se añaden estas líneas para resolver las referencias anidadas
 AdminPurchaseCardData.update_forward_refs()
 UserPurchaseHistoryCardData.update_forward_refs()
-# --- ✨ FIN DE LA SOLUCIÓN ✨ ---
 
-# --- PASO 1: AÑADIR ESTE NUEVO DTO ANTES DE AppState ---
 class AdminVariantData(rx.Base):
-    """DTO para mostrar una variante con su QR en el modal de admin."""
     variant_uuid: str = ""
     stock: int = 0
     attributes_str: str = ""
     attributes: dict = {}
-    qr_url: str = ""  # <-- REEMPLAZA las dos variables anteriores por esta
+    qr_url: str = ""
 
-# --- PASO 2: MODIFICAR EL DTO AdminPostRowData ---
 class AdminPostRowData(rx.Base):
-    """DTO para una fila de producto en la tabla de admin."""
     id: int
     title: str
     price_cop: str
@@ -261,10 +212,7 @@ class AdminPostRowData(rx.Base):
     variants: list[AdminVariantData] = []
     creator_name: Optional[str] = None
     owner_name: str
-    
-    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
-    last_modified_by_name: Optional[str] = None # Quien lo modificó por última vez
-    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+    last_modified_by_name: Optional[str] = None
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -284,9 +232,7 @@ class InvoiceItemData(rx.Base):
     subtotal_cop: str
     iva_cop: str
     total_con_iva_cop: str
-    # --- ✨ CORRECCIÓN: Asegurarse de que este campo exista ---
     variant_details_str: str = ""
-
     @property
     def total_cop(self) -> str: return format_to_cop(self.price * self.quantity)
 
@@ -295,12 +241,10 @@ class InvoiceData(rx.Base):
     purchase_date_formatted: str
     status: str
     items: list[InvoiceItemData]
-    # --- ✨ INICIO: CORRECCIÓN DE CAMPOS OPCIONALES ✨ ---
     customer_name: Optional[str] = None
     customer_email: Optional[str] = None
     shipping_full_address: Optional[str] = None
     shipping_phone: Optional[str] = None
-    # --- ✨ FIN: CORRECCIÓN DE CAMPOS OPCIONALES ✨ ---
     subtotal_cop: str
     shipping_applied_cop: str
     iva_cop: str
@@ -342,30 +286,19 @@ class UserProfileData(rx.Base):
     email: str = ""
     phone: str = ""
     avatar_url: str = ""
-    tfa_enabled: bool = False  # <- AÑADE ESTA LÍNEA
-
-
-# --- FIN DE LA CORRECCIÓN CLAVE ---
+    tfa_enabled: bool = False
 
 class VariantDetailFinanceDTO(rx.Base):
-    """DTO para el detalle financiero de una variante específica."""
     variant_key: str
     attributes_str: str
     image_url: Optional[str] = None
     units_sold: int
     total_revenue_cop: str
-    total_cogs_cop: str # ✨ NUEVO
-    total_net_profit_cop: str # ✨ RENOMBRADO
+    total_cogs_cop: str
+    total_net_profit_cop: str
     daily_profit_data: List[Dict[str, Any]] = []
- # Datos para el gráfico de la variante
 
-# Formatea a COP
-def format_to_cop(value: float) -> str:
-    return f"${int(value):,}".replace(",", ".") # Formato colombiano
-
-# 2. Ahora definimos la clase que la utiliza.
 class ProductDetailFinanceDTO(rx.Base):
-    """DTO para el detalle financiero de un producto específico."""
     product_id: int
     title: str
     image_url: Optional[str] = None
@@ -375,62 +308,47 @@ class ProductDetailFinanceDTO(rx.Base):
     product_profit_cop: str
     shipping_collected_cop: str
     shipping_profit_loss_cop: str
-    total_profit_cop: str  # Este es el campo que usa la UI y debe llamarse así
-
+    total_profit_cop: str
     variants: List[VariantDetailFinanceDTO] = []
 
 ProductDetailFinanceDTO.update_forward_refs()
 
-# --- PASO 1: AÑADE ESTOS NUEVOS DTOs AL INICIO DEL ARCHIVO ---
-
 class FinanceStatsDTO(rx.Base):
-    """DTO para las estadísticas generales del dashboard financiero."""
     total_revenue_cop: str = "$0"
-    total_cogs_cop: str = "$0"  # ✨ NUEVO: Costo de Mercancía Vendida
+    total_cogs_cop: str = "$0"
     total_profit_cop: str = "$0"
     total_shipping_cop: str = "$0"
-    shipping_profit_loss_cop: str = "$0" # ✨ NUEVO: Ganancia/Pérdida por Envío
+    shipping_profit_loss_cop: str = "$0"
     total_sales_count: int = 0
     average_order_value_cop: str = "$0"
     profit_margin_percentage: str = "0.00%"
 
 class ProductFinanceDTO(rx.Base):
-    """DTO para la tabla de finanzas por producto."""
     product_id: int
     title: str
     units_sold: int
     total_revenue_cop: str
     total_cogs_cop: str
     total_net_profit_cop: str
-    # --- ✅ NUEVO CAMPO AÑADIDO ✅ ---
     profit_margin_str: str = "0.00%"
 
 class GastoDataDTO(rx.Base):
-    """DTO para mostrar un gasto en la UI."""
     id: int
     fecha_formateada: str
     descripcion: str
     categoria: str
     valor_cop: str
+    creator_name: Optional[str] = None
 
-    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
-    creator_name: Optional[str] = None # Quien registró el gasto
-    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
-
-# --- ✨ INICIO: AÑADE ESTA CLASE DTO DE VUELTA ✨ ---
 class PendingRequestDTO(rx.Base):
-    """Un objeto de datos simple para la notificación de solicitud de empleo."""
     id: int
     requester_username: str
-# --- ✨ FIN: AÑADE ESTA CLASE DTO DE VUELTA ✨ --
 
 class SentRequestDTO(rx.Base):
-    """DTO para mostrar el historial de solicitudes enviadas de forma segura."""
     id: int
     status: str
     candidate_name: str
     created_at_formatted: str
-    # Guardamos la fecha real para poder filtrar sobre ella
     created_at: datetime
 
 class ActivityLogDTO(rx.Base):
@@ -439,8 +357,6 @@ class ActivityLogDTO(rx.Base):
     action_type: str
     description: str
     created_at_formatted: str
-    
-    # --- ✨ AÑADE ESTA LÍNEA PARA LA FECHA ORIGINAL ✨ ---
     created_at: datetime
 
 class AppState(reflex_local_auth.LocalAuthState):
@@ -3753,6 +3669,71 @@ class AppState(reflex_local_auth.LocalAuthState):
     # def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
     #@rx.var
     # def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
+
+    @rx.var
+    def cart_details_for_view(self) -> List[Dict[str, Any]]:
+        """Prepara los datos del carrito como un diccionario simple para la UI."""
+        items_for_view = []
+        for item in self.cart_details:
+            details_list = []
+            if item.variant_details:
+                for key, value in item.variant_details.items():
+                    details_list.append({"key": key, "value": value})
+            
+            items_for_view.append({
+                "cart_key": item.cart_key,
+                "product_id": item.product_id,
+                "image_url": item.image_url,
+                "title": item.title,
+                "quantity": str(item.quantity),
+                "price_cop": item.price_cop,
+                "subtotal_cop": item.subtotal_cop,
+                "variant_details": details_list,
+            })
+        return items_for_view
+
+    @rx.var
+    def filtered_user_purchases_for_view(self) -> List[Dict[str, Any]]:
+        """Prepara el historial de compras del usuario como un diccionario simple para la UI."""
+        purchases_for_view = []
+        # Asumimos que `filtered_user_purchases` es una @rx.var que ya tienes
+        for p in self.filtered_user_purchases:
+            purchases_for_view.append({
+                "id": p.id,
+                "purchase_date_formatted": p.purchase_date_formatted,
+                "status": p.status.replace("_", " ").title(),
+                "shipping_name": p.shipping_name,
+                "full_address": f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
+                "shipping_phone": p.shipping_phone,
+                "shipping_applied_cop": p.shipping_applied_cop,
+                "total_price_cop": p.total_price_cop,
+                "estimated_delivery_date_formatted": p.estimated_delivery_date_formatted,
+                "is_shipped": p.status == PurchaseStatus.SHIPPED.value,
+                "is_delivered": p.status == PurchaseStatus.DELIVERED.value,
+            })
+        return purchases_for_view
+
+    @rx.var
+    def purchase_items_map_for_view(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Prepara el mapa de items de compra como un diccionario simple para la UI."""
+        map_for_view = {}
+        # Asumimos que `purchase_items_map` es una @rx.var que ya tienes
+        for purchase_id, items in self.purchase_items_map.items():
+            items_for_view = []
+            for item in items:
+                items_for_view.append({
+                    "id": item.id,
+                    "image_url": item.image_url,
+                    "title": item.title,
+                    "variant_details_str": item.variant_details_str,
+                    "quantity_str": str(item.quantity),
+                    "price_at_purchase_cop": item.price_at_purchase_cop,
+                    "subtotal_cop": item.subtotal_cop,
+                })
+            map_for_view[str(purchase_id)] = items_for_view
+        return map_for_view
+    
+    # --- ✨ FIN: MODIFICACIÓN DEFINITIVA ✨ ---
     
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:

@@ -1,96 +1,94 @@
 # likemodas/purchases/page.py (VERSIÓN FINAL Y CORREGIDA)
 
+from typing import Any, Dict
 import reflex as rx
 import reflex_local_auth
 
-from ..state import AppState, UserPurchaseHistoryCardData, PurchaseItemCardData
+from ..state import AppState
 from ..account.layout import account_layout
-from ..models import PurchaseStatus
 from ..blog.public_page import product_detail_modal
 
-def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
+def purchase_item_card(item: rx.Var[Dict[str, Any]]) -> rx.Component:
     return rx.hstack(
         rx.box(
-            rx.image(src=rx.get_upload_url(item.image_url), alt=item.title, width="80px", height="80px", object_fit="cover", border_radius="md"),
-            on_click=AppState.open_product_detail_modal(item.id),
+            rx.image(src=rx.get_upload_url(item["image_url"]), alt=item["title"], width="80px", height="80px", object_fit="cover", border_radius="md"),
+            on_click=AppState.open_product_detail_modal(item["id"]),
             cursor="pointer", _hover={"opacity": 0.8},
         ),
         rx.vstack(
-            rx.text(item.title, weight="bold", size="3"),
-            rx.text(item.variant_details_str, size="2", color_scheme="gray"),
+            rx.text(item["title"], weight="bold", size="3"),
+            rx.text(item["variant_details_str"], size="2", color_scheme="gray"),
             align_items="start", spacing="1",
         ),
         rx.spacer(),
         rx.vstack(
-            rx.text(item.quantity, "x ", item.price_at_purchase_cop, size="3"),
-            rx.text(item.subtotal_cop, weight="bold", size="3", text_align="right"),
+            rx.text(item["quantity_str"], "x ", item["price_at_purchase_cop"], size="3"),
+            rx.text(item["subtotal_cop"], weight="bold", size="3", text_align="right"),
             align_items="end", spacing="1",
         ),
         spacing="4", align="center", width="100%",
     )
 
-def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
+def purchase_detail_card(purchase: rx.Var[Dict[str, Any]]) -> rx.Component:
     return rx.card(
         rx.vstack(
             rx.hstack(
                 rx.vstack(
-                    rx.text("Compra del: ", purchase.purchase_date_formatted, weight="bold", size="5"), 
-                    rx.text("ID de Compra: #", purchase.id, size="2", color_scheme="gray"), 
+                    rx.text("Compra del: ", purchase["purchase_date_formatted"], weight="bold", size="5"), 
+                    rx.text("ID de Compra: #", purchase["id"], size="2", color_scheme="gray"), 
                     align_items="start"
                 ),
                 rx.spacer(),
-                rx.badge(purchase.status.replace("_", " ").title(), color_scheme="violet", variant="soft", size="2"),
+                rx.badge(purchase["status"], color_scheme="violet", variant="soft", size="2"),
                 justify="between", width="100%",
             ),
             rx.divider(),
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"), 
-                rx.text("Nombre: ", purchase.shipping_name, size="3"), 
-                rx.text("Dirección: ", purchase.shipping_address, ", ", purchase.shipping_neighborhood, ", ", purchase.shipping_city, size="3"), 
-                rx.text("Teléfono: ", purchase.shipping_phone, size="3"), 
+                rx.text("Nombre: ", purchase["shipping_name"], size="3"), 
+                rx.text("Dirección: ", purchase["full_address"], size="3"), 
+                rx.text("Teléfono: ", purchase["shipping_phone"], size="3"), 
                 spacing="1", align_items="start", width="100%"
             ),
             rx.divider(),
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
                 rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
-                rx.vstack(rx.foreach(AppState.purchase_items_map.get(purchase.id, []), purchase_item_card), spacing="3", width="100%"),
+                rx.vstack(
+                    rx.foreach(
+                        AppState.purchase_items_map_for_view.get(purchase["id"].to(str), []), 
+                        purchase_item_card
+                    ), 
+                    spacing="3", 
+                    width="100%"
+                ),
                 spacing="2", align_items="start", width="100%",
             ),
             rx.vstack(
-                rx.hstack(rx.spacer(), rx.text("Envío:", size="4", weight="medium"), rx.text(purchase.shipping_applied_cop, size="4"), align="center", spacing="3"),
-                rx.hstack(rx.spacer(), rx.heading("Total Compra:", size="5", weight="medium"), rx.heading(purchase.total_price_cop, size="6"), align="center", spacing="3"),
+                rx.hstack(rx.spacer(), rx.text("Envío:", size="4", weight="medium"), rx.text(purchase["shipping_applied_cop"], size="4"), align="center", spacing="3"),
+                rx.hstack(rx.spacer(), rx.heading("Total Compra:", size="5", weight="medium"), rx.heading(purchase["total_price_cop"], size="6"), align="center", spacing="3"),
                 align_items="end", width="100%", margin_top="1em", spacing="2"
             ),
             rx.divider(margin_y="1em"),
-            
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
             rx.cond(
-                purchase.status == PurchaseStatus.SHIPPED.value, 
+                purchase["is_shipped"], 
                 rx.vstack(
                     rx.callout(
-                        rx.text(
-                            "Tu pedido llegará aproximadamente el: ",
-                            purchase.estimated_delivery_date_formatted,
-                        ),
-                        icon="truck", 
-                        color_scheme="blue", 
-                        width="100%"
+                        rx.text("Tu pedido llegará aproximadamente el: ", purchase["estimated_delivery_date_formatted"]),
+                        icon="truck", color_scheme="blue", width="100%"
                     ), 
-                    rx.button("He Recibido mi Pedido", on_click=AppState.user_confirm_delivery(purchase.id), width="100%", margin_top="0.5em", color_scheme="green"), 
+                    rx.button("He Recibido mi Pedido", on_click=AppState.user_confirm_delivery(purchase["id"]), width="100%", margin_top="0.5em", color_scheme="green"), 
                     spacing="3", 
                     width="100%"
                 )
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
             rx.cond(
-                purchase.status == PurchaseStatus.DELIVERED.value, 
+                purchase["is_delivered"], 
                 rx.vstack(
                     rx.callout("¡Pedido entregado! Gracias por tu compra.", icon="check_check", color_scheme="violet", width="100%"), 
                     rx.hstack(
-                        rx.link(rx.button("Imprimir Factura", variant="outline", width="100%"), href=f"/invoice?id={purchase.id}", is_external=False, target="_blank", width="100%"), 
-                        rx.button("Devolución o Cambio", on_click=AppState.go_to_return_page(purchase.id), variant="solid", color_scheme="orange", width="100%"), 
+                        rx.link(rx.button("Imprimir Factura", variant="outline", width="100%"), href=rx.text("/invoice?id=", purchase["id"]), is_external=False, target="_blank", width="100%"), 
+                        rx.button("Devolución o Cambio", on_click=AppState.go_to_return_page(purchase["id"]), variant="solid", color_scheme="orange", width="100%"), 
                         spacing="3", margin_top="1em", width="100%"
                     ), 
                     width="100%", align_items="center"
@@ -113,8 +111,8 @@ def purchase_history_content() -> rx.Component:
             width="100%", max_width="400px", margin_y="1.5em",
         ),
         rx.cond(
-            AppState.filtered_user_purchases,
-            rx.foreach(AppState.filtered_user_purchases, purchase_detail_card),
+            AppState.filtered_user_purchases_for_view,
+            rx.foreach(AppState.filtered_user_purchases_for_view, purchase_detail_card),
             rx.center(
                 rx.text("No se encontraron compras para tu búsqueda."),
                 padding_y="2em",
