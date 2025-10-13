@@ -7,8 +7,8 @@ from ..state import AppState, AdminPostRowData, AdminVariantData
 from ..ui.qr_display import qr_code_display
 from .forms import blog_post_edit_form
 
-# ... (edit_post_dialog y qr_display_modal no cambian)...
 def edit_post_dialog() -> rx.Component:
+    """El diálogo modal que contiene el formulario de edición."""
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.close(
@@ -21,6 +21,7 @@ def edit_post_dialog() -> rx.Component:
             ),
             rx.dialog.title("Editar Publicación"),
             rx.dialog.description("Modifica los detalles de tu producto y guárdalos."),
+            
             blog_post_edit_form(),
             style={"max_width": "960px", "width": "90%"},
         ),
@@ -29,6 +30,7 @@ def edit_post_dialog() -> rx.Component:
     )
 
 def qr_display_modal() -> rx.Component:
+    """El diálogo modal que muestra los códigos QR para cada variante."""
     printable_area_style = {
         "id": "printable-qr-area",
         "@media print": {
@@ -45,6 +47,7 @@ def qr_display_modal() -> rx.Component:
             rx.hstack(
                 rx.vstack(
                     rx.text(variant.attributes_str, weight="bold", size="4"),
+                    # --- ✨ CORRECCIÓN DEFINITIVA AQUÍ ✨ ---
                     rx.text("Stock: ", variant.stock),
                     align_items="start", spacing="1", flex_grow="1",
                 ),
@@ -98,6 +101,7 @@ def qr_display_modal() -> rx.Component:
     )
 
 def desktop_post_row(post: AdminPostRowData) -> rx.Component:
+    """Componente para una fila de la tabla de administración, con auditoría."""
     return rx.table.row(
         rx.table.cell(
             rx.cond(
@@ -116,7 +120,6 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
         rx.table.cell(
             rx.vstack(
                 rx.text(post.title, weight="bold"),
-                # --- ✨ CORRECCIONES AQUÍ ✨ ---
                 rx.cond(
                     post.creator_name,
                     rx.text("Creado por: ", post.creator_name, size="1", color_scheme="gray"),
@@ -137,7 +140,6 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
                     rx.alert_dialog.trigger(rx.button("Eliminar", color_scheme="red", variant="soft", size="2")),
                     rx.alert_dialog.content(
                         rx.alert_dialog.title("Confirmar Eliminación"),
-                        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                         rx.alert_dialog.description("¿Seguro que quieres eliminar '", post.title, "'?"),
                         rx.flex(
                             rx.alert_dialog.cancel(rx.button("Cancelar")),
@@ -159,6 +161,7 @@ def desktop_post_row(post: AdminPostRowData) -> rx.Component:
     )
 
 def mobile_post_card(post: AdminPostRowData) -> rx.Component:
+    """Componente de tarjeta optimizado para la vista móvil, con auditoría."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -174,7 +177,6 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
             ),
             rx.divider(margin_y="0.75em"),
             rx.vstack(
-                # --- ✨ CORRECCIONES AQUÍ ✨ ---
                 rx.cond(
                     post.creator_name,
                     rx.text("Creado por: ", post.creator_name, size="1", color_scheme="gray", width="100%", text_align="left"),
@@ -200,7 +202,6 @@ def mobile_post_card(post: AdminPostRowData) -> rx.Component:
                     rx.alert_dialog.trigger(rx.button("Eliminar", color_scheme="red", width="100%", size="2")),
                     rx.alert_dialog.content(
                         rx.alert_dialog.title("Confirmar Eliminación"),
-                        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                         rx.alert_dialog.description("¿Seguro que quieres eliminar '", post.title, "'?"),
                         rx.flex(
                             rx.alert_dialog.cancel(rx.button("Cancelar")),
