@@ -26,10 +26,11 @@ class Carousel(NoSSRComponent):
     def add_imports(self) -> dict[str, str]:
         return {"": "react-responsive-carousel/lib/styles/carousel.min.css"}
 
-    # Este método asegura que los componentes hijos pasados desde Reflex
-    # (como los generados por rx.foreach) se rendericen correctamente.
+    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+    # Este método ahora simplemente pasa los argumentos a la clase base,
+    # que es la forma correcta de hacerlo.
     @classmethod
     def create(cls, *children, **props):
-        # Aseguramos que los hijos siempre sean una lista, incluso si no se pasa ninguno.
-        props["children"] = children if children else []
-        return super().create(**props)
+        """Crea el componente de carrusel."""
+        return super().create(*children, **props)
+    # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
