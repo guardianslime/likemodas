@@ -2,9 +2,10 @@
 
 import reflex as rx
 from ..state import AppState, SupportTicketAdminData
-from ..auth.admin_auth import require_panel_access
+from ..auth.admin_auth import require_panel_access  # <-- CORRECCIÓN: Importa el decorador correcto
 
 def ticket_list_item(ticket: SupportTicketAdminData) -> rx.Component:
+    """Componente para mostrar un ticket en la lista del admin."""
     status_colors = {
         "OPEN": "orange",
         "IN_PROGRESS": "blue",
@@ -15,9 +16,9 @@ def ticket_list_item(ticket: SupportTicketAdminData) -> rx.Component:
         rx.hstack(
             rx.vstack(
                 rx.heading(ticket.subject, size="4"),
-                rx.text("Comprador: ", ticket.buyer_name),
-                rx.text("Compra ID: #", ticket.purchase_id),
-                rx.text("Fecha: ", ticket.created_at_formatted, size="2", color_scheme="gray"),
+                rx.text(f"Comprador: {ticket.buyer_name}"),
+                rx.text(f"Compra ID: #{ticket.purchase_id}"),
+                rx.text(f"Fecha: {ticket.created_at_formatted}", size="2", color_scheme="gray"),
                 align_items="start",
             ),
             rx.spacer(),
@@ -29,8 +30,9 @@ def ticket_list_item(ticket: SupportTicketAdminData) -> rx.Component:
         _hover={"background_color": rx.color("gray", 4)},
     )
 
-@require_panel_access
+@require_panel_access # <-- CORRECCIÓN: Usa el nuevo decorador
 def admin_tickets_page_content() -> rx.Component:
+    """Página para que el admin/vendedor vea y gestione los tickets de soporte."""
     return rx.container(
         rx.vstack(
             rx.heading("Solicitudes de Soporte", size="8"),

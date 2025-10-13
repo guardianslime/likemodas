@@ -1,4 +1,4 @@
-# likemodas/state.py (Versión Final y Definitiva)
+# likemodas/state.py (Versión Completa y Definitiva)
 from __future__ import annotations
 import json
 import pytz
@@ -6,7 +6,7 @@ import reflex as rx
 import reflex_local_auth
 import sqlmodel
 from sqlmodel import select
-from sqlmodel import text
+from sqlmodel import text # Importar text
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, List, Dict, Optional, Tuple
@@ -14,13 +14,16 @@ from .models import ActivityLog, EmpleadoVendedorLink, EmploymentRequest, LocalA
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import cast
 import secrets
+
 import os
+
 import bcrypt
 import re
 import asyncio
 import math
 import httpx 
-import uuid
+import uuid # Asegúrate de importar la biblioteca uuid
+# from pyzbar.pyzbar import decode
 from PIL import Image
 import pyotp
 import qrcode
@@ -29,15 +32,20 @@ import io
 from .services.encryption_service import encrypt_secret, decrypt_secret
 import csv
 from urllib.parse import urlparse, parse_qs
-import cv2
-import numpy as np
+import cv2  # <-- AÑADE ESTA IMPORTACIÓN
+import numpy as np # <-- AÑADE ESTA IMPORTACIÓN
+
 import logging
 import sys
+
 from collections import defaultdict
 from reflex.config import get_config
+from urllib.parse import urlparse, parse_qs
+
 
 from .data.geography_data import COLOMBIA_LOCATIONS, ALL_CITIES
 from .logic.shipping_calculator import calculate_dynamic_shipping
+
 from . import navigation
 from .models import (
     CommentVoteModel, UserInfo, UserReputation, UserRole, VerificationToken, BlogPostModel, ShippingAddressModel,
@@ -57,24 +65,41 @@ from .data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO, LISTA_MATERIALES, LISTA_MEDIDAS_GENERAL
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", handlers=[logging.StreamHandler(sys.stdout)])
+# --- AÑADE ESTA CONFIGURACIÓN DE LOGGING AQUÍ ---
+# Esto configura el logger para que escriba directamente en la salida estándar,
+# lo que Railway capturará de forma fiable.
+# Esto configura el logger para que escriba directamente en la consola.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
+# --- FIN DE LA CONFIGURACIÓN ---
 
 def _get_shipping_display_text(shipping_cost: Optional[float]) -> str:
+    """Genera el texto de envío basado en el costo."""
     if shipping_cost == 0.0:
         return "Envío Gratis"
     if shipping_cost is not None and shipping_cost > 0:
-        return format_to_cop(shipping_cost)
+        return f"Envío: {format_to_cop(shipping_cost)}"
     return "Envío a convenir"
 
 # --- DTOs (Data Transfer Objects) ---
-# ... (Todos tus DTOs permanecen igual que en tu archivo)
+
+# ✨ --- INICIO DE LA SOLUCIÓN AL NameError --- ✨
+# Definimos los DTOs para el nuevo carrito ANTES de la clase AppState.
+
 class DirectSaleVariantDTO(rx.Base):
-    cart_key: str
-    attributes_str: str
+    """DTO para una variante individual dentro de un grupo en el carrito de venta directa."""
+    cart_key: str  # Clave única para identificar esta variante específica
+    attributes_str: str  # Texto descriptivo, ej: "Talla: M"
     quantity: int
 
 class DirectSaleGroupDTO(rx.Base):
+    """DTO para un producto agrupado en el carrito de venta directa."""
     product_id: int
     title: str
     image_url: str
@@ -82,13 +107,17 @@ class DirectSaleGroupDTO(rx.Base):
     variants: list[DirectSaleVariantDTO] = []
 
 class UserManagementDTO(rx.Base):
+    """DTO para mostrar un usuario en la tabla de gestión de administradores."""
     id: int
     username: str
     email: str
     role: UserRole
     is_banned: bool
     is_verified: bool
+    # ✨ AÑADE ESTA LÍNEA ✨
     created_at: datetime 
+
+# ✨ --- FIN DE LA SOLUCIÓN --- ✨
 
 class UserInfoDTO(rx.Base):
     id: int; user_id: int; username: str; email: str; role: str
@@ -99,6 +128,8 @@ class NotificationDTO(rx.Base):
     is_read: bool
     url: Optional[str]
     created_at_formatted: str
+
+    # --- ✨ AÑADE ESTA CLASE DE CONFIGURACIÓN AQUÍ DENTRO ✨ ---
     class Config:
         orm_mode = True
 
@@ -125,6 +156,7 @@ class ProductCardData(rx.Base):
     userinfo_id: int
     average_rating: float = 0.0
     rating_count: int = 0
+    
     class Config:
         orm_mode = True
 
@@ -150,9 +182,38 @@ class ProductDetailData(rx.Base):
     shipping_display_text: str = ""
     is_imported: bool = False
     seller_score: int = 0
+
     class Config:
         orm_mode = True
 
+# DTO para la tarjeta de historial del admin
+class AdminPurchaseCardData(rx.Base):
+    id: int
+    customer_name: str
+    customer_email: str
+    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
+    anonymous_customer_email: Optional[str] = None
+    purchase_date_formatted: str
+    status: str
+    total_price: float
+    # --- ✨ INICIO: CAMPOS OPCIONALES CORREGIDOS ✨ ---
+    shipping_name: Optional[str] = None
+    shipping_full_address: Optional[str] = None
+    shipping_phone: Optional[str] = None
+    # --- ✨ FIN: CAMPOS OPCIONALES CORREGIDOS ✨ ---
+    payment_method: str
+    confirmed_at: Optional[datetime] = None
+    shipping_applied: Optional[float] = 0.0
+    items: list[PurchaseItemCardData] = []
+    action_by_name: Optional[str] = None
+
+    @property
+    def total_price_cop(self) -> str: return format_to_cop(self.total_price)
+    
+    @property
+    def shipping_applied_cop(self) -> str: return format_to_cop(self.shipping_applied or 0.0)
+
+# DTO para un item individual en el historial de compras
 class PurchaseItemCardData(rx.Base):
     id: int
     title: str
@@ -160,31 +221,12 @@ class PurchaseItemCardData(rx.Base):
     price_at_purchase: float
     price_at_purchase_cop: str
     quantity: int
+    # --- ✨ CAMBIO 1: Se añade un campo para la cadena de texto pre-formateada ---
     variant_details_str: str = ""
+
     @property
     def subtotal_cop(self) -> str:
         return format_to_cop(self.price_at_purchase * self.quantity)
-
-class AdminPurchaseCardData(rx.Base):
-    id: int
-    customer_name: str
-    customer_email: str
-    anonymous_customer_email: Optional[str] = None
-    purchase_date_formatted: str
-    status: str
-    total_price: float
-    shipping_name: Optional[str] = None
-    shipping_full_address: Optional[str] = None
-    shipping_phone: Optional[str] = None
-    payment_method: str
-    confirmed_at: Optional[datetime] = None
-    shipping_applied: Optional[float] = 0.0
-    items: list[PurchaseItemCardData] = []
-    action_by_name: Optional[str] = None
-    @property
-    def total_price_cop(self) -> str: return format_to_cop(self.total_price)
-    @property
-    def shipping_applied_cop(self) -> str: return format_to_cop(self.shipping_applied or 0.0)
 
 class UserPurchaseHistoryCardData(rx.Base):
     id: int; userinfo_id: int; purchase_date_formatted: str; status: str
@@ -193,17 +235,24 @@ class UserPurchaseHistoryCardData(rx.Base):
     shipping_phone: str; items: list[PurchaseItemCardData]
     estimated_delivery_date_formatted: str
 
+# --- ✨ INICIO DE LA SOLUCIÓN ✨ ---
+# Se añaden estas líneas para resolver las referencias anidadas
 AdminPurchaseCardData.update_forward_refs()
 UserPurchaseHistoryCardData.update_forward_refs()
+# --- ✨ FIN DE LA SOLUCIÓN ✨ ---
 
+# --- PASO 1: AÑADIR ESTE NUEVO DTO ANTES DE AppState ---
 class AdminVariantData(rx.Base):
+    """DTO para mostrar una variante con su QR en el modal de admin."""
     variant_uuid: str = ""
     stock: int = 0
     attributes_str: str = ""
     attributes: dict = {}
-    qr_url: str = ""
+    qr_url: str = ""  # <-- REEMPLAZA las dos variables anteriores por esta
 
+# --- PASO 2: MODIFICAR EL DTO AdminPostRowData ---
 class AdminPostRowData(rx.Base):
+    """DTO para una fila de producto en la tabla de admin."""
     id: int
     title: str
     price_cop: str
@@ -212,7 +261,10 @@ class AdminPostRowData(rx.Base):
     variants: list[AdminVariantData] = []
     creator_name: Optional[str] = None
     owner_name: str
-    last_modified_by_name: Optional[str] = None
+    
+    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+    last_modified_by_name: Optional[str] = None # Quien lo modificó por última vez
+    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
 
 class AttributeData(rx.Base):
     key: str; value: str
@@ -232,7 +284,9 @@ class InvoiceItemData(rx.Base):
     subtotal_cop: str
     iva_cop: str
     total_con_iva_cop: str
+    # --- ✨ CORRECCIÓN: Asegurarse de que este campo exista ---
     variant_details_str: str = ""
+
     @property
     def total_cop(self) -> str: return format_to_cop(self.price * self.quantity)
 
@@ -241,10 +295,12 @@ class InvoiceData(rx.Base):
     purchase_date_formatted: str
     status: str
     items: list[InvoiceItemData]
+    # --- ✨ INICIO: CORRECCIÓN DE CAMPOS OPCIONALES ✨ ---
     customer_name: Optional[str] = None
     customer_email: Optional[str] = None
     shipping_full_address: Optional[str] = None
     shipping_phone: Optional[str] = None
+    # --- ✨ FIN: CORRECCIÓN DE CAMPOS OPCIONALES ✨ ---
     subtotal_cop: str
     shipping_applied_cop: str
     iva_cop: str
@@ -286,19 +342,30 @@ class UserProfileData(rx.Base):
     email: str = ""
     phone: str = ""
     avatar_url: str = ""
-    tfa_enabled: bool = False
+    tfa_enabled: bool = False  # <- AÑADE ESTA LÍNEA
+
+
+# --- FIN DE LA CORRECCIÓN CLAVE ---
 
 class VariantDetailFinanceDTO(rx.Base):
+    """DTO para el detalle financiero de una variante específica."""
     variant_key: str
     attributes_str: str
     image_url: Optional[str] = None
     units_sold: int
     total_revenue_cop: str
-    total_cogs_cop: str
-    total_net_profit_cop: str
+    total_cogs_cop: str # ✨ NUEVO
+    total_net_profit_cop: str # ✨ RENOMBRADO
     daily_profit_data: List[Dict[str, Any]] = []
+ # Datos para el gráfico de la variante
 
+# Formatea a COP
+def format_to_cop(value: float) -> str:
+    return f"${int(value):,}".replace(",", ".") # Formato colombiano
+
+# 2. Ahora definimos la clase que la utiliza.
 class ProductDetailFinanceDTO(rx.Base):
+    """DTO para el detalle financiero de un producto específico."""
     product_id: int
     title: str
     image_url: Optional[str] = None
@@ -308,47 +375,62 @@ class ProductDetailFinanceDTO(rx.Base):
     product_profit_cop: str
     shipping_collected_cop: str
     shipping_profit_loss_cop: str
-    total_profit_cop: str
+    total_profit_cop: str  # Este es el campo que usa la UI y debe llamarse así
+
     variants: List[VariantDetailFinanceDTO] = []
 
 ProductDetailFinanceDTO.update_forward_refs()
 
+# --- PASO 1: AÑADE ESTOS NUEVOS DTOs AL INICIO DEL ARCHIVO ---
+
 class FinanceStatsDTO(rx.Base):
+    """DTO para las estadísticas generales del dashboard financiero."""
     total_revenue_cop: str = "$0"
-    total_cogs_cop: str = "$0"
+    total_cogs_cop: str = "$0"  # ✨ NUEVO: Costo de Mercancía Vendida
     total_profit_cop: str = "$0"
     total_shipping_cop: str = "$0"
-    shipping_profit_loss_cop: str = "$0"
+    shipping_profit_loss_cop: str = "$0" # ✨ NUEVO: Ganancia/Pérdida por Envío
     total_sales_count: int = 0
     average_order_value_cop: str = "$0"
     profit_margin_percentage: str = "0.00%"
 
 class ProductFinanceDTO(rx.Base):
+    """DTO para la tabla de finanzas por producto."""
     product_id: int
     title: str
     units_sold: int
     total_revenue_cop: str
     total_cogs_cop: str
     total_net_profit_cop: str
+    # --- ✅ NUEVO CAMPO AÑADIDO ✅ ---
     profit_margin_str: str = "0.00%"
 
 class GastoDataDTO(rx.Base):
+    """DTO para mostrar un gasto en la UI."""
     id: int
     fecha_formateada: str
     descripcion: str
     categoria: str
     valor_cop: str
-    creator_name: Optional[str] = None
 
+    # --- ✨ INICIO: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+    creator_name: Optional[str] = None # Quien registró el gasto
+    # --- ✨ FIN: AÑADE ESTA LÍNEA FALTANTE ✨ ---
+
+# --- ✨ INICIO: AÑADE ESTA CLASE DTO DE VUELTA ✨ ---
 class PendingRequestDTO(rx.Base):
+    """Un objeto de datos simple para la notificación de solicitud de empleo."""
     id: int
     requester_username: str
+# --- ✨ FIN: AÑADE ESTA CLASE DTO DE VUELTA ✨ --
 
 class SentRequestDTO(rx.Base):
+    """DTO para mostrar el historial de solicitudes enviadas de forma segura."""
     id: int
     status: str
     candidate_name: str
     created_at_formatted: str
+    # Guardamos la fecha real para poder filtrar sobre ella
     created_at: datetime
 
 class ActivityLogDTO(rx.Base):
@@ -357,6 +439,8 @@ class ActivityLogDTO(rx.Base):
     action_type: str
     description: str
     created_at_formatted: str
+    
+    # --- ✨ AÑADE ESTA LÍNEA PARA LA FECHA ORIGINAL ✨ ---
     created_at: datetime
 
 class AppState(reflex_local_auth.LocalAuthState):
@@ -3669,8 +3753,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     # def cart_total(self) -> float: return sum(p.price * q for p, q in self.cart_details if p and p.price)
     #@rx.var
     # def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
-
-    
     
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
@@ -7290,35 +7372,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         self.modal_selected_variant_index = index
         self.modal_selected_attributes = {} # Limpia la selección de talla anterior
-
-    @rx.var
-    def material_selector_placeholder(self) -> str:
-        """Crea el texto completo y seguro para el placeholder del selector de material."""
-        return f"{self.material_label}..."
-
-    
-    # --- ✨ INICIO: CORRECCIÓN PARA EL CARRUSEL ✨ ---
-    @rx.var
-    def inline_carousel_slides(self) -> list[dict]:
-        """Transforma los datos de las variantes para el carrusel principal en el modal."""
-        if not self.unique_modal_variants:
-            return []
-        # Esta es la misma lógica que tenías antes, pero ahora en el lugar correcto.
-        return [
-            {
-                "src": rx.get_upload_url(item.variant.get("image_url", "")),
-                "alt": self.product_in_modal.title if self.product_in_modal else ""
-            }
-            for item in self.unique_modal_variants
-        ]
-    # --- ✨ FIN: CORRECCIÓN PARA EL CARRUSEL ✨ ---
-
-    # --- ✨ INICIO: NUEVA LÓGICA DE PANTALLA COMPLETA (MÁS SIMPLE) ✨ ---
-    is_fullscreen: bool = False
-
-    def toggle_fullscreen(self):
-        """Activa o desactiva el modo de pantalla completa para el modal del producto."""
-        self.is_fullscreen = not self.is_fullscreen
 
     @rx.event
     def open_product_detail_modal(self, post_id: int):

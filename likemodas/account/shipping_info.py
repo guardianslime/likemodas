@@ -31,28 +31,15 @@ def address_form() -> rx.Component:
 def address_card(address: ShippingAddressModel) -> rx.Component:
     return rx.card(
         rx.vstack(
-            rx.hstack(
-                rx.text(address.name, weight="bold", size="5"), 
-                rx.spacer(), 
-                rx.cond(address.is_default, rx.badge("Predeterminada", color_scheme="green")), 
-                width="100%"
-            ),
+            rx.hstack(rx.text(address.name, weight="bold", size="5"), rx.spacer(), rx.cond(address.is_default, rx.badge("Predeterminada", color_scheme="green")), width="100%"),
             rx.divider(),
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            rx.text(address.address, ", ", address.neighborhood, size="3", color_scheme="gray"),
-            rx.text(address.city, size="3", color_scheme="gray"),
-            rx.text("Tel: ", address.phone, size="3", color_scheme="gray"),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-            rx.hstack(
-                rx.button("Eliminar", on_click=lambda: AppState.delete_address(address.id), variant="soft", color_scheme="red", size="1"), 
-                rx.spacer(), 
-                rx.button("Hacer Predeterminada", on_click=lambda: AppState.set_as_default(address.id), is_disabled=address.is_default, variant="outline", size="1", color_scheme="violet"), 
-                justify="end", width="100%", margin_top="1em"
-            ),
+            rx.text(f"{address.address}, {address.neighborhood}", size="3", color_scheme="gray"),
+            rx.text(f"{address.city}", size="3", color_scheme="gray"),
+            rx.text(f"Tel: {address.phone}", size="3", color_scheme="gray"),
+            rx.hstack(rx.button("Eliminar", on_click=lambda: AppState.delete_address(address.id), variant="soft", color_scheme="red", size="1"), rx.spacer(), rx.button("Hacer Predeterminada", on_click=lambda: AppState.set_as_default(address.id), is_disabled=address.is_default, variant="outline", size="1", color_scheme="violet"), justify="end", width="100%", margin_top="1em"),
             align_items="start", spacing="3", width="100%",
         )
     )
-
 
 @reflex_local_auth.require_login
 def shipping_info_content() -> rx.Component:

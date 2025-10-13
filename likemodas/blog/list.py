@@ -10,6 +10,7 @@ def _gallery_card(post: BlogPostModel) -> rx.Component:
         rx.card(
             rx.inset(
                 rx.cond(
+                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                     post.variants,
                     rx.image(
                         src=rx.get_upload_url(post.variants[0].get("image_url", "")), 
@@ -24,9 +25,8 @@ def _gallery_card(post: BlogPostModel) -> rx.Component:
             rx.text(post.title, weight="bold", as_="div", size="3", margin_bottom="1"),
             rx.text(post.content, as_="p", size="2", color_scheme="gray", trim="end", height="4.5em"),
         ),
-        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-        href=rx.text("/blog-public/", post.id, as_child=True),
-        style={"text_decoration": "none"}
+        href=f"/blog-public/{post.id}",
+        as_child=True, style={"text_decoration": "none"}
     )
 
 @require_admin

@@ -7,9 +7,9 @@ from ..state import AppState, UserPurchaseHistoryCardData, PurchaseItemCardData
 from ..account.layout import account_layout
 from ..models import PurchaseStatus
 from ..blog.public_page import product_detail_modal
-from reflex.vars import Var
 
 def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
+    """Componente rediseñado que muestra una tarjeta completa para cada artículo comprado."""
     return rx.hstack(
         rx.box(
             rx.image(src=rx.get_upload_url(item.image_url), alt=item.title, width="80px", height="80px", object_fit="cover", border_radius="md"),
@@ -23,7 +23,7 @@ def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
         ),
         rx.spacer(),
         rx.vstack(
-            rx.text(item.quantity, "x ", item.price_at_purchase_cop, size="3"),
+            rx.text(f"{item.quantity}x {item.price_at_purchase_cop}", size="3"),
             rx.text(item.subtotal_cop, weight="bold", size="3", text_align="right"),
             align_items="end", spacing="1",
         ),
@@ -34,23 +34,13 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
     return rx.card(
         rx.vstack(
             rx.hstack(
-                rx.vstack(
-                    rx.text("Compra del: ", purchase.purchase_date_formatted, weight="bold", size="5"), 
-                    rx.text("ID de Compra: #", purchase.id, size="2", color_scheme="gray"), 
-                    align_items="start"
-                ),
+                rx.vstack(rx.text(f"Compra del: {purchase.purchase_date_formatted}", weight="bold", size="5"), rx.text(f"ID de Compra: #{purchase.id}", size="2", color_scheme="gray"), align_items="start"),
                 rx.spacer(),
                 rx.badge(purchase.status.replace("_", " ").title(), color_scheme="violet", variant="soft", size="2"),
                 justify="between", width="100%",
             ),
             rx.divider(),
-            rx.vstack(
-                rx.text("Detalles de Envío:", weight="medium", size="4"), 
-                rx.text("Nombre: ", purchase.shipping_name, size="3"), 
-                rx.text("Dirección: ", purchase.shipping_address, ", ", purchase.shipping_neighborhood, ", ", purchase.shipping_city, size="3"), 
-                rx.text("Teléfono: ", purchase.shipping_phone, size="3"), 
-                spacing="1", align_items="start", width="100%"
-            ),
+            rx.vstack(rx.text("Detalles de Envío:", weight="medium", size="4"), rx.text(f"Nombre: {purchase.shipping_name}", size="3"), rx.text(f"Dirección: {purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}", size="3"), rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"), spacing="1", align_items="start", width="100%"),
             rx.divider(),
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
@@ -64,47 +54,16 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 align_items="end", width="100%", margin_top="1em", spacing="2"
             ),
             rx.divider(margin_y="1em"),
-            rx.cond(
-                purchase.status == PurchaseStatus.SHIPPED.value, 
-                rx.vstack(
-                    rx.callout(
-                        rx.text(
-                            "Tu pedido llegará aproximadamente el: ",
-                            purchase.estimated_delivery_date_formatted,
-                        ),
-                        icon="truck", color_scheme="blue", width="100%"
-                    ), 
-                    rx.button("He Recibido mi Pedido", on_click=AppState.user_confirm_delivery(purchase.id), width="100%", margin_top="0.5em", color_scheme="green"), 
-                    spacing="3", 
-                    width="100%"
-                )
-            ),
-            rx.cond(
-                purchase.status == PurchaseStatus.DELIVERED.value, 
-                rx.vstack(
-                    rx.callout("¡Pedido entregado! Gracias por tu compra.", icon="check_check", color_scheme="violet", width="100%"), 
-                    rx.hstack(
-                        # --- ✨ CORRECCIÓN FINAL Y DEFINITIVA AQUÍ ✨ ---
-                        rx.link(
-                            rx.button("Imprimir Factura", variant="outline", width="100%"), 
-                            href="/invoice?id=" + purchase.id.to(str), 
-                            is_external=False, 
-                            target="_blank", 
-                            width="100%"
-                        ), 
-                        rx.button("Devolución o Cambio", on_click=AppState.go_to_return_page(purchase.id), variant="solid", color_scheme="orange", width="100%"), 
-                        spacing="3", margin_top="1em", width="100%"
-                    ), 
-                    width="100%", align_items="center"
-                )
-            ),
+            rx.cond(purchase.status == PurchaseStatus.SHIPPED.value, rx.vstack(rx.callout(f"Tu pedido llegará aproximadamente el: {purchase.estimated_delivery_date_formatted}", icon="truck", color_scheme="blue", width="100%"), rx.button("He Recibido mi Pedido", on_click=AppState.user_confirm_delivery(purchase.id), width="100%", margin_top="0.5em", color_scheme="green"), spacing="3", width="100%")),
+            rx.cond(purchase.status == PurchaseStatus.DELIVERED.value, rx.vstack(rx.callout("¡Pedido entregado! Gracias por tu compra.", icon="check_check", color_scheme="violet", width="100%"), rx.hstack(rx.link(rx.button("Imprimir Factura", variant="outline", width="100%"), href=f"/invoice?id={purchase.id}", is_external=False, target="_blank", width="100%"), rx.button("Devolución o Cambio", on_click=AppState.go_to_return_page(purchase.id), variant="solid", color_scheme="orange", width="100%"), spacing="3", margin_top="1em", width="100%"), width="100%", align_items="center")),
             spacing="4", width="100%"
         ),
         width="100%", padding="1.5em",
     )
 
 @reflex_local_auth.require_login
-def purchase_history_content() -> rx.Component:
+def purchase_history_content() -> rx.Component: # <-- NOMBRE CORREGIDO
+    """Página del historial de compras del usuario."""
     page_content = rx.vstack(
         rx.heading("Mi Historial de Compras", size="8", text_align="center"),
         rx.text("Aquí puedes ver el estado y los detalles de todos tus pedidos.", color_scheme="gray", size="4", text_align="center"),
