@@ -405,7 +405,57 @@ def lightbox_modal() -> rx.Component:
     """
     return rx.dialog.root(
         rx.dialog.content(
-            # ... (todo el código de la función lightbox_modal que te proporcioné) ...
+            rx.dialog.close(
+                rx.icon_button(
+                    rx.icon("x"),
+                    variant="soft",
+                    color_scheme="gray",
+                    size="4",
+                    style={
+                        "position": "absolute",
+                        "top": "1rem",
+                        "right": "1rem",
+                        "zIndex": "1500",
+                        "cursor": "pointer",
+                    },
+                )
+            ),
+            rx.center(
+                carousel(
+                    rx.foreach(
+                        AppState.unique_modal_variants,
+                        lambda variant_item: rx.image(
+                            src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                            alt=AppState.product_in_modal.title,
+                            max_height="90vh",
+                            max_width="90vw",
+                            object_fit="contain",
+                        ),
+                    ),
+                    selected_item=AppState.lightbox_start_index,
+                    show_arrows=True,
+                    show_indicators=False,
+                    show_thumbs=False,
+                    show_status=False,
+                    infinite_loop=True,
+                    emulate_touch=True,
+                    use_keyboard_arrows=True,
+                    width="100vw",
+                    # Esta línea oculta el contenedor de miniaturas que causaba el rectángulo gris
+                    style={"& .thumbs-wrapper": {"display": "none"}},
+                ),
+                width="100%",
+                height="100%",
+            ),
+            style={
+                "maxWidth": "100vw",
+                "width": "100vw",
+                "height": "100vh",
+                "backgroundColor": "rgba(0, 0, 0, 0.85)",
+                "padding": "0",
+                "margin": "0",
+                "borderRadius": "0",
+            },
         ),
         open=AppState.is_lightbox_open,
         on_open_change=AppState.close_lightbox,
