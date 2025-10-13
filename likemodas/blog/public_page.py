@@ -189,9 +189,10 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             rx.cond(
                 AppState.product_in_modal,
                 rx.vstack(
-                    # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                     rx.cond(
                         AppState.is_fullscreen,
+                        # Vista de pantalla completa
                         rx.grid(
                             _modal_image_section(),
                             columns="1",
@@ -199,16 +200,17 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             align_items="start",
                             width="100%",
                         ),
+                        # Vista normal
                         rx.grid(
                             _modal_image_section(),
                             _modal_info_section(),
-                            columns=["1", "2", "2"],
+                            columns={"initial": "1", "md": "2"}, # Valor estático
                             spacing="6",
                             align_items="start",
                             width="100%",
                         )
                     ),
-                    # --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨ ---
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                     rx.cond(
                         ~AppState.is_fullscreen,
                         rx.fragment(
