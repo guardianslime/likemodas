@@ -1,3 +1,5 @@
+# likemodas/blog/public_page.py 
+
 import reflex as rx
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, CommentData, ModalSelectorDTO
@@ -139,10 +141,6 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
 
     def _modal_image_section() -> rx.Component:
-        """
-        Muestra las imágenes del producto usando el componente Carrusel.
-        Hacer clic en el carrusel abre la vista lightbox.
-        """
         return rx.box(
             Carousel.create(
                 rx.foreach(
@@ -172,7 +170,9 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
-            rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
+            # --- ✨ LÍNEA CORREGIDA ✨ ---
+            rx.text("Publicado el ", AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
+            # --- ---
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=32),
             rx.hstack(
@@ -291,10 +291,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         )
 
     def lightbox_modal() -> rx.Component:
-        """
-        Un diálogo a pantalla completa que contiene la segunda instancia, más grande, del carrusel,
-        proporcionando el efecto "lightbox".
-        """
         return rx.dialog.root(
             rx.dialog.content(
                 rx.dialog.close(
@@ -383,7 +379,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     )
 
 def public_qr_scanner_modal() -> rx.Component:
-    """Modal de escaneo QR para clientes."""
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.title("Buscar Producto por QR"),
