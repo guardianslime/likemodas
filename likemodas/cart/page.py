@@ -1,8 +1,10 @@
 import reflex as rx
 import reflex_local_auth
-from typing import Any, List, Dict
+from typing import List, Dict
 
-# --- ✨ 1. SE ELIMINA LA IMPORTACIÓN INCORRECTA DE 'Var' y 'cast' ✨ ---
+# --- ✨ ESTA ES LA CORRECCIÓN ✨ ---
+from reflex.vars import Var
+from reflex_magic.utils.types import cast
 
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState
@@ -47,7 +49,7 @@ def display_default_address() -> rx.Component:
         width="100%", spacing="4",
     )
 
-def cart_item_row(item: rx.Var[Dict[str, Any]]) -> rx.Component:
+def cart_item_row(item: Var[Dict[str, Any]]) -> rx.Component:
     """Renderiza una fila en la tabla del carrito."""
     return rx.table.row(
         rx.table.cell(
@@ -68,9 +70,8 @@ def cart_item_row(item: rx.Var[Dict[str, Any]]) -> rx.Component:
                 ),
                 rx.vstack(
                     rx.text(item["title"], weight="bold"),
-                    # --- ✨ 2. SE USA rx.cast() DIRECTAMENTE ✨ ---
                     rx.foreach(
-                        rx.cast(item["variant_details"], List[Dict[str, str]]),
+                        cast(item["variant_details"], List[Dict[str, str]]),
                         lambda detail: rx.text(detail["key"], ": ", detail["value"], size="2", color_scheme="gray")
                     ),
                     align_items="start",
