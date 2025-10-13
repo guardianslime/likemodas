@@ -1,6 +1,7 @@
-import reflex as rx
+# likemodas/blog/forms.py
 
-from likemodas.blog.state import BlogAdminState
+import reflex as rx
+from likemodas.utils.formatting import format_to_cop
 from ..state import AppState
 from ..models import Category
 from ..ui.components import searchable_select
@@ -9,7 +10,6 @@ from ..data.product_options import (
     LISTA_TAMANOS_MOCHILAS
 )
 
-# --- Componente reutilizable para editar atributos (Sin cambios) ---
 def attribute_editor(
     title: str,
     options_list: list[str],
@@ -40,7 +40,8 @@ def attribute_editor(
         rx.hstack(
             rx.select(
                 options_list,
-                placeholder=f"Seleccionar {title.lower()}...",
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                placeholder=rx.text("Seleccionar ", title.lower(), "..."),
                 value=temp_value_var,
                 on_change=temp_value_setter,
             ),
@@ -50,7 +51,6 @@ def attribute_editor(
         align_items="stretch", width="100%", spacing="2"
     )
 
-# --- Gestor de Stock para el formulario de AÑADIR (Sin cambios) ---
 def variant_stock_manager() -> rx.Component:
     """Componente para gestionar el stock de las variantes generadas en el form de AÑADIR."""
     return rx.vstack(
@@ -67,7 +67,8 @@ def variant_stock_manager() -> rx.Component:
                             rx.vstack(
                                 rx.foreach(
                                     variant.attributes.items(),
-                                    lambda item: rx.text(f"{item[0]}: ", rx.text.strong(item[1])),
+                                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                                    lambda item: rx.text(item[0], ": ", rx.text.strong(item[1])),
                                 ),
                                 align_items="start", flex_grow=1,
                             ),
@@ -100,7 +101,6 @@ def variant_stock_manager() -> rx.Component:
         align_items="stretch", width="100%",
     )
 
-# --- Gestor de Stock para el formulario de EDICIÓN (Sin cambios) ---
 def variant_stock_manager_edit() -> rx.Component:
     """Componente para gestionar el stock de las variantes generadas en el form de EDICIÓN."""
     return rx.vstack(
@@ -117,7 +117,8 @@ def variant_stock_manager_edit() -> rx.Component:
                             rx.vstack(
                                 rx.foreach(
                                     variant.attributes.items(),
-                                    lambda item: rx.text(f"{item[0]}: ", rx.text.strong(item[1])),
+                                    # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                                    lambda item: rx.text(item[0], ": ", rx.text.strong(item[1])),
                                 ),
                                 align_items="start", flex_grow=1,
                             ),
@@ -143,6 +144,8 @@ def variant_stock_manager_edit() -> rx.Component:
         align_items="stretch", width="100%",
     )
 
+# ... (El resto del archivo, `blog_post_add_form` y `blog_post_edit_form`, no necesita cambios)
+# ...
 def blog_post_add_form() -> rx.Component:
     """Formulario para añadir productos con características dinámicas y con buscador."""
     tipo_selector = searchable_select(
@@ -261,7 +264,6 @@ def blog_post_add_form() -> rx.Component:
                         rx.vstack(
                             rx.form.label("Título del Producto", size="3"),
                             rx.input(
-                                # ✨ CORRECCIÓN AQUÍ ✨
                                 value=AppState.title,
                                 on_change=AppState.set_title,
                                 placeholder="Nombre del producto", name="title", required=True, size="3", width="100%"
@@ -280,20 +282,19 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Precio (COP)", as_="div", size="3", weight="bold"),
                             rx.input(
                                 placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3",
-                                # ✨ CORRECCIÓN AQUÍ ✨
                                 value=AppState.price,
                                 on_change=AppState.set_price_from_input
                             ),
                         ),
                         rx.vstack(
-                        rx.text("Ganancia (COP)", as_="div", size="3", weight="bold"),
-                        rx.input(
-                            placeholder="Ej: 15000 (sin puntos)", type="number", size="3",
-                            name="profit",  # <-- ✨ CORRECCIÓN CLAVE AÑADIDA AQUÍ
-                            value=AppState.profit_str,
-                            on_change=AppState.set_profit_str
+                            rx.text("Ganancia (COP)", as_="div", size="3", weight="bold"),
+                            rx.input(
+                                placeholder="Ej: 15000 (sin puntos)", type="number", size="3",
+                                name="profit",
+                                value=AppState.profit_str,
+                                on_change=AppState.set_profit_str
+                            ),
                         ),
-                    ),
                         columns="2", spacing="4", width="100%",
                     ),
                     rx.grid(
@@ -301,7 +302,6 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Incluye IVA (19%)", as_="div", size="3", weight="bold"),
                             rx.hstack(
                                 rx.switch(is_checked=AppState.price_includes_iva, on_change=AppState.set_price_includes_iva, size="3"),
-                                # ✨ Este ya estaba correcto, pero lo confirmamos ✨
                                 rx.text(rx.cond(AppState.price_includes_iva, "Sí", "No"), size="3"),
                                 align="center", spacing="3", height="100%",
                             ),
@@ -327,13 +327,9 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Moda Completa", as_="div", size="3", weight="bold"),
                             rx.hstack(
                                 rx.switch(is_checked=AppState.is_moda_completa, on_change=AppState.set_is_moda_completa, size="3"),
-                                # ✨ --- INICIO DE LA CORRECCIÓN 1 --- ✨
-                                # Se reemplaza el texto estático por uno condicional.
                                 rx.text(rx.cond(AppState.is_moda_completa, "Activo", "Inactivo"), size="3"),
-                                # ✨ --- FIN DE LA CORRECCIÓN 1 --- ✨
                                 align="center", spacing="3", height="100%",
                             ),
-                            # ✨ --- INICIO: CAMPO DE TEXTO CONDICIONAL --- ✨
                             rx.cond(
                                 AppState.is_moda_completa,
                                 rx.input(
@@ -344,7 +340,6 @@ def blog_post_add_form() -> rx.Component:
                                     margin_top="0.5em"
                                 )
                             ),
-                            # ✨ --- FIN --- ✨
                             rx.text("Envío gratis en compras > $XXX.XXX", size="1", color_scheme="gray"),
                             align_items="stretch",
                         ),
@@ -352,10 +347,7 @@ def blog_post_add_form() -> rx.Component:
                             rx.text("Envío Combinado", as_="div", size="3", weight="bold"),
                             rx.hstack(
                                 rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping, size="3"),
-                                # ✨ --- INICIO DE LA CORRECCIÓN 2 --- ✨
-                                # Se reemplaza el texto estático por uno condicional.
                                 rx.text(rx.cond(AppState.combines_shipping, "Activo", "Inactivo"), size="3"),
-                                # ✨ --- FIN DE LA CORRECCIÓN 2 --- ✨
                                 align="center", spacing="3", height="100%",
                             ),
                             rx.text("Permite que varios productos usen un solo envío.", size="1", color_scheme="gray"),
@@ -387,10 +379,10 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     rx.form.field(
                         rx.vstack(
-                             rx.form.label("Descripción", size="3"),
+                            rx.form.label("Descripción", size="3"),
                             rx.text_area(
-                                value=BlogAdminState.post_form_data["content"],
-                                on_change=lambda val: BlogAdminState.set_post_form_field("content", val),
+                                value=AppState.content,
+                                on_change=AppState.set_content,
                                 placeholder="Detalles del producto...", name="content", required=True, size="3",
                                 style={"height": "150px"}, width="100%"
                             ),
@@ -419,7 +411,6 @@ def blog_post_add_form() -> rx.Component:
     )
 
 
-# --- Formulario para EDITAR un producto (CON BOTÓN DE ELIMINAR CORREGIDO) ---
 def blog_post_edit_form() -> rx.Component:
     """El formulario para editar una publicación, ahora con estado centralizado y robusto."""
     caracteristicas_ropa_edit = attribute_editor(
@@ -434,7 +425,6 @@ def blog_post_edit_form() -> rx.Component:
     return rx.form(
         rx.vstack(
             rx.grid(
-                # --- COLUMNA IZQUIERDA: IMÁGENES Y VARIANTES ---
                 rx.vstack(
                     rx.text("Imágenes del Producto", as_="div", size="2", weight="bold", margin_bottom="0.5em"),
                     rx.flex(
@@ -442,7 +432,6 @@ def blog_post_edit_form() -> rx.Component:
                             AppState.unique_edit_form_images,
                             lambda img_url, index: rx.box(
                                 rx.image(src=rx.get_upload_url(img_url), width="80px", height="80px", object_fit="cover", border_radius="md"),
-                                # --- CORRECCIÓN: Se asegura que el botón de eliminar sea visible ---
                                 rx.icon_button(
                                     rx.icon("trash-2", size=14),
                                     on_click=AppState.remove_edit_image(img_url),
@@ -461,7 +450,7 @@ def blog_post_edit_form() -> rx.Component:
                                 border_color=rx.cond(AppState.edit_selected_image_index == index, "violet", "gray"),
                                 padding="2px", border_radius="lg", cursor="pointer",
                                 on_click=AppState.select_edit_image_for_editing(index),
-                                position="relative", # <-- Crucial para que el botón se posicione correctamente
+                                position="relative",
                             )
                         ),
                         wrap="wrap", spacing="3",
@@ -492,8 +481,6 @@ def blog_post_edit_form() -> rx.Component:
                     ),
                     spacing="2", align_items="stretch",
                 ),
-
-                # --- COLUMNA DERECHA: DETALLES DEL PRODUCTO (Sin cambios) ---
                 rx.vstack(
                     rx.text("Título del Producto", as_="div", size="2", weight="bold"),
                     rx.input(name="title", value=AppState.edit_post_title, on_change=AppState.set_edit_post_title, required=True, size="3"),
@@ -513,7 +500,7 @@ def blog_post_edit_form() -> rx.Component:
                         rx.vstack(
                             rx.text("Ganancia (COP)", as_="div", size="2", weight="bold"),
                             rx.input(
-                                name="profit", # <-- ✨ CORRECCIÓN CLAVE AÑADIDA AQUÍ
+                                name="profit",
                                 value=AppState.edit_profit_str, 
                                 on_change=AppState.set_edit_profit_str, 
                                 type="number", 
@@ -539,7 +526,7 @@ def blog_post_edit_form() -> rx.Component:
                                 align="center", spacing="3", height="100%",
                             ),
                         ),
-                        columns="2", spacing="3", width="100%", margin_top="1em" # Añadimos margen superior
+                        columns="2", spacing="3", width="100%", margin_top="1em"
                     ),
                     rx.grid(
                         rx.vstack(
@@ -591,11 +578,8 @@ def blog_post_edit_form() -> rx.Component:
                 ),
                 columns={"initial": "1", "md": "2"}, spacing="6", width="100%",
             ),
-            
-            # --- SECCIÓN DE BOTONES MODIFICADA ---
             rx.divider(margin_y="1.5em"),
             rx.hstack(
-                # Botón de Eliminar con diálogo de confirmación
                 rx.alert_dialog.root(
                     rx.alert_dialog.trigger(
                         rx.button("Eliminar Publicación", color_scheme="red", variant="soft", type="button")
@@ -610,7 +594,6 @@ def blog_post_edit_form() -> rx.Component:
                                 rx.button("Cancelar", variant="soft", color_scheme="gray")
                             ),
                             rx.alert_dialog.action(
-                                # Llama al evento de borrado existente
                                 rx.button("Sí, Eliminar Permanentemente", on_click=AppState.delete_post(AppState.post_to_edit_id), color_scheme="red")
                             ),
                             spacing="3", margin_top="1em", justify="end",
@@ -618,7 +601,6 @@ def blog_post_edit_form() -> rx.Component:
                     ),
                 ),
                 rx.spacer(),
-                # Botón de Guardar Cambios
                 rx.button("Guardar Cambios", type="submit", size="3", color_scheme="violet"),
                 justify="between",
                 align="center",
