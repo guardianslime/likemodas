@@ -1,19 +1,15 @@
-from httpx import post
 import reflex as rx
-
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, CommentData, ModalSelectorDTO
-
-# --- IMPORTS CORREGIDOS ---
-# Se añaden los componentes para la votación, reputación y puntuación del vendedor
 from ..ui.components import product_gallery_component, star_rating_display_safe
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
 from ..ui.reputation_icon import reputation_icon
 from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars
+from ..models import UserReputation
+from ..ui.carousel import Carousel
 
-from ..models import UserReputation # Asegúrate de que este import esté
 
 def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(
@@ -143,65 +139,51 @@ def render_comment_item(comment: CommentData) -> rx.Component:
         padding="1em", border_bottom="1px solid", border_color=rx.color("gray", 4), width="100%"
     )
 
-
-# ✨ PASO 1: AÑADIR EL NUEVO PARÁMETRO A LA FUNCIÓN
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
+
     def _modal_image_section() -> rx.Component:
-        FIXED_HEIGHT = "500px"
-        return rx.vstack(
-            rx.box(
-                rx.cond(
-                    AppState.current_modal_image_filename,
-                    rx.image(
-                        src=rx.get_upload_url(AppState.current_modal_image_filename),
-                        alt=AppState.product_in_modal.title,
+        """
+        Muestra las imágenes del producto usando el componente Carrusel.
+        Hacer clic en el carrusel abre la vista lightbox.
+        """
+        
+        @rx.var
+        def inline_carousel_slides() -> list[dict]:
+            """Transforma los datos de las variantes para el carrusel principal."""
+            if not AppState.unique_modal_variants:
+                return []
+            return [
+                {
+                    "src": rx.get_upload_url(item.variant.get("image_url", "")),
+                    "alt": AppState.product_in_modal.title if AppState.product_in_modal else ""
+                }
+                for item in AppState.unique_modal_variants
+            ]
+
+        return rx.box(
+            Carousel.create(
+                rx.foreach(
+                    inline_carousel_slides,
+                    lambda slide: rx.image(
+                        src=slide["src"],
+                        alt=slide["alt"],
                         width="100%",
-                        height="100%",
+                        height={"initial": "380px", "md": "500px"},
                         object_fit="cover",
-                    ),
-                    rx.box(
-                        rx.icon("image_off", size=48), 
-                        width="100%", height="100%", display="flex", 
-                        align_items="center", justify_content="center", 
-                        bg=rx.color("gray", 3)
-                    ),
+                        border_radius="var(--radius-3)",
+                    )
                 ),
-                position="relative",
+                show_arrows=True,
+                show_indicators=True,
+                infinite_loop=True,
+                show_thumbs=False,
                 width="100%",
-                # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
-                # Se define una altura responsiva:
-                # - "380px" para móvil (initial) para que la imagen no se corte.
-                # - FIXED_HEIGHT ("500px") para pantallas medianas (md) en adelante.
-                height={"initial": "380px", "md": FIXED_HEIGHT},
-                # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
-                border_radius="var(--radius-3)",
-                overflow="hidden",
             ),
-            rx.cond(
-                AppState.unique_modal_variants.length() > 1,
-                rx.hstack(
-                    rx.foreach(
-                        AppState.unique_modal_variants,
-                        lambda item: rx.box(
-                            rx.image(
-                                src=rx.get_upload_url(item.variant.get("image_url")),
-                                width="60px", height="60px", object_fit="cover", border_radius="md"
-                            ),
-                            border_width=rx.cond(
-                                AppState.current_modal_image_filename == item.variant.get("image_url"), "2px", "1px"
-                            ),
-                            border_color=rx.cond(
-                                AppState.current_modal_image_filename == item.variant.get("image_url"), "violet", "gray"
-                            ),
-                            padding="2px", border_radius="lg", cursor="pointer",
-                            on_click=AppState.set_modal_variant_index(item.index),
-                        )
-                    ),
-                    spacing="3", padding="0.5em", width="100%", overflow_x="auto",
-                )
-            ),
-            spacing="3",
+            on_click=AppState.open_lightbox(0),
+            cursor="zoom-in",
+            _hover={"opacity": 0.9},
             width="100%",
+            height={"initial": "380px", "md": "500px"},
         )
 
     def _modal_info_section() -> rx.Component:
@@ -216,9 +198,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     color_scheme=rx.cond(AppState.product_in_modal.shipping_cost == 0.0, "green", "gray"),
                     variant="solid", size="2"
                 ),
-                
-                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-                # Añadimos el badge de "Envío Combinado" aquí, en la posición que pediste.
                 rx.cond(
                     AppState.product_in_modal.combines_shipping,
                     rx.tooltip(
@@ -226,8 +205,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         content=AppState.product_in_modal.envio_combinado_tooltip_text
                     ),
                 ),
-                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-
                 rx.cond(
                     AppState.product_in_modal.is_moda_completa_eligible,
                     rx.tooltip(
@@ -299,7 +276,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             rx.hstack(
                 rx.button(
                     "Añadir al Carrito",
-                    # ✨ PASO 2: USAR EL NUEVO PARÁMETRO EN LA CONDICIÓN
                     on_click=rx.cond(
                         is_for_direct_sale,
                         AppState.add_to_direct_sale_cart(AppState.product_in_modal.id),
@@ -331,50 +307,98 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             align="start", height="100%",
         )
 
-    return rx.dialog.root(
-        rx.dialog.content(
-            rx.dialog.close(
-                rx.icon_button(
-                    rx.icon("x"),
-                    variant="soft",
-                    color_scheme="gray",
-                    style={
-                        "position": "absolute",
-                        "top": "1rem",
-                        "right": "1rem",
-                        "z_index": "10",
-                    },
-                )
-            ),
-            rx.cond(
-                AppState.product_in_modal,
-                rx.vstack(
-                    rx.grid(
-                        _modal_image_section(),
-                        _modal_info_section(),
-                        columns={"initial": "1", "md": "2"},
-                        spacing="6", align_items="start", width="100%",
-                    ),
-                    rx.divider(margin_y="1.5em"),
-                    review_submission_form(),
-                    rx.cond(
-                        AppState.product_comments,
-                        rx.vstack(
-                            rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
-                            rx.foreach(AppState.product_comments, render_comment_item),
-                            spacing="1", width="100%", max_height="400px", overflow_y="auto"
-                        )
+    def lightbox_modal() -> rx.Component:
+        """
+        Un diálogo a pantalla completa que contiene la segunda instancia, más grande, del carrusel,
+        proporcionando el efecto "lightbox".
+        """
+        return rx.dialog.root(
+            rx.dialog.content(
+                rx.dialog.close(
+                    rx.icon_button(
+                        rx.icon("x"),
+                        variant="soft",
+                        color_scheme="gray",
+                        style={
+                            "position": "absolute", "top": "1rem", "right": "1rem", "z_index": "1000"
+                        },
+                        on_click=AppState.close_lightbox,
                     )
                 ),
-                skeleton_product_detail_view(),
+                Carousel.create(
+                    rx.foreach(
+                        AppState.transformed_lightbox_images,
+                        lambda slide: rx.image(
+                            src=slide["src"],
+                            alt=slide["alt"],
+                            width="100%",
+                            height="80vh",
+                            object_fit="contain",
+                        )
+                    ),
+                    show_arrows=True,
+                    show_indicators=True,
+                    infinite_loop=True,
+                    show_thumbs=False,
+                    width="100%",
+                    selected_item=AppState.lightbox_start_index,
+                ),
+                style={
+                    "max_width": "95vw", "width": "95vw", "height": "95vh",
+                    "background_color": "rgba(0, 0, 0, 0.8)",
+                    "backdrop_filter": "blur(10px)",
+                    "padding": "1rem",
+                },
             ),
-            style={"max_width": "1200px", "min_height": "600px"},
+            open=AppState.lightbox_is_open,
+        )
+
+    return rx.fragment(
+        rx.dialog.root(
+            rx.dialog.content(
+                rx.dialog.close(
+                    rx.icon_button(
+                        rx.icon("x"),
+                        variant="soft",
+                        color_scheme="gray",
+                        style={
+                            "position": "absolute",
+                            "top": "1rem",
+                            "right": "1rem",
+                            "z_index": "10",
+                        },
+                    )
+                ),
+                rx.cond(
+                    AppState.product_in_modal,
+                    rx.vstack(
+                        rx.grid(
+                            _modal_image_section(),
+                            _modal_info_section(),
+                            columns={"initial": "1", "md": "2"},
+                            spacing="6", align_items="start", width="100%",
+                        ),
+                        rx.divider(margin_y="1.5em"),
+                        review_submission_form(),
+                        rx.cond(
+                            AppState.product_comments,
+                            rx.vstack(
+                                rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
+                                rx.foreach(AppState.product_comments, render_comment_item),
+                                spacing="1", width="100%", max_height="400px", overflow_y="auto"
+                            )
+                        )
+                    ),
+                    skeleton_product_detail_view(),
+                ),
+                style={"max_width": "1200px", "min_height": "600px"},
+            ),
+            open=AppState.show_detail_modal,
+            on_open_change=AppState.close_product_detail_modal,
         ),
-        open=AppState.show_detail_modal,
-        on_open_change=AppState.close_product_detail_modal,
+        lightbox_modal(),
     )
 
-# --- AÑADE ESTA NUEVA FUNCIÓN ---
 def public_qr_scanner_modal() -> rx.Component:
     """Modal de escaneo QR para clientes."""
     return rx.dialog.root(
@@ -384,7 +408,6 @@ def public_qr_scanner_modal() -> rx.Component:
                 "Usa la cámara de tu celular para escanear el código y ver los detalles del producto."
             ),
             rx.vstack(
-                # Botón para abrir la cámara
                 rx.upload(
                     rx.button(
                         rx.hstack(rx.icon("camera"), rx.text("Escanear con la Cámara")),
@@ -398,7 +421,6 @@ def public_qr_scanner_modal() -> rx.Component:
                     ],
                     width="100%",
                 ),
-                # Botón para subir desde galería
                 rx.upload(
                     rx.button(
                         rx.hstack(rx.icon("image"), rx.text("Subir desde Galería")),
@@ -421,7 +443,6 @@ def public_qr_scanner_modal() -> rx.Component:
         open=AppState.show_public_qr_scanner_modal,
         on_open_change=AppState.set_show_public_qr_scanner_modal,
     )
-# --- FIN DE LA NUEVA FUNCIÓN ---
 
 def blog_public_page_content() -> rx.Component:
     main_content = rx.center(
@@ -439,9 +460,6 @@ def blog_public_page_content() -> rx.Component:
     return rx.fragment(
         floating_filter_panel(),
         main_content,
-        # ✨ PASO 3: ASEGURARSE DE QUE LA PÁGINA PÚBLICA LLAME AL MODAL EN MODO PÚBLICO
         product_detail_modal(is_for_direct_sale=False),
-        # --- AÑADE ESTA LÍNEA AL FINAL ---
         public_qr_scanner_modal(),
     )
-

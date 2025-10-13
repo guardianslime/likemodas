@@ -7373,6 +7373,56 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.modal_selected_variant_index = index
         self.modal_selected_attributes = {} # Limpia la selección de talla anterior
 
+    # --- ✨ INICIO: Gestión de Estado para el Lightbox ✨ ---
+
+    # Controla la visibilidad del modal lightbox a pantalla completa.
+    lightbox_is_open: bool = False
+
+    # Almacena la lista de imágenes que se mostrarán en el lightbox.
+    lightbox_images: list[dict] = []
+
+    # Determina en qué imagen debe iniciar el carrusel del lightbox.
+    lightbox_start_index: int = 0
+
+    @rx.var
+    def transformed_lightbox_images(self) -> list[dict]:
+        """
+        Transforma los datos de las variantes del producto al formato simple
+        {'src': '...', 'alt': '...'} que espera el componente Carrusel.
+        """
+        if not self.product_in_modal:
+            return []
+        return [
+            {
+                "src": rx.get_upload_url(img.get("image_url", "")),
+                "alt": self.product_in_modal.title
+            }
+            for img in self.lightbox_images
+        ]
+
+    @rx.event
+    def open_lightbox(self, index: int):
+        """
+        Abre el modal lightbox. Carga las imágenes del producto que se está viendo
+        y establece la imagen inicial basándose en la que se hizo clic.
+        """
+        if self.product_in_modal and self.product_in_modal.variants:
+            # Usa las variantes únicas para poblar las imágenes del lightbox
+            self.lightbox_images = [item.variant for item in self.unique_modal_variants]
+            self.lightbox_start_index = index
+            self.lightbox_is_open = True
+        else:
+            return rx.toast.error("No se pudieron cargar las imágenes para la vista ampliada.")
+
+    @rx.event
+    def close_lightbox(self):
+        """Cierra el modal lightbox y reinicia sus variables de estado."""
+        self.lightbox_is_open = False
+        self.lightbox_images = []
+        self.lightbox_start_index = 0
+
+    # --- ✨ FIN: Gestión de Estado para el Lightbox ✨ ---
+
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         # Reiniciar el estado inicial para el modal
