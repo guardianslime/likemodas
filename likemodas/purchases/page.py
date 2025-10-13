@@ -63,14 +63,27 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 align_items="end", width="100%", margin_top="1em", spacing="2"
             ),
             rx.divider(margin_y="1em"),
+            
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
             rx.cond(
                 purchase.status == PurchaseStatus.SHIPPED.value, 
                 rx.vstack(
-                    rx.callout("Tu pedido llegará aproximadamente el: ", purchase.estimated_delivery_date_formatted, icon="truck", color_scheme="blue", width="100%"), 
+                    rx.callout(
+                        rx.text(
+                            "Tu pedido llegará aproximadamente el: ",
+                            purchase.estimated_delivery_date_formatted,
+                        ),
+                        icon="truck", 
+                        color_scheme="blue", 
+                        width="100%"
+                    ), 
                     rx.button("He Recibido mi Pedido", on_click=AppState.user_confirm_delivery(purchase.id), width="100%", margin_top="0.5em", color_scheme="green"), 
-                    spacing="3", width="100%"
+                    spacing="3", 
+                    width="100%"
                 )
             ),
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             rx.cond(
                 purchase.status == PurchaseStatus.DELIVERED.value, 
                 rx.vstack(
