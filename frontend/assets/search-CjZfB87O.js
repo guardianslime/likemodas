@@ -1,0 +1,1 @@
+import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`m21 21-4.34-4.34`,key:`14j7rj`}],[`circle`,{cx:`11`,cy:`11`,r:`8`,key:`4ej97u`}]],n=e(`search`,t);export{n as b,t as c};

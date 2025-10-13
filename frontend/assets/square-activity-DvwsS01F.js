@@ -1,0 +1,1 @@
+import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`rect`,{width:`18`,height:`18`,x:`3`,y:`3`,rx:`2`,key:`afitv7`}],[`path`,{d:`M17 12h-2l-2 5-2-10-2 5H7`,key:`15hlnc`}]],n=e(`square-activity`,t);export{t as __iconNode,n as default};

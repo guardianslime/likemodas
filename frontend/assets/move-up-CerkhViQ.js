@@ -1,0 +1,1 @@
+import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`M8 6L12 2L16 6`,key:`1yvkyx`}],[`path`,{d:`M12 2V22`,key:`r89rzk`}]],n=e(`move-up`,t);export{t as __iconNode,n as default};

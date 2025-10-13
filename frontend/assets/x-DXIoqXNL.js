@@ -1,0 +1,1 @@
+import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`M18 6 6 18`,key:`1bl5f8`}],[`path`,{d:`m6 6 12 12`,key:`d8bk6v`}]],n=e(`x`,t);export{n as b,t as c};

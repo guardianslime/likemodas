@@ -1,0 +1,1 @@
+import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`ellipse`,{cx:`12`,cy:`11`,rx:`3`,ry:`2`,key:`1b2qxu`}],[`ellipse`,{cx:`12`,cy:`12.5`,rx:`10`,ry:`8.5`,key:`h8emeu`}]],n=e(`torus`,t);export{t as __iconNode,n as default};

@@ -1,0 +1,1 @@
+import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`rect`,{width:`18`,height:`18`,x:`3`,y:`3`,rx:`2`,key:`afitv7`}],[`path`,{d:`M8 7v7`,key:`1x2jlm`}],[`path`,{d:`M12 7v4`,key:`xawao1`}],[`path`,{d:`M16 7v9`,key:`1hp2iy`}]],n=e(`square-kanban`,t);export{t as __iconNode,n as default};

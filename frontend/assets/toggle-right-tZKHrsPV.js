@@ -1,0 +1,1 @@
+import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`circle`,{cx:`15`,cy:`12`,r:`3`,key:`1afu0r`}],[`rect`,{width:`20`,height:`14`,x:`2`,y:`5`,rx:`7`,key:`g7kal2`}]],n=e(`toggle-right`,t);export{t as __iconNode,n as default};

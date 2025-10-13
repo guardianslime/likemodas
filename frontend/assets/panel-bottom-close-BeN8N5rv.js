@@ -1,0 +1,1 @@
+import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`rect`,{width:`18`,height:`18`,x:`3`,y:`3`,rx:`2`,key:`afitv7`}],[`path`,{d:`M3 15h18`,key:`5xshup`}],[`path`,{d:`m15 8-3 3-3-3`,key:`1oxy1z`}]],n=e(`panel-bottom-close`,t);export{t as __iconNode,n as default};

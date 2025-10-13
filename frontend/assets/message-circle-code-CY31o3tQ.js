@@ -1,0 +1,1 @@
+import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`M10 9.5 8 12l2 2.5`,key:`3mjy60`}],[`path`,{d:`m14 9.5 2 2.5-2 2.5`,key:`1bir2l`}],[`path`,{d:`M7.9 20A9 9 0 1 0 4 16.1L2 22z`,key:`k85zhp`}]],n=e(`message-circle-code`,t);export{t as __iconNode,n as default};

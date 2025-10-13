@@ -1,0 +1,1 @@
+import"./react-Cl-pO8Pe.js";import{b as e}from"./createLucideIcon-B_B-lD3w.js";const t=[[`path`,{d:`M19 15v-2a2 2 0 1 0-4 0v2`,key:`h3d1vz`}],[`path`,{d:`M9 17H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3.5`,key:`xsnnhn`}],[`rect`,{x:`13`,y:`15`,width:`8`,height:`5`,rx:`1`,key:`1ccwuk`}]],n=e(`message-square-lock`,t);export{t as __iconNode,n as default};
