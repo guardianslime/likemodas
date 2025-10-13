@@ -2,12 +2,11 @@ import reflex as rx
 import reflex_local_auth
 from typing import List, Dict
 
-# --- ✨ ESTA ES LA CORRECCIÓN ✨ ---
+# Ya no se necesita 'cast'
 from reflex.vars import Var
-from reflex_magic.utils.types import cast
 
 from likemodas.utils.formatting import format_to_cop
-from ..state import AppState
+from ..state import AppState, CartItemData # Importamos el DTO original
 
 def display_default_address() -> rx.Component:
     return rx.vstack(
@@ -49,30 +48,30 @@ def display_default_address() -> rx.Component:
         width="100%", spacing="4",
     )
 
-def cart_item_row(item: Var[Dict[str, Any]]) -> rx.Component:
-    """Renderiza una fila en la tabla del carrito."""
+def cart_item_row(item: CartItemData) -> rx.Component:
+    """Renderiza una fila en la tabla del carrito usando el DTO original."""
     return rx.table.row(
         rx.table.cell(
             rx.hstack(
                 rx.box(
                     rx.image(
-                        src=rx.get_upload_url(item["image_url"]),
-                        alt=item["title"],
+                        src=rx.get_upload_url(item.image_url),
+                        alt=item.title,
                         width="60px",
                         height="60px",
                         object_fit="cover",
                         border_radius="md",
                     ),
-                    on_click=AppState.open_product_detail_modal(item["product_id"]),
+                    on_click=AppState.open_product_detail_modal(item.product_id),
                     cursor="pointer",
                     _hover={"transform": "scale(1.05)"},
                     transition="transform 0.2s",
                 ),
                 rx.vstack(
-                    rx.text(item["title"], weight="bold"),
+                    rx.text(item.title, weight="bold"),
                     rx.foreach(
-                        cast(item["variant_details"], List[Dict[str, str]]),
-                        lambda detail: rx.text(detail["key"], ": ", detail["value"], size="2", color_scheme="gray")
+                        item.variant_details.items(),
+                        lambda detail: rx.text(detail[0], ": ", detail[1], size="2", color_scheme="gray")
                     ),
                     align_items="start",
                     spacing="1"
@@ -83,14 +82,14 @@ def cart_item_row(item: Var[Dict[str, Any]]) -> rx.Component:
         ),
         rx.table.cell(
             rx.hstack(
-                rx.button("-", on_click=lambda: AppState.remove_from_cart(item["cart_key"]), size="1", color_scheme="violet", variant="soft"),
-                rx.text(item["quantity"]),
-                rx.button("+", on_click=lambda: AppState.increase_cart_quantity(item["cart_key"]), size="1", color_scheme="violet", variant="soft"),
+                rx.button("-", on_click=lambda: AppState.remove_from_cart(item.cart_key), size="1", color_scheme="violet", variant="soft"),
+                rx.text(item.quantity),
+                rx.button("+", on_click=lambda: AppState.increase_cart_quantity(item.cart_key), size="1", color_scheme="violet", variant="soft"),
                 align="center", spacing="3"
             )
         ),
-        rx.table.cell(rx.text(item["price_cop"])),
-        rx.table.cell(rx.text(item["subtotal_cop"])),
+        rx.table.cell(rx.text(item.price_cop)),
+        rx.table.cell(rx.text(item.subtotal_cop)),
     )
 
 @reflex_local_auth.require_login
@@ -102,7 +101,8 @@ def cart_page_content() -> rx.Component:
             rx.vstack(
                 rx.table.root(
                     rx.table.header(rx.table.row(rx.table.column_header_cell("Producto"), rx.table.column_header_cell("Cantidad"), rx.table.column_header_cell("Precio Unitario"), rx.table.column_header_cell("Subtotal"))),
-                    rx.table.body(rx.foreach(AppState.cart_details_for_view, cart_item_row))
+                    # Usamos la propiedad computada original
+                    rx.table.body(rx.foreach(AppState.cart_details, cart_item_row))
                 ),
                 rx.divider(),
                 rx.vstack(
@@ -129,7 +129,6 @@ def cart_page_content() -> rx.Component:
                         rx.heading(AppState.grand_total_cop, size="6"),
                         width="100%"
                     ),
-
                     rx.divider(),
                     rx.vstack(
                         rx.heading("Método de Pago", size="5", width="100%"),

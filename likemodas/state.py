@@ -3670,70 +3670,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     #@rx.var
     # def cart_total_cop(self) -> str: return format_to_cop(self.cart_total)
 
-    @rx.var
-    def cart_details_for_view(self) -> List[Dict[str, Any]]:
-        """Prepara los datos del carrito como un diccionario simple para la UI."""
-        items_for_view = []
-        for item in self.cart_details:
-            details_list = []
-            if item.variant_details:
-                for key, value in item.variant_details.items():
-                    details_list.append({"key": key, "value": value})
-            
-            items_for_view.append({
-                "cart_key": item.cart_key,
-                "product_id": item.product_id,
-                "image_url": item.image_url,
-                "title": item.title,
-                "quantity": str(item.quantity),
-                "price_cop": item.price_cop,
-                "subtotal_cop": item.subtotal_cop,
-                "variant_details": details_list,
-            })
-        return items_for_view
-
-    @rx.var
-    def filtered_user_purchases_for_view(self) -> List[Dict[str, Any]]:
-        """Prepara el historial de compras del usuario como un diccionario simple para la UI."""
-        purchases_for_view = []
-        # Asumimos que `filtered_user_purchases` es una @rx.var que ya tienes
-        for p in self.filtered_user_purchases:
-            purchases_for_view.append({
-                "id": p.id,
-                "purchase_date_formatted": p.purchase_date_formatted,
-                "status": p.status.replace("_", " ").title(),
-                "shipping_name": p.shipping_name,
-                "full_address": f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
-                "shipping_phone": p.shipping_phone,
-                "shipping_applied_cop": p.shipping_applied_cop,
-                "total_price_cop": p.total_price_cop,
-                "estimated_delivery_date_formatted": p.estimated_delivery_date_formatted,
-                "is_shipped": p.status == PurchaseStatus.SHIPPED.value,
-                "is_delivered": p.status == PurchaseStatus.DELIVERED.value,
-            })
-        return purchases_for_view
-
-    @rx.var
-    def purchase_items_map_for_view(self) -> Dict[str, List[Dict[str, Any]]]:
-        """Prepara el mapa de items de compra como un diccionario simple para la UI."""
-        map_for_view = {}
-        # Asumimos que `purchase_items_map` es una @rx.var que ya tienes
-        for purchase_id, items in self.purchase_items_map.items():
-            items_for_view = []
-            for item in items:
-                items_for_view.append({
-                    "id": item.id,
-                    "image_url": item.image_url,
-                    "title": item.title,
-                    "variant_details_str": item.variant_details_str,
-                    "quantity_str": str(item.quantity),
-                    "price_at_purchase_cop": item.price_at_purchase_cop,
-                    "subtotal_cop": item.subtotal_cop,
-                })
-            map_for_view[str(purchase_id)] = items_for_view
-        return map_for_view
     
-    # --- ✨ FIN: MODIFICACIÓN DEFINITIVA ✨ ---
     
     @rx.var(cache=True)
     def authenticated_user_info(self) -> UserInfo | None:
