@@ -1,22 +1,17 @@
-# likemodas/ui/carousel.py (EJEMPLO CORRECTO)
-
 import reflex as rx
-# La importación correcta
 from reflex.components.component import NoSSRComponent
+from typing import List
 
-# La clase hereda de NoSSRComponent
 class Carousel(NoSSRComponent):
-    """Un componente que envuelve react-responsive-carousel."""
-
-    # --- VERIFICACIÓN CRÍTICA ---
-    # 1. ¿Existe esta línea? Debe ser el nombre exacto del paquete en npm.
+    """
+    Un wrapper robusto para react-responsive-carousel que maneja los hijos
+    dinámicamente y acepta props comunes de la librería.
+    Hereda de NoSSRComponent para garantizar la compatibilidad con SSR.
+    """
     library = "react-responsive-carousel"
-
-    # 2. ¿Existe esta línea? Debe ser el nombre exacto del componente a importar.
     tag = "Carousel"
-    # --- FIN DE LA VERIFICACIÓN ---
 
-    # Las propiedades (props) que tu componente aceptará.
+    # Props comunes de la librería
     show_arrows: rx.Var[bool]
     show_status: rx.Var[bool]
     show_indicators: rx.Var[bool]
@@ -25,7 +20,16 @@ class Carousel(NoSSRComponent):
     auto_play: rx.Var[bool]
     interval: rx.Var[int]
     width: rx.Var[str]
-
-    # El método para importar el CSS necesario.
-    def add_imports(self) -> dict[str, str] | None:
+    selected_item: rx.Var[int]
+    
+    # Maneja la importación del CSS necesario
+    def add_imports(self) -> dict[str, str]:
         return {"": "react-responsive-carousel/lib/styles/carousel.min.css"}
+
+    # Este método asegura que los componentes hijos pasados desde Reflex
+    # (como los generados por rx.foreach) se rendericen correctamente.
+    @classmethod
+    def create(cls, *children, **props):
+        # Aseguramos que los hijos siempre sean una lista, incluso si no se pasa ninguno.
+        props["children"] = children if children else []
+        return super().create(**props)
