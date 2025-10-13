@@ -140,14 +140,8 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     )
 
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
-
     def _modal_image_section() -> rx.Component:
-        """
-        Sección de imagen del modal, ahora renderiza un carrusel interactivo.
-        Cada imagen del carrusel puede ser clickeada para abrir el lightbox.
-        """
         FIXED_HEIGHT = "500px"
-
         return rx.vstack(
             carousel(
                 rx.foreach(
@@ -166,31 +160,28 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         height=FIXED_HEIGHT,
                     ),
                 ),
-                # --- Configuración del Carrusel ---
                 show_arrows=True,
                 show_indicators=True,
-                show_thumbs=True,   # Muestra miniaturas de navegación
+                show_thumbs=True,
                 show_status=False,
                 infinite_loop=True,
-                emulate_touch=True,      # Permite arrastrar con el ratón en PC
+                emulate_touch=True,
                 use_keyboard_arrows=True,
                 width="100%",
-                # Vincula el slide seleccionado a una variable de estado para sincronización
                 selected_item=AppState.modal_selected_variant_index,
                 on_change=AppState.set_modal_variant_index,
             ),
-            # Estilos para el contenedor del carrusel
             width="100%",
-            height={"base": "300px", "md": FIXED_HEIGHT},
+            height={"base": "auto", "md": FIXED_HEIGHT},
             position="relative",
         )
 
     def _modal_info_section() -> rx.Component:
+        # Esta función interna no necesita cambios, puedes mantener la que ya tienes
+        # o usar esta para asegurarte.
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
-            # --- ✨ LÍNEA CORREGIDA ✨ ---
-            rx.text("Publicado el ", AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
-            # --- ---
+            rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=32),
             rx.hstack(
@@ -289,7 +280,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 rx.icon_button(
                     rx.cond(AppState.is_current_post_saved, rx.icon(tag="bookmark-minus"), rx.icon(tag="bookmark-plus")),
                     on_click=AppState.toggle_save_post,
-                    size="3", 
+                    size="3",
                     variant="outline",
                     color_scheme="violet",
                 ),
@@ -299,7 +290,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         rx.set_clipboard(AppState.base_app_url + "/?product=" + AppState.product_in_modal.id.to_string()),
                         rx.toast.success("¡Enlace para compartir copiado!")
                     ],
-                    size="3", 
+                    size="3",
                     variant="outline",
                     color_scheme="violet",
                 ),
@@ -308,118 +299,59 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             align="start", height="100%",
         )
 
-    def lightbox_modal() -> rx.Component:
-        """
-        Define un diálogo de pantalla completa (lightbox) que contiene un carrusel.
-        Se activa a través del estado y se inicia en la imagen seleccionada.
-        """
-        return rx.dialog.root(
-            rx.dialog.content(
-                # Botón para cerrar el lightbox, posicionado en la esquina
-                rx.dialog.close(
-                    rx.icon_button(
-                        rx.icon("x"),
-                        variant="soft",
-                        color_scheme="gray",
-                        size="4",
-                        style={
-                            "position": "absolute",
-                            "top": "1rem",
-                            "right": "1rem",
-                            "zIndex": "1500",
-                            "cursor": "pointer",
-                        },
-                    )
-                ),
-                # Contenedor para centrar el carrusel dentro del lightbox
-                rx.center(
-                    carousel(
-                        rx.foreach(
-                            AppState.unique_modal_variants,
-                            lambda variant_item: rx.image(
-                                src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
-                                alt=AppState.product_in_modal.title,
-                                max_height="90vh",
-                                max_width="90vw",
-                                object_fit="contain",
+    # --- ✨ INICIO DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.dialog.close(
+                rx.icon_button(
+                    rx.icon("x"),
+                    variant="soft",
+                    color_scheme="gray",
+                    style={"position": "absolute", "top": "1rem", "right": "1rem", "z_index": "10"},
+                )
+            ),
+            rx.cond(
+                AppState.product_in_modal,
+                rx.vstack(
+                    # El contenido principal (imágenes e info) se mantiene igual
+                    rx.grid(
+                        _modal_image_section(),
+                        _modal_info_section(),
+                        columns={"initial": "1", "md": "2"},
+                        spacing="6",
+                        align_items="start",
+                        width="100%",
+                    ),
+                    # El contenido secundario (opiniones) ahora va dentro de un ScrollArea
+                    rx.scroll_area(
+                        rx.vstack(
+                            rx.divider(margin_y="1.5em"),
+                            review_submission_form(),
+                            rx.cond(
+                                AppState.product_comments,
+                                rx.vstack(
+                                    rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
+                                    rx.foreach(AppState.product_comments, render_comment_item),
+                                    spacing="1", width="100%",
+                                )
                             ),
+                            spacing="4",
+                            width="100%",
+                            padding_right="1em" # Espacio para la barra de scroll
                         ),
-                        # --- Configuración del Carrusel del Lightbox ---
-                        selected_item=AppState.lightbox_start_index,
-                        show_arrows=True,
-                        show_indicators=False,  # Ocultamos indicadores para un look más limpio
-                        show_thumbs=False,      # Ocultamos miniaturas
-                        show_status=False,
-                        infinite_loop=True,
-                        emulate_touch=True,
-                        use_keyboard_arrows=True,
-                        width="100vw",
+                        type="auto",
+                        scrollbars="vertical",
+                        style={"height": "400px", "margin_top": "1rem"},
                     ),
-                    width="100%",
-                    height="100%",
                 ),
-                # Estilos para hacer que el contenido del diálogo ocupe toda la pantalla
-                style={
-                    "maxWidth": "100vw",
-                    "width": "100vw",
-                    "height": "100vh",
-                    "backgroundColor": "rgba(0, 0, 0, 0.85)",
-                    "padding": "0",
-                    "margin": "0",
-                    "borderRadius": "0",
-                },
+                skeleton_product_detail_view(),
             ),
-            # Vincula la visibilidad del diálogo a la variable de estado
-            open=AppState.is_lightbox_open,
-            # Llama al evento para cerrar cuando el diálogo se cierra
-            on_open_change=AppState.close_lightbox,
-        )
-
-    return rx.fragment(
-        rx.dialog.root(
-            rx.dialog.content(
-                rx.dialog.close(
-                    rx.icon_button(
-                        rx.icon("x"),
-                        variant="soft",
-                        color_scheme="gray",
-                        style={
-                            "position": "absolute",
-                            "top": "1rem",
-                            "right": "1rem",
-                            "z_index": "10",
-                        },
-                    )
-                ),
-                rx.cond(
-                    AppState.product_in_modal,
-                    rx.vstack(
-                        rx.grid(
-                            _modal_image_section(),
-                            _modal_info_section(),
-                            columns={"initial": "1", "md": "2"},
-                            spacing="6", align_items="start", width="100%",
-                        ),
-                        rx.divider(margin_y="1.5em"),
-                        review_submission_form(),
-                        rx.cond(
-                            AppState.product_comments,
-                            rx.vstack(
-                                rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
-                                rx.foreach(AppState.product_comments, render_comment_item),
-                                spacing="1", width="100%", max_height="400px", overflow_y="auto"
-                            )
-                        )
-                    ),
-                    skeleton_product_detail_view(),
-                ),
-                style={"max_width": "1200px", "min_height": "600px"},
-            ),
-            open=AppState.show_detail_modal,
-            on_open_change=AppState.close_product_detail_modal,
+            style={"max_width": "1200px"},
         ),
-        lightbox_modal(),
+        open=AppState.show_detail_modal,
+        on_open_change=AppState.close_product_detail_modal,
     )
+    # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
 def public_qr_scanner_modal() -> rx.Component:
     return rx.dialog.root(
