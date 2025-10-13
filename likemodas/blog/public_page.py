@@ -436,24 +436,26 @@ def lightbox_modal() -> rx.Component:
         # Estado para abrir/cerrar
         open=AppState.is_lightbox_open,
         close=AppState.close_lightbox,
-
+        
         # Datos de las imágenes
         slides=AppState.lightbox_slides,
         index=AppState.lightbox_start_index,
-
-        # Activamos el plugin de Zoom
-        plugins=[rx.Var.create("{Zoom}", _var_is_local=False)],
-
+        
+        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+        # Activamos el plugin de Zoom usando la sintaxis moderna `rx.raw`
+        plugins=[rx.raw("Zoom")],
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+        
         # Configuraciones adicionales para el zoom
         zoom={"max_zoom_factor": 4, "double_click_delay": 300},
-
+        
         # Estilos para el fondo
         styles={
             "container": {
                 "backgroundColor": "rgba(0, 0, 0, 0.85)"
             }
         },
-
+        
         # Ocultar elementos innecesarios
         carousel={"finite": True},
         controller={"close_on_pull_down": True, "close_on_backdrop_click": True},
