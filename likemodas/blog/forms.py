@@ -19,7 +19,7 @@ def attribute_editor(
     remove_handler: rx.event.EventHandler,
     current_selections: rx.Var[list[str]],
 ) -> rx.Component:
-    """Un componente para añadir y quitar atributos específicos a una variante."""
+    """A component for adding and removing specific attributes to a variant."""
     return rx.vstack(
         rx.text(title, weight="bold", size="3"),
         rx.flex(
@@ -51,7 +51,7 @@ def attribute_editor(
     )
 
 def variant_stock_manager() -> rx.Component:
-    """Componente para gestionar el stock de las variantes generadas en el form de AÑADIR."""
+    """Component to manage the stock of variants generated in the ADD form."""
     return rx.vstack(
         rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
         rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
@@ -100,7 +100,7 @@ def variant_stock_manager() -> rx.Component:
     )
 
 def variant_stock_manager_edit() -> rx.Component:
-    """Componente para gestionar el stock de las variantes generadas en el form de EDICIÓN."""
+    """Component to manage the stock of variants generated in the EDIT form."""
     return rx.vstack(
         rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
         rx.text("Genera o actualiza combinaciones y asigna su stock.", size="2", color_scheme="gray"),
@@ -142,14 +142,16 @@ def variant_stock_manager_edit() -> rx.Component:
     )
     
 def blog_post_add_form() -> rx.Component:
+    """Form to add products with dynamic features and search."""
     tipo_selector = searchable_select(
         placeholder="Tipo...", options=AppState.filtered_attr_tipos,
         on_change_select=AppState.set_attr_tipo, value_select=AppState.attr_tipo,
         search_value=AppState.search_attr_tipo, on_change_search=AppState.set_search_attr_tipo,
         filter_name="attr_tipo_filter",
     )
+    # --- ✨ THIS IS THE DEFINITIVE CORRECTION ✨ ---
     material_selector = searchable_select(
-        placeholder=AppState.material_selector_placeholder, 
+        placeholder=AppState.material_selector_placeholder, # Use the computed var from the state
         options=AppState.filtered_attr_materiales,
         on_change_select=AppState.set_attr_material, value_select=AppState.attr_material,
         search_value=AppState.search_attr_material, on_change_search=AppState.set_search_attr_material,
