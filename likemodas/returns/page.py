@@ -4,9 +4,8 @@ import reflex as rx
 import reflex_local_auth
 from ..state import AppState, SupportMessageData
 from ..ui.skeletons import skeleton_block
-from ..models import TicketStatus # <-- AÑADE ESTA LÍNEA
+from ..models import TicketStatus
 
-# --- Opciones para la devolución o cambio ---
 RETURN_REASONS = [
     "El pedido no cumple con las características",
     "El pedido tiene defectos de fábrica",
@@ -15,13 +14,12 @@ RETURN_REASONS = [
 EXCHANGE_REASON = "La talla, medida o número del pedido no es lo que esperabas"
 
 def purchase_summary_header() -> rx.Component:
-    """Muestra un resumen de la compra en la parte superior."""
     return rx.cond(
         AppState.current_ticket_purchase,
         rx.box(
-            rx.heading(f"Solicitud para la Compra #{AppState.current_ticket_purchase.id}", size="6"),
-            rx.text(f"Realizada el: {AppState.current_ticket_purchase.purchase_date_formatted}"),
-            rx.text(f"Total: {AppState.current_ticket_purchase.total_price_cop}"),
+            rx.heading("Solicitud para la Compra #", AppState.current_ticket_purchase.id, size="6"),
+            rx.text("Realizada el: ", AppState.current_ticket_purchase.purchase_date_formatted),
+            rx.text("Total: ", AppState.current_ticket_purchase.total_price_cop),
             rx.divider(margin_y="1em"),
             width="100%",
             padding="1em",
@@ -29,11 +27,10 @@ def purchase_summary_header() -> rx.Component:
             border_color=rx.color("gray", 6),
             border_radius="md",
         ),
-        skeleton_block(height="120px") # Muestra un esqueleto mientras carga
+        skeleton_block(height="120px")
     )
 
 def reason_selection_view() -> rx.Component:
-    """Vista para que el usuario seleccione el motivo de su solicitud."""
     return rx.vstack(
         purchase_summary_header(),
         rx.heading("¿Cuál es el motivo de tu solicitud?", size="5", margin_top="1.5em"),
@@ -64,7 +61,6 @@ def reason_selection_view() -> rx.Component:
     )
 
 def chat_message_bubble(message: SupportMessageData) -> rx.Component:
-    """Muestra una burbuja de chat, alineada según el autor."""
     is_author_buyer = message.author_id == AppState.current_ticket_purchase.userinfo_id
     return rx.box(
         rx.vstack(
@@ -82,17 +78,13 @@ def chat_message_bubble(message: SupportMessageData) -> rx.Component:
     )
 
 def chat_view() -> rx.Component:
-    """Vista que muestra la conversación del ticket de soporte."""
-    # --- INICIO DE LA CORRECCIÓN ---
     is_ticket_open = (AppState.current_ticket.status != TicketStatus.RESOLVED.value) & (AppState.current_ticket.status != TicketStatus.CLOSED.value)
-    # --- FIN DE LA CORRECCIÓN ---
 
     return rx.vstack(
         purchase_summary_header(),
         rx.hstack(
-            rx.heading(f"Asunto: {AppState.current_ticket.subject}", size="5", text_align="left"),
+            rx.heading("Asunto: ", AppState.current_ticket.subject, size="5", text_align="left"),
             rx.spacer(),
-            # --- BOTÓN PARA CERRAR SOLICITUD ---
             rx.cond(
                 is_ticket_open,
                 rx.alert_dialog.root(
@@ -128,21 +120,19 @@ def chat_view() -> rx.Component:
         rx.cond(
             is_ticket_open,
             rx.form(
-                # --- INICIO DE LA CORRECCIÓN ---
                 rx.hstack(
-                    rx.text_area(  # Cambiado de rx.input a rx.text_area
+                    rx.text_area(
                         name="message_content",
                         placeholder="Escribe tu mensaje...",
                         value=AppState.new_message_content,
                         on_change=AppState.set_new_message_content,
                         flex_grow="1",
-                        style={"min_height": "40px", "max_height": "120px"}, # Altura adaptable
+                        style={"min_height": "40px", "max_height": "120px"},
                     ),
                     rx.button("Enviar", type="submit", height="100%"),
                     width="100%",
-                    align_items="end", # Alinea el botón con la base del text_area
+                    align_items="end",
                 ),
-                # --- FIN DE LA CORRECCIÓN ---
                 on_submit=AppState.post_support_message,
                 reset_on_submit=True,
                 width="100%",
@@ -156,7 +146,6 @@ def chat_view() -> rx.Component:
 
 @reflex_local_auth.require_login
 def return_exchange_page_content() -> rx.Component:
-    """Página principal para devoluciones y cambios."""
     return rx.center(
         rx.cond(
             AppState.is_loading,
