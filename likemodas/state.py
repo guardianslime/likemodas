@@ -7434,30 +7434,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         """
         self.is_lightbox_open = open_state
 
-    # --- Variables para el Zoom del Lightbox ---
-    lightbox_zoom_level: float = 1.0
-    is_zoomed_in: bool = False
-
-    def zoom_in(self):
-        """Aumenta el nivel de zoom."""
-        # Aumenta el zoom hasta un máximo de 3x
-        self.lightbox_zoom_level = min(self.lightbox_zoom_level + 0.5, 3.0)
-        self.is_zoomed_in = self.lightbox_zoom_level > 1.0
-
-    def zoom_out(self):
-        """Disminuye el nivel de zoom."""
-        # Disminuye el zoom hasta un mínimo de 1x (tamaño original)
-        self.lightbox_zoom_level = max(self.lightbox_zoom_level - 0.5, 1.0)
-        self.is_zoomed_in = self.lightbox_zoom_level > 1.0
-
-    def toggle_zoom(self):
-        """Alterna entre el zoom 1x y 2x, ideal para doble toque en móvil."""
-        if self.is_zoomed_in:
-            self.lightbox_zoom_level = 1.0
-        else:
-            self.lightbox_zoom_level = 2.0
-        self.is_zoomed_in = not self.is_zoomed_in
-
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         # Reiniciar el estado inicial para el modal
