@@ -3,7 +3,7 @@
 import reflex as rx
 
 # --- ✨ 1. AÑADE ESTA LÍNEA DE IMPORTACIÓN AL INICIO DEL ARCHIVO ✨ ---
-from reflex_color_picker import color_picker
+from rx_color_picker import color_picker
 # --- ✨ FIN DEL CAMBIO ✨ ---
 from likemodas.utils.formatting import format_to_cop
 from ..auth.admin_auth import require_panel_access # <-- 1. Importa el decorador correcto
