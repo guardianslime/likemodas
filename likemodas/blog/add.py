@@ -93,23 +93,30 @@ def post_preview() -> rx.Component:
     )
 
 
-@require_panel_access
+@require_panel_access # <-- 2. Usa el nuevo decorador
 def blog_post_add_content() -> rx.Component:
     """
     Página de creación de publicación con un desplazamiento manual hacia la derecha
     para lograr un centrado visual en PC, sin afectar la vista móvil.
     """
+    # --- ✨ INICIO DE LA RESTAURACIÓN ✨ ---
+    # Esta es la estructura original que organiza la página en dos columnas.
     return rx.hstack(
         rx.grid(
-            # Columna del Formulario
-            # ... (esta parte no cambia) ...
-
-            # Columna de Previsualización
+            # Columna del Formulario (se mantiene igual)
+            rx.vstack(
+                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                blog_post_add_form(),
+                width="100%",
+                spacing="4",
+            ),
+            
+            # Columna de Previsualización (aquí es donde integramos la paleta)
             rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                post_preview(),
+                post_preview(), # Tu componente de previsualización
 
-                # --- ✨ 2. CORRECCIÓN DENTRO DEL BLOQUE DE LA PALETA DE COLORES ✨ ---
+                # --- El código de la paleta de colores va AQUÍ ---
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Personalizar Tarjeta", weight="bold", size="4"),
@@ -121,8 +128,6 @@ def blog_post_add_content() -> rx.Component:
                     ),
                     rx.cond(
                         AppState.show_color_picker,
-                        # ANTES: rx.color_picker(...)
-                        # AHORA: color_picker(...)
                         color_picker(
                             value=AppState.card_bg_color,
                             on_change=AppState.set_card_bg_color,
@@ -150,8 +155,8 @@ def blog_post_add_content() -> rx.Component:
                     align_items="stretch",
                     width="100%",
                 ),
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
+                # --- Fin del bloque de la paleta de colores ---
+                
                 display=["none", "none", "flex", "flex"],
                 width="100%",
                 spacing="4",
@@ -167,3 +172,4 @@ def blog_post_add_content() -> rx.Component:
         padding_y="2em",
         padding_left=["0em", "0em", "15em", "15em"],
     )
+    # --- ✨ FIN DE LA RESTAURACIÓN ✨ ---
