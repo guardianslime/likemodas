@@ -141,7 +141,12 @@ def render_comment_item(comment: CommentData) -> rx.Component:
 
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_image_section() -> rx.Component:
+        """
+        Sección de imagen del modal que renderiza un carrusel interactivo,
+        asegurando que las miniaturas se muestren horizontalmente en la parte inferior.
+        """
         FIXED_HEIGHT = "500px"
+
         return rx.vstack(
             carousel(
                 rx.foreach(
@@ -160,9 +165,10 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         height=FIXED_HEIGHT,
                     ),
                 ),
+                # --- Configuración del Carrusel ---
                 show_arrows=True,
-                show_indicators=True,
-                show_thumbs=True,
+                show_indicators=AppState.unique_modal_variants.length() > 1,
+                show_thumbs=AppState.unique_modal_variants.length() > 1, # Solo muestra thumbs si hay más de 1 imagen
                 show_status=False,
                 infinite_loop=True,
                 emulate_touch=True,
@@ -170,9 +176,36 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 width="100%",
                 selected_item=AppState.modal_selected_variant_index,
                 on_change=AppState.set_modal_variant_index,
+                
+                # --- ✨ INICIO DE LA MEJORA DE ESTILO ✨ ---
+                # Este bloque de estilo asegura que las miniaturas se vean
+                # exactamente como esperas: horizontales, centradas y con un borde de selección.
+                style={
+                    "& .thumbs-wrapper": {
+                        "margin": "10px auto !important",
+                    },
+                    "& .thumbs": {
+                        "display": "flex",
+                        "flex_direction": "row !important", # Fuerza la dirección horizontal
+                        "justify_content": "center !important",
+                        "list_style": "none",
+                        "padding": "0",
+                    },
+                    "& .thumb": {
+                        "margin": "0 5px", # Espacio entre miniaturas
+                        "border": "3px solid transparent",
+                        "border_radius": "var(--radius-3)",
+                        "cursor": "pointer",
+                        "transition": "border-color 0.2s ease-in-out",
+                    },
+                    "& .thumb.selected, & .thumb:hover": {
+                        "border_color": "var(--accent-9)", # Usa el color de acento de tu tema
+                    },
+                },
+                # --- ✨ FIN DE LA MEJORA DE ESTILO ✨ ---
             ),
             width="100%",
-            height={"base": "auto", "md": FIXED_HEIGHT},
+            height={"base": "auto", "md": "auto"}, # Hacemos la altura automática para que se ajuste a las miniaturas
             position="relative",
         )
 

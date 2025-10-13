@@ -4013,6 +4013,22 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     modal_selected_variant_index: int = 0
 
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # AÑADE ESTA FUNCIÓN COMPLETA QUE FALTABA
+    def set_modal_variant_index(self, index: int):
+        """
+        Llamado cuando el carrusel cambia de slide (ya sea por clic o por deslizamiento).
+        Actualiza el índice y reinicia las selecciones de atributos para la nueva imagen.
+        """
+        self.modal_selected_variant_index = index
+        self.modal_selected_attributes = {} # Limpia la selección de talla/número anterior
+
+        # Pre-selecciona los atributos por defecto para la nueva imagen/variante
+        if self.product_in_modal and self.product_in_modal.variants:
+            if 0 <= index < len(self.product_in_modal.variants):
+                self._set_default_attributes_from_variant(self.product_in_modal.variants[index])
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
      # --- ✨ NUEVO EVENT HANDLER para actualizar la selección en el modal ✨ ---
     def set_modal_selected_attribute(self, key: str, value: str):
         """Actualiza la selección de un atributo (ej: Talla) en el modal."""
