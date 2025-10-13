@@ -26,13 +26,15 @@ def contact_entry_list_item(contact: ContactEntryDTO) -> rx.Component:
         rx.heading(
             rx.cond(
                 contact.email,
-                f"{contact.first_name} ({contact.email})",
-                f"{contact.first_name} (sin email)"
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                rx.text(contact.first_name, " (", contact.email, ")"),
+                rx.text(contact.first_name, " (sin email)")
             ),
             size="4"
         ),
         rx.text(contact.message, white_space="pre-wrap", margin_y="0.5em"),
-        rx.text(f"Recibido el: {contact.created_at_formatted}", size="2", color_scheme="gray"),
+        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+        rx.text("Recibido el: ", contact.created_at_formatted, size="2", color_scheme="gray"),
         rx.cond(
             contact.userinfo_id,
             rx.text("Enviado por un usuario registrado", size="2", weight="bold"),

@@ -20,8 +20,9 @@ def persistent_employment_request_banner() -> rx.Component:
                     rx.icon("user-plus", size=24),
                     rx.vstack(
                         rx.text("¡Nueva solicitud de empleo!", weight="bold"),
+                        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
                         rx.text(
-                            "De: " + AppState.pending_request_notification.requester_username,
+                            "De: ", AppState.pending_request_notification.requester_username,
                             size="2"
                         ),
                         align_items="start",
@@ -53,7 +54,7 @@ def persistent_employment_request_banner() -> rx.Component:
             ),
         ),
         position="fixed",
-        top="7rem", # Lo bajamos un poco para que no choque con la nueva campana
+        top="7rem",
         right="1.5rem",
         z_index="1500",
         transition="transform 0.5s ease-in-out, opacity 0.5s",
