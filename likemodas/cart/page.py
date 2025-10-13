@@ -1,13 +1,15 @@
 # likemodas/cart/page.py (CORREGIDO)
 
-from typing import Any, Dict
 import reflex as rx
 import reflex_local_auth
+from typing import Any, List, Dict  # <--- ✨ 1. AÑADE ESTA IMPORTACIÓN
+
+from likemodas.utils.formatting import format_to_cop
 from ..state import AppState
 
 def display_default_address() -> rx.Component:
     return rx.vstack(
-        rx.heading("Datos de Envío", size="6", margin_top="1.em", width="100%"),
+        rx.heading("Datos de Envío", size="6", margin_top="1.5em", width="100%"),
         rx.cond(
             AppState.default_shipping_address,
             rx.box(
@@ -46,6 +48,7 @@ def display_default_address() -> rx.Component:
     )
 
 def cart_item_row(item: rx.Var[Dict[str, Any]]) -> rx.Component:
+    """Renderiza una fila en la tabla del carrito."""
     return rx.table.row(
         rx.table.cell(
             rx.hstack(
@@ -53,7 +56,10 @@ def cart_item_row(item: rx.Var[Dict[str, Any]]) -> rx.Component:
                     rx.image(
                         src=rx.get_upload_url(item["image_url"]),
                         alt=item["title"],
-                        width="60px", height="60px", object_fit="cover", border_radius="md",
+                        width="60px",
+                        height="60px",
+                        object_fit="cover",
+                        border_radius="md",
                     ),
                     on_click=AppState.open_product_detail_modal(item["product_id"]),
                     cursor="pointer",
@@ -62,13 +68,16 @@ def cart_item_row(item: rx.Var[Dict[str, Any]]) -> rx.Component:
                 ),
                 rx.vstack(
                     rx.text(item["title"], weight="bold"),
+                    # --- ✨ 2. APLICA LA CORRECCIÓN CON rx.cast ✨ ---
                     rx.foreach(
-                        item["variant_details"],
+                        rx.cast(item["variant_details"], List[Dict[str, str]]),
                         lambda detail: rx.text(detail["key"], ": ", detail["value"], size="2", color_scheme="gray")
                     ),
-                    align_items="start", spacing="1"
+                    align_items="start",
+                    spacing="1"
                 ),
-                spacing="4", align="center",
+                spacing="4",
+                align="center",
             )
         ),
         rx.table.cell(
@@ -119,6 +128,7 @@ def cart_page_content() -> rx.Component:
                         rx.heading(AppState.grand_total_cop, size="6"),
                         width="100%"
                     ),
+                    
                     rx.divider(),
                     rx.vstack(
                         rx.heading("Método de Pago", size="5", width="100%"),
