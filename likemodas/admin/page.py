@@ -38,6 +38,7 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
         width="100%",
     )
 
+
 def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.Component:
     return rx.vstack(
         rx.foreach(
@@ -62,16 +63,18 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 ),
                 spacing="2", align_items="start",
             ),
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
             rx.vstack(
                 rx.text("Costo de Envío Final (Opcional):", size="3", weight="medium"),
                 rx.input(
-                    placeholder=rx.text("Inicial: ", purchase.shipping_applied_cop),
+                    placeholder="Ej: 8000",
                     type="number",
                     on_change=lambda val: AppState.set_admin_final_shipping_cost(purchase.id, val)
                 ),
-                rx.text("Si se deja en blanco, se usará el costo inicial.", size="1", color_scheme="gray"),
+                rx.text("Inicial: ", purchase.shipping_applied_cop, ". Si se deja en blanco, se usará este valor.", size="1", color_scheme="gray"),
                 spacing="2", align_items="start",
             ),
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             columns="2", spacing="4", width="100%",
         ),
         width="100%", spacing="2", margin_top="1em"
@@ -102,7 +105,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                 ),
                 spacing="2", align_items="start", width="100%", margin_bottom="1em"
             ),
-            
             rx.cond(
                 purchase.status == PurchaseStatus.PENDING_CONFIRMATION.value,
                 rx.vstack(
@@ -140,7 +142,6 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
                     rx.callout("Envío notificado. Esperando confirmación del cliente.", icon="check", width="100%", margin_top="1em")
                 )
             ),
-            
             rx.cond(
                 purchase.action_by_name,
                 rx.box(
