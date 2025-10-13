@@ -3296,7 +3296,9 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
-    def set_price(self, price: str): self.price_str = price
+    def set_price(self, value: str):
+        """Este método AHORA solo actualiza el precio. Simple y directo."""
+        self.price = value
 
     def set_price_includes_iva(self, value: bool):
         self.price_includes_iva = value
@@ -4295,21 +4297,22 @@ class AppState(reflex_local_auth.LocalAuthState):
     profit_str: str = ""
 
     def set_profit_str(self, value: str):
-        """Actualiza la ganancia, validando que no sea mayor que el precio."""
-        self.profit_str = value
+        """
+        Actualiza la ganancia y AHORA es aquí donde se valida
+        que no sea mayor que el precio actual.
+        """
         try:
             price_float = float(self.price) if self.price else 0.0
             profit_float = float(value) if value else 0.0
-            # Si la nueva ganancia es mayor que el precio, se ajusta al valor del precio.
+
+            # Si la nueva ganancia es mayor que el precio, la ajustamos.
             if profit_float > price_float:
                 self.profit_str = self.price
+            else:
+                self.profit_str = value
         except (ValueError, TypeError):
-            # Permite que el campo esté temporalmente vacío o inválido mientras se escribe.
-            pass
-
-    edit_profit_str: str = ""
-    def set_edit_profit_str(self, profit: str):
-        self.edit_profit_str = profit
+            # Si el valor no es un número, simplemente lo asignamos para no interrumpir al usuario.
+            self.profit_str = value
 
     # --- Variables para el Dashboard de Finanzas ---
     finance_stats: Optional[FinanceStatsDTO] = None
