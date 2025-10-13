@@ -465,6 +465,22 @@ def public_qr_scanner_modal() -> rx.Component:
         on_open_change=AppState.set_show_public_qr_scanner_modal,
     )
 
+# ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
+def lightbox_modal() -> rx.Component:
+    """
+    Define un diálogo de pantalla completa (lightbox) que contiene un carrusel.
+    Se activa a través del estado y se inicia en la imagen seleccionada.
+    """
+    return rx.dialog.root(
+        rx.dialog.content(
+            # ... (todo el código de la función lightbox_modal que te proporcioné) ...
+        ),
+        open=AppState.is_lightbox_open,
+        on_open_change=AppState.close_lightbox,
+    )
+
+
+# ✅ PASO 2: ASEGÚRATE DE QUE blog_public_page_content VENGA DESPUÉS
 def blog_public_page_content() -> rx.Component:
     main_content = rx.center(
         rx.vstack(
@@ -483,5 +499,5 @@ def blog_public_page_content() -> rx.Component:
         main_content,
         product_detail_modal(is_for_direct_sale=False),
         public_qr_scanner_modal(),
-        lightbox_modal(),  # <-- AÑADIR ESTA LÍNEA
+        lightbox_modal(),  # Ahora esta llamada es válida porque la función ya fue definida arriba
     )
