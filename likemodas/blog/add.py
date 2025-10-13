@@ -41,12 +41,7 @@ def post_preview() -> rx.Component:
                         weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible",
                     ),
                     star_rating_display_safe(0, 0, size=24),
-                    rx.text(
-                        # ✨ CORRECCIÓN: Ahora lee de AppState.price, que es actualizado por el formulario.
-                        rx.text(AppState.price_cop_preview, size="5", weight="medium"),
-                        size="5",
-                        weight="medium"
-                    ),
+                    rx.text(AppState.price_cop_preview, size="5", weight="medium"), # <-- Asegúrate de que usa price_cop_preview
                     # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO (IDÉNTICA A LA ANTERIOR) ✨ ---
                     rx.vstack(
                         # Primera fila

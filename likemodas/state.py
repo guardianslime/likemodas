@@ -3297,8 +3297,18 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_post_title(self, title: str): self.post_title = title
     def set_post_content(self, content: str): self.post_content = content
     def set_price(self, value: str):
-        """Este método AHORA solo actualiza el precio. Simple y directo."""
+        """Actualiza el precio y, crucialmente, re-valida la ganancia."""
         self.price = value
+        try:
+            # Convierte a números para comparar
+            price_float = float(value) if value else 0.0
+            profit_float = float(self.profit_str) if self.profit_str else 0.0
+            
+            # Si la ganancia existente es ahora mayor que el nuevo precio, la ajustamos.
+            if profit_float > price_float:
+                self.profit_str = self.price
+        except (ValueError, TypeError):
+            pass # Ignora errores mientras el usuario escribe
 
     def set_price_includes_iva(self, value: bool):
         self.price_includes_iva = value
@@ -3328,19 +3338,24 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ INICIO DEL CÓDIGO A AÑADIR ✨ ---
     @rx.var
-    def price_cop_preview(self) -> rx.Var[str]:
+    def price_cop_preview(self) -> str:
         """
-        Una variable computada que formatea el precio para la previsualización.
-        La UI solo leerá esta variable, simplificando las actualizaciones.
+        Esta variable computada AHORA hace el formato en el backend y devuelve un texto simple.
+        Es mucho más estable para la previsualización en tiempo real.
         """
-        # Si el campo de precio está vacío o no es válido, muestra "$ 0"
         try:
-            price_float = rx.cond(self.price, self.price.to(float), 0.0)
-        except Exception:
+            price_float = float(self.price) if self.price else 0.0
+        except (ValueError, TypeError):
             price_float = 0.0
-            
-        return format_to_cop(price_float)
-    # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
+        
+        # Lógica de formato de moneda directamente en Python
+        if price_float < 1:
+            return "$ 0"
+        formatted_number = f"{price_float:,.0f}"
+        colombian_format = formatted_number.replace(',', '.')
+        return f"$ {colombian_format}"
+
+    # --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨ ---
     
     # Imágenes
     edit_post_images_in_form: list[str] = []
@@ -4320,10 +4335,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     profit_str: str = ""
 
     def set_profit_str(self, value: str):
-        """
-        Actualiza la ganancia y AHORA es aquí donde se valida
-        que no sea mayor que el precio actual.
-        """
+        """Actualiza la ganancia y la valida contra el precio actual."""
         try:
             price_float = float(self.price) if self.price else 0.0
             profit_float = float(value) if value else 0.0
@@ -4334,7 +4346,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             else:
                 self.profit_str = value
         except (ValueError, TypeError):
-            # Si el valor no es un número, simplemente lo asignamos para no interrumpir al usuario.
             self.profit_str = value
 
     # --- Variables para el Dashboard de Finanzas ---

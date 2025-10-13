@@ -282,8 +282,7 @@ def blog_post_add_form() -> rx.Component:
                             rx.input(
                                 placeholder="Ej: 55000 (sin puntos)", type="number", name="price", required=True, size="3",
                                 value=AppState.price,
-                                # Llamamos al nuevo método simple: set_price
-                                on_change=AppState.set_price,
+                                on_change=AppState.set_price, # <-- Asegúrate de que llama a set_price
                             ),
                         ),
                         rx.vstack(
