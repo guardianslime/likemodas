@@ -2,11 +2,13 @@
 
 import reflex as rx
 import reflex_local_auth
+from typing import List, Dict
 
 from ..state import AppState, UserPurchaseHistoryCardData, PurchaseItemCardData
 from ..account.layout import account_layout
 from ..models import PurchaseStatus
 from ..blog.public_page import product_detail_modal
+from reflex.vars import Var
 
 def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
     return rx.hstack(
@@ -54,7 +56,6 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
             rx.vstack(
                 rx.text("Artículos Comprados:", weight="medium", size="4"),
                 rx.text("Haz clic en un producto para ver los detalles o volver a comprar.", size="2", color_scheme="gray"),
-                # Usamos la propiedad computada original
                 rx.vstack(rx.foreach(AppState.purchase_items_map.get(purchase.id, []), purchase_item_card), spacing="3", width="100%"),
                 spacing="2", align_items="start", width="100%",
             ),
@@ -84,7 +85,14 @@ def purchase_detail_card(purchase: UserPurchaseHistoryCardData) -> rx.Component:
                 rx.vstack(
                     rx.callout("¡Pedido entregado! Gracias por tu compra.", icon="check_check", color_scheme="violet", width="100%"), 
                     rx.hstack(
-                        rx.link(rx.button("Imprimir Factura", variant="outline", width="100%"), href=rx.text("/invoice?id=", purchase.id), is_external=False, target="_blank", width="100%"), 
+                        # --- ✨ CORRECCIÓN FINAL Y DEFINITIVA AQUÍ ✨ ---
+                        rx.link(
+                            rx.button("Imprimir Factura", variant="outline", width="100%"), 
+                            href="/invoice?id=" + purchase.id, 
+                            is_external=False, 
+                            target="_blank", 
+                            width="100%"
+                        ), 
                         rx.button("Devolución o Cambio", on_click=AppState.go_to_return_page(purchase.id), variant="solid", color_scheme="orange", width="100%"), 
                         spacing="3", margin_top="1em", width="100%"
                     ), 
@@ -108,7 +116,7 @@ def purchase_history_content() -> rx.Component:
             width="100%", max_width="400px", margin_y="1.5em",
         ),
         rx.cond(
-            AppState.filtered_user_purchases, # Usamos la propiedad original
+            AppState.filtered_user_purchases,
             rx.foreach(AppState.filtered_user_purchases, purchase_detail_card),
             rx.center(
                 rx.text("No se encontraron compras para tu búsqueda."),
