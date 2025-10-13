@@ -429,8 +429,8 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    Define un diálogo de pantalla completa (lightbox) que ahora usa el
-    wrapper de componente personalizado para el zoom.
+    [VERSIÓN SIMPLIFICADA DE PRUEBA]
+    Define un lightbox básico sin la funcionalidad de zoom para depurar el error #306.
     """
     return custom_lightbox(
         open=AppState.is_lightbox_open,
@@ -438,15 +438,11 @@ def lightbox_modal() -> rx.Component:
         slides=AppState.lightbox_slides,
         index=AppState.lightbox_start_index,
         
-        # --- ✨ CORRECCIÓN CLAVE ✨ ---
-        # Ahora simplemente pasamos un string simple. La lógica compleja
-        # está encapsulada en el componente CustomLightbox.
-        plugins=["zoom"],
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-        
-        zoom={"max_zoom_factor": 4, "double_click_delay": 300},
+        # Estilos para el fondo oscuro
         styles={"container": {"backgroundColor": "rgba(0, 0, 0, 0.85)"}},
-        controller={"close_on_pull_down": True, "close_on_backdrop_click": True},
+        
+        # Opciones para permitir el cierre al hacer clic fuera
+        controller={"close_on_backdrop_click": True},
     )
 
 

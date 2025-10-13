@@ -6,59 +6,25 @@ from typing import List, Dict
 
 class CustomLightbox(NoSSRComponent):
     """
-    [VERSIÓN FINAL Y CORREGIDA] Componente que envuelve 'yet-another-react-lightbox'
-    y utiliza un wrapper de JavaScript personalizado para manejar los plugins.
+    [VERSIÓN SIMPLIFICADA DE PRUEBA]
+    Componente que envuelve 'yet-another-react-lightbox' SIN plugins.
     """
     library = "yet-another-react-lightbox"
-    
-    tag = "LikemodasLightboxWrapper"
+    tag = "Lightbox"
 
+    # Propiedades básicas para mostrar el lightbox
     open: rx.Var[bool]
-    
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # Se utiliza la sintaxis lambda para definir un evento sin argumentos,
-    # que es la forma más compatible para esta versión de Reflex.
     close: rx.EventHandler[lambda: []]
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-    
     slides: rx.Var[List[Dict[str, str]]]
     index: rx.Var[int]
-    plugins: rx.Var[List]
-    zoom: rx.Var[Dict]
+
+    # Props de configuración que no dependen de plugins
     styles: rx.Var[Dict]
-    carousel: rx.Var[Dict]
     controller: rx.Var[Dict]
-    no_scroll: rx.Var[Dict]
 
     def get_imports(self) -> dict:
-        """Importa React, el Lightbox, el plugin Zoom y los estilos."""
-        return {
-            "react": "React",
-            "yet-another-react-lightbox": "Lightbox",
-            "yet-another-react-lightbox/plugins/zoom": "Zoom",
-            "": [
-                "yet-another-react-lightbox/styles.css",
-                "yet-another-react-lightbox/plugins/zoom.css"
-            ],
-        }
+        """Importa solo los estilos básicos de la biblioteca."""
+        return {"": "yet-another-react-lightbox/styles.css"}
 
-    def get_custom_code(self) -> str:
-        """
-        Crea un componente intermedio en React para interceptar la prop 'plugins'
-        y reemplazar el string 'zoom' por el objeto Zoom real.
-        """
-        return """
-const LikemodasLightboxWrapper = (props) => {
-  const newProps = { ...props };
-  if (newProps.plugins && Array.isArray(newProps.plugins)) {
-    newProps.plugins = newProps.plugins.map(p => {
-      if (p === 'zoom') return Zoom;
-      return p;
-    });
-  }
-  return React.createElement(Lightbox, newProps);
-};
-"""
-
-# Creamos la instancia para usarla
+# La instancia se mantiene igual
 custom_lightbox = CustomLightbox.create
