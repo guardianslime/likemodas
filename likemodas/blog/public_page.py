@@ -1,5 +1,3 @@
-# likemodas/blog/public_page.py 
-
 import reflex as rx
 from ..state import AppState, CommentData
 from ..ui.components import product_gallery_component, star_rating_display_safe
@@ -178,55 +176,67 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             align="start", height="100%",
         )
 
-    return rx.fragment( # Usamos fragment para devolver múltiples componentes raíz
-        rx.dialog.root(
-            rx.dialog.content(
-                rx.dialog.close(
-                    rx.icon_button(
-                        rx.icon("x"),
-                        variant="soft",
-                        color_scheme="gray",
-                        style={"position": "absolute", "top": "1rem", "right": "1rem", "z_index": "1000"},
-                    )
-                ),
-                rx.cond(
-                    AppState.product_in_modal,
-                    rx.vstack(
+    return rx.dialog.root(
+        rx.dialog.content(
+            rx.dialog.close(
+                rx.icon_button(
+                    rx.icon("x"),
+                    variant="soft",
+                    color_scheme="gray",
+                    style={"position": "absolute", "top": "1rem", "right": "1rem", "z_index": "1000"},
+                )
+            ),
+            rx.cond(
+                AppState.product_in_modal,
+                rx.vstack(
+                    # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
+                    rx.cond(
+                        AppState.is_fullscreen,
+                        # Vista de pantalla completa: solo el carrusel
                         rx.grid(
                             _modal_image_section(),
-                            rx.cond(~AppState.is_fullscreen, _modal_info_section()),
-                            columns=rx.cond(AppState.is_fullscreen, "1", ["1", "2", "2"]),
+                            columns="1",
                             spacing="6",
                             align_items="start",
                             width="100%",
                         ),
-                        rx.cond(
-                            ~AppState.is_fullscreen,
-                            rx.fragment(
-                                rx.divider(margin_y="1.5em"),
-                                review_submission_form(),
-                                rx.cond(
-                                    AppState.product_comments,
-                                    rx.vstack(
-                                        rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
-                                        rx.foreach(AppState.product_comments, render_comment_item),
-                                        spacing="1", width="100%", max_height="400px", overflow_y="auto"
-                                    )
+                        # Vista normal: dos columnas
+                        rx.grid(
+                            _modal_image_section(),
+                            _modal_info_section(),
+                            columns=["1", "2", "2"],
+                            spacing="6",
+                            align_items="start",
+                            width="100%",
+                        )
+                    ),
+                    # --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨ ---
+                    rx.cond(
+                        ~AppState.is_fullscreen,
+                        rx.fragment(
+                            rx.divider(margin_y="1.5em"),
+                            review_submission_form(),
+                            rx.cond(
+                                AppState.product_comments,
+                                rx.vstack(
+                                    rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
+                                    rx.foreach(AppState.product_comments, render_comment_item),
+                                    spacing="1", width="100%", max_height="400px", overflow_y="auto"
                                 )
                             )
                         )
-                    ),
-                    skeleton_product_detail_view(),
+                    )
                 ),
-                style=rx.cond(
-                    AppState.is_fullscreen,
-                    {"max_width": "98vw", "width": "98vw", "height": "98vh", "padding": "1rem"},
-                    {"max_width": "1200px"}
-                )
+                skeleton_product_detail_view(),
             ),
-            open=AppState.show_detail_modal,
-            on_open_change=AppState.close_product_detail_modal,
+            style=rx.cond(
+                AppState.is_fullscreen,
+                {"max_width": "98vw", "width": "98vw", "height": "98vh", "padding": "1rem"},
+                {"max_width": "1200px"}
+            )
         ),
+        open=AppState.show_detail_modal,
+        on_open_change=AppState.close_product_detail_modal,
     )
 
 def public_qr_scanner_modal() -> rx.Component:
