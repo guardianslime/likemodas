@@ -8,6 +8,7 @@ from ..ui.seller_score import seller_score_stars
 from ..models import UserReputation
 from ..ui.carousel import Carousel
 
+# Las funciones de renderizado de comentarios no cambian
 def render_update_item(comment: CommentData) -> rx.Component:
     return rx.box(rx.vstack(rx.hstack(rx.icon("pencil", size=16, margin_right="0.5em"),rx.text("Actualización:", weight="bold"),star_rating_display_safe(comment.rating, 1, size=20),rx.spacer(),rx.text("Fecha: ", comment.created_at_formatted, size="2", color_scheme="gray"),width="100%"),rx.text(comment.content, margin_top="0.25em", white_space="pre-wrap"),align_items="start", spacing="1"),padding="0.75em", border="1px dashed", border_color=rx.color("gray", 6),border_radius="md", margin_top="1em", margin_left="2.5em")
 
@@ -124,7 +125,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     rx.hover_card.trigger(
                         rx.link(
                             AppState.product_in_modal.seller_name,
-                            href=f"/vendedor?id={AppState.product_in_modal.seller_id}",
+                            href="/vendedor?id=" + AppState.product_in_modal.seller_id.to_string(),
                             color_scheme="violet", font_weight="bold",
                         )
                     ),
@@ -189,10 +190,8 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             rx.cond(
                 AppState.product_in_modal,
                 rx.vstack(
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                     rx.cond(
                         AppState.is_fullscreen,
-                        # Vista de pantalla completa
                         rx.grid(
                             _modal_image_section(),
                             columns="1",
@@ -200,17 +199,15 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             align_items="start",
                             width="100%",
                         ),
-                        # Vista normal
                         rx.grid(
                             _modal_image_section(),
                             _modal_info_section(),
-                            columns={"initial": "1", "md": "2"}, # Valor estático
+                            columns={"initial": "1", "md": "2"},
                             spacing="6",
                             align_items="start",
                             width="100%",
                         )
                     ),
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                     rx.cond(
                         ~AppState.is_fullscreen,
                         rx.fragment(
