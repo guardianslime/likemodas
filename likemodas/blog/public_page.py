@@ -151,7 +151,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         width="100%",
                         height={"initial": "380px", "md": "500px"},
                         object_fit="cover",
-                        border_radius="var(--radius-3)",
                     )
                 ),
                 show_arrows=True,
@@ -164,15 +163,14 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             cursor="zoom-in",
             _hover={"opacity": 0.9},
             width="100%",
-            height={"initial": "380px", "md": "500px"},
+            border_radius="var(--radius-3)",
+            overflow="hidden",
         )
 
     def _modal_info_section() -> rx.Component:
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
-            # --- ✨ LÍNEA CORREGIDA ✨ ---
             rx.text("Publicado el ", AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
-            # --- ---
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=32),
             rx.hstack(
