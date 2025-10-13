@@ -1,0 +1,1 @@
+var e={styles:{global:{":root":{},body:{fontFamily:`Arial, sans-serif`,"--default-font-family":`Arial, sans-serif`}}}};export{e as b};
