@@ -441,10 +441,10 @@ def lightbox_modal() -> rx.Component:
         slides=AppState.lightbox_slides,
         index=AppState.lightbox_start_index,
         
-        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-        # Activamos el plugin de Zoom usando la sintaxis moderna `rx.raw`
-        plugins=[rx.raw("Zoom")],
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+        # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
+        # Activamos el plugin de Zoom usando la sintaxis correcta para tu versión
+        plugins=[rx.Var.create("Zoom", is_string=False)],
+        # --- ✨ FIN DE LA CORRECCIÓN DEFINITIVA ✨ ---
         
         # Configuraciones adicionales para el zoom
         zoom={"max_zoom_factor": 4, "double_click_delay": 300},
