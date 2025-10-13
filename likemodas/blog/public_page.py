@@ -428,27 +428,18 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN FINAL CON ZOOM Y BLOQUEO]
-    Lightbox con carrusel, controles de zoom manuales para PC,
-    y un botón de bloqueo para facilitar el pinch-to-zoom en móvil.
+    [VERSIÓN DEFINITIVA] Lightbox con zoom, layout corregido para PC
+    y visibilidad de iconos garantizada en todos los temas.
     """
-    # --- Controles de UI para el Lightbox ---
     controls = rx.hstack(
-        # Botón de Bloqueo/Desbloqueo para móvil
         rx.icon_button(
-            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-            rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")), # <-- El cambio está aquí
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")),
             on_click=AppState.toggle_lightbox_lock,
             variant="soft", color_scheme="gray",
         ),
-        # Botones de Zoom para PC
         rx.icon_button(rx.icon("zoom-out"), on_click=AppState.zoom_out, variant="soft", color_scheme="gray", display=["none", "none", "flex"]),
         rx.icon_button(rx.icon("zoom-in"), on_click=AppState.zoom_in, variant="soft", color_scheme="gray", display=["none", "none", "flex"]),
-        
-        # Botón de Cerrar
         rx.dialog.close(rx.icon_button(rx.icon("x"), variant="soft", color_scheme="gray", size="4")),
-        
         position="absolute",
         top="1rem",
         right="1rem",
@@ -456,58 +447,64 @@ def lightbox_modal() -> rx.Component:
         spacing="2",
     )
 
-    return rx.dialog.root(
-        rx.dialog.content(
-            controls, # Añadimos los controles a la interfaz
-            rx.center(
-                carousel(
-                    rx.foreach(
-                        AppState.unique_modal_variants,
-                        lambda variant_item:
-                            rx.box(
-                                rx.image(
-                                    src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
-                                    alt=AppState.product_in_modal.title,
-                                    max_height="100%", # La imagen se ajusta al contenedor
-                                    max_width="100%",
-                                    object_fit="contain",
-                                    # --- Lógica de Zoom de PC ---
-                                    transform=f"scale({AppState.lightbox_zoom_level})",
-                                    transition="transform 0.2s ease-out",
+    # --- ✨ INICIO DE LA CORRECCIÓN DE TEMA ✨ ---
+    # Envolvemos todo el lightbox en un rx.theme con apariencia "dark".
+    # Esto asegura que los iconos siempre sean claros y visibles sobre el fondo oscuro.
+    return rx.theme(
+        rx.dialog.root(
+            rx.dialog.content(
+                controls,
+                rx.center(
+                    carousel(
+                        rx.foreach(
+                            AppState.unique_modal_variants,
+                            lambda variant_item:
+                                rx.box(
+                                    rx.image(
+                                        src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                                        alt=AppState.product_in_modal.title,
+                                        max_height="90vh",
+                                        max_width="90vw",
+                                        object_fit="contain",
+                                        transition="transform 0.2s ease-out",
+                                        transform=f"scale({AppState.lightbox_zoom_level})",
+                                    ),
+                                    overflow="auto",
+                                    height="100vh", # Ajustamos para que ocupe toda la altura
+                                    width="100%",
+                                    display="flex",
+                                    align_items="center",
+                                    justify_content="center",
                                 ),
-                                # Este contenedor permite "panear" con scroll cuando hay zoom
-                                overflow="auto",
-                                height="90vh",
-                                width="90vw",
-                                display="flex",
-                                align_items="center",
-                                justify_content="center",
-                            ),
+                        ),
+                        selected_item=AppState.lightbox_start_index,
+                        swipeable=~AppState.is_lightbox_locked,
+                        show_arrows=~AppState.is_lightbox_locked,
+                        show_indicators=False, show_thumbs=False, show_status=False,
+                        infinite_loop=True, use_keyboard_arrows=True,
+                        
+                        # --- ✨ INICIO DE LA CORRECCIÓN DE LAYOUT ✨ ---
+                        # Cambiamos "100vw" por "100%" para respetar la barra de scroll.
+                        width="100%",
+                        # --- ✨ FIN DE LA CORRECCIÓN DE LAYOUT ✨ ---
+
+                        style={"& .thumbs-wrapper": {"display": "none"}},
                     ),
-                    selected_item=AppState.lightbox_start_index,
-                    # --- Lógica de Bloqueo de Deslizamiento ---
-                    swipeable=~AppState.is_lightbox_locked,
-                    show_arrows=~AppState.is_lightbox_locked, # También ocultamos las flechas al bloquear
-                    
-                    # Configuración estándar
-                    show_indicators=False, show_thumbs=False, show_status=False,
-                    infinite_loop=True, use_keyboard_arrows=True,
-                    width="100vw",
-                    style={"& .thumbs-wrapper": {"display": "none"}},
+                    width="100%",
+                    height="100%",
                 ),
-                width="100%",
-                height="100%",
+                style={
+                    "maxWidth": "100vw", "width": "100vw", "height": "100vh",
+                    "backgroundColor": "transparent", # El fondo lo da el overlay del diálogo
+                    "padding": "0", "margin": "0", "borderRadius": "0",
+                },
             ),
-            # Estilos del fondo
-            style={
-                "maxWidth": "100vw", "width": "100vw", "height": "100vh",
-                "backgroundColor": "rgba(0, 0, 0, 0.85)",
-                "padding": "0", "margin": "0", "borderRadius": "0",
-            },
+            open=AppState.is_lightbox_open,
+            on_open_change=AppState.close_lightbox,
         ),
-        open=AppState.is_lightbox_open,
-        on_open_change=AppState.close_lightbox,
+        appearance="dark", # Forza el modo oscuro solo para el lightbox y sus hijos
     )
+    # --- ✨ FIN DE LA CORRECCIÓN DE TEMA ✨ ---
 
 
 # ✅ PASO 2: ASEGÚRATE DE QUE blog_public_page_content VENGA DESPUÉS
