@@ -58,9 +58,13 @@ def post_preview() -> rx.Component:
                             rx.badge(
                                 AppState.shipping_cost_badge_text_preview,
                                 color_scheme="gray",
-                                # Se elige la variante dinámicamente según el modo seleccionado
-                                variant=rx.cond(AppState.card_theme_mode == "light", "surface", "soft"),
+                                variant="soft",  # Se mantiene "soft" para conservar el fondo
                                 size="2",
+                                style=rx.cond(
+                                    AppState.card_theme_mode == "light",
+                                    {"color": "var(--gray-11)"},  # Se FUERZA el texto a un color oscuro
+                                    {},
+                                ),
                             ),
                             rx.cond(
                                 AppState.is_moda_completa,
@@ -68,9 +72,13 @@ def post_preview() -> rx.Component:
                                     rx.badge(
                                         "Moda Completa",
                                         color_scheme="violet",
-                                        # Se elige la variante dinámicamente
-                                        variant=rx.cond(AppState.card_theme_mode == "light", "surface", "soft"),
-                                        size="2"
+                                        variant="soft",  # Se mantiene "soft"
+                                        size="2",
+                                        style=rx.cond(
+                                            AppState.card_theme_mode == "light",
+                                            {"color": "var(--violet-11)"}, # Se FUERZA el texto a un color oscuro
+                                            {},
+                                        ),
                                     ),
                                     content=AppState.moda_completa_tooltip_text_preview,
                                 ),
@@ -85,9 +93,13 @@ def post_preview() -> rx.Component:
                                 rx.badge(
                                     "Envío Combinado",
                                     color_scheme="teal",
-                                    # Se elige la variante dinámicamente
-                                    variant=rx.cond(AppState.card_theme_mode == "light", "surface", "soft"),
-                                    size="2"
+                                    variant="soft",  # Se mantiene "soft"
+                                    size="2",
+                                    style=rx.cond(
+                                        AppState.card_theme_mode == "light",
+                                        {"color": "var(--teal-11)"}, # Se FUERZA el texto a un color oscuro
+                                        {},
+                                    ),
                                 ),
                                 content=AppState.envio_combinado_tooltip_text_preview,
                             ),
