@@ -57,12 +57,19 @@ def post_preview() -> rx.Component:
                         rx.hstack(
                             rx.badge(
                                 AppState.shipping_cost_badge_text_preview,
-                                color_scheme="gray", variant="soft", size="2",
+                                color_scheme="gray", 
+                                variant="outline",  # <-- CAMBIO AQUÍ
+                                size="2",
                             ),
                             rx.cond(
                                 AppState.is_moda_completa,
                                 rx.tooltip(
-                                    rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
+                                    rx.badge(
+                                        "Moda Completa", 
+                                        color_scheme="violet", 
+                                        variant="outline",  # <-- CAMBIO AQUÍ
+                                        size="2"
+                                    ),
                                     content=AppState.moda_completa_tooltip_text_preview,
                                 ),
                             ),
@@ -72,11 +79,16 @@ def post_preview() -> rx.Component:
                         rx.cond(
                             AppState.combines_shipping,
                             rx.tooltip(
-                                rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
+                                rx.badge(
+                                    "Envío Combinado", 
+                                    color_scheme="teal", 
+                                    variant="outline",  # <-- CAMBIO AQUÍ
+                                    size="2"
+                                ),
                                 content=AppState.envio_combinado_tooltip_text_preview,
                             ),
                         ),
-                        spacing="1", # Espacio vertical
+                        spacing="1",
                         align_items="start",
                     ),
                     # --- ✨ FIN DE LA MODIFICACIÓN DE DISEÑO ✨ ---
