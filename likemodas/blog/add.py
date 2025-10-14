@@ -15,113 +15,93 @@ from ..ui.components import star_rating_display_safe
 
 def post_preview() -> rx.Component:
     """
-    [VERSIÓN FINAL Y ROBUSTA]
-    Previsualización que consume texto pre-formateado directamente desde AppState.
+    [VERSIÓN FINAL Y CORRECTA]
+    Previsualización envuelta en su propio tema para un renderizado fiel.
     """
-    return rx.box(
-        rx.vstack(
+    # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
+    return rx.theme(
+        rx.box(
             rx.vstack(
-                rx.box(
-                    rx.cond(
-                        AppState.new_variants,
-                        rx.image(src=rx.get_upload_url(AppState.new_variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
-                        rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
-                    ),
-                    rx.badge(
-                        rx.cond(AppState.is_imported, "Importado", "Nacional"),
-                        color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"),
-                        variant="solid",
-                        style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
-                    ),
-                    position="relative", width="260px", height="260px",
-                ),
                 rx.vstack(
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    rx.text(
-                        rx.cond(AppState.title, AppState.title, "Título del Producto"),
-                        weight="bold", size="6", white_space="normal",
-                        text_overflow="initial", overflow="visible",
-                        # Se aplica el color del estado
-                        color=AppState.title_color,
+                    rx.box(
+                        rx.cond(
+                            AppState.new_variants,
+                            rx.image(src=rx.get_upload_url(AppState.new_variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
+                            rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
+                        ),
+                        rx.badge(
+                            rx.cond(AppState.is_imported, "Importado", "Nacional"),
+                            color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"),
+                            variant="solid",
+                            style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
+                        ),
+                        position="relative", width="260px", height="260px",
                     ),
-                    star_rating_display_safe(0, 0, size=24),
-                    rx.text(
-                        AppState.price_cop_preview,
-                        size="5", weight="medium",
-                        # Se aplica el color del estado
-                        color=AppState.price_color,
-                    ),
-                    # --- ✨ INICIO DE LA MODIFICACIÓN DE DISEÑO (IDÉNTICA A LA ANTERIOR) ✨ ---
                     rx.vstack(
-                        # Primera fila
-                        rx.hstack(
-                            rx.badge(
-                                AppState.shipping_cost_badge_text_preview,
-                                color_scheme="gray",
-                                variant="soft",  # Se mantiene "soft" para conservar el fondo
-                                size="2",
-                                style=rx.cond(
-                                    AppState.card_theme_mode == "light",
-                                    {"color": "var(--gray-11)"},  # Se FUERZA el texto a un color oscuro
-                                    {},
+                        rx.text(
+                            rx.cond(AppState.title, AppState.title, "Título del Producto"),
+                            weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible",
+                            color=AppState.title_color,
+                        ),
+                        star_rating_display_safe(0, 0, size=24),
+                        rx.text(
+                            AppState.price_cop_preview,
+                            size="5", weight="medium",
+                            color=AppState.price_color,
+                        ),
+                        # --- Bloque de Badges restaurado a "soft" ---
+                        rx.vstack(
+                            rx.hstack(
+                                rx.badge(
+                                    AppState.shipping_cost_badge_text_preview,
+                                    color_scheme="gray",
+                                    variant="soft",  # <-- Se restaura a "soft"
+                                    size="2",
                                 ),
+                                rx.cond(
+                                    AppState.is_moda_completa,
+                                    rx.tooltip(
+                                        rx.badge(
+                                            "Moda Completa",
+                                            color_scheme="violet",
+                                            variant="soft",  # <-- Se restaura a "soft"
+                                            size="2"
+                                        ),
+                                        content=AppState.moda_completa_tooltip_text_preview,
+                                    ),
+                                ),
+                                spacing="3", align="center",
                             ),
                             rx.cond(
-                                AppState.is_moda_completa,
+                                AppState.combines_shipping,
                                 rx.tooltip(
                                     rx.badge(
-                                        "Moda Completa",
-                                        color_scheme="violet",
-                                        variant="soft",  # Se mantiene "soft"
-                                        size="2",
-                                        style=rx.cond(
-                                            AppState.card_theme_mode == "light",
-                                            {"color": "var(--violet-11)"}, # Se FUERZA el texto a un color oscuro
-                                            {},
-                                        ),
+                                        "Envío Combinado",
+                                        color_scheme="teal",
+                                        variant="soft",  # <-- Se restaura a "soft"
+                                        size="2"
                                     ),
-                                    content=AppState.moda_completa_tooltip_text_preview,
+                                    content=AppState.envio_combinado_tooltip_text_preview,
                                 ),
                             ),
-                            spacing="3",
-                            align="center",
+                            spacing="1",
+                            align_items="start",
                         ),
-                        # Segunda fila
-                        rx.cond(
-                            AppState.combines_shipping,
-                            rx.tooltip(
-                                rx.badge(
-                                    "Envío Combinado",
-                                    color_scheme="teal",
-                                    variant="soft",  # Se mantiene "soft"
-                                    size="2",
-                                    style=rx.cond(
-                                        AppState.card_theme_mode == "light",
-                                        {"color": "var(--teal-11)"}, # Se FUERZA el texto a un color oscuro
-                                        {},
-                                    ),
-                                ),
-                                content=AppState.envio_combinado_tooltip_text_preview,
-                            ),
-                        ),
-                        spacing="1",
-                        align_items="start",
+                        spacing="1", 
+                        align_items="start", 
+                        width="100%"
                     ),
-                    # --- ✨ FIN DE LA MODIFICACIÓN DE DISEÑO ✨ ---
-                    
-                    spacing="1", 
-                    align_items="start", 
-                    width="100%"
+                    spacing="2", width="100%",
                 ),
-                spacing="2", width="100%",
+                rx.spacer(),
             ),
-            rx.spacer(),
+            width="290px", height="auto", min_height="450px",
+            bg=AppState.card_bg_color,
+            border="1px solid var(--gray-a6)",
+            border_radius="8px", box_shadow="md", padding="1em",
         ),
-        width="290px", height="auto", min_height="450px",
-        # ✨ CORRECCIÓN: Usa AppState.card_bg_color en lugar del color por defecto del tema
-        bg=AppState.card_bg_color,
-        border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
-        border_radius="8px", box_shadow="md", padding="1em",
+        # Se aplica el tema guardado en el estado a toda la tarjeta y sus hijos
+        appearance=AppState.card_theme_mode,
     )
 
 
