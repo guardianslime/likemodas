@@ -57,33 +57,52 @@ def post_preview() -> rx.Component:
                         rx.hstack(
                             rx.badge(
                                 AppState.shipping_cost_badge_text_preview,
-                                color_scheme="gray", 
-                                variant="outline",  # <-- CAMBIO AQUÍ
+                                color_scheme="gray",
+                                variant="soft",  # Mantenemos "soft"
                                 size="2",
+                                # Se añade estilo condicional para forzar el color del texto
+                                style=rx.cond(
+                                    AppState.card_theme_mode == "light",
+                                    {"color": "var(--gray-11)"},  # Color de texto oscuro para modo claro
+                                    {},  # Estilo por defecto para modo oscuro
+                                ),
                             ),
                             rx.cond(
                                 AppState.is_moda_completa,
                                 rx.tooltip(
                                     rx.badge(
-                                        "Moda Completa", 
-                                        color_scheme="violet", 
-                                        variant="outline",  # <-- CAMBIO AQUÍ
-                                        size="2"
+                                        "Moda Completa",
+                                        color_scheme="violet",
+                                        variant="soft",  # Mantenemos "soft"
+                                        size="2",
+                                        # Se añade estilo condicional
+                                        style=rx.cond(
+                                            AppState.card_theme_mode == "light",
+                                            {"color": "var(--violet-11)"}, # Color de texto oscuro
+                                            {},
+                                        ),
                                     ),
                                     content=AppState.moda_completa_tooltip_text_preview,
                                 ),
                             ),
-                            spacing="3", align="center",
+                            spacing="3",
+                            align="center",
                         ),
                         # Segunda fila
                         rx.cond(
                             AppState.combines_shipping,
                             rx.tooltip(
                                 rx.badge(
-                                    "Envío Combinado", 
-                                    color_scheme="teal", 
-                                    variant="outline",  # <-- CAMBIO AQUÍ
-                                    size="2"
+                                    "Envío Combinado",
+                                    color_scheme="teal",
+                                    variant="soft",  # Mantenemos "soft"
+                                    size="2",
+                                    # Se añade estilo condicional
+                                    style=rx.cond(
+                                        AppState.card_theme_mode == "light",
+                                        {"color": "var(--teal-11)"}, # Color de texto oscuro
+                                        {},
+                                    ),
                                 ),
                                 content=AppState.envio_combinado_tooltip_text_preview,
                             ),

@@ -2971,10 +2971,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.recalculate_all_shipping_costs
         self.is_loading = False
 
-    # 1. REEMPLAZA las variables de color con estos valores iniciales para el modo claro.
+    # Variables para los 3 color pickers del formulario.
     card_bg_color: str = "#FFFFFF"
-    title_color: str = "#111111"  # <-- La variable que causa el error
-    price_color: str = "#555555"  # <-- Esta también faltará después
+    title_color: str = "#1C1C1C"
+    price_color: str = "#6F6F6F"
+    # --- ✨ 1. AÑADE ESTA NUEVA VARIABLE DE ESTADO AQUÍ ✨ ---
+    card_theme_mode: str = "light"  # Puede ser "light" o "dark"
+
     show_color_picker: bool = False
 
     # Métodos (setters) para cada color picker.
@@ -2995,15 +2998,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     def apply_light_theme_preset(self):
         """Aplica los colores predefinidos para un tema claro."""
         self.card_bg_color = "#FFFFFF"
-        self.title_color = "#111111"
-        self.price_color = "#555555"
+        self.title_color = "#1C1C1C"
+        self.price_color = "#6F6F6F"
+        self.card_theme_mode = "light" # <-- Añade esta línea
 
     @rx.event
     def apply_dark_theme_preset(self):
         """Aplica los colores predefinidos para un tema oscuro."""
-        self.card_bg_color = "#111111"
-        self.title_color = "#F9F9F9"
-        self.price_color = "#AAAAAA"
+        self.card_bg_color = "#1C1C1C"
+        self.title_color = "#F5F5F5"
+        self.price_color = "#A0A0A0"
+        self.card_theme_mode = "dark" # <-- Añade esta línea
 
     # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
 
@@ -4921,6 +4926,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.card_bg_color = "#FFFFFF"
         self.title_color = "#111111"
         self.price_color = "#555555"
+        self.card_theme_mode = "light" # <-- Añade esta línea para resetear el modo
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
