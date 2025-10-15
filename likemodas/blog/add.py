@@ -166,51 +166,106 @@ def blog_post_add_content() -> rx.Component:
                         width="100%",
                     ),
                     
-                    # --- INICIO DE LA NUEVA ESTRUCTURA RESPONSIVA ---
-                    # Usamos un rx.grid que cambia de 1 a 3 columnas según el tamaño de la pantalla
-                    rx.grid(
-                        # Columna 1: Fondo
-                        rx.vstack(
-                            rx.text("Fondo", size="2", margin_bottom="0.5em"),
-                            color_picker(
-                                value=AppState.card_bg_color,
-                                on_change=AppState.set_card_bg_color,
-                                size="sm",
+                    # --- INICIO DE LA NUEVA ESTRUCTURA CON POPOVERS ---
+                    rx.vstack(
+                        # --- Popover para el color de FONDO ---
+                        rx.popover.root(
+                            rx.popover.trigger(
+                                rx.button(
+                                    rx.hstack(
+                                        rx.text("Fondo"),
+                                        rx.spacer(),
+                                        rx.box(
+                                            bg=AppState.card_bg_color,
+                                            height="1em",
+                                            width="1em",
+                                            border="1px solid var(--gray-a7)",
+                                            border_radius="var(--radius-2)",
+                                        ),
+                                    ),
+                                    justify="between",
+                                    width="100%",
+                                    variant="outline",
+                                    color_scheme="gray",
+                                )
                             ),
-                            align_items="center",
-                            spacing="2",
-                        ),
-                        # Columna 2: Título
-                        rx.vstack(
-                            rx.text("Título", size="2", margin_bottom="0.5em"),
-                            color_picker(
-                                value=AppState.title_color,
-                                on_change=AppState.set_title_color,
-                                size="sm",
+                            rx.popover.content(
+                                color_picker(
+                                    value=AppState.card_bg_color,
+                                    on_change=AppState.set_card_bg_color,
+                                    variant="classic",
+                                    size="sm",
+                                ),
+                                padding="0.5em",
                             ),
-                            align_items="center",
-                            spacing="2",
                         ),
-                        # Columna 3: Precio
-                        rx.vstack(
-                            rx.text("Precio", size="2", margin_bottom="0.5em"),
-                            color_picker(
-                                value=AppState.price_color,
-                                on_change=AppState.set_price_color,
-                                size="sm",
+                        # --- Popover para el color del TÍTULO ---
+                        rx.popover.root(
+                            rx.popover.trigger(
+                                rx.button(
+                                    rx.hstack(
+                                        rx.text("Título"),
+                                        rx.spacer(),
+                                        rx.box(
+                                            bg=AppState.title_color,
+                                            height="1em",
+                                            width="1em",
+                                            border="1px solid var(--gray-a7)",
+                                            border_radius="var(--radius-2)",
+                                        ),
+                                    ),
+                                    justify="between",
+                                    width="100%",
+                                    variant="outline",
+                                    color_scheme="gray",
+                                )
                             ),
-                            align_items="center",
-                            spacing="2",
+                            rx.popover.content(
+                                color_picker(
+                                    value=AppState.title_color,
+                                    on_change=AppState.set_title_color,
+                                    variant="classic",
+                                    size="sm",
+                                ),
+                                padding="0.5em",
+                            ),
                         ),
-                        
-                        # Esta línea es la clave de la responsividad:
-                        columns={"initial": "1", "sm": "3"},
-                        
-                        spacing="4",
+                        # --- Popover para el color del PRECIO ---
+                        rx.popover.root(
+                            rx.popover.trigger(
+                                rx.button(
+                                    rx.hstack(
+                                        rx.text("Precio"),
+                                        rx.spacer(),
+                                        rx.box(
+                                            bg=AppState.price_color,
+                                            height="1em",
+                                            width="1em",
+                                            border="1px solid var(--gray-a7)",
+                                            border_radius="var(--radius-2)",
+                                        ),
+                                    ),
+                                    justify="between",
+                                    width="100%",
+                                    variant="outline",
+                                    color_scheme="gray",
+                                )
+                            ),
+                            rx.popover.content(
+                                color_picker(
+                                    value=AppState.price_color,
+                                    on_change=AppState.set_price_color,
+                                    variant="classic",
+                                    size="sm",
+                                ),
+                                padding="0.5em",
+                            ),
+                        ),
+                        spacing="3",
                         width="100%",
                         margin_top="1em"
                     ),
-                    # --- FIN DE LA NUEVA ESTRUCTURA RESPONSIVA ---
+                    # --- FIN DE LA NUEVA ESTRUCTURA CON POPOVERS ---
                     
                     spacing="3",
                     padding="1em",
