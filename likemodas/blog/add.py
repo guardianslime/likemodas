@@ -18,6 +18,27 @@ def post_preview() -> rx.Component:
     [VERSIÓN FINAL Y CORRECTA]
     Previsualización envuelta en su propio tema para un renderizado fiel.
     """
+
+    # --- ✨ INICIO: NUEVA FUNCIÓN AUXILIAR PARA CREAR BADGES ✨ ---
+    def _preview_badge(text: rx.Var[str], color_scheme: str) -> rx.Component:
+        """
+        Crea un badge personalizado que imita el estilo 'soft' en ambos modos.
+        """
+        return rx.box(
+            rx.text(text, size="2", weight="medium"),
+            # Estilo condicional para el fondo del badge
+            bg=f"var(--{color_scheme}-a3)",
+            # Estilo condicional para el color del texto
+            color=rx.cond(
+                AppState.card_theme_mode == "light",
+                f"var(--{color_scheme}-a11)",  # Color de texto oscuro para modo claro
+                f"var(--{color_scheme}-a12)",  # Color de texto claro para modo oscuro
+            ),
+            padding="0 0.5em",
+            border_radius="var(--radius-full)",
+        )
+    # --- ✨ FIN DE LA FUNCIÓN AUXILIAR ✨ ---
+
     # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
     return rx.theme(
         rx.box(
@@ -49,44 +70,35 @@ def post_preview() -> rx.Component:
                             size="5", weight="medium",
                             color=AppState.price_color,
                         ),
-                        # --- Bloque de Badges restaurado a "soft" ---
+
+                        # --- ✨ INICIO: USO DE LOS NUEVOS BADGES PERSONALIZADOS ✨ ---
                         rx.vstack(
                             rx.hstack(
-                                rx.badge(
-                                    AppState.shipping_cost_badge_text_preview,
-                                    color_scheme="gray",
-                                    variant="soft",  # <-- Se restaura a "soft"
-                                    size="2",
-                                ),
+                                # Usamos la nueva función _preview_badge
+                                _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
                                 rx.cond(
                                     AppState.is_moda_completa,
                                     rx.tooltip(
-                                        rx.badge(
-                                            "Moda Completa",
-                                            color_scheme="violet",
-                                            variant="soft",  # <-- Se restaura a "soft"
-                                            size="2"
-                                        ),
+                                        # Usamos la nueva función _preview_badge
+                                        _preview_badge("Moda Completa", "violet"),
                                         content=AppState.moda_completa_tooltip_text_preview,
                                     ),
                                 ),
-                                spacing="3", align="center",
+                                spacing="3",
+                                align="center",
                             ),
                             rx.cond(
                                 AppState.combines_shipping,
                                 rx.tooltip(
-                                    rx.badge(
-                                        "Envío Combinado",
-                                        color_scheme="teal",
-                                        variant="soft",  # <-- Se restaura a "soft"
-                                        size="2"
-                                    ),
+                                    # Usamos la nueva función _preview_badge
+                                    _preview_badge("Envío Combinado", "teal"),
                                     content=AppState.envio_combinado_tooltip_text_preview,
                                 ),
                             ),
                             spacing="1",
                             align_items="start",
                         ),
+                        # --- ✨ FIN DEL BLOQUE DE BADGES ✨ ---
                         spacing="1", 
                         align_items="start", 
                         width="100%"
