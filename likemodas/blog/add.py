@@ -166,37 +166,51 @@ def blog_post_add_content() -> rx.Component:
                         width="100%",
                     ),
                     
-                    # Cuadrícula para alinear los Color Pickers
+                    # --- INICIO DE LA NUEVA ESTRUCTURA RESPONSIVA ---
+                    # Usamos un rx.grid que cambia de 1 a 3 columnas según el tamaño de la pantalla
                     rx.grid(
-                        # Fila 1: Fondo
-                        rx.text("Fondo", size="2", align_self="center"),
-                        color_picker(
-                            value=AppState.card_bg_color,
-                            on_change=AppState.set_card_bg_color,
-                            size="sm", # Tamaño más pequeño y estético
+                        # Columna 1: Fondo
+                        rx.vstack(
+                            rx.text("Fondo", size="2", margin_bottom="0.5em"),
+                            color_picker(
+                                value=AppState.card_bg_color,
+                                on_change=AppState.set_card_bg_color,
+                                size="sm",
+                            ),
+                            align_items="center",
+                            spacing="2",
                         ),
-
-                        # Fila 2: Título
-                        rx.text("Título", size="2", align_self="center"),
-                        color_picker(
-                            value=AppState.title_color,
-                            on_change=AppState.set_title_color,
-                            size="sm",
+                        # Columna 2: Título
+                        rx.vstack(
+                            rx.text("Título", size="2", margin_bottom="0.5em"),
+                            color_picker(
+                                value=AppState.title_color,
+                                on_change=AppState.set_title_color,
+                                size="sm",
+                            ),
+                            align_items="center",
+                            spacing="2",
                         ),
-
-                        # Fila 3: Precio
-                        rx.text("Precio", size="2", align_self="center"),
-                        color_picker(
-                            value=AppState.price_color,
-                            on_change=AppState.set_price_color,
-                            size="sm",
+                        # Columna 3: Precio
+                        rx.vstack(
+                            rx.text("Precio", size="2", margin_bottom="0.5em"),
+                            color_picker(
+                                value=AppState.price_color,
+                                on_change=AppState.set_price_color,
+                                size="sm",
+                            ),
+                            align_items="center",
+                            spacing="2",
                         ),
                         
-                        columns="2", # Dos columnas: una para el texto, una para el picker
-                        spacing="3",
+                        # Esta línea es la clave de la responsividad:
+                        columns={"initial": "1", "sm": "3"},
+                        
+                        spacing="4",
                         width="100%",
                         margin_top="1em"
                     ),
+                    # --- FIN DE LA NUEVA ESTRUCTURA RESPONSIVA ---
                     
                     spacing="3",
                     padding="1em",
