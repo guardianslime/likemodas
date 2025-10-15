@@ -74,13 +74,33 @@ def post_preview() -> rx.Component:
                         # --- ✨ INICIO: USO DE LOS NUEVOS BADGES PERSONALIZADOS ✨ ---
                         rx.vstack(
                             rx.hstack(
-                                # Usamos la nueva función _preview_badge
-                                _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
+                                rx.badge(
+                                    AppState.shipping_cost_badge_text_preview,
+                                    color_scheme="gray",
+                                    variant="soft",  # Mantenemos "soft" para conservar el fondo gris claro
+                                    size="2",
+                                    # Estilo condicional para forzar el color del texto a un gris oscuro
+                                    style=rx.cond(
+                                        AppState.card_theme_mode == "light",
+                                        {"color": "#3E3E3E", "font_weight": "500"},
+                                        {},
+                                    ),
+                                ),
                                 rx.cond(
                                     AppState.is_moda_completa,
                                     rx.tooltip(
-                                        # Usamos la nueva función _preview_badge
-                                        _preview_badge("Moda Completa", "violet"),
+                                        rx.badge(
+                                            "Moda Completa",
+                                            color_scheme="violet",
+                                            variant="soft",  # Mantenemos "soft" para el fondo violeta claro
+                                            size="2",
+                                            # Estilo condicional para forzar el color del texto a un violeta oscuro
+                                            style=rx.cond(
+                                                AppState.card_theme_mode == "light",
+                                                {"color": "#582D7C", "font_weight": "500"},
+                                                {},
+                                            ),
+                                        ),
                                         content=AppState.moda_completa_tooltip_text_preview,
                                     ),
                                 ),
@@ -90,8 +110,18 @@ def post_preview() -> rx.Component:
                             rx.cond(
                                 AppState.combines_shipping,
                                 rx.tooltip(
-                                    # Usamos la nueva función _preview_badge
-                                    _preview_badge("Envío Combinado", "teal"),
+                                    rx.badge(
+                                        "Envío Combinado",
+                                        color_scheme="teal",
+                                        variant="soft",  # Mantenemos "soft" para el fondo verde claro
+                                        size="2",
+                                        # Estilo condicional para forzar el color del texto a un verde oscuro
+                                        style=rx.cond(
+                                            AppState.card_theme_mode == "light",
+                                            {"color": "#00595F", "font_weight": "500"},
+                                            {},
+                                        ),
+                                    ),
                                     content=AppState.envio_combinado_tooltip_text_preview,
                                 ),
                             ),
