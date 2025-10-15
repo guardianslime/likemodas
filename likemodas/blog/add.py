@@ -15,41 +15,14 @@ from ..ui.components import star_rating_display_safe
 
 def post_preview() -> rx.Component:
     """
-    [VERSIÓN FINAL CON CORRECCIÓN DEFINITIVA PARA BADGES]
+    [VERSIÓN FINAL Y CORRECTA]
+    Previsualización envuelta en su propio tema para un renderizado fiel.
     """
-    
-    # --- ✨ INICIO: FUNCIÓN AUXILIAR SIMPLIFICADA Y CORREGIDA ✨ ---
-    def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        """
-        Crea un badge que imita el estilo 'soft' en ambos modos de tema de la tarjeta.
-        """
-        # Define los colores de fondo y texto basados en el modo y el esquema de color.
-        bg_color = rx.cond(
-            AppState.card_theme_mode == "light",
-            f"var(--{color_scheme}-3)",  # Fondo claro para el modo claro
-            f"var(--{color_scheme}-3)"   # Fondo claro también para el modo oscuro
-        )
-        text_color = rx.cond(
-            AppState.card_theme_mode == "light",
-            f"var(--{color_scheme}-11)", # Texto oscuro para el modo claro
-            f"var(--{color_scheme}-12)"  # Texto claro para el modo oscuro
-        )
-
-        return rx.box(
-            rx.text(text_content, size="2", weight="medium"),
-            bg=bg_color,
-            color=text_color,
-            padding="0 0.5em",
-            border_radius="var(--radius-full)",
-        )
-    # --- ✨ FIN DE LA FUNCIÓN AUXILIAR ✨ ---
-
     return rx.theme(
         rx.box(
             rx.vstack(
                 rx.vstack(
                     rx.box(
-                        # ... (código de la imagen del producto se mantiene igual)
                         rx.cond(
                             AppState.new_variants,
                             rx.image(src=rx.get_upload_url(AppState.new_variants[0].get("image_url", "")), width="100%", height="260px", object_fit="cover"),
@@ -66,24 +39,46 @@ def post_preview() -> rx.Component:
                     rx.vstack(
                         rx.text(
                             rx.cond(AppState.title, AppState.title, "Título del Producto"),
-                            color=AppState.title_color,
                             weight="bold", size="6", white_space="normal", text_overflow="initial", overflow="visible",
+                            color=AppState.title_color,
                         ),
                         star_rating_display_safe(0, 0, size=24),
                         rx.text(
                             AppState.price_cop_preview,
-                            color=AppState.price_color,
                             size="5", weight="medium",
+                            color=AppState.price_color,
                         ),
-                        # --- ✨ INICIO: USO CORREGIDO DE LOS BADGES PERSONALIZADOS ✨ ---
+
+                        # --- ✨ INICIO: USO DE LOS NUEVOS BADGES PERSONALIZADOS ✨ ---
                         rx.vstack(
                             rx.hstack(
-                                # Se llama a la función auxiliar pasando el texto y el color_scheme
-                                _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
+                                rx.badge(
+                                    AppState.shipping_cost_badge_text_preview,
+                                    color_scheme="gray",
+                                    variant="soft",  # Mantenemos "soft" para conservar el fondo gris claro
+                                    size="2",
+                                    # Estilo condicional para forzar el color del texto a un gris oscuro
+                                    style=rx.cond(
+                                        AppState.card_theme_mode == "light",
+                                        {"color": "#3E3E3E", "font_weight": "500"},
+                                        {},
+                                    ),
+                                ),
                                 rx.cond(
                                     AppState.is_moda_completa,
                                     rx.tooltip(
-                                        _preview_badge("Moda Completa", "violet"),
+                                        rx.badge(
+                                            "Moda Completa",
+                                            color_scheme="violet",
+                                            variant="soft",  # Mantenemos "soft" para el fondo violeta claro
+                                            size="2",
+                                            # Estilo condicional para forzar el color del texto a un violeta oscuro
+                                            style=rx.cond(
+                                                AppState.card_theme_mode == "light",
+                                                {"color": "#582D7C", "font_weight": "500"},
+                                                {},
+                                            ),
+                                        ),
                                         content=AppState.moda_completa_tooltip_text_preview,
                                     ),
                                 ),
@@ -93,7 +88,18 @@ def post_preview() -> rx.Component:
                             rx.cond(
                                 AppState.combines_shipping,
                                 rx.tooltip(
-                                    _preview_badge("Envío Combinado", "teal"),
+                                    rx.badge(
+                                        "Envío Combinado",
+                                        color_scheme="teal",
+                                        variant="soft",  # Mantenemos "soft" para el fondo verde claro
+                                        size="2",
+                                        # Estilo condicional para forzar el color del texto a un verde oscuro
+                                        style=rx.cond(
+                                            AppState.card_theme_mode == "light",
+                                            {"color": "#00595F", "font_weight": "500"},
+                                            {},
+                                        ),
+                                    ),
                                     content=AppState.envio_combinado_tooltip_text_preview,
                                 ),
                             ),
@@ -114,6 +120,7 @@ def post_preview() -> rx.Component:
             border="1px solid var(--gray-a6)",
             border_radius="8px", box_shadow="md", padding="1em",
         ),
+        # Se aplica el tema guardado en el estado a toda la tarjeta y sus hijos
         appearance=AppState.card_theme_mode,
     )
 
