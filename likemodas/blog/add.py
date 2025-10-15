@@ -19,25 +19,25 @@ def post_preview() -> rx.Component:
     Previsualización envuelta en su propio tema para un renderizado fiel.
     """
 
-    # --- ✨ INICIO: NUEVA FUNCIÓN AUXILIAR PARA CREAR BADGES ✨ ---
+    # --- ✨ REEMPLAZA ESTA FUNCIÓN AUXILIAR POR LA VERSIÓN CORREGIDA ✨ ---
     def _preview_badge(text: rx.Var[str], color_scheme: str) -> rx.Component:
         """
         Crea un badge personalizado que imita el estilo 'soft' en ambos modos.
         """
         return rx.box(
             rx.text(text, size="2", weight="medium"),
-            # Estilo condicional para el fondo del badge
-            bg=f"var(--{color_scheme}-a3)",
-            # Estilo condicional para el color del texto
+            # CORRECCIÓN: Se cambia de "-a3" (transparente) a "-3" (sólido suave)
+            # para que el fondo gris sea visible en modo claro.
+            bg=f"var(--{color_scheme}-3)",
             color=rx.cond(
                 AppState.card_theme_mode == "light",
-                f"var(--{color_scheme}-a11)",  # Color de texto oscuro para modo claro
-                f"var(--{color_scheme}-a12)",  # Color de texto claro para modo oscuro
+                f"var(--{color_scheme}-11)",  # Color de texto oscuro
+                f"var(--{color_scheme}-12)",  # Color de texto claro
             ),
             padding="0 0.5em",
             border_radius="var(--radius-full)",
         )
-    # --- ✨ FIN DE LA FUNCIÓN AUXILIAR ✨ ---
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA ✨ ---
     return rx.theme(
