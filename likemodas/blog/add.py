@@ -127,17 +127,15 @@ def post_preview() -> rx.Component:
     )
 
 
-@require_panel_access # <-- 2. Usa el nuevo decorador
+@require_panel_access
 def blog_post_add_content() -> rx.Component:
     """
-    Página de creación de publicación con un desplazamiento manual hacia la derecha
-    para lograr un centrado visual en PC, sin afectar la vista móvil.
+    Página de creación de publicación con previsualización visible en móvil
+    y sección de personalización rediseñada.
     """
-    # --- ✨ INICIO DE LA RESTAURACIÓN ✨ ---
-    # Esta es la estructura original que organiza la página en dos columnas.
     return rx.hstack(
         rx.grid(
-            # Columna del Formulario (se mantiene igual)
+            # Columna del Formulario (sin cambios)
             rx.vstack(
                 rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 blog_post_add_form(),
@@ -145,17 +143,17 @@ def blog_post_add_content() -> rx.Component:
                 spacing="4",
             ),
             
-            # Columna de Previsualización (aquí es donde integramos la paleta)
+            # Columna de Previsualización (con correcciones)
             rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                post_preview(), # Tu componente de previsualización
+                post_preview(),
 
-                # --- El código de la paleta de colores va AQUÍ ---
+                # --- ✨ INICIO: SECCIÓN DE PERSONALIZACIÓN REDISEÑADA ✨ ---
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Personalizar Tarjeta", weight="bold", size="4"),
                     
-                    # Presets de Modo Claro / Oscuro
+                    # Presets de Modo Claro / Oscuro (sin cambios)
                     rx.segmented_control.root(
                         rx.segmented_control.item("Modo Claro", value="light"),
                         rx.segmented_control.item("Modo Oscuro", value="dark"),
@@ -168,38 +166,33 @@ def blog_post_add_content() -> rx.Component:
                         width="100%",
                     ),
                     
-                    # Color Pickers individuales
-                    rx.vstack(
-                        # Fondo
-                        rx.hstack(
-                            rx.text("Fondo", flex_grow="1"),
-                            # ✨ CORRECCIÓN AQUÍ ✨
-                            color_picker(
-                                value=AppState.card_bg_color,
-                                on_change=AppState.set_card_bg_color,
-                            ),
-                            align="center", justify="between", width="100%",
+                    # Cuadrícula para alinear los Color Pickers
+                    rx.grid(
+                        # Fila 1: Fondo
+                        rx.text("Fondo", size="2", align_self="center"),
+                        color_picker(
+                            value=AppState.card_bg_color,
+                            on_change=AppState.set_card_bg_color,
+                            size="sm", # Tamaño más pequeño y estético
                         ),
-                        # Título
-                        rx.hstack(
-                            rx.text("Título", flex_grow="1"),
-                            # ✨ CORRECCIÓN AQUÍ ✨
-                            color_picker(
-                                value=AppState.title_color,
-                                on_change=AppState.set_title_color,
-                            ),
-                            align="center", justify="between", width="100%",
+
+                        # Fila 2: Título
+                        rx.text("Título", size="2", align_self="center"),
+                        color_picker(
+                            value=AppState.title_color,
+                            on_change=AppState.set_title_color,
+                            size="sm",
                         ),
-                        # Precio
-                        rx.hstack(
-                            rx.text("Precio", flex_grow="1"),
-                            # ✨ CORRECCIÓN AQUÍ ✨
-                            color_picker(
-                                value=AppState.price_color,
-                                on_change=AppState.set_price_color,
-                            ),
-                            align="center", justify="between", width="100%",
+
+                        # Fila 3: Precio
+                        rx.text("Precio", size="2", align_self="center"),
+                        color_picker(
+                            value=AppState.price_color,
+                            on_change=AppState.set_price_color,
+                            size="sm",
                         ),
+                        
+                        columns="2", # Dos columnas: una para el texto, una para el picker
                         spacing="3",
                         width="100%",
                         margin_top="1em"
@@ -213,14 +206,19 @@ def blog_post_add_content() -> rx.Component:
                     align_items="stretch",
                     width="100%",
                 ),
-                # --- Fin del bloque de la paleta de colores ---
+                # --- ✨ FIN: SECCIÓN REDISEÑADA ✨ ---
                 
-                display=["none", "none", "flex", "flex"],
+                # --- ✨ CORRECCIÓN PARA VISIBILIDAD MÓVIL ✨ ---
+                # Antes: display=["none", "none", "flex", "flex"]
+                # Ahora: display="flex" para que siempre se muestre.
+                display="flex",
+                
                 width="100%",
                 spacing="4",
                 position="sticky",
                 top="2em",
             ),
+            # El grid principal se encarga de apilar las columnas en móvil
             columns={"initial": "1", "lg": "2fr 1fr"},
             gap="4em",
             width="100%",
@@ -230,4 +228,3 @@ def blog_post_add_content() -> rx.Component:
         padding_y="2em",
         padding_left=["0em", "0em", "15em", "15em"],
     )
-    # --- ✨ FIN DE LA RESTAURACIÓN ✨ ---
