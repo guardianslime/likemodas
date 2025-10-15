@@ -131,7 +131,7 @@ def post_preview() -> rx.Component:
 def blog_post_add_content() -> rx.Component:
     """
     Página de creación de publicación con previsualización visible en móvil
-    y sección de personalización rediseñada.
+    y sección de personalización rediseñada y alineada.
     """
     return rx.hstack(
         rx.grid(
@@ -143,17 +143,16 @@ def blog_post_add_content() -> rx.Component:
                 spacing="4",
             ),
             
-            # Columna de Previsualización (con correcciones)
+            # Columna de Previsualización (con correcciones de alineación)
             rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 post_preview(),
 
-                # --- ✨ INICIO: SECCIÓN DE PERSONALIZACIÓN REDISEÑADA ✨ ---
+                # Sección "Personalizar Tarjeta"
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Personalizar Tarjeta", weight="bold", size="4"),
                     
-                    # Presets de Modo Claro / Oscuro (sin cambios)
                     rx.segmented_control.root(
                         rx.segmented_control.item("Modo Claro", value="light"),
                         rx.segmented_control.item("Modo Oscuro", value="dark"),
@@ -166,9 +165,8 @@ def blog_post_add_content() -> rx.Component:
                         width="100%",
                     ),
                     
-                    # --- INICIO DE LA NUEVA ESTRUCTURA CON POPOVERS ---
                     rx.vstack(
-                        # --- Popover para el color de FONDO ---
+                        # Popover para el color de FONDO
                         rx.popover.root(
                             rx.popover.trigger(
                                 rx.button(
@@ -177,29 +175,25 @@ def blog_post_add_content() -> rx.Component:
                                         rx.spacer(),
                                         rx.box(
                                             bg=AppState.card_bg_color,
-                                            height="1em",
-                                            width="1em",
+                                            height="1em", width="1em",
                                             border="1px solid var(--gray-a7)",
                                             border_radius="var(--radius-2)",
                                         ),
                                     ),
-                                    justify="between",
-                                    width="100%",
-                                    variant="outline",
-                                    color_scheme="gray",
+                                    justify="between", width="100%",
+                                    variant="outline", color_scheme="gray",
                                 )
                             ),
                             rx.popover.content(
                                 color_picker(
                                     value=AppState.card_bg_color,
                                     on_change=AppState.set_card_bg_color,
-                                    variant="classic",
-                                    size="sm",
+                                    variant="classic", size="sm",
                                 ),
                                 padding="0.5em",
                             ),
                         ),
-                        # --- Popover para el color del TÍTULO ---
+                        # Popover para el color del TÍTULO
                         rx.popover.root(
                             rx.popover.trigger(
                                 rx.button(
@@ -208,29 +202,25 @@ def blog_post_add_content() -> rx.Component:
                                         rx.spacer(),
                                         rx.box(
                                             bg=AppState.title_color,
-                                            height="1em",
-                                            width="1em",
+                                            height="1em", width="1em",
                                             border="1px solid var(--gray-a7)",
                                             border_radius="var(--radius-2)",
                                         ),
                                     ),
-                                    justify="between",
-                                    width="100%",
-                                    variant="outline",
-                                    color_scheme="gray",
+                                    justify="between", width="100%",
+                                    variant="outline", color_scheme="gray",
                                 )
                             ),
                             rx.popover.content(
                                 color_picker(
                                     value=AppState.title_color,
                                     on_change=AppState.set_title_color,
-                                    variant="classic",
-                                    size="sm",
+                                    variant="classic", size="sm",
                                 ),
                                 padding="0.5em",
                             ),
                         ),
-                        # --- Popover para el color del PRECIO ---
+                        # Popover para el color del PRECIO
                         rx.popover.root(
                             rx.popover.trigger(
                                 rx.button(
@@ -239,24 +229,20 @@ def blog_post_add_content() -> rx.Component:
                                         rx.spacer(),
                                         rx.box(
                                             bg=AppState.price_color,
-                                            height="1em",
-                                            width="1em",
+                                            height="1em", width="1em",
                                             border="1px solid var(--gray-a7)",
                                             border_radius="var(--radius-2)",
                                         ),
                                     ),
-                                    justify="between",
-                                    width="100%",
-                                    variant="outline",
-                                    color_scheme="gray",
+                                    justify="between", width="100%",
+                                    variant="outline", color_scheme="gray",
                                 )
                             ),
                             rx.popover.content(
                                 color_picker(
                                     value=AppState.price_color,
                                     on_change=AppState.set_price_color,
-                                    variant="classic",
-                                    size="sm",
+                                    variant="classic", size="sm",
                                 ),
                                 padding="0.5em",
                             ),
@@ -265,7 +251,6 @@ def blog_post_add_content() -> rx.Component:
                         width="100%",
                         margin_top="1em"
                     ),
-                    # --- FIN DE LA NUEVA ESTRUCTURA CON POPOVERS ---
                     
                     spacing="3",
                     padding="1em",
@@ -273,21 +258,23 @@ def blog_post_add_content() -> rx.Component:
                     border_radius="md",
                     margin_top="1.5em",
                     align_items="stretch",
-                    width="100%",
+                    
+                    # --- ✨ 1. CORRECCIÓN DE ANCHO ✨ ---
+                    # Le damos el mismo ancho que la tarjeta de previsualización.
+                    width="290px",
                 ),
-                # --- ✨ FIN: SECCIÓN REDISEÑADA ✨ ---
                 
-                # --- ✨ CORRECCIÓN PARA VISIBILIDAD MÓVIL ✨ ---
-                # Antes: display=["none", "none", "flex", "flex"]
-                # Ahora: display="flex" para que siempre se muestre.
                 display="flex",
-                
                 width="100%",
                 spacing="4",
                 position="sticky",
                 top="2em",
+                
+                # --- ✨ 2. CORRECCIÓN DE ALINEACIÓN ✨ ---
+                # Centramos todos los elementos de esta columna.
+                align_items="center",
             ),
-            # El grid principal se encarga de apilar las columnas en móvil
+            
             columns={"initial": "1", "lg": "2fr 1fr"},
             gap="4em",
             width="100%",
