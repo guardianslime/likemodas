@@ -6,6 +6,7 @@ from ..state import AppState
 
 def sidebar_link(text: str, href: str) -> rx.Component:
     """Un componente reutilizable para cada enlace del menú."""
+    # Compara la ruta actual con el href del enlace
     is_active = AppState.current_path == href
     
     return rx.link(
@@ -13,7 +14,9 @@ def sidebar_link(text: str, href: str) -> rx.Component:
         href=href,
         width="100%",
         padding="0.75em",
+        # Aplica un fondo morado si el enlace está activo
         bg=rx.cond(is_active, rx.color("violet", 4), "transparent"),
+        # Cambia el color del texto y el grosor si está activo
         color=rx.cond(is_active, rx.color("violet", 11), rx.color_mode_cond("black", "white")),
         font_weight=rx.cond(is_active, "bold", "normal"),
         border_radius="var(--radius-3)",
@@ -22,7 +25,6 @@ def sidebar_link(text: str, href: str) -> rx.Component:
             "color": rx.color("violet", 11),
         },
     )
-
 def account_sidebar() -> rx.Component:
     """Sidebar con diseño mejorado para la sección Mi Cuenta."""
     return rx.vstack(

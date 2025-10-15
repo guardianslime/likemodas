@@ -6,22 +6,22 @@ from .. import navigation
 
 def sidebar_item(text: str, icon: str, href: str, has_notification: rx.Var[bool] = None) -> rx.Component:
     """Componente reutilizable para un enlace individual en el sidebar."""
-    # ✨ --- INICIO DE LA CORRECCIÓN --- ✨
-    # Usamos startswith para que las sub-rutas también activen el menú principal.
-    # Se maneja el caso especial de la ruta raíz "/" para que no se active siempre.
+    # Lógica avanzada: se activa si la ruta actual EMPIEZA con el href del enlace
     is_active = rx.cond(
         href == "/",
         AppState.current_path == "/",
         (AppState.current_path.startswith(href)) & (href != "/")
     )
-    # ✨ --- FIN DE LA CORRECCIÓN --- ✨
+    
     return rx.link(
         rx.hstack(
             rx.icon(icon, size=20),
             rx.text(text, size="3"),
             rx.spacer(),
             rx.cond(has_notification, rx.box(width="8px", height="8px", bg="red", border_radius="50%")),
+            # Aplica el fondo morado si el enlace está activo
             bg=rx.cond(is_active, rx.color("violet", 4), "transparent"),
+            # Cambia el color del texto y el grosor si está activo
             color=rx.cond(is_active, rx.color("violet", 11), rx.color_mode_cond("black", "white")),
             font_weight=rx.cond(is_active, "bold", "normal"),
             border_radius="var(--radius-3)",
