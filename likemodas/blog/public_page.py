@@ -160,6 +160,11 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         )
 
     def _modal_image_section() -> rx.Component:
+        """
+        [VERSIÓN FINAL Y CORREGIDA]
+        Contiene el carrusel de imágenes del modal, con una 'key' dinámica
+        para forzar su re-renderizado y correcto ajuste.
+        """
         return rx.vstack(
             carousel(
                 rx.foreach(
@@ -177,9 +182,10 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                         height={"base": "350px", "md": "500px"},
                     ),
                 ),
-                # --- ✨ AÑADE ESTA LÍNEA CLAVE AQUÍ ✨ ---
+                # --- ESTA ES LA LÍNEA CLAVE ---
+                # Conecta el carrusel a la "llave" del estado para forzar su recreación.
                 key=AppState.modal_carousel_key,
-                # --- FIN DE LA LÍNEA AÑADIDA ---
+                
                 show_thumbs=False,
                 show_arrows=AppState.unique_modal_variants.length() > 1,
                 show_indicators=False,

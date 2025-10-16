@@ -10,8 +10,10 @@ from ..blog.public_page import product_detail_modal
 
 def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
     """
-    [VERSIÓN FINAL] Componente para cada artículo. Usa un hstack con flex_grow
-    para asegurar que la imagen y el precio tengan su espacio y el texto central se ajuste.
+    [VERSIÓN FINAL Y CORREGIDA]
+    Muestra un solo artículo comprado. Usa un hstack con propiedades flex
+    para asegurar que la imagen siempre sea visible y que el texto
+    se alinee correctamente en cualquier tamaño de pantalla.
     """
     return rx.hstack(
         # Columna 1: Imagen del producto
@@ -26,7 +28,8 @@ def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
             ),
             # Se asegura que la imagen no se encoja
             flex_shrink=0,
-            on_click=AppState.open_product_detail_modal(item.id),
+            # Redirige a la página principal para abrir el modal correctamente
+            on_click=rx.redirect(f"/?product_id_to_load={item.id}"),
             cursor="pointer",
             _hover={"opacity": 0.8},
         ),
@@ -36,14 +39,14 @@ def purchase_item_card(item: PurchaseItemCardData) -> rx.Component:
             rx.text(item.variant_details_str, size="2", color_scheme="gray"),
             align_items="start",
             spacing="1",
-            flex_grow=1, # Permite que este elemento ocupe el espacio del medio
+            flex_grow=1,  # Permite que este elemento ocupe el espacio del medio
         ),
         # Columna 3: Cantidad y precio
         rx.vstack(
             rx.text(f"{item.quantity}x {item.price_at_purchase_cop}", size="3"),
             align_items="end",
             spacing="1",
-            flex_shrink=0, # Evita que esta columna se encoja
+            flex_shrink=0,  # Evita que esta columna se encoja
         ),
         spacing="4",
         align_items="center",

@@ -3026,35 +3026,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_main_page_data(self):
         """
-        [VERSIÓN CORREGIDA] Carga SIEMPRE la galería de productos de fondo.
-        Si la URL contiene un 'variant_uuid', programa la apertura del modal
-        para DESPUÉS de que la galería se haya cargado.
+        [VERSIÓN FINAL Y CORREGIDA]
+        Carga la galería de productos. Si la URL contiene 'product_id_to_load',
+        abre el modal correspondiente después de cargar la galería.
         """
-        variant_uuid_to_load = None
+        product_id_to_load = None
         full_url = ""
         try:
             full_url = self.router.url
         except Exception:
             pass
 
-        # Primero, extraemos el UUID de la variante si existe en la URL
-        if full_url and "variant_uuid=" in full_url:
+        # Extrae el ID del producto de la URL, si existe.
+        if full_url and "product_id_to_load=" in full_url:
             try:
                 query_params = parse_qs(urlparse(full_url).query)
-                variant_uuid_list = query_params.get("variant_uuid")
-                if variant_uuid_list:
-                    variant_uuid_to_load = variant_uuid_list[0]
-            except Exception as e:
-                logger.error(f"Error parseando URL de QR: {e}")
+                id_list = query_params.get("product_id_to_load")
+                if id_list:
+                    product_id_to_load = int(id_list[0])
+            except (Exception) as e:
+                logger.error(f"Error parseando URL para abrir modal: {e}")
 
-        # --- ✨ CORRECCIÓN CLAVE: La carga de la galería AHORA se ejecuta siempre ✨ ---
-        # Primero, cargamos todas las publicaciones de la galería
+        # Siempre carga la galería de productos.
         yield AppState.load_gallery_and_shipping
 
-        # Después de que la galería ya está cargando, si encontramos un UUID,
-        # llamamos al evento que se encarga de abrir el modal.
-        if variant_uuid_to_load:
-            yield AppState.handle_public_qr_load(variant_uuid_to_load)
+        # Si se encontró un ID en la URL, llama al evento para abrir el modal.
+        if product_id_to_load:
+            yield AppState.open_product_detail_modal(product_id_to_load)
+            # Limpia la URL para que una recarga manual no vuelva a abrir el modal.
+            yield rx.call_script("window.history.replaceState(null, '', '/')")
 
 
     min_price: str = ""
