@@ -7591,18 +7591,29 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def open_product_detail_modal(self, post_id: int):
         """
-        [VERSIÓN FINAL] Abre el modal y fuerza el re-renderizado del carrusel
-        incrementando una "llave" única.
+        [VERSIÓN FINAL Y CORREGIDA]
+        Abre el modal de detalle del producto. Incrementa una "llave" única para forzar
+        el re-renderizado completo del carrusel de imágenes, asegurando que se ajuste
+        correctamente en cualquier tamaño de pantalla.
         """
-        # 1. Incrementamos la llave. Esto le dirá a Reflex que el carrusel es "nuevo".
+        # 1. Incrementa la llave. Esto le dice a Reflex que el carrusel es "nuevo"
+        #    y lo obliga a recalcular su tamaño, solucionando el error de alineación.
         self.modal_carousel_key += 1
         
-        # 2. El resto de la lógica para cargar los datos del producto se ejecuta normalmente.
+        # 2. Resetea el estado del modal para una carga limpia.
         self.product_in_modal = None
         self.show_detail_modal = True
         self.modal_selected_attributes = {}
-        
-        # La lógica para obtener los datos del producto se mantiene exactamente igual.
+        self.modal_selected_variant_index = 0
+        self.product_comments = []
+        self.my_review_for_product = None
+        self.review_rating = 0
+        self.review_content = ""
+        self.show_review_form = False
+        self.review_limit_reached = False
+        self.expanded_comments = {}
+
+        # 3. Carga los datos del producto desde la base de datos (lógica existente).
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
@@ -7640,9 +7651,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             
-            # --- ✨ INICIO DE LA LÓGICA FALTANTE QUE CAUSA EL ERROR ✨ ---
-            # Este es el bloque que faltaba. Aquí se crean las variables antes de usarlas.
-            
             moda_completa_text = ""
             if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold:
                 moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}"
@@ -7651,8 +7659,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             if db_post.combines_shipping and db_post.shipping_combination_limit:
                 combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío."
             
-            # --- ✨ FIN DE LA LÓGICA FALTANTE ✨ ---
-
             self.product_in_modal = ProductDetailData(
                 id=db_post.id,
                 title=db_post.title,
@@ -7669,26 +7675,23 @@ class AppState(reflex_local_auth.LocalAuthState):
                 seller_name=seller_name,
                 seller_id=seller_id,
                 seller_score=db_post.seller_score,
-                
-                # Ahora estas variables sí existen y la advertencia desaparecerá
                 free_shipping_threshold=db_post.free_shipping_threshold,
                 moda_completa_tooltip_text=moda_completa_text,
                 combines_shipping=db_post.combines_shipping,
                 shipping_combination_limit=db_post.shipping_combination_limit,
                 envio_combinado_tooltip_text=combinado_text,
+                card_bg_color=db_post.card_bg_color,
+                title_color=db_post.title_color,
+                price_color=db_post.price_color,
             )
-
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
             
             if self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
-            # Lógica de comentarios usando el nuevo método
-            all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments] # <-- Llamada corregida
+            all_comment_dtos = [self._convert_comment_to_dto(c) for c in db_post.comments]
             original_comment_dtos = [dto for dto in all_comment_dtos if dto.id not in {update.id for parent in all_comment_dtos for update in parent.updates}]
             self.product_comments = sorted(original_comment_dtos, key=lambda c: c.id, reverse=True)
 
-            # Lógica para mostrar/ocultar el formulario de opinión (sin cambios)
             if self.is_authenticated:
                 user_info_id = self.authenticated_user_info.id
                 purchase_count = session.exec(
@@ -7710,20 +7713,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                         if current_updates_count < purchase_count:
                             self.show_review_form = True
                             latest_entry = sorted([user_original_comment] + user_original_comment.updates, key=lambda c: c.created_at, reverse=True)[0]
-                            self.my_review_for_product = self._convert_comment_to_dto(latest_entry) # <-- Llamada corregida
+                            self.my_review_for_product = self._convert_comment_to_dto(latest_entry)
                             self.review_rating = latest_entry.rating
                             self.review_content = latest_entry.content
                         else:
                             self.review_limit_reached = True
 
         yield AppState.load_saved_post_ids
-        
-        # Esta es la pausa clave: 50 milisegundos son suficientes para que el navegador
-        # calcule las dimensiones del modal antes de mostrar el contenido.
-        await asyncio.sleep(0.05) 
-        
-        # Tras la pausa, activamos la bandera para hacer visible el contenido.
-        self.is_modal_content_visible = True
 
     @rx.var
     def base_app_url(self) -> str:
