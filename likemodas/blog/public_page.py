@@ -339,40 +339,44 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             ),
             rx.cond(
                 AppState.product_in_modal,
-                rx.vstack(
-                    rx.grid(
-                        _modal_image_section(),
-                        _modal_info_section(),
-                        columns={"initial": "1", "md": "2"},
-                        spacing="6",
-                        align_items="start",
-                        width="100%",
-                    ),
-                    # --- ✨ CORRECCIÓN PARA EL ESPACIO DE COMENTARIOS ✨ ---
-                    # El `rx.cond` ahora envuelve toda la sección, incluyendo el ScrollArea.
-                    # Si no hay comentarios, no se renderiza nada, eliminando el espacio vacío.
-                    rx.cond(
-                        AppState.product_comments,
-                        rx.scroll_area(
-                            rx.vstack(
-                                rx.divider(margin_y="1.5em"),
-                                review_submission_form(),
+                # Condición principal: solo muestra el contenido si la bandera está activa.
+                rx.cond(
+                    AppState.is_modal_content_visible,
+                    # Si la bandera es True, muestra el contenido real del modal.
+                    rx.vstack(
+                        rx.grid(
+                            _modal_image_section(),
+                            _modal_info_section(),
+                            columns={"initial": "1", "md": "2"},
+                            spacing="6",
+                            align_items="start",
+                            width="100%",
+                        ),
+                        rx.cond(
+                            AppState.product_comments,
+                            rx.scroll_area(
                                 rx.vstack(
-                                    rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
-                                    rx.foreach(AppState.product_comments, render_comment_item),
-                                    spacing="1", width="100%",
+                                    rx.divider(margin_y="1.5em"),
+                                    review_submission_form(),
+                                    rx.vstack(
+                                        rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
+                                        rx.foreach(AppState.product_comments, render_comment_item),
+                                        spacing="1", width="100%",
+                                    ),
+                                    spacing="4",
+                                    width="100%",
+                                    padding_right="1em",
                                 ),
-                                spacing="4",
-                                width="100%",
-                                padding_right="1em",
-                            ),
-                            type="auto",
-                            scrollbars="vertical",
-                            style={"height": "400px", "margin_top": "1rem"},
-                        )
+                                type="auto",
+                                scrollbars="vertical",
+                                style={"height": "400px", "margin_top": "1rem"},
+                            )
+                        ),
                     ),
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                    # Si la bandera es False (durante los primeros 50ms), muestra el esqueleto de carga.
+                    skeleton_product_detail_view(),
                 ),
+                # Si aún no hay datos del producto, muestra el esqueleto también.
                 skeleton_product_detail_view(),
             ),
             style={"max_width": "1200px"},
@@ -380,6 +384,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         open=AppState.show_detail_modal,
         on_open_change=AppState.close_product_detail_modal,
     )
+    # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
 def public_qr_scanner_modal() -> rx.Component:
     return rx.dialog.root(

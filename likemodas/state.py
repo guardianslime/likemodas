@@ -4565,23 +4565,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.product_detail_chart_data = []
 
 
+    # --- ✨ 3. REEMPLAZA TU FUNCIÓN close_product_detail_modal CON ESTA VERSIÓN PARA RESETEAR LA VARIABLE ✨ ---
     @rx.event
     def close_product_detail_modal(self):
         """
-        Cierra el modal de detalle del producto, resetea su estado y
-        limpia la URL si se accedió mediante un QR.
+        Cierra el modal de detalle del producto y resetea todo su estado,
+        incluyendo la nueva bandera de visibilidad.
         """
         self.show_detail_modal = False
+        self.is_modal_content_visible = False  # <-- Se resetea la nueva bandera
         self.product_in_modal = None
         self.selected_product_detail = None
         self.selected_variant_detail = None
         self.selected_variant_index = -1
         self.product_detail_chart_data = []
 
-        # ✨ --- INICIO DE LA MODIFICACIÓN --- ✨
-        # Restauramos el título original de la página de inicio.
         yield rx.call_script("document.title = 'Likemodas'")
-        # ✨ --- FIN DE LA MODIFICACIÓN --- ✨
 
         full_url = ""
         try:
@@ -4594,7 +4593,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.redirect("/admin/store")
             else:
                 return rx.redirect("/")
-        # --- ✨ FIN: LÓGICA PARA LIMPIAR LA URL ✨ ---
 
     @rx.event
     def set_show_product_detail_modal(self, open: bool):
@@ -7584,21 +7582,23 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Disminuye el nivel de zoom para PC."""
         self.lightbox_zoom_level = max(self.lightbox_zoom_level - 0.5, 1.0)
 
-    @rx.event
-    def open_product_detail_modal(self, post_id: int):
-        # Reiniciar el estado inicial para el modal
-        self.product_in_modal = None
-        self.show_detail_modal = True
-        self.modal_selected_attributes = {}
-        self.modal_selected_variant_index = 0
-        self.product_comments = []
-        self.my_review_for_product = None
-        self.review_rating = 0
-        self.review_content = ""
-        self.show_review_form = False
-        self.review_limit_reached = False
-        self.expanded_comments = {}
+    # --- ✨ 1. AÑADE ESTA NUEVA VARIABLE DE ESTADO ✨ ---
+    is_modal_content_visible: bool = False
 
+    # --- ✨ 2. REEMPLAZA TU FUNCIÓN open_product_detail_modal CON ESTA VERSIÓN ASÍNCRONA ✨ ---
+    @rx.event
+    async def open_product_detail_modal(self, post_id: int):
+        """
+        [VERSIÓN CORREGIDA] Abre el modal de detalle del producto.
+        Primero muestra un contenedor vacío y, tras una breve pausa, renderiza el contenido
+        para asegurar que el carrusel de imágenes se ajuste correctamente en todos los dispositivos.
+        """
+        # Preparamos el modal pero mantenemos su contenido principal oculto al inicio.
+        self.product_in_modal = None
+        self.is_modal_content_visible = False
+        self.show_detail_modal = True
+        
+        # La lógica para obtener los datos del producto se mantiene exactamente igual.
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
@@ -7611,7 +7611,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if not db_post or not db_post.publish_active:
                 self.show_detail_modal = False
-                return rx.toast.error("Producto no encontrado.")
+                yield rx.toast.error("Producto no encontrado.")
+                return
 
             js_title = json.dumps(db_post.title)
             yield rx.call_script(f"document.title = {js_title}")
@@ -7712,6 +7713,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                             self.review_limit_reached = True
 
         yield AppState.load_saved_post_ids
+        
+        # Esta es la pausa clave: 50 milisegundos son suficientes para que el navegador
+        # calcule las dimensiones del modal antes de mostrar el contenido.
+        await asyncio.sleep(0.05) 
+        
+        # Tras la pausa, activamos la bandera para hacer visible el contenido.
+        self.is_modal_content_visible = True
 
     @rx.var
     def base_app_url(self) -> str:
