@@ -43,7 +43,7 @@ def my_login_page_content() -> rx.Component:
                     ),
                     rx.divider(orientation="vertical", size="1"), # Divisor visual
                     rx.link(
-                        "¿No tienes cuenta? Regístrate",
+                        "Regístrate",
                         href=reflex_local_auth.routes.REGISTER_ROUTE, # Ruta a la página de registro
                         size="2",
                         color_scheme="violet"
