@@ -32,8 +32,8 @@ def my_login_page_content() -> rx.Component:
                     on_submit=AppState.handle_login_with_verification
                 ),
                 
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                # Reemplazamos el rx.link único por un hstack con dos enlaces
+                # --- ✨ INICIO DE LA CORRECCIÓN DE ESTILO ✨ ---
+                # Este hstack ahora alinea los enlaces a los extremos.
                 rx.hstack(
                     rx.link(
                         "¿Olvidaste tu contraseña?", 
@@ -41,18 +41,16 @@ def my_login_page_content() -> rx.Component:
                         size="2", 
                         color_scheme="violet"
                     ),
-                    rx.divider(orientation="vertical", size="1"), # Divisor visual
                     rx.link(
-                        "Regístrarse",
-                        href=reflex_local_auth.routes.REGISTER_ROUTE, # Ruta a la página de registro
+                        "Registrarse",  # Texto acortado para un look más limpio
+                        href=reflex_local_auth.routes.REGISTER_ROUTE,
                         size="2",
                         color_scheme="violet"
                     ),
-                    justify="center",
-                    align="center",
-                    spacing="3",
+                    # Esta propiedad empuja los dos enlaces a los extremos opuestos.
+                    justify="between",
                     width="100%",
-                    margin_top="1em",
+                    margin_top="1.5em", # Un poco más de espacio vertical
                 ),
                 # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             )
