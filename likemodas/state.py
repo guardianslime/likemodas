@@ -7584,19 +7584,23 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ 1. AÑADE ESTA NUEVA VARIABLE DE ESTADO ✨ ---
     is_modal_content_visible: bool = False
+    # --- ✨ 1. AÑADE ESTA NUEVA VARIABLE DE ESTADO ✨ ---
+    modal_carousel_key: int = 0
 
-    # --- ✨ 2. REEMPLAZA TU FUNCIÓN open_product_detail_modal CON ESTA VERSIÓN ASÍNCRONA ✨ ---
+    # --- ✨ 2. REEMPLAZA TU FUNCIÓN open_product_detail_modal CON ESTA VERSIÓN ✨ ---
     @rx.event
-    async def open_product_detail_modal(self, post_id: int):
+    def open_product_detail_modal(self, post_id: int):
         """
-        [VERSIÓN CORREGIDA] Abre el modal de detalle del producto.
-        Primero muestra un contenedor vacío y, tras una breve pausa, renderiza el contenido
-        para asegurar que el carrusel de imágenes se ajuste correctamente en todos los dispositivos.
+        [VERSIÓN FINAL] Abre el modal y fuerza el re-renderizado del carrusel
+        incrementando una "llave" única.
         """
-        # Preparamos el modal pero mantenemos su contenido principal oculto al inicio.
+        # 1. Incrementamos la llave. Esto le dirá a Reflex que el carrusel es "nuevo".
+        self.modal_carousel_key += 1
+        
+        # 2. El resto de la lógica para cargar los datos del producto se ejecuta normalmente.
         self.product_in_modal = None
-        self.is_modal_content_visible = False
         self.show_detail_modal = True
+        self.modal_selected_attributes = {}
         
         # La lógica para obtener los datos del producto se mantiene exactamente igual.
         with rx.session() as session:

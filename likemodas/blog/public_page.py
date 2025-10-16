@@ -160,7 +160,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         )
 
     def _modal_image_section() -> rx.Component:
-        # --- ✨ INICIO DE LA CORRECCIÓN DE IMAGEN MÓVIL ✨ ---
         return rx.vstack(
             carousel(
                 rx.foreach(
@@ -171,15 +170,16 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             alt=AppState.product_in_modal.title,
                             width="100%",
                             height="100%",
-                            # Se cambia a "contain" para que la imagen siempre sea visible
                             object_fit="contain",
                         ),
                         on_click=AppState.open_lightbox(i),
                         cursor="pointer",
-                        # Altura responsiva para el contenedor de la imagen
                         height={"base": "350px", "md": "500px"},
                     ),
                 ),
+                # --- ✨ AÑADE ESTA LÍNEA CLAVE AQUÍ ✨ ---
+                key=AppState.modal_carousel_key,
+                # --- FIN DE LA LÍNEA AÑADIDA ---
                 show_thumbs=False,
                 show_arrows=AppState.unique_modal_variants.length() > 1,
                 show_indicators=False,
