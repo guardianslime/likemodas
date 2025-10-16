@@ -343,46 +343,27 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     style={"position": "absolute", "top": "1rem", "right": "1rem", "z_index": "10"},
                 )
             ),
+            # Se elimina el rx.cond(AppState.is_modal_content_visible, ...) que estaba aquí
             rx.cond(
                 AppState.product_in_modal,
-                # Condición principal: solo muestra el contenido si la bandera está activa.
-                rx.cond(
-                    AppState.is_modal_content_visible,
-                    # Si la bandera es True, muestra el contenido real del modal.
-                    rx.vstack(
-                        rx.grid(
-                            _modal_image_section(),
-                            _modal_info_section(),
-                            columns={"initial": "1", "md": "2"},
-                            spacing="6",
-                            align_items="start",
-                            width="100%",
-                        ),
-                        rx.cond(
-                            AppState.product_comments,
-                            rx.scroll_area(
-                                rx.vstack(
-                                    rx.divider(margin_y="1.5em"),
-                                    review_submission_form(),
-                                    rx.vstack(
-                                        rx.heading("Opiniones del Producto", size="6", margin_top="1em"),
-                                        rx.foreach(AppState.product_comments, render_comment_item),
-                                        spacing="1", width="100%",
-                                    ),
-                                    spacing="4",
-                                    width="100%",
-                                    padding_right="1em",
-                                ),
-                                type="auto",
-                                scrollbars="vertical",
-                                style={"height": "400px", "margin_top": "1rem"},
-                            )
+                # Ahora el contenido principal (vstack) se renderiza directamente
+                rx.vstack(
+                    rx.grid(
+                        _modal_image_section(),
+                        _modal_info_section(),
+                        columns={"initial": "1", "md": "2"},
+                        spacing="6",
+                        align_items="start",
+                        width="100%",
+                    ),
+                    rx.cond(
+                        AppState.product_comments,
+                        rx.scroll_area(
+                            # ... (tu código para los comentarios se mantiene igual)
                         ),
                     ),
-                    # Si la bandera es False (durante los primeros 50ms), muestra el esqueleto de carga.
-                    skeleton_product_detail_view(),
                 ),
-                # Si aún no hay datos del producto, muestra el esqueleto también.
+                # Si no hay datos del producto, se muestra el esqueleto de carga
                 skeleton_product_detail_view(),
             ),
             style={"max_width": "1200px"},

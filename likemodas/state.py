@@ -4573,7 +4573,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         incluyendo la nueva bandera de visibilidad.
         """
         self.show_detail_modal = False
-        self.is_modal_content_visible = False  # <-- Se resetea la nueva bandera
         self.product_in_modal = None
         self.selected_product_detail = None
         self.selected_variant_detail = None
@@ -7582,9 +7581,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Disminuye el nivel de zoom para PC."""
         self.lightbox_zoom_level = max(self.lightbox_zoom_level - 0.5, 1.0)
 
-    # --- ✨ 1. AÑADE ESTA NUEVA VARIABLE DE ESTADO ✨ ---
-    is_modal_content_visible: bool = False
-    # --- ✨ 1. AÑADE ESTA NUEVA VARIABLE DE ESTADO ✨ ---
     modal_carousel_key: int = 0
 
     # --- ✨ 2. REEMPLAZA TU FUNCIÓN open_product_detail_modal CON ESTA VERSIÓN ✨ ---
