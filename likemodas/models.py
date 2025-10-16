@@ -335,6 +335,10 @@ class BlogPostModel(rx.Model, table=True):
     card_bg_color: Optional[str] = Field(default=None)
     # --- ✨ FIN DEL CAMBIO ✨ --
 
+    # --- Asegúrate de que estas dos líneas estén aquí ---
+    title_color: Optional[str] = Field(default=None)
+    price_color: Optional[str] = Field(default=None)
+
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # Le decimos a la relación 'userinfo' (el dueño) que se vincule a través de 'userinfo_id'
     userinfo: "UserInfo" = Relationship(
