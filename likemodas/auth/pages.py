@@ -26,21 +26,35 @@ def my_login_page_content() -> rx.Component:
                             placeholder="Password",
                             name="password"
                         ),
-                        # --- ✨ MODIFICACIÓN: Botón de Login en violeta ✨ ---
                         rx.button("Iniciar Sesión", width="100%", type="submit", color_scheme="violet"),
                         spacing="4"
                     ),
                     on_submit=AppState.handle_login_with_verification
                 ),
-                rx.link(
-                   "¿Olvidaste tu contraseña?", 
-                    href="/forgot-password", 
-                    size="2", 
-                    text_align="center",
+                
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                # Reemplazamos el rx.link único por un hstack con dos enlaces
+                rx.hstack(
+                    rx.link(
+                        "¿Olvidaste tu contraseña?", 
+                        href="/forgot-password", 
+                        size="2", 
+                        color_scheme="violet"
+                    ),
+                    rx.divider(orientation="vertical", size="1"), # Divisor visual
+                    rx.link(
+                        "¿No tienes cuenta? Regístrate",
+                        href=reflex_local_auth.routes.REGISTER_ROUTE, # Ruta a la página de registro
+                        size="2",
+                        color_scheme="violet"
+                    ),
+                    justify="center",
+                    align="center",
+                    spacing="3",
+                    width="100%",
                     margin_top="1em",
-                    # --- ✨ MODIFICACIÓN: Enlace en violeta ✨ ---
-                    color_scheme="violet"
-                )
+                ),
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             )
         ),
         min_height="85vh",
