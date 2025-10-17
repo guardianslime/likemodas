@@ -1324,6 +1324,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             group["subtotal"] += item.subtotal
             
+            # Para la descripción de la variante (ej: "Talla: M"), omitimos el color
+            # ya que está implícito en la imagen del grupo.
             variant_attrs_str = ", ".join(
                 f"{k}: {v}" for k, v in item.variant_details.items() if k != "Color"
             )

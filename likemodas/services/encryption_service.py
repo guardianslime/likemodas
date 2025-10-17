@@ -1,3 +1,5 @@
+# likemodas/services/encryption_service.py
+
 import os
 from cryptography.fernet import Fernet
 from typing import Optional

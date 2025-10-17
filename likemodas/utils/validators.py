@@ -1,3 +1,5 @@
+# En: likemodas/utils/validators.py
+
 import re
 
 def validate_password(password: str) -> list[str]:

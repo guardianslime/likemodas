@@ -1,3 +1,5 @@
+# En: likemodas/utils/timing.py
+
 from datetime import datetime, timezone
 
 def get_utc_now() -> datetime:

@@ -1,3 +1,5 @@
+# likemodas/services/email_service.py
+
 import os
 import resend
 from dotenv import load_dotenv

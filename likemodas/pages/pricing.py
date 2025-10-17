@@ -1,3 +1,5 @@
+# likemodas/pages/pricing.py
+
 import reflex as rx
 
 from ..ui.base import base_page
