@@ -51,6 +51,24 @@ def display_default_address() -> rx.Component:
         width="100%", spacing="4",
     )
 
+# --- ✨ INICIO: AÑADE ESTA NUEVA FUNCIÓN ✨ ---
+def ineligible_product_item(item: CartItemData) -> rx.Component:
+    """Muestra un producto no elegible para Contra Entrega."""
+    return rx.hstack(
+        rx.image(
+            src=rx.get_upload_url(item.image_url),
+            width="40px",
+            height="40px",
+            object_fit="cover",
+            border_radius="sm",
+        ),
+        rx.text(item.title, size="2"),
+        align="center",
+        spacing="3",
+        width="100%",
+    )
+# --- ✨ FIN ✨ ---
+
 def cart_item_row(item: CartItemData) -> rx.Component:
     """Renderiza una fila en la tabla del carrito.
     ✨ CORREGIDO: Ahora incluye una miniatura clickeable del producto.
@@ -164,6 +182,32 @@ def cart_page_content() -> rx.Component:
                                 variant="soft",
                                 margin_top="1em",
                             )
+                        ),
+                        # --- ✨ FIN ✨ ---
+
+                        # --- ✨ INICIO: CÓDIGO A AÑADIR PARA LA LISTA DE ERRORES ✨ ---
+                        rx.cond(
+                            AppState.cod_ineligible_products,
+                            rx.callout.root(
+                                rx.callout.icon(rx.icon("x-circle")),
+                                rx.vstack(
+                                    rx.text("Los siguientes productos no se pueden enviar contra entrega a tu ciudad:", weight="bold"),
+                                    rx.vstack(
+                                        rx.foreach(
+                                            AppState.cod_ineligible_products,
+                                            ineligible_product_item,
+                                        ),
+                                        spacing="2",
+                                        padding_top="0.5em",
+                                        width="100%",
+                                    ),
+                                    spacing="2",
+                                    align_items="start",
+                                ),
+                                color_scheme="red",
+                                variant="soft",
+                                margin_top="1em",
+                            ),
                         ),
                         # --- ✨ FIN ✨ ---
 
