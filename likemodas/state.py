@@ -157,11 +157,16 @@ class ProductCardData(rx.Base):
     userinfo_id: int
     average_rating: float = 0.0
     rating_count: int = 0
-    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
-    card_bg_color: Optional[str] = None
-    # --- ✨ AÑADE ESTAS LÍNEAS ✨ ---
-    title_color: Optional[str] = None
-    price_color: Optional[str] = None
+    
+    # --- ✨ INICIO: CAMPOS DE ESTILO AÑADIDOS ✨ ---
+    use_default_style: bool = True
+    light_card_bg_color: Optional[str] = None
+    light_title_color: Optional[str] = None
+    light_price_color: Optional[str] = None
+    dark_card_bg_color: Optional[str] = None
+    dark_title_color: Optional[str] = None
+    dark_price_color: Optional[str] = None
+    # --- ✨ FIN ✨ ---
     
     class Config:
         orm_mode = True
@@ -188,11 +193,16 @@ class ProductDetailData(rx.Base):
     shipping_display_text: str = ""
     is_imported: bool = False
     seller_score: int = 0
-    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
-    card_bg_color: Optional[str] = None
-    # --- ✨ AÑADE ESTAS LÍNEAS ✨ ---
-    title_color: Optional[str] = None
-    price_color: Optional[str] = None
+
+    # --- ✨ INICIO: CAMPOS DE ESTILO AÑADIDOS ✨ ---
+    use_default_style: bool = True
+    light_card_bg_color: Optional[str] = None
+    light_title_color: Optional[str] = None
+    light_price_color: Optional[str] = None
+    dark_card_bg_color: Optional[str] = None
+    dark_title_color: Optional[str] = None
+    dark_price_color: Optional[str] = None
+    # --- ✨ FIN ✨ ---
 
     class Config:
         orm_mode = True
@@ -2942,9 +2952,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_gallery_and_shipping(self):
         """
-        [VERSIÓN CORREGIDA]
-        Manejador que carga la galería y calcula los envíos, ahora construyendo
-        manualmente el DTO para incluir los textos de los tooltips.
+        [CORREGIDO] Carga la galería pública, asegurando que los DTOs
+        incluyan los nuevos campos de estilo.
         """
         self.is_loading = True
         yield
@@ -2959,46 +2968,41 @@ class AppState(reflex_local_auth.LocalAuthState):
             results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
 
             temp_posts = []
+            # --- ✨ INICIO: CORRECCIÓN EN LA CREACIÓN DEL DTO ✨ ---
             for p in results:
-                # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-                # En lugar de .from_orm(p), construimos el objeto manualmente
-                # para poder añadir los textos calculados.
-                
-                # 1. Calculamos los textos de los tooltips (lógica que ya teníamos)
-                moda_completa_text = ""
-                if p.is_moda_completa_eligible and p.free_shipping_threshold:
-                    moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}"
+                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
 
-                combinado_text = ""
-                if p.combines_shipping and p.shipping_combination_limit:
-                    combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío."
-
-                # 2. Creamos el DTO pasando todos los valores explícitamente
-                temp_posts.append(
-                    ProductCardData(
-                        id=p.id,
-                        userinfo_id=p.userinfo_id,
-                        title=p.title,
-                        price=p.price,
-                        price_cop=p.price_cop,
-                        variants=p.variants or [],
-                        attributes={},
-                        average_rating=p.average_rating,
-                        rating_count=p.rating_count,
-                        shipping_cost=p.shipping_cost,
-                        is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        free_shipping_threshold=p.free_shipping_threshold,
-                        combines_shipping=p.combines_shipping,
-                        shipping_combination_limit=p.shipping_combination_limit,
-                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported,
-                        # Se asignan los textos calculados a los campos del DTO
-                        moda_completa_tooltip_text=moda_completa_text,
-                        envio_combinado_tooltip_text=combinado_text,
-                    )
+                card_data = ProductCardData(
+                    id=p.id,
+                    userinfo_id=p.userinfo_id,
+                    title=p.title,
+                    price=p.price,
+                    price_cop=p.price_cop,
+                    variants=p.variants or [],
+                    attributes={},
+                    average_rating=p.average_rating,
+                    rating_count=p.rating_count,
+                    shipping_cost=p.shipping_cost,
+                    is_moda_completa_eligible=p.is_moda_completa_eligible,
+                    free_shipping_threshold=p.free_shipping_threshold,
+                    combines_shipping=p.combines_shipping,
+                    shipping_combination_limit=p.shipping_combination_limit,
+                    shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                    is_imported=p.is_imported,
+                    moda_completa_tooltip_text=moda_completa_text,
+                    envio_combinado_tooltip_text=combinado_text,
+                    # Nuevos campos de estilo
+                    use_default_style=p.use_default_style,
+                    light_card_bg_color=p.light_card_bg_color,
+                    light_title_color=p.light_title_color,
+                    light_price_color=p.light_price_color,
+                    dark_card_bg_color=p.dark_card_bg_color,
+                    dark_title_color=p.dark_title_color,
+                    dark_price_color=p.dark_price_color,
                 )
-                # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-
+                temp_posts.append(card_data)
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---    
             self._raw_posts = temp_posts
 
         yield AppState.recalculate_all_shipping_costs
@@ -6738,34 +6742,32 @@ class AppState(reflex_local_auth.LocalAuthState):
     def on_load_admin_store(self):
         """
         [CORREGIDO] Carga las publicaciones para la "Tienda (Punto de Venta)"
-        usando la identidad correcta del vendedor.
+        incluyendo los nuevos campos de estilo.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado):
             return rx.redirect("/")
 
         yield AppState.load_all_users
 
-        owner_id = None
-        # --- ✨ Lógica de contexto robusta ✨ ---
-        if self.is_empleado and self.mi_vendedor_info:
-            owner_id = self.mi_vendedor_info.id
-        elif self.authenticated_user_info:
-            owner_id = self.authenticated_user_info.id
-
+        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             self.admin_store_posts = []
             return
 
         with rx.session() as session:
-            # La consulta ahora usa el `owner_id` correcto
             results = session.exec(
                 sqlmodel.select(BlogPostModel)
-                .where(BlogPostModel.userinfo_id == owner_id) # <-- CORRECCIÓN CLAVE
+                .where(BlogPostModel.userinfo_id == owner_id)
                 .order_by(BlogPostModel.created_at.desc())
             ).unique().all()
             
             temp_posts = []
+            # --- ✨ INICIO: CORRECCIÓN EN LA CREACIÓN DEL DTO ✨ ---
+            # Construimos manualmente el DTO para asegurar que todos los campos se incluyan.
             for p in results:
+                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
+
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
@@ -6779,14 +6781,24 @@ class AppState(reflex_local_auth.LocalAuthState):
                         rating_count=p.rating_count,
                         shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
-                        # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
                         free_shipping_threshold=p.free_shipping_threshold,
                         combines_shipping=p.combines_shipping,
                         shipping_combination_limit=p.shipping_combination_limit,
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported
+                        is_imported=p.is_imported,
+                        moda_completa_tooltip_text=moda_completa_text,
+                        envio_combinado_tooltip_text=combinado_text,
+                        # Nuevos campos de estilo
+                        use_default_style=p.use_default_style,
+                        light_card_bg_color=p.light_card_bg_color,
+                        light_title_color=p.light_title_color,
+                        light_price_color=p.light_price_color,
+                        dark_card_bg_color=p.dark_card_bg_color,
+                        dark_title_color=p.dark_title_color,
+                        dark_price_color=p.dark_price_color,
                     )
                 )
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             self.admin_store_posts = temp_posts
 
     show_admin_sidebar: bool = False
@@ -7724,15 +7736,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     def open_product_detail_modal(self, post_id: int):
         """
         [VERSIÓN FINAL Y CORREGIDA]
-        Abre el modal de detalle del producto. Incrementa una "llave" única para forzar
-        el re-renderizado completo del carrusel de imágenes, asegurando que se ajuste
-        correctamente en cualquier tamaño de pantalla.
+        Abre el modal de detalle del producto, cargando todos los campos necesarios,
+        incluidos los de estilo, y forzando el re-renderizado del carrusel.
         """
-        # 1. Incrementa la llave. Esto le dice a Reflex que el carrusel es "nuevo"
-        #    y lo obliga a recalcular su tamaño, solucionando el error de alineación.
         self.modal_carousel_key += 1
         
-        # 2. Resetea el estado del modal para una carga limpia.
         self.product_in_modal = None
         self.show_detail_modal = True
         self.modal_selected_attributes = {}
@@ -7745,7 +7753,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.review_limit_reached = False
         self.expanded_comments = {}
 
-        # 3. Carga los datos del producto desde la base de datos (lógica existente).
         with rx.session() as session:
             db_post = session.exec(
                 sqlmodel.select(BlogPostModel).options(
@@ -7783,14 +7790,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
             
-            moda_completa_text = ""
-            if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold:
-                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}"
-
-            combinado_text = ""
-            if db_post.combines_shipping and db_post.shipping_combination_limit:
-                combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío."
+            moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}" if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold else ""
+            combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío." if db_post.combines_shipping and db_post.shipping_combination_limit else ""
             
+            # --- ✨ INICIO: CORRECCIÓN EN LA CREACIÓN DEL DTO ✨ ---
             self.product_in_modal = ProductDetailData(
                 id=db_post.id,
                 title=db_post.title,
@@ -7812,11 +7815,17 @@ class AppState(reflex_local_auth.LocalAuthState):
                 combines_shipping=db_post.combines_shipping,
                 shipping_combination_limit=db_post.shipping_combination_limit,
                 envio_combinado_tooltip_text=combinado_text,
-                card_bg_color=db_post.card_bg_color,
-                title_color=db_post.title_color,
-                price_color=db_post.price_color,
+                # Nuevos campos de estilo
+                use_default_style=db_post.use_default_style,
+                light_card_bg_color=db_post.light_card_bg_color,
+                light_title_color=db_post.light_title_color,
+                light_price_color=db_post.light_price_color,
+                dark_card_bg_color=db_post.dark_card_bg_color,
+                dark_title_color=db_post.dark_title_color,
+                dark_price_color=db_post.dark_price_color,
             )
-            
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
             if self.product_in_modal.variants:
                 self._set_default_attributes_from_variant(self.product_in_modal.variants[0])
 
