@@ -1,7 +1,7 @@
 # likemodas/data/product_options.py
 
 MATERIALES_ROPA = sorted([
-    "Algodón", "Denim", "Gabardina", "Lana", "Licra", "Lino", 
+    "Algodón Perchado", "Algodón", "Denim", "Gabardina", "Lana", "Licra", "Lino", 
     "Pana", "Poliéster", "Seda", "Sintético", "Viscosa"
 ])
 
