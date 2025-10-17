@@ -1035,18 +1035,17 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def direct_sale_cart_details(self) -> List[CartItemData]:
         """
-        Calcula y devuelve los detalles de los items en el carrito de venta directa.
-        Reutilizamos el DTO `CartItemData` que ya tienes.
+        [VERSIÓN FINAL Y CORREGIDA]
+        Calcula los detalles del carrito de venta directa, encontrando la variante
+        correcta por sus atributos en lugar de por un índice propenso a errores.
         """
-        # Esta lógica es muy similar a tu `cart_details` existente,
-        # pero opera sobre `self.direct_sale_cart`.
         if not self.direct_sale_cart:
             return []
         with rx.session() as session:
-            # Extraer IDs de producto y construir un mapa para eficiencia
             product_ids = list(set([int(key.split('-')[0]) for key in self.direct_sale_cart.keys()]))
             if not product_ids:
                 return []
+            
             results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
             post_map = {p.id: p for p in results}
             
@@ -1054,21 +1053,45 @@ class AppState(reflex_local_auth.LocalAuthState):
             for cart_key, quantity in self.direct_sale_cart.items():
                 parts = cart_key.split('-')
                 product_id = int(parts[0])
-                variant_index = int(parts[1])
                 post = post_map.get(product_id)
+                if not post:
+                    continue
+
+                # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+
+                # 1. Reconstruimos los atributos exactos desde la clave del carrito.
+                selection_details = {part.split(':', 1)[0]: part.split(':', 1)[1] for part in parts[2:] if ':' in part}
+
+                # 2. Buscamos la variante correcta en la lista de variantes del producto
+                #    comparando los diccionarios de atributos.
+                correct_variant = None
+                correct_variant_index = -1
+                for i, v in enumerate(post.variants or []):
+                    if v.get("attributes") == selection_details:
+                        correct_variant = v
+                        correct_variant_index = i
+                        break
                 
-                if post and post.variants and 0 <= variant_index < len(post.variants):
-                    variant = post.variants[variant_index]
-                    selection_details = {part.split(':', 1)[0]: part.split(':', 1)[1] for part in parts[2:] if ':' in part}
-                    
-                    cart_items_data.append(
-                        CartItemData(
-                            cart_key=cart_key, product_id=product_id, variant_index=variant_index,
-                            title=post.title, price=post.price, price_cop=post.price_cop,
-                            image_url=variant.get("image_url", ""), quantity=quantity,
-                            variant_details=selection_details
-                        )
+                # Si por alguna razón la variante ya no existe, la omitimos del carrito.
+                if not correct_variant:
+                    continue
+                # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
+                cart_items_data.append(
+                    CartItemData(
+                        cart_key=cart_key,
+                        product_id=product_id,
+                        # Usamos el índice correcto que acabamos de encontrar
+                        variant_index=correct_variant_index,
+                        title=post.title,
+                        price=post.price,
+                        price_cop=post.price_cop,
+                        # Usamos la URL de la imagen de la variante correcta que encontramos
+                        image_url=correct_variant.get("image_url", ""),
+                        quantity=quantity,
+                        variant_details=selection_details
                     )
+                )
             return cart_items_data
         
     @rx.var
