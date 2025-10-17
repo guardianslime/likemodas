@@ -3033,7 +3033,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Maneja el switch de estilo predeterminado."""
         self.use_default_style = is_default
 
-    def toggle_preview_mode(self, mode: str):
+    def toggle_preview_mode(self, mode: str | list[str]):
         """Cambia entre la previsualización del modo claro y oscuro."""
         self.card_theme_mode = mode
         if mode == "light":
