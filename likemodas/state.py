@@ -2275,6 +2275,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 is_imported=self.is_imported,
                 # --- ✨ AÑADE ESTAS LÍNEAS AL FINAL ✨ ---
                 card_bg_color=self.card_bg_color,
+                # --- ✨ INICIO: AÑADE ESTOS CAMPOS AL CREAR EL OBJETO ✨ ---
+                use_default_style=self.use_default_style,
+                light_card_bg_color=self.light_theme_colors.get("bg"),
+                light_title_color=self.light_theme_colors.get("title"),
+                light_price_color=self.light_theme_colors.get("price"),
+                dark_card_bg_color=self.dark_theme_colors.get("bg"),
+                dark_title_color=self.dark_theme_colors.get("title"),
+                dark_price_color=self.dark_theme_colors.get("price"),
                 title_color=self.title_color,
                 price_color=self.price_color
             )
@@ -3001,7 +3009,98 @@ class AppState(reflex_local_auth.LocalAuthState):
     title_color: str = "#1C1C1C"
     price_color: str = "#6F6F6F"
     # --- ✨ 1. AÑADE ESTA NUEVA VARIABLE DE ESTADO AQUÍ ✨ ---
-    card_theme_mode: str = "light"  # Puede ser "light" o "dark"
+    # --- Estado para la Interfaz del Formulario ---
+    # Controla el switch de "Usar estilo predeterminado"
+    use_default_style: bool = True
+    # Almacena el modo de previsualización activo ("light" o "dark")
+    card_theme_mode: str = "light"
+    # Colores 'vivos' que están siendo modificados por los color pickers
+    live_card_bg_color: str = "#FFFFFF"
+    live_title_color: str = "#1C1C1C"
+    live_price_color: str = "#6F6F6F"
+
+    # --- Estado para Almacenar los Datos Guardados ---
+    # Diccionarios para guardar los colores personalizados de cada modo
+    light_theme_colors: dict = {"bg": "", "title": "", "price": ""}
+    dark_theme_colors: dict = {"bg": "", "title": "", "price": ""}
+    
+    # --- Lógica de la Interfaz ---
+    def set_use_default_style(self, is_default: bool):
+        """Maneja el switch de estilo predeterminado."""
+        self.use_default_style = is_default
+
+    def toggle_preview_mode(self, mode: str):
+        """Cambia entre la previsualización del modo claro y oscuro."""
+        self.card_theme_mode = mode
+        if mode == "light":
+            # Carga los colores guardados para el modo claro en los pickers
+            self.live_card_bg_color = self.light_theme_colors.get("bg") or "#FFFFFF"
+            self.live_title_color = self.light_theme_colors.get("title") or "#1C1C1C"
+            self.live_price_color = self.light_theme_colors.get("price") or "#6F6F6F"
+        else:
+            # Carga los colores guardados para el modo oscuro en los pickers
+            self.live_card_bg_color = self.dark_theme_colors.get("bg") or "#1C1C1C"
+            self.live_title_color = self.dark_theme_colors.get("title") or "#F5F5F5"
+            self.live_price_color = self.dark_theme_colors.get("price") or "#A0A0A0"
+
+    # Setters para los color pickers (ahora modifican los colores 'vivos')
+    def set_live_card_bg_color(self, color: str):
+        self.live_card_bg_color = color
+
+    def set_live_title_color(self, color: str):
+        self.live_title_color = color
+        
+    def set_live_price_color(self, color: str):
+        self.live_price_color = color
+
+    # --- Lógica de Guardado ---
+    @rx.event
+    def save_current_theme_customization(self):
+        """Guarda la personalización del modo actualmente seleccionado."""
+        # Al guardar, asumimos que el usuario ya no quiere el estilo predeterminado.
+        self.use_default_style = False
+        
+        if self.card_theme_mode == "light":
+            self.light_theme_colors = {
+                "bg": self.live_card_bg_color,
+                "title": self.live_title_color,
+                "price": self.live_price_color,
+            }
+            yield rx.toast.success("Estilo para MODO CLARO guardado.")
+        else:
+            self.dark_theme_colors = {
+                "bg": self.live_card_bg_color,
+                "title": self.live_title_color,
+                "price": self.live_price_color,
+            }
+            yield rx.toast.success("Estilo para MODO OSCURO guardado.")
+
+    # --- Lógica de Limpieza y Carga ---
+    def _clear_card_styles(self):
+        """Limpia todos los estados de estilo al resetear el formulario."""
+        self.use_default_style = True
+        self.card_theme_mode = "light"
+        self.live_card_bg_color = "#FFFFFF"
+        self.live_title_color = "#1C1C1C"
+        self.live_price_color = "#6F6F6F"
+        self.light_theme_colors = {"bg": "", "title": "", "price": ""}
+        self.dark_theme_colors = {"bg": "", "title": "", "price": ""}
+
+    def _load_card_styles_from_db(self, db_post: BlogPostModel):
+        """Carga los estilos guardados desde un objeto de la base de datos."""
+        self.use_default_style = db_post.use_default_style
+        self.light_theme_colors = {
+            "bg": db_post.light_card_bg_color or "",
+            "title": db_post.light_title_color or "",
+            "price": db_post.light_price_color or "",
+        }
+        self.dark_theme_colors = {
+            "bg": db_post.dark_card_bg_color or "",
+            "title": db_post.dark_title_color or "",
+            "price": db_post.dark_price_color or "",
+        }
+        # Inicia la previsualización en modo claro por defecto
+        self.toggle_preview_mode("light")
 
     show_color_picker: bool = False
 
@@ -3509,6 +3608,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             if self.edit_post_images_in_form:
                 yield self.select_edit_image_for_editing(0)
+
+            self._load_card_styles_from_db(db_post)
             self.is_editing_post = True
 
     
@@ -3651,6 +3752,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.shipping_combination_limit = limit
             post_to_update.variants = all_variants_for_db
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
+            # --- ✨ INICIO: AÑADE ESTOS CAMPOS AL ACTUALIZAR EL OBJETO ✨ ---
+            post_to_update.use_default_style = self.use_default_style
+            post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
+            post_to_update.light_title_color = self.light_theme_colors.get("title")
+            post_to_update.light_price_color = self.light_theme_colors.get("price")
+            post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
+            post_to_update.dark_title_color = self.dark_theme_colors.get("title")
+            post_to_update.dark_price_color = self.dark_theme_colors.get("price")
+            # --- ✨ FIN ✨ ---
             
             session.add(post_to_update)
             
@@ -4944,6 +5054,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.shipping_combination_limit_str = "3"
         self.variant_form_data = []
         self.generated_variants_map = {}
+        self._clear_card_styles()
         # --- ✨ AÑADE ESTAS LÍNEAS AL FINAL ✨ ---
         self.card_bg_color = "#FFFFFF"
         self.title_color = "#111111"

@@ -47,20 +47,17 @@ def searchable_select(
         )
 
     return rx.box(
-        # --- MODIFICACIÓN CLAVE EN EL BOTÓN ---
         rx.button(
             rx.cond(value_select, value_select, placeholder),
             rx.icon(tag="chevron-down"),
             on_click=AppState.toggle_filter_dropdown(filter_name),
             variant="outline", width="100%", justify_content="space-between",
             color_scheme="gray", size="2", is_disabled=is_disabled,
-            # Estilos para permitir que el texto se ajuste
             height="auto",
             white_space="normal",
             text_align="left",
             padding="0.5em 0.75em",
         ),
-        # --- FIN DE LA MODIFICACIÓN ---
         rx.cond(
             is_open,
             rx.vstack(
@@ -152,13 +149,35 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     post.title, 
                                     weight="bold", size="6", white_space="normal",
                                     text_overflow="initial", overflow="visible",
+                                    # --- ✨ INICIO: LÓGICA DE COLOR CONDICIONAL PARA EL TÍTULO ✨ ---
+                                    color=rx.cond(
+                                        post.use_default_style,
+                                        rx.color_mode_cond("black", "white"),
+                                        rx.cond(
+                                            post.light_title_color & post.dark_title_color,
+                                            rx.color_mode_cond(post.light_title_color, post.dark_title_color),
+                                            post.light_title_color | post.dark_title_color | rx.color_mode_cond("black", "white")
+                                        )
+                                    )
+                                    # --- ✨ FIN ✨ ---
                                 ),
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
-                                rx.text(post.price_cop, size="5", weight="medium"),
-                                
-                                # --- ✨ INICIO DE LA CORRECCIÓN DE DISEÑO Y TOOLTIPS ✨ ---
+                                rx.text(
+                                    post.price_cop,
+                                    size="5", weight="medium",
+                                    # --- ✨ INICIO: LÓGICA DE COLOR CONDICIONAL PARA EL PRECIO ✨ ---
+                                    color=rx.cond(
+                                        post.use_default_style,
+                                        rx.color("gray", 11),
+                                        rx.cond(
+                                            post.light_price_color & post.dark_price_color,
+                                            rx.color_mode_cond(post.light_price_color, post.dark_price_color),
+                                            post.light_price_color | post.dark_price_color | rx.color("gray", 11)
+                                        )
+                                    )
+                                    # --- ✨ FIN ✨ ---
+                                ),
                                 rx.vstack(
-                                    # Primera fila de insignias (sin tooltip en "Envío")
                                     rx.hstack(
                                         rx.badge(
                                             post.shipping_display_text,
@@ -173,7 +192,6 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                         ),
                                         spacing="3", align="center",
                                     ),
-                                    # Segunda fila (con tooltip)
                                     rx.cond(
                                         post.combines_shipping,
                                         rx.tooltip(
@@ -183,10 +201,8 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     ),
                                     spacing="1",
                                     align_items="start",
-                                    width="100%", # Asegura que ocupe el ancho
+                                    width="100%",
                                 ),
-                                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
                                 spacing="1", align_items="start", width="100%"
                             ),
                             spacing="2", 
@@ -197,8 +213,18 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.spacer(),
                     ),
                     width="290px", height="auto", min_height="450px",
-                    bg=rx.color_mode_cond("#f9f9f9", "#111111"),
+                    # --- ✨ INICIO: LÓGICA DE ESTILO CONDICIONAL PARA LA TARJETA ✨ ---
+                    bg=rx.cond(
+                        post.use_default_style,
+                        rx.color_mode_cond("#f9f9f9", "#111111"),
+                        rx.cond(
+                            post.light_card_bg_color & post.dark_card_bg_color,
+                            rx.color_mode_cond(post.light_card_bg_color, post.dark_card_bg_color),
+                            post.light_card_bg_color | post.dark_card_bg_color | rx.color_mode_cond("#f9f9f9", "#111111")
+                        )
+                    ),
                     border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
+                    # --- ✨ FIN ✨ ---
                     border_radius="8px", box_shadow="md", padding="1em",
                 )
             ),
