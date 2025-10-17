@@ -189,7 +189,7 @@ def cart_page_content() -> rx.Component:
                         rx.cond(
                             AppState.cod_ineligible_products,
                             rx.callout.root(
-                                rx.callout.icon(rx.icon("x-circle")),
+                                rx.callout.icon(rx.icon("circle-x")),
                                 rx.vstack(
                                     rx.text("Los siguientes productos no se pueden enviar contra entrega a tu ciudad:", weight="bold"),
                                     rx.vstack(
