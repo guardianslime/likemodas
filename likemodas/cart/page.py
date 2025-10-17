@@ -156,7 +156,7 @@ def cart_page_content() -> rx.Component:
                         rx.cond(
                             (AppState.payment_method == "Contra Entrega") & ~AppState.is_cod_available,
                             rx.callout.root(
-                                rx.callout.icon(rx.icon("alert-triangle")),
+                                rx.callout.icon(rx.icon("triangle-alert")),
                                 rx.callout.text(
                                     "El servicio contra entrega solo está disponible si todos los productos son de tu misma ciudad."
                                 ),
