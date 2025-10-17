@@ -420,24 +420,15 @@ def public_qr_scanner_modal() -> rx.Component:
 # ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
-    [VERSIÓN DEFINITIVA] Lightbox con layout de PC corregido,
-    fondo adaptable a modo claro/oscuro y controles siempre visibles.
+    [VERSIÓN DEFINITIVA] Lightbox con lógica de fondo corregida para usar los nuevos campos de estilo.
     """
     controls = rx.box(
         rx.hstack(
-            # Botón de Bloqueo/Desbloqueo
             rx.icon_button(
-                rx.cond(
-                    AppState.is_lightbox_locked,
-                    rx.icon("lock"),
-                    rx.icon("lock-open")
-                ),
+                rx.cond(AppState.is_lightbox_locked, rx.icon("lock"), rx.icon("lock-open")),
                 on_click=AppState.toggle_lightbox_lock,
-                variant="ghost",
-                color_scheme="gray",
-                size="2",  # <-- MÁS PEQUEÑO Y UNIFORME
+                variant="ghost", color_scheme="gray", size="2",
             ),
-            # Botones de Zoom para PC
             rx.icon_button(
                 rx.icon("zoom-out"),
                 on_click=AppState.zoom_out,
@@ -448,30 +439,21 @@ def lightbox_modal() -> rx.Component:
                 on_click=AppState.zoom_in,
                 variant="ghost", color_scheme="gray", size="2", display=["none", "none", "flex"]
             ),
-            
-            # Botón de Cerrar
             rx.dialog.close(
-                rx.icon_button(
-                    rx.icon("x"), 
-                    variant="ghost", color_scheme="gray", size="2" # <-- MÁS PEQUEÑO Y UNIFORME
-                )
+                rx.icon_button(rx.icon("x"), variant="ghost", color_scheme="gray", size="2")
             ),
-            
-            spacing="2", # <-- MÁS ESPACIO ENTRE ICONOS
+            spacing="2",
         ),
-        
-        # Estilos para la barra de controles
-        padding_x="0.5rem",   # <-- Más espacio horizontal interno
-        padding_y="0.3rem",   # <-- Espacio vertical interno
+        padding_x="0.5rem",
+        padding_y="0.3rem",
         bg=rx.color_mode_cond("rgba(255, 255, 255, 0.6)", "rgba(0, 0, 0, 0.4)"),
         border_radius="full",
         position="absolute",
-        top="1.5rem",         # Un poco más abajo para respirar
-        right="1.5rem",        # Un poco más separado del borde
+        top="1.5rem",
+        right="1.5rem",
         z_index="1500",
         style={"backdrop_filter": "blur(8px)"},
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ESTÉTICA DEFINITIVA ✨ ---
 
     return rx.dialog.root(
         rx.dialog.content(
@@ -509,20 +491,21 @@ def lightbox_modal() -> rx.Component:
                 ),
                 width="100%",
                 height="100%",
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                # Se aplica el color guardado del producto al fondo del área de la imagen.
-                # Si no hay color, se usa el color de fondo del tema actual.
+                # --- ✨ INICIO DE LA CORRECCIÓN CLAVE AQUÍ ✨ ---
                 bg=rx.cond(
-                    AppState.product_in_modal.card_bg_color,
-                    AppState.product_in_modal.card_bg_color,
-                    rx.color_mode_cond("white", "black")
+                    AppState.product_in_modal.use_default_style,
+                    rx.color_mode_cond("white", "black"),
+                    rx.cond(
+                        AppState.product_in_modal.light_card_bg_color & AppState.product_in_modal.dark_card_bg_color,
+                        rx.color_mode_cond(AppState.product_in_modal.light_card_bg_color, AppState.product_in_modal.dark_card_bg_color),
+                        AppState.product_in_modal.light_card_bg_color | AppState.product_in_modal.dark_card_bg_color | rx.color_mode_cond("white", "black")
+                    )
                 ),
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                # --- ✨ FIN DE LA CORRECCIÓN CLAVE AQUÍ ✨ ---
             ),
             style={
                 "position": "fixed", "inset": "0", "width": "auto", "height": "auto",
                 "max_width": "none", "padding": "0", "margin": "0", "border_radius": "0",
-                # Hacemos que el fondo general del diálogo sea semi-transparente para dar efecto de profundidad.
                 "background_color": "rgba(0, 0, 0, 0.5)",
                 "backdrop_filter": "blur(4px)",
             },

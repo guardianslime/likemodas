@@ -331,7 +331,7 @@ class BlogPostModel(rx.Model, table=True):
     price_includes_iva: bool = Field(default=True, nullable=False)
     is_imported: bool = Field(default=False, nullable=False)
 
-    # --- ✨ INICIO: NUEVOS CAMPOS PARA ESTILOS DE TARJETA ✨ ---
+    # --- ✨ SECCIÓN DE ESTILOS CORREGIDA (SOLO DEBE QUEDAR ESTO) ✨ ---
     use_default_style: bool = Field(default=True, nullable=False)
 
     # Colores para el modo claro
@@ -343,15 +343,7 @@ class BlogPostModel(rx.Model, table=True):
     dark_card_bg_color: Optional[str] = Field(default=None)
     dark_title_color: Optional[str] = Field(default=None)
     dark_price_color: Optional[str] = Field(default=None)
-    # --- ✨ FIN: NUEVOS CAMPOS PARA ESTILOS DE TARJETA ✨ ---
-
-    # --- ✨ AÑADE ESTA NUEVA LÍNEA AQUÍ ✨ ---
-    card_bg_color: Optional[str] = Field(default=None)
-    # --- ✨ FIN DEL CAMBIO ✨ --
-
-    # --- Asegúrate de que estas dos líneas estén aquí ---
-    title_color: Optional[str] = Field(default=None)
-    price_color: Optional[str] = Field(default=None)
+    # --- ✨ FIN DE LA SECCIÓN CORREGIDA ✨ ---
 
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # Le decimos a la relación 'userinfo' (el dueño) que se vincule a través de 'userinfo_id'
