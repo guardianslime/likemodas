@@ -151,6 +151,22 @@ def cart_page_content() -> rx.Component:
                             spacing="4",
                             color_scheme="violet",
                         ),
+
+                        # --- ✨ INICIO: CÓDIGO A AÑADIR PARA EL AVISO ✨ ---
+                        rx.cond(
+                            (AppState.payment_method == "Contra Entrega") & ~AppState.is_cod_available,
+                            rx.callout.root(
+                                rx.callout.icon(rx.icon("alert-triangle")),
+                                rx.callout.text(
+                                    "El servicio contra entrega solo está disponible si todos los productos son de tu misma ciudad."
+                                ),
+                                color_scheme="orange",
+                                variant="soft",
+                                margin_top="1em",
+                            )
+                        ),
+                        # --- ✨ FIN ✨ ---
+
                         # --- ✨ MODIFICACIÓN: Callout de información en tonos morados ✨ ---
                         rx.callout(
                             "Nota: En caso de devolución del pedido, se cobrará nuevamente el valor del envío para cubrir los costos logísticos del retorno.",

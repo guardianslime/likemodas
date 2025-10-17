@@ -297,6 +297,23 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 size="3", color_scheme="gray", margin_top="1.5em",
                 text_align="left", width="100%"
             ),
+            # --- ✨ INICIO: CÓDIGO A AÑADIR ✨ ---
+            rx.cond(
+                AppState.product_in_modal.seller_city,
+                rx.hstack(
+                    rx.icon("map-pin", size=16, color_scheme="gray"),
+                    rx.text(
+                        "Desde: ",
+                        rx.text.strong(AppState.product_in_modal.seller_city),
+                        size="3",
+                        color_scheme="gray"
+                    ),
+                    spacing="2",
+                    align="center",
+                    margin_top="0.5em",
+                )
+            ),
+            # --- ✨ FIN ✨ ---
             rx.spacer(),
             rx.hstack(
                 rx.button(

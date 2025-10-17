@@ -194,6 +194,10 @@ class ProductDetailData(rx.Base):
     is_imported: bool = False
     seller_score: int = 0
 
+    # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+    seller_city: Optional[str] = None
+    # --- ✨ FIN ✨ ---
+
     # --- ✨ INICIO: CAMPOS DE ESTILO AÑADIDOS ✨ ---
     use_default_style: bool = True
     light_card_bg_color: Optional[str] = None
@@ -5723,7 +5727,41 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         self.posts = recalculated_posts
 
+    # --- ✨ INICIO: NUEVA PROPIEDAD COMPUTADA PARA VALIDAR CONTRA ENTREGA ✨ ---
+    @rx.var
+    def is_cod_available(self) -> bool:
+        """
+        Verifica si el pago contra entrega es válido.
+        Devuelve False si algún producto en el carrito es de una ciudad
+        diferente a la del comprador.
+        """
+        if not self.cart or not self.default_shipping_address:
+            # Si no hay carrito o dirección, no aplicamos la restricción aún.
+            return True
 
+        buyer_city = self.default_shipping_address.city
+        
+        with rx.session() as session:
+            # Obtenemos los IDs de los vendedores de los productos en el carrito
+            product_ids = {item.product_id for item in self.cart_details}
+            if not product_ids:
+                return True
+            
+            seller_cities = session.exec(
+                sqlmodel.select(UserInfo.seller_city)
+                .join(BlogPostModel, UserInfo.id == BlogPostModel.userinfo_id)
+                .where(BlogPostModel.id.in_(product_ids))
+            ).unique().all()
+            
+            # Si alguna ciudad de vendedor no es nula y es diferente a la del comprador, la opción no es válida.
+            for city in seller_cities:
+                if city and city != buyer_city:
+                    return False
+        
+        # Si todas las ciudades coinciden (o no están definidas), la opción es válida.
+        return True
+    # --- ✨ FIN ✨ ---
+    
     @rx.event
     def load_addresses(self):
         if self.authenticated_user_info:
@@ -7815,6 +7853,10 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             seller_name = db_post.userinfo.user.username if db_post.userinfo and db_post.userinfo.user else "N/A"
             seller_id = db_post.userinfo.id if db_post.userinfo else 0
+
+            # --- ✨ INICIO: AÑADE ESTA LÍNEA PARA OBTENER LA CIUDAD ✨ ---
+            seller_city = db_post.userinfo.seller_city if db_post.userinfo else None
+            # --- ✨ FIN ✨ ---
             
             moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(db_post.free_shipping_threshold)}" if db_post.is_moda_completa_eligible and db_post.free_shipping_threshold else ""
             combinado_text = f"Combina hasta {db_post.shipping_combination_limit} productos en un envío." if db_post.combines_shipping and db_post.shipping_combination_limit else ""
@@ -7836,6 +7878,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                 seller_name=seller_name,
                 seller_id=seller_id,
                 seller_score=db_post.seller_score,
+                # --- ✨ INICIO: PASA LA CIUDAD AL DTO ✨ ---
+                seller_city=seller_city,
+                # --- ✨ FIN ✨ ---
                 free_shipping_threshold=db_post.free_shipping_threshold,
                 moda_completa_tooltip_text=moda_completa_text,
                 combines_shipping=db_post.combines_shipping,
