@@ -331,6 +331,20 @@ class BlogPostModel(rx.Model, table=True):
     price_includes_iva: bool = Field(default=True, nullable=False)
     is_imported: bool = Field(default=False, nullable=False)
 
+    # --- ✨ INICIO: NUEVOS CAMPOS PARA ESTILOS DE TARJETA ✨ ---
+    use_default_style: bool = Field(default=True, nullable=False)
+
+    # Colores para el modo claro
+    light_card_bg_color: Optional[str] = Field(default=None)
+    light_title_color: Optional[str] = Field(default=None)
+    light_price_color: Optional[str] = Field(default=None)
+    
+    # Colores para el modo oscuro
+    dark_card_bg_color: Optional[str] = Field(default=None)
+    dark_title_color: Optional[str] = Field(default=None)
+    dark_price_color: Optional[str] = Field(default=None)
+    # --- ✨ FIN: NUEVOS CAMPOS PARA ESTILOS DE TARJETA ✨ ---
+
     # --- ✨ AÑADE ESTA NUEVA LÍNEA AQUÍ ✨ ---
     card_bg_color: Optional[str] = Field(default=None)
     # --- ✨ FIN DEL CAMBIO ✨ --
