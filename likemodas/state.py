@@ -5242,14 +5242,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VERSIÓN FINAL CORREGIDA] Procesa la compra, añadiendo una validación robusta
         para el método de pago "Contra Entrega" antes de continuar.
         """
-        # --- ✨ INICIO: NUEVO BLOQUE DE VALIDACIÓN PARA PAGO CONTRA ENTREGA ✨ ---
-
         # Limpiamos la lista de errores de la vez anterior
         self.cod_ineligible_products = []
 
         if self.payment_method == "Contra Entrega":
             if not self.is_cod_available:
-                # Si la validación general falla, identificamos los productos específicos.
                 ineligible_items = []
                 buyer_city = self.default_shipping_address.city if self.default_shipping_address else None
 
@@ -5257,7 +5254,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                     with rx.session() as session:
                         product_ids = {item.product_id for item in self.cart_details}
                         
-                        # Obtenemos los posts y sus vendedores
                         posts_with_sellers = session.exec(
                             sqlmodel.select(BlogPostModel)
                             .options(sqlalchemy.orm.joinedload(BlogPostModel.userinfo))
@@ -5265,7 +5261,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         ).all()
                         seller_map = {p.id: p.userinfo for p in posts_with_sellers}
 
-                        # Comparamos la ciudad de cada producto con la del comprador
                         for item in self.cart_details:
                             seller = seller_map.get(item.product_id)
                             if seller and seller.seller_city and seller.seller_city != buyer_city:
@@ -5273,12 +5268,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 self.cod_ineligible_products = ineligible_items
                 
-                # Si encontramos productos no elegibles, detenemos el proceso.
                 if self.cod_ineligible_products:
-                    return rx.toast.error("Algunos productos no son elegibles para pago contra entrega.")
+                    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+                    # Se cambia 'return' por 'yield' para ejecutar el evento
+                    # y se añade un 'return' vacío para detener la función.
+                    yield rx.toast.error("Algunos productos no son elegibles para pago contra entrega.")
+                    return
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
         
-        # --- ✨ FIN DEL BLOQUE DE VALIDACIÓN ✨ ---
-
         # El resto de la lógica de checkout se ejecuta solo si la validación pasa.
         if not self.is_authenticated or not self.default_shipping_address:
             yield rx.toast.error("Por favor, inicia sesión y selecciona una dirección predeterminada.")
