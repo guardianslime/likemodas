@@ -3394,7 +3394,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield
 
         category = None
-        full_url = self.router.url
+        full_url = ""
+        try:
+            full_url = self.router.url
+        except Exception:
+            pass
 
         if full_url and "?" in full_url:
             parsed_url = urlparse(full_url)
@@ -3416,32 +3420,41 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_posts = []
             for p in results:
-                # ✨ --- INICIO: LÓGICA PARA CREAR LOS TEXTOS --- ✨
-                moda_completa_text = ""
-                if p.is_moda_completa_eligible and p.free_shipping_threshold:
-                    moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}"
+                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
 
-                combinado_text = ""
-                if p.combines_shipping and p.shipping_combination_limit:
-                    combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío."
-                # ✨ --- FIN DE LA LÓGICA --- ✨
-
+                # --- ✨ INICIO: CORRECCIÓN CLAVE AQUÍ ✨ ---
+                # Ahora se pasan TODOS los campos requeridos y opcionales.
                 temp_posts.append(
                     ProductCardData(
                         id=p.id,
-                        # ... (otros campos)
+                        userinfo_id=p.userinfo_id,
+                        title=p.title,
+                        price=p.price,
+                        price_cop=p.price_cop,
+                        variants=p.variants or [],
+                        attributes={},
+                        average_rating=p.average_rating,
+                        rating_count=p.rating_count,
+                        shipping_cost=p.shipping_cost,
                         is_moda_completa_eligible=p.is_moda_completa_eligible,
                         free_shipping_threshold=p.free_shipping_threshold,
                         combines_shipping=p.combines_shipping,
                         shipping_combination_limit=p.shipping_combination_limit,
-                        # ✨ --- INICIO: PASAR LOS TEXTOS AL DTO --- ✨
+                        is_imported=p.is_imported,
                         moda_completa_tooltip_text=moda_completa_text,
                         envio_combinado_tooltip_text=combinado_text,
-                        # ✨ --- FIN --- ✨
                         shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                        is_imported=p.is_imported,
+                        use_default_style=p.use_default_style,
+                        light_card_bg_color=p.light_card_bg_color,
+                        light_title_color=p.light_title_color,
+                        light_price_color=p.light_price_color,
+                        dark_card_bg_color=p.dark_card_bg_color,
+                        dark_title_color=p.dark_title_color,
+                        dark_price_color=p.dark_price_color,
                     )
                 )
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             self.posts = temp_posts
         
         self.is_loading = False
@@ -7616,7 +7629,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 ).one()
                 
                 sorted_posts = sorted(user_with_posts.saved_posts, key=lambda p: p.created_at, reverse=True)
+                
+                # --- ✨ INICIO: CORRECCIÓN CLAVE AQUÍ TAMBIÉN ✨ ---
                 for p in sorted_posts:
+                    moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                    combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
+
                     temp_posts.append(
                         ProductCardData(
                             id=p.id,
@@ -7624,21 +7642,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                             title=p.title,
                             price=p.price,
                             price_cop=p.price_cop,
-                            # --- 👇 LÍNEA CORREGIDA 👇 ---
                             variants=p.variants or [],
                             attributes={},
                             average_rating=p.average_rating,
                             rating_count=p.rating_count,
                             shipping_cost=p.shipping_cost,
                             is_moda_completa_eligible=p.is_moda_completa_eligible,
-                            # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
                             free_shipping_threshold=p.free_shipping_threshold,
                             combines_shipping=p.combines_shipping,
                             shipping_combination_limit=p.shipping_combination_limit,
                             shipping_display_text=_get_shipping_display_text(p.shipping_cost),
-                            is_imported=p.is_imported
+                            is_imported=p.is_imported,
+                            moda_completa_tooltip_text=moda_completa_text,
+                            envio_combinado_tooltip_text=combinado_text,
+                            use_default_style=p.use_default_style,
+                            light_card_bg_color=p.light_card_bg_color,
+                            light_title_color=p.light_title_color,
+                            light_price_color=p.light_price_color,
+                            dark_card_bg_color=p.dark_card_bg_color,
+                            dark_title_color=p.dark_title_color,
+                            dark_price_color=p.dark_price_color,
                         )
                     )
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 self.saved_posts_gallery = temp_posts
         
         self.is_loading = False
