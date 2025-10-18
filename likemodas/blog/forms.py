@@ -8,10 +8,12 @@ from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
 def blog_post_add_form() -> rx.Component:
     """
-    [VERSIÓN 3.2] Formulario con ancho máximo reducido y límite de caracteres en el título.
+    [VERSIÓN 3.2] Formulario para añadir productos, con un ancho máximo
+    para evitar que se estire horizontalmente.
     """
+
     def image_and_group_section() -> rx.Component:
-        # (Esta función interna no tiene cambios)
+        # Esta función no cambia.
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
@@ -66,7 +68,7 @@ def blog_post_add_form() -> rx.Component:
         )
 
     def attributes_and_stock_section() -> rx.Component:
-        # (Esta función interna no tiene cambios)
+        # Esta función no cambia.
         return rx.cond(
             AppState.selected_group_index >= 0,
             rx.vstack(
@@ -129,7 +131,9 @@ def blog_post_add_form() -> rx.Component:
         )
 
     return rx.form(
+        # --- ✨ CORRECCIÓN DE ANCHO MÁXIMO ✨ ---
         rx.vstack(
+            rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
             rx.grid(
                 rx.vstack(
                     image_and_group_section(),
@@ -138,19 +142,7 @@ def blog_post_add_form() -> rx.Component:
                     width="100%",
                 ),
                 rx.vstack(
-                    # --- ✨ INICIO: LÍMITE DE CARACTERES PARA EL TÍTULO ✨ ---
-                    rx.vstack(
-                        rx.text("Título del Producto"), 
-                        rx.input(
-                            name="title", 
-                            value=AppState.title, 
-                            on_change=AppState.set_title, 
-                            required=True,
-                            max_length=60  # <-- Límite añadido
-                        ), 
-                        align_items="stretch"
-                    ),
-                    # --- ✨ FIN ✨ ---
+                    rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
                     rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                     rx.grid(
                         rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
@@ -189,8 +181,7 @@ def blog_post_add_form() -> rx.Component:
             ),
             spacing="5", 
             width="100%",
-            # --- ✨ CORRECCIÓN DE ANCHO MÁXIMO ✨ ---
-            max_width="700px", 
+            max_width="1200px", 
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
