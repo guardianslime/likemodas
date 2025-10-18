@@ -162,18 +162,16 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_image_section() -> rx.Component:
         """
         [VERSIÓN FINAL Y CORREGIDA]
-        Contiene el carrusel de imágenes del modal, que ahora itera sobre la lista
-        de `image_urls` de la variante/grupo seleccionado.
+        Contiene el carrusel y las miniaturas del modal, usando la nueva
+        propiedad computada 'modal_image_urls' para mayor estabilidad.
         """
         
-        # Esta función interna para las miniaturas ahora muestra la primera imagen de cada grupo.
         def _manual_thumbnails() -> rx.Component:
             return rx.hstack(
                 rx.foreach(
                     AppState.unique_modal_variants,
                     lambda item, i: rx.box(
                         rx.image(
-                            # Muestra la primera imagen de la lista de URLs del grupo
                             src=rx.get_upload_url(item.variant.get("image_urls", [""])[0]),
                             height="60px", width="60px", object_fit="cover", border_radius="var(--radius-3)",
                         ),
@@ -188,9 +186,9 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
 
         return rx.vstack(
             carousel(
-                # --- ✨ CORRECCIÓN CLAVE: Itera sobre la lista de URLs de la variante actual ✨ ---
+                # --- ✨ CORRECCIÓN 1: Usamos la nueva propiedad simple ✨ ---
                 rx.foreach(
-                    AppState.current_modal_variant.get("image_urls", []),
+                    AppState.modal_image_urls,
                     lambda image_url, index: rx.box(
                         rx.image(
                             src=rx.get_upload_url(image_url),
@@ -199,15 +197,16 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                             height="100%",
                             object_fit="contain",
                         ),
-                        on_click=AppState.open_lightbox(index), # Permite abrir el lightbox en la imagen correcta
+                        on_click=AppState.open_lightbox(index),
                         cursor="pointer",
                         height={"base": "350px", "md": "500px"},
                     ),
                 ),
                 key=AppState.modal_carousel_key,
                 show_thumbs=False,
-                show_arrows=AppState.current_modal_variant.get("image_urls", []).length() > 1,
-                show_indicators=AppState.current_modal_variant.get("image_urls", []).length() > 1,
+                # --- ✨ CORRECCIÓN 2: También simplificamos estas condiciones ✨ ---
+                show_arrows=AppState.modal_image_urls.length() > 1,
+                show_indicators=AppState.modal_image_urls.length() > 1,
                 show_status=False,
                 infinite_loop=True,
                 emulate_touch=True,

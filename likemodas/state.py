@@ -3964,6 +3964,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         if filename in self.post_images_in_form:
             self.post_images_in_form.remove(filename)
 
+    # --- ✨ INICIO: AÑADE ESTA NUEVA PROPIEDAD COMPUTADA ✨ ---
+    @rx.var
+    def modal_image_urls(self) -> list[str]:
+        """
+        Una propiedad computada segura que devuelve la lista de URLs de imágenes
+        para la variante actualmente seleccionada en el modal.
+        """
+        if not self.current_modal_variant:
+            return []
+        # .get() es seguro aquí porque esto es código Python, no una operación de Var.
+        return self.current_modal_variant.get("image_urls", [])
+    # --- ✨ FIN ✨ ---
+
     # Reemplaza las propiedades @rx.var 'current_modal_variant' y 'current_modal_image_filename'
     @rx.var
     def current_modal_variant(self) -> Optional[dict]:
