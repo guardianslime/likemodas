@@ -10,6 +10,7 @@ from ..auth.admin_auth import require_panel_access
 from .forms import blog_post_add_form
 from ..ui.components import star_rating_display_safe
 from ..utils.formatting import format_to_cop
+from reflex.components.component import NoSSRComponent
 
 class Moveable(NoSSRComponent):
     """Componente Reflex que envuelve la librería React-Moveable."""
