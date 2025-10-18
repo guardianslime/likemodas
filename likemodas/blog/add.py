@@ -7,7 +7,7 @@ from ..state import AppState
 from ..auth.admin_auth import require_panel_access
 from ..models import Category
 from ..ui.components import searchable_select
-from ..data.product_options import LISTA_TALLAS_ROPA
+from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
 # --- ✨ COMPONENTES REUTILIZABLES PARA LA NUEVA INTERFAZ ✨ ---
 
@@ -32,7 +32,8 @@ def image_selection_grid() -> rx.Component:
                             rx.cond(
                                 AppState.image_selection_for_grouping.contains(img_name),
                                 rx.box(
-                                    rx.icon("check-circle-2", color="white", size=24),
+                                    # --- ✨ CORRECCIÓN 1: Nombre del icono corregido ✨ ---
+                                    rx.icon("check-circle", color="white", size=24),
                                     bg="rgba(90, 40, 180, 0.7)",
                                     position="absolute", inset="0", border_radius="md",
                                     display="flex", align_items="center", justify_content="center"
@@ -122,8 +123,9 @@ def variant_group_manager() -> rx.Component:
         return rx.card(
             rx.vstack(
                 rx.flex(
+                    # --- ✨ CORRECCIÓN 2: Se añade rx.Var.cast para ayudar al compilador ✨ ---
                     rx.foreach(
-                        group["image_urls"],
+                        rx.Var.cast(group["image_urls"], list[str]),
                         lambda url: rx.image(src=rx.get_upload_url(url), width="60px", height="60px", object_fit="cover", border_radius="sm")
                     ),
                     wrap="wrap", spacing="2",
@@ -175,8 +177,6 @@ def blog_post_add_form() -> rx.Component:
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", on_change=AppState.set_price, type="number", required=True)),
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number")),
-                    
-                    # --- ✨ CORRECCIÓN AQUÍ: de 2 a "2" ✨ ---
                     columns="2", 
                     spacing="4"
                 ),
