@@ -26,7 +26,7 @@ No utilizamos cookies de marketing, publicidad o análisis de terceros.
 Aunque no puedes desactivar nuestras cookies esenciales sin afectar el funcionamiento del sitio, puedes configurar tu navegador para que las bloquee o te avise sobre ellas. Consulta la sección de ayuda de tu navegador para saber cómo hacerlo. Ten en cuenta que si bloqueas estas cookies, partes del sitio como el inicio de sesión o el carrito de compras no funcionarán.
 
 ### 4. Contacto
-Si tienes preguntas sobre nuestra Política de Cookies, contáctanos en: **[Correo Electrónico de Contacto]**.
+Si tienes preguntas sobre nuestra Política de Cookies, contáctanos en: soporte@likemodas.com.
 """
 
 

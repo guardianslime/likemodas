@@ -1,1 +1,0 @@
-import{b as e}from"./chunk-BCmksqYJ.js";import"./basic-5VaBfIQ1.js";import{b as t}from"./t4-templating-F5oeUANU.js";import{b as n}from"./vbnet-C_7ztsu4.js";var r=e(((exports,r)=>{var i=t(),a=n();r.exports=o,o.displayName=`t4Vb`,o.aliases=[];function o(e){e.register(i),e.register(a),e.languages[`t4-vb`]=e.languages[`t4-templating`].createT4(`vbnet`)}}));export default r();

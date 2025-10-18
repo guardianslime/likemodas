@@ -50,7 +50,7 @@ De acuerdo con la Ley 1581 de 2012 de Colombia, tienes derecho a:
 Utilizamos cookies técnicas y esenciales para el funcionamiento de la Plataforma, como mantener tu sesión iniciada y recordar los productos en tu carrito. Para más detalles, consulta nuestra **Política de Cookies**.
 
 ### 7. Contacto
-Si tienes preguntas sobre esta política, contáctanos en: **[Correo Electrónico de Contacto]**.
+Si tienes preguntas sobre esta política, contáctanos en: soporte@likemodas.com.
 """
 
 
