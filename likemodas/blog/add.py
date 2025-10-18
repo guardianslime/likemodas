@@ -10,7 +10,6 @@ from ..utils.formatting import format_to_cop
 from typing import Dict, Any
 from reflex.components.component import NoSSRComponent
 
-# --- ✨ INICIO: COMPONENTE PARA IMAGEN INTERACTIVA ✨ ---
 class Moveable(NoSSRComponent):
     """Componente Reflex que envuelve la librería React-Moveable."""
     library = "react-moveable"
@@ -112,7 +111,7 @@ def post_preview() -> rx.Component:
                     )
                 ),
                 rx.spacer(),
-                # Aquí irían los badges de envío si los tuvieras definidos
+                # Aquí irían los badges de envío si los tuvieras definidos en una función
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",
