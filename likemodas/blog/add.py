@@ -45,7 +45,7 @@ def blog_post_add_content() -> rx.Component:
         rx.grid(
             rx.vstack(
                 rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                blog_post_add_form(),
+                blog_post_add_form(), # Llama al formulario restaurado
                 width="100%",
                 spacing="4",
             ),
