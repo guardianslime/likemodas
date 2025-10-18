@@ -29,7 +29,7 @@ Aunque no puedes desactivar nuestras cookies esenciales sin afectar el funcionam
 Si tienes preguntas sobre nuestra Política de Cookies, contáctanos en: **[Correo Electrónico de Contacto]**.
 """
 
-@base_page
+
 def terms_page() -> rx.Component:
     return rx.box(
         rx.markdown(markdown_text),

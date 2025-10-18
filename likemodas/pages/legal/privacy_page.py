@@ -53,7 +53,7 @@ Utilizamos cookies técnicas y esenciales para el funcionamiento de la Plataform
 Si tienes preguntas sobre esta política, contáctanos en: **[Correo Electrónico de Contacto]**.
 """
 
-@base_page
+
 def terms_page() -> rx.Component:
     return rx.box(
         rx.markdown(markdown_text),

@@ -55,7 +55,7 @@ Estos Términos se regirán e interpretarán de acuerdo con las leyes de la Rep�
 Para cualquier pregunta sobre estos Términos, puedes contactarnos a través de: **[Correo Electrónico de Contacto]**.
 """
 
-@base_page
+
 def terms_page() -> rx.Component:
     return rx.box(
         rx.markdown(markdown_text),
