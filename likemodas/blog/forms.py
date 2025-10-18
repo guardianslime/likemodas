@@ -13,6 +13,7 @@ def blog_post_add_form() -> rx.Component:
     """
 
     def image_and_group_section() -> rx.Component:
+        # Esta función interna no necesita cambios y se mantiene igual.
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
@@ -67,6 +68,7 @@ def blog_post_add_form() -> rx.Component:
         )
 
     def attributes_and_stock_section() -> rx.Component:
+        # Esta función interna no necesita cambios y se mantiene igual.
         return rx.cond(
             AppState.selected_group_index >= 0,
             rx.vstack(
@@ -127,7 +129,7 @@ def blog_post_add_form() -> rx.Component:
                 align_items="stretch", width="100%"
             )
         )
-
+    
     # --- ✨ INICIO DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
     return rx.form(
         rx.vstack(
@@ -136,7 +138,7 @@ def blog_post_add_form() -> rx.Component:
                     image_and_group_section(),
                     attributes_and_stock_section(),
                     spacing="5",
-                    width="100%", # Asegura que el vstack ocupe el ancho de la columna
+                    width="100%",
                 ),
                 rx.vstack(
                     rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
@@ -178,18 +180,13 @@ def blog_post_add_form() -> rx.Component:
             ),
             spacing="5", 
             width="100%",
-            max_width="1200px", # Ancho máximo para todo el formulario
+            max_width="1200px", # Ancho máximo para evitar que el form se estire demasiado
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
         width="100%", 
     )
     # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
-
-# --- Formulario de Edición (No modificado, ya que la lógica es compleja y no fue solicitado) ---
-# ... (El código de `blog_post_edit_form` de previ03.txt se mantiene aquí sin cambios) ...
-
-# --- ✨ FIN: COMPONENTES PARA "AÑADIR PRODUCTO" ✨ ---
 
 
 # --- ⚠️ INICIO: FORMULARIO DE EDICIÓN (NO FUNCIONAL CON GRUPOS AÚN) ⚠️ ---
