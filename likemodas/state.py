@@ -3817,7 +3817,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def update_group_attributes(self):
         """Guarda los atributos del formulario en el grupo seleccionado."""
-        if self.selected_group_index < 0:
+        if self.selected_group_index < 0 or self.selected_group_index >= len(self.variant_groups):
             return rx.toast.error("Selecciona un grupo para editar.")
 
         attributes = {}
@@ -3831,7 +3831,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         elif self.category == Category.MOCHILAS.value and self.attr_tamanos_mochila:
             attributes["Tamaño"] = self.attr_tamanos_mochila
         
-        self.variant_groups[self.selected_group_index]["attributes"] = attributes
+        # --- ✨ CORRECCIÓN CLAVE: Se modifica el objeto DTO en la lista por su índice ✨ ---
+        self.variant_groups[self.selected_group_index].attributes = attributes
+        
         return rx.toast.success(f"Atributos guardados para el Grupo #{self.selected_group_index + 1}")
 
     def add_variant_attribute(self, key: str, value: str):

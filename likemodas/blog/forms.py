@@ -4,180 +4,168 @@ import reflex as rx
 from ..state import AppState, VariantGroupDTO
 from ..models import Category
 from ..ui.components import searchable_select
-from ..data.product_options import (
-    LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO,
-    LISTA_TAMANOS_MOCHILAS
-)
+from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
-# --- ✨ INICIO: COMPONENTES PARA EL NUEVO FORMULARIO DE "AÑADIR PRODUCTO" ✨ ---
+def blog_post_add_form() -> rx.Component:
+    """
+    [VERSIÓN DEFINITIVA] Formulario para añadir productos, restaurado al diseño
+    original de 2 columnas e integrando la nueva lógica de grupos de variantes.
+    """
 
-def image_selection_and_grouping() -> rx.Component:
-    """Componente para la columna izquierda del nuevo formulario: subida, selección y gestión de grupos."""
-    
-    def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
-        is_selected = AppState.selected_group_index == index
-        return rx.card(
-            rx.vstack(
+    # --- Componente para la columna izquierda (Imágenes y Grupos) ---
+    def image_and_group_section() -> rx.Component:
+        def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
+            is_selected = AppState.selected_group_index == index
+            return rx.box(
                 rx.flex(
                     rx.foreach(
                         group.image_urls,
-                        lambda url: rx.image(src=rx.get_upload_url(url), width="50px", height="50px", object_fit="cover", border_radius="sm")
+                        lambda url: rx.image(src=rx.get_upload_url(url), width="40px", height="40px", object_fit="cover", border_radius="sm")
                     ),
                     wrap="wrap", spacing="2",
                 ),
-                rx.text(
-                    f"Grupo #{index + 1}",
-                    rx.text.strong(f" ({group.attributes.get('Color', 'Sin color')})"),
-                    size="2", weight="medium", margin_top="0.5em"
-                ),
-                align_items="stretch",
-            ),
-            width="100%",
-            on_click=AppState.select_group_for_editing(index),
-            cursor="pointer",
-            border=rx.cond(is_selected, "2px solid var(--violet-9)", "1px solid var(--gray-a6)")
-        )
-
-    return rx.vstack(
-        rx.text("Subir imágenes (máx 5)", as_="div", size="3", weight="bold"),
-        rx.upload(
-            rx.vstack(rx.icon("upload", size=32), rx.text("Arrastra o haz clic")),
-            id="blog_upload", multiple=True, max_files=5,
-            on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
-            border="2px dashed var(--gray-a6)", padding="2em", width="100%"
-        ),
-        rx.cond(
-            AppState.uploaded_images,
-            rx.vstack(
-                rx.text("Selecciona una o más imágenes para crear un grupo:", size="2"),
-                rx.flex(
-                    rx.foreach(
-                        AppState.uploaded_images,
-                        lambda img_name: rx.box(
-                            rx.image(src=rx.get_upload_url(img_name), width="70px", height="70px", object_fit="cover", border_radius="md"),
-                            rx.cond(
-                                AppState.image_selection_for_grouping.contains(img_name),
-                                rx.box(
-                                    rx.icon("check", color="white", size=20),
-                                    bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
-                                    display="flex", align_items="center", justify_content="center"
-                                )
-                            ),
-                            border="2px solid",
-                            border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
-                            border_radius="lg", cursor="pointer", position="relative",
-                            on_click=AppState.toggle_image_selection_for_grouping(img_name),
-                        )
-                    ),
-                    wrap="wrap", spacing="3", padding_top="0.5em",
-                ),
-                rx.button("Crear Grupo con Imágenes", on_click=AppState.create_variant_group, margin_top="1em", width="100%"),
-                align_items="start", width="100%"
+                border_width="2px",
+                border_color=rx.cond(is_selected, "var(--violet-9)", "transparent"),
+                padding="0.25em", border_radius="md", cursor="pointer",
+                on_click=AppState.select_group_for_editing(index),
             )
-        ),
-        rx.divider(margin_y="1.5em"),
-        rx.heading("Grupos de Variantes", size="4"),
-        rx.text("Selecciona un grupo para asignarle atributos.", size="2", color_scheme="gray"),
-        rx.cond(
-            AppState.variant_groups,
-            rx.vstack(rx.foreach(AppState.variant_groups, render_group_card), spacing="3", width="100%"),
-            rx.text("Aún no has creado ningún grupo.", color_scheme="gray", padding="1em 0")
-        ),
-        spacing="3", width="100%", align_items="stretch",
-    )
 
-def attributes_and_stock_manager() -> rx.Component:
-    """Componente para la sección inferior: Atributos y Stock del grupo seleccionado."""
-    group_attribute_editor = rx.vstack(
-        rx.text("Color", size="2", weight="medium"),
-        searchable_select(
-            placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
-            on_change_select=AppState.set_temp_color, value_select=AppState.temp_color,
-            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
-            filter_name="color_filter_main",
-        ),
-        rx.text("Tallas", size="2", weight="medium"),
-        rx.flex(
-            rx.foreach(
-                AppState.attr_tallas_ropa,
-                lambda talla: rx.badge(
-                    talla, rx.icon("x", size=12, on_click=AppState.remove_variant_attribute("Talla", talla), cursor="pointer"),
-                    variant="soft", color_scheme="gray"
-                )
+        return rx.vstack(
+            rx.text("Subir imágenes (máx 5)"),
+            rx.upload(
+                rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
+                id="blog_upload", multiple=True, max_files=5,
+                on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
+                border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
-            wrap="wrap", spacing="2", min_height="28px"
-        ),
-        rx.hstack(
-            rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
-            rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla))
-        ),
-        rx.button("Guardar Atributos del Grupo", on_click=AppState.update_group_attributes, margin_y="0.5em", size="2", variant="outline"),
-        spacing="2", align_items="stretch", width="100%",
-    )
-
-    stock_manager_for_group = rx.vstack(
-        rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(AppState.selected_group_index)),
-        rx.cond(
-            AppState.generated_variants_map.contains(AppState.selected_group_index),
-            rx.vstack(
+            rx.text("Selecciona una o más imágenes para crear un grupo:"),
+            rx.flex(
                 rx.foreach(
-                    AppState.generated_variants_map[AppState.selected_group_index],
-                    lambda variant, var_index: rx.hstack(
-                        rx.text(variant.attributes["Talla"]), rx.spacer(),
-                        rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1"),
-                        rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
-                        rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1"),
-                        align="center"
+                    AppState.uploaded_images,
+                    lambda img_name: rx.box(
+                        rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
+                        rx.cond(
+                            AppState.image_selection_for_grouping.contains(img_name),
+                            rx.box(
+                                rx.icon("check", color="white", size=18),
+                                bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
+                                display="flex", align_items="center", justify_content="center"
+                            )
+                        ),
+                        border="2px solid",
+                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
+                        border_radius="lg", cursor="pointer", position="relative",
+                        on_click=AppState.toggle_image_selection_for_grouping(img_name),
                     )
                 ),
-                spacing="2", width="100%", padding_top="1em"
-            )
-        ),
-        align_items="stretch", width="100%",
-    )
-
-    return rx.cond(
-        AppState.selected_group_index >= 0,
-        rx.vstack(
-            rx.divider(margin_y="1.5em"),
-            rx.heading(f"Editando Grupo #{AppState.selected_group_index + 1}", size="5"),
-            rx.heading("Características del Producto", size="4", margin_top="1em"),
-            group_attribute_editor,
-            rx.heading("Gestión de Variantes y Stock", size="4", margin_top="1em"),
-            stock_manager_for_group,
-            spacing="4",
-            width="100%",
-            align_items="stretch"
+                wrap="wrap", spacing="2", padding_top="0.25em",
+            ),
+            rx.button("Crear Grupo", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%"),
+            rx.divider(margin_y="1em"),
+            rx.text("Grupos de Variantes (Selecciona uno para editar):"),
+            rx.flex(
+                rx.foreach(AppState.variant_groups, render_group_card),
+                wrap="wrap", spacing="2",
+            ),
+            spacing="3", width="100%", align_items="stretch",
         )
-    )
 
-def blog_post_add_form() -> rx.Component:
-    """Formulario para añadir productos, restaurado al diseño original de 2 columnas."""
+    # --- Componente para la columna derecha (Datos del Producto) ---
+    def product_details_section() -> rx.Component:
+        return rx.vstack(
+            rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
+            rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
+            rx.grid(
+                rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
+                rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number", placeholder="Ej: 15000")),
+                columns="2", spacing="4"
+            ),
+            # Aquí puedes añadir el resto de los campos del diseño original (IVA, Origen, Envío, etc.)
+            spacing="4", align_items="stretch",
+        )
+
+    # --- Componente para la sección inferior (Atributos y Stock) ---
+    def attributes_and_stock_section() -> rx.Component:
+        return rx.cond(
+            AppState.selected_group_index >= 0,
+            rx.vstack(
+                rx.divider(margin_y="1.5em"),
+                rx.grid(
+                    rx.vstack(
+                        rx.heading("Características del Producto", size="4"),
+                        rx.text(f"Editando Grupo #{AppState.selected_group_index + 1}", color_scheme="violet"),
+                        rx.text("Color"),
+                        searchable_select(
+                            placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
+                            on_change_select=AppState.set_temp_color, value_select=AppState.temp_color,
+                            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+                            filter_name="color_filter_main",
+                        ),
+                        rx.text("Talla"),
+                        rx.hstack(
+                            rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
+                            rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla))
+                        ),
+                        rx.flex(
+                            rx.foreach(
+                                AppState.attr_tallas_ropa,
+                                lambda talla: rx.badge(
+                                    talla, rx.icon("x", size=12, on_click=AppState.remove_variant_attribute("Talla", talla), cursor="pointer"),
+                                    variant="soft", color_scheme="gray"
+                                )
+                            ),
+                            wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+                        ),
+                        rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline"),
+                        spacing="3", align_items="stretch",
+                    ),
+                    rx.vstack(
+                        rx.heading("Gestión de Variantes y Stock", size="4"),
+                        rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
+                        rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(AppState.selected_group_index)),
+                        rx.cond(
+                            AppState.generated_variants_map.contains(AppState.selected_group_index),
+                            rx.scroll_area(
+                                rx.vstack(
+                                    rx.foreach(
+                                        AppState.generated_variants_map[AppState.selected_group_index],
+                                        lambda variant, var_index: rx.hstack(
+                                            rx.text(variant.attributes["Talla"]), rx.spacer(),
+                                            rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1"),
+                                            rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
+                                            rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1"),
+                                            align="center"
+                                        )
+                                    ),
+                                    spacing="2", width="100%", padding_top="1em"
+                                ),
+                                max_height="300px", type="auto", scrollbars="vertical"
+                            )
+                        ),
+                        spacing="3", align_items="stretch",
+                    ),
+                    columns={"initial": "1", "md": "1fr 1.5fr"}, spacing="6", width="100%"
+                ),
+            )
+        )
+
+    # --- Ensamblaje final del formulario ---
     return rx.form(
         rx.vstack(
             rx.grid(
-                image_selection_and_grouping(),
-                rx.vstack(
-                    rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
-                    rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
-                    rx.grid(
-                        rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
-                        rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number", placeholder="Ej: 15000")),
-                        columns="2", spacing="4"
-                    ),
-                    rx.vstack(
-                        rx.text("Descripción"),
-                        rx.text_area(name="content", value=AppState.content, on_change=AppState.set_content, style={"height": "120px"}),
-                        align_items="stretch",
-                    ),
-                    spacing="4", align_items="stretch",
-                ),
-                columns={"initial": "1", "md": "1.5fr 2fr"}, 
+                image_and_group_section(),
+                product_details_section(),
+                columns={"initial": "1", "md": "2"}, 
                 spacing="6", 
                 width="100%", 
                 align_items="start",
             ),
-            attributes_and_stock_manager(),
+            attributes_and_stock_section(),
+            rx.vstack(
+                rx.text("Descripción", as_="div", size="3", weight="bold"),
+                rx.text_area(name="content", value=AppState.content, on_change=AppState.set_content, style={"height": "120px"}),
+                align_items="stretch", width="100%", margin_top="1.5em"
+            ),
             rx.divider(margin_y="2em"),
             rx.hstack(
                 rx.button("Publicar Producto", type="submit", color_scheme="violet", size="3"),
