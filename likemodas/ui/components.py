@@ -40,11 +40,17 @@ def searchable_select(
     def render_option(option: rx.Var):
         label = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[0], option)
         value = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[1], option)
+        # --- ✨ INICIO: CORRECCIÓN CLAVE ✨ ---
         return rx.button(
             label,
             on_click=[on_change_select(value), AppState.toggle_filter_dropdown(filter_name)],
-            width="100%", variant="soft", color_scheme="gray", justify_content="start"
+            width="100%", 
+            variant="soft", 
+            color_scheme="gray", 
+            justify_content="start",
+            type="button",  # <-- SE AÑADE ESTA LÍNEA
         )
+        # --- ✨ FIN: CORRECCIÓN CLAVE ✨ ---
 
     return rx.box(
         rx.button(
