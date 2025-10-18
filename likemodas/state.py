@@ -2253,7 +2253,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 dark_card_bg_color=self.dark_theme_colors.get("bg"),
                 dark_title_color=self.dark_theme_colors.get("title"),
                 dark_price_color=self.dark_theme_colors.get("price"),
-                image_styles=image_styles_to_save
+                image_transform=self.preview_image_transform
             )
             session.add(new_post)
 
@@ -3672,14 +3672,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
             # --- ✨ INICIO: LÓGICA PARA GUARDAR ESTILOS DE IMAGEN (EDICIÓN) ✨ ---
-            post_to_update.image_styles = {
-                "zoom": self.preview_zoom,
-                "rotation": self.preview_rotation,
-                "offsetX": self.preview_offset_x,
-                "offsetY": self.preview_offset_y,
-            }
-            # --- ✨ FIN ✨ ---
-            # --- ✨ FIN ✨ ---
+            ppost_to_update.image_transform = self.preview_image_transform
             
             session.add(post_to_update)
             
@@ -5070,28 +5063,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         output.seek(0)
         return rx.download(data=output.getvalue(), filename="rendimiento_productos.csv")
 
-    # --- Estado para la Interfaz del Editor de Imágenes ---
-    preview_zoom: float = 1.0
-    preview_rotation: int = 0
-    preview_offset_x: int = 0
-    preview_offset_y: int = 0
+    # Añade esta nueva variable y su handler en su lugar:
+    preview_image_transform: str = ""
 
-    # Setters para los sliders
-    def set_preview_zoom(self, value: list[Union[int, float]]):
-        """Actualiza el estado del zoom desde el slider."""
-        self.preview_zoom = value[0]
+    def set_preview_image_transform(self, event_data: Dict[str, Any]):
+        """Recibe el evento de Moveable y guarda la cadena de transformación CSS."""
+        self.preview_image_transform = event_data.get("transform", "")
 
-    def set_preview_rotation(self, value: list[Union[int, float]]):
-        """Actualiza el estado de la rotación desde el slider."""
-        self.preview_rotation = int(value[0])
+    def reset_image_styles(self):
+        """Resetea la transformación de la imagen."""
+        self.preview_image_transform = ""
 
-    def set_preview_offset_x(self, value: list[Union[int, float]]):
-        """Actualiza el estado de la posición X desde el slider."""
-        self.preview_offset_x = int(value[0])
+    def _clear_image_styles(self):
+        self.reset_image_styles()
 
-    def set_preview_offset_y(self, value: list[Union[int, float]]):
-        """Actualiza el estado de la posición Y desde el slider."""
-        self.preview_offset_y = int(value[0])
+    def _load_image_styles_from_db(self, db_post: BlogPostModel):
+        """Carga los estilos de imagen guardados desde un objeto de la BD."""
+        self.preview_image_transform = db_post.image_transform or ""
+
+    # --- ✨ FIN ✨ ---
         
     def reset_image_styles(self):
         """Resetea todos los ajustes de la imagen a sus valores por defecto."""

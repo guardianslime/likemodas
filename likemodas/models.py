@@ -346,7 +346,7 @@ class BlogPostModel(rx.Model, table=True):
     # --- ✨ FIN DE LA SECCIÓN CORREGIDA ✨ ---
 
     # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
-    image_styles: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    image_transform: Optional[str] = Field(default=None)
     # --- ✨ FIN: AÑADE ESTA LÍNEA ✨ ---
 
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---

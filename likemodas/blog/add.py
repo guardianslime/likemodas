@@ -8,6 +8,51 @@ from .forms import blog_post_add_form
 from ..ui.components import star_rating_display_safe
 from ..utils.formatting import format_to_cop
 
+# --- ✨ INICIO: NUEVO COMPONENTE PARA IMAGEN INTERACTIVA ✨ ---
+class Moveable(NoSSRComponent):
+    """Componente Reflex que envuelve la librería React-Moveable."""
+    library = "react-moveable"
+    tag = "Moveable"
+
+    # Propiedades para controlar el componente
+    target: rx.Var[str]  # El ID del elemento que se va a mover
+    draggable: rx.Var[bool] = True
+    resizable: rx.Var[bool] = True
+    rotatable: rx.Var[bool] = True
+    snappable: rx.Var[bool] = True
+    keep_ratio: rx.Var[bool] = False
+
+    # Eventos que se disparan al final de cada acción
+    on_drag_end: rx.EventHandler[lambda e: [e]]
+    on_resize_end: rx.EventHandler[lambda e: [e]]
+    on_rotate_end: rx.EventHandler[lambda e: [e]]
+
+    def _get_custom_code(self) -> str:
+        # Este código asegura que los eventos pasen el 'transform' CSS correcto
+        return """
+const onDragEnd = (e, on_drag_end) => {
+    if (on_drag_end) {
+        on_drag_end({transform: e.lastEvent.transform});
+    }
+    return e;
+}
+const onResizeEnd = (e, on_resize_end) => {
+    if (on_resize_end) {
+        on_resize_end({transform: e.lastEvent.transform});
+    }
+    return e;
+}
+const onRotateEnd = (e, on_rotate_end) => {
+    if (on_rotate_end) {
+        on_rotate_end({transform: e.lastEvent.transform});
+    }
+    return e;
+}
+"""
+
+moveable = Moveable.create
+# --- ✨ FIN: NUEVO COMPONENTE PARA IMAGEN INTERACTIVA ✨ ---
+
 def post_preview() -> rx.Component:
     """
     [VERSIÓN FINAL CORREGIDA]
