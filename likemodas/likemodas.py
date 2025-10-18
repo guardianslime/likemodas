@@ -37,8 +37,12 @@ from .pages import landing, seller_page
 from .cart import page as cart_page
 from .purchases import page as purchases_page
 from .pages import payment_status, payment_pending, processing_payment
-from .pages.legal import terms_page, privacy_page, cookies_page
-
+# --- ✨ INICIO: CORRECCIÓN DE IMPORTACIÓN ✨ ---
+# Importamos explícitamente la FUNCIÓN desde cada ARCHIVO.
+from .pages.legal.terms_page import terms_page
+from .pages.legal.privacy_page import privacy_page
+from .pages.legal.cookies_page import cookies_page
+# --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 # Vistas de soporte y facturas
 from .invoice import page as invoice_page
 from .invoice.state import InvoiceState
