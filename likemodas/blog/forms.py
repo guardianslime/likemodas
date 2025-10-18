@@ -8,8 +8,8 @@ from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
 def blog_post_add_form() -> rx.Component:
     """
-    [VERSIÓN DEFINITIVA] Formulario para añadir productos, con la nueva lógica de grupos
-    y el layout corregido y más compacto.
+    [VERSIÓN DEFINITIVA] Formulario para añadir productos, con el layout
+    reorganizado en columnas y secciones más compactas.
     """
 
     def image_and_group_section() -> rx.Component:
@@ -30,14 +30,14 @@ def blog_post_add_form() -> rx.Component:
             )
 
         return rx.vstack(
-            rx.text("Subir imágenes (máx 5)"),
+            rx.text("1. Subir Imágenes (máx 5)", weight="bold"),
             rx.upload(
                 rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
                 id="blog_upload", multiple=True, max_files=5,
                 on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
-            rx.text("Selecciona una o más imágenes para crear un grupo:"),
+            rx.text("2. Selecciona imágenes para crear un grupo de color:"),
             rx.flex(
                 rx.foreach(
                     AppState.uploaded_images,
@@ -59,35 +59,11 @@ def blog_post_add_form() -> rx.Component:
                 ),
                 wrap="wrap", spacing="2", padding_top="0.25em",
             ),
-            rx.button("Crear Grupo", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%"),
+            rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%"),
             rx.divider(margin_y="1em"),
-            rx.text("Grupos (Selecciona uno para editar abajo):"),
+            rx.text("3. Grupos (Selecciona uno para editar abajo):"),
             rx.flex(rx.foreach(AppState.variant_groups, render_group_card), wrap="wrap", spacing="2"),
             spacing="3", width="100%", align_items="stretch",
-        )
-
-    def product_details_section() -> rx.Component:
-        return rx.vstack(
-            rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
-            rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
-            rx.grid(
-                rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
-                rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number", placeholder="Ej: 15000")),
-                columns="2", spacing="4"
-            ),
-            rx.grid(
-                rx.vstack(rx.text("Incluye IVA (19%)"), rx.hstack(rx.switch(is_checked=AppState.price_includes_iva, on_change=AppState.set_price_includes_iva), rx.text(rx.cond(AppState.price_includes_iva, "Sí", "No")))),
-                rx.vstack(rx.text("Origen"), rx.hstack(rx.switch(is_checked=AppState.is_imported, on_change=AppState.set_is_imported), rx.text(rx.cond(AppState.is_imported, "Importado", "Nacional")))),
-                columns="2", spacing="4"
-            ),
-            rx.grid(
-                rx.vstack(rx.text("Costo de Envío Mínimo (Local)"), rx.input(value=AppState.shipping_cost_str, on_change=AppState.set_shipping_cost_str, placeholder="Ej: 3000"), rx.text("El costo final aumentará según la distancia.", size="1", color_scheme="gray"), align_items="stretch"),
-                rx.vstack(rx.text("Moda Completa"), rx.hstack(rx.switch(is_checked=AppState.is_moda_completa, on_change=AppState.set_is_moda_completa), rx.text(rx.cond(AppState.is_moda_completa, "Activo", "Inactivo"))), rx.input(value=AppState.free_shipping_threshold_str, on_change=AppState.set_free_shipping_threshold_str, is_disabled=~AppState.is_moda_completa), rx.text("Envío gratis en compras > $XXX.XXX", size="1", color_scheme="gray"), align_items="stretch"),
-                rx.vstack(rx.text("Envío Combinado"), rx.hstack(rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping), rx.text(rx.cond(AppState.combines_shipping, "Activo", "Inactivo"))), rx.text("Permite que varios productos usen un solo envío.", size="1", color_scheme="gray"), align_items="stretch"),
-                rx.vstack(rx.text("Límite de Productos"), rx.input(value=AppState.shipping_combination_limit_str, on_change=AppState.set_shipping_combination_limit_str, is_disabled=~AppState.combines_shipping), rx.text("Máx. de items por envío.", size="1", color_scheme="gray"), align_items="stretch"),
-                columns="2", spacing="4"
-            ),
-            spacing="4", align_items="stretch",
         )
 
     def attributes_and_stock_section() -> rx.Component:
@@ -95,12 +71,10 @@ def blog_post_add_form() -> rx.Component:
             AppState.selected_group_index >= 0,
             rx.vstack(
                 rx.divider(margin_y="1.5em"),
-                rx.heading(f"Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
-                # --- INICIO: DISEÑO COMPACTO EN DOS COLUMNAS ---
+                rx.heading(f"4. Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
                 rx.grid(
-                    # Columna Izquierda: Atributos
                     rx.vstack(
-                        rx.text("Características del Producto", weight="medium"),
+                        rx.text("Atributos del Grupo", weight="medium"),
                         rx.text("Color"),
                         searchable_select(
                             placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
@@ -123,10 +97,9 @@ def blog_post_add_form() -> rx.Component:
                         rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline"),
                         spacing="3", align_items="stretch",
                     ),
-                    # Columna Derecha: Variantes y Stock
                     rx.vstack(
-                        rx.text("Gestión de Variantes y Stock", weight="medium"),
-                        rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
+                        rx.text("Variantes y Stock", weight="medium"),
+                        rx.text("Genera combinaciones y asigna stock.", size="2", color_scheme="gray"),
                         rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(AppState.selected_group_index)),
                         rx.cond(
                             AppState.generated_variants_map.contains(AppState.selected_group_index),
@@ -144,41 +117,64 @@ def blog_post_add_form() -> rx.Component:
                                     ),
                                     spacing="2", width="100%", padding_top="1em"
                                 ),
-                                max_height="250px", type="auto", scrollbars="vertical"
+                                max_height="200px", type="auto", scrollbars="vertical"
                             )
                         ),
                         spacing="3", align_items="stretch",
                     ),
-                    columns={"initial": "1", "md": "1fr 1.5fr"}, 
-                    spacing="6", 
-                    width="100%"
+                    columns="2", spacing="4", width="100%"
                 ),
-                # --- FIN: DISEÑO COMPACTO ---
+                align_items="stretch", width="100%"
             )
         )
 
     return rx.form(
         rx.vstack(
             rx.grid(
-                image_and_group_section(),
-                product_details_section(),
+                # --- COLUMNA IZQUIERDA ---
+                rx.vstack(
+                    image_and_group_section(),
+                    attributes_and_stock_section(), # Sección de stock ahora aquí
+                    spacing="5"
+                ),
+                # --- COLUMNA DERECHA ---
+                rx.vstack(
+                    rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
+                    rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
+                    rx.grid(
+                        rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
+                        rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number", placeholder="Ej: 15000")),
+                        columns="2", spacing="4"
+                    ),
+                    rx.grid(
+                        rx.vstack(rx.text("Incluye IVA (19%)"), rx.hstack(rx.switch(is_checked=AppState.price_includes_iva, on_change=AppState.set_price_includes_iva), rx.text(rx.cond(AppState.price_includes_iva, "Sí", "No")))),
+                        rx.vstack(rx.text("Origen"), rx.hstack(rx.switch(is_checked=AppState.is_imported, on_change=AppState.set_is_imported), rx.text(rx.cond(AppState.is_imported, "Importado", "Nacional")))),
+                        columns="2", spacing="4"
+                    ),
+                    rx.grid(
+                        rx.vstack(rx.text("Costo de Envío Mínimo (Local)"), rx.input(value=AppState.shipping_cost_str, on_change=AppState.set_shipping_cost_str, placeholder="Ej: 3000"), rx.text("El costo final aumentará según la distancia.", size="1", color_scheme="gray"), align_items="stretch"),
+                        rx.vstack(rx.text("Moda Completa"), rx.hstack(rx.switch(is_checked=AppState.is_moda_completa, on_change=AppState.set_is_moda_completa), rx.text(rx.cond(AppState.is_moda_completa, "Activo", "Inactivo"))), rx.input(value=AppState.free_shipping_threshold_str, on_change=AppState.set_free_shipping_threshold_str, is_disabled=~AppState.is_moda_completa), rx.text("Envío gratis en compras > $XXX.XXX", size="1", color_scheme="gray"), align_items="stretch"),
+                        rx.vstack(rx.text("Envío Combinado"), rx.hstack(rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping), rx.text(rx.cond(AppState.combines_shipping, "Activo", "Inactivo"))), rx.text("Permite que varios productos usen un solo envío.", size="1", color_scheme="gray"), align_items="stretch"),
+                        rx.vstack(rx.text("Límite de Productos"), rx.input(value=AppState.shipping_combination_limit_str, on_change=AppState.set_shipping_combination_limit_str, is_disabled=~AppState.combines_shipping), rx.text("Máx. de items por envío.", size="1", color_scheme="gray"), align_items="stretch"),
+                        columns="2", spacing="4"
+                    ),
+                    rx.vstack( # Descripción movida aquí
+                        rx.text("Descripción", as_="div", size="3", weight="bold"),
+                        rx.text_area(name="content", value=AppState.content, on_change=AppState.set_content, style={"height": "120px"}),
+                        align_items="stretch", width="100%",
+                    ),
+                    spacing="4", align_items="stretch",
+                ),
                 columns={"initial": "1", "lg": "2"}, 
                 spacing="6", 
                 width="100%", 
                 align_items="start",
             ),
-            # --- SECCIONES MOVIDAS Y REORDENADAS ---
-            rx.vstack(
-                rx.text("Descripción", as_="div", size="3", weight="bold"),
-                rx.text_area(name="content", value=AppState.content, on_change=AppState.set_content, style={"height": "100px"}),
-                align_items="stretch", width="100%", margin_top="1.5em"
-            ),
-            attributes_and_stock_section(),
-            # --- FIN DE LA REORGANIZACIÓN ---
-            rx.divider(margin_y="2em"),
             rx.hstack(
+                rx.spacer(),
                 rx.button("Publicar Producto", type="submit", color_scheme="violet", size="3"),
-                width="100%", justify="end",
+                width="100%", 
+                margin_top="1em"
             ),
             spacing="5", 
         ),
@@ -186,7 +182,6 @@ def blog_post_add_form() -> rx.Component:
         reset_on_submit=True,
         width="100%", 
     )
-
 
 # --- Formulario de Edición (No modificado, ya que la lógica es compleja y no fue solicitado) ---
 # ... (El código de `blog_post_edit_form` de previ03.txt se mantiene aquí sin cambios) ...

@@ -4,19 +4,16 @@ import reflex as rx
 from rx_color_picker.color_picker import color_picker
 from ..state import AppState
 from ..auth.admin_auth import require_panel_access
-from .forms import blog_post_add_form
+from .forms import blog_post_add_form 
 from ..ui.components import star_rating_display_safe
 from ..utils.formatting import format_to_cop
 
 def post_preview() -> rx.Component:
     """
-    [VERSIÓN FINAL CON BADGES Y PRECIO FUNCIONALES]
-    La previsualización ahora es fiel a la tienda.
+    [VERSIÓN FINAL CON IMAGEN CORREGIDA Y BADGES FUNCIONALES]
+    La previsualización ahora es fiel a la tienda y la imagen ocupa todo el ancho.
     """
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        """
-        Construye un badge desde cero para un control total del estilo.
-        """
         light_colors = {
             "gray":   {"bg": "#F1F3F5", "text": "#495057"},
             "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"},
@@ -47,59 +44,64 @@ def post_preview() -> rx.Component:
         ""
     )
     return rx.theme(
-        rx.box(
-            rx.vstack(
-                rx.vstack(
-                    rx.box(
-                        rx.image(src=rx.get_upload_url(first_image_url), fallback="/image_off.png", width="100%", height="260px", object_fit="cover"),
-                        rx.badge(
-                            rx.cond(AppState.is_imported, "Importado", "Nacional"),
-                            color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"),
-                            variant="solid",
-                            style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
-                        ),
-                        position="relative", width="260px", height="260px",
+        rx.card(
+            # --- ✨ INICIO DE LA CORRECCIÓN DE IMAGEN ✨ ---
+            rx.inset(
+                rx.box(
+                    rx.image(
+                        src=rx.get_upload_url(first_image_url), 
+                        fallback="/image_off.png", 
+                        width="100%", 
+                        height="260px", 
+                        object_fit="cover"
                     ),
-                    rx.vstack(
-                        rx.text(rx.cond(AppState.title, AppState.title, "Título del Producto"), color=AppState.live_title_color, weight="bold", size="6"),
-                        star_rating_display_safe(0, 0, size=24),
-                        rx.text(AppState.price_cop_preview, color=AppState.live_price_color, size="5", weight="medium"),
-                        # --- Lógica de Badges Restaurada ---
-                        rx.vstack(
-                            rx.hstack(
-                                _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
-                                rx.cond(
-                                    AppState.is_moda_completa,
-                                    rx.tooltip(
-                                        _preview_badge("Moda Completa", "violet"),
-                                        content=AppState.moda_completa_tooltip_text_preview,
-                                    ),
-                                ),
-                                spacing="3",
-                                align="center",
-                            ),
-                            rx.cond(
-                                AppState.combines_shipping,
-                                rx.tooltip(
-                                    _preview_badge("Envío Combinado", "teal"),
-                                    content=AppState.envio_combinado_tooltip_text_preview,
-                                ),
-                            ),
-                            spacing="1",
-                            align_items="start",
-                        ),
-                        spacing="1", 
-                        align_items="start", 
-                        width="100%"
+                    rx.badge(
+                        rx.cond(AppState.is_imported, "Importado", "Nacional"),
+                        color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"),
+                        variant="solid",
+                        style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                     ),
-                    spacing="2", width="100%",
+                    position="relative",
                 ),
-                rx.spacer(),
+                side="top",
+                pb="0", # Elimina el padding inferior del inset
             ),
-            width="290px", height="auto", min_height="450px",
-            bg=AppState.live_card_bg_color,
-            border="1px solid var(--gray-a6)",
-            border_radius="8px", box_shadow="md", padding="1em",
+            # --- ✨ FIN DE LA CORRECCIÓN DE IMAGEN ✨ ---
+            rx.vstack(
+                rx.text(rx.cond(AppState.title, AppState.title, "Título del Producto"), color=AppState.live_title_color, weight="bold", size="6"),
+                star_rating_display_safe(0, 0, size=24),
+                rx.text(AppState.price_cop_preview, color=AppState.live_price_color, size="5", weight="medium"),
+                rx.vstack(
+                    rx.hstack(
+                        _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
+                        rx.cond(
+                            AppState.is_moda_completa,
+                            rx.tooltip(
+                                _preview_badge("Moda Completa", "violet"),
+                                content=AppState.moda_completa_tooltip_text_preview,
+                            ),
+                        ),
+                        spacing="3",
+                        align="center",
+                    ),
+                    rx.cond(
+                        AppState.combines_shipping,
+                        rx.tooltip(
+                            _preview_badge("Envío Combinado", "teal"),
+                            content=AppState.envio_combinado_tooltip_text_preview,
+                        ),
+                    ),
+                    spacing="1",
+                    align_items="start",
+                    width="100%",
+                ),
+                spacing="1", 
+                align_items="start", 
+                width="100%"
+            ),
+            # Se aplica el padding solo al contenido de texto, no a toda la tarjeta
+            padding="1em",
+            width="290px",
         ),
         appearance=AppState.card_theme_mode,
     )
@@ -178,8 +180,8 @@ def blog_post_add_content() -> rx.Component:
                 top="2em",
                 align_items="center",
             ),
-            columns={"initial": "1", "lg": "2fr 1fr"},
-            gap="4em",
+            columns={"initial": "1", "lg": "1fr 1fr"}, # Columnas ajustadas para un mejor balance
+            gap="2em", # Espacio entre columnas
             width="100%",
             max_width="1800px",
         ),
