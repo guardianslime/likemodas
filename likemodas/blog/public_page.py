@@ -162,39 +162,56 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
     def _modal_image_section() -> rx.Component:
         """
         [VERSIÓN FINAL Y CORREGIDA]
-        Contiene el carrusel de imágenes del modal, con una 'key' dinámica
-        para forzar su re-renderizado y correcto ajuste.
+        Contiene el carrusel de imágenes del modal, que ahora itera sobre la lista
+        de `image_urls` de la variante/grupo seleccionado.
         """
-        return rx.vstack(
-            carousel(
+        
+        # Esta función interna para las miniaturas ahora muestra la primera imagen de cada grupo.
+        def _manual_thumbnails() -> rx.Component:
+            return rx.hstack(
                 rx.foreach(
                     AppState.unique_modal_variants,
-                    lambda variant_item, i: rx.box(
+                    lambda item, i: rx.box(
                         rx.image(
-                            src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                            # Muestra la primera imagen de la lista de URLs del grupo
+                            src=rx.get_upload_url(item.variant.get("image_urls", [""])[0]),
+                            height="60px", width="60px", object_fit="cover", border_radius="var(--radius-3)",
+                        ),
+                        border_width=rx.cond(AppState.modal_selected_variant_index == i, "3px", "1px"),
+                        border_color=rx.cond(AppState.modal_selected_variant_index == i, "var(--accent-9)", "var(--gray-a6)"),
+                        padding="2px", border_radius="var(--radius-4)", cursor="pointer",
+                        on_click=AppState.set_modal_variant_index(i),
+                    )
+                ),
+                spacing="3", padding="0.5em", width="100%", overflow_x="auto", margin_top="0.5rem",
+            )
+
+        return rx.vstack(
+            carousel(
+                # --- ✨ CORRECCIÓN CLAVE: Itera sobre la lista de URLs de la variante actual ✨ ---
+                rx.foreach(
+                    AppState.current_modal_variant.get("image_urls", []),
+                    lambda image_url, index: rx.box(
+                        rx.image(
+                            src=rx.get_upload_url(image_url),
                             alt=AppState.product_in_modal.title,
                             width="100%",
                             height="100%",
                             object_fit="contain",
                         ),
-                        on_click=AppState.open_lightbox(i),
+                        on_click=AppState.open_lightbox(index), # Permite abrir el lightbox en la imagen correcta
                         cursor="pointer",
                         height={"base": "350px", "md": "500px"},
                     ),
                 ),
-                # --- ESTA ES LA LÍNEA CLAVE ---
-                # Conecta el carrusel a la "llave" del estado para forzar su recreación.
                 key=AppState.modal_carousel_key,
-                
                 show_thumbs=False,
-                show_arrows=AppState.unique_modal_variants.length() > 1,
-                show_indicators=False,
+                show_arrows=AppState.current_modal_variant.get("image_urls", []).length() > 1,
+                show_indicators=AppState.current_modal_variant.get("image_urls", []).length() > 1,
                 show_status=False,
                 infinite_loop=True,
                 emulate_touch=True,
                 width="100%",
-                selected_item=AppState.modal_selected_variant_index,
-                on_change=AppState.set_modal_variant_index,
             ),
             rx.cond(
                 AppState.unique_modal_variants.length() > 1,
@@ -204,7 +221,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             width="100%",
             position="relative",
         )
-        # --- ✨ FIN DE LA CORRECCIÓN DE IMAGEN MÓVIL ✨ ---
 
     def _modal_info_section() -> rx.Component:
         # --- ✨ INICIO DE LA CORRECCIÓN DE BADGES MÓVIL ✨ ---
