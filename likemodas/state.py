@@ -3857,7 +3857,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield self.update_group_attributes()
 
         group = self.variant_groups[group_index]
-        group_attrs = group.get("attributes", {})
+        
+        # --- ✨ CORRECCIÓN CLAVE: Se accede al atributo con '.' en lugar de '.get()' ✨ ---
+        group_attrs = group.attributes
         
         color = group_attrs.get("Color")
         sizes, size_key = [], ""
@@ -3879,7 +3881,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         self.generated_variants_map[group_index] = generated_variants
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para el Grupo #{group_index + 1}.")
-
     # --- ✨ FIN DEL BLOQUE A REEMPLAZAR ✨ ---
     
     # AÑADE ESTA NUEVA FUNCIÓN DENTRO DE LA CLASE AppState
