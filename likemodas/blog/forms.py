@@ -134,15 +134,16 @@ def blog_post_add_form() -> rx.Component:
     # --- ✨ INICIO: CORRECCIÓN EN EL FORMULARIO PRINCIPAL ✨ ---
     return rx.form(
         rx.vstack(
+            # --- ✨ INICIO: CORRECCIÓN DE ANCHO ✨ ---
             rx.grid(
-                # 1. Se añade un max_width a esta columna para reducir su ancho.
+                # Columna Izquierda: Ahora tiene un ancho fijo en pantallas grandes
                 rx.vstack(
                     image_and_group_section(),
                     attributes_and_stock_section(),
                     spacing="5",
                     width="100%",
-                    max_width="600px", 
                 ),
+                # Columna Derecha: Ocupa el resto del espacio
                 rx.vstack(
                     rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
                     rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
@@ -170,11 +171,13 @@ def blog_post_add_form() -> rx.Component:
                     ),
                      spacing="4", align_items="stretch", width="100%",
                 ),
-                columns={"initial": "1", "lg": "2"}, 
+                # Se define que la 1ra col tiene 500px y la 2da ocupa el resto.
+                columns={"initial": "1", "lg": "500px 1fr"}, 
                 spacing="6", 
                 width="100%", 
                 align_items="start",
             ),
+            # --- ✨ FIN: CORRECCIÓN DE ANCHO ✨ ---
              rx.hstack(
                 rx.spacer(),
                 rx.button("Publicar Producto", type="submit", color_scheme="violet", size="3"),
