@@ -2,166 +2,13 @@
 
 import reflex as rx
 from rx_color_picker.color_picker import color_picker
+from likemodas.blog.forms import image_selection_grid, variant_group_manager
 from likemodas.utils.formatting import format_to_cop
 from ..state import AppState, VariantGroupDTO
 from ..auth.admin_auth import require_panel_access
 from ..models import Category
-from ..ui.components import searchable_select
+from ..ui.components import searchable_select, star_rating_display_safe
 from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
-
-def image_selection_grid() -> rx.Component:
-    """Muestra las imágenes subidas que aún no han sido agrupadas."""
-    return rx.vstack(
-        rx.heading("1. Sube y Selecciona Imágenes para Agrupar", size="5"),
-        rx.upload(
-            rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes (máx 5)")),
-            id="blog_upload", multiple=True, max_files=5,
-            on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
-            border="2px dashed var(--gray-a6)", padding="2em", width="100%"
-        ),
-        rx.cond(
-            AppState.uploaded_images,
-            rx.vstack(
-                rx.flex(
-                    rx.foreach(
-                        AppState.uploaded_images,
-                        lambda img_name: rx.box(
-                            rx.image(src=rx.get_upload_url(img_name), width="90px", height="90px", object_fit="cover", border_radius="md"),
-                            rx.cond(
-                                AppState.image_selection_for_grouping.contains(img_name),
-                                rx.box(
-                                    # --- ✨ CORRECCIÓN DE ADVERTENCIA: Icono válido "check" ✨ ---
-                                    rx.icon("check", color="white", size=24),
-                                    bg="rgba(90, 40, 180, 0.7)",
-                                    position="absolute", inset="0", border_radius="md",
-                                    display="flex", align_items="center", justify_content="center"
-                                )
-                            ),
-                            border="2px solid",
-                            border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
-                            border_radius="lg",
-                            cursor="pointer",
-                            position="relative",
-                            on_click=AppState.toggle_image_selection_for_grouping(img_name),
-                        )
-                    ),
-                    wrap="wrap", spacing="3", padding_top="1em",
-                ),
-                rx.button("Crear Grupo con Imágenes Seleccionadas", on_click=AppState.create_variant_group, margin_top="1em"),
-                align_items="start",
-            )
-        ),
-        spacing="3",
-        width="100%",
-    )
-
-def variant_group_manager() -> rx.Component:
-    """Muestra y permite la gestión de los grupos de variantes ya creados."""
-    
-    # --- ✨ CORRECCIÓN CLAVE: El argumento 'group' ahora tiene un tipo específico ✨ ---
-    def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
-        is_selected = AppState.selected_group_index == index
-
-        group_attribute_editor = rx.vstack(
-            rx.text("Color", size="2", weight="medium"),
-            searchable_select(
-                placeholder="Seleccionar color...",
-                options=AppState.filtered_attr_colores,
-                on_change_select=AppState.set_temp_color,
-                value_select=AppState.temp_color,
-                search_value=AppState.search_attr_color,
-                on_change_search=AppState.set_search_attr_color,
-                filter_name=f"color_filter_{index}",
-            ),
-            rx.text("Tallas", size="2", weight="medium"),
-            rx.flex(
-                rx.foreach(
-                    AppState.attr_tallas_ropa,
-                    lambda talla: rx.badge(
-                        talla,
-                        rx.icon("x", size=12, on_click=AppState.remove_variant_attribute("Talla", talla), cursor="pointer"),
-                        variant="soft", color_scheme="gray"
-                    )
-                ),
-                wrap="wrap", spacing="2", min_height="28px"
-            ),
-            rx.hstack(
-                rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
-                rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla))
-            ),
-            rx.button("Guardar Atributos del Grupo", on_click=AppState.update_group_attributes, margin_y="0.5em", size="1", variant="outline"),
-            spacing="2", align_items="stretch", width="100%",
-        )
-
-        stock_manager_for_group = rx.vstack(
-            rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(index)),
-            rx.cond(
-                AppState.generated_variants_map.contains(index),
-                rx.vstack(
-                    rx.foreach(
-                        AppState.generated_variants_map[index],
-                        lambda variant, var_index: rx.hstack(
-                            rx.text(variant.attributes["Talla"]),
-                            rx.spacer(),
-                            rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(index, var_index), size="1"),
-                            rx.input(
-                                value=variant.stock.to_string(),
-                                on_change=lambda val: AppState.set_variant_stock(index, var_index, val),
-                                text_align="center", max_width="50px"
-                            ),
-                            rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(index, var_index), size="1"),
-                            align="center"
-                        )
-                    ),
-                    spacing="2", width="100%", padding_top="1em"
-                )
-            ),
-            align_items="stretch", width="100%",
-        )
-
-        return rx.card(
-            rx.vstack(
-                rx.flex(
-                    # --- ✨ CORRECCIÓN DE ERROR: Ahora itera sobre una propiedad segura y tipada ✨ ---
-                    rx.foreach(
-                        group.image_urls,
-                        lambda url: rx.image(src=rx.get_upload_url(url), width="60px", height="60px", object_fit="cover", border_radius="sm")
-                    ),
-                    wrap="wrap", spacing="2",
-                ),
-                rx.cond(is_selected,
-                    rx.vstack(
-                        rx.divider(margin_y="1em"),
-                        rx.heading("Editar Atributos del Grupo", size="3"),
-                        group_attribute_editor,
-                        rx.divider(margin_y="1em"),
-                        rx.heading("Gestionar Stock de Variantes", size="3"),
-                        stock_manager_for_group,
-                        align_items="stretch", width="100%", spacing="3"
-                    )
-                ),
-                align_items="stretch",
-            ),
-            width="100%",
-            on_click=AppState.select_group_for_editing(index),
-            cursor="pointer",
-            border=rx.cond(is_selected, "2px solid var(--violet-9)", "1px solid var(--gray-a6)")
-        )
-
-    return rx.vstack(
-        rx.heading("2. Gestiona tus Grupos de Variantes", size="5"),
-        rx.cond(
-            AppState.variant_groups,
-            rx.vstack(
-                rx.foreach(AppState.variant_groups, render_group_card),
-                spacing="4"
-            ),
-            rx.text("Aún no has creado ningún grupo de variantes.", color_scheme="gray")
-        ),
-        align_items="stretch",
-        spacing="3",
-        width="100%",
-    )
 
 def blog_post_add_form() -> rx.Component:
     """Formulario rediseñado para la creación de productos con grupos de variantes."""
@@ -202,15 +49,34 @@ def blog_post_add_form() -> rx.Component:
 def post_preview() -> rx.Component:
     """Previsualización del producto que muestra la primera imagen del primer grupo."""
     
-    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-    # Se añade una condición para verificar que la lista de grupos no esté vacía
-    # antes de intentar acceder a su primer elemento.
     first_image_url = rx.cond(
         (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
         AppState.variant_groups[0].image_urls[0],
         ""
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
+    # Función interna para recrear los badges con el estilo correcto
+    def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        light_colors = {
+            "gray":   {"bg": "#F1F3F5", "text": "#495057"},
+            "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"},
+            "teal":   {"bg": "#E6FCF5", "text": "#0B7285"},
+        }
+        dark_colors = {
+            "gray":   {"bg": "#373A40", "text": "#ADB5BD"},
+            "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"},
+            "teal":   {"bg": "#0C3D3F", "text": "#96F2D7"},
+        }
+        colors = rx.cond(
+            AppState.card_theme_mode == "light",
+            light_colors[color_scheme],
+            dark_colors[color_scheme],
+        )
+        return rx.box(
+            rx.text(text_content, size="2", weight="medium"),
+            bg=colors["bg"], color=colors["text"],
+            padding="1px 10px", border_radius="var(--radius-full)", font_size="0.8em",
+        )
 
     return rx.theme(
         rx.box(
@@ -230,10 +96,33 @@ def post_preview() -> rx.Component:
                             color=AppState.live_title_color,
                             weight="bold", size="6",
                         ),
+                        star_rating_display_safe(0, 0, size=24), # Estrellas restauradas
                         rx.text(
                             AppState.price_cop_preview,
                             color=AppState.live_price_color,
                             size="5", weight="medium",
+                        ),
+                        # Badges restaurados
+                        rx.vstack(
+                            rx.hstack(
+                                _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
+                                rx.cond(
+                                    AppState.is_moda_completa,
+                                    rx.tooltip(
+                                        _preview_badge("Moda Completa", "violet"),
+                                        content=AppState.moda_completa_tooltip_text_preview,
+                                    ),
+                                ),
+                                spacing="3", align="center",
+                            ),
+                            rx.cond(
+                                AppState.combines_shipping,
+                                rx.tooltip(
+                                    _preview_badge("Envío Combinado", "teal"),
+                                    content=AppState.envio_combinado_tooltip_text_preview,
+                                ),
+                            ),
+                            spacing="1", align_items="start",
                         ),
                         spacing="1", 
                         align_items="start", 
@@ -254,18 +143,20 @@ def post_preview() -> rx.Component:
 
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
-    """Página de creación de publicación con la nueva interfaz de grupos."""
+    """Página de creación de publicación con la nueva interfaz de grupos y el diseño original."""
     return rx.hstack(
         rx.grid(
             rx.vstack(
                 rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                blog_post_add_form(),
+                blog_post_add_form(), # Llama al formulario restaurado
                 width="100%",
                 spacing="4",
             ),
             rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 post_preview(),
+                
+                # --- ✨ INICIO: SECCIÓN DE PERSONALIZACIÓN COMPLETA ✨ ---
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Personalizar Tarjeta", weight="bold", size="4"),
@@ -363,7 +254,8 @@ def blog_post_add_content() -> rx.Component:
                     align_items="stretch",
                     width="290px",
                 ),
-                display="flex",
+                # --- ✨ FIN DE LA SECCIÓN DE PERSONALIZACIÓN ✨ ---
+                display={"initial": "none", "lg": "flex"}, # Oculta la previsualización en pantallas pequeñas
                 width="100%",
                 spacing="4",
                 position="sticky",
@@ -377,5 +269,6 @@ def blog_post_add_content() -> rx.Component:
         ),
         width="100%",
         padding_y="2em",
-        padding_left=["0em", "0em", "15em", "15em"],
+        padding_left=["1em", "2em", "15em", "15em"],
+        padding_right=["1em", "2em"],
     )

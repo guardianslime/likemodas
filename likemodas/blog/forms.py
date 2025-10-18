@@ -3,13 +3,202 @@
 import reflex as rx
 
 from likemodas.blog.state import BlogAdminState
-from ..state import AppState
+from ..state import AppState, VariantGroupDTO
 from ..models import Category
 from ..ui.components import searchable_select
 from ..data.product_options import (
     LISTA_COLORES, LISTA_TALLAS_ROPA, LISTA_NUMEROS_CALZADO,
     LISTA_TAMANOS_MOCHILAS
 )
+
+def image_selection_grid() -> rx.Component:
+    """Muestra las imágenes subidas que aún no han sido agrupadas."""
+    return rx.vstack(
+        rx.text("Imágenes Disponibles", as_="div", size="3", weight="bold", margin_bottom="0.5em"),
+        rx.upload(
+            rx.vstack(rx.icon("upload", size=32), rx.text("Subir imágenes (máx 5)")),
+            id="blog_upload", multiple=True, max_files=5,
+            on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
+            border="2px dashed var(--gray-a6)", padding="2em", width="100%"
+        ),
+        rx.cond(
+            AppState.uploaded_images,
+            rx.vstack(
+                rx.flex(
+                    rx.foreach(
+                        AppState.uploaded_images,
+                        lambda img_name: rx.box(
+                            rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
+                            rx.cond(
+                                AppState.image_selection_for_grouping.contains(img_name),
+                                rx.box(
+                                    rx.icon("check", color="white", size=24),
+                                    bg="rgba(90, 40, 180, 0.7)",
+                                    position="absolute", inset="0", border_radius="md",
+                                    display="flex", align_items="center", justify_content="center"
+                                )
+                            ),
+                            border="2px solid",
+                            border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
+                            border_radius="lg", cursor="pointer", position="relative",
+                            on_click=AppState.toggle_image_selection_for_grouping(img_name),
+                        )
+                    ),
+                    wrap="wrap", spacing="3", padding_top="1em",
+                ),
+                rx.button("Crear Grupo con Imágenes Seleccionadas", on_click=AppState.create_variant_group, margin_top="1em"),
+                align_items="start",
+            )
+        ),
+        spacing="3", width="100%", align_items="stretch",
+    )
+
+def variant_group_manager() -> rx.Component:
+    """Muestra y permite la gestión de los grupos de variantes ya creados."""
+    def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
+        is_selected = AppState.selected_group_index == index
+        group_attribute_editor = rx.vstack(
+            rx.text("Color", size="2", weight="medium"),
+            searchable_select(
+                placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
+                on_change_select=AppState.set_temp_color, value_select=AppState.temp_color,
+                search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+                filter_name=f"color_filter_{index}",
+            ),
+            rx.text("Tallas", size="2", weight="medium"),
+            rx.flex(
+                rx.foreach(
+                    AppState.attr_tallas_ropa,
+                    lambda talla: rx.badge(
+                        talla, rx.icon("x", size=12, on_click=AppState.remove_variant_attribute("Talla", talla), cursor="pointer"),
+                        variant="soft", color_scheme="gray"
+                    )
+                ),
+                wrap="wrap", spacing="2", min_height="28px"
+            ),
+            rx.hstack(
+                rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
+                rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla))
+            ),
+            rx.button("Guardar Atributos del Grupo", on_click=AppState.update_group_attributes, margin_y="0.5em", size="1", variant="outline"),
+            spacing="2", align_items="stretch", width="100%",
+        )
+        stock_manager_for_group = rx.vstack(
+            rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(index)),
+            rx.cond(
+                AppState.generated_variants_map.contains(index),
+                rx.vstack(
+                    rx.foreach(
+                        AppState.generated_variants_map[index],
+                        lambda variant, var_index: rx.hstack(
+                            rx.text(variant.attributes["Talla"]), rx.spacer(),
+                            rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(index, var_index), size="1"),
+                            rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(index, var_index, val), text_align="center", max_width="50px"),
+                            rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(index, var_index), size="1"),
+                            align="center"
+                        )
+                    ),
+                    spacing="2", width="100%", padding_top="1em"
+                )
+            ),
+            align_items="stretch", width="100%",
+        )
+        return rx.card(
+            rx.vstack(
+                rx.flex(
+                    rx.foreach(
+                        group.image_urls,
+                        lambda url: rx.image(src=rx.get_upload_url(url), width="60px", height="60px", object_fit="cover", border_radius="sm")
+                    ),
+                    wrap="wrap", spacing="2",
+                ),
+                rx.cond(is_selected,
+                    rx.vstack(
+                        rx.divider(margin_y="1em"),
+                        rx.heading("Editar Atributos del Grupo", size="3"),
+                        group_attribute_editor,
+                        rx.divider(margin_y="1em"),
+                        rx.heading("Gestionar Stock de Variantes", size="3"),
+                        stock_manager_for_group,
+                        align_items="stretch", width="100%", spacing="3"
+                    )
+                ),
+                align_items="stretch",
+            ),
+            width="100%",
+            on_click=AppState.select_group_for_editing(index),
+            cursor="pointer",
+            border=rx.cond(is_selected, "2px solid var(--violet-9)", "1px solid var(--gray-a6)")
+        )
+    return rx.vstack(
+        rx.heading("Grupos de Variantes", size="4", margin_top="1em"),
+        rx.text("Agrupa imágenes que representan una misma variante (ej. mismo color). Luego, asigna atributos y genera el stock para cada grupo.", size="2", color_scheme="gray"),
+        rx.cond(
+            AppState.variant_groups,
+            rx.vstack(
+                rx.foreach(AppState.variant_groups, render_group_card),
+                spacing="4"
+            ),
+            rx.text("Aún no has creado ningún grupo.", color_scheme="gray", padding="1em 0")
+        ),
+        align_items="stretch", spacing="3", width="100%",
+    )
+
+# --- ✨ FORMULARIO PRINCIPAL RESTAURADO CON LA LÓGICA NUEVA ✨ ---
+def blog_post_add_form() -> rx.Component:
+    """Formulario para añadir productos, restaurado al diseño original de 2 columnas."""
+    return rx.form(
+        rx.vstack(
+            rx.grid(
+                # --- COLUMNA IZQUIERDA: IMÁGENES Y GRUPOS ---
+                rx.vstack(
+                    image_selection_grid(),
+                    rx.divider(margin_y="1.5em"),
+                    variant_group_manager(),
+                    spacing="4",
+                ),
+                # --- COLUMNA DERECHA: DATOS DEL PRODUCTO ---
+                rx.vstack(
+                    rx.vstack(
+                        rx.text("Título del Producto"),
+                        rx.input(name="title", on_change=AppState.set_title, required=True),
+                        align_items="stretch",
+                    ),
+                    rx.vstack(
+                        rx.text("Categoría"),
+                        rx.select(AppState.categories, on_change=AppState.set_category, name="category", required=True),
+                        align_items="stretch",
+                    ),
+                    rx.grid(
+                        rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", on_change=AppState.set_price, type="number", required=True)),
+                        rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number")),
+                        columns="2", spacing="4"
+                    ),
+                    rx.vstack(
+                        rx.text("Descripción"),
+                        rx.text_area(name="content", on_change=AppState.set_content, style={"height": "120px"}),
+                        align_items="stretch",
+                    ),
+                    # ... Aquí puedes volver a añadir las opciones de envío como las tenías antes si quieres ...
+                    spacing="4", align_items="stretch",
+                ),
+                columns={"initial": "1", "md": "2"}, 
+                spacing="6", 
+                width="100%", 
+                align_items="start",
+            ),
+            rx.divider(margin_y="2em"),
+            rx.hstack(
+                rx.button("Publicar Producto", type="submit", color_scheme="violet", size="3"),
+                width="100%", justify="end",
+            ),
+            spacing="5", 
+            max_width="1200px",
+        ),
+        on_submit=AppState.submit_and_publish,
+        reset_on_submit=True,
+        width="100%", 
+    )
 
 # --- Componente reutilizable para editar atributos (Sin cambios) ---
 def attribute_editor(

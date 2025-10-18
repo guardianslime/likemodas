@@ -3803,12 +3803,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         """Selecciona un grupo para editar sus atributos."""
         self.selected_group_index = group_index
         
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Accedemos al grupo por su índice en la lista y luego a sus atributos.
         if 0 <= group_index < len(self.variant_groups):
-            group_attrs = self.variant_groups[group_index].get("attributes", {})
+            group_attrs = self.variant_groups[group_index].attributes
+            
+            # El resto de la función para cargar los datos en los campos temporales.
             self.temp_color = group_attrs.get("Color", "")
             self.attr_tallas_ropa = group_attrs.get("Talla", [])
             self.attr_numeros_calzado = group_attrs.get("Número", [])
             self.attr_tamanos_mochila = group_attrs.get("Tamaño", [])
+        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     def update_group_attributes(self):
         """Guarda los atributos del formulario en el grupo seleccionado."""
