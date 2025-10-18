@@ -175,7 +175,10 @@ def blog_post_add_form() -> rx.Component:
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", on_change=AppState.set_price, type="number", required=True)),
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number")),
-                    columns=2, spacing="4"
+                    
+                    # --- ✨ CORRECCIÓN AQUÍ: de 2 a "2" ✨ ---
+                    columns="2", 
+                    spacing="4"
                 ),
                 rx.text("Descripción"),
                 rx.text_area(name="content", on_change=AppState.set_content, style={"height": "120px"}),
