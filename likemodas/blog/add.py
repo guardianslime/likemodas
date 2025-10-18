@@ -11,10 +11,11 @@ from ..utils.formatting import format_to_cop
 def post_preview() -> rx.Component:
     """
     [VERSIÓN FINAL CORREGIDA]
-    - Colores de texto y fondo ajustados para legibilidad y estética.
-    - Contenedor de imagen preparado para transformaciones (zoom, rotación, etc.).
+    - Imagen ya no se corta (usa 'contain').
+    - Tonalidad de fondo en modo claro ajustada a un color casi blanco (#fdfcff).
     """
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # ... (código interno de esta función no cambia)
         light_colors = {
             "gray":   {"bg": "#F1F3F5", "text": "#495057"},
             "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"},
@@ -48,7 +49,9 @@ def post_preview() -> rx.Component:
                 rx.box(
                     rx.image(
                         src=rx.get_upload_url(first_image_url), fallback="/image_off.png", 
-                        width="100%", height="100%", object_fit="cover",
+                        width="100%", height="100%", 
+                        # --- ✨ CORRECCIÓN 1: La imagen ahora se contiene, no se corta ✨ ---
+                        object_fit="contain",
                         transform=rx.cond(
                             AppState.is_hydrated,
                             f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
@@ -116,8 +119,8 @@ def post_preview() -> rx.Component:
         width="290px", height="480px",
         bg=rx.cond(
              AppState.use_default_style,
-            # --- ✨ CORRECCIÓN DE TONALIDAD: Se usa el violeta más claro posible ✨ ---
-            rx.cond(AppState.card_theme_mode == "light", rx.color("violet", 1), "var(--gray-2)"),
+            # --- ✨ CORRECCIÓN 2: Tonalidad de fondo aún más clara ✨ ---
+            rx.cond(AppState.card_theme_mode == "light", "#fdfcff", "var(--gray-2)"),
             AppState.live_card_bg_color
         ),
         border="1px solid var(--gray-a6)",
