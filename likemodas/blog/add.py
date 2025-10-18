@@ -2,49 +2,11 @@
 
 import reflex as rx
 from rx_color_picker.color_picker import color_picker
-from likemodas.blog.forms import image_selection_grid, variant_group_manager
-from likemodas.utils.formatting import format_to_cop
-from ..state import AppState, VariantGroupDTO
+from ..state import AppState
 from ..auth.admin_auth import require_panel_access
-from ..models import Category
-from ..ui.components import searchable_select, star_rating_display_safe
-from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
-
-def blog_post_add_form() -> rx.Component:
-    """Formulario rediseñado para la creación de productos con grupos de variantes."""
-    return rx.form(
-        rx.vstack(
-            rx.heading("Datos Generales del Producto", size="5"),
-            rx.vstack(
-                rx.text("Título del Producto"),
-                rx.input(name="title", on_change=AppState.set_title, required=True),
-                rx.text("Categoría"),
-                rx.select(AppState.categories, on_change=AppState.set_category, name="category", required=True),
-                rx.grid(
-                    rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", on_change=AppState.set_price, type="number", required=True)),
-                    rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number")),
-                    columns="2", 
-                    spacing="4"
-                ),
-                rx.text("Descripción"),
-                rx.text_area(name="content", on_change=AppState.set_content, style={"height": "120px"}),
-                spacing="3", align_items="stretch"
-            ),
-            rx.divider(margin_y="2em"),
-            image_selection_grid(),
-            rx.divider(margin_y="2em"),
-            variant_group_manager(),
-            rx.divider(margin_y="2em"),
-            rx.hstack(
-                rx.button("Publicar Producto", type="submit", color_scheme="violet", size="3"),
-                width="100%", justify="end",
-            ),
-            spacing="5", 
-            width="100%",
-        ),
-        on_submit=AppState.submit_and_publish,
-        reset_on_submit=True,
-    )
+from .forms import blog_post_add_form # Importa el formulario restaurado
+from ..ui.components import star_rating_display_safe
+from ..utils.formatting import format_to_cop
 
 def post_preview() -> rx.Component:
     """Previsualización del producto que muestra la primera imagen del primer grupo."""
@@ -140,10 +102,9 @@ def post_preview() -> rx.Component:
         appearance=AppState.card_theme_mode,
     )
 
-
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
-    """Página de creación de publicación con la nueva interfaz de grupos y el diseño original."""
+    """Página de creación de publicación con la nueva interfaz y el diseño original."""
     return rx.hstack(
         rx.grid(
             rx.vstack(
@@ -155,8 +116,6 @@ def blog_post_add_content() -> rx.Component:
             rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 post_preview(),
-                
-                # --- ✨ INICIO: SECCIÓN DE PERSONALIZACIÓN COMPLETA ✨ ---
                 rx.vstack(
                     rx.divider(margin_y="1em"),
                     rx.text("Personalizar Tarjeta", weight="bold", size="4"),
@@ -254,8 +213,7 @@ def blog_post_add_content() -> rx.Component:
                     align_items="stretch",
                     width="290px",
                 ),
-                # --- ✨ FIN DE LA SECCIÓN DE PERSONALIZACIÓN ✨ ---
-                display={"initial": "none", "lg": "flex"}, # Oculta la previsualización en pantallas pequeñas
+                display={"initial": "none", "lg": "flex"},
                 width="100%",
                 spacing="4",
                 position="sticky",
@@ -269,6 +227,6 @@ def blog_post_add_content() -> rx.Component:
         ),
         width="100%",
         padding_y="2em",
-        padding_left=["1em", "2em", "15em", "15em"],
-        padding_right=["1em", "2em"],
+        padding_x=["1em", "2em", "2em", "2em"],
+        padding_left={"lg": "15em"},
     )
