@@ -5077,18 +5077,22 @@ class AppState(reflex_local_auth.LocalAuthState):
     preview_offset_y: int = 0
 
     # Setters para los sliders
-    def set_preview_zoom(self, value: list[float]):
-        self.preview_zoom = value[0]
+    def set_preview_zoom(self, value: list[Union[int, float]]):
+    """Actualiza el estado del zoom desde el slider."""
+    self.preview_zoom = value[0]
 
-    def set_preview_rotation(self, value: list[int]):
-        self.preview_rotation = value[0]
+    def set_preview_rotation(self, value: list[Union[int, float]]):
+        """Actualiza el estado de la rotación desde el slider."""
+        self.preview_rotation = int(value[0])
 
-    def set_preview_offset_x(self, value: list[int]):
-        self.preview_offset_x = value[0]
-    
-    def set_preview_offset_y(self, value: list[int]):
-        self.preview_offset_y = value[0]
-    
+    def set_preview_offset_x(self, value: list[Union[int, float]]):
+        """Actualiza el estado de la posición X desde el slider."""
+        self.preview_offset_x = int(value[0])
+
+    def set_preview_offset_y(self, value: list[Union[int, float]]):
+        """Actualiza el estado de la posición Y desde el slider."""
+        self.preview_offset_y = int(value[0])
+        
     def reset_image_styles(self):
         """Resetea todos los ajustes de la imagen a sus valores por defecto."""
         self.preview_zoom = 1.0
