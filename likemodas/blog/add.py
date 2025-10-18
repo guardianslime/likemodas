@@ -11,8 +11,9 @@ from ..utils.formatting import format_to_cop
 def post_preview() -> rx.Component:
     """
     [VERSIÓN 3.2 CORREGIDA]
-    - Se usan `rx.badge` estándar para colores de tema correctos.
-    - Se restaura el `rx.spacer` para el layout interno compacto.
+    - Respeto total por el modo claro/oscuro de la previsualización.
+    - La imagen usa object-fit: contain para no ser recortada.
+    - El layout interno es compacto con un spacer para un diseño correcto.
     """
     first_image_url = rx.cond(
         (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
@@ -22,13 +23,13 @@ def post_preview() -> rx.Component:
     
     return rx.box(
         rx.vstack(
-             rx.box(
+            rx.box(
                 rx.image(
-                    src=rx.get_upload_url(first_image_url),
-                    fallback="/image_off.png",
-                    width="100%",
-                    height="260px",
-                    object_fit="contain",
+                    src=rx.get_upload_url(first_image_url), 
+                    fallback="/image_off.png", 
+                    width="100%", 
+                    height="260px", 
+                    object_fit="contain",  # <-- Cambio clave para que la imagen se vea completa
                     border_top_left_radius="var(--radius-3)",
                     border_top_right_radius="var(--radius-3)",
                 ),
@@ -39,6 +40,7 @@ def post_preview() -> rx.Component:
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
                 position="relative",
+                # Fondo de la imagen que respeta el modo de previsualización
                 bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
             ),
             rx.vstack(
@@ -46,6 +48,7 @@ def post_preview() -> rx.Component:
                     rx.cond(AppState.title, AppState.title, "Título del Producto"), 
                     weight="bold", 
                     size="6",
+                    # Color del texto que respeta el modo de previsualización
                     color=rx.cond(
                         AppState.use_default_style,
                         rx.cond(AppState.card_theme_mode == "light", "black", "white"),
@@ -57,6 +60,7 @@ def post_preview() -> rx.Component:
                     AppState.price_cop_preview, 
                     size="5", 
                     weight="medium",
+                     # Color del texto que respeta el modo de previsualización
                     color=rx.cond(
                         AppState.use_default_style,
                         rx.color("gray", 11),
@@ -70,7 +74,6 @@ def post_preview() -> rx.Component:
                         rx.cond(
                             AppState.is_moda_completa,
                             rx.tooltip(
-                                # --- ✨ CORRECCIÓN: Usar rx.badge directamente ---
                                 rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
                                 content=AppState.moda_completa_tooltip_text_preview,
                             ),
@@ -97,9 +100,10 @@ def post_preview() -> rx.Component:
             height="100%",
         ),
         width="290px", 
-        height="480px",
+        height="480px", # Altura fija para evitar estiramientos
         bg=rx.cond(
             AppState.use_default_style,
+            # Lógica corregida para el fondo que respeta el modo de previsualización
             rx.cond(AppState.card_theme_mode == "light", "white", "var(--gray-2)"),
             AppState.live_card_bg_color
         ),
@@ -108,24 +112,23 @@ def post_preview() -> rx.Component:
         box_shadow="md",
     )
 
-
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
     """Página de creación de publicación con layout corregido para no estirar el formulario."""
+    # --- ✨ CORRECCIÓN DE LAYOUT PRINCIPAL Y `TypeError` ✨ ---
     return rx.grid(
+        # Columna Izquierda (Formulario)
         rx.vstack(
-            # --- ✨ CORRECCIÓN DE LAYOUT: Se mueve el padding aquí para no afectar el grid ---
-            padding_left={"lg": "15em"},
-            padding_x=["1em", "2em"],
-            # -------------------------------------------------------------------------
-            children=[
-                rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-                blog_post_add_form(),
-            ],
+            rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+            blog_post_add_form(),
+            # Propiedades de estilo como argumentos con nombre
             width="100%",
             spacing="4",
-            align_items="center", 
+            align_items="center",
+            padding_left={"lg": "15em"},
+            padding_x=["1em", "2em"],
         ),
+        # Columna Derecha (Previsualización)
         rx.vstack(
             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
             post_preview(),
@@ -187,7 +190,6 @@ def blog_post_add_content() -> rx.Component:
             top="2em",
             align_items="center",
         ),
-        # --- ✨ CORRECCIÓN DE LAYOUT PRINCIPAL ✨ ---
         columns={"initial": "1", "lg": "1fr auto"},
         gap="2em",
         width="100%",
