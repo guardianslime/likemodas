@@ -10,10 +10,10 @@ from ..utils.formatting import format_to_cop
 
 def post_preview() -> rx.Component:
     """
-    [VERSIÓN 3.0 CORREGIDA]
-    - La tarjeta respeta el modo claro/oscuro.
-    - La imagen usa object-fit: contain para no ser recortada.
-    - La tarjeta tiene una altura fija y layout compacto para no estirarse.
+    [VERSIÓN 3.1 CORREGIDA]
+    - Respeto total por el modo claro/oscuro de la previsualización.
+    - La imagen usa 'contain' y tiene el fondo correcto.
+    - El layout interno es compacto con un spacer.
     """
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
         light_colors = {
@@ -26,9 +26,10 @@ def post_preview() -> rx.Component:
             "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"},
             "teal":   {"bg": "#0C3D3F", "text": "#96F2D7"},
         }
-        colors = rx.color_mode_cond(
-            light=light_colors[color_scheme],
-            dark=dark_colors[color_scheme],
+        colors = rx.cond(
+            AppState.card_theme_mode == "light",
+            light_colors[color_scheme],
+            dark_colors[color_scheme],
         )
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
@@ -49,13 +50,12 @@ def post_preview() -> rx.Component:
     return rx.box(
         rx.vstack(
              rx.box(
-                # --- ✨ CAMBIO CLAVE: object_fit="contain" ✨ ---
                 rx.image(
                     src=rx.get_upload_url(first_image_url),
                     fallback="/image_off.png",
                     width="100%",
                     height="260px",
-                    object_fit="contain", # <-- ESTO EVITA QUE LA IMAGEN SE CORTE
+                    object_fit="contain", # <-- Cambio clave para que la imagen se vea completa
                     border_top_left_radius="var(--radius-3)",
                     border_top_right_radius="var(--radius-3)",
                 ),
@@ -66,17 +66,18 @@ def post_preview() -> rx.Component:
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
                 position="relative",
-                # Se aplica un fondo sutil a la caja de la imagen por si no lo llena todo
-                bg=rx.color("gray", 3)
+                # Fondo de la imagen que respeta el modo de previsualización
+                bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
             ),
             rx.vstack(
                 rx.text(
                     rx.cond(AppState.title, AppState.title, "Título del Producto"), 
                     weight="bold", 
                     size="6",
+                    # Color del texto que respeta el modo de previsualización
                     color=rx.cond(
                         AppState.use_default_style,
-                        rx.color_mode_cond("black", "white"),
+                        rx.cond(AppState.card_theme_mode == "light", "black", "white"),
                         AppState.live_title_color,
                     )
                 ),
@@ -85,6 +86,7 @@ def post_preview() -> rx.Component:
                     AppState.price_cop_preview, 
                     size="5", 
                     weight="medium",
+                     # Color del texto que respeta el modo de previsualización
                     color=rx.cond(
                         AppState.use_default_style,
                         rx.color("gray", 11),
@@ -124,11 +126,11 @@ def post_preview() -> rx.Component:
             height="100%",
         ),
         width="290px", 
-        height="480px", # Altura fija para evitar estiramientos
+        height="480px",
+        # Color de fondo principal de la tarjeta que respeta el modo de previsualización
         bg=rx.cond(
             AppState.use_default_style,
-            # ✨ CORRECCIÓN DE TEMA: Usar un color de fondo que respete el modo claro/oscuro
-            rx.color_mode_cond("white", "var(--gray-2)"),
+            rx.cond(AppState.card_theme_mode == "light", "white", "var(--gray-2)"),
             AppState.live_card_bg_color
         ),
         border="1px solid var(--gray-a6)",
@@ -137,22 +139,20 @@ def post_preview() -> rx.Component:
     )
     # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
-
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
-    """Página de creación de publicación con layout corregido."""
-    # --- ✨ CORRECCIÓN DE ALINEACIÓN: Se elimina el `rx.hstack` exterior y el `padding_left` ---
+    """Página de creación de publicación con layout corregido para no estirar el formulario."""
     return rx.grid(
-        # Columna Izquierda (Formulario)
+        # --- COLUMNA IZQUIERDA (Formulario) ---
         rx.vstack(
             rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-            blog_post_add_form(),
+            blog_post_add_form(), # El formulario en sí
             width="100%",
             spacing="4",
-            padding_left={"lg": "15em"}, # Padding para dejar espacio al sidebar
-            padding_x=["1em", "2em"],
+            # Centra el contenido del formulario para que no se estire
+            align_items="center", 
         ),
-        # Columna Derecha (Previsualización)
+        # --- COLUMNA DERECHA (Previsualización) ---
         rx.vstack(
             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
             post_preview(),
@@ -214,9 +214,11 @@ def blog_post_add_content() -> rx.Component:
             top="2em",
             align_items="center",
         ),
-        columns={"initial": "1", "lg": "1fr auto"}, # La columna de preview ahora toma el espacio que necesita
+        # --- ✨ CORRECCIÓN DE LAYOUT PRINCIPAL ✨ ---
+        columns={"initial": "1", "lg": "1fr auto"}, # La columna de preview ahora es de tamaño automático
         gap="2em",
         width="100%",
         max_width="1800px",
         padding_y="2em",
+        padding_x=["1em", "2em"],
     )

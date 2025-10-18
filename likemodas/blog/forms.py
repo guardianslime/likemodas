@@ -8,8 +8,8 @@ from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
 def blog_post_add_form() -> rx.Component:
     """
-    [VERSIÓN DEFINITIVA] Formulario para añadir productos, con el layout
-    reorganizado en columnas y secciones más compactas.
+    [VERSIÓN 3.1] Formulario para añadir productos, con un ancho máximo
+    para evitar que se estire horizontalmente.
     """
 
     def image_and_group_section() -> rx.Component:
@@ -128,16 +128,16 @@ def blog_post_add_form() -> rx.Component:
             )
         )
 
+    # --- ✨ INICIO DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
     return rx.form(
         rx.vstack(
             rx.grid(
-                # --- COLUMNA IZQUIERDA ---
                 rx.vstack(
                     image_and_group_section(),
-                    attributes_and_stock_section(), # Sección de stock ahora aquí
-                    spacing="5"
+                    attributes_and_stock_section(),
+                    spacing="5",
+                    width="100%", # Asegura que el vstack ocupe el ancho de la columna
                 ),
-                # --- COLUMNA DERECHA ---
                 rx.vstack(
                     rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
                     rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
@@ -158,12 +158,12 @@ def blog_post_add_form() -> rx.Component:
                         rx.vstack(rx.text("Límite de Productos"), rx.input(value=AppState.shipping_combination_limit_str, on_change=AppState.set_shipping_combination_limit_str, is_disabled=~AppState.combines_shipping), rx.text("Máx. de items por envío.", size="1", color_scheme="gray"), align_items="stretch"),
                         columns="2", spacing="4"
                     ),
-                    rx.vstack( # Descripción movida aquí
+                    rx.vstack(
                         rx.text("Descripción", as_="div", size="3", weight="bold"),
                         rx.text_area(name="content", value=AppState.content, on_change=AppState.set_content, style={"height": "120px"}),
                         align_items="stretch", width="100%",
                     ),
-                    spacing="4", align_items="stretch",
+                    spacing="4", align_items="stretch", width="100%",
                 ),
                 columns={"initial": "1", "lg": "2"}, 
                 spacing="6", 
@@ -177,11 +177,14 @@ def blog_post_add_form() -> rx.Component:
                 margin_top="1em"
             ),
             spacing="5", 
+            width="100%",
+            max_width="1200px", # Ancho máximo para todo el formulario
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
         width="100%", 
     )
+    # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
 # --- Formulario de Edición (No modificado, ya que la lógica es compleja y no fue solicitado) ---
 # ... (El código de `blog_post_edit_form` de previ03.txt se mantiene aquí sin cambios) ...
