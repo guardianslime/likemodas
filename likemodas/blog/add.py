@@ -10,10 +10,14 @@ from ..utils.formatting import format_to_cop
 
 def post_preview() -> rx.Component:
     """
-    [VERSIÓN 3.5 CORREGIDA]
-    - Contraste mejorado entre el fondo de la imagen y el contenido de la tarjeta.
+    [VERSIÓN FINAL CORREGIDA]
+    - Ancho de tarjeta restaurado a 290px.
+    - Fondo de imagen es blanco en modo claro.
+    - Fondo del área de texto es #f9f9f9 (gris muy sutil) en modo claro para contraste.
+    - Título del producto limitado a 2 líneas.
     """
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # Esta función interna no necesita cambios
         light_colors = {
             "gray":   {"bg": "#F1F3F5", "text": "#495057"},
             "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"},
@@ -41,6 +45,7 @@ def post_preview() -> rx.Component:
         ""
     )
     
+    # --- ✨ INICIO: CORRECCIONES EN LA TARJETA DE PREVISUALIZACIÓN ✨ ---
     return rx.box(
         rx.vstack(
              rx.box(
@@ -55,15 +60,14 @@ def post_preview() -> rx.Component:
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
                 position="relative",
-                # --- ✨ INICIO: CORRECCIÓN DE CONTRASTE ✨ ---
-                # Se cambia el fondo de 'white' a un gris claro para diferenciarlo del resto.
-                bg=rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 2), rx.color("gray", 3)),
-                # --- ✨ FIN: CORRECCIÓN DE CONTRASTE ✨ ---
+                # 1. El fondo de la imagen ahora es blanco en modo claro.
+                bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
              ),
             rx.vstack(
                 rx.text(
                     rx.cond(AppState.title, AppState.title, "Título del Producto"), 
                     weight="bold", size="6",
+                    # 2. Se asegura el límite de 2 líneas para el título.
                     no_of_lines=2,
                     color=rx.cond(
                         AppState.use_default_style,
@@ -106,15 +110,19 @@ def post_preview() -> rx.Component:
             ),
             spacing="0", align_items="stretch", height="100%",
         ),
-        width="290px", height="480px",
+        # 3. Se restaura el ancho fijo para que no se expanda.
+        width="290px", 
+        height="480px",
         bg=rx.cond(
              AppState.use_default_style,
-            rx.cond(AppState.card_theme_mode == "light", "#fdfdfd", "var(--gray-2)"), # Fondo de tarjeta casi blanco
+            # 4. El fondo de la tarjeta es un blanco sutil que contrasta con el blanco de la imagen.
+            rx.cond(AppState.card_theme_mode == "light", "#f9f9f9", "var(--gray-2)"),
             AppState.live_card_bg_color
         ),
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
+    # --- ✨ FIN: CORRECCIONES EN LA TARJETA DE PREVISUALIZACIÓN ✨ ---
 
 @require_panel_access
 def blog_post_add_content() -> rx.Component:

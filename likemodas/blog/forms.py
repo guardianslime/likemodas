@@ -10,10 +10,10 @@ from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
 def blog_post_add_form() -> rx.Component:
     """
-    [VERSIÓN 3.5 CORREGIDA] Formulario para añadir productos, con ancho máximo
-    en la sección de imágenes y sin título duplicado.
+    [VERSIÓN FINAL CORREGIDA] Formulario con ancho de columna izquierda reducido.
     """
     def image_and_group_section() -> rx.Component:
+        # El código interno de esta función no necesita cambios
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
@@ -68,6 +68,7 @@ def blog_post_add_form() -> rx.Component:
         )
 
     def attributes_and_stock_section() -> rx.Component:
+        # El código interno de esta función no necesita cambios
         return rx.cond(
              AppState.selected_group_index >= 0,
             rx.vstack(
@@ -129,23 +130,19 @@ def blog_post_add_form() -> rx.Component:
                 align_items="stretch", width="100%"
             )
         )
-
+    
+    # --- ✨ INICIO: CORRECCIÓN EN EL FORMULARIO PRINCIPAL ✨ ---
     return rx.form(
         rx.vstack(
-            # --- ✨ INICIO: CORRECCIÓN DE TÍTULO ✨ ---
-            # Se elimina el heading duplicado de aquí.
-            # --- ✨ FIN: CORRECCIÓN DE TÍTULO ✨ ---
             rx.grid(
-                # --- ✨ INICIO: CORRECCIÓN DE ANCHO ✨ ---
-                # Se añade un max_width a esta columna para controlarla.
+                # 1. Se añade un max_width a esta columna para reducir su ancho.
                 rx.vstack(
                     image_and_group_section(),
                     attributes_and_stock_section(),
                     spacing="5",
                     width="100%",
-                    max_width="600px", # <-- LÍNEA AÑADIDA
+                    max_width="600px", 
                 ),
-                # --- ✨ FIN: CORRECCIÓN DE ANCHO ✨ ---
                 rx.vstack(
                     rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
                     rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
@@ -192,6 +189,7 @@ def blog_post_add_form() -> rx.Component:
         reset_on_submit=True,
         width="100%", 
     )
+    # --- ✨ FIN: CORRECCIÓN EN EL FORMULARIO PRINCIPAL ✨ ---
 
 
 # --- ⚠️ INICIO: FORMULARIO DE EDICIÓN (NO FUNCIONAL CON GRUPOS AÚN) ⚠️ ---
