@@ -107,11 +107,6 @@ class DirectSaleGroupDTO(rx.Base):
     subtotal_cop: str
     variants: list[DirectSaleVariantDTO] = []
 
-class VariantGroupDTO(rx.Base):
-    """DTO para un grupo de variantes en el formulario de creación."""
-    image_urls: list[str] = []
-    attributes: dict = {}
-
 class UserManagementDTO(rx.Base):
     """DTO para mostrar un usuario en la tabla de gestión de administradores."""
     id: int
@@ -142,6 +137,8 @@ class NotificationDTO(rx.Base):
 class ContactEntryDTO(rx.Base):
     id: int; first_name: str; last_name: Optional[str]; email: Optional[str]
     message: str; created_at_formatted: str; userinfo_id: Optional[int]
+
+
 
 class ProductCardData(rx.Base):
     id: int
@@ -476,6 +473,11 @@ class ActivityLogDTO(rx.Base):
     
     # --- ✨ AÑADE ESTA LÍNEA PARA LA FECHA ORIGINAL ✨ ---
     created_at: datetime
+
+class VariantGroupDTO(rx.Base):
+    """DTO para un grupo de variantes en el formulario de creación."""
+    image_urls: list[str] = []
+    attributes: dict = {}
 
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
@@ -1629,7 +1631,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # La estructura principal: una lista de grupos de variantes.
     # Cada grupo tiene sus imágenes y sus atributos base (ej: Color).
-    variant_groups: list[dict] = []
+    variant_groups: list[VariantGroupDTO] = []
 
     # Mantiene un mapa de qué grupo está asociado con qué variantes generadas (Talla M, L, etc.)
     # La clave es el índice del grupo en `variant_groups`.
@@ -3807,7 +3809,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         )
         self.variant_groups.append(new_group)
         
-        # El resto de la función se mantiene igual...
         for filename in self.image_selection_for_grouping:
             if filename in self.uploaded_images:
                 self.uploaded_images.remove(filename)

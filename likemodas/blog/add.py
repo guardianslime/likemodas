@@ -58,6 +58,7 @@ def image_selection_grid() -> rx.Component:
 def variant_group_manager() -> rx.Component:
     """Muestra y permite la gestión de los grupos de variantes ya creados."""
     
+    # --- ✨ CORRECCIÓN CLAVE: El argumento 'group' ahora tiene un tipo específico ✨ ---
     def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
         is_selected = AppState.selected_group_index == index
 
@@ -121,7 +122,7 @@ def variant_group_manager() -> rx.Component:
         return rx.card(
             rx.vstack(
                 rx.flex(
-                    # --- ✨ CORRECCIÓN DE ERROR: Se itera sobre una propiedad de un DTO tipado (`group.image_urls`) ✨ ---
+                    # --- ✨ CORRECCIÓN DE ERROR: Ahora itera sobre una propiedad segura y tipada ✨ ---
                     rx.foreach(
                         group.image_urls,
                         lambda url: rx.image(src=rx.get_upload_url(url), width="60px", height="60px", object_fit="cover", border_radius="sm")
