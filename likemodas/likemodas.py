@@ -31,6 +31,9 @@ from .admin import employees_page # Importa la nueva página
 
 # Vistas de Blog y Productos
 from .blog import blog_admin_page, blog_post_add_content
+# Se importa directamente desde el archivo específico para evitar el ciclo.
+from .blog.admin_page import blog_admin_page
+from .blog.add import blog_post_add_content
 from .pages import landing, seller_page
 
 # Vistas del proceso de compra
