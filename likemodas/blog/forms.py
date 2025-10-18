@@ -10,10 +10,11 @@ from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
 def blog_post_add_form() -> rx.Component:
     """
-    [VERSIÓN FINAL CORREGIDA] Formulario con ancho de columna izquierda reducido.
+    [VERSIÓN FINAL CORREGIDA] Formulario con límite de caracteres para el título.
     """
+
     def image_and_group_section() -> rx.Component:
-        # El código interno de esta función no necesita cambios
+        # ... (El contenido de esta función interna no cambia)
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
@@ -68,7 +69,7 @@ def blog_post_add_form() -> rx.Component:
         )
 
     def attributes_and_stock_section() -> rx.Component:
-        # El código interno de esta función no necesita cambios
+        # ... (El contenido de esta función interna no cambia)
         return rx.cond(
              AppState.selected_group_index >= 0,
             rx.vstack(
@@ -130,22 +131,30 @@ def blog_post_add_form() -> rx.Component:
                 align_items="stretch", width="100%"
             )
         )
-    
-    # --- ✨ INICIO: CORRECCIÓN EN EL FORMULARIO PRINCIPAL ✨ ---
+
     return rx.form(
         rx.vstack(
-            # --- ✨ INICIO: CORRECCIÓN DE ANCHO ✨ ---
             rx.grid(
-                # Columna Izquierda: Ahora tiene un ancho fijo en pantallas grandes
                 rx.vstack(
                     image_and_group_section(),
                     attributes_and_stock_section(),
                     spacing="5",
                     width="100%",
                 ),
-                # Columna Derecha: Ocupa el resto del espacio
                 rx.vstack(
-                    rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True), align_items="stretch"),
+                    # --- ✨ INICIO: CORRECCIÓN DE LÍMITE DE CARACTERES ✨ ---
+                    rx.vstack(
+                        rx.text("Título del Producto"), 
+                        rx.input(
+                            name="title", 
+                            value=AppState.title, 
+                            on_change=AppState.set_title, 
+                            required=True,
+                            max_length=24, # <-- LÍNEA AÑADIDA
+                        ), 
+                        align_items="stretch"
+                    ),
+                    # --- ✨ FIN: CORRECCIÓN DE LÍMITE DE CARACTERES ✨ ---
                     rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                      rx.grid(
                         rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
@@ -171,13 +180,11 @@ def blog_post_add_form() -> rx.Component:
                     ),
                      spacing="4", align_items="stretch", width="100%",
                 ),
-                # Se define que la 1ra col tiene 500px y la 2da ocupa el resto.
                 columns={"initial": "1", "lg": "500px 1fr"}, 
                 spacing="6", 
                 width="100%", 
                 align_items="start",
             ),
-            # --- ✨ FIN: CORRECCIÓN DE ANCHO ✨ ---
              rx.hstack(
                 rx.spacer(),
                 rx.button("Publicar Producto", type="submit", color_scheme="violet", size="3"),
@@ -192,7 +199,6 @@ def blog_post_add_form() -> rx.Component:
         reset_on_submit=True,
         width="100%", 
     )
-    # --- ✨ FIN: CORRECCIÓN EN EL FORMULARIO PRINCIPAL ✨ ---
 
 
 # --- ⚠️ INICIO: FORMULARIO DE EDICIÓN (NO FUNCIONAL CON GRUPOS AÚN) ⚠️ ---
