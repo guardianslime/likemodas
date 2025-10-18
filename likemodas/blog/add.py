@@ -169,7 +169,7 @@ def blog_post_add_form() -> rx.Component:
             )
         )
 
-    # --- ✨ CAMBIO 1: El rx.form ahora es un rx.vstack ✨ ---
+    # El componente principal ya no es un rx.form
     return rx.vstack(
         rx.grid(
             rx.vstack(
@@ -222,10 +222,9 @@ def blog_post_add_form() -> rx.Component:
         ),
         rx.hstack(
             rx.spacer(),
-            # --- ✨ CAMBIO 2: El botón de publicar ahora usa on_click ✨ ---
             rx.button(
                 "Publicar Producto", 
-                on_click=AppState.submit_and_publish_manual, # Llama a la nueva función
+                on_click=AppState.submit_and_publish_manual,
                 color_scheme="violet", 
                 size="3"
             ),
@@ -234,9 +233,8 @@ def blog_post_add_form() -> rx.Component:
         ),
         spacing="5", 
         width="100%",
-        max_width="1200px", 
-        # Ya no hay on_submit aquí
-        width="100%", 
+        max_width="1200px",
+        # --- ✨ LÍNEA DUPLICADA ELIMINADA AQUÍ ✨ ---
     )
 
 # --- Componente para la previsualización de la tarjeta ---
