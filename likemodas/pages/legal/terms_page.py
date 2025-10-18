@@ -52,7 +52,7 @@ Bienvenido a LIKEMODAS. Estos Términos y Condiciones ("Términos") rigen el uso
 Estos Términos se regirán e interpretarán de acuerdo con las leyes de la República de Colombia.
 
 ### 9. Contacto
-Para cualquier pregunta sobre estos Términos, puedes contactarnos a través de: soporte@likemodas.com.
+Para cualquier pregunta sobre estos Términos, puedes contactarnos a través de: soporte@likemodas.com
 """
 
 
