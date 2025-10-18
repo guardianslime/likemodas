@@ -126,7 +126,12 @@ def blog_post_add_form() -> rx.Component:
                         rx.text("Talla"),
                          rx.hstack(
                             rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
-                            rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla))
+                            # --- ✨ CORRECCIÓN 1 ✨ ---
+                            rx.button(
+                                "Añadir", 
+                                on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla),
+                                type="button", # <-- SE AÑADE ESTA LÍNEA
+                            )
                         ),
                         rx.flex(
                              rx.foreach(
@@ -135,21 +140,24 @@ def blog_post_add_form() -> rx.Component:
                              ),
                             wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
                         ),
-                        rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline"),
+                        # --- ✨ CORRECCIÓN 2 ✨ ---
+                        rx.button(
+                            "Guardar Atributos", 
+                            on_click=AppState.update_group_attributes, 
+                            margin_top="1em", size="2", 
+                            variant="outline",
+                            type="button", # <-- SE AÑADE ESTA LÍNEA
+                        ),
                         spacing="3", align_items="stretch",
                      ),
                     rx.vstack(
                         rx.text("Variantes y Stock", weight="medium"),
                         rx.text("Genera combinaciones y asigna stock.", size="2", color_scheme="gray"),
-                        
-                        # --- ✨ INICIO: CORRECCIÓN DEL BOTÓN ✨ ---
                         rx.button(
                             "Generar / Actualizar Variantes", 
                             on_click=AppState.generate_variants_for_group(AppState.selected_group_index),
-                            type="button", # <-- SE AÑADE ESTA LÍNEA
+                            type="button",
                         ),
-                        # --- ✨ FIN: CORRECCIÓN DEL BOTÓN ✨ ---
-                        
                         rx.cond(
                             AppState.generated_variants_map.contains(AppState.selected_group_index),
                             rx.scroll_area(
