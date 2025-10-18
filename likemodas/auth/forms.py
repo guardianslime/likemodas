@@ -23,7 +23,7 @@ def register_error() -> rx.Component:
     )
 
 def my_register_form() -> rx.Component:
-    """El formulario de registro, sin el campo de código de administrador."""
+    """El formulario de registro, ahora con enlaces a políticas."""
     return rx.form(
         rx.vstack(
             rx.heading("Crear una Cuenta", size="7"),
@@ -37,12 +37,25 @@ def my_register_form() -> rx.Component:
             rx.text("Confirmar Contraseña"),
             password_input(placeholder="Confirm password", name="confirm_password"),
             
-            # --- ✨ CAMBIO: Se ha eliminado el campo de código secreto de la UI ✨ ---
+            # --- ✨ INICIO: CÓDIGO A AÑADIR ✨ ---
+            rx.text(
+                "Al hacer clic en 'Crear Cuenta', aceptas nuestros ",
+                rx.link("Términos y Condiciones", href="/terms", color_scheme="violet", is_external=False),
+                " y confirmas que has leído nuestra ",
+                rx.link("Política de Privacidad", href="/privacy", color_scheme="violet", is_external=False),
+                ".",
+                size="2",
+                color_scheme="gray",
+                text_align="center",
+                margin_y="1em",
+            ),
+            # --- ✨ FIN ✨ ---
             
-            rx.button("Crear Cuenta", width="100%", type="submit", color_scheme="violet", margin_top="1em"),
+            rx.button("Crear Cuenta", width="100%", type="submit", color_scheme="violet"),
             rx.center(
                 rx.link("¿Ya tienes cuenta? Inicia sesión", on_click=lambda: rx.redirect(reflex_local_auth.routes.LOGIN_ROUTE), color_scheme="violet"),
                 width="100%",
+                padding_top="1em" # Añadido para dar más espacio
             ),
             min_width=MIN_WIDTH,
         ),

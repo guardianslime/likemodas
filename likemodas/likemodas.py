@@ -37,6 +37,7 @@ from .pages import landing, seller_page
 from .cart import page as cart_page
 from .purchases import page as purchases_page
 from .pages import payment_status, payment_pending, processing_payment
+from .pages.legal import terms_page, privacy_page, cookies_page
 
 # Vistas de soporte y facturas
 from .invoice import page as invoice_page
@@ -113,3 +114,9 @@ app.add_page(base_page(admin_store_page()), route="/admin/store", on_load=[AppSt
 app.add_page(base_page(admin_page.payment_history_content()), route="/admin/payment-history", title="Historial de Pagos", on_load=AppState.load_purchase_history)
 app.add_page(base_page(admin_tickets_page_content()), route=navigation.routes.SUPPORT_TICKETS_ROUTE, on_load=AppState.on_load_admin_tickets_page, title="Solicitudes de Soporte")
 app.add_page(base_page(employees_page.employees_management_page()), route="/admin/employees", on_load=AppState.load_empleados, title="Gestión de Empleados")
+
+# --- ✨ INICIO: AÑADE ESTAS LÍNEAS AL FINAL ✨ ---
+app.add_page(terms_page, route="/terms", title="Términos y Condiciones")
+app.add_page(privacy_page, route="/privacy", title="Política de Privacidad")
+app.add_page(cookies_page, route="/cookies", title="Política de Cookies")
+# --- ✨ FIN ✨ ---
