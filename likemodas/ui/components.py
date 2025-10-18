@@ -131,11 +131,13 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                     rx.vstack(
                         rx.vstack(
                             rx.box(
+                                # --- ✨ INICIO: LÓGICA DE IMAGEN SIMPLIFICADA ✨ ---
                                 rx.cond(
-                                    post.variants & (post.variants.length() > 0),
-                                    rx.image(src=rx.get_upload_url(post.variants[0].get("image_urls", [])[0]), width="100%", height="260px", object_fit="cover"),
-                                    rx.box(rx.icon("image_off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
+                                    post.main_image_url != "",
+                                    rx.image(src=rx.get_upload_url(post.main_image_url), width="100%", height="260px", object_fit="cover"),
+                                    rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                                 ),
+                                # --- ✨ FIN ✨ ---
                                 rx.badge(
                                     rx.cond(post.is_imported, "Importado", "Nacional"),
                                     color_scheme=rx.cond(post.is_imported, "purple", "cyan"),
