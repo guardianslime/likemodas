@@ -46,6 +46,7 @@ def blog_post_add_form() -> rx.Component:
                         rx.cond(
                             AppState.image_selection_for_grouping.contains(img_name),
                             rx.box(
+                                # --- ✨ CORRECCIÓN DE ERROR DE SINTAXIS ✨ ---
                                 rx.icon("check", color="white", size=18),
                                 bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
                                 display="flex", align_items="center", justify_content="center"
