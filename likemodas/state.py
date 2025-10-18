@@ -2146,15 +2146,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.edit_free_shipping_threshold_str = value
 
     @rx.event
-    def submit_and_publish(self, form_data: dict):
+    async def submit_and_publish(self, form_data: dict):
         """
-        [CORREGIDO] Manejador para crear y publicar un nuevo producto, con lógica de
-        contexto robusta que funciona tanto para vendedores como para empleados.
+        [VERSIÓN FINAL CORREGIDA]
+        Manejador para crear y publicar un nuevo producto, con lógica de
+        contexto robusta que funciona para vendedores y empleados. Además,
+        guarda todos los estilos de tarjeta y de imagen personalizados.
         """
         owner_id = None
         creator_id_to_save = None
 
-        # --- ✨ Lógica de contexto robusta ✨ ---
+        # Lógica de contexto para determinar el dueño y el creador
         if not self.authenticated_user_info:
             return rx.toast.error("Error de sesión. No se puede publicar.")
 
@@ -2163,82 +2165,69 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return rx.toast.error("Error de contexto: No se pudo encontrar al empleador.")
             owner_id = self.mi_vendedor_info.id
             creator_id_to_save = self.authenticated_user_info.id
-        else: # Si es un Vendedor o Admin publicando para sí mismo
+        else:  # Si es un Vendedor o Admin publicando para sí mismo
             owner_id = self.authenticated_user_info.id
         
         if not owner_id:
             return rx.toast.error("Error de sesión o contexto no válido. No se puede publicar.")
-        # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
-        # 2. Extraer y validar los datos del formulario
+        # Extracción y validación de los datos del formulario
         title = form_data.get("title", "").strip()
         price_str = form_data.get("price", "")
         category = form_data.get("category", "")
         content = form_data.get("content", "")
         profit_str = form_data.get("profit", "")
-        shipping_cost_str = form_data.get("shipping_cost", "")
         limit_str = form_data.get("shipping_combination_limit", "3")
 
         if not all([title, price_str, category]):
-            return rx.toast.error("El título, el precio y la categoría son campos obligatorios.")
+            return rx.toast.error("El título, el precio y la categoría son campos obligatorios.") 
 
         if not self.generated_variants_map:
-            return rx.toast.error("Debes generar y configurar las variantes (stock, etc.) para al menos una imagen antes de publicar.")
+            return rx.toast.error("Debes generar y configurar las variantes (stock, etc.) para al menos una imagen antes de publicar.") 
 
         try:
             price_float = float(price_str)
             profit_float = float(profit_str) if profit_str else None
-            shipping_cost = float(shipping_cost_str) if shipping_cost_str else None
             limit = int(limit_str) if self.combines_shipping and limit_str else None
             threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
 
             if self.combines_shipping and (limit is None or limit <= 0):
                 return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
         except (ValueError, TypeError):
-            return rx.toast.error("Precio, ganancia, costo de envío y límites deben ser números válidos.")
+            return rx.toast.error("Precio, ganancia y límites deben ser números válidos.") 
 
-        # 3. Construir la lista final de variantes para la base de datos
-        all_variants_for_db = []
-        for index, generated_list in self.generated_variants_map.items():
-            # La URL de la imagen principal del grupo
-            main_image_url_for_group = self.new_variants[index].get("image_url", "")
-            for variant_data in generated_list:
-                variant_dict = {
-                    "attributes": variant_data.attributes,
-                    "stock": variant_data.stock,
-                    # Usa la imagen asignada a la variante, o la del grupo como fallback
-                    "image_url": variant_data.image_url or main_image_url_for_group,
-                    "variant_uuid": str(uuid.uuid4()) # Asigna un ID único a cada variante
-                }
-                all_variants_for_db.append(variant_dict)
-
-        # --- ✨ INICIO: NUEVA LÓGICA PARA CONSTRUIR VARIANTES ✨ ---
+        # Construcción de la lista de variantes para la base de datos
         all_variants_for_db = []
         for group_index, generated_list in self.generated_variants_map.items():
             if group_index >= len(self.variant_groups):
                 continue
             
-            # Obtenemos la lista de imágenes del grupo
-            image_urls_for_group = self.variant_groups[group_index].get("image_urls", [])
+            image_urls_for_group = self.variant_groups[group_index].image_urls
 
             for variant_data in generated_list:
                 variant_dict = {
                     "attributes": variant_data.attributes,
                     "stock": variant_data.stock,
-                    "image_urls": image_urls_for_group,  # <- Se asigna la lista de imágenes
+                    "image_urls": image_urls_for_group,
                     "variant_uuid": str(uuid.uuid4())
                 }
-                all_variants_for_db.append(variant_dict)
-        # --- ✨ FIN ✨ ---
-
+                all_variants_for_db.append(variant_dict) 
+        
         if not all_variants_for_db:
             return rx.toast.error("No se encontraron variantes configuradas para guardar.")
 
-        # 4. Crear y guardar el nuevo producto en la base de datos
+        # Creación y guardado del nuevo producto en la base de datos
         with rx.session() as session:
+            image_styles_to_save = {
+                "zoom": self.preview_zoom,
+                "rotation": self.preview_rotation,
+                "offsetX": self.preview_offset_x,
+                "offsetY": self.preview_offset_y,
+            }
+
             new_post = BlogPostModel(
-                userinfo_id=owner_id,          # ID del Vendedor (dueño)
-                creator_id=creator_id_to_save, # ID del Empleado (si aplica) o None
+                userinfo_id=owner_id,
+                creator_id=creator_id_to_save,
                 title=title,
                 content=content,
                 price=price_float,
@@ -2248,15 +2237,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                 variants=all_variants_for_db,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                shipping_cost=shipping_cost,
                 is_moda_completa_eligible=self.is_moda_completa,
                 free_shipping_threshold=threshold,
                 combines_shipping=self.combines_shipping,
                 shipping_combination_limit=limit,
                 is_imported=self.is_imported,
-                # --- ✨ AÑADE ESTAS LÍNEAS AL FINAL ✨ ---
-                card_bg_color=self.card_bg_color,
-                # --- ✨ INICIO: AÑADE ESTOS CAMPOS AL CREAR EL OBJETO ✨ ---
                 use_default_style=self.use_default_style,
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
@@ -2264,25 +2249,23 @@ class AppState(reflex_local_auth.LocalAuthState):
                 dark_card_bg_color=self.dark_theme_colors.get("bg"),
                 dark_title_color=self.dark_theme_colors.get("title"),
                 dark_price_color=self.dark_theme_colors.get("price"),
-                title_color=self.title_color,
-                price_color=self.price_color
+                image_styles=image_styles_to_save
             )
             session.add(new_post)
 
-            # --- ✨ AÑADIR REGISTRO DE ACTIVIDAD ✨ ---
+            # Registro de la actividad
             log_entry = ActivityLog(
                 actor_id=self.authenticated_user_info.id,
                 owner_id=owner_id,
                 action_type="Creación de Publicación",
                 description=f"Creó la publicación '{new_post.title}'"
             )
-            session.add(log_entry)
-            # --- ✨ FIN DEL REGISTRO ✨ ---
+            session.add(log_entry) 
 
             session.commit()
 
-        # 5. Limpiar el formulario y redirigir
-        self._clear_add_form() # Asegúrate de tener esta función para limpiar el estado del form
+        # Limpieza del formulario y redirección
+        self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
         yield rx.redirect("/blog")
     
@@ -3536,6 +3519,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield self.select_edit_image_for_editing(0)
 
             self._load_card_styles_from_db(db_post)
+            self._load_image_styles_from_db(db_post) # <-- Añade esta línea
             self.is_editing_post = True
 
     
@@ -3686,6 +3670,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
+            # --- ✨ INICIO: LÓGICA PARA GUARDAR ESTILOS DE IMAGEN (EDICIÓN) ✨ ---
+            post_to_update.image_styles = {
+                "zoom": self.preview_zoom,
+                "rotation": self.preview_rotation,
+                "offsetX": self.preview_offset_x,
+                "offsetY": self.preview_offset_y,
+            }
+            # --- ✨ FIN ✨ ---
             # --- ✨ FIN ✨ ---
             
             session.add(post_to_update)
@@ -5077,6 +5069,47 @@ class AppState(reflex_local_auth.LocalAuthState):
         output.seek(0)
         return rx.download(data=output.getvalue(), filename="rendimiento_productos.csv")
 
+    # --- Estado para la Interfaz del Editor de Imágenes ---
+    preview_zoom: float = 1.0
+    preview_rotation: int = 0
+    preview_offset_x: int = 0
+    preview_offset_y: int = 0
+
+    # Setters para los sliders
+    def set_preview_zoom(self, value: list[float]):
+        self.preview_zoom = value[0]
+
+    def set_preview_rotation(self, value: list[int]):
+        self.preview_rotation = value[0]
+
+    def set_preview_offset_x(self, value: list[int]):
+        self.preview_offset_x = value[0]
+    
+    def set_preview_offset_y(self, value: list[int]):
+        self.preview_offset_y = value[0]
+    
+    def reset_image_styles(self):
+        """Resetea todos los ajustes de la imagen a sus valores por defecto."""
+        self.preview_zoom = 1.0
+        self.preview_rotation = 0
+        self.preview_offset_x = 0
+        self.preview_offset_y = 0
+
+    # Lógica de Limpieza y Carga para el editor de imágenes
+    def _clear_image_styles(self):
+        """Limpia el estado del editor al resetear el formulario."""
+        self.reset_image_styles()
+
+    def _load_image_styles_from_db(self, db_post: BlogPostModel):
+        """Carga los estilos de imagen guardados desde un objeto de la BD."""
+        styles = db_post.image_styles or {}
+        self.preview_zoom = styles.get("zoom", 1.0)
+        self.preview_rotation = styles.get("rotation", 0)
+        self.preview_offset_x = styles.get("offsetX", 0)
+        self.preview_offset_y = styles.get("offsetY", 0)
+    
+    # --- ✨ FIN: CÓDIGO A AÑADIR DENTRO DE AppState ✨ ---
+
     # --- Funciones de formulario de publicación ---
 
     def _clear_add_form(self):
@@ -5109,6 +5142,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.variant_form_data = []
         self.generated_variants_map = {}
         self._clear_card_styles()
+        self._clear_image_styles() # <-- Añade esta línea al fina
         # --- ✨ AÑADE ESTAS LÍNEAS AL FINAL ✨ ---
         self.card_bg_color = "#FFFFFF"
         self.title_color = "#111111"

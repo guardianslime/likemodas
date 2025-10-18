@@ -345,6 +345,10 @@ class BlogPostModel(rx.Model, table=True):
     dark_price_color: Optional[str] = Field(default=None)
     # --- ✨ FIN DE LA SECCIÓN CORREGIDA ✨ ---
 
+    # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
+    image_styles: dict = Field(default_factory=dict, sa_column=Column(JSONB))
+    # --- ✨ FIN: AÑADE ESTA LÍNEA ✨ ---
+
     # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # Le decimos a la relación 'userinfo' (el dueño) que se vincule a través de 'userinfo_id'
     userinfo: "UserInfo" = Relationship(

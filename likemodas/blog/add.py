@@ -11,8 +11,8 @@ from ..utils.formatting import format_to_cop
 def post_preview() -> rx.Component:
     """
     [VERSIÓN FINAL CORREGIDA]
-    - Colores de texto ajustados para mejor legibilidad.
-    - Contraste de fondo mejorado en modo claro.
+    - Colores de texto y fondo ajustados para legibilidad y estética.
+    - Contenedor de imagen preparado para transformaciones (zoom, rotación, etc.).
     """
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
         # ... (código interno sin cambios)
@@ -45,27 +45,41 @@ def post_preview() -> rx.Component:
     
     return rx.box(
         rx.vstack(
+             # --- ✨ INICIO: CONTENEDOR DE IMAGEN MODIFICADO ✨ ---
              rx.box(
-                  rx.image(
-                    src=rx.get_upload_url(first_image_url), fallback="/image_off.png", 
-                    width="100%", height="260px", object_fit="contain",
+                rx.box(
+                    rx.image(
+                        src=rx.get_upload_url(first_image_url), fallback="/image_off.png", 
+                        width="100%", height="100%", object_fit="cover",
+                        # Se aplican las transformaciones desde el estado
+                        transform=rx.cond(
+                            AppState.is_hydrated, # Evita glitches en la carga inicial
+                            f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
+                            "scale(1)"
+                        ),
+                        transition="transform 0.2s ease-out",
+                    ),
+                    rx.badge(
+                        rx.cond(AppState.is_imported, "Importado", "Nacional"),
+                        color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"), variant="solid",
+                        style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
+                    ),
+                    position="relative",
+                    width="100%", height="260px",
+                    # El overflow hidden es clave para que la imagen no se salga del recuadro
+                    overflow="hidden", 
                     border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                ),
-                rx.badge(
-                     rx.cond(AppState.is_imported, "Importado", "Nacional"),
-                    color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"), variant="solid",
-                    style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
-                ),
-                position="relative",
-                bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
+                    bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
+                )
              ),
+             # --- ✨ FIN: CONTENEDOR DE IMAGEN MODIFICADO ✨ ---
             rx.vstack(
                 rx.text(
                     rx.cond(AppState.title, AppState.title, "Título del Producto"), 
                     weight="bold", size="6", no_of_lines=2, width="100%",
                     color=rx.cond(
                         AppState.use_default_style,
-                        # --- ✨ CORRECCIÓN DE COLOR: TÍTULO ✨ ---
+                        # Color de título: Gris oscuro
                         rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 11), "white"),
                         AppState.live_title_color,
                     )
@@ -75,7 +89,7 @@ def post_preview() -> rx.Component:
                     AppState.price_cop_preview, size="5", weight="medium",
                     color=rx.cond(
                          AppState.use_default_style,
-                        # --- ✨ CORRECCIÓN DE COLOR: PRECIO ✨ ---
+                         # Color de precio: Gris medio-oscuro
                         rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 9), rx.color("gray", 11)),
                         AppState.live_price_color,
                     )
@@ -109,28 +123,70 @@ def post_preview() -> rx.Component:
         width="290px", height="480px",
         bg=rx.cond(
              AppState.use_default_style,
-            # --- ✨ CORRECCIÓN DE CONTRASTE: FONDO ✨ ---
-            rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 2), "var(--gray-2)"),
+            # Fondo de la tarjeta: Tonalidad violeta muy clara
+            rx.cond(AppState.card_theme_mode == "light", rx.color("violet", 2), "var(--gray-2)"),
             AppState.live_card_bg_color
         ),
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
 
-# ... (la función blog_post_add_content se mantiene igual que en mi respuesta anterior,
-# ya que sus cambios eran correctos)
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
+    """
+    Layout de la página de creación, ahora con el panel de ajuste de imagen.
+    """
+    
+    # --- ✨ INICIO: NUEVO COMPONENTE PARA EL EDITOR DE IMAGEN ✨ ---
+    image_editor_panel = rx.vstack(
+        rx.divider(margin_y="1em"),
+        rx.text("Ajustar Imagen", weight="bold", size="4"),
+        
+        rx.vstack(
+            rx.text("Zoom", size="2"),
+            rx.slider(
+                value=[AppState.preview_zoom], on_change=AppState.set_preview_zoom, 
+                min=0.5, max=3, step=0.05
+            ),
+            spacing="1", align_items="stretch", width="100%"
+        ),
+        rx.vstack(
+            rx.text("Rotación", size="2"),
+            rx.slider(
+                value=[AppState.preview_rotation], on_change=AppState.set_preview_rotation, 
+                min=-45, max=45, step=1
+            ),
+            spacing="1", align_items="stretch", width="100%"
+        ),
+        rx.vstack(
+            rx.text("Posición Horizontal (X)", size="2"),
+            rx.slider(
+                value=[AppState.preview_offset_x], on_change=AppState.set_preview_offset_x, 
+                min=-100, max=100, step=1
+            ),
+            spacing="1", align_items="stretch", width="100%"
+        ),
+        rx.vstack(
+            rx.text("Posición Vertical (Y)", size="2"),
+            rx.slider(
+                value=[AppState.preview_offset_y], on_change=AppState.set_preview_offset_y, 
+                min=-100, max=100, step=1
+            ),
+            spacing="1", align_items="stretch", width="100%"
+        ),
+        rx.button("Resetear Ajustes", on_click=AppState.reset_image_styles, variant="soft", size="1", margin_top="0.5em"),
+        
+        spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
+        border_radius="md", margin_top="1.5em", align_items="stretch",
+        width="290px",
+    )
+    # --- ✨ FIN: NUEVO COMPONENTE ✨ ---
+    
     return rx.grid(
         rx.vstack(
             rx.heading(
-                "Crear Publicación", 
-                size="7", 
-                width="100%", 
-                text_align="left", 
-                margin_bottom="0.5em",
-                color_scheme="gray",
-                font_weight="medium"
+                "Crear Publicación", size="7", width="100%", text_align="left", 
+                margin_bottom="0.5em", color_scheme="gray", font_weight="medium"
             ),
             blog_post_add_form(),
             width="100%", spacing="4", align_items="center",
@@ -185,6 +241,8 @@ def blog_post_add_content() -> rx.Component:
                  border_radius="md", margin_top="1.5em", align_items="stretch",
                 width="290px",
             ),
+            # --- ✨ AÑADIMOS EL NUEVO PANEL DE EDICIÓN DE IMAGEN AQUÍ ✨ ---
+            image_editor_panel,
             display={"initial": "none", "lg": "flex"},
             width="100%", spacing="4", position="sticky", top="2em", align_items="center",
         ),
