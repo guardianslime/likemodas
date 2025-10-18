@@ -1,0 +1,1 @@
+import{b as e}from"./haskell-DkVHsmnt.js";export default e();
