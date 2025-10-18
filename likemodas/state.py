@@ -5078,8 +5078,8 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # Setters para los sliders
     def set_preview_zoom(self, value: list[Union[int, float]]):
-    """Actualiza el estado del zoom desde el slider."""
-    self.preview_zoom = value[0]
+        """Actualiza el estado del zoom desde el slider."""
+        self.preview_zoom = value[0]
 
     def set_preview_rotation(self, value: list[Union[int, float]]):
         """Actualiza el estado de la rotación desde el slider."""
