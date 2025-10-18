@@ -32,8 +32,8 @@ def image_selection_grid() -> rx.Component:
                             rx.cond(
                                 AppState.image_selection_for_grouping.contains(img_name),
                                 rx.box(
-                                    # --- ✨ CORRECCIÓN 1: Nombre del icono corregido ✨ ---
-                                    rx.icon("check-circle", color="white", size=24),
+                                    # --- ✨ CORRECCIÓN 1: Nombre del icono corregido a "check-check" ✨ ---
+                                    rx.icon("check-check", color="white", size=24),
                                     bg="rgba(90, 40, 180, 0.7)",
                                     position="absolute", inset="0", border_radius="md",
                                     display="flex", align_items="center", justify_content="center"
@@ -123,9 +123,9 @@ def variant_group_manager() -> rx.Component:
         return rx.card(
             rx.vstack(
                 rx.flex(
-                    # --- ✨ CORRECCIÓN 2: Se añade rx.Var.cast para ayudar al compilador ✨ ---
+                    # --- ✨ CORRECCIÓN 2: Se usa rx.cast en lugar de rx.Var.cast ✨ ---
                     rx.foreach(
-                        rx.Var.cast(group["image_urls"], list[str]),
+                        rx.cast(group["image_urls"], list[str]),
                         lambda url: rx.image(src=rx.get_upload_url(url), width="60px", height="60px", object_fit="cover", border_radius="sm")
                     ),
                     wrap="wrap", spacing="2",
