@@ -4,16 +4,19 @@ import reflex as rx
 from rx_color_picker.color_picker import color_picker
 from ..state import AppState
 from ..auth.admin_auth import require_panel_access
-from .forms import blog_post_add_form 
+from .forms import blog_post_add_form
 from ..ui.components import star_rating_display_safe
 from ..utils.formatting import format_to_cop
 
 def post_preview() -> rx.Component:
     """
-    [VERSIÓN FINAL CON IMAGEN CORREGIDA Y BADGES FUNCIONALES]
-    La previsualización ahora es fiel a la tienda y la imagen ocupa todo el ancho.
+    [VERSIÓN 2.0 CORREGIDA]
+    La tarjeta ahora tiene una altura fija para evitar estiramientos.
+    Se ha eliminado el rx.theme para solucionar el conflicto con el modo claro.
+    La imagen se contiene correctamente sin deformar la tarjeta.
     """
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # Esta función auxiliar no necesita cambios
         light_colors = {
             "gray":   {"bg": "#F1F3F5", "text": "#495057"},
             "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"},
@@ -24,8 +27,9 @@ def post_preview() -> rx.Component:
             "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"},
             "teal":   {"bg": "#0C3D3F", "text": "#96F2D7"},
         }
+        # Se usa AppState.theme en lugar de card_theme_mode para reflejar el tema real de la app
         colors = rx.cond(
-            AppState.card_theme_mode == "light",
+            AppState.theme == "light",
             light_colors[color_scheme],
             dark_colors[color_scheme],
         )
@@ -43,34 +47,50 @@ def post_preview() -> rx.Component:
         AppState.variant_groups[0].image_urls[0],
         ""
     )
-    return rx.theme(
-        rx.card(
-            # --- ✨ INICIO DE LA CORRECCIÓN DE IMAGEN ✨ ---
-            rx.inset(
-                rx.box(
-                    rx.image(
-                        src=rx.get_upload_url(first_image_url), 
-                        fallback="/image_off.png", 
-                        width="100%", 
-                        height="260px", 
-                        object_fit="cover"
-                    ),
-                    rx.badge(
-                        rx.cond(AppState.is_imported, "Importado", "Nacional"),
-                        color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"),
-                        variant="solid",
-                        style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
-                    ),
-                    position="relative",
+    
+    # --- ✨ INICIO DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
+    return rx.box(
+        rx.vstack(
+            rx.box(
+                rx.image(
+                    src=rx.get_upload_url(first_image_url), 
+                    fallback="/image_off.png", 
+                    width="100%", 
+                    height="260px", # Altura fija para el contenedor de la imagen
+                    object_fit="cover",
+                    border_top_left_radius="var(--radius-3)", # Redondear esquinas
+                    border_top_right_radius="var(--radius-3)",
                 ),
-                side="top",
-                pb="0", # Elimina el padding inferior del inset
+                rx.badge(
+                    rx.cond(AppState.is_imported, "Importado", "Nacional"),
+                    color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"),
+                    variant="solid",
+                    style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
+                ),
+                position="relative",
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN DE IMAGEN ✨ ---
             rx.vstack(
-                rx.text(rx.cond(AppState.title, AppState.title, "Título del Producto"), color=AppState.live_title_color, weight="bold", size="6"),
+                rx.text(
+                    rx.cond(AppState.title, AppState.title, "Título del Producto"), 
+                    weight="bold", 
+                    size="6",
+                    color=rx.cond(
+                        AppState.use_default_style,
+                        rx.color_mode_cond("black", "white"),
+                        AppState.live_title_color,
+                    )
+                ),
                 star_rating_display_safe(0, 0, size=24),
-                rx.text(AppState.price_cop_preview, color=AppState.live_price_color, size="5", weight="medium"),
+                rx.text(
+                    AppState.price_cop_preview, 
+                    size="5", 
+                    weight="medium",
+                    color=rx.cond(
+                        AppState.use_default_style,
+                        rx.color("gray", 11),
+                        AppState.live_price_color,
+                    )
+                ),
                 rx.vstack(
                     rx.hstack(
                         _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
@@ -81,8 +101,7 @@ def post_preview() -> rx.Component:
                                 content=AppState.moda_completa_tooltip_text_preview,
                             ),
                         ),
-                        spacing="3",
-                        align="center",
+                        spacing="3", align="center",
                     ),
                     rx.cond(
                         AppState.combines_shipping,
@@ -91,20 +110,30 @@ def post_preview() -> rx.Component:
                             content=AppState.envio_combinado_tooltip_text_preview,
                         ),
                     ),
-                    spacing="1",
-                    align_items="start",
-                    width="100%",
+                    spacing="1", align_items="start", width="100%",
                 ),
-                spacing="1", 
+                spacing="2", 
                 align_items="start", 
-                width="100%"
+                width="100%",
+                padding="1em",
+                flex_grow="1", # Permite que esta sección ocupe el espacio restante
             ),
-            # Se aplica el padding solo al contenido de texto, no a toda la tarjeta
-            padding="1em",
-            width="290px",
+            spacing="0",
+            align_items="stretch",
+            height="100%",
         ),
-        appearance=AppState.card_theme_mode,
+        width="290px", 
+        height="480px", # Altura fija para toda la tarjeta
+        bg=rx.cond(
+            AppState.use_default_style,
+            rx.color("gray", 2),
+            AppState.live_card_bg_color
+        ),
+        border="1px solid var(--gray-a6)",
+        border_radius="8px", 
+        box_shadow="md",
     )
+    # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
 
 @require_panel_access
