@@ -16,7 +16,6 @@ def post_preview() -> rx.Component:
     La imagen se contiene correctamente sin deformar la tarjeta.
     """
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
-        # Esta función auxiliar no necesita cambios
         light_colors = {
             "gray":   {"bg": "#F1F3F5", "text": "#495057"},
             "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"},
@@ -27,12 +26,16 @@ def post_preview() -> rx.Component:
             "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"},
             "teal":   {"bg": "#0C3D3F", "text": "#96F2D7"},
         }
-        # Se usa AppState.theme en lugar de card_theme_mode para reflejar el tema real de la app
-        colors = rx.cond(
-            AppState.theme == "light",
-            light_colors[color_scheme],
-            dark_colors[color_scheme],
+        
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Se usa rx.color_mode_cond para seleccionar la paleta correcta según el tema.
+        # Esto es compatible con `reflex export`.
+        colors = rx.color_mode_cond(
+            light=light_colors[color_scheme],
+            dark=dark_colors[color_scheme],
         )
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
             bg=colors["bg"],
@@ -48,7 +51,6 @@ def post_preview() -> rx.Component:
         ""
     )
     
-    # --- ✨ INICIO DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
     return rx.box(
         rx.vstack(
             rx.box(
@@ -56,9 +58,9 @@ def post_preview() -> rx.Component:
                     src=rx.get_upload_url(first_image_url), 
                     fallback="/image_off.png", 
                     width="100%", 
-                    height="260px", # Altura fija para el contenedor de la imagen
+                    height="260px",
                     object_fit="cover",
-                    border_top_left_radius="var(--radius-3)", # Redondear esquinas
+                    border_top_left_radius="var(--radius-3)",
                     border_top_right_radius="var(--radius-3)",
                 ),
                 rx.badge(
@@ -116,14 +118,14 @@ def post_preview() -> rx.Component:
                 align_items="start", 
                 width="100%",
                 padding="1em",
-                flex_grow="1", # Permite que esta sección ocupe el espacio restante
+                flex_grow="1",
             ),
             spacing="0",
             align_items="stretch",
             height="100%",
         ),
         width="290px", 
-        height="480px", # Altura fija para toda la tarjeta
+        height="480px",
         bg=rx.cond(
             AppState.use_default_style,
             rx.color("gray", 2),
@@ -133,7 +135,6 @@ def post_preview() -> rx.Component:
         border_radius="8px", 
         box_shadow="md",
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
 
 @require_panel_access
@@ -150,7 +151,6 @@ def blog_post_add_content() -> rx.Component:
             rx.vstack(
                 rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
                 post_preview(),
-                # El código para personalizar la tarjeta se mantiene igual
                 rx.vstack( 
                     rx.divider(margin_y="1em"),
                     rx.text("Personalizar Tarjeta", weight="bold", size="4"),
@@ -209,8 +209,8 @@ def blog_post_add_content() -> rx.Component:
                 top="2em",
                 align_items="center",
             ),
-            columns={"initial": "1", "lg": "1fr 1fr"}, # Columnas ajustadas para un mejor balance
-            gap="2em", # Espacio entre columnas
+            columns={"initial": "1", "lg": "1fr 1fr"},
+            gap="2em",
             width="100%",
             max_width="1800px",
         ),
