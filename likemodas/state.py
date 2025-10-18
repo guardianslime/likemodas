@@ -5050,7 +5050,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.download(data=output.getvalue(), filename="rendimiento_productos.csv")
 
     # --- Estado para la Interfaz del Editor de Imágenes ---
-    # Estado para la Interfaz del Editor de Imágenes con Sliders
     preview_zoom: float = 1.0
     preview_rotation: int = 0
     preview_offset_x: int = 0
