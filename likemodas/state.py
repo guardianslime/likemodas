@@ -5050,12 +5050,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.download(data=output.getvalue(), filename="rendimiento_productos.csv")
 
     # --- Estado para la Interfaz del Editor de Imágenes ---
+    # Estado para la Interfaz del Editor de Imágenes con Sliders
     preview_zoom: float = 1.0
     preview_rotation: int = 0
     preview_offset_x: int = 0
     preview_offset_y: int = 0
 
-    # Setters para los sliders
+    # Setters para los sliders (con la corrección para evitar Warnings)
     def set_preview_zoom(self, value: list[Union[int, float]]):
         """Actualiza el estado del zoom desde el slider."""
         self.preview_zoom = value[0]
@@ -5071,7 +5072,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_preview_offset_y(self, value: list[Union[int, float]]):
         """Actualiza el estado de la posición Y desde el slider."""
         self.preview_offset_y = int(value[0])
-        
+
     def reset_image_styles(self):
         """Resetea todos los ajustes de la imagen a sus valores por defecto."""
         self.preview_zoom = 1.0
@@ -5079,7 +5080,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.preview_offset_x = 0
         self.preview_offset_y = 0
 
-    # Lógica de Limpieza y Carga para el editor de imágenes
     def _clear_image_styles(self):
         """Limpia el estado del editor al resetear el formulario."""
         self.reset_image_styles()
