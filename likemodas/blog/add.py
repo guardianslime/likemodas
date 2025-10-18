@@ -5,10 +5,12 @@
 
 import reflex as rx
 from rx_color_picker.color_picker import color_picker
-from ..state import AppState
+
+from likemodas.data.product_options import LISTA_TALLAS_ROPA
+from ..state import AppState, VariantGroupDTO
 from ..auth.admin_auth import require_panel_access
 from .forms import blog_post_add_form
-from ..ui.components import star_rating_display_safe
+from ..ui.components import searchable_select, star_rating_display_safe
 from ..utils.formatting import format_to_cop
 from reflex.components.component import NoSSRComponent
 
@@ -43,92 +45,210 @@ const onRotateEnd = (e, on_rotate_end) => {
 moveable = Moveable.create
 
 
-def post_preview() -> rx.Component:
-    """
-    [VERSIÓN FINAL CORREGIDA]
-    - Resuelve el error de React #306 al renderizar Moveable condicionalmente.
-    """
-    first_image_url = rx.cond(
-        (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
-        AppState.variant_groups[0].image_urls[0],
-        ""
-    )
-    
-    return rx.box(
-        rx.vstack(
-            rx.box(
-                rx.box(
-                    rx.image(
-                        src=rx.get_upload_url(first_image_url),
-                        fallback="/image_off.png",
-                        id="moveable_target_image",
-                        width="100%", height="100%",
-                        object_fit="contain",
-                        transform=AppState.preview_image_transform,
+# --- Componente del formulario (antes en forms.py) ---
+def blog_post_add_form() -> rx.Component:
+    def image_and_group_section() -> rx.Component:
+        def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
+            is_selected = AppState.selected_group_index == index
+            return rx.box(
+                rx.flex(
+                    rx.foreach(
+                         group.image_urls,
+                        lambda url: rx.image(src=rx.get_upload_url(url), width="40px", height="40px", object_fit="cover", border_radius="sm")
                     ),
-                    # --- ✨ INICIO: CORRECCIÓN CLAVE ✨ ---
-                    # El componente Moveable ahora solo se renderiza si 'first_image_url' no es una cadena vacía.
-                    # Esto evita que se inicie sin tener un objetivo al cual acoplarse.
-                    rx.cond(
-                        first_image_url,
-                        moveable(
-                            target="#moveable_target_image",
-                            keep_ratio=True,
-                            on_drag_end=AppState.set_preview_image_transform,
-                            on_resize_end=AppState.set_preview_image_transform,
-                            on_rotate_end=AppState.set_preview_image_transform,
-                        )
-                    ),
-                    # --- ✨ FIN: CORRECCIÓN CLAVE ✨ ---
-                    width="100%", height="260px",
-                    overflow="hidden",
-                    border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
-                    bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
+                    wrap="wrap", spacing="2",
                 ),
-                rx.badge(
-                    rx.cond(AppState.is_imported, "Importado", "Nacional"),
-                    color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"), variant="solid",
-                    style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "2"}
-                ),
-                position="relative",
+                 border_width="2px",
+                border_color=rx.cond(is_selected, "var(--violet-9)", "transparent"),
+                padding="0.25em", border_radius="md", cursor="pointer",
+                on_click=AppState.select_group_for_editing(index),
+            )
+
+        return rx.vstack(
+            rx.text("1. Subir Imágenes (máx 5)", weight="bold"),
+            rx.upload(
+                 rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
+                id="blog_upload", multiple=True, max_files=5,
+                on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
+                border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
-            # El resto del código de la tarjeta (título, precio, etc.) no cambia
+            rx.text("2. Selecciona imágenes para crear un grupo de color:"),
+            rx.flex(
+                 rx.foreach(
+                    AppState.uploaded_images,
+                    lambda img_name: rx.box(
+                        rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
+                        rx.cond(
+                             AppState.image_selection_for_grouping.contains(img_name),
+                            rx.box(
+                                rx.icon("check", color="white", size=18),
+                                bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
+                                 display="flex", align_items="center", justify_content="center"
+                            )
+                        ),
+                        border="2px solid",
+                         border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
+                        border_radius="lg", cursor="pointer", position="relative",
+                        on_click=AppState.toggle_image_selection_for_grouping(img_name),
+                    )
+                ),
+                wrap="wrap", spacing="2", padding_top="0.25em",
+             ),
+            rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%"),
+            rx.divider(margin_y="1em"),
+            rx.text("3. Grupos (Selecciona uno para editar abajo):"),
+            rx.flex(rx.foreach(AppState.variant_groups, render_group_card), wrap="wrap", spacing="2"),
+            spacing="3", width="100%", align_items="stretch",
+        )
+
+    def attributes_and_stock_section() -> rx.Component:
+        return rx.cond(
+             AppState.selected_group_index >= 0,
             rx.vstack(
-                rx.text(
-                    rx.cond(AppState.title, AppState.title, "Título del Producto"), 
-                    weight="bold", size="6", no_of_lines=2, width="100%",
-                    color=rx.cond(
-                        AppState.use_default_style,
-                        rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 11), "white"),
-                        AppState.live_title_color,
-                    )
+                rx.divider(margin_y="1.5em"),
+                rx.heading(f"4. Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
+                rx.grid(
+                    rx.vstack(
+                         rx.text("Atributos del Grupo", weight="medium"),
+                        rx.text("Color"),
+                        searchable_select(
+                            placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
+                            on_change_select=AppState.set_temp_color, value_select=AppState.temp_color,
+                             search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+                            filter_name="color_filter_main",
+                        ),
+                        rx.text("Talla"),
+                         rx.hstack(
+                            rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
+                            rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla))
+                        ),
+                        rx.flex(
+                             rx.foreach(
+                                AppState.attr_tallas_ropa,
+                                lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")
+                             ),
+                            wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
+                        ),
+                        rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline"),
+                        spacing="3", align_items="stretch",
+                     ),
+                    rx.vstack(
+                        rx.text("Variantes y Stock", weight="medium"),
+                        rx.text("Genera combinaciones y asigna stock.", size="2", color_scheme="gray"),
+                        
+                        # --- ✨ INICIO: CORRECCIÓN DEL BOTÓN ✨ ---
+                        rx.button(
+                            "Generar / Actualizar Variantes", 
+                            on_click=AppState.generate_variants_for_group(AppState.selected_group_index),
+                            type="button", # <-- SE AÑADE ESTA LÍNEA
+                        ),
+                        # --- ✨ FIN: CORRECCIÓN DEL BOTÓN ✨ ---
+                        
+                        rx.cond(
+                            AppState.generated_variants_map.contains(AppState.selected_group_index),
+                            rx.scroll_area(
+                                rx.vstack(
+                                     rx.foreach(
+                                        AppState.generated_variants_map[AppState.selected_group_index],
+                                        lambda variant, var_index: rx.hstack(
+                                             rx.text(variant.attributes["Talla"]), rx.spacer(),
+                                            rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1"),
+                                               rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
+                                            rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1"),
+                                            align="center"
+                                         )
+                                    ),
+                                    spacing="2", width="100%", padding_top="1em"
+                                 ),
+                                max_height="200px", type="auto", scrollbars="vertical"
+                            )
+                        ),
+                         spacing="3", align_items="stretch",
+                    ),
+                    columns="2", spacing="4", width="100%"
                 ),
-                star_rating_display_safe(0, 0, size=24),
-                rx.text(
-                    AppState.price_cop_preview, size="5", weight="medium",
-                    color=rx.cond(
-                         AppState.use_default_style,
-                        rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 9), rx.color("gray", 11)),
-                        AppState.live_price_color,
-                    )
+                align_items="stretch", width="100%"
+            )
+        )
+
+    return rx.form(
+        rx.vstack(
+            rx.grid(
+                rx.vstack(
+                    image_and_group_section(),
+                    attributes_and_stock_section(),
+                    spacing="5",
+                    width="100%",
                 ),
-                rx.spacer(),
-                # Aquí irían los badges de envío si los tuvieras definidos en una función
-                spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
+                rx.vstack(
+                    rx.vstack(
+                        rx.text("Título del Producto"), 
+                        rx.input(
+                            name="title", 
+                            value=AppState.title, 
+                            on_change=AppState.set_title, 
+                            required=True,
+                            max_length=24,
+                        ), 
+                        align_items="stretch"
+                    ),
+                    rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
+                     rx.grid(
+                        rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
+                        rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number", placeholder="Ej: 15000")),
+                        columns="2", spacing="4"
+                    ),
+                     rx.grid(
+                        rx.vstack(rx.text("Incluye IVA (19%)"), rx.hstack(rx.switch(is_checked=AppState.price_includes_iva, on_change=AppState.set_price_includes_iva), rx.text(rx.cond(AppState.price_includes_iva, "Sí", "No")))),
+                        rx.vstack(rx.text("Origen"), rx.hstack(rx.switch(is_checked=AppState.is_imported, on_change=AppState.set_is_imported), rx.text(rx.cond(AppState.is_imported, "Importado", "Nacional")))),
+                        columns="2", spacing="4"
+                     ),
+                    rx.grid(
+                        rx.vstack(rx.text("Costo de Envío Mínimo (Local)"), rx.input(value=AppState.shipping_cost_str, on_change=AppState.set_shipping_cost_str, placeholder="Ej: 3000"), rx.text("El costo final aumentará según la distancia.", size="1", color_scheme="gray"), align_items="stretch"),
+                        rx.vstack(rx.text("Moda Completa"), rx.hstack(rx.switch(is_checked=AppState.is_moda_completa, on_change=AppState.set_is_moda_completa), rx.text(rx.cond(AppState.is_moda_completa, "Activo", "Inactivo"))), rx.input(value=AppState.free_shipping_threshold_str, on_change=AppState.set_free_shipping_threshold_str, is_disabled=~AppState.is_moda_completa), rx.text("Envío gratis en compras > $XXX.XXX", size="1", color_scheme="gray"), align_items="stretch"),
+                         rx.vstack(rx.text("Envío Combinado"), rx.hstack(rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping), rx.text(rx.cond(AppState.combines_shipping, "Activo", "Inactivo"))), rx.text("Permite que varios productos usen un solo envío.", size="1", color_scheme="gray"), align_items="stretch"),
+                        rx.vstack(rx.text("Límite de Productos"), rx.input(value=AppState.shipping_combination_limit_str, on_change=AppState.set_shipping_combination_limit_str, is_disabled=~AppState.combines_shipping), rx.text("Máx. de items por envío.", size="1", color_scheme="gray"), align_items="stretch"),
+                        columns="2", spacing="4"
+                    ),
+                     rx.vstack(
+                        rx.text("Descripción", as_="div", size="3", weight="bold"),
+                        rx.text_area(name="content", value=AppState.content, on_change=AppState.set_content, style={"height": "120px"}),
+                        align_items="stretch", width="100%",
+                    ),
+                     spacing="4", align_items="stretch", width="100%",
+                ),
+                columns={"initial": "1", "lg": "500px 1fr"}, 
+                spacing="6", 
+                width="100%", 
+                align_items="start",
             ),
-            spacing="0", align_items="stretch", height="100%",
+             rx.hstack(
+                rx.spacer(),
+                rx.button("Publicar Producto", type="submit", color_scheme="violet", size="3"),
+                width="100%", 
+                margin_top="1em"
+            ),
+            spacing="5", 
+            width="100%",
+             max_width="1200px", 
         ),
-        width="290px", height="480px",
-        bg=rx.cond(
-             AppState.use_default_style,
-            rx.cond(AppState.card_theme_mode == "light", "#fdfcff", "var(--gray-2)"),
-            AppState.live_card_bg_color
-        ),
-        border="1px solid var(--gray-a6)",
-        border_radius="8px", box_shadow="md",
+        on_submit=AppState.submit_and_publish,
+        reset_on_submit=True,
+        width="100%", 
     )
 
+# --- Componente para la previsualización de la tarjeta ---
 def post_preview() -> rx.Component:
+    def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
+        dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
+        colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
+        return rx.box(
+            rx.text(text_content, size="2", weight="medium"),
+            bg=colors["bg"], color=colors["text"],
+            padding="1px 10px", border_radius="var(--radius-full)", font_size="0.8em",
+        )
+
     first_image_url = rx.cond(
         (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
         AppState.variant_groups[0].image_urls[0],
@@ -140,7 +260,7 @@ def post_preview() -> rx.Component:
              rx.box(
                 rx.image(
                     src=rx.get_upload_url(first_image_url), fallback="/image_off.png", 
-                    width="100%", height="100%", object_fit="contain",
+                    width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
                         AppState.is_hydrated,
                         f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
@@ -153,7 +273,8 @@ def post_preview() -> rx.Component:
                     color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
-                position="relative", width="100%", height="260px",
+                position="relative",
+                width="100%", height="260px",
                 overflow="hidden", 
                 border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
                 bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
@@ -178,6 +299,29 @@ def post_preview() -> rx.Component:
                     )
                 ),
                 rx.spacer(),
+                # --- ✨ INICIO: CÓDIGO RESTAURADO PARA LOS BADGES ✨ ---
+                rx.vstack(
+                    rx.hstack(
+                        _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
+                        rx.cond(
+                            AppState.is_moda_completa,
+                             rx.tooltip(
+                                _preview_badge("Moda Completa", "violet"),
+                                content=AppState.moda_completa_tooltip_text_preview,
+                             ),
+                        ),
+                        spacing="3", align="center",
+                    ),
+                    rx.cond(
+                        AppState.combines_shipping,
+                         rx.tooltip(
+                            _preview_badge("Envío Combinado", "teal"),
+                            content=AppState.envio_combinado_tooltip_text_preview,
+                        ),
+                    ),
+                    spacing="1", align_items="start", width="100%",
+                ),
+                # --- ✨ FIN: CÓDIGO RESTAURADO PARA LOS BADGES ✨ ---
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",

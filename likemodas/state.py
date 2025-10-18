@@ -3960,44 +3960,38 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def modal_image_urls(self) -> list[str]:
         """
-        Una propiedad computada segura que devuelve la lista de URLs de imágenes
-        para la variante actualmente seleccionada en el modal.
+        Devuelve la lista de URLs de imágenes para el carrusel principal del modal,
+        basado en la variante/grupo seleccionado.
         """
         if not self.current_modal_variant:
             return []
-        # .get() es seguro aquí porque esto es código Python, no una operación de Var.
         return self.current_modal_variant.get("image_urls", [])
     # --- ✨ FIN ✨ ---
 
     @rx.var
     def modal_thumbnail_urls(self) -> list[str]:
         """
-        Una propiedad computada segura que devuelve una lista simple de las URLs
-        de la imagen principal de cada grupo de variantes, para ser usada por las miniaturas.
+        Devuelve la primera imagen de cada grupo de variantes para usarla
+        como miniatura.
         """
         urls = []
         for item in self.unique_modal_variants:
-            # Obtiene de forma segura la lista de URLs de imágenes del grupo de variantes
             image_urls = item.variant.get("image_urls", [])
-            # Añade la primera URL de la lista si existe, sino, una cadena vacía
             urls.append(image_urls[0] if image_urls else "")
         return urls
-    # --- ✨ FIN ✨ ---
 
     # Reemplaza las propiedades @rx.var 'current_modal_variant' y 'current_modal_image_filename'
     @rx.var
     def current_modal_variant(self) -> Optional[dict]:
         """
-        [VERSIÓN CORREGIDA] Devuelve el diccionario de la variante correcta
-        basado en el índice visual seleccionado.
+        Devuelve el diccionario de la variante correcta basado en el índice
+        visual seleccionado en las miniaturas.
         """
         unique_variants = self.unique_modal_variants
         if not self.product_in_modal or not unique_variants:
             return None
 
-        # Usa el índice visual para encontrar el item correcto en la lista de imágenes únicas
         if 0 <= self.modal_selected_variant_index < len(unique_variants):
-            # El DTO 'UniqueVariantItem' contiene el diccionario completo de la variante original.
             return unique_variants[self.modal_selected_variant_index].variant
         return None
     
@@ -4043,18 +4037,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def unique_modal_variants(self) -> list[UniqueVariantItem]:
         """
-        Devuelve una lista de DTOs con URLs de imagen únicas para las
-        miniaturas del modal, evitando duplicados.
+        Devuelve una lista de variantes únicas basadas en su grupo de imágenes,
+        para ser usadas por las miniaturas del modal.
         """
         if not self.product_in_modal or not self.product_in_modal.variants:
             return []
         
         unique_items = []
-        seen_images = set()
+        seen_image_groups = set()
         for i, variant in enumerate(self.product_in_modal.variants):
-            image_url = variant.get("image_url")
-            if image_url and image_url not in seen_images:
-                seen_images.add(image_url)
+            # Usamos una tupla de las URLs como clave única para el grupo de imágenes
+            image_urls_tuple = tuple(sorted(variant.get("image_urls", [])))
+            if image_urls_tuple and image_urls_tuple not in seen_image_groups:
+                seen_image_groups.add(image_urls_tuple)
                 unique_items.append(UniqueVariantItem(variant=variant, index=i))
         return unique_items
     # --- FIN DE LA CORRECCIÓN CLAVE ---
