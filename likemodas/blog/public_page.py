@@ -1,8 +1,7 @@
 # likemodas/blog/public_page.py
 
 import reflex as rx
-from likemodas.utils.formatting import format_to_cop
-from ..state import AppState, CommentData, ModalSelectorDTO
+from ..state import AppState, CommentData
 from ..ui.components import product_gallery_component, star_rating_display_safe
 from ..ui.filter_panel import floating_filter_panel
 from ..ui.skeletons import skeleton_product_detail_view, skeleton_product_gallery
@@ -10,7 +9,6 @@ from ..ui.reputation_icon import reputation_icon
 from ..ui.vote_buttons import vote_buttons
 from ..ui.seller_score import seller_score_stars
 from ..models import UserReputation
-from ..ui.carousel import Carousel
 from ..ui.custom_carousel import carousel
 
 
@@ -140,39 +138,15 @@ def render_comment_item(comment: CommentData) -> rx.Component:
     )
 
 def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
-    def _manual_thumbnails() -> rx.Component:
-        # Esta función interna no cambia
-        return rx.hstack(
-            rx.foreach(
-                AppState.unique_modal_variants,
-                lambda item, i: rx.box(
-                    rx.image(
-                        src=rx.get_upload_url(item.variant.get("image_url")),
-                        height="60px", width="60px", object_fit="cover", border_radius="var(--radius-3)",
-                    ),
-                    border_width=rx.cond(AppState.modal_selected_variant_index == i, "3px", "1px"),
-                    border_color=rx.cond(AppState.modal_selected_variant_index == i, "var(--accent-9)", "var(--gray-a6)"),
-                    padding="2px", border_radius="var(--radius-4)", cursor="pointer",
-                    on_click=AppState.set_modal_variant_index(i),
-                )
-            ),
-            spacing="3", padding="0.5em", width="100%", overflow_x="auto", margin_top="0.5rem",
-        )
-
+    
     def _modal_image_section() -> rx.Component:
-        """
-        [VERSIÓN FINAL Y CORREGIDA]
-        Contiene el carrusel y las miniaturas del modal, usando la nueva
-        propiedad computada 'modal_image_urls' para mayor estabilidad.
-        """
-        
         def _manual_thumbnails() -> rx.Component:
             return rx.hstack(
                 rx.foreach(
-                    AppState.unique_modal_variants,
-                    lambda item, i: rx.box(
+                    AppState.modal_thumbnail_urls,
+                    lambda image_url, i: rx.box(
                         rx.image(
-                            src=rx.get_upload_url(item.variant.get("image_urls", [""])[0]),
+                            src=rx.get_upload_url(image_url),
                             height="60px", width="60px", object_fit="cover", border_radius="var(--radius-3)",
                         ),
                         border_width=rx.cond(AppState.modal_selected_variant_index == i, "3px", "1px"),
@@ -186,7 +160,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
 
         return rx.vstack(
             carousel(
-                # --- ✨ CORRECCIÓN 1: Usamos la nueva propiedad simple ✨ ---
                 rx.foreach(
                     AppState.modal_image_urls,
                     lambda image_url, index: rx.box(
@@ -204,7 +177,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 ),
                 key=AppState.modal_carousel_key,
                 show_thumbs=False,
-                # --- ✨ CORRECCIÓN 2: También simplificamos estas condiciones ✨ ---
                 show_arrows=AppState.modal_image_urls.length() > 1,
                 show_indicators=AppState.modal_image_urls.length() > 1,
                 show_status=False,
@@ -222,19 +194,14 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
         )
 
     def _modal_info_section() -> rx.Component:
-        # --- ✨ INICIO DE LA CORRECCIÓN DE BADGES MÓVIL ✨ ---
         return rx.vstack(
             rx.text(AppState.product_in_modal.title, size="8", font_weight="bold", text_align="left"),
             rx.text("Publicado el " + AppState.product_in_modal.created_at_formatted, size="3", color_scheme="gray", text_align="left"),
             rx.text(AppState.product_in_modal.price_cop, size="7", color_scheme="gray", text_align="left"),
             star_rating_display_safe(AppState.product_in_modal.average_rating, AppState.product_in_modal.rating_count, size=32),
             
-            # Usamos rx.flex con wrap="wrap" para que los badges se reorganicen en móvil
             rx.flex(
-                rx.badge(
-                    AppState.product_in_modal.shipping_display_text,
-                    variant="solid", size="2"
-                ),
+                rx.badge(AppState.product_in_modal.shipping_display_text, variant="solid", size="2"),
                 rx.cond(
                     AppState.product_in_modal.combines_shipping,
                     rx.tooltip(
@@ -255,7 +222,7 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 ),
                 spacing="3",
                 align="center",
-                wrap="wrap", # La propiedad clave para la responsividad
+                wrap="wrap",
                 margin_y="1em",
             ),
             rx.text(AppState.product_in_modal.content, size="4", margin_top="1em", white_space="pre-wrap", text_align="left"),
@@ -312,7 +279,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                 size="3", color_scheme="gray", margin_top="1.5em",
                 text_align="left", width="100%"
             ),
-            # --- ✨ INICIO: CÓDIGO A AÑADIR ✨ ---
             rx.cond(
                 AppState.product_in_modal.seller_city,
                 rx.hstack(
@@ -328,7 +294,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     margin_top="0.5em",
                 )
             ),
-            # --- ✨ FIN ✨ ---
             rx.spacer(),
             rx.hstack(
                 rx.button(
@@ -364,7 +329,6 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
             align="start", height="100%",
         )
 
-    # --- ✨ INICIO DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
     return rx.dialog.root(
         rx.dialog.content(
             rx.dialog.close(
@@ -375,35 +339,37 @@ def product_detail_modal(is_for_direct_sale: bool = False) -> rx.Component:
                     style={"position": "absolute", "top": "1rem", "right": "1rem", "z_index": "10"},
                 )
             ),
-            # Se elimina el rx.cond(AppState.is_modal_content_visible, ...) que estaba aquí
             rx.cond(
                 AppState.product_in_modal,
-                # Ahora el contenido principal (vstack) se renderiza directamente
                 rx.vstack(
                     rx.grid(
                         _modal_image_section(),
                         _modal_info_section(),
                         columns={"initial": "1", "md": "2"},
-                        spacing="6",
+                        spacing={"initial": "3", "md": "6"},
                         align_items="start",
                         width="100%",
                     ),
-                    rx.cond(
-                        AppState.product_comments,
-                        rx.scroll_area(
-                            # ... (tu código para los comentarios se mantiene igual)
+                    rx.divider(margin_y="1.5em"),
+                    rx.heading("Opiniones", size="6", width="100%"),
+                    rx.vstack(
+                        review_submission_form(),
+                        rx.cond(
+                            AppState.product_comments,
+                            rx.foreach(AppState.product_comments, render_comment_item),
+                            rx.text("Sé el primero en dejar una opinión.", padding="2em", color_scheme="gray")
                         ),
+                        align_items="stretch",
+                        width="100%"
                     ),
                 ),
-                # Si no hay datos del producto, se muestra el esqueleto de carga
                 skeleton_product_detail_view(),
             ),
-            style={"max_width": "1200px"},
+            max_width="1200px",
         ),
         open=AppState.show_detail_modal,
         on_open_change=AppState.close_product_detail_modal,
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
 def public_qr_scanner_modal() -> rx.Component:
     return rx.dialog.root(
@@ -449,7 +415,6 @@ def public_qr_scanner_modal() -> rx.Component:
         on_open_change=AppState.set_show_public_qr_scanner_modal,
     )
 
-# ✅ PASO 1: PEGA LA FUNCIÓN COMPLETA DE lightbox_modal AQUÍ (ANTES DE LA OTRA)
 def lightbox_modal() -> rx.Component:
     """
     [VERSIÓN DEFINITIVA] Lightbox con lógica de fondo corregida para usar los nuevos campos de estilo.
@@ -493,11 +458,11 @@ def lightbox_modal() -> rx.Component:
             rx.center(
                 carousel(
                     rx.foreach(
-                        AppState.unique_modal_variants,
-                        lambda variant_item:
+                        AppState.modal_image_urls, # Usa la lista de imágenes del grupo actual
+                        lambda image_url, index:
                             rx.box(
                                 rx.image(
-                                    src=rx.get_upload_url(variant_item.variant.get("image_url", "")),
+                                    src=rx.get_upload_url(image_url),
                                     alt=AppState.product_in_modal.title,
                                     max_height="90vh",
                                     max_width="90vw",
@@ -523,7 +488,6 @@ def lightbox_modal() -> rx.Component:
                 ),
                 width="100%",
                 height="100%",
-                # --- ✨ INICIO DE LA CORRECCIÓN CLAVE AQUÍ ✨ ---
                 bg=rx.cond(
                     AppState.product_in_modal.use_default_style,
                     rx.color_mode_cond("white", "black"),
@@ -533,7 +497,6 @@ def lightbox_modal() -> rx.Component:
                         AppState.product_in_modal.light_card_bg_color | AppState.product_in_modal.dark_card_bg_color | rx.color_mode_cond("white", "black")
                     )
                 ),
-                # --- ✨ FIN DE LA CORRECCIÓN CLAVE AQUÍ ✨ ---
             ),
             style={
                 "position": "fixed", "inset": "0", "width": "auto", "height": "auto",
@@ -546,8 +509,6 @@ def lightbox_modal() -> rx.Component:
         on_open_change=AppState.close_lightbox,
     )
 
-
-# ✅ PASO 2: ASEGÚRATE DE QUE blog_public_page_content VENGA DESPUÉS
 def blog_public_page_content() -> rx.Component:
     main_content = rx.center(
         rx.vstack(
@@ -566,5 +527,5 @@ def blog_public_page_content() -> rx.Component:
         main_content,
         product_detail_modal(is_for_direct_sale=False),
         public_qr_scanner_modal(),
-        lightbox_modal(),  # Ahora esta llamada es válida porque la función ya fue definida arriba
+        lightbox_modal(),
     )

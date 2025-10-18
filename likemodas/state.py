@@ -3977,6 +3977,21 @@ class AppState(reflex_local_auth.LocalAuthState):
         return self.current_modal_variant.get("image_urls", [])
     # --- ✨ FIN ✨ ---
 
+    @rx.var
+    def modal_thumbnail_urls(self) -> list[str]:
+        """
+        Una propiedad computada segura que devuelve una lista simple de las URLs
+        de la imagen principal de cada grupo de variantes, para ser usada por las miniaturas.
+        """
+        urls = []
+        for item in self.unique_modal_variants:
+            # Obtiene de forma segura la lista de URLs de imágenes del grupo de variantes
+            image_urls = item.variant.get("image_urls", [])
+            # Añade la primera URL de la lista si existe, sino, una cadena vacía
+            urls.append(image_urls[0] if image_urls else "")
+        return urls
+    # --- ✨ FIN ✨ ---
+
     # Reemplaza las propiedades @rx.var 'current_modal_variant' y 'current_modal_image_filename'
     @rx.var
     def current_modal_variant(self) -> Optional[dict]:
