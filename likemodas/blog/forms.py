@@ -8,12 +8,12 @@ from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
 def blog_post_add_form() -> rx.Component:
     """
-    [VERSIÓN 3.1] Formulario para añadir productos, con un ancho máximo
+    [VERSIÓN 3.2] Formulario para añadir productos, con un ancho máximo
     para evitar que se estire horizontalmente.
     """
 
     def image_and_group_section() -> rx.Component:
-        # Esta función interna no necesita cambios y se mantiene igual.
+        # Esta función no cambia.
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
@@ -68,7 +68,7 @@ def blog_post_add_form() -> rx.Component:
         )
 
     def attributes_and_stock_section() -> rx.Component:
-        # Esta función interna no necesita cambios y se mantiene igual.
+        # Esta función no cambia.
         return rx.cond(
             AppState.selected_group_index >= 0,
             rx.vstack(
@@ -129,10 +129,11 @@ def blog_post_add_form() -> rx.Component:
                 align_items="stretch", width="100%"
             )
         )
-    
-    # --- ✨ INICIO DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
+
     return rx.form(
+        # --- ✨ CORRECCIÓN DE ANCHO MÁXIMO ✨ ---
         rx.vstack(
+            rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
             rx.grid(
                 rx.vstack(
                     image_and_group_section(),
@@ -180,13 +181,12 @@ def blog_post_add_form() -> rx.Component:
             ),
             spacing="5", 
             width="100%",
-            max_width="1200px", # Ancho máximo para evitar que el form se estire demasiado
+            max_width="1200px", 
         ),
         on_submit=AppState.submit_and_publish,
         reset_on_submit=True,
         width="100%", 
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ESTRUCTURAL ✨ ---
 
 
 # --- ⚠️ INICIO: FORMULARIO DE EDICIÓN (NO FUNCIONAL CON GRUPOS AÚN) ⚠️ ---

@@ -10,11 +10,38 @@ from ..utils.formatting import format_to_cop
 
 def post_preview() -> rx.Component:
     """
-    [VERSIÓN 3.2 CORREGIDA]
-    - Respeto total por el modo claro/oscuro de la previsualización.
-    - La imagen usa object-fit: contain para no ser recortada.
-    - El layout interno es compacto con un spacer para un diseño correcto.
+    [VERSIÓN 3.3 FINAL]
+    - Restaura la función _preview_badge para un estilo visual exacto.
+    - La lógica de color ahora depende 100% de `card_theme_mode`.
+    - La imagen y el layout de la tarjeta se mantienen correctos.
     """
+    # --- ✨ FUNCIÓN DE INSIGNIAS PERSONALIZADAS RESTAURADA Y CORREGIDA ✨ ---
+    def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        light_colors = {
+            "gray":   {"bg": "#F1F3F5", "text": "#495057"},
+            "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"},
+            "teal":   {"bg": "#E6FCF5", "text": "#0B7285"},
+        }
+        dark_colors = {
+            "gray":   {"bg": "#373A40", "text": "#ADB5BD"},
+            "violet": {"bg": "#2A203C", "text": "#D0BFFF"}, # Tono morado más sutil
+            "teal":   {"bg": "#0C3D3F", "text": "#96F2D7"},
+        }
+        # Lógica corregida que solo depende del selector de previsualización
+        colors = rx.cond(
+            AppState.card_theme_mode == "light",
+            light_colors[color_scheme],
+            dark_colors[color_scheme],
+        )
+        return rx.box(
+            rx.text(text_content, size="2", weight="medium"),
+            bg=colors["bg"],
+            color=colors["text"],
+            padding="1px 10px",
+            border_radius="var(--radius-full)",
+            font_size="0.8em",
+        )
+
     first_image_url = rx.cond(
         (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
         AppState.variant_groups[0].image_urls[0],
@@ -23,13 +50,13 @@ def post_preview() -> rx.Component:
     
     return rx.box(
         rx.vstack(
-            rx.box(
+             rx.box(
                 rx.image(
                     src=rx.get_upload_url(first_image_url), 
                     fallback="/image_off.png", 
                     width="100%", 
                     height="260px", 
-                    object_fit="contain",  # <-- Cambio clave para que la imagen se vea completa
+                    object_fit="contain",
                     border_top_left_radius="var(--radius-3)",
                     border_top_right_radius="var(--radius-3)",
                 ),
@@ -40,7 +67,6 @@ def post_preview() -> rx.Component:
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
                 position="relative",
-                # Fondo de la imagen que respeta el modo de previsualización
                 bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
             ),
             rx.vstack(
@@ -48,7 +74,6 @@ def post_preview() -> rx.Component:
                     rx.cond(AppState.title, AppState.title, "Título del Producto"), 
                     weight="bold", 
                     size="6",
-                    # Color del texto que respeta el modo de previsualización
                     color=rx.cond(
                         AppState.use_default_style,
                         rx.cond(AppState.card_theme_mode == "light", "black", "white"),
@@ -60,21 +85,20 @@ def post_preview() -> rx.Component:
                     AppState.price_cop_preview, 
                     size="5", 
                     weight="medium",
-                     # Color del texto que respeta el modo de previsualización
                     color=rx.cond(
                         AppState.use_default_style,
                         rx.color("gray", 11),
                         AppState.live_price_color,
                     )
                 ),
-                rx.spacer(), # Spacer restaurado para empujar los badges hacia abajo
+                rx.spacer(),
                 rx.vstack(
                     rx.hstack(
-                        rx.badge(AppState.shipping_cost_badge_text_preview, color_scheme="gray", variant="soft", size="2"),
+                        _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
                         rx.cond(
                             AppState.is_moda_completa,
                             rx.tooltip(
-                                rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
+                                _preview_badge("Moda Completa", "violet"), # Se usa la función corregida
                                 content=AppState.moda_completa_tooltip_text_preview,
                             ),
                         ),
@@ -83,7 +107,7 @@ def post_preview() -> rx.Component:
                     rx.cond(
                         AppState.combines_shipping,
                         rx.tooltip(
-                            rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
+                            _preview_badge("Envío Combinado", "teal"), # Se usa la función corregida
                             content=AppState.envio_combinado_tooltip_text_preview,
                         ),
                     ),
@@ -100,10 +124,9 @@ def post_preview() -> rx.Component:
             height="100%",
         ),
         width="290px", 
-        height="480px", # Altura fija para evitar estiramientos
+        height="480px",
         bg=rx.cond(
             AppState.use_default_style,
-            # Lógica corregida para el fondo que respeta el modo de previsualización
             rx.cond(AppState.card_theme_mode == "light", "white", "var(--gray-2)"),
             AppState.live_card_bg_color
         ),
@@ -112,88 +135,82 @@ def post_preview() -> rx.Component:
         box_shadow="md",
     )
 
+
 @require_panel_access
 def blog_post_add_content() -> rx.Component:
-    """Página de creación de publicación con layout corregido para no estirar el formulario."""
-    # --- ✨ CORRECCIÓN DE LAYOUT PRINCIPAL Y `TypeError` ✨ ---
-    return rx.grid(
-        # Columna Izquierda (Formulario)
-        rx.vstack(
-            rx.heading("Crear Nueva Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-            blog_post_add_form(),
-            # Propiedades de estilo como argumentos con nombre
+    """Página de creación de publicación con el layout final y centrado."""
+    # --- ✨ INICIO DE LA CORRECCIÓN DE LAYOUT ✨ ---
+    return rx.box(
+        rx.grid(
+            # Columna Izquierda (Formulario)
+            rx.vstack(
+                blog_post_add_form(),
+                align_items="center",
+                width="100%"
+            ),
+            # Columna Derecha (Previsualización)
+            rx.vstack(
+                rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
+                post_preview(),
+                rx.vstack( 
+                    rx.divider(margin_y="1em"),
+                    rx.text("Personalizar Tarjeta", weight="bold", size="4"),
+                    rx.text("Puedes guardar un estilo para modo claro y otro para modo oscuro.", size="2", color_scheme="gray"),
+                    rx.hstack(
+                        rx.text("Usar estilo predeterminado del tema", size="3"),
+                        rx.spacer(),
+                        rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
+                        width="100%",
+                        align="center",
+                    ),
+                    rx.cond(
+                        ~AppState.use_default_style,
+                        rx.vstack(
+                            rx.segmented_control.root(
+                                rx.segmented_control.item("Modo Claro", value="light"),
+                                rx.segmented_control.item("Modo Oscuro", value="dark"),
+                                on_change=AppState.toggle_preview_mode,
+                                value=AppState.card_theme_mode,
+                                width="100%",
+                            ),
+                            rx.popover.root(
+                                rx.popover.trigger(
+                                    rx.button(rx.hstack(rx.text("Fondo"), rx.spacer(), rx.box(bg=AppState.live_card_bg_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")
+                                ),
+                                rx.popover.content(color_picker(value=AppState.live_card_bg_color, on_change=AppState.set_live_card_bg_color, variant="classic", size="sm"), padding="0.5em"),
+                            ),
+                            rx.popover.root(
+                                rx.popover.trigger(
+                                    rx.button(rx.hstack(rx.text("Título"), rx.spacer(), rx.box(bg=AppState.live_title_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")
+                                ),
+                                rx.popover.content(color_picker(value=AppState.live_title_color, on_change=AppState.set_live_title_color, variant="classic", size="sm"), padding="0.5em"),
+                            ),
+                            rx.popover.root(
+                                rx.popover.trigger(
+                                    rx.button(rx.hstack(rx.text("Precio"), rx.spacer(), rx.box(bg=AppState.live_price_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")
+                                ),
+                                rx.popover.content(color_picker(value=AppState.live_price_color, on_change=AppState.set_live_price_color, variant="classic", size="sm"), padding="0.5em"),
+                            ),
+                            rx.button("Guardar Personalización", on_click=AppState.save_current_theme_customization, width="100%", margin_top="0.5em"),
+                            spacing="3", width="100%", margin_top="1em"
+                        ),
+                    ),
+                    spacing="3", padding="1em", border="1px dashed var(--gray-a6)",
+                    border_radius="md", margin_top="1.5em", align_items="stretch",
+                    width="290px",
+                ),
+                display={"initial": "none", "lg": "flex"},
+                width="100%", spacing="4", position="sticky", top="2em", align_items="center",
+            ),
+            columns={"initial": "1", "lg": "auto auto"}, # Ambas columnas con ancho automático
+            justify="center", # Centra el contenido del grid
+            align="start",
+            gap="3em", # Espacio entre las columnas
             width="100%",
-            spacing="4",
-            align_items="center",
-            padding_left={"lg": "15em"},
+            max_width="1800px",
+            padding_y="2em",
             padding_x=["1em", "2em"],
         ),
-        # Columna Derecha (Previsualización)
-        rx.vstack(
-            rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-            post_preview(),
-            rx.vstack( 
-                rx.divider(margin_y="1em"),
-                rx.text("Personalizar Tarjeta", weight="bold", size="4"),
-                rx.text("Puedes guardar un estilo para modo claro y otro para modo oscuro.", size="2", color_scheme="gray"),
-                rx.hstack(
-                    rx.text("Usar estilo predeterminado del tema", size="3"),
-                    rx.spacer(),
-                    rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
-                    width="100%",
-                    align="center",
-                ),
-                rx.cond(
-                    ~AppState.use_default_style,
-                    rx.vstack(
-                        rx.segmented_control.root(
-                            rx.segmented_control.item("Modo Claro", value="light"),
-                            rx.segmented_control.item("Modo Oscuro", value="dark"),
-                            on_change=AppState.toggle_preview_mode,
-                            value=AppState.card_theme_mode,
-                            width="100%",
-                        ),
-                        rx.popover.root(
-                            rx.popover.trigger(
-                                rx.button(rx.hstack(rx.text("Fondo"), rx.spacer(), rx.box(bg=AppState.live_card_bg_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")
-                            ),
-                            rx.popover.content(color_picker(value=AppState.live_card_bg_color, on_change=AppState.set_live_card_bg_color, variant="classic", size="sm"), padding="0.5em"),
-                        ),
-                        rx.popover.root(
-                            rx.popover.trigger(
-                                rx.button(rx.hstack(rx.text("Título"), rx.spacer(), rx.box(bg=AppState.live_title_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")
-                            ),
-                            rx.popover.content(color_picker(value=AppState.live_title_color, on_change=AppState.set_live_title_color, variant="classic", size="sm"), padding="0.5em"),
-                        ),
-                        rx.popover.root(
-                            rx.popover.trigger(
-                                rx.button(rx.hstack(rx.text("Precio"), rx.spacer(), rx.box(bg=AppState.live_price_color, height="1em", width="1em", border="1px solid var(--gray-a7)", border_radius="var(--radius-2)")), justify="between", width="100%", variant="outline", color_scheme="gray")
-                            ),
-                            rx.popover.content(color_picker(value=AppState.live_price_color, on_change=AppState.set_live_price_color, variant="classic", size="sm"), padding="0.5em"),
-                        ),
-                        rx.button("Guardar Personalización", on_click=AppState.save_current_theme_customization, width="100%", margin_top="0.5em"),
-                        spacing="3", width="100%", margin_top="1em"
-                    ),
-                ),
-                spacing="3",
-                padding="1em",
-                border="1px dashed var(--gray-a6)",
-                border_radius="md",
-                margin_top="1.5em",
-                align_items="stretch",
-                width="290px",
-            ),
-            display={"initial": "none", "lg": "flex"},
-            width="100%",
-            spacing="4",
-            position="sticky",
-            top="2em",
-            align_items="center",
-        ),
-        columns={"initial": "1", "lg": "1fr auto"},
-        gap="2em",
-        width="100%",
-        max_width="1800px",
-        padding_y="2em",
-        padding_x=["1em", "2em"],
+        padding_left={"lg": "15em"},
     )
+    # --- ✨ FIN DE LA CORRECCIÓN DE LAYOUT ✨ ---
