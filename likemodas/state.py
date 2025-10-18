@@ -3672,7 +3672,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
             # --- ✨ INICIO: LÓGICA PARA GUARDAR ESTILOS DE IMAGEN (EDICIÓN) ✨ ---
-            ppost_to_update.image_transform = self.preview_image_transform
+            post_to_update.image_transform = self.preview_image_transform
             
             session.add(post_to_update)
             
