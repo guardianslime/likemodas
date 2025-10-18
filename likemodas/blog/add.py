@@ -202,11 +202,15 @@ def blog_post_add_form() -> rx.Component:
 def post_preview() -> rx.Component:
     """Previsualización del producto que muestra la primera imagen del primer grupo."""
     
+    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+    # Se añade una condición para verificar que la lista de grupos no esté vacía
+    # antes de intentar acceder a su primer elemento.
     first_image_url = rx.cond(
-        AppState.variant_groups & (AppState.variant_groups[0].image_urls.length() > 0),
+        (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
         AppState.variant_groups[0].image_urls[0],
         ""
     )
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
     return rx.theme(
         rx.box(
