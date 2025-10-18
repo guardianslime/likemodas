@@ -3274,9 +3274,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.shipping_cost_str.strip():
             return "Envío a convenir"
         try:
-            # La función format_to_cop llamada desde el backend devuelve un string de Python
             cost = float(self.shipping_cost_str)
             formatted_cost = format_to_cop(cost)
+            if cost == 0:
+                return "Envío Gratis"
             return f"Envío: {formatted_cost}"
         except (ValueError, TypeError):
             return "Envío: $ Error"
@@ -3438,15 +3439,13 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def price_cop_preview(self) -> str:
         """
-        Esta variable computada AHORA hace el formato en el backend y devuelve un texto simple.
-        Es mucho más estable para la previsualización en tiempo real.
+        Formatea el precio del formulario para la previsualización en tiempo real.
         """
         try:
-            price_float = float(self.price) if self.price else 0.0
+            price_float = float(self.price_str) if self.price_str else 0.0
         except (ValueError, TypeError):
             price_float = 0.0
         
-        # Lógica de formato de moneda directamente en Python
         if price_float < 1:
             return "$ 0"
         formatted_number = f"{price_float:,.0f}"

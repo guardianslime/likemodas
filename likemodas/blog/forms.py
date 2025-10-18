@@ -8,8 +8,8 @@ from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 
 def blog_post_add_form() -> rx.Component:
     """
-    [VERSIÓN DEFINITIVA] Formulario para añadir productos, restaurado al diseño
-    original de 2 columnas e integrando la nueva lógica de grupos de variantes.
+    [VERSIÓN DEFINITIVA] Formulario para añadir productos, con la nueva lógica de grupos
+    y el layout corregido y más compacto.
     """
 
     def image_and_group_section() -> rx.Component:
@@ -46,7 +46,6 @@ def blog_post_add_form() -> rx.Component:
                         rx.cond(
                             AppState.image_selection_for_grouping.contains(img_name),
                             rx.box(
-                                # --- ✨ CORRECCIÓN DE ERROR DE SINTAXIS ✨ ---
                                 rx.icon("check", color="white", size=18),
                                 bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
                                 display="flex", align_items="center", justify_content="center"
@@ -97,9 +96,11 @@ def blog_post_add_form() -> rx.Component:
             rx.vstack(
                 rx.divider(margin_y="1.5em"),
                 rx.heading(f"Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
+                # --- INICIO: DISEÑO COMPACTO EN DOS COLUMNAS ---
                 rx.grid(
+                    # Columna Izquierda: Atributos
                     rx.vstack(
-                        rx.text("Características del Producto"),
+                        rx.text("Características del Producto", weight="medium"),
                         rx.text("Color"),
                         searchable_select(
                             placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
@@ -122,8 +123,9 @@ def blog_post_add_form() -> rx.Component:
                         rx.button("Guardar Atributos", on_click=AppState.update_group_attributes, margin_top="1em", size="2", variant="outline"),
                         spacing="3", align_items="stretch",
                     ),
+                    # Columna Derecha: Variantes y Stock
                     rx.vstack(
-                        rx.text("Gestión de Variantes y Stock"),
+                        rx.text("Gestión de Variantes y Stock", weight="medium"),
                         rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
                         rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(AppState.selected_group_index)),
                         rx.cond(
@@ -147,8 +149,11 @@ def blog_post_add_form() -> rx.Component:
                         ),
                         spacing="3", align_items="stretch",
                     ),
-                    columns={"initial": "1", "md": "1fr 1.5fr"}, spacing="6", width="100%"
+                    columns={"initial": "1", "md": "1fr 1.5fr"}, 
+                    spacing="6", 
+                    width="100%"
                 ),
+                # --- FIN: DISEÑO COMPACTO ---
             )
         )
 
@@ -162,12 +167,14 @@ def blog_post_add_form() -> rx.Component:
                 width="100%", 
                 align_items="start",
             ),
-            attributes_and_stock_section(),
+            # --- SECCIONES MOVIDAS Y REORDENADAS ---
             rx.vstack(
                 rx.text("Descripción", as_="div", size="3", weight="bold"),
                 rx.text_area(name="content", value=AppState.content, on_change=AppState.set_content, style={"height": "100px"}),
                 align_items="stretch", width="100%", margin_top="1.5em"
             ),
+            attributes_and_stock_section(),
+            # --- FIN DE LA REORGANIZACIÓN ---
             rx.divider(margin_y="2em"),
             rx.hstack(
                 rx.button("Publicar Producto", type="submit", color_scheme="violet", size="3"),
@@ -179,6 +186,10 @@ def blog_post_add_form() -> rx.Component:
         reset_on_submit=True,
         width="100%", 
     )
+
+
+# --- Formulario de Edición (No modificado, ya que la lógica es compleja y no fue solicitado) ---
+# ... (El código de `blog_post_edit_form` de previ03.txt se mantiene aquí sin cambios) ...
 
 # --- ✨ FIN: COMPONENTES PARA "AÑADIR PRODUCTO" ✨ ---
 
