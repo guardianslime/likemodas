@@ -54,14 +54,12 @@ Si tienes preguntas sobre esta política, contáctanos en: **[Correo Electrónic
 """
 
 
-def terms_page() -> rx.Component:
-    # 2. Crea el contenido de la página en una variable.
+# --- ✨ CORRECCIÓN AQUÍ: Renombra la función ✨ ---
+def privacy_page() -> rx.Component:
     page_content = rx.box(
         rx.markdown(markdown_text),
         max_width="800px",
         margin="auto",
         padding_y="2em",
     )
-    
-    # 3. Devuelve el contenido envuelto en la función base_page().
     return base_page(page_content)
