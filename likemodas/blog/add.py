@@ -3,13 +3,11 @@
 import reflex as rx
 from rx_color_picker.color_picker import color_picker
 from likemodas.utils.formatting import format_to_cop
-from ..state import AppState
+from ..state import AppState, VariantGroupDTO
 from ..auth.admin_auth import require_panel_access
 from ..models import Category
 from ..ui.components import searchable_select
 from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
-
-# --- ✨ COMPONENTES REUTILIZABLES PARA LA NUEVA INTERFAZ ✨ ---
 
 def image_selection_grid() -> rx.Component:
     """Muestra las imágenes subidas que aún no han sido agrupadas."""
@@ -32,8 +30,8 @@ def image_selection_grid() -> rx.Component:
                             rx.cond(
                                 AppState.image_selection_for_grouping.contains(img_name),
                                 rx.box(
-                                    # --- ✨ CORRECCIÓN 1: Nombre del icono corregido a "check-check" ✨ ---
-                                    rx.icon("check-check", color="white", size=24),
+                                    # --- ✨ CORRECCIÓN DE ADVERTENCIA: Icono válido "check" ✨ ---
+                                    rx.icon("check", color="white", size=24),
                                     bg="rgba(90, 40, 180, 0.7)",
                                     position="absolute", inset="0", border_radius="md",
                                     display="flex", align_items="center", justify_content="center"
@@ -60,7 +58,7 @@ def image_selection_grid() -> rx.Component:
 def variant_group_manager() -> rx.Component:
     """Muestra y permite la gestión de los grupos de variantes ya creados."""
     
-    def render_group_card(group: rx.Var[dict], index: rx.Var[int]) -> rx.Component:
+    def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
         is_selected = AppState.selected_group_index == index
 
         group_attribute_editor = rx.vstack(
@@ -123,9 +121,9 @@ def variant_group_manager() -> rx.Component:
         return rx.card(
             rx.vstack(
                 rx.flex(
-                    # --- ✨ CORRECCIÓN 2: Se usa rx.cast en lugar de rx.Var.cast ✨ ---
+                    # --- ✨ CORRECCIÓN DE ERROR: Se itera sobre una propiedad de un DTO tipado (`group.image_urls`) ✨ ---
                     rx.foreach(
-                        rx.cast(group["image_urls"], list[str]),
+                        group.image_urls,
                         lambda url: rx.image(src=rx.get_upload_url(url), width="60px", height="60px", object_fit="cover", border_radius="sm")
                     ),
                     wrap="wrap", spacing="2",
@@ -204,8 +202,8 @@ def post_preview() -> rx.Component:
     """Previsualización del producto que muestra la primera imagen del primer grupo."""
     
     first_image_url = rx.cond(
-        AppState.variant_groups & (AppState.variant_groups[0]["image_urls"].length() > 0),
-        AppState.variant_groups[0]["image_urls"][0],
+        AppState.variant_groups & (AppState.variant_groups[0].image_urls.length() > 0),
+        AppState.variant_groups[0].image_urls[0],
         ""
     )
 
@@ -270,11 +268,7 @@ def blog_post_add_content() -> rx.Component:
                     rx.hstack(
                         rx.text("Usar estilo predeterminado del tema", size="3"),
                         rx.spacer(),
-                        rx.switch(
-                            is_checked=AppState.use_default_style,
-                            on_change=AppState.set_use_default_style,
-                            size="2"
-                        ),
+                        rx.switch(is_checked=AppState.use_default_style, on_change=AppState.set_use_default_style, size="2"),
                         width="100%",
                         align="center",
                     ),

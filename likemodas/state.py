@@ -107,6 +107,11 @@ class DirectSaleGroupDTO(rx.Base):
     subtotal_cop: str
     variants: list[DirectSaleVariantDTO] = []
 
+class VariantGroupDTO(rx.Base):
+    """DTO para un grupo de variantes en el formulario de creación."""
+    image_urls: list[str] = []
+    attributes: dict = {}
+
 class UserManagementDTO(rx.Base):
     """DTO para mostrar un usuario en la tabla de gestión de administradores."""
     id: int
@@ -3796,12 +3801,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         if not self.image_selection_for_grouping:
             return rx.toast.error("Debes seleccionar al menos una imagen.")
         
-        new_group = {
-            "image_urls": sorted(list(self.image_selection_for_grouping)),
-            "attributes": {},
-        }
+        # --- ✨ CORRECCIÓN AQUÍ: Usamos el nuevo DTO ✨ ---
+        new_group = VariantGroupDTO(
+            image_urls=sorted(list(self.image_selection_for_grouping)),
+        )
         self.variant_groups.append(new_group)
         
+        # El resto de la función se mantiene igual...
         for filename in self.image_selection_for_grouping:
             if filename in self.uploaded_images:
                 self.uploaded_images.remove(filename)
