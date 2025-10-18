@@ -2148,30 +2148,31 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def submit_and_publish(self, form_data: dict):
         """
-        [VERSIÓN FINAL CORREGIDA]
-        Manejador para crear y publicar un nuevo producto, con lógica de
-        contexto robusta que funciona para vendedores y empleados. Además,
-        guarda todos los estilos de tarjeta y de imagen personalizados.
+        [VERSIÓN FINAL CORREGIDA CON SYNTAXERROR RESUELTO]
+        Manejador para crear y publicar un nuevo producto. Se corrige el uso de 'return'
+        por 'yield' para ser compatible con los generadores asíncronos de Reflex.
         """
         owner_id = None
         creator_id_to_save = None
 
-        # Lógica de contexto para determinar el dueño y el creador
         if not self.authenticated_user_info:
-            return rx.toast.error("Error de sesión. No se puede publicar.")
+            # --- ✨ CORRECCIÓN DE SINTAXIS ✨ ---
+            yield rx.toast.error("Error de sesión. No se puede publicar.")
+            return
 
         if self.is_empleado:
             if not self.mi_vendedor_info:
-                return rx.toast.error("Error de contexto: No se pudo encontrar al empleador.")
+                yield rx.toast.error("Error de contexto: No se pudo encontrar al empleador.")
+                return
             owner_id = self.mi_vendedor_info.id
             creator_id_to_save = self.authenticated_user_info.id
-        else:  # Si es un Vendedor o Admin publicando para sí mismo
+        else:
             owner_id = self.authenticated_user_info.id
         
         if not owner_id:
-            return rx.toast.error("Error de sesión o contexto no válido. No se puede publicar.")
+            yield rx.toast.error("Error de sesión o contexto no válido. No se puede publicar.")
+            return
 
-        # Extracción y validación de los datos del formulario
         title = form_data.get("title", "").strip()
         price_str = form_data.get("price", "")
         category = form_data.get("category", "")
@@ -2180,10 +2181,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         limit_str = form_data.get("shipping_combination_limit", "3")
 
         if not all([title, price_str, category]):
-            return rx.toast.error("El título, el precio y la categoría son campos obligatorios.") 
+            yield rx.toast.error("El título, el precio y la categoría son campos obligatorios.")
+            return
 
         if not self.generated_variants_map:
-            return rx.toast.error("Debes generar y configurar las variantes (stock, etc.) para al menos una imagen antes de publicar.") 
+            yield rx.toast.error("Debes generar y configurar las variantes (stock, etc.) para al menos una imagen antes de publicar.")
+            return
 
         try:
             price_float = float(price_str)
@@ -2192,11 +2195,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
 
             if self.combines_shipping and (limit is None or limit <= 0):
-                return rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
+                yield rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
+                return
         except (ValueError, TypeError):
-            return rx.toast.error("Precio, ganancia y límites deben ser números válidos.") 
+            yield rx.toast.error("Precio, ganancia y límites deben ser números válidos.")
+            return
 
-        # Construcción de la lista de variantes para la base de datos
         all_variants_for_db = []
         for group_index, generated_list in self.generated_variants_map.items():
             if group_index >= len(self.variant_groups):
@@ -2211,12 +2215,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                     "image_urls": image_urls_for_group,
                     "variant_uuid": str(uuid.uuid4())
                 }
-                all_variants_for_db.append(variant_dict) 
+                all_variants_for_db.append(variant_dict)
         
         if not all_variants_for_db:
-            return rx.toast.error("No se encontraron variantes configuradas para guardar.")
+            yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
+            return
 
-        # Creación y guardado del nuevo producto en la base de datos
         with rx.session() as session:
             image_styles_to_save = {
                 "zoom": self.preview_zoom,
@@ -2253,22 +2257,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             )
             session.add(new_post)
 
-            # Registro de la actividad
             log_entry = ActivityLog(
                 actor_id=self.authenticated_user_info.id,
                 owner_id=owner_id,
                 action_type="Creación de Publicación",
                 description=f"Creó la publicación '{new_post.title}'"
             )
-            session.add(log_entry) 
+            session.add(log_entry)
 
             session.commit()
 
-        # Limpieza del formulario y redirección
         self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
         yield rx.redirect("/blog")
-    
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
