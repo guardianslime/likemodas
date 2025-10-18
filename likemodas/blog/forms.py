@@ -17,7 +17,10 @@ def blog_post_add_form() -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
                 rx.flex(
-                    rx.foreach(group.image_urls, lambda url: rx.image(src=rx.get_upload_url(url), width="40px", height="40px", object_fit="cover", border_radius="sm")),
+                    rx.foreach(
+                        group.image_urls,
+                        lambda url: rx.image(src=rx.get_upload_url(url), width="40px", height="40px", object_fit="cover", border_radius="sm")
+                    ),
                     wrap="wrap", spacing="2",
                 ),
                 border_width="2px",
@@ -43,7 +46,8 @@ def blog_post_add_form() -> rx.Component:
                         rx.cond(
                             AppState.image_selection_for_grouping.contains(img_name),
                             rx.box(
-                                rx.icon("check", color="white", size="18),
+                                # --- ✨ CORRECCIÓN DE ERROR DE SINTAXIS ✨ ---
+                                rx.icon("check", color="white", size=18),
                                 bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
                                 display="flex", align_items="center", justify_content="center"
                             )
@@ -95,8 +99,14 @@ def blog_post_add_form() -> rx.Component:
                 rx.heading(f"Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
                 rx.grid(
                     rx.vstack(
+                        rx.text("Características del Producto"),
                         rx.text("Color"),
-                        searchable_select(placeholder="Seleccionar color...", options=AppState.filtered_attr_colores, on_change_select=AppState.set_temp_color, value_select=AppState.temp_color, search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color, filter_name="color_filter_main"),
+                        searchable_select(
+                            placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
+                            on_change_select=AppState.set_temp_color, value_select=AppState.temp_color,
+                            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+                            filter_name="color_filter_main",
+                        ),
                         rx.text("Talla"),
                         rx.hstack(
                             rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
@@ -113,6 +123,7 @@ def blog_post_add_form() -> rx.Component:
                         spacing="3", align_items="stretch",
                     ),
                     rx.vstack(
+                        rx.text("Gestión de Variantes y Stock"),
                         rx.text("Genera combinaciones y asigna un stock inicial a cada una.", size="2", color_scheme="gray"),
                         rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(AppState.selected_group_index)),
                         rx.cond(
