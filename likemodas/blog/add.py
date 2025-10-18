@@ -94,7 +94,13 @@ def blog_post_add_form() -> rx.Component:
                 ),
                 wrap="wrap", spacing="2", padding_top="0.25em",
              ),
-            rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%"),
+            rx.button(
+                "Crear Grupo de Color",
+                on_click=AppState.create_variant_group,
+                margin_top="0.5em",
+                width="100%",
+                type="button",  # <-- AÑADE ESTA LÍNEA
+            ),
             rx.divider(margin_y="1em"),
             rx.text("3. Grupos (Selecciona uno para editar abajo):"),
             rx.flex(rx.foreach(AppState.variant_groups, render_group_card), wrap="wrap", spacing="2"),
