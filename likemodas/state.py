@@ -2272,6 +2272,113 @@ class AppState(reflex_local_auth.LocalAuthState):
         self._clear_add_form()
         yield rx.toast.success("Producto publicado exitosamente.")
         yield rx.redirect("/blog")
+
+    @rx.event
+    async def submit_and_publish_manual(self):
+        """
+        [VERSIÓN MANUAL Y SEGURA]
+        Manejador que publica un producto leyendo los datos directamente desde el
+        estado de la aplicación, sin depender de un formulario.
+        """
+        owner_id = None
+        creator_id_to_save = None
+
+        if not self.authenticated_user_info:
+            yield rx.toast.error("Error de sesión. No se puede publicar.")
+            return
+
+        if self.is_empleado:
+            if not self.mi_vendedor_info:
+                yield rx.toast.error("Error de contexto: No se pudo encontrar al empleador.")
+                return
+            owner_id = self.mi_vendedor_info.id
+            creator_id_to_save = self.authenticated_user_info.id
+        else:
+            owner_id = self.authenticated_user_info.id
+        
+        if not owner_id:
+            yield rx.toast.error("Error de sesión o contexto no válido.")
+            return
+
+        title = self.title.strip()
+        price_str = self.price_str
+        category = self.category
+        
+        if not all([title, price_str, category]):
+            yield rx.toast.error("El título, el precio y la categoría son campos obligatorios.")
+            return
+
+        if not self.generated_variants_map:
+            yield rx.toast.error("Debes generar y configurar las variantes antes de publicar.")
+            return
+
+        try:
+            price_float = float(price_str)
+            profit_float = float(self.profit_str) if self.profit_str else None
+            limit = int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
+            threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
+        except (ValueError, TypeError):
+            yield rx.toast.error("Valores numéricos inválidos.")
+            return
+
+        all_variants_for_db = []
+        for group_index, generated_list in self.generated_variants_map.items():
+            if group_index >= len(self.variant_groups):
+                continue
+            
+            image_urls_for_group = self.variant_groups[group_index].image_urls
+            for variant_data in generated_list:
+                variant_dict = {
+                    "attributes": variant_data.attributes,
+                    "stock": variant_data.stock,
+                    "image_urls": image_urls_for_group,
+                    "variant_uuid": str(uuid.uuid4())
+                }
+                all_variants_for_db.append(variant_dict)
+        
+        if not all_variants_for_db:
+            yield rx.toast.error("No se encontraron variantes configuradas.")
+            return
+
+        with rx.session() as session:
+            image_styles_to_save = {
+                "zoom": self.preview_zoom,
+                "rotation": self.preview_rotation,
+                "offsetX": self.preview_offset_x,
+                "offsetY": self.preview_offset_y,
+            }
+
+            new_post = BlogPostModel(
+                userinfo_id=owner_id, creator_id=creator_id_to_save,
+                title=title, content=self.content, price=price_float, profit=profit_float,
+                price_includes_iva=self.price_includes_iva, category=category,
+                variants=all_variants_for_db, publish_active=True,
+                publish_date=datetime.now(timezone.utc),
+                is_moda_completa_eligible=self.is_moda_completa,
+                free_shipping_threshold=threshold, combines_shipping=self.combines_shipping,
+                shipping_combination_limit=limit, is_imported=self.is_imported,
+                use_default_style=self.use_default_style,
+                light_card_bg_color=self.light_theme_colors.get("bg"),
+                light_title_color=self.light_theme_colors.get("title"),
+                light_price_color=self.light_theme_colors.get("price"),
+                dark_card_bg_color=self.dark_theme_colors.get("bg"),
+                dark_title_color=self.dark_theme_colors.get("title"),
+                dark_price_color=self.dark_theme_colors.get("price"),
+                image_styles=image_styles_to_save,
+            )
+            session.add(new_post)
+
+            log_entry = ActivityLog(
+                actor_id=self.authenticated_user_info.id, owner_id=owner_id,
+                action_type="Creación de Publicación",
+                description=f"Creó la publicación '{new_post.title}'"
+            )
+            session.add(log_entry)
+            session.commit()
+
+        self._clear_add_form()
+        yield rx.toast.success("Producto publicado exitosamente.")
+        yield rx.redirect("/blog")
     
     @rx.var
     def displayed_posts(self) -> list[ProductCardData]:
