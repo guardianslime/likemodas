@@ -8241,8 +8241,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     
                     temp_posts = []
                     for p in posts:
-                        # Esta es la sección que probablemente tenía el error.
-                        # Asegúrate de que se vea exactamente así.
+                        # Esta es la sección corregida.
+                        # Fíjate que 'shipping_display_text' solo aparece una vez.
                         temp_posts.append(
                             ProductCardData(
                                 id=p.id,
@@ -8259,8 +8259,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 free_shipping_threshold=p.free_shipping_threshold,
                                 combines_shipping=p.combines_shipping,
                                 shipping_combination_limit=p.shipping_combination_limit,
-                                # ✅ ESTA LÍNEA SOLO DEBE APARECER UNA VEZ
-                                shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                                shipping_display_text=_get_shipping_display_text(p.shipping_cost), # <-- Única aparición
                                 is_imported=p.is_imported
                             )
                         )
