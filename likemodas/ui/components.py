@@ -154,7 +154,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     rx.image(
                                         src=rx.get_upload_url(post.main_image_url), 
                                         width="100%", height="260px", 
-                                        object_fit="contain",  # <-- ✨ CORRECCIÓN DE AJUSTE DE IMAGEN
+                                        object_fit="contain"  # ✨ CORRECCIÓN DE AJUSTE DE IMAGEN
                                     ),
                                     rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                                 ),
@@ -186,13 +186,18 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 rx.text(
                                     post.price_cop,
                                     size="5", weight="medium",
+                                    # ✨ CORRECCIÓN DE COLOR DEL PRECIO ✨
                                     color=rx.cond(
                                         post.use_default_style,
                                         rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-                                        # ... (lógica para colores personalizados)
+                                        rx.cond(
+                                            post.light_price_color & post.dark_price_color,
+                                            rx.color_mode_cond(post.light_price_color, post.dark_price_color),
+                                            post.light_price_color | post.dark_price_color | rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+                                        )
                                     )
                                 ),
-                                # ✨ INICIO: LÓGICA DE BADGES RESTAURADA ✨
+                                # ✨ INICIO: LÓGICA DE BADGES RESTAURADA Y COMPLETA ✨
                                 rx.vstack(
                                     rx.hstack(
                                         rx.badge(
@@ -219,7 +224,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     align_items="start",
                                     width="100%",
                                 ),
-                                # ✨ FIN: LÓGICA DE BADGES RESTAURADA ✨
+                                # ✨ FIN: LÓGICA DE BADGES RESTAURADA Y COMPLETA ✨
                                 spacing="1", align_items="start", width="100%"
                             ),
                             spacing="2", 
@@ -230,6 +235,7 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         rx.spacer(),
                     ),
                     width="290px", height="auto", min_height="450px",
+                    # ✨ CORRECCIÓN DE COLOR DE FONDO ✨
                     bg=rx.cond(
                         post.use_default_style,
                         rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
