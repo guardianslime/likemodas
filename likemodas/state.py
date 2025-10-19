@@ -3001,10 +3001,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             logger.error(f"Error fatal al procesar la imagen del QR: {e}")
     @rx.event
     def load_gallery_and_shipping(self):
-        """
-        [CORREGIDO] Carga la galería pública, asegurando que los DTOs
-        incluyan el nuevo campo 'main_image_url'.
-        """
+        # ✅ CÓDIGO VERIFICADO: Reemplaza tu función con esta.
         self.is_loading = True
         yield
 
@@ -3019,7 +3016,6 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             temp_posts = []
             for p in results:
-                # --- ✨ INICIO: LÓGICA COMPLETA PARA CREAR EL DTO ✨ ---
                 main_image = ""
                 if p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
@@ -3043,7 +3039,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     free_shipping_threshold=p.free_shipping_threshold,
                     combines_shipping=p.combines_shipping,
                     shipping_combination_limit=p.shipping_combination_limit,
-                    shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                    shipping_display_text=_get_shipping_display_text(p.shipping_cost), # Solo aparece una vez
                     is_imported=p.is_imported,
                     moda_completa_tooltip_text=moda_completa_text,
                     envio_combinado_tooltip_text=combinado_text,
@@ -3054,10 +3050,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     dark_card_bg_color=p.dark_card_bg_color,
                     dark_title_color=p.dark_title_color,
                     dark_price_color=p.dark_price_color,
-                    shipping_display_text=_get_shipping_display_text
                 )
                 temp_posts.append(card_data)
-                # --- ✨ FIN ✨ ---
                 
             self._raw_posts = temp_posts
 
@@ -7031,10 +7025,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_admin_store(self):
-        """
-        [CORREGIDO] Carga las publicaciones para la "Tienda (Punto de Venta)"
-        incluyendo el nuevo campo 'main_image_url'.
-        """
+        # ✅ CÓDIGO VERIFICADO: Reemplaza tu función con esta.
         if not (self.is_admin or self.is_vendedor or self.is_empleado):
             return rx.redirect("/")
 
@@ -7054,7 +7045,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_posts = []
             for p in results:
-                # --- ✨ INICIO: LÓGICA COMPLETA PARA CREAR EL DTO ✨ ---
                 main_image = ""
                 if p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
                     main_image = p.variants[0]["image_urls"][0]
@@ -7079,7 +7069,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         free_shipping_threshold=p.free_shipping_threshold,
                         combines_shipping=p.combines_shipping,
                         shipping_combination_limit=p.shipping_combination_limit,
-                        shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                        shipping_display_text=_get_shipping_display_text(p.shipping_cost), # Solo aparece una vez
                         is_imported=p.is_imported,
                         moda_completa_tooltip_text=moda_completa_text,
                         envio_combinado_tooltip_text=combinado_text,
@@ -7092,7 +7082,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         dark_price_color=p.dark_price_color,
                     )
                 )
-                # --- ✨ FIN ✨ ---
             self.admin_store_posts = temp_posts
 
     show_admin_sidebar: bool = False
@@ -8191,6 +8180,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def on_load_seller_page(self):
+        # ✅ CÓDIGO VERIFICADO: Reemplaza tu función con esta.
         self.is_loading = True
         self.seller_page_info = None
         self.seller_page_posts = []
@@ -8241,8 +8231,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     
                     temp_posts = []
                     for p in posts:
-                        # Esta es la sección corregida.
-                        # Fíjate que 'shipping_display_text' solo aparece una vez.
+                        # La sección clave donde estaba el error
                         temp_posts.append(
                             ProductCardData(
                                 id=p.id,
@@ -8259,7 +8248,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 free_shipping_threshold=p.free_shipping_threshold,
                                 combines_shipping=p.combines_shipping,
                                 shipping_combination_limit=p.shipping_combination_limit,
-                                shipping_display_text=_get_shipping_display_text(p.shipping_cost), # <-- Única aparición
+                                shipping_display_text=_get_shipping_display_text(p.shipping_cost), # Solo aparece una vez
                                 is_imported=p.is_imported
                             )
                         )
