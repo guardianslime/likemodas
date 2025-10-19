@@ -2148,16 +2148,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.edit_free_shipping_threshold_str = value
 
     @rx.event
-    async def submit_and_publish_manual(self):
+    async def submit_and_publish(self, form_data: dict):
         """
-        [VERSIÓN MANUAL Y SEGURA]
-        Manejador que publica un producto leyendo los datos directamente desde el
-        estado de la aplicación, sin depender de un formulario.
+        [VERSIÓN FINAL CORREGIDA CON SYNTAXERROR RESUELTO]
+        Manejador para crear y publicar un nuevo producto. Se corrige el uso de 'return'
+        por 'yield' para ser compatible con los generadores asíncronos de Reflex.
         """
         owner_id = None
         creator_id_to_save = None
 
         if not self.authenticated_user_info:
+            # --- ✨ CORRECCIÓN DE SINTAXIS ✨ ---
             yield rx.toast.error("Error de sesión. No se puede publicar.")
             return
 
@@ -2171,38 +2172,44 @@ class AppState(reflex_local_auth.LocalAuthState):
             owner_id = self.authenticated_user_info.id
         
         if not owner_id:
-            yield rx.toast.error("Error de sesión o contexto no válido.")
+            yield rx.toast.error("Error de sesión o contexto no válido. No se puede publicar.")
             return
 
-        # --- Lee los datos desde 'self' en lugar de 'form_data' ---
-        title = self.title.strip()
-        price_str = self.price_str
-        category = self.category
-        
+        title = form_data.get("title", "").strip()
+        price_str = form_data.get("price", "")
+        category = form_data.get("category", "")
+        content = form_data.get("content", "")
+        profit_str = form_data.get("profit", "")
+        limit_str = form_data.get("shipping_combination_limit", "3")
+
         if not all([title, price_str, category]):
             yield rx.toast.error("El título, el precio y la categoría son campos obligatorios.")
             return
 
         if not self.generated_variants_map:
-            yield rx.toast.error("Debes generar y configurar las variantes antes de publicar.")
+            yield rx.toast.error("Debes generar y configurar las variantes (stock, etc.) para al menos una imagen antes de publicar.")
             return
 
         try:
             price_float = float(price_str)
-            profit_float = float(self.profit_str) if self.profit_str else None
-            limit = int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
+            profit_float = float(profit_str) if profit_str else None
+            limit = int(limit_str) if self.combines_shipping and limit_str else None
             threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
+
+            if self.combines_shipping and (limit is None or limit <= 0):
+                yield rx.toast.error("El límite para envío combinado debe ser un número mayor a 0.")
+                return
         except (ValueError, TypeError):
-            yield rx.toast.error("Valores numéricos inválidos.")
+            yield rx.toast.error("Precio, ganancia y límites deben ser números válidos.")
             return
 
-        # El resto de la lógica para crear y guardar el producto es la misma
         all_variants_for_db = []
         for group_index, generated_list in self.generated_variants_map.items():
             if group_index >= len(self.variant_groups):
                 continue
             
             image_urls_for_group = self.variant_groups[group_index].image_urls
+
             for variant_data in generated_list:
                 variant_dict = {
                     "attributes": variant_data.attributes,
@@ -2213,25 +2220,34 @@ class AppState(reflex_local_auth.LocalAuthState):
                 all_variants_for_db.append(variant_dict)
         
         if not all_variants_for_db:
-            yield rx.toast.error("No se encontraron variantes configuradas.")
+            yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
             return
 
         with rx.session() as session:
             image_styles_to_save = {
-                "x": self.preview_image_x, "y": self.preview_image_y,
-                "width": self.preview_image_width, "height": self.preview_image_height,
-                "rotation": self.preview_image_rotation,
+                "zoom": self.preview_zoom,
+                "rotation": self.preview_rotation,
+                "offsetX": self.preview_offset_x,
+                "offsetY": self.preview_offset_y,
             }
 
             new_post = BlogPostModel(
-                userinfo_id=owner_id, creator_id=creator_id_to_save,
-                title=title, content=self.content, price=price_float, profit=profit_float,
-                price_includes_iva=self.price_includes_iva, category=category,
-                variants=all_variants_for_db, publish_active=True,
+                userinfo_id=owner_id,
+                creator_id=creator_id_to_save,
+                title=title,
+                content=content,
+                price=price_float,
+                profit=profit_float,
+                price_includes_iva=self.price_includes_iva,
+                category=category,
+                variants=all_variants_for_db,
+                publish_active=True,
                 publish_date=datetime.now(timezone.utc),
                 is_moda_completa_eligible=self.is_moda_completa,
-                free_shipping_threshold=threshold, combines_shipping=self.combines_shipping,
-                shipping_combination_limit=limit, is_imported=self.is_imported,
+                free_shipping_threshold=threshold,
+                combines_shipping=self.combines_shipping,
+                shipping_combination_limit=limit,
+                is_imported=self.is_imported,
                 use_default_style=self.use_default_style,
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
@@ -2239,16 +2255,18 @@ class AppState(reflex_local_auth.LocalAuthState):
                 dark_card_bg_color=self.dark_theme_colors.get("bg"),
                 dark_title_color=self.dark_theme_colors.get("title"),
                 dark_price_color=self.dark_theme_colors.get("price"),
-                image_transform=self.preview_image_transform
+                image_styles=image_styles_to_save
             )
             session.add(new_post)
 
             log_entry = ActivityLog(
-                actor_id=self.authenticated_user_info.id, owner_id=owner_id,
+                actor_id=self.authenticated_user_info.id,
+                owner_id=owner_id,
                 action_type="Creación de Publicación",
                 description=f"Creó la publicación '{new_post.title}'"
             )
             session.add(log_entry)
+
             session.commit()
 
         self._clear_add_form()
@@ -5055,7 +5073,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     preview_offset_x: int = 0
     preview_offset_y: int = 0
 
-    # Setters para los sliders (con la corrección para evitar Warnings)
+    # Setters para los sliders
     def set_preview_zoom(self, value: list[Union[int, float]]):
         """Actualiza el estado del zoom desde el slider."""
         self.preview_zoom = value[0]
@@ -5071,7 +5089,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     def set_preview_offset_y(self, value: list[Union[int, float]]):
         """Actualiza el estado de la posición Y desde el slider."""
         self.preview_offset_y = int(value[0])
-
+        
     def reset_image_styles(self):
         """Resetea todos los ajustes de la imagen a sus valores por defecto."""
         self.preview_zoom = 1.0
@@ -5079,6 +5097,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.preview_offset_x = 0
         self.preview_offset_y = 0
 
+    # Lógica de Limpieza y Carga para el editor de imágenes
     def _clear_image_styles(self):
         """Limpia el estado del editor al resetear el formulario."""
         self.reset_image_styles()
