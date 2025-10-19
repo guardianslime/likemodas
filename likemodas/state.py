@@ -479,14 +479,14 @@ class VariantGroupDTO(rx.Base):
     image_urls: list[str] = []
     attributes: dict = {}
 
-# --- ✨ 1. AÑADE ESTAS CONSTANTES AL PRINCIPIO DEL ARCHIVO (o cerca de AppState) ✨ ---
-# --- ✨ 1. REEMPLAZA TUS CONSTANTES CON ESTAS ✨ ---
+# --- ✨ 1. REEMPLAZA TUS CONSTANTES DE COLOR CON ESTAS ✨ ---
+#    (Usamos strings de texto para evitar el TypeError)
 DEFAULT_LIGHT_BG = "#fdfcff"
-DEFAULT_LIGHT_TITLE = "black"  # Para coincidir con el estilo de la tienda
+DEFAULT_LIGHT_TITLE = "#1C1C1C"  # Un negro suave para consistencia
 DEFAULT_LIGHT_PRICE = "var(--gray-9)"
 
 DEFAULT_DARK_BG = "var(--gray-2)"
-DEFAULT_DARK_TITLE = "white"   # Para coincidir con el estilo de la tienda
+DEFAULT_DARK_TITLE = "white"
 DEFAULT_DARK_PRICE = "var(--gray-a11)"
 
 class AppState(reflex_local_auth.LocalAuthState):
@@ -3062,19 +3062,16 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.recalculate_all_shipping_costs
         self.is_loading = False
 
-    # --- ✨ 2. AÑADE/REEMPLAZA ESTE BLOQUE COMPLETO DE VARIABLES DE ESTADO ✨ ---
-
-    # Controla el switch de "Usar estilo predeterminado"
+    # --- ✨ 2. REEMPLAZA COMPLETAMENTE TU BLOQUE DE VARIABLES DE ESTILO ✨ ---
+    #    (Aquí declaramos las variables que faltaban)
     use_default_style: bool = True
-    # Almacena el modo de previsualización activo ("light" o "dark")
     card_theme_mode: str = "light"
 
-    # Colores 'vivos' que se muestran en la previsualización
     live_card_bg_color: str = DEFAULT_LIGHT_BG
     live_title_color: str = DEFAULT_LIGHT_TITLE
     live_price_color: str = DEFAULT_LIGHT_PRICE
 
-    # --- VARIABLES DE ESTADO PARA LOS INPUTS DE PERSONALIZACIÓN (¡ESTAS FALTABAN!) ---
+    # Variables para los inputs de personalización (¡ESTAS FALTABAN!)
     light_card_bg_color_input: str = DEFAULT_LIGHT_BG
     light_title_color_input: str = DEFAULT_LIGHT_TITLE
     light_price_color_input: str = DEFAULT_LIGHT_PRICE
@@ -3082,13 +3079,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     dark_title_color_input: str = DEFAULT_DARK_TITLE
     dark_price_color_input: str = DEFAULT_DARK_PRICE
 
-    # Diccionarios para guardar los colores personalizados de cada modo
     light_theme_colors: dict = {"bg": "", "title": "", "price": ""}
     dark_theme_colors: dict = {"bg": "", "title": "", "price": ""}
-
     # --- ✨ FIN DEL BLOQUE A REEMPLAZAR ✨ ---
 
-    # --- ✨ 3. MODIFICAR LA FUNCIÓN `update_card_colors` ✨ ---
+    # --- ✨ 3. REEMPLAZA LAS FUNCIONES DE MANEJO DE ESTILO CON ESTAS ✨ ---
     def set_use_default_style(self, checked: bool):
         """Maneja el switch de estilo predeterminado y actualiza los colores."""
         self.use_default_style = checked
@@ -3100,9 +3095,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.update_card_colors()
 
     def update_card_colors(self):
-        """
-        Actualiza los colores 'vivos' de la previsualización basándose en el estado actual.
-        """
+        """Actualiza los colores 'vivos' de la previsualización basándose en el estado actual."""
         is_light = self.card_theme_mode == "light"
         
         if self.use_default_style:
@@ -3112,7 +3105,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         else:
             self.live_card_bg_color = self.light_card_bg_color_input if is_light else self.dark_card_bg_color_input
             self.live_title_color = self.light_title_color_input if is_light else self.dark_title_color_input
-            self.live_price_color = self.light_price_color_input if is_light else self.dark_price_color_input # Llama a update_card_colors para cargar los colores correctos
+            self.live_price_color = self.light_price_color_input if is_light else self.dark_price_color_input
 
     def toggle_preview_mode(self, mode: str | list[str]):
         """Cambia entre la previsualización del modo claro y oscuro."""

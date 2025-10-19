@@ -3,7 +3,7 @@
 import reflex as rx
 import math
 from likemodas.utils.formatting import format_to_cop
-from ..state import AppState, ProductCardData
+from ..state import DEFAULT_DARK_TITLE, DEFAULT_LIGHT_TITLE, AppState, ProductCardData
 from reflex.event import EventSpec
 
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
@@ -140,7 +140,12 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                 # --- ✨ INICIO: LÓGICA DE IMAGEN SIMPLIFICADA ✨ ---
                                 rx.cond(
                                     post.main_image_url != "",
-                                    rx.image(src=rx.get_upload_url(post.main_image_url), width="100%", height="260px", object_fit="cover"),
+                                    # --- ✨ INICIO DE LA CORRECCIÓN DE LA IMAGEN ✨ ---
+                                    rx.image(
+                                        src=rx.get_upload_url(post.main_image_url), 
+                                        width="100%", height="260px", 
+                                        object_fit="contain"  # <-- CAMBIA 'cover' POR 'contain'
+                                    ),
                                     rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
                                 ),
                                 # --- ✨ FIN ✨ ---
@@ -157,17 +162,17 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                                     post.title, 
                                     weight="bold", size="6", white_space="normal",
                                     text_overflow="initial", overflow="visible",
-                                    # --- ✨ INICIO: LÓGICA DE COLOR CONDICIONAL PARA EL TÍTULO ✨ ---
+                                    # --- ✨ INICIO DE LA CORRECCIÓN DE COLOR DEL TÍTULO ✨ ---
                                     color=rx.cond(
                                         post.use_default_style,
-                                        rx.color_mode_cond("black", "white"),
+                                        # Usa los mismos colores que definimos en las constantes
+                                        rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
                                         rx.cond(
                                             post.light_title_color & post.dark_title_color,
                                             rx.color_mode_cond(post.light_title_color, post.dark_title_color),
-                                            post.light_title_color | post.dark_title_color | rx.color_mode_cond("black", "white")
+                                            post.light_title_color | post.dark_title_color | rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
                                         )
                                     )
-                                    # --- ✨ FIN ✨ ---
                                 ),
                                 star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                                 rx.text(
