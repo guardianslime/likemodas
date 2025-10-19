@@ -5258,8 +5258,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.price_str = ""
         self.profit_str = ""
         self.category = ""
-        
-        # --- ✨ INICIO: LÍNEAS A AÑADIR/REEMPLAZAR ✨ ---
         self.uploaded_images = []
         self.image_selection_for_grouping = set()
         self.variant_groups = []
@@ -5272,22 +5270,15 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.attr_tallas_ropa = []
         self.attr_numeros_calzado = []
         self.attr_tamanos_mochila = []
-        self.attr_material = ""
-        self.attr_tipo = ""
         self.shipping_cost_str = ""
         self.is_moda_completa = True
         self.is_imported = False
         self.combines_shipping = False
         self.shipping_combination_limit_str = "3"
         self.variant_form_data = []
-        self.generated_variants_map = {}
         self._clear_card_styles()
-        self._clear_image_styles() # <-- Añade esta línea al fina
-        # --- ✨ AÑADE ESTAS LÍNEAS AL FINAL ✨ ---
-        self.card_bg_color = "#FFFFFF"
-        self.title_color = "#111111"
-        self.price_color = "#555555"
-        self.card_theme_mode = "light" # <-- Añade esta línea para resetear el modo
+        self._clear_image_styles()
+
 
     # --- 👇 AÑADE ESTAS VARIABLES PARA EL FORMULARIO 👇 ---
     shipping_cost_str: str = ""
