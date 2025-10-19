@@ -5071,7 +5071,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             return self.uploaded_images[-1]
             
         # --- Si no hay nada, devuelve una cadena vacía para mostrar el fallback.
-        return ""iciones, devuelve una cadena vacía.
         return ""
 
     # Setters para los sliders (con la corrección para evitar Warnings)
