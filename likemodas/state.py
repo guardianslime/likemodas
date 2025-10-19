@@ -2218,10 +2218,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         with rx.session() as session:
             image_styles_to_save = {
-                "x": self.preview_image_x, "y": self.preview_image_y,
-                "width": self.preview_image_width, "height": self.preview_image_height,
-                "rotation": self.preview_image_rotation,
-            }
+            "zoom": self.preview_zoom,
+            "rotation": self.preview_rotation,
+            "offsetX": self.preview_offset_x,
+            "offsetY": self.preview_offset_y,
+        }
 
             new_post = BlogPostModel(
                 userinfo_id=owner_id, creator_id=creator_id_to_save,
@@ -2239,7 +2240,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 dark_card_bg_color=self.dark_theme_colors.get("bg"),
                 dark_title_color=self.dark_theme_colors.get("title"),
                 dark_price_color=self.dark_theme_colors.get("price"),
-                image_transform=self.preview_image_transform
+                image_styles=image_styles_to_save,
             )
             session.add(new_post)
 
