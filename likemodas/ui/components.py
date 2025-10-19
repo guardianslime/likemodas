@@ -9,7 +9,7 @@ from ..state import (
     DEFAULT_LIGHT_BG, DEFAULT_LIGHT_TITLE, DEFAULT_LIGHT_PRICE,
     DEFAULT_DARK_BG, DEFAULT_DARK_TITLE, DEFAULT_DARK_PRICE,
 )
-from ..ui.components import star_rating_display_safe
+
 from reflex.event import EventSpec
 
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
