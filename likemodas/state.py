@@ -8198,7 +8198,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         seller_id_str = "0"
         try:
-            # --- CORRECCIÓN ---
             full_url = self.router.url
             if full_url and "?" in full_url:
                 parsed_url = urlparse(full_url)
@@ -8219,7 +8218,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 seller_info_db = session.exec(
                     sqlmodel.select(UserInfo).options(
                         sqlalchemy.orm.joinedload(UserInfo.user),
-                        # --- ✨ LÍNEA AÑADIDA: Carga previa de los posts para el cálculo ---
                         sqlalchemy.orm.selectinload(UserInfo.posts).selectinload(BlogPostModel.comments).selectinload(CommentModel.votes)
                     )
                     .where(UserInfo.id == seller_id_int)
@@ -8229,11 +8227,9 @@ class AppState(reflex_local_auth.LocalAuthState):
                     self.seller_page_info = SellerInfoData(
                         id=seller_info_db.id,
                         username=seller_info_db.user.username,
-                        # --- ✨ LÍNEA AÑADIDA: Se pasa la puntuación calculada al DTO ---
                         overall_seller_score=seller_info_db.overall_seller_score
                     )
 
-                    # La carga de los posts del vendedor no cambia
                     posts = session.exec(
                         sqlmodel.select(BlogPostModel)
                         .where(
@@ -8245,6 +8241,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                     
                     temp_posts = []
                     for p in posts:
+                        # Esta es la sección que probablemente tenía el error.
+                        # Asegúrate de que se vea exactamente así.
                         temp_posts.append(
                             ProductCardData(
                                 id=p.id,
@@ -8258,10 +8256,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 rating_count=p.rating_count,
                                 shipping_cost=p.shipping_cost,
                                 is_moda_completa_eligible=p.is_moda_completa_eligible,
-                                # ✨ --- AÑADE ESTAS LÍNEAS --- ✨
                                 free_shipping_threshold=p.free_shipping_threshold,
                                 combines_shipping=p.combines_shipping,
                                 shipping_combination_limit=p.shipping_combination_limit,
+                                # ✅ ESTA LÍNEA SOLO DEBE APARECER UNA VEZ
                                 shipping_display_text=_get_shipping_display_text(p.shipping_cost),
                                 is_imported=p.is_imported
                             )
