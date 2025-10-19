@@ -5059,16 +5059,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def preview_main_image_url(self) -> str:
         """
-        Calcula de forma eficiente en el backend la URL de la imagen principal 
-        para la previsualización del producto.
+        [VERSIÓN CORREGIDA]
+        Calcula la URL para la previsualización de forma inteligente y jerárquica.
         """
-        # Si hay grupos de variantes creados...
-        if self.variant_groups:
-            # Y el primer grupo tiene URLs de imágenes...
-            if self.variant_groups[0].image_urls:
-                # Devuelve la primera URL.
-                return self.variant_groups[0].image_urls[0]
-        # Si no se cumple alguna de las condiciones, devuelve una cadena vacía.
+        # --- Prioridad 1: Si ya existen grupos, muestra la imagen del primer grupo.
+        if self.variant_groups and self.variant_groups[0].image_urls:
+            return self.variant_groups[0].image_urls[0]
+        
+        # --- Prioridad 2: Si no hay grupos pero sí hay imágenes subidas, muestra la ÚLTIMA imagen que se subió.
+        if self.uploaded_images:
+            return self.uploaded_images[-1]
+            
+        # --- Si no hay nada, devuelve una cadena vacía para mostrar el fallback.
+        return ""iciones, devuelve una cadena vacía.
         return ""
 
     # Setters para los sliders (con la corrección para evitar Warnings)
