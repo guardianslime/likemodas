@@ -239,34 +239,27 @@ def blog_post_add_form() -> rx.Component:
 
 # --- Componente para la previsualización de la tarjeta ---
 def post_preview() -> rx.Component:
-    """
-    [VERSIÓN CORREGIDA Y RÁPIDA]
-    Componente para la previsualización de la tarjeta del producto. 
-    Ahora usa una propiedad computada (`preview_main_image_url`) para obtener 
-    la imagen, solucionando problemas de rendimiento.
-    """
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
-            bg=colors["bg"], 
-            color=colors["text"],
+            bg=colors["bg"], color=colors["text"],
             padding="1px 10px", border_radius="var(--radius-full)", font_size="0.8em",
         )
 
-    # --- ✨ CORRECCIÓN CLAVE (INICIO) ✨ ---
-    # Se elimina por completo la variable 'first_image_url' que usaba 'rx.cond'.
-    # La lógica ahora está centralizada en AppState.preview_main_image_url
-    # --- ✨ CORRECCIÓN CLAVE (FIN) ✨ ---
+    first_image_url = rx.cond(
+        (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
+        AppState.variant_groups[0].image_urls[0],
+        ""
+    )
     
     return rx.box(
         rx.vstack(
              rx.box(
                 rx.image(
-                    # ✨ CORRECCIÓN CLAVE: Se usa la nueva propiedad computada.
-                    src=rx.get_upload_url(AppState.preview_main_image_url), fallback="/image_off.png", 
+                    src=rx.get_upload_url(first_image_url), fallback="/image_off.png", 
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
                         AppState.is_hydrated,
@@ -300,12 +293,13 @@ def post_preview() -> rx.Component:
                 rx.text(
                     AppState.price_cop_preview, size="5", weight="medium",
                     color=rx.cond(
-                        AppState.use_default_style,
+                         AppState.use_default_style,
                         rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 9), rx.color("gray", 11)),
                         AppState.live_price_color,
                     )
                 ),
                 rx.spacer(),
+                # --- ✨ INICIO: CÓDIGO RESTAURADO PARA LOS BADGES ✨ ---
                 rx.vstack(
                     rx.hstack(
                         _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
@@ -327,13 +321,14 @@ def post_preview() -> rx.Component:
                     ),
                     spacing="1", align_items="start", width="100%",
                 ),
+                # --- ✨ FIN: CÓDIGO RESTAURADO PARA LOS BADGES ✨ ---
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",
         bg=rx.cond(
-            AppState.use_default_style,
+             AppState.use_default_style,
             rx.cond(AppState.card_theme_mode == "light", "#fdfcff", "var(--gray-2)"),
             AppState.live_card_bg_color
         ),

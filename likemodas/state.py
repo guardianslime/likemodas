@@ -2218,11 +2218,10 @@ class AppState(reflex_local_auth.LocalAuthState):
 
         with rx.session() as session:
             image_styles_to_save = {
-            "zoom": self.preview_zoom,
-            "rotation": self.preview_rotation,
-            "offsetX": self.preview_offset_x,
-            "offsetY": self.preview_offset_y,
-        }
+                "x": self.preview_image_x, "y": self.preview_image_y,
+                "width": self.preview_image_width, "height": self.preview_image_height,
+                "rotation": self.preview_image_rotation,
+            }
 
             new_post = BlogPostModel(
                 userinfo_id=owner_id, creator_id=creator_id_to_save,
@@ -2240,7 +2239,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 dark_card_bg_color=self.dark_theme_colors.get("bg"),
                 dark_title_color=self.dark_theme_colors.get("title"),
                 dark_price_color=self.dark_theme_colors.get("price"),
-                image_styles=image_styles_to_save,
+                image_transform=self.preview_image_transform
             )
             session.add(new_post)
 
@@ -5055,23 +5054,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     preview_rotation: int = 0
     preview_offset_x: int = 0
     preview_offset_y: int = 0
-
-    @rx.var
-    def preview_main_image_url(self) -> str:
-        """
-        [VERSIÓN CORREGIDA]
-        Calcula la URL para la previsualización de forma inteligente y jerárquica.
-        """
-        # --- Prioridad 1: Si ya existen grupos, muestra la imagen del primer grupo.
-        if self.variant_groups and self.variant_groups[0].image_urls:
-            return self.variant_groups[0].image_urls[0]
-        
-        # --- Prioridad 2: Si no hay grupos pero sí hay imágenes subidas, muestra la ÚLTIMA imagen que se subió.
-        if self.uploaded_images:
-            return self.uploaded_images[-1]
-            
-        # --- Si no hay nada, devuelve una cadena vacía para mostrar el fallback.
-        return ""
 
     # Setters para los sliders (con la corrección para evitar Warnings)
     def set_preview_zoom(self, value: list[Union[int, float]]):
