@@ -162,9 +162,8 @@ class ProductCardData(rx.Base):
 
     # --- ✨ INICIO: AÑADE ESTA LÍNEA ✨ ---
     main_image_url: str = ""
-    # --- ✨ FIN ✨ ---
     
-    # --- ✨ INICIO: CAMPOS DE ESTILO AÑADIDOS ✨ ---
+    # --- ✨ INICIO: CAMPOS DE ESTILO CORREGIDOS Y COMPLETOS ✨ ---
     use_default_style: bool = True
     light_card_bg_color: Optional[str] = None
     light_title_color: Optional[str] = None
@@ -172,6 +171,7 @@ class ProductCardData(rx.Base):
     dark_card_bg_color: Optional[str] = None
     dark_title_color: Optional[str] = None
     dark_price_color: Optional[str] = None
+    image_styles: dict = {} # <-- CAMPO AÑADIDO PARA GUARDAR ZOOM/POSICIÓN
     # --- ✨ FIN ✨ ---
     
     class Config:
@@ -481,8 +481,9 @@ class VariantGroupDTO(rx.Base):
 
 # --- ✨ 1. REEMPLAZA TUS CONSTANTES DE COLOR CON ESTAS ✨ ---
 #    (Usamos strings de texto para evitar el TypeError)
+# --- ✨ 1. REEMPLAZA TUS CONSTANTES DE COLOR CON ESTAS ✨ ---
 DEFAULT_LIGHT_BG = "#fdfcff"
-DEFAULT_LIGHT_TITLE = "#1C1C1C"  # Un negro suave para consistencia
+DEFAULT_LIGHT_TITLE = "var(--gray-11)"  # <-- CORREGIDO a gris oscuro
 DEFAULT_LIGHT_PRICE = "var(--gray-9)"
 
 DEFAULT_DARK_BG = "var(--gray-2)"
@@ -3053,6 +3054,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     dark_card_bg_color=p.dark_card_bg_color,
                     dark_title_color=p.dark_title_color,
                     dark_price_color=p.dark_price_color,
+                    shipping_display_text=_get_shipping_display_text
                 )
                 temp_posts.append(card_data)
                 # --- ✨ FIN ✨ ---
@@ -3787,13 +3789,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
             # --- ✨ INICIO: LÓGICA PARA GUARDAR ESTILOS DE IMAGEN (EDICIÓN) ✨ ---
+            # --- LÓGICA PARA GUARDAR ESTILOS DE IMAGEN (EDICIÓN) ---
             post_to_update.image_styles = {
                 "zoom": self.preview_zoom,
                 "rotation": self.preview_rotation,
                 "offsetX": self.preview_offset_x,
                 "offsetY": self.preview_offset_y,
             }
-            # --- ✨ FIN ✨ ---
             # --- ✨ FIN ✨ ---
             
             session.add(post_to_update)

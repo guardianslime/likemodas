@@ -138,117 +138,117 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
     """
     [VERSIÓN FINAL UNIFICADA]
     Galería de productos que renderiza las tarjetas con el mismo estilo
-    visual que la previsualización del formulario, incluyendo todos los badges y colores.
+    visual que la previsualización, aplicando colores y transformaciones de imagen guardadas.
     """
+    def _render_single_card(post: ProductCardData) -> rx.Component:
+        """Función interna para renderizar una sola tarjeta de producto."""
+        
+        # 1. Obtiene los estilos de imagen guardados, con valores por defecto
+        image_styles = post.image_styles
+        zoom = image_styles.get("zoom", 1.0)
+        rotation = image_styles.get("rotation", 0)
+        offset_x = image_styles.get("offsetX", 0)
+        offset_y = image_styles.get("offsetY", 0)
+        transform_style = f"scale({zoom}) rotate({rotation}deg) translateX({offset_x}px) translateY({offset_y}px)"
+
+        # 2. Lógica de colores unificada (idéntica a la del state y la previsualización)
+        card_bg_color = rx.cond(
+            post.use_default_style,
+            rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
+            rx.cond(
+                post.light_card_bg_color & post.dark_card_bg_color,
+                rx.color_mode_cond(post.light_card_bg_color, post.dark_card_bg_color),
+                post.light_card_bg_color | post.dark_card_bg_color | rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
+            )
+        )
+        title_color = rx.cond(
+            post.use_default_style,
+            rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
+            rx.cond(
+                post.light_title_color & post.dark_title_color,
+                rx.color_mode_cond(post.light_title_color, post.dark_title_color),
+                post.light_title_color | post.dark_title_color | rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
+            )
+        )
+        price_color = rx.cond(
+            post.use_default_style,
+            rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
+            rx.cond(
+                post.light_price_color & post.dark_price_color,
+                rx.color_mode_cond(post.light_price_color, post.dark_price_color),
+                post.light_price_color | post.dark_price_color | rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
+            )
+        )
+
+        return rx.box(
+            rx.vstack(
+                rx.vstack(
+                    rx.box(
+                        rx.cond(
+                            post.main_image_url != "",
+                            rx.image(
+                                src=rx.get_upload_url(post.main_image_url), 
+                                width="100%", height="260px", 
+                                object_fit="contain", # Coincide con la previsualización
+                                transform=transform_style, # Aplica los estilos guardados
+                                transition="transform 0.2s ease-out",
+                            ),
+                            # Fallback si no hay imagen
+                            rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
+                        ),
+                        rx.badge(
+                            rx.cond(post.is_imported, "Importado", "Nacional"),
+                            color_scheme=rx.cond(post.is_imported, "purple", "cyan"),
+                            variant="solid",
+                            style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
+                        ),
+                        position="relative",
+                        width="100%", height="260px",
+                        overflow="hidden",
+                        bg=rx.color_mode_cond("white", rx.color("gray", 3)),
+                    ),
+                    rx.vstack(
+                        rx.text(post.title, weight="bold", size="6", no_of_lines=2, width="100%", color=title_color),
+                        star_rating_display_safe(post.average_rating, post.rating_count, size=24),
+                        rx.text(post.price_cop, size="5", weight="medium", color=price_color),
+                        rx.spacer(),
+                        rx.vstack(
+                            rx.hstack(
+                                rx.badge(post.shipping_display_text, color_scheme="gray", variant="soft", size="2"),
+                                rx.cond(
+                                    post.is_moda_completa_eligible,
+                                    rx.tooltip(rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"), content=post.moda_completa_tooltip_text),
+                                ),
+                                spacing="3", align="center",
+                            ),
+                            rx.cond(
+                                post.combines_shipping,
+                                rx.tooltip(rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"), content=post.envio_combinado_tooltip_text),
+                            ),
+                            spacing="1", align_items="start", width="100%",
+                        ),
+                        spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
+                    ),
+                    spacing="0", align_items="stretch", width="100%",
+                ),
+                # El on_click abre el modal de detalle del producto
+                on_click=AppState.open_product_detail_modal(post.id),
+                cursor="pointer",
+                height="100%"
+            ),
+            width="290px", 
+            height="480px", # Altura fija para consistencia
+            bg=card_bg_color,
+            border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
+            border_radius="8px", 
+            box_shadow="md",
+            overflow="hidden"
+        )
+
     return rx.cond(
         posts,
         rx.flex(
-            rx.foreach(
-                posts,
-                lambda post: rx.box(
-                    rx.vstack(
-                        rx.vstack(
-                            rx.box(
-                                rx.cond(
-                                    post.main_image_url != "",
-                                    rx.image(
-                                        src=rx.get_upload_url(post.main_image_url), 
-                                        width="100%", height="260px", 
-                                        object_fit="contain"  # ✨ CORRECCIÓN DE AJUSTE DE IMAGEN
-                                    ),
-                                    rx.box(rx.icon("image-off", size=48), width="100%", height="260px", bg=rx.color("gray", 3), display="flex", align_items="center", justify_content="center")
-                                ),
-                                rx.badge(
-                                    rx.cond(post.is_imported, "Importado", "Nacional"),
-                                    color_scheme=rx.cond(post.is_imported, "purple", "cyan"),
-                                    variant="solid",
-                                    style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
-                                ),
-                                position="relative", width="260px", height="260px",
-                            ),
-                            rx.vstack(
-                                rx.text(
-                                    post.title, 
-                                    weight="bold", size="6", white_space="normal",
-                                    text_overflow="initial", overflow="visible",
-                                    # ✨ CORRECCIÓN DE COLOR DEL TÍTULO ✨
-                                    color=rx.cond(
-                                        post.use_default_style,
-                                        rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE),
-                                        rx.cond(
-                                            post.light_title_color & post.dark_title_color,
-                                            rx.color_mode_cond(post.light_title_color, post.dark_title_color),
-                                            post.light_title_color | post.dark_title_color | rx.color_mode_cond(DEFAULT_LIGHT_TITLE, DEFAULT_DARK_TITLE)
-                                        )
-                                    )
-                                ),
-                                star_rating_display_safe(post.average_rating, post.rating_count, size=24),
-                                rx.text(
-                                    post.price_cop,
-                                    size="5", weight="medium",
-                                    # ✨ CORRECCIÓN DE COLOR DEL PRECIO ✨
-                                    color=rx.cond(
-                                        post.use_default_style,
-                                        rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE),
-                                        rx.cond(
-                                            post.light_price_color & post.dark_price_color,
-                                            rx.color_mode_cond(post.light_price_color, post.dark_price_color),
-                                            post.light_price_color | post.dark_price_color | rx.color_mode_cond(DEFAULT_LIGHT_PRICE, DEFAULT_DARK_PRICE)
-                                        )
-                                    )
-                                ),
-                                # ✨ INICIO: LÓGICA DE BADGES RESTAURADA Y COMPLETA ✨
-                                rx.vstack(
-                                    rx.hstack(
-                                        rx.badge(
-                                            post.shipping_display_text,
-                                            color_scheme="gray", variant="soft", size="2"
-                                        ),
-                                        rx.cond(
-                                            post.is_moda_completa_eligible,
-                                            rx.tooltip(
-                                                rx.badge("Moda Completa", color_scheme="violet", variant="soft", size="2"),
-                                                content=post.moda_completa_tooltip_text,
-                                            ),
-                                        ),
-                                        spacing="3", align="center",
-                                    ),
-                                    rx.cond(
-                                        post.combines_shipping,
-                                        rx.tooltip(
-                                            rx.badge("Envío Combinado", color_scheme="teal", variant="soft", size="2"),
-                                            content=post.envio_combinado_tooltip_text,
-                                        ),
-                                    ),
-                                    spacing="1",
-                                    align_items="start",
-                                    width="100%",
-                                ),
-                                # ✨ FIN: LÓGICA DE BADGES RESTAURADA Y COMPLETA ✨
-                                spacing="1", align_items="start", width="100%"
-                            ),
-                            spacing="2", 
-                            width="100%",
-                            on_click=AppState.open_product_detail_modal(post.id),
-                            cursor="pointer",
-                        ),
-                        rx.spacer(),
-                    ),
-                    width="290px", height="auto", min_height="450px",
-                    # ✨ CORRECCIÓN DE COLOR DE FONDO ✨
-                    bg=rx.cond(
-                        post.use_default_style,
-                        rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG),
-                        rx.cond(
-                            post.light_card_bg_color & post.dark_card_bg_color,
-                            rx.color_mode_cond(post.light_card_bg_color, post.dark_card_bg_color),
-                            post.light_card_bg_color | post.dark_card_bg_color | rx.color_mode_cond(DEFAULT_LIGHT_BG, DEFAULT_DARK_BG)
-                        )
-                    ),
-                    border=rx.color_mode_cond("1px solid #e5e5e5", "1px solid #1a1a1a"),
-                    border_radius="8px", box_shadow="md", padding="1em",
-                )
-            ),
+            rx.foreach(posts, _render_single_card),
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
     )
