@@ -479,6 +479,15 @@ class VariantGroupDTO(rx.Base):
     image_urls: list[str] = []
     attributes: dict = {}
 
+# --- ✨ 1. AÑADE ESTAS CONSTANTES AL PRINCIPIO DEL ARCHIVO (o cerca de AppState) ✨ ---
+DEFAULT_LIGHT_BG = "#fdfcff" # Tu color de fondo claro actual
+DEFAULT_LIGHT_TITLE = rx.color("gray", 11) 
+DEFAULT_LIGHT_PRICE = rx.color("gray", 9)
+
+DEFAULT_DARK_BG = rx.color("gray", 2) # Tu color de fondo oscuro actual
+DEFAULT_DARK_TITLE = "white" # Tu color de título oscuro actual
+DEFAULT_DARK_PRICE = rx.color("gray", 11)
+
 class AppState(reflex_local_auth.LocalAuthState):
     """El estado único y monolítico de la aplicación."""
 
@@ -3053,9 +3062,9 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_loading = False
 
     # Variables para los 3 color pickers del formulario.
-    card_bg_color: str = "#FFFFFF"
-    title_color: str = "#1C1C1C"
-    price_color: str = "#6F6F6F"
+    live_card_bg_color: str = DEFAULT_LIGHT_BG # Asegura que inicien con el valor por defecto
+    live_title_color: str = DEFAULT_LIGHT_TITLE
+    live_price_color: str = DEFAULT_LIGHT_PRICE
     # --- ✨ 1. AÑADE ESTA NUEVA VARIABLE DE ESTADO AQUÍ ✨ ---
     # --- Estado para la Interfaz del Formulario ---
     # Controla el switch de "Usar estilo predeterminado"
@@ -3063,19 +3072,54 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Almacena el modo de previsualización activo ("light" o "dark")
     card_theme_mode: str = "light"
     # Colores 'vivos' que están siendo modificados por los color pickers
-    live_card_bg_color: str = "#FFFFFF"
-    live_title_color: str = "#1C1C1C"
-    live_price_color: str = "#6F6F6F"
+    # Estas variables son para el modo oscuro, también deben reflejar los valores por defecto
+    dark_card_bg_color_input: str = DEFAULT_DARK_BG
+    dark_title_color_input: str = DEFAULT_DARK_TITLE
+    dark_price_color_input: str = DEFAULT_DARK_PRICE
 
-    # --- Estado para Almacenar los Datos Guardados ---
-    # Diccionarios para guardar los colores personalizados de cada modo
-    light_theme_colors: dict = {"bg": "", "title": "", "price": ""}
-    dark_theme_colors: dict = {"bg": "", "title": "", "price": ""}
+    # --- ✨ 3. MODIFICAR LA FUNCIÓN `update_card_colors` ✨ ---
+    def update_card_colors(self):
+        """
+        Actualiza los colores de la tarjeta en función del tema y si se usa el estilo predeterminado.
+        """
+        if self.use_default_style:
+            # Si se usa el estilo predeterminado, carga los colores predeterminados
+            if self.card_theme_mode == "light":
+                self.live_card_bg_color = DEFAULT_LIGHT_BG
+                self.live_title_color = DEFAULT_LIGHT_TITLE
+                self.live_price_color = DEFAULT_LIGHT_PRICE
+                # También actualiza los inputs de personalización si están visibles
+                self.light_card_bg_color_input = DEFAULT_LIGHT_BG
+                self.light_title_color_input = DEFAULT_LIGHT_TITLE
+                self.light_price_color_input = DEFAULT_LIGHT_PRICE
+            else: # Dark mode
+                self.live_card_bg_color = DEFAULT_DARK_BG
+                self.live_title_color = DEFAULT_DARK_TITLE
+                self.live_price_color = DEFAULT_DARK_PRICE
+                # También actualiza los inputs de personalización si están visibles
+                self.dark_card_bg_color_input = DEFAULT_DARK_BG
+                self.dark_title_color_input = DEFAULT_DARK_TITLE
+                self.dark_price_color_input = DEFAULT_DARK_PRICE
+        else:
+            # Si no se usa el estilo predeterminado, carga los colores de los inputs de personalización
+            if self.card_theme_mode == "light":
+                self.live_card_bg_color = self.light_card_bg_color_input
+                self.live_title_color = self.light_title_color_input
+                self.live_price_color = self.light_price_color_input
+            else: # Dark mode
+                self.live_card_bg_color = self.dark_card_bg_color_input
+                self.live_title_color = self.dark_title_color_input
+                self.live_price_color = self.dark_price_color_input
+
+    # --- ✨ 4. MODIFICAR LA FUNCIÓN `set_card_theme_mode` ✨ ---
+    def set_card_theme_mode(self, mode: str):
+        self.card_theme_mode = mode
+        self.update_card_colors() # Llama a update_card_colors para cargar los colores correctos
     
-    # --- Lógica de la Interfaz ---
-    def set_use_default_style(self, is_default: bool):
-        """Maneja el switch de estilo predeterminado."""
-        self.use_default_style = is_default
+    # --- ✨ 5. MODIFICAR LA FUNCIÓN `set_use_default_style` ✨ ---
+    def set_use_default_style(self, checked: bool):
+        self.use_default_style = checked
+        self.update_card_colors() # Llama a update_card_colors para cargar los colores correctos
 
     def toggle_preview_mode(self, mode: str | list[str]):
         """Cambia entre la previsualización del modo claro y oscuro."""
@@ -3151,36 +3195,12 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.toggle_preview_mode("light")
 
     show_color_picker: bool = False
-
-    # Métodos (setters) para cada color picker.
-    def set_card_bg_color(self, color: str):
-        self.card_bg_color = color
-
-    def set_title_color(self, color: str):
-        self.title_color = color
         
     def set_price_color(self, color: str):
         self.price_color = color
 
     def toggle_color_picker(self):
         self.show_color_picker = not self.show_color_picker
-
-    # Métodos para aplicar los presets.
-    @rx.event
-    def apply_light_theme_preset(self):
-        """Aplica los colores predefinidos para un tema claro."""
-        self.card_bg_color = "#FFFFFF"
-        self.title_color = "#1C1C1C"
-        self.price_color = "#6F6F6F"
-        self.card_theme_mode = "light" # <-- Añade esta línea
-
-    @rx.event
-    def apply_dark_theme_preset(self):
-        """Aplica los colores predefinidos para un tema oscuro."""
-        self.card_bg_color = "#1C1C1C"
-        self.title_color = "#F5F5F5"
-        self.price_color = "#A0A0A0"
-        self.card_theme_mode = "dark" # <-- Añade esta línea
 
     # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
 
@@ -3864,8 +3884,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             target_list.remove(value)
 
 
-    temp_images: list[str] = []
-
     async def handle_add_upload(self, files: list[rx.UploadFile]):
         """Maneja la subida de imágenes y las añade a la lista de imágenes disponibles para agrupar."""
         for file in files:
@@ -3983,6 +4001,47 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.generated_variants_map[group_index] = generated_variants
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para el Grupo #{group_index + 1}.")
     # --- ✨ FIN DEL BLOQUE A REEMPLAZAR ✨ ---
+
+    # --- ✨ INICIO: CÓDIGO A AÑADIR (FUNCIONES PARA ELIMINAR) ✨ ---
+
+    def remove_uploaded_image(self, image_name: str):
+        """Elimina una imagen de la lista de imágenes subidas."""
+        if image_name in self.uploaded_images:
+            self.uploaded_images.remove(image_name)
+            # Opcional: podrías eliminar el archivo físico del servidor aquí,
+            # pero ten cuidado si la imagen ya está en un grupo.
+            # Mejor dejar la limpieza de archivos inútiles para un script de mantenimiento.
+
+    def remove_variant_group(self, group_index: int):
+        """Elimina un grupo de variantes y sus imágenes asociadas."""
+        if 0 <= group_index < len(self.variant_groups):
+            # Elimina el grupo de la lista
+            del self.variant_groups[group_index]
+            
+            # También elimina las variantes generadas para ese grupo
+            if group_index in self.generated_variants_map:
+                del self.generated_variants_map[group_index]
+            
+            # Ajusta los índices de los mapas si es necesario (cuando eliminas de en medio)
+            new_generated_variants_map = {}
+            for k, v in self.generated_variants_map.items():
+                if k > group_index:
+                    new_generated_variants_map[k - 1] = v
+                else:
+                    new_generated_variants_map[k] = v
+            self.generated_variants_map = new_generated_variants_map
+
+            # Reinicia la selección de grupo si el eliminado era el seleccionado
+            if self.selected_group_index == group_index:
+                self.selected_group_index = -1
+            elif self.selected_group_index > group_index:
+                self.selected_group_index -= 1 # Ajusta el índice si se eliminó un grupo anterior
+            
+            yield rx.toast.success("Grupo de variantes eliminado.")
+        else:
+            yield rx.toast.error("Error al eliminar el grupo. Índice inválido.")
+
+    # --- ✨ FIN: CÓDIGO A AÑADIR (FUNCIONES PARA ELIMINAR) ✨ ---
     
     # AÑADE ESTA NUEVA FUNCIÓN DENTRO DE LA CLASE AppState
     def update_edit_form_state(self, form_data: dict):
@@ -4605,7 +4664,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     content: str = ""
     price: str = "" 
     category: str = ""
-    temp_images: list[str] = []
 
     @rx.var
     def categories(self) -> list[str]: return [c.value for c in Category]
@@ -4644,19 +4702,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.attr_numeros_calzado = []
         self.attr_tamanos_mochila = []
         # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
-    @rx.event
-    async def handle_upload(self, files: list[rx.UploadFile]):
-        uploaded_filenames = []
-        for file in files:
-            upload_data = await file.read()
-            outfile = rx.get_upload_dir() / file.name
-            outfile.write_bytes(upload_data)
-            uploaded_filenames.append(file.name)
-        self.temp_images.extend(uploaded_filenames)
-
-    @rx.event
-    def remove_image(self, filename: str): self.temp_images.remove(filename)
 
     profit_str: str = ""
 

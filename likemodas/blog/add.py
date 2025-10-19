@@ -75,26 +75,71 @@ def blog_post_add_form() -> rx.Component:
             ),
             rx.text("2. Selecciona imágenes para crear un grupo de color:"),
             rx.flex(
+                 # --- MODIFICACIÓN: AÑADIR ICONO DE ELIMINAR A LAS IMÁGENES SUBIDAS ---
                  rx.foreach(
                     AppState.uploaded_images,
                     lambda img_name: rx.box(
-                        rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
-                        rx.cond(
-                             AppState.image_selection_for_grouping.contains(img_name),
-                            rx.box(
-                                rx.icon("check", color="white", size=18),
-                                bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
-                                 display="flex", align_items="center", justify_content="center"
-                            )
+                        rx.image(
+                            src=rx.get_upload_url(img_name), 
+                            width="60px", height="60px", object_fit="cover", border_radius="md",
+                            border=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "2px solid var(--violet-8)", "2px solid transparent"),
+                            on_click=AppState.toggle_image_selection_for_grouping(img_name),
                         ),
-                        border="2px solid",
-                         border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
-                        border_radius="lg", cursor="pointer", position="relative",
-                        on_click=AppState.toggle_image_selection_for_grouping(img_name),
+                        rx.icon(
+                            "x", # Icono de cierre
+                            position="absolute",
+                            top="-5px",
+                            right="-5px",
+                            size="12px",
+                            color="white",
+                            bg="red",
+                            border_radius="full",
+                            cursor="pointer",
+                            on_click=AppState.remove_uploaded_image(img_name), # <<--- Nuevo evento
+                            z_index="1"
+                        ),
+                        position="relative", # Necesario para posicionar el icono de eliminar
+                    )
+                ),
+                # ... (el foreach para AppState.temp_preview_urls sigue igual si lo implementaste) ...
+                wrap="wrap", spacing="2", padding_top="0.25em",
+             ),
+            rx.button(
+                "Crear Grupo de Color",
+                on_click=AppState.create_variant_group,
+                is_disabled=AppState.image_selection_for_grouping.length() == 0,
+                width="100%",
+            ),
+            rx.text("3. Grupos (Selecciona uno para editar abajo)"),
+            rx.flex(
+                # --- MODIFICACIÓN: AÑADIR ICONO DE ELIMINAR A LOS GRUPOS ---
+                rx.foreach(
+                    AppState.variant_groups,
+                    lambda group_obj, index: rx.box(
+                        rx.image(
+                            src=rx.get_upload_url(group_obj.image_urls[0]),
+                            width="60px", height="60px", object_fit="cover", border_radius="md",
+                            border=rx.cond(AppState.selected_group_index == index, "2px solid var(--violet-8)", "2px solid transparent"),
+                            on_click=AppState.set_selected_group_index(index),
+                        ),
+                        rx.icon(
+                            "x", # Icono de cierre
+                            position="absolute",
+                            top="-5px",
+                            right="-5px",
+                            size="12px",
+                            color="white",
+                            bg="red",
+                            border_radius="full",
+                            cursor="pointer",
+                            on_click=AppState.remove_variant_group(index), # <<--- Nuevo evento
+                            z_index="1"
+                        ),
+                        position="relative", # Necesario para posicionar el icono de eliminar
                     )
                 ),
                 wrap="wrap", spacing="2", padding_top="0.25em",
-             ),
+            ),
             rx.button(
                 "Crear Grupo de Color",
                 on_click=AppState.create_variant_group,
