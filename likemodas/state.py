@@ -5056,6 +5056,21 @@ class AppState(reflex_local_auth.LocalAuthState):
     preview_offset_x: int = 0
     preview_offset_y: int = 0
 
+    @rx.var
+    def preview_main_image_url(self) -> str:
+        """
+        Calcula de forma eficiente en el backend la URL de la imagen principal 
+        para la previsualización del producto.
+        """
+        # Si hay grupos de variantes creados...
+        if self.variant_groups:
+            # Y el primer grupo tiene URLs de imágenes...
+            if self.variant_groups[0].image_urls:
+                # Devuelve la primera URL.
+                return self.variant_groups[0].image_urls[0]
+        # Si no se cumple alguna de las condiciones, devuelve una cadena vacía.
+        return ""
+
     # Setters para los sliders (con la corrección para evitar Warnings)
     def set_preview_zoom(self, value: list[Union[int, float]]):
         """Actualiza el estado del zoom desde el slider."""
