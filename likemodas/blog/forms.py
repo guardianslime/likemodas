@@ -251,10 +251,10 @@ def blog_post_add_form() -> rx.Component:
 # =============================================================================
 def blog_post_edit_form() -> rx.Component:
     """
-    [NUEVA VERSIÓN] Formulario para EDITAR una publicación, ahora con toda la
-    funcionalidad de grupos, variantes, stock y estilos, y campos completos.
+    [VERSIÓN CORREGIDA] Formulario para EDITAR una publicación.
     """
     def image_and_group_section() -> rx.Component:
+        # La función interna 'render_group_card' no cambia.
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.edit_selected_group_index == index
             return rx.box(
@@ -286,8 +286,8 @@ def blog_post_edit_form() -> rx.Component:
                         rx.cond(
                             AppState.edit_image_selection_for_grouping.contains(img_name),
                             rx.box(
-                                # --- ✨ LÍNEA CORREGIDA (VERSIÓN EDITAR) ✨ ---
-                                # Usamos el nuevo mapa computado en lugar de .index()
+                                # --- ✨ LÍNEA CORREGIDA QUE SOLUCIONA EL ERROR ✨ ---
+                                # Usamos el nuevo mapa computado en lugar del problemático .index()
                                 rx.text(
                                     AppState.edit_selection_order_map[img_name],
                                     color="white", weight="bold", font_size="1.2em",

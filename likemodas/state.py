@@ -4113,51 +4113,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ 2. NUEVOS MANEJADORES DE EVENTOS PARA REORDENAR ✨ ---
     @rx.event
     def move_image_in_selection(self, image_name: str, direction: int):
-        """
-        Mueve una imagen hacia adelante (direction=1) o hacia atrás (direction=-1)
-        en la lista de selección del formulario de creación.
-        """
+        """Mueve una imagen en la selección del formulario de CREACIÓN."""
         if image_name in self.image_selection_for_grouping:
             current_index = self.image_selection_for_grouping.index(image_name)
             new_index = current_index + direction
-            
-            # Asegura que el nuevo índice esté dentro de los límites de la lista
             if 0 <= new_index < len(self.image_selection_for_grouping):
-                # Saca el elemento de su posición actual y lo reinserta en la nueva
                 self.image_selection_for_grouping.insert(new_index, self.image_selection_for_grouping.pop(current_index))
 
     @rx.event
     def move_edit_image_in_selection(self, image_name: str, direction: int):
-        """
-        Mueve una imagen en la selección del formulario de edición.
-        """
+        """Mueve una imagen en la selección del formulario de EDICIÓN."""
         if image_name in self.edit_image_selection_for_grouping:
             current_index = self.edit_image_selection_for_grouping.index(image_name)
             new_index = current_index + direction
             if 0 <= new_index < len(self.edit_image_selection_for_grouping):
                 self.edit_image_selection_for_grouping.insert(new_index, self.edit_image_selection_for_grouping.pop(current_index))
-    # --- ✨ FIN DE NUEVOS MANEJADORES ✨ ---
 
-    # --- ✨ 3. MODIFICACIÓN DE MANEJADORES EXISTENTES ✨ ---
+    # 4. Asegúrate de que tus funciones de 'toggle' y 'create' usen listas.
     def toggle_image_selection_for_grouping(self, filename: str):
-        """
-        Añade o quita una imagen de la lista de selección.
-        Ahora usa .append() y .remove() en lugar de la lógica de 'set'.
-        """
+        """Añade o quita una imagen de la lista de selección."""
         if filename in self.image_selection_for_grouping:
             self.image_selection_for_grouping.remove(filename)
         else:
             self.image_selection_for_grouping.append(filename)
 
     def create_variant_group(self):
-        """
-        Crea un nuevo grupo de variantes. Ahora usará la lista ordenada
-        directamente y se reiniciará a una lista vacía.
-        """
+        """Crea un nuevo grupo de variantes con las imágenes ordenadas."""
         if not self.image_selection_for_grouping:
             return rx.toast.error("Debes seleccionar al menos una imagen.")
         
-        # La lista ya está ordenada gracias a la UI, así que la usamos directamente.
         new_group = VariantGroupDTO(image_urls=self.image_selection_for_grouping)
         self.variant_groups.append(new_group)
         
@@ -4165,7 +4149,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if filename in self.uploaded_images:
                 self.uploaded_images.remove(filename)
         
-        self.image_selection_for_grouping = [] # Se resetea a una lista vacía
+        self.image_selection_for_grouping = [] # Resetea a una lista vacía
         self.select_group_for_editing(len(self.variant_groups) - 1)
 
     def select_group_for_editing(self, group_index: int):
