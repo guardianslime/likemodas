@@ -90,7 +90,7 @@ def blog_post_add_form() -> rx.Component:
             )
 
         # Componente para una imagen en la lista de seleccionadas y reordenables
-        def selected_image_card(img_name: str, index: int) -> rx.Component:
+        def selected_image_card(img_name: str, index: int, on_click_handler: rx.EventSpec) -> rx.Component:
             return rx.box(
                 rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                 # Indicador numérico
@@ -105,7 +105,8 @@ def blog_post_add_form() -> rx.Component:
                 # Botón para eliminar de la selección
                 rx.icon(
                     "x",
-                    on_click=AppState.toggle_image_selection_for_grouping(img_name),
+                    # AHORA USA EL MANEJADOR PASADO COMO ARGUMENTO
+                    on_click=on_click_handler,
                     style={
                         "position": "absolute", "top": "-5px", "right": "-5px",
                         "background": "var(--red-9)", "color": "white",
@@ -143,7 +144,10 @@ def blog_post_add_form() -> rx.Component:
             sortable_js(
                 rx.foreach(
                     AppState.image_selection_for_grouping,
-                    selected_image_card
+                    # Usamos una lambda para pasar el manejador correcto a nuestra función
+                    lambda img, index: selected_image_card(
+                        img, index, AppState.toggle_image_selection_for_grouping(img)
+                    )
                 ),
                 display="flex",
                 flex_wrap="wrap",
@@ -153,8 +157,7 @@ def blog_post_add_form() -> rx.Component:
                 padding="0.5rem",
                 border="1px dashed var(--gray-a6)",
                 border_radius="md",
-                # Conectamos el evento de arrastrar con el manejador en el estado
-                on_end=AppState.reorder_selected_images,
+                on_end=AppState.reorder_selected_images, # Conectamos el evento
             ),
 
             rx.button(
