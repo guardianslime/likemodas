@@ -3514,8 +3514,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.is_imported = value
     # --- FIN ---
 
+    @rx.event
+    def sync_preview_with_color_mode(self, color_mode: str):
+        """
+        Sincroniza el estado de la previsualización con el modo de color
+        actual de la aplicación al cargar el componente.
+        """
+        # Reutilizamos la función que ya teníamos para cambiar de modo
+        yield self.toggle_preview_mode(color_mode)
+
     # --- ⚙️ INICIO: NUEVAS VARIABLES DE ESTADO PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
-    
+
     # Datos básicos del post en edición
     post_to_edit_id: Optional[int] = None
     edit_post_title: str = ""

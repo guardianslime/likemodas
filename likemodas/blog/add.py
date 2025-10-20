@@ -418,9 +418,9 @@ def blog_post_add_content() -> rx.Component:
             width="100%", spacing="4", align_items="center",
             padding_left={"lg": "15em"}, padding_x=["1em", "2em"],
         ),
+        # --- ✅ CORRECCIÓN AQUÍ: Se añade el evento on_mount ---
         rx.vstack(
             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-            # --- ✅ LLAMADA CORREGIDA A post_preview CON ARGUMENTOS ✅ ---
             post_preview(
                 title=AppState.title,
                 price_cop=AppState.price_cop_preview,
@@ -482,6 +482,7 @@ def blog_post_add_content() -> rx.Component:
             image_editor_panel,
             display={"initial": "none", "lg": "flex"},
             width="100%", spacing="4", position="sticky", top="2em", align_items="center",
+            on_mount=AppState.sync_preview_with_color_mode(rx.color_mode), # <-- LÍNEA AÑADIDA
         ),
         columns={"initial": "1", "lg": "auto auto"},
         justify="center",

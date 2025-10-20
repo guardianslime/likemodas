@@ -89,6 +89,7 @@ def edit_post_dialog() -> rx.Component:
                 
                 # --- ✅ CORRECCIÓN 2: Se le da un ancho fijo al contenedor de la previsualización ---
                 # Esto evita que el grid comprima la tarjeta y cause que los elementos se desordenen.
+                # --- ✅ CORRECCIÓN AQUÍ: Se añade el evento on_mount ---
                 rx.vstack(
                     post_preview(
                         title=AppState.edit_post_title,
@@ -103,18 +104,18 @@ def edit_post_dialog() -> rx.Component:
                     ),
                     personalizar_tarjeta_panel,
                     ajustar_imagen_panel,
-                    display=["none", "none", "flex"], # Ocultar en móvil
+                    display=["none", "none", "flex"],
                     spacing="4", 
                     position="sticky", 
                     top="0",
-                    width="320px", # Ancho fijo para proteger el layout interno
+                    width="320px",
+                    on_mount=AppState.sync_preview_with_color_mode(rx.color_mode), # <-- LÍNEA AÑADIDA
                 ),
-                columns={"initial": "1", "lg": "auto 320px"}, # Columnas ajustadas
+                columns={"initial": "1", "lg": "auto 320px"},
                 spacing="6", 
                 width="100%", 
                 padding_top="1em",
             ),
-            # Se ajusta el max_height del contenido para que el modal se adapte mejor
             style={"max_width": "1400px", "width": "95%", "max_height": "90vh", "overflow_y": "auto"},
         ),
         open=AppState.is_editing_post,
