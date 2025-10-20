@@ -320,15 +320,18 @@ def post_preview(
                 ),
                 rx.spacer(),
 
-                # --- ✅ CORRECCIÓN CLAVE AQUÍ: Se restaura la estructura original de los badges ---
                 rx.vstack(
+                    # --- ✅ CORRECCIÓN FINAL AQUÍ ---
+                    # Se restaura el espaciado original a "3" y se mantiene la regla "nowrap".
                     rx.hstack(
                         _preview_badge(shipping_cost_badge_text, "gray"),
                         rx.cond(
                             is_moda_completa,
                             rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
                         ),
-                        spacing="3", align="center",
+                        spacing="3",          # Espaciado restaurado a su valor original
+                        flex_wrap="nowrap",   # Se mantiene para garantizar que no se rompa la línea
+                        align="center",
                     ),
                     rx.cond(
                         combines_shipping,
@@ -338,7 +341,6 @@ def post_preview(
                     align_items="start",
                     width="100%",
                 ),
-                # --- FIN DE LA CORRECCIÓN ---
 
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),

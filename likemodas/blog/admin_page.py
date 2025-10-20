@@ -83,6 +83,7 @@ def edit_post_dialog() -> rx.Component:
             rx.grid(
                 blog_post_edit_form(),
                 
+                # --- ✅ CORRECCIÓN 1: Se amplía el ancho del contenedor ---
                 rx.vstack(
                     post_preview(
                         title=AppState.edit_post_title,
@@ -97,14 +98,14 @@ def edit_post_dialog() -> rx.Component:
                     ),
                     personalizar_tarjeta_panel,
                     ajustar_imagen_panel,
-                    # La propiedad 'display' fue eliminada para que sea visible en móvil
                     spacing="4", 
                     position="sticky", 
                     top="0",
-                    width="320px", # Ancho fijo para proteger el layout
+                    width="350px", # <-- Ancho ampliado de 320px a 350px
                     on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
-                columns={"initial": "1", "lg": "auto 320px"},
+                # --- ✅ CORRECCIÓN 2: Se asigna el nuevo ancho a la columna del grid ---
+                columns={"initial": "1", "lg": "auto 350px"}, # <-- Ancho ampliado de 320px a 350px
                 spacing="6", 
                 width="100%", 
                 padding_top="1em",
