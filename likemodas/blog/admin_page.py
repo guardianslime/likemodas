@@ -86,11 +86,20 @@ def edit_post_dialog() -> rx.Component:
                 rx.scroll_area(
                     blog_post_edit_form(),
                     type="auto", scrollbars="vertical",
-                    max_height=["auto", "auto", "70vh"],
-                    padding_right="1.5em"
+                    max_height="70vh", # Ajustado para evitar scroll innecesario si cabe
+                    padding_right="1.5em",
+                    width="100%", # Asegura que el scroll_area tome el ancho completo
                 ),
                 rx.vstack(
-                    post_preview(),
+                    # La previsualización ahora recibe los datos del estado de EDICIÓN
+                    post_preview(
+                        title=AppState.edit_post_title,
+                        price=AppState.edit_price_str,
+                        image_url=AppState.edit_main_image_url_for_preview, # Corregido para usar la imagen principal del grupo
+                        is_moda_completa_eligible=AppState.edit_is_moda_completa,
+                        is_imported=AppState.edit_is_imported,
+                        is_product_page_preview=False, # Esto debería ser True para que muestre el precio completo
+                    ),
                     personalizar_tarjeta_panel,
                     ajustar_imagen_panel,
                     display=["none", "none", "flex"],
@@ -167,7 +176,7 @@ def qr_display_modal() -> rx.Component:
     )
 
 def desktop_post_row(post: AdminPostRowData) -> rx.Component:
-    """Componente para una fila de la tabla de administración, con auditoría e imagen corregida."""
+    """ Fila de la tabla de admin, con la imagen corregida. """
     return rx.table.row(
         rx.table.cell(
             rx.cond(

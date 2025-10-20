@@ -1,7 +1,7 @@
 # En: likemodas/blog/forms.py (VERSIÓN COMPLETA Y CORREGIDA)
 
 import reflex as rx
-from ..state import AppState, VariantGroupDTO
+from ..state import AppState, VariantGroupDTO, VariantFormData
 from ..models import Category
 from ..ui.components import searchable_select
 from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
@@ -104,7 +104,7 @@ def blog_post_add_form() -> rx.Component:
                                      rx.foreach(
                                         AppState.generated_variants_map[AppState.selected_group_index],
                                         lambda variant, var_index: rx.hstack(
-                                            rx.text(variant.attributes["Talla"]), rx.spacer(),
+                                            rx.text(variant.attributes.get("Talla", "N/A")), rx.spacer(),
                                             rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
                                             rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
                                             rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
@@ -125,8 +125,6 @@ def blog_post_add_form() -> rx.Component:
         )
     
     return rx.vstack(
-        # Este return no es un <form> para evitar envíos accidentales
-        # El envío se maneja con un botón específico al final de la página
         rx.grid(
             # Columna izquierda
             rx.vstack(
@@ -154,10 +152,31 @@ def blog_post_add_form() -> rx.Component:
                     columns="2", spacing="4"
                 ),
                 rx.grid(
-                    rx.vstack(rx.text("Costo de Envío Mínimo (Local)"), rx.input(value=AppState.shipping_cost_str, on_change=AppState.set_shipping_cost_str, placeholder="Ej: 3000"), rx.text("El costo final aumentará según la distancia.", size="1", color_scheme="gray"), align_items="stretch"),
-                    rx.vstack(rx.text("Moda Completa"), rx.hstack(rx.switch(is_checked=AppState.is_moda_completa, on_change=AppState.set_is_moda_completa), rx.text(rx.cond(AppState.is_moda_completa, "Activo", "Inactivo"))), rx.input(value=AppState.free_shipping_threshold_str, on_change=AppState.set_free_shipping_threshold_str, is_disabled=~AppState.is_moda_completa), rx.text("Envío gratis en compras > $XXX.XXX", size="1", color_scheme="gray"), align_items="stretch"),
-                    rx.vstack(rx.text("Envío Combinado"), rx.hstack(rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping), rx.text(rx.cond(AppState.combines_shipping, "Activo", "Inactivo"))), rx.text("Permite que varios productos usen un solo envío.", size="1", color_scheme="gray"), align_items="stretch"),
-                    rx.vstack(rx.text("Límite de Productos"), rx.input(value=AppState.shipping_combination_limit_str, on_change=AppState.set_shipping_combination_limit_str, is_disabled=~AppState.combines_shipping), rx.text("Máx. de items por envío.", size="1", color_scheme="gray"), align_items="stretch"),
+                    rx.vstack(
+                        rx.text("Costo de Envío Mínimo (Local)"), 
+                        rx.input(value=AppState.shipping_cost_str, on_change=AppState.set_shipping_cost_str, placeholder="Ej: 3000"), 
+                        rx.text("El costo final aumentará según la distancia.", size="1", color_scheme="gray"), 
+                        align_items="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Moda Completa"), 
+                        rx.hstack(rx.switch(is_checked=AppState.is_moda_completa, on_change=AppState.set_is_moda_completa), rx.text(rx.cond(AppState.is_moda_completa, "Activo", "Inactivo"))), 
+                        rx.input(value=AppState.free_shipping_threshold_str, on_change=AppState.set_free_shipping_threshold_str, is_disabled=~AppState.is_moda_completa, placeholder="Monto para envío gratis"), 
+                        rx.text("Envío gratis en compras > este monto.", size="1", color_scheme="gray"), 
+                        align_items="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Envío Combinado"), 
+                        rx.hstack(rx.switch(is_checked=AppState.combines_shipping, on_change=AppState.set_combines_shipping), rx.text(rx.cond(AppState.combines_shipping, "Activo", "Inactivo"))), 
+                        rx.text("Permite que varios productos usen un solo envío.", size="1", color_scheme="gray"), 
+                        align_items="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Límite de Productos"), 
+                        rx.input(value=AppState.shipping_combination_limit_str, on_change=AppState.set_shipping_combination_limit_str, is_disabled=~AppState.combines_shipping, placeholder="Máx. de items por envío"), 
+                        rx.text("Máx. de items por envío combinado.", size="1", color_scheme="gray"), 
+                        align_items="stretch"
+                    ),
                     columns="2", spacing="4"
                 ),
                 rx.vstack(
@@ -178,12 +197,12 @@ def blog_post_add_form() -> rx.Component:
 
 
 # =============================================================================
-# FORMULARIO DE EDICIÓN (COMPLETAMENTE RECONSTRUIDO)
+# FORMULARIO DE EDICIÓN (COMPLETAMENTE RECONSTRUIDO Y CORREGIDO)
 # =============================================================================
 def blog_post_edit_form() -> rx.Component:
     """
     [NUEVA VERSIÓN] Formulario para EDITAR una publicación, ahora con toda la 
-    funcionalidad de grupos, variantes, stock y estilos.
+    funcionalidad de grupos, variantes, stock y estilos, y campos completos.
     """
     def image_and_group_section() -> rx.Component:
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
@@ -305,10 +324,31 @@ def blog_post_edit_form() -> rx.Component:
                     columns="2", spacing="4"
                 ),
                 rx.grid(
-                    rx.vstack(rx.text("Costo de Envío Mínimo"), rx.input(name="edit_shipping_cost_str", value=AppState.edit_shipping_cost_str, on_change=AppState.set_edit_shipping_cost_str)),
-                    rx.vstack(rx.text("Moda Completa"), rx.hstack(rx.switch(is_checked=AppState.edit_is_moda_completa, on_change=AppState.set_edit_is_moda_completa), rx.text(rx.cond(AppState.edit_is_moda_completa, "Activo", "Inactivo")))),
-                    rx.vstack(rx.text("Envío Combinado"), rx.hstack(rx.switch(is_checked=AppState.edit_combines_shipping, on_change=AppState.set_edit_combines_shipping), rx.text(rx.cond(AppState.edit_combines_shipping, "Activo", "Inactivo")))),
-                    rx.vstack(rx.text("Límite Combinado"), rx.input(name="edit_shipping_combination_limit_str", value=AppState.edit_shipping_combination_limit_str, on_change=AppState.set_edit_shipping_combination_limit_str, is_disabled=~AppState.edit_combines_shipping)),
+                    rx.vstack(
+                        rx.text("Costo de Envío Mínimo (Local)"), 
+                        rx.input(name="edit_shipping_cost_str", value=AppState.edit_shipping_cost_str, on_change=AppState.set_edit_shipping_cost_str, placeholder="Ej: 3000"), 
+                        rx.text("El costo final aumentará según la distancia.", size="1", color_scheme="gray"), 
+                        align_items="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Moda Completa"), 
+                        rx.hstack(rx.switch(is_checked=AppState.edit_is_moda_completa, on_change=AppState.set_edit_is_moda_completa), rx.text(rx.cond(AppState.edit_is_moda_completa, "Activo", "Inactivo"))), 
+                        rx.input(value=AppState.edit_free_shipping_threshold_str, on_change=AppState.set_edit_free_shipping_threshold_str, is_disabled=~AppState.edit_is_moda_completa, placeholder="Monto para envío gratis"), 
+                        rx.text("Envío gratis en compras > este monto.", size="1", color_scheme="gray"), 
+                        align_items="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Envío Combinado"), 
+                        rx.hstack(rx.switch(is_checked=AppState.edit_combines_shipping, on_change=AppState.set_edit_combines_shipping), rx.text(rx.cond(AppState.edit_combines_shipping, "Activo", "Inactivo"))), 
+                        rx.text("Permite que varios productos usen un solo envío.", size="1", color_scheme="gray"), 
+                        align_items="stretch"
+                    ),
+                    rx.vstack(
+                        rx.text("Límite de Productos"), 
+                        rx.input(value=AppState.edit_shipping_combination_limit_str, on_change=AppState.set_edit_shipping_combination_limit_str, is_disabled=~AppState.edit_combines_shipping, placeholder="Máx. de items por envío"), 
+                        rx.text("Máx. de items por envío combinado.", size="1", color_scheme="gray"), 
+                        align_items="stretch"
+                    ),
                     columns="2", spacing="4", width="100%",
                 ),
                 rx.vstack(
