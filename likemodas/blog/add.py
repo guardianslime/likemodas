@@ -58,7 +58,7 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     wrap="wrap", spacing="2",
                 ),
-                # ✨ ICONO DE ELIMINAR PARA GRUPOS ✨
+                # ✨ ICONO DE ELIMINAR PARA GRUPOS 
                 rx.icon(
                     "trash-2",
                     on_click=AppState.remove_variant_group(index),
