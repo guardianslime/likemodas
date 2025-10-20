@@ -1,4 +1,4 @@
-# likemodas/ui/sortable.py (CORREGIDO)
+# likemodas/ui/sortable.py (CORREGIDO Y FINAL)
 
 import reflex as rx
 from reflex.components.component import NoSSRComponent
@@ -52,21 +52,27 @@ export const SortableWrapper = (props) => {
     def _render(self):
         """
         Renderiza el componente, construyendo manualmente la cadena de propiedades
-        para evitar el SyntaxError de Python.
+        a partir del conjunto de nombres de props.
         """
-        # Obtenemos las propiedades como un diccionario
-        props = self.get_props()
-        # Los 'children' se manejan por separado
-        props.pop("children", None)
-
-        # Creamos una cadena de texto con las propiedades en formato JSX
-        # Ej: on_end={_on_end_5c1b} style={{...}}
-        prop_str = " ".join(f"{key}={{{value}}}" for key, value in props.items())
+        # 1. Obtenemos el conjunto de nombres de las propiedades.
+        prop_names = self.get_props()
         
-        # Obtenemos el nombre de la variable de los children para interpolarla
+        # 2. Construimos un diccionario de `nombre: valor` a partir de esos nombres.
+        props_dict = {
+            prop_name: getattr(self, prop_name)
+            for prop_name in prop_names
+        }
+
+        # 3. Ahora que tenemos un diccionario, podemos usar .pop() de forma segura.
+        props_dict.pop("children", None)
+
+        # 4. Creamos la cadena de texto con las propiedades en formato JSX.
+        prop_str = " ".join(f"{key}={{{value}}}" for key, value in props_dict.items())
+        
+        # 5. Obtenemos el nombre de la variable de los children para interpolarla.
         children_str = f"{{ {self.children._var_full_name_unwrapped} }}" if self.children else ""
 
-        # Construimos el HTML final
+        # 6. Construimos el HTML final.
         return rx.fragment(
             rx.chakra.html(
                 f"<SortableWrapper {prop_str}>{children_str}</SortableWrapper>"
