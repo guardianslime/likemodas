@@ -83,11 +83,13 @@ def edit_post_dialog() -> rx.Component:
             rx.dialog.description("Modifica los detalles, gestiona variantes y personaliza la apariencia de tu producto."),
             
             rx.grid(
-                # --- ✅ SE ELIMINA EL rx.scroll_area PARA QUE EL FORMULARIO SE MUESTRE COMPLETO ✅ ---
+                # --- ✅ CORRECCIÓN 1: Se elimina el rx.scroll_area del formulario ---
+                # El propio modal se encargará del scroll si el contenido es muy alto.
                 blog_post_edit_form(),
                 
+                # --- ✅ CORRECCIÓN 2: Se le da un ancho fijo al contenedor de la previsualización ---
+                # Esto evita que el grid comprima la tarjeta y cause que los elementos se desordenen.
                 rx.vstack(
-                    # --- ✅ LLAMADA CORREGIDA A post_preview CON LAS VARIABLES DE EDICIÓN ✅ ---
                     post_preview(
                         title=AppState.edit_post_title,
                         price_cop=AppState.edit_price_cop_preview,
@@ -101,13 +103,19 @@ def edit_post_dialog() -> rx.Component:
                     ),
                     personalizar_tarjeta_panel,
                     ajustar_imagen_panel,
-                    display=["none", "none", "flex"],
-                    spacing="4", position="sticky", top="0",
+                    display=["none", "none", "flex"], # Ocultar en móvil
+                    spacing="4", 
+                    position="sticky", 
+                    top="0",
+                    width="320px", # Ancho fijo para proteger el layout interno
                 ),
-                columns={"initial": "1", "lg": "2fr 1fr"},
-                spacing="6", width="100%", padding_top="1em",
+                columns={"initial": "1", "lg": "auto 320px"}, # Columnas ajustadas
+                spacing="6", 
+                width="100%", 
+                padding_top="1em",
             ),
-            style={"max_width": "1400px", "width": "95%"},
+            # Se ajusta el max_height del contenido para que el modal se adapte mejor
+            style={"max_width": "1400px", "width": "95%", "max_height": "90vh", "overflow_y": "auto"},
         ),
         open=AppState.is_editing_post,
         on_open_change=AppState.cancel_editing_post,

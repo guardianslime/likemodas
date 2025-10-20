@@ -3802,6 +3802,28 @@ class AppState(reflex_local_auth.LocalAuthState):
             self._update_edit_preview_image() # Asegurar que la imagen de previsualización se cargue
 
     # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA PREVISUALIZACIÓN DE EDICIÓN ✨ ---
+
+    def _update_edit_preview_image(self):
+        """
+        [NUEVA FUNCIÓN] Actualiza la URL de la imagen principal para la previsualización en el modal de edición.
+        """
+        self.edit_main_image_url_for_preview = ""
+        # Primero, intenta usar la primera imagen del grupo actualmente seleccionado.
+        if self.edit_selected_group_index != -1 and 0 <= self.edit_selected_group_index < len(self.edit_variant_groups):
+            selected_group = self.edit_variant_groups[self.edit_selected_group_index]
+            if selected_group.image_urls:
+                self.edit_main_image_url_for_preview = selected_group.image_urls[0]
+                return
+
+        # Si no hay un grupo seleccionado o no tiene imágenes, usa la primera imagen del primer grupo como respaldo.
+        if self.edit_variant_groups and self.edit_variant_groups[0].image_urls:
+            self.edit_main_image_url_for_preview = self.edit_variant_groups[0].image_urls[0]
+            return
+        
+        # Si no hay grupos, usa la primera imagen que aún no ha sido agrupada.
+        if self.edit_uploaded_images:
+            self.edit_main_image_url_for_preview = self.edit_uploaded_images[0]
+
     @rx.var
     def edit_price_cop_preview(self) -> str:
         try: price_float = float(self.edit_price_str) if self.edit_price_str else 0.0
