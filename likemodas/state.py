@@ -4331,7 +4331,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     def reorder_selected_images(self, old_index: int, new_index: int):
         """Reordena la lista de imágenes seleccionadas para un nuevo grupo."""
         if 0 <= old_index < len(self.image_selection_for_grouping) and 0 <= new_index < len(self.image_selection_for_grouping):
+            # Extrae el elemento de su posición original
             item = self.image_selection_for_grouping.pop(old_index)
+            # Inserta el elemento en la nueva posición
             self.image_selection_for_grouping.insert(new_index, item)
 
     @rx.event
@@ -4340,6 +4342,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         if 0 <= old_index < len(self.edit_image_selection_for_grouping) and 0 <= new_index < len(self.edit_image_selection_for_grouping):
             item = self.edit_image_selection_for_grouping.pop(old_index)
             self.edit_image_selection_for_grouping.insert(new_index, item)
+        # Actualiza la previsualización por si la primera imagen cambió
+        self._update_edit_preview_image()
 
     @rx.event
     def create_edit_variant_group(self):

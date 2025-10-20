@@ -282,7 +282,10 @@ def blog_post_edit_form() -> rx.Component:
             sortable_js(
                 rx.foreach(
                     AppState.edit_image_selection_for_grouping,
-                    selected_image_card
+                    # Aquí usamos una lambda para conectar el manejador de eliminación correcto
+                    lambda img, index: selected_image_card(img, index).add_props(
+                        on_click_icon=AppState.toggle_edit_image_selection_for_grouping(img)
+                    )
                 ),
                 display="flex",
                 flex_wrap="wrap",
@@ -292,6 +295,7 @@ def blog_post_edit_form() -> rx.Component:
                 padding="0.5rem",
                 border="1px dashed var(--gray-a6)",
                 border_radius="md",
+                # Conectamos al manejador de eventos de EDICIÓN
                 on_end=AppState.reorder_edit_selected_images,
             ),
             

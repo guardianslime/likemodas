@@ -153,7 +153,8 @@ def blog_post_add_form() -> rx.Component:
                 padding="0.5rem",
                 border="1px dashed var(--gray-a6)",
                 border_radius="md",
-                on_end=AppState.reorder_selected_images, # Conectamos el evento
+                # Conectamos el evento de arrastrar con el manejador en el estado
+                on_end=AppState.reorder_selected_images,
             ),
 
             rx.button(
