@@ -3813,6 +3813,26 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA PREVISUALIZACIÓN DE EDICIÓN ✨ ---
 
     @rx.var
+    def selection_order_map(self) -> dict[str, int]:
+        """
+        Crea un mapa que asocia cada imagen en la lista de selección
+        con su número de orden (índice + 1) para el formulario de CREACIÓN.
+        """
+        return {
+            img: i + 1 for i, img in enumerate(self.image_selection_for_grouping)
+        }
+
+    @rx.var
+    def edit_selection_order_map(self) -> dict[str, int]:
+        """
+        Crea un mapa que asocia cada imagen en la lista de selección
+        con su número de orden (índice + 1) para el formulario de EDICIÓN.
+        """
+        return {
+            img: i + 1 for i, img in enumerate(self.edit_image_selection_for_grouping)
+        }
+
+    @rx.var
     def first_image_url(self) -> str:
         """
         [CORREGIDO] Devuelve la URL de la primera imagen para la previsualización,

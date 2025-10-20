@@ -15,7 +15,12 @@ def blog_post_add_form() -> rx.Component:
     """
     # --- Componentes internos de la UI ---
     def image_and_group_section() -> rx.Component:
+        """
+        Componente de UI para la gestión de imágenes. Permite subir, seleccionar,
+        ordenar numéricamente y agrupar imágenes para crear variantes de productos.
+        """
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
+            """Renderiza una tarjeta para un grupo de variantes ya creado."""
             is_selected = AppState.selected_group_index == index
             return rx.box(
                 rx.flex(
@@ -25,7 +30,16 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     wrap="wrap", spacing="2",
                 ),
-                rx.icon("trash-2", on_click=AppState.remove_variant_group(index), style={"position": "absolute", "top": "-8px", "right": "-8px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "20px", "height": "20px"}),
+                rx.icon(
+                    "trash-2",
+                    on_click=AppState.remove_variant_group(index),
+                    style={
+                        "position": "absolute", "top": "-8px", "right": "-8px",
+                        "background": "var(--red-9)", "color": "white",
+                        "border_radius": "50%", "padding": "2px", "cursor": "pointer",
+                        "width": "20px", "height": "20px"
+                    }
+                ),
                 position="relative",
                 border_width="2px",
                 border_color=rx.cond(is_selected, "var(--violet-9)", "transparent"),
@@ -36,22 +50,53 @@ def blog_post_add_form() -> rx.Component:
         return rx.vstack(
             rx.text("1. Subir Imágenes (máx 10)", weight="bold"),
             rx.upload(
-                 rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
+                rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
                 id="blog_upload", multiple=True, max_files=10,
                 on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
             rx.text("2. Selecciona imágenes para crear un grupo de color:"),
             rx.flex(
-                 rx.foreach(
+                rx.foreach(
                     AppState.uploaded_images,
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
+                        
+                        # --- Lógica para mostrar el orden numérico y las flechas ---
                         rx.cond(
                             AppState.image_selection_for_grouping.contains(img_name),
-                            rx.box(rx.icon("check", color="white", size=18), bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md", display="flex", align_items="center", justify_content="center")
+                            rx.box(
+                                # Muestra el número de orden usando el mapa computado
+                                rx.text(
+                                    AppState.selection_order_map[img_name],
+                                    color="white", weight="bold", font_size="1.2em",
+                                ),
+                                # Flechas para reordenar la selección
+                                rx.hstack(
+                                    rx.icon("arrow-left", size=14, on_click=AppState.move_image_in_selection(img_name, -1), cursor="pointer", _hover={"color": "var(--violet-9)"}),
+                                    rx.icon("arrow-right", size=14, on_click=AppState.move_image_in_selection(img_name, 1), cursor="pointer", _hover={"color": "var(--violet-9)"}),
+                                    spacing="1",
+                                    position="absolute", bottom="2px", left="50%",
+                                    transform="translateX(-50%)", bg="rgba(255, 255, 255, 0.7)",
+                                    border_radius="sm", padding="0 2px",
+                                ),
+                                bg="rgba(90, 40, 180, 0.7)", 
+                                position="absolute", inset="0", border_radius="md",
+                                display="flex", align_items="center", justify_content="center"
+                            )
                         ),
-                        rx.icon("x", on_click=AppState.remove_uploaded_image(img_name), style={"position": "absolute", "top": "-5px", "right": "-5px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "1px", "cursor": "pointer", "width": "16px", "height": "16px"}),
+                        
+                        # Icono para eliminar una imagen individual de la subida
+                        rx.icon(
+                            "x",
+                            on_click=AppState.remove_uploaded_image(img_name),
+                            style={
+                                "position": "absolute", "top": "-5px", "right": "-5px",
+                                "background": "var(--red-9)", "color": "white",
+                                "border_radius": "50%", "padding": "1px", "cursor": "pointer",
+                                "width": "16px", "height": "16px"
+                            }
+                        ),
                         position="relative",
                         border="2px solid",
                         border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
@@ -60,8 +105,13 @@ def blog_post_add_form() -> rx.Component:
                     )
                 ),
                 wrap="wrap", spacing="2", padding_top="0.25em",
-             ),
-            rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%", type="button"),
+            ),
+            rx.button(
+                "Crear Grupo de Color",
+                on_click=AppState.create_variant_group,
+                margin_top="0.5em", width="100%",
+                type="button",
+            ),
             rx.divider(margin_y="1em"),
             rx.text("3. Grupos (Selecciona uno para editar abajo):"),
             rx.flex(rx.foreach(AppState.variant_groups, render_group_card), wrap="wrap", spacing="2"),

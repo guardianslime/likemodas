@@ -97,10 +97,8 @@ def blog_post_add_form() -> rx.Component:
                             rx.box(
                                 # Muestra el número de orden en lugar de un check
                                 rx.text(
-                                    AppState.image_selection_for_grouping.index(img_name) + 1,
-                                    color="white",
-                                    weight="bold",
-                                    font_size="1.2em",
+                                    AppState.selection_order_map[img_name],
+                                    color="white", weight="bold", font_size="1.2em",
                                 ),
                                 # Flechas para reordenar
                                 rx.hstack(
