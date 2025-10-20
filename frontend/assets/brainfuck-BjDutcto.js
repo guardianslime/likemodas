@@ -1,1 +1,0 @@
-import{b as e}from"./chunk-BCmksqYJ.js";var t=e(((exports,t)=>{t.exports=n,n.displayName=`brainfuck`,n.aliases=[];function n(e){e.languages.brainfuck={pointer:{pattern:/<|>/,alias:`keyword`},increment:{pattern:/\+/,alias:`inserted`},decrement:{pattern:/-/,alias:`deleted`},branching:{pattern:/\[|\]/,alias:`important`},operator:/[.,]/,comment:/\S+/}}}));export default t();

@@ -12,10 +12,9 @@ from rx_color_picker.color_picker import color_picker
 
 def edit_post_dialog() -> rx.Component:
     """
-    [NUEVA VERSIÓN] El diálogo modal, ahora con un layout de dos columnas
-    que incluye el formulario de edición y la previsualización en vivo.
+    [VERSIÓN FINAL CORREGIDA] El modal de edición con el layout corregido para
+    evitar que la previsualización se comprima y haciéndola visible en móvil.
     """
-    # Panel de personalización de tarjeta
     personalizar_tarjeta_panel = rx.vstack( 
         rx.divider(margin_y="1em"),
         rx.text("Personalizar Tarjeta", weight="bold", size="4"),
@@ -56,7 +55,6 @@ def edit_post_dialog() -> rx.Component:
         border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
     )
-    # Panel de ajuste de imagen
     ajustar_imagen_panel = rx.vstack(
         rx.divider(margin_y="1em"),
         rx.hstack(
@@ -83,13 +81,8 @@ def edit_post_dialog() -> rx.Component:
             rx.dialog.description("Modifica los detalles, gestiona variantes y personaliza la apariencia de tu producto."),
             
             rx.grid(
-                # --- ✅ CORRECCIÓN 1: Se elimina el rx.scroll_area del formulario ---
-                # El propio modal se encargará del scroll si el contenido es muy alto.
                 blog_post_edit_form(),
                 
-                # --- ✅ CORRECCIÓN 2: Se le da un ancho fijo al contenedor de la previsualización ---
-                # Esto evita que el grid comprima la tarjeta y cause que los elementos se desordenen.
-                # --- ✅ CORRECCIÓN AQUÍ: Se añade el evento on_mount ---
                 rx.vstack(
                     post_preview(
                         title=AppState.edit_post_title,
@@ -104,12 +97,12 @@ def edit_post_dialog() -> rx.Component:
                     ),
                     personalizar_tarjeta_panel,
                     ajustar_imagen_panel,
-                    display=["none", "none", "flex"],
+                    # La propiedad 'display' fue eliminada para que sea visible en móvil
                     spacing="4", 
                     position="sticky", 
                     top="0",
-                    width="320px",
-                    on_mount=AppState.sync_preview_with_color_mode(rx.color_mode), # <-- LÍNEA AÑADIDA
+                    width="320px", # Ancho fijo para proteger el layout
+                    on_mount=AppState.sync_preview_with_color_mode(rx.color_mode),
                 ),
                 columns={"initial": "1", "lg": "auto 320px"},
                 spacing="6", 
