@@ -201,10 +201,11 @@ def blog_post_add_form() -> rx.Component:
 # =============================================================================
 def blog_post_edit_form() -> rx.Component:
     """
-    [NUEVA VERSIÓN] Formulario para EDITAR una publicación, ahora con toda la 
-    funcionalidad de grupos, variantes, stock y estilos, y campos completos.
+    [VERSIÓN FINAL] Formulario para EDITAR una publicación, con la lógica
+    de selección y ordenamiento numérico de imágenes usando componentes nativos.
     """
     def image_and_group_section() -> rx.Component:
+        """Componente de UI para la gestión de imágenes en el modal de edición."""
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.edit_selected_group_index == index
             return rx.box(
@@ -227,21 +228,40 @@ def blog_post_edit_form() -> rx.Component:
                 on_drop=AppState.handle_edit_upload(rx.upload_files("edit_upload")),
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
-            rx.text("2. Selecciona imágenes para crear un grupo:"),
+            rx.text("2. Selecciona y ordena las imágenes para el grupo:"),
             rx.flex(
                  rx.foreach(
                     AppState.edit_uploaded_images,
                     lambda img_name: rx.box(
-                        rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
-                        rx.cond(AppState.edit_image_selection_for_grouping.contains(img_name), rx.box(rx.icon("check", color="white", size=18), bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md", display="flex", align_items="center", justify_content="center")),
-                        rx.icon("x", on_click=AppState.remove_edit_uploaded_image(img_name), style={"position": "absolute", "top": "-5px", "right": "-5px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "1px", "cursor": "pointer", "width": "16px", "height": "16px"}),
+                        rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
+                        rx.cond(
+                            AppState.edit_image_selection_for_grouping.contains(img_name),
+                            rx.box(
+                                # Usa el mapa computado para obtener el número de orden
+                                rx.text(
+                                    AppState.edit_selection_order_map[img_name],
+                                    color="white", weight="bold", font_size="1.5em",
+                                ),
+                                # Botones de flecha para reordenar
+                                rx.hstack(
+                                    rx.icon("arrow-left", size=16, on_click=AppState.move_edit_image_in_selection(img_name, -1), cursor="pointer"),
+                                    rx.icon("arrow-right", size=16, on_click=AppState.move_edit_image_in_selection(img_name, 1), cursor="pointer"),
+                                    spacing="2", position="absolute", bottom="4px", left="50%",
+                                    transform="translateX(-50%)", bg="rgba(255, 255, 255, 0.8)",
+                                    border_radius="sm", padding="0 4px",
+                                ),
+                                bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
+                                display="flex", align_items="center", justify_content="center"
+                            )
+                        ),
+                        rx.icon("x", on_click=AppState.remove_edit_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}),
                         position="relative", border="2px solid",
                         border_color=rx.cond(AppState.edit_image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
                         border_radius="lg", cursor="pointer",
                         on_click=AppState.toggle_edit_image_selection_for_grouping(img_name),
                     )
                 ),
-                wrap="wrap", spacing="2", padding_top="0.25em",
+                wrap="wrap", spacing="3", padding_top="0.5em",
              ),
             rx.button("Crear Grupo de Color", on_click=AppState.create_edit_variant_group, margin_top="0.5em", width="100%", type="button"),
             rx.divider(margin_y="1em"),

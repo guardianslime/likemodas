@@ -47,7 +47,12 @@ moveable = Moveable.create
 
 # --- Componente del formulario (antes en forms.py) ---
 def blog_post_add_form() -> rx.Component:
+    """
+    Formulario completo para AÑADIR una nueva publicación, con la lógica
+    de selección y ordenamiento numérico de imágenes.
+    """
     def image_and_group_section() -> rx.Component:
+        """Componente de UI para la gestión de imágenes."""
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
@@ -58,19 +63,10 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     wrap="wrap", spacing="2",
                 ),
-                # ✨ ICONO DE ELIMINAR PARA GRUPOS 
-                rx.icon(
-                    "trash-2",
-                    on_click=AppState.remove_variant_group(index),
-                    style={
-                        "position": "absolute", "top": "-8px", "right": "-8px",
-                        "background": "var(--red-9)", "color": "white",
-                        "border_radius": "50%", "padding": "2px", "cursor": "pointer",
-                        "width": "20px", "height": "20px"
-                    }
+                rx.icon("trash-2", on_click=AppState.remove_variant_group(index),
+                    style={"position": "absolute", "top": "-8px", "right": "-8px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "20px", "height": "20px"}
                 ),
-                position="relative",
-                border_width="2px",
+                position="relative", border_width="2px",
                 border_color=rx.cond(is_selected, "var(--violet-9)", "transparent"),
                 padding="0.25em", border_radius="md", cursor="pointer",
                 on_click=AppState.select_group_for_editing(index),
@@ -78,53 +74,45 @@ def blog_post_add_form() -> rx.Component:
 
         return rx.vstack(
             rx.text("1. Subir Imágenes (máx 10)", weight="bold"),
-            # ... (tu componente de subida)
             rx.upload(
                  rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
                 id="blog_upload", multiple=True, max_files=10,
                 on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
-            rx.text("2. Selecciona imágenes para crear un grupo de color:"),
+            rx.text("2. Selecciona y ordena las imágenes para el grupo:"),
             rx.flex(
                  rx.foreach(
                     AppState.uploaded_images,
                     lambda img_name: rx.box(
-                        rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
+                        rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
                             AppState.image_selection_for_grouping.contains(img_name),
                             rx.box(
-                                rx.icon("check", color="white", size=18),
-                                bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
+                                rx.text(AppState.selection_order_map[img_name], color="white", weight="bold", font_size="1.5em"),
+                                rx.hstack(
+                                    rx.icon("arrow-left", size=16, on_click=AppState.move_image_in_selection(img_name, -1), cursor="pointer", _hover={"color": "var(--violet-9)"}),
+                                    rx.icon("arrow-right", size=16, on_click=AppState.move_image_in_selection(img_name, 1), cursor="pointer", _hover={"color": "var(--violet-9)"}),
+                                    spacing="2", position="absolute", bottom="4px", left="50%",
+                                    transform="translateX(-50%)", bg="rgba(255, 255, 255, 0.8)",
+                                    border_radius="sm", padding="0 4px",
+                                ),
+                                bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
                                 display="flex", align_items="center", justify_content="center"
                             )
                         ),
-                        # ✨ ICONO DE ELIMINAR PARA IMÁGENES INDIVIDUALES ✨
-                        rx.icon(
-                            "x",
-                            on_click=AppState.remove_uploaded_image(img_name),
-                            style={
-                                "position": "absolute", "top": "-5px", "right": "-5px",
-                                "background": "var(--red-9)", "color": "white",
-                                "border_radius": "50%", "padding": "1px", "cursor": "pointer",
-                                "width": "16px", "height": "16px"
-                            }
+                        rx.icon("x", on_click=AppState.remove_uploaded_image(img_name),
+                            style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}
                         ),
-                        position="relative",
-                        border="2px solid",
+                        position="relative", border="2px solid",
                         border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
                         border_radius="lg", cursor="pointer",
                         on_click=AppState.toggle_image_selection_for_grouping(img_name),
                     )
                 ),
-                wrap="wrap", spacing="2", padding_top="0.25em",
+                wrap="wrap", spacing="3", padding_top="0.5em",
              ),
-            rx.button(
-                "Crear Grupo de Color",
-                on_click=AppState.create_variant_group,
-                margin_top="0.5em", width="100%",
-                type="button",
-            ),
+            rx.button("Crear Grupo de Color", on_click=AppState.create_variant_group, margin_top="0.5em", width="100%", type="button"),
             rx.divider(margin_y="1em"),
             rx.text("3. Grupos (Selecciona uno para editar abajo):"),
             rx.flex(rx.foreach(AppState.variant_groups, render_group_card), wrap="wrap", spacing="2"),
@@ -139,16 +127,16 @@ def blog_post_add_form() -> rx.Component:
                 rx.heading(f"4. Características y Stock para Grupo #{AppState.selected_group_index + 1}", size="5"),
                 rx.grid(
                     rx.vstack(
-                         rx.text("Atributos del Grupo", weight="medium"),
+                        rx.text("Atributos del Grupo", weight="medium"),
                         rx.text("Color"),
                         searchable_select(
                             placeholder="Seleccionar color...", options=AppState.filtered_attr_colores,
                             on_change_select=AppState.set_temp_color, value_select=AppState.temp_color,
-                             search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
+                            search_value=AppState.search_attr_color, on_change_search=AppState.set_search_attr_color,
                             filter_name="color_filter_main",
                         ),
                         rx.text("Talla"),
-                         rx.hstack(
+                        rx.hstack(
                             rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
                             rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button")
                         ),
@@ -164,7 +152,6 @@ def blog_post_add_form() -> rx.Component:
                      ),
                     rx.vstack(
                         rx.text("Variantes y Stock", weight="medium"),
-                        rx.text("Genera combinaciones y asigna stock.", size="2", color_scheme="gray"),
                         rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(AppState.selected_group_index), type="button"),
                         rx.cond(
                             AppState.generated_variants_map.contains(AppState.selected_group_index),
@@ -173,9 +160,9 @@ def blog_post_add_form() -> rx.Component:
                                      rx.foreach(
                                         AppState.generated_variants_map[AppState.selected_group_index],
                                         lambda variant, var_index: rx.hstack(
-                                             rx.text(variant.attributes["Talla"]), rx.spacer(),
+                                             rx.text(variant.attributes.get("Talla", "N/A")), rx.spacer(),
                                             rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
-                                               rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
+                                            rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
                                             rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
                                             align="center"
                                          )
@@ -193,7 +180,6 @@ def blog_post_add_form() -> rx.Component:
             )
         )
 
-    # El componente principal ya no es un rx.form
     return rx.vstack(
         rx.grid(
             rx.vstack(
@@ -203,17 +189,7 @@ def blog_post_add_form() -> rx.Component:
                 width="100%",
             ),
             rx.vstack(
-                rx.vstack(
-                    rx.text("Título del Producto"), 
-                    rx.input(
-                        name="title", 
-                        value=AppState.title, 
-                        on_change=AppState.set_title, 
-                        required=True,
-                        max_length=24,
-                    ), 
-                    align_items="stretch"
-                ),
+                rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True, max_length=24), align_items="stretch"),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
