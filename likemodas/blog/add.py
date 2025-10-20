@@ -320,18 +320,20 @@ def post_preview(
                 ),
                 rx.spacer(),
 
+                # --- ✅ SOLUCIÓN DEFINITIVA AQUÍ ---
+                # Reemplazamos la estructura anterior por una nueva que usa `rx.grid` para forzar el layout.
                 rx.vstack(
-                    # --- ✅ CORRECCIÓN FINAL AQUÍ ---
-                    # Se restaura el espaciado original a "3" y se mantiene la regla "nowrap".
-                    rx.hstack(
+                    rx.grid(
                         _preview_badge(shipping_cost_badge_text, "gray"),
                         rx.cond(
                             is_moda_completa,
                             rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
                         ),
-                        spacing="3",          # Espaciado restaurado a su valor original
-                        flex_wrap="nowrap",   # Se mantiene para garantizar que no se rompa la línea
+                        columns="auto auto", # Crea 2 columnas que se ajustan al contenido
+                        spacing="2",
                         align="center",
+                        justify="start", # Alinea los badges a la izquierda
+                        width="100%",
                     ),
                     rx.cond(
                         combines_shipping,
@@ -341,6 +343,7 @@ def post_preview(
                     align_items="start",
                     width="100%",
                 ),
+                # --- FIN DE LA SOLUCIÓN DEFINITIVA ---
 
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
