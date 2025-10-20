@@ -83,22 +83,21 @@ def edit_post_dialog() -> rx.Component:
             rx.dialog.description("Modifica los detalles, gestiona variantes y personaliza la apariencia de tu producto."),
             
             rx.grid(
-                rx.scroll_area(
-                    blog_post_edit_form(),
-                    type="auto", scrollbars="vertical",
-                    max_height="70vh", # Ajustado para evitar scroll innecesario si cabe
-                    padding_right="1.5em",
-                    width="100%", # Asegura que el scroll_area tome el ancho completo
-                ),
+                # --- ✅ SE ELIMINA EL rx.scroll_area PARA QUE EL FORMULARIO SE MUESTRE COMPLETO ✅ ---
+                blog_post_edit_form(),
+                
                 rx.vstack(
-                    # La previsualización ahora recibe los datos del estado de EDICIÓN
+                    # --- ✅ LLAMADA CORREGIDA A post_preview CON LAS VARIABLES DE EDICIÓN ✅ ---
                     post_preview(
                         title=AppState.edit_post_title,
-                        price=AppState.edit_price_str,
-                        image_url=AppState.edit_main_image_url_for_preview, # Corregido para usar la imagen principal del grupo
-                        is_moda_completa_eligible=AppState.edit_is_moda_completa,
+                        price_cop=AppState.edit_price_cop_preview,
+                        first_image_url=AppState.edit_main_image_url_for_preview,
                         is_imported=AppState.edit_is_imported,
-                        is_product_page_preview=False, # Esto debería ser True para que muestre el precio completo
+                        shipping_cost_badge_text=AppState.edit_shipping_cost_badge_text_preview,
+                        is_moda_completa=AppState.edit_is_moda_completa,
+                        moda_completa_tooltip_text=AppState.edit_moda_completa_tooltip_text_preview,
+                        combines_shipping=AppState.edit_combines_shipping,
+                        envio_combinado_tooltip_text=AppState.edit_envio_combinado_tooltip_text_preview,
                     ),
                     personalizar_tarjeta_panel,
                     ajustar_imagen_panel,

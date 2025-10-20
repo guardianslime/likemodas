@@ -262,7 +262,19 @@ def blog_post_add_form() -> rx.Component:
     )
 
 # --- Componente para la previsualización de la tarjeta ---
-def post_preview() -> rx.Component:
+def post_preview(
+    # --- 👇 INICIO: AÑADIMOS ARGUMENTOS A LA FUNCIÓN 👇 ---
+    title: rx.Var[str],
+    price_cop: rx.Var[str],
+    first_image_url: rx.Var[str],
+    is_imported: rx.Var[bool],
+    shipping_cost_badge_text: rx.Var[str],
+    is_moda_completa: rx.Var[bool],
+    moda_completa_tooltip_text: rx.Var[str],
+    combines_shipping: rx.Var[bool],
+    envio_combinado_tooltip_text: rx.Var[str],
+    # --- FIN: AÑADIMOS ARGUMENTOS A LA FUNCIÓN ---
+) -> rx.Component:
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
@@ -272,18 +284,13 @@ def post_preview() -> rx.Component:
             bg=colors["bg"], color=colors["text"],
             padding="1px 10px", border_radius="var(--radius-full)", font_size="0.8em",
         )
-
-    first_image_url = rx.cond(
-        (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
-        AppState.variant_groups[0].image_urls[0],
-        ""
-    )
     
     return rx.box(
         rx.vstack(
              rx.box(
                 rx.image(
-                    src=rx.get_upload_url(first_image_url), fallback="/image_off.png", 
+                    src=rx.get_upload_url(first_image_url), # USA EL ARGUMENTO
+                    fallback="/image_off.png", 
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
                         AppState.is_hydrated,
@@ -293,69 +300,48 @@ def post_preview() -> rx.Component:
                     transition="transform 0.2s ease-out",
                 ),
                 rx.badge(
-                    rx.cond(AppState.is_imported, "Importado", "Nacional"),
-                    color_scheme=rx.cond(AppState.is_imported, "purple", "cyan"), variant="solid",
+                    rx.cond(is_imported, "Importado", "Nacional"), # USA EL ARGUMENTO
+                    color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
-                position="relative",
-                width="100%", height="260px",
+                position="relative", width="100%", height="260px",
                 overflow="hidden", 
                 border_top_left_radius="var(--radius-3)", border_top_right_radius="var(--radius-3)",
                 bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
              ),
-            rx.vstack(
+             rx.vstack(
                 rx.text(
-                    rx.cond(AppState.title, AppState.title, "Título del Producto"), 
+                    rx.cond(title, title, "Título del Producto"), # USA EL ARGUMENTO
                     weight="bold", size="6", no_of_lines=2, width="100%",
-                    color=rx.cond(
-                        AppState.use_default_style,
-                        rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 11), "white"),
-                        AppState.live_title_color,
-                    )
+                    color=rx.cond(AppState.use_default_style, rx.color_mode_cond("var(--gray-11)", "white"), AppState.live_title_color)
                 ),
                 star_rating_display_safe(0, 0, size=24),
                 rx.text(
-                    AppState.price_cop_preview, size="5", weight="medium",
-                    color=rx.cond(
-                         AppState.use_default_style,
-                        rx.cond(AppState.card_theme_mode == "light", rx.color("gray", 9), rx.color("gray", 11)),
-                        AppState.live_price_color,
-                    )
+                    price_cop, size="5", weight="medium", # USA EL ARGUMENTO
+                    color=rx.cond(AppState.use_default_style, rx.color_mode_cond("var(--gray-9)", "var(--gray-a11)"), AppState.live_price_color)
                 ),
                 rx.spacer(),
-                # --- ✨ INICIO: CÓDIGO RESTAURADO PARA LOS BADGES ✨ ---
                 rx.vstack(
                     rx.hstack(
-                        _preview_badge(AppState.shipping_cost_badge_text_preview, "gray"),
+                        _preview_badge(shipping_cost_badge_text, "gray"), # USA EL ARGUMENTO
                         rx.cond(
-                            AppState.is_moda_completa,
-                             rx.tooltip(
-                                _preview_badge("Moda Completa", "violet"),
-                                content=AppState.moda_completa_tooltip_text_preview,
-                             ),
+                            is_moda_completa, # USA EL ARGUMENTO
+                            rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
                         ),
                         spacing="3", align="center",
                     ),
                     rx.cond(
-                        AppState.combines_shipping,
-                         rx.tooltip(
-                            _preview_badge("Envío Combinado", "teal"),
-                            content=AppState.envio_combinado_tooltip_text_preview,
-                        ),
+                        combines_shipping, # USA EL ARGUMENTO
+                        rx.tooltip(_preview_badge("Envío Combinado", "teal"), content=envio_combinado_tooltip_text),
                     ),
                     spacing="1", align_items="start", width="100%",
                 ),
-                # --- ✨ FIN: CÓDIGO RESTAURADO PARA LOS BADGES ✨ ---
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",
         ),
         width="290px", height="480px",
-        bg=rx.cond(
-             AppState.use_default_style,
-            rx.cond(AppState.card_theme_mode == "light", "#fdfcff", "var(--gray-2)"),
-            AppState.live_card_bg_color
-        ),
+        bg=rx.cond(AppState.use_default_style, rx.color_mode_cond("#fdfcff", "var(--gray-2)"), AppState.live_card_bg_color),
         border="1px solid var(--gray-a6)",
         border_radius="8px", box_shadow="md",
     )
@@ -414,20 +400,38 @@ def blog_post_add_content() -> rx.Component:
         border_radius="md", margin_top="1.5em", align_items="stretch",
         width="290px",
     )
+    # --- 👇 Lógica para obtener la URL de la imagen principal para la previsualización de CREACIÓN 👇 ---
+    first_image_url = rx.cond(
+        (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
+        AppState.variant_groups[0].image_urls[0],
+        rx.cond(
+            AppState.uploaded_images.length() > 0,
+            AppState.uploaded_images[0],
+            ""
+        )
+    )
     
     return rx.grid(
         rx.vstack(
-            rx.heading(
-                "Crear Publicación", size="7", width="100%", text_align="left", 
-                margin_bottom="0.5em", color_scheme="gray", font_weight="medium"
-            ),
+            rx.heading("Crear Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em", color_scheme="gray", font_weight="medium"),
             blog_post_add_form(),
             width="100%", spacing="4", align_items="center",
             padding_left={"lg": "15em"}, padding_x=["1em", "2em"],
         ),
         rx.vstack(
             rx.heading("Previsualización", size="7", width="100%", text_align="left", margin_bottom="0.5em"),
-            post_preview(),
+            # --- ✅ LLAMADA CORREGIDA A post_preview CON ARGUMENTOS ✅ ---
+            post_preview(
+                title=AppState.title,
+                price_cop=AppState.price_cop_preview,
+                first_image_url=first_image_url,
+                is_imported=AppState.is_imported,
+                shipping_cost_badge_text=AppState.shipping_cost_badge_text_preview,
+                is_moda_completa=AppState.is_moda_completa,
+                moda_completa_tooltip_text=AppState.moda_completa_tooltip_text_preview,
+                combines_shipping=AppState.combines_shipping,
+                envio_combinado_tooltip_text=AppState.envio_combinado_tooltip_text_preview,
+            ),
             rx.vstack( 
                 rx.divider(margin_y="1em"),
                 rx.text("Personalizar Tarjeta", weight="bold", size="4"),

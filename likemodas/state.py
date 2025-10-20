@@ -3801,6 +3801,33 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.is_editing_post = True
             self._update_edit_preview_image() # Asegurar que la imagen de previsualización se cargue
 
+    # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA PREVISUALIZACIÓN DE EDICIÓN ✨ ---
+    @rx.var
+    def edit_price_cop_preview(self) -> str:
+        try: price_float = float(self.edit_price_str) if self.edit_price_str else 0.0
+        except (ValueError, TypeError): price_float = 0.0
+        return format_to_cop(price_float)
+
+    @rx.var
+    def edit_shipping_cost_badge_text_preview(self) -> str:
+        if not self.edit_shipping_cost_str.strip(): return "Envío a convenir"
+        try:
+            cost = float(self.edit_shipping_cost_str)
+            return "Envío Gratis" if cost == 0 else f"Envío: {format_to_cop(cost)}"
+        except (ValueError, TypeError): return "Envío: $ Error"
+
+    @rx.var
+    def edit_moda_completa_tooltip_text_preview(self) -> str:
+        try:
+            threshold = float(self.edit_free_shipping_threshold_str)
+            return f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(threshold)}"
+        except (ValueError, TypeError): return "Valor de umbral inválido."
+
+    @rx.var
+    def edit_envio_combinado_tooltip_text_preview(self) -> str:
+        return f"Combina hasta {self.edit_shipping_combination_limit_str} productos en un envío."
+    # --- ✨ FIN: NUEVAS VARIABLES COMPUTADAS ✨ ---
+
     def assign_image_to_edit_variant(self, group_index: int, item_index: int, image_url: str):
         """Asigna una imagen a una variante específica en el formulario de edición."""
         if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
