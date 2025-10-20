@@ -3517,11 +3517,33 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ⚙️ INICIO: NUEVAS VARIABLES DE ESTADO PARA EL FORMULARIO DE EDICIÓN ⚙️ ---
     
     # Datos básicos del post en edición
-    post_to_edit_id: Optional[int] = None
+    # Datos básicos del post en edición
     edit_post_title: str = ""
     edit_post_content: str = ""
     edit_price_str: str = ""
+    edit_profit_str: str = ""
     edit_category: str = ""
+    
+    # Opciones de envío para edición
+    edit_shipping_cost_str: str = ""
+    edit_is_moda_completa: bool = True
+    edit_free_shipping_threshold_str: str = "200000"
+    edit_combines_shipping: bool = False
+    edit_shipping_combination_limit_str: str = "3"
+    edit_is_imported: bool = False
+    edit_price_includes_iva: bool = True
+
+    # Lógica de grupos y variantes para edición
+    edit_uploaded_images: list[str] = []
+    edit_image_selection_for_grouping: set[str] = set()
+    edit_variant_groups: list[VariantGroupDTO] = []
+    edit_generated_variants_map: dict[int, list[VariantFormData]] = {}
+    edit_selected_group_index: int = -1
+    
+    # Atributos temporales para edición
+    edit_temp_color: str = ""
+    edit_temp_talla: str = ""
+    edit_attr_tallas_ropa: list[str] = []
 
     # --- ✨ AÑADE ESTAS DOS LÍNEAS QUE FALTAN AQUÍ ✨ ---
     edit_profit_str: str = ""
@@ -3572,30 +3594,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     edit_variants_map: dict[int, list[VariantFormData]] = {}
 
 
-
+    # --- FUNCIÓN CLAVE: Cargar datos en el formulario de edición ---
     @rx.event
     def start_editing_post(self, post_id: int):
-        """
-        [CORREGIDO] Inicia la edición de un post, con permisos unificados para Vendedor y Empleado.
-        """
-        if not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
-
-        # --- ✨ INICIO: LÓGICA DE PERMISOS UNIFICADA ✨ ---
-        # Determinamos cuál es el ID del "dueño" del contexto actual.
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             return rx.toast.error("No se pudo verificar la identidad del usuario.")
-        # --- ✨ FIN: LÓGICA DE PERMISOS UNIFICADA ✨ ---
 
         with rx.session() as session:
             db_post = session.get(BlogPostModel, post_id)
-            
-            # Comparamos el dueño del post con el dueño del contexto.
             if not db_post or db_post.userinfo_id != owner_id:
                 return rx.toast.error("No tienes permiso para editar esta publicación.")
 
-            # El resto de la lógica para cargar los datos en el formulario se mantiene igual...
+            # Cargar datos básicos
             self.post_to_edit_id = db_post.id
             self.edit_post_title = db_post.title
             self.edit_post_content = db_post.content
@@ -3604,34 +3615,49 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_category = db_post.category
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
             self.edit_is_moda_completa = db_post.is_moda_completa_eligible
+            self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold or "200000")
             self.edit_combines_shipping = db_post.combines_shipping
             self.edit_shipping_combination_limit_str = str(db_post.shipping_combination_limit or "3")
             self.edit_is_imported = db_post.is_imported
             self.edit_price_includes_iva = db_post.price_includes_iva
-            self.edit_post_images_in_form = sorted(list(set(v.get("image_url", "") for v in (db_post.variants or []) if v.get("image_url"))))
-            
-            reconstructed_map = defaultdict(list)
-            for variant_db in (db_post.variants or []):
-                img_url = variant_db.get("image_url")
-                if not img_url: continue
-                try:
-                    image_group_index = self.edit_post_images_in_form.index(img_url)
-                    reconstructed_map[image_group_index].append(
-                        VariantFormData(
-                            attributes=variant_db.get("attributes", {}),
-                            stock=variant_db.get("stock", 0),
-                            image_url=img_url,
-                        )
-                    )
-                except ValueError:
-                    continue
-            self.edit_variants_map = dict(reconstructed_map)
-            
-            if self.edit_post_images_in_form:
-                yield self.select_edit_image_for_editing(0)
 
+            # Reconstruir la estructura de grupos y variantes
+            groups_map = defaultdict(lambda: {"variants": []})
+            for variant_db in (db_post.variants or []):
+                urls_tuple = tuple(sorted(variant_db.get("image_urls", [])))
+                groups_map[urls_tuple]["variants"].append(variant_db)
+
+            temp_variant_groups = []
+            temp_generated_variants = {}
+            for group_index, (urls_tuple, group_data) in enumerate(groups_map.items()):
+                group_dto = VariantGroupDTO(image_urls=list(urls_tuple), attributes={})
+                generated_variants_list = []
+                tallas_en_grupo = set()
+                
+                for variant_db in group_data["variants"]:
+                    attrs = variant_db.get("attributes", {})
+                    # Re-attach the UUID if it exists to preserve it on save
+                    variant_form_data = VariantFormData(attributes=attrs, stock=variant_db.get("stock", 0))
+                    if 'variant_uuid' in variant_db:
+                        variant_form_data.variant_uuid = variant_db['variant_uuid']
+                    generated_variants_list.append(variant_form_data)
+                    
+                    if "Color" in attrs: group_dto.attributes["Color"] = attrs["Color"]
+                    if "Talla" in attrs: tallas_en_grupo.add(attrs["Talla"])
+                
+                if tallas_en_grupo: group_dto.attributes["Talla"] = sorted(list(tallas_en_grupo))
+
+                temp_variant_groups.append(group_dto)
+                temp_generated_variants[group_index] = sorted(generated_variants_list, key=lambda v: v.attributes.get("Talla", ""))
+
+            self.edit_variant_groups = temp_variant_groups
+            self.edit_generated_variants_map = temp_generated_variants
+            self.edit_uploaded_images, self.edit_image_selection_for_grouping, self.edit_selected_group_index = [], set(), -1
+
+            # Cargar estilos
             self._load_card_styles_from_db(db_post)
-            self._load_image_styles_from_db(db_post) # <-- Añade esta línea
+            self._load_image_styles_from_db(db_post)
+            
             self.is_editing_post = True
 
     
@@ -3668,30 +3694,25 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.edit_variants_map[self.edit_selected_image_index] = generated_variants
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para la imagen seleccionada.")
 
+    # --- Funciones de Stock para Edición ---
     def _update_edit_variant_stock(self, group_index: int, item_index: int, new_stock: int):
-        """Función auxiliar para actualizar el stock en el mapa de edición."""
-        if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
-            self.edit_variants_map[group_index][item_index].stock = max(0, new_stock)
-
+        if group_index in self.edit_generated_variants_map and 0 <= item_index < len(self.edit_generated_variants_map[group_index]):
+            self.edit_generated_variants_map[group_index][item_index].stock = max(0, new_stock)
+    
     def set_edit_variant_stock(self, group_index: int, item_index: int, stock_str: str):
-        """Establece el stock para una variante en el formulario de edición."""
-        try:
-            self._update_edit_variant_stock(group_index, item_index, int(stock_str))
-        except (ValueError, TypeError):
-            pass
-
+        try: self._update_edit_variant_stock(group_index, item_index, int(stock_str))
+        except (ValueError, TypeError): pass
+    
     def increment_edit_variant_stock(self, group_index: int, item_index: int):
-        """Incrementa el stock de una variante en el formulario de edición."""
-        if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
-            current_stock = self.edit_variants_map[group_index][item_index].stock
+        if group_index in self.edit_generated_variants_map and 0 <= item_index < len(self.edit_generated_variants_map[group_index]):
+            current_stock = self.edit_generated_variants_map[group_index][item_index].stock
             self._update_edit_variant_stock(group_index, item_index, current_stock + 1)
-            
+    
     def decrement_edit_variant_stock(self, group_index: int, item_index: int):
-        """Decrementa el stock de una variante en el formulario de edición."""
-        if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
-            current_stock = self.edit_variants_map[group_index][item_index].stock
+        if group_index in self.edit_generated_variants_map and 0 <= item_index < len(self.edit_generated_variants_map[group_index]):
+            current_stock = self.edit_generated_variants_map[group_index][item_index].stock
             self._update_edit_variant_stock(group_index, item_index, current_stock - 1)
-
+    
     def assign_image_to_edit_variant(self, group_index: int, item_index: int, image_url: str):
         """Asigna una imagen a una variante específica en el formulario de edición."""
         if group_index in self.edit_variants_map and 0 <= item_index < len(self.edit_variants_map[group_index]):
@@ -3710,17 +3731,18 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.price_str = ""
             self.post_images_in_form = []
 
-    # ✨ --- REEMPLAZA POR COMPLETO LA FUNCIÓN `save_edited_post` --- ✨
+    # --- FUNCIÓN CLAVE: Guardar los datos editados ---
     @rx.event
     async def save_edited_post(self):
         """
-        Guarda una publicación editada, con permisos unificados y sintaxis corregida.
+        [NUEVA VERSIÓN] Guarda una publicación editada, serializando la nueva
+        estructura de grupos de vuelta a la base de datos.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             yield rx.toast.error("Error: No se pudo guardar la publicación.")
             return
         
-        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        owner_id = self.context_user_id or self.authenticated_user_info.id
         if not owner_id:
             yield rx.toast.error("No se pudo verificar la identidad del usuario.")
             return
@@ -3729,38 +3751,37 @@ class AppState(reflex_local_auth.LocalAuthState):
             price = float(self.edit_price_str or 0.0)
             profit = float(self.edit_profit_str) if self.edit_profit_str else None
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
-            limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
+            threshold = float(self.edit_free_shipping_threshold_str) if self.edit_is_moda_completa else None
+            limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping else None
         except ValueError:
-            yield rx.toast.error("Precio, ganancia, costo de envío y límite deben ser números válidos.")
+            yield rx.toast.error("Valores numéricos inválidos.")
             return
 
         all_variants_for_db = []
-        # Tu lógica para construir all_variants_for_db
-        for image_group_index, variant_list in self.edit_variants_map.items():
-            if image_group_index < len(self.unique_edit_form_images):
-                main_image_for_group = self.unique_edit_form_images[image_group_index]
-                for variant_form_data in variant_list:
-                    new_variant_dict = {
-                        "attributes": variant_form_data.attributes,
-                        "stock": variant_form_data.stock,
-                        "image_url": variant_form_data.image_url or main_image_for_group,
-                        "variant_uuid": getattr(variant_form_data, 'variant_uuid', str(uuid.uuid4()))
-                    }
-                    all_variants_for_db.append(new_variant_dict)
-
+        for group_index, generated_list in self.edit_generated_variants_map.items():
+            if group_index >= len(self.edit_variant_groups): continue
+            
+            image_urls_for_group = self.edit_variant_groups[group_index].image_urls
+            for variant_data in generated_list:
+                variant_uuid = getattr(variant_data, 'variant_uuid', str(uuid.uuid4()))
+                variant_dict = {
+                    "attributes": variant_data.attributes,
+                    "stock": variant_data.stock,
+                    "image_urls": image_urls_for_group,
+                    "variant_uuid": variant_uuid
+                }
+                all_variants_for_db.append(variant_dict)
+        
         if not all_variants_for_db:
             yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
             return
 
         with rx.session() as session:
             post_to_update = session.get(BlogPostModel, self.post_to_edit_id)
-            
             if not post_to_update or post_to_update.userinfo_id != owner_id:
-                # --- ✨ CORRECCIÓN DE SINTAXIS AQUÍ ✨ ---
                 yield rx.toast.error("No tienes permiso para guardar esta publicación.")
                 return
-                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-                
+            
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
             post_to_update.price = price
@@ -3770,11 +3791,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.is_imported = self.edit_is_imported
             post_to_update.shipping_cost = shipping_cost
             post_to_update.is_moda_completa_eligible = self.edit_is_moda_completa
+            post_to_update.free_shipping_threshold = threshold
             post_to_update.combines_shipping = self.edit_combines_shipping
             post_to_update.shipping_combination_limit = limit
             post_to_update.variants = all_variants_for_db
             post_to_update.last_modified_by_id = self.authenticated_user_info.id
-            # --- ✨ INICIO: AÑADE ESTOS CAMPOS AL ACTUALIZAR EL OBJETO ✨ ---
             post_to_update.use_default_style = self.use_default_style
             post_to_update.light_card_bg_color = self.light_theme_colors.get("bg")
             post_to_update.light_title_color = self.light_theme_colors.get("title")
@@ -3782,27 +3803,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.dark_card_bg_color = self.dark_theme_colors.get("bg")
             post_to_update.dark_title_color = self.dark_theme_colors.get("title")
             post_to_update.dark_price_color = self.dark_theme_colors.get("price")
-            # --- ✨ INICIO: LÓGICA PARA GUARDAR ESTILOS DE IMAGEN (EDICIÓN) ✨ ---
-            # --- LÓGICA PARA GUARDAR ESTILOS DE IMAGEN (EDICIÓN) ---
-            post_to_update.image_styles = {
-                "zoom": self.preview_zoom,
-                "rotation": self.preview_rotation,
-                "offsetX": self.preview_offset_x,
-                "offsetY": self.preview_offset_y,
-            }
-            # --- ✨ FIN ✨ ---
+            post_to_update.image_styles = {"zoom": self.preview_zoom, "rotation": self.preview_rotation, "offsetX": self.preview_offset_x, "offsetY": self.preview_offset_y}
             
             session.add(post_to_update)
             
-            log_entry = ActivityLog(
-                actor_id=self.authenticated_user_info.id,
-                owner_id=post_to_update.userinfo_id,
-                action_type="Edición de Publicación",
-                description=f"Modificó la publicación '{post_to_update.title}'"
-            )
+            log_entry = ActivityLog(actor_id=self.authenticated_user_info.id, owner_id=post_to_update.userinfo_id, action_type="Edición de Publicación", description=f"Modificó la publicación '{post_to_update.title}'")
             session.add(log_entry)
             session.commit()
-
+            
         yield self.cancel_editing_post(False)
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
@@ -3837,34 +3845,51 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_attr_numeros_calzado = all_numeros
             self.edit_attr_tamanos_mochila = all_tamanos
     
-    # Setters para los campos del formulario de edición
+    # --- Setters para los campos del formulario de edición ---
     def set_edit_post_title(self, title: str): self.edit_post_title = title
     def set_edit_post_content(self, content: str): self.edit_post_content = content
     def set_edit_price_str(self, price: str): self.edit_price_str = price
-    def set_edit_category(self, cat: str): self.edit_category = cat # Resto de la lógica de limpieza irá aquí si es necesaria
+    def set_edit_profit_str(self, profit: str): self.edit_profit_str = profit
+    def set_edit_category(self, cat: str): self.edit_category = cat
     def set_edit_shipping_cost_str(self, cost: str): self.edit_shipping_cost_str = cost
     def set_edit_is_moda_completa(self, val: bool): self.edit_is_moda_completa = val
+    def set_edit_free_shipping_threshold_str(self, val: str): self.edit_free_shipping_threshold_str = val
     def set_edit_combines_shipping(self, val: bool): self.edit_combines_shipping = val
     def set_edit_shipping_combination_limit_str(self, val: str): self.edit_shipping_combination_limit_str = val
     def set_edit_is_imported(self, val: bool): self.edit_is_imported = val
     def set_edit_price_includes_iva(self, val: bool): self.edit_price_includes_iva = val
-    def set_edit_attr_colores(self, val: str): self.edit_attr_colores = val
-    def set_edit_temp_talla(self, val: str): self.edit_temp_talla = val
+    def set_edit_temp_color(self, color: str): self.edit_temp_color = color
+    def set_edit_temp_talla(self, talla: str): self.edit_temp_talla = talla
     def set_edit_temp_numero(self, val: str): self.edit_temp_numero = val
     def set_edit_temp_tamano(self, val: str): self.edit_temp_tamano = val
 
     # Lógica para añadir/quitar atributos en el formulario de EDICIÓN
+    @rx.event
     def add_edit_variant_attribute(self, key: str, value: str):
-        target_list = getattr(self, f"edit_attr_{key.lower()}s_ropa" if key == "Talla" else (f"edit_attr_numeros_calzado" if key == "Número" else "edit_attr_tamanos_mochila"))
-        if value not in target_list:
-            target_list.append(value)
-            target_list.sort()
+        if not value: return
+        if key == "Talla" and value not in self.edit_attr_tallas_ropa:
+            self.edit_attr_tallas_ropa.append(value)
 
+    @rx.event
     def remove_edit_variant_attribute(self, key: str, value: str):
-        target_list = getattr(self, f"edit_attr_{key.lower()}s_ropa" if key == "Talla" else (f"edit_attr_numeros_calzado" if key == "Número" else "edit_attr_tamanos_mochila"))
-        if value in target_list:
-            target_list.remove(value)
+        if key == "Talla" and value in self.edit_attr_tallas_ropa:
+            self.edit_attr_tallas_ropa.remove(value)
 
+    @rx.event
+    def generate_edit_variants_for_group(self, group_index: int):
+        yield self.update_edit_group_attributes()
+        if not (0 <= group_index < len(self.edit_variant_groups)):
+            return rx.toast.error("Grupo no válido.")
+        group = self.edit_variant_groups[group_index]
+        group_attrs = group.attributes
+        color = group_attrs.get("Color")
+        sizes, size_key = (group_attrs.get("Talla", []), "Talla")
+        if not color or not sizes:
+            return rx.toast.error("El grupo debe tener un color y al menos una talla.")
+        existing_stock = {v.attributes.get("Talla"): v.stock for v in self.edit_generated_variants_map.get(group_index, [])}
+        generated = [VariantFormData(attributes={"Color": color, size_key: size}, stock=existing_stock.get(size, 10)) for size in sizes]
+        self.edit_generated_variants_map[group_index] = generated
+        yield rx.toast.info(f"{len(generated)} variantes generadas.")
 
     async def handle_add_upload(self, files: list[rx.UploadFile]):
         """Maneja la subida de imágenes y las añade a la lista de imágenes disponibles para agrupar."""
@@ -4090,14 +4115,69 @@ class AppState(reflex_local_auth.LocalAuthState):
     # ✨ --- FUNCIÓN CORREGIDA: Para añadir nuevas imágenes --- ✨
     @rx.event
     async def handle_edit_upload(self, files: list[rx.UploadFile]):
-        """Maneja la subida de NUEVAS imágenes en el modal de edición."""
         for file in files:
             upload_data = await file.read()
             unique_filename = f"{secrets.token_hex(8)}-{file.name}"
             outfile = rx.get_upload_dir() / unique_filename
             outfile.write_bytes(upload_data)
-            # Añade la nueva imagen a la lista del formulario
-            self.edit_post_images_in_form.append(unique_filename)
+            self.edit_uploaded_images.append(unique_filename)
+
+    @rx.event
+    def remove_edit_uploaded_image(self, image_name: str):
+        if image_name in self.edit_uploaded_images:
+            self.edit_uploaded_images.remove(image_name)
+
+    @rx.event
+    def toggle_edit_image_selection_for_grouping(self, filename: str):
+        if filename in self.edit_image_selection_for_grouping:
+            self.edit_image_selection_for_grouping.remove(filename)
+        else:
+            self.edit_image_selection_for_grouping.add(filename)
+
+    @rx.event
+    def create_edit_variant_group(self):
+        if not self.edit_image_selection_for_grouping:
+            return rx.toast.error("Debes seleccionar al menos una imagen.")
+        new_group = VariantGroupDTO(image_urls=sorted(list(self.edit_image_selection_for_grouping)))
+        self.edit_variant_groups.append(new_group)
+        for filename in self.edit_image_selection_for_grouping:
+            if filename in self.edit_uploaded_images:
+                self.edit_uploaded_images.remove(filename)
+        self.edit_image_selection_for_grouping = set()
+        yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
+
+    @rx.event
+    def remove_edit_variant_group(self, group_index: int):
+        if 0 <= group_index < len(self.edit_variant_groups):
+            del self.edit_variant_groups[group_index]
+            if group_index in self.edit_generated_variants_map:
+                del self.edit_generated_variants_map[group_index]
+            new_map = {k - 1 if k > group_index else k: v for k, v in self.edit_generated_variants_map.items()}
+            self.edit_generated_variants_map = new_map
+            if self.edit_selected_group_index == group_index:
+                self.edit_selected_group_index = -1
+            elif self.edit_selected_group_index > group_index:
+                self.edit_selected_group_index -= 1
+            yield rx.toast.success("Grupo de variantes eliminado.")
+
+    @rx.event
+    def select_edit_group_for_editing(self, group_index: int):
+        self.edit_selected_group_index = group_index
+        if 0 <= group_index < len(self.edit_variant_groups):
+            group_attrs = self.edit_variant_groups[group_index].attributes
+            self.edit_temp_color = group_attrs.get("Color", "")
+            self.edit_attr_tallas_ropa = group_attrs.get("Talla", [])
+
+    @rx.event
+    def update_edit_group_attributes(self):
+        if not (0 <= self.edit_selected_group_index < len(self.edit_variant_groups)):
+            return rx.toast.error("Selecciona un grupo para editar.")
+        attributes = {}
+        if self.edit_temp_color: attributes["Color"] = self.edit_temp_color
+        if self.edit_category == Category.ROPA.value and self.edit_attr_tallas_ropa:
+            attributes["Talla"] = self.edit_attr_tallas_ropa
+        self.edit_variant_groups[self.edit_selected_group_index].attributes = attributes
+        yield rx.toast.success(f"Atributos guardados para el Grupo #{self.edit_selected_group_index + 1}")
 
     @rx.event
     def remove_edited_image(self, filename: str):
@@ -5303,11 +5383,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_mis_publicaciones(self):
         """
-        [VERSIÓN FINAL Y CORREGIDA] Carga las publicaciones para la página 'Mis Publicaciones'
-        incluyendo la lógica para generar los datos de las variantes y los códigos QR.
+        [VERSIÓN FINAL CORREGIDA] Carga las publicaciones para la página 'Mis Publicaciones'
+        obteniendo correctamente la imagen principal del primer grupo de variantes.
         """
         owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
-        
         if not owner_id:
             self.mis_publicaciones_list = []
             return
@@ -5328,20 +5407,22 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             admin_posts = []
             for p in posts_from_db:
-                main_image = p.variants[0].get("image_url", "") if p.variants else ""
-                
+                # --- ✅ LÓGICA DE IMAGEN CORREGIDA AQUÍ ---
+                main_image = ""
+                if p.variants and p.variants[0].get("image_urls"):
+                    main_image = p.variants[0]["image_urls"][0]
+                # --- FIN DE LA CORRECCIÓN ---
+
                 creator_username = p.creator.user.username if p.creator and p.creator.user else None
                 owner_username = p.userinfo.user.username if p.userinfo and p.userinfo.user else "Vendedor"
                 modifier_username = p.last_modified_by.user.username if p.last_modified_by and p.last_modified_by.user else None
-
-                # --- ✨ INICIO: LÓGICA RESTAURADA PARA GENERAR DATOS DE VARIANTES Y QR ✨ ---
+                
                 variants_dto_list = []
                 if p.variants:
                     for v in p.variants:
                         attrs = v.get("attributes", {})
                         attrs_str = ", ".join([f"{k}: {val}" for k, val in attrs.items()])
                         variant_uuid = v.get("variant_uuid", "")
-                        # La URL para el QR ahora apunta a la página principal pública
                         unified_url = f"{base_url}/?variant_uuid={variant_uuid}" if variant_uuid else ""
                         
                         variants_dto_list.append(
@@ -5353,7 +5434,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                                 qr_url=unified_url
                             )
                         )
-                # --- ✨ FIN: LÓGICA RESTAURADA ✨ ---
 
                 admin_posts.append(
                     AdminPostRowData(
@@ -5361,8 +5441,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                         title=p.title,
                         price_cop=p.price_cop,
                         publish_active=p.publish_active,
-                        main_image_url=main_image,
-                        variants=variants_dto_list, # Ahora se pasa la lista con datos
+                        main_image_url=main_image, # Se pasa la imagen correcta
+                        variants=variants_dto_list,
                         creator_name=creator_username,
                         owner_name=owner_username,
                         last_modified_by_name=modifier_username
@@ -6320,8 +6400,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_active_purchases(self):
         """
-        [CORREGIDO] Carga las compras activas, incluyendo el nombre del usuario
-        que realizó la última acción sobre ellas.
+        [CORREGIDO] Carga las compras activas para el panel de admin/vendedor,
+        incluyendo el nombre del actor y la imagen correcta de la variante.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado): 
             return
@@ -6329,24 +6409,22 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.new_purchase_notification = False
         
         with rx.session() as session:
-            user_id_to_check = self.context_user_info.id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else 0)
+            user_id_to_check = self.context_user_id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else 0)
             
             purchases = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post),
-                    # --- ✨ INICIO: AÑADIMOS LA CARGA DEL USUARIO DE LA ACCIÓN ✨ ---
                     sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
-                    # --- ✨ FIN: AÑADIMOS LA CARGA DEL USUARIO DE LA ACCIÓN ✨ ---
                 )
                 .where(
                     PurchaseModel.status.in_([
                         PurchaseStatus.PENDING_CONFIRMATION,
                         PurchaseStatus.CONFIRMED,
                         PurchaseStatus.SHIPPED,
+                        PurchaseStatus.DELIVERED, # Se añade para confirmar pago contra entrega
                     ]),
-                    # Aseguramos que solo cargue los pedidos del vendedor correcto
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
                 .join(PurchaseItemModel)
@@ -6354,48 +6432,53 @@ class AppState(reflex_local_auth.LocalAuthState):
             ).unique().all()
             
             active_purchases_list = []
-        for p in purchases:
-            # --- ✨ INICIO: LÓGICA DE ITEMS RESTAURADA ✨ ---
-            detailed_items = []
-            for item in p.items:
-                if item.blog_post:
-                    variant_image_url = ""
-                    for variant in item.blog_post.variants:
-                        if variant.get("attributes") == item.selected_variant:
-                            variant_image_url = variant.get("image_url", "")
-                            break
-                    if not variant_image_url and item.blog_post.variants:
-                        variant_image_url = item.blog_post.variants[0].get("image_url", "")
-                    
-                    variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
-                    detailed_items.append(
-                        PurchaseItemCardData(
-                            id=item.blog_post.id, title=item.blog_post.title, image_url=variant_image_url,
-                            price_at_purchase=item.price_at_purchase,
-                            price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                            quantity=item.quantity, variant_details_str=variant_str,
+            for p in purchases:
+                detailed_items = []
+                for item in p.items:
+                    if item.blog_post:
+                        # --- ✅ LÓGICA DE IMAGEN CORREGIDA Y ROBUSTA ---
+                        variant_image_url = ""
+                        # 1. Intenta encontrar la variante exacta que se compró
+                        for variant in item.blog_post.variants:
+                            if variant.get("attributes") == item.selected_variant:
+                                image_urls = variant.get("image_urls", [])
+                                if image_urls:
+                                    variant_image_url = image_urls[0]
+                                break
+                        # 2. Si no la encuentra (pudo ser borrada), usa la primera imagen del producto como respaldo
+                        if not variant_image_url and item.blog_post.variants:
+                            image_urls = item.blog_post.variants[0].get("image_urls", [])
+                            if image_urls:
+                                variant_image_url = image_urls[0]
+                        # --- FIN DE LA CORRECCIÓN DE IMAGEN ---
+
+                        variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+                        detailed_items.append(
+                            PurchaseItemCardData(
+                                id=item.blog_post.id, title=item.blog_post.title, 
+                                image_url=variant_image_url, # Se pasa la imagen correcta
+                                price_at_purchase=item.price_at_purchase,
+                                price_at_purchase_cop=format_to_cop(item.price_at_purchase),
+                                quantity=item.quantity, 
+                                variant_details_str=variant_str,
+                            )
                         )
-                    )
 
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
-
-                # --- LÓGICA DE DATOS DE CLIENTE CORREGIDA Y SIMPLIFICADA ---
-                customer_name_display = "N/A"
+                
+                customer_name_display = p.shipping_name
                 customer_email_display = "Sin Correo"
                 if p.is_direct_sale:
-                    # Para Venta Directa, siempre usamos los datos guardados en la compra
-                    customer_name_display = p.shipping_name
                     customer_email_display = p.anonymous_customer_email or "Sin Correo"
                 elif p.userinfo and p.userinfo.user:
-                    # Para compras normales, usamos los datos del usuario registrado
                     customer_name_display = p.userinfo.user.username
                     customer_email_display = p.userinfo.email
 
                 active_purchases_list.append(
                     AdminPurchaseCardData(
                         id=p.id,
-                        customer_name=p.userinfo.user.username if p.userinfo and p.userinfo.user else "N/A", 
-                        customer_email=p.userinfo.email if p.userinfo else "N/A",
+                        customer_name=customer_name_display,
+                        customer_email=customer_email_display,
                         purchase_date_formatted=p.purchase_date_formatted,
                         status=p.status.value, 
                         total_price=p.total_price,
@@ -6406,9 +6489,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_full_address=f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}",
                         shipping_phone=p.shipping_phone,
                         items=detailed_items,
-                        # --- ✨ INICIO: PASAMOS EL DATO AL DTO ✨ ---
                         action_by_name=actor_name
-                        # --- ✨ FIN: PASAMOS EL DATO AL DTO ✨ ---
                     )
                 )
             self.active_purchases = active_purchases_list
@@ -6687,11 +6768,15 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ MÉTODO MODIFICADO: `load_purchases` (para User) ✨ ---
     @rx.event
     def load_purchases(self):
+        """
+        [CORREGIDO] Carga el historial de compras del usuario, asegurando que la imagen
+        de cada artículo corresponda a la variante exacta que se compró.
+        """
         if not self.authenticated_user_info:
             self.user_purchases = []
             return
+            
         with rx.session() as session:
-            # ... (la consulta a la base de datos se mantiene igual) ...
             results = session.exec(
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -6707,38 +6792,49 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if p.items:
                     for item in p.items:
                         if item.blog_post:
+                            # --- ✅ LÓGICA DE IMAGEN CORREGIDA Y ROBUSTA ---
                             variant_image_url = ""
+                            # 1. Intenta encontrar la variante exacta que se compró
                             for variant in item.blog_post.variants:
                                 if variant.get("attributes") == item.selected_variant:
-                                    variant_image_url = variant.get("image_url", "")
+                                    image_urls = variant.get("image_urls", [])
+                                    if image_urls:
+                                        variant_image_url = image_urls[0]
                                     break
+                            # 2. Si no la encuentra, usa la primera imagen del producto como respaldo
                             if not variant_image_url and item.blog_post.variants:
-                                variant_image_url = item.blog_post.variants[0].get("image_url", "")
-                            
-                            # --- ✨ CAMBIO 3: Se crea la cadena de texto aquí también ---
-                            variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
+                                image_urls = item.blog_post.variants[0].get("image_urls", [])
+                                if image_urls:
+                                    variant_image_url = image_urls[0]
+                            # --- FIN DE LA CORRECCIÓN DE IMAGEN ---
 
+                            variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
                             purchase_items_data.append(
                                 PurchaseItemCardData(
                                     id=item.blog_post.id,
                                     title=item.blog_post.title,
-                                    image_url=variant_image_url,
+                                    image_url=variant_image_url, # Se pasa la imagen correcta
                                     price_at_purchase=item.price_at_purchase,
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
                                     quantity=item.quantity,
-                                    variant_details_str=variant_str, # Se asigna la cadena pre-formateada
+                                    variant_details_str=variant_str,
                                 )
                             )
                 
                 temp_purchases.append(
                     UserPurchaseHistoryCardData(
-                        # ... (otros campos del DTO se asignan igual) ...
-                        id=p.id, userinfo_id=p.userinfo_id, purchase_date_formatted=p.purchase_date_formatted,
-                        status=p.status.value, total_price_cop=p.total_price_cop,
-                        shipping_applied_cop=format_to_cop(p.shipping_applied),
-                        shipping_name=p.shipping_name, shipping_address=p.shipping_address,
-                        shipping_neighborhood=p.shipping_neighborhood, shipping_city=p.shipping_city,
-                        shipping_phone=p.shipping_phone, items=purchase_items_data,
+                        id=p.id, 
+                        userinfo_id=p.userinfo_id, 
+                        purchase_date_formatted=p.purchase_date_formatted,
+                        status=p.status.value, 
+                        total_price_cop=p.total_price_cop,
+                        shipping_applied_cop=format_to_cop(p.shipping_applied or 0.0),
+                        shipping_name=p.shipping_name, 
+                        shipping_address=p.shipping_address,
+                        shipping_neighborhood=p.shipping_neighborhood, 
+                        shipping_city=p.shipping_city,
+                        shipping_phone=p.shipping_phone, 
+                        items=purchase_items_data,
                         estimated_delivery_date_formatted=format_utc_to_local(p.estimated_delivery_date)
                     )
                 )
@@ -7643,7 +7739,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ FIN: SECCIÓN DE PERFIL DE USUARIO CORREGIDA ✨ ---
 
-
+    
 
     product_comments: list[CommentData] = []
     my_review_for_product: Optional[CommentData] = None
