@@ -251,7 +251,7 @@ def blog_post_add_form() -> rx.Component:
 # =============================================================================
 def blog_post_edit_form() -> rx.Component:
     """
-    [NUEVA VERSIÓN] Formulario para EDITAR una publicación, ahora con toda la 
+    [NUEVA VERSIÓN] Formulario para EDITAR una publicación, ahora con toda la
     funcionalidad de grupos, variantes, stock y estilos, y campos completos.
     """
     def image_and_group_section() -> rx.Component:
@@ -286,8 +286,10 @@ def blog_post_edit_form() -> rx.Component:
                         rx.cond(
                             AppState.edit_image_selection_for_grouping.contains(img_name),
                             rx.box(
+                                # --- ✨ LÍNEA CORREGIDA (VERSIÓN EDITAR) ✨ ---
+                                # Usamos el nuevo mapa computado en lugar de .index()
                                 rx.text(
-                                    AppState.edit_image_selection_for_grouping.index(img_name) + 1,
+                                    AppState.edit_selection_order_map[img_name],
                                     color="white", weight="bold", font_size="1.2em",
                                 ),
                                 rx.hstack(
