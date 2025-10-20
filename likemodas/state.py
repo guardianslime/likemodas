@@ -4070,6 +4070,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             outfile.write_bytes(upload_data)
             self.uploaded_images.append(unique_filename)
 
+    @rx.var
+    def available_images_for_grouping(self) -> list[str]:
+        """Devuelve las imágenes subidas que aún no han sido seleccionadas para un grupo."""
+        return [
+            img for img in self.uploaded_images 
+            if img not in self.image_selection_for_grouping
+        ]
+
+    @rx.var
+    def available_edit_images_for_grouping(self) -> list[str]:
+        """Versión de la propiedad anterior para el modal de edición."""
+        return [
+            img for img in self.edit_uploaded_images 
+            if img not in self.edit_image_selection_for_grouping
+        ]
+
     # 2. REEMPLAZA las funciones `toggle` para que funcionen con listas
     def toggle_image_selection_for_grouping(self, filename: str):
         """Añade o quita una imagen de la selección actual para agrupar."""

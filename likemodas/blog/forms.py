@@ -268,10 +268,9 @@ def blog_post_edit_form() -> rx.Component:
             
             rx.text("2. Haz clic en las imágenes para añadirlas al grupo:"),
             rx.flex(
-                 rx.foreach(
-                    AppState.edit_uploaded_images.where(
-                        lambda img: ~AppState.edit_image_selection_for_grouping.contains(img)
-                    ),
+                rx.foreach(
+                    # Usamos la nueva propiedad para edición que ya viene filtrada
+                    AppState.available_edit_images_for_grouping,
                     available_image_card
                 ),
                 wrap="wrap", spacing="2",

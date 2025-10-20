@@ -129,15 +129,13 @@ def blog_post_add_form() -> rx.Component:
             rx.text("2. Haz clic en las imágenes para añadirlas al grupo:"),
             rx.flex(
                 rx.foreach(
-                    # Filtramos para mostrar solo las que NO están seleccionadas
-                    AppState.uploaded_images.where(
-                        lambda img: ~AppState.image_selection_for_grouping.contains(img)
-                    ),
+                    # Usamos la nueva propiedad que ya viene filtrada desde el estado
+                    AppState.available_images_for_grouping,
                     available_image_card
                 ),
                 wrap="wrap", spacing="2", padding_top="0.25em",
             ),
-            
+                
             rx.divider(margin_y="1em"),
             
             rx.text("Imágenes Seleccionadas (Arrastra para reordenar):"),
