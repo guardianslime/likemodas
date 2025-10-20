@@ -263,7 +263,6 @@ def blog_post_add_form() -> rx.Component:
 
 # --- Componente para la previsualización de la tarjeta ---
 def post_preview(
-    # --- 👇 INICIO: AÑADIMOS ARGUMENTOS A LA FUNCIÓN 👇 ---
     title: rx.Var[str],
     price_cop: rx.Var[str],
     first_image_url: rx.Var[str],
@@ -273,9 +272,9 @@ def post_preview(
     moda_completa_tooltip_text: rx.Var[str],
     combines_shipping: rx.Var[bool],
     envio_combinado_tooltip_text: rx.Var[str],
-    # --- FIN: AÑADIMOS ARGUMENTOS A LA FUNCIÓN ---
 ) -> rx.Component:
     def _preview_badge(text_content: rx.Var[str], color_scheme: str) -> rx.Component:
+        # La lógica de esta función interna no cambia y está correcta
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
@@ -289,7 +288,7 @@ def post_preview(
         rx.vstack(
              rx.box(
                 rx.image(
-                    src=rx.get_upload_url(first_image_url), # USA EL ARGUMENTO
+                    src=rx.get_upload_url(first_image_url),
                     fallback="/image_off.png", 
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
@@ -300,7 +299,7 @@ def post_preview(
                     transition="transform 0.2s ease-out",
                 ),
                 rx.badge(
-                    rx.cond(is_imported, "Importado", "Nacional"), # USA EL ARGUMENTO
+                    rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
@@ -311,31 +310,36 @@ def post_preview(
              ),
              rx.vstack(
                 rx.text(
-                    rx.cond(title, title, "Título del Producto"), # USA EL ARGUMENTO
+                    rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", no_of_lines=2, width="100%",
                     color=rx.cond(AppState.use_default_style, rx.color_mode_cond("var(--gray-11)", "white"), AppState.live_title_color)
                 ),
                 star_rating_display_safe(0, 0, size=24),
                 rx.text(
-                    price_cop, size="5", weight="medium", # USA EL ARGUMENTO
+                    price_cop, size="5", weight="medium",
                     color=rx.cond(AppState.use_default_style, rx.color_mode_cond("var(--gray-9)", "var(--gray-a11)"), AppState.live_price_color)
                 ),
                 rx.spacer(),
-                rx.vstack(
-                    rx.hstack(
-                        _preview_badge(shipping_cost_badge_text, "gray"), # USA EL ARGUMENTO
-                        rx.cond(
-                            is_moda_completa, # USA EL ARGUMENTO
-                            rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
-                        ),
-                        spacing="3", align="center",
+
+                # --- ✅ CORRECCIÓN CLAVE AQUÍ ---
+                # Se reemplaza el `rx.vstack` por un `rx.flex` que permite que los elementos se ajusten.
+                rx.flex(
+                    _preview_badge(shipping_cost_badge_text, "gray"),
+                    rx.cond(
+                        is_moda_completa,
+                        rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
                     ),
                     rx.cond(
-                        combines_shipping, # USA EL ARGUMENTO
+                        combines_shipping,
                         rx.tooltip(_preview_badge("Envío Combinado", "teal"), content=envio_combinado_tooltip_text),
                     ),
-                    spacing="1", align_items="start", width="100%",
+                    spacing="2",       # Reducimos un poco el espaciado para que quepan mejor
+                    wrap="wrap",       # Permite que los badges pasen a la siguiente línea si no hay espacio
+                    align="center",
+                    width="100%",
                 ),
+                # --- FIN DE LA CORRECCIÓN ---
+
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",
