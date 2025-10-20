@@ -4,6 +4,8 @@
 # En: likemodas/blog/add.py
 
 import reflex as rx
+from reflex.vars import Var
+from reflex.event import EventSpec
 from rx_color_picker.color_picker import color_picker
 
 from likemodas.data.product_options import LISTA_TALLAS_ROPA
@@ -90,7 +92,8 @@ def blog_post_add_form() -> rx.Component:
             )
 
         # Componente para una imagen en la lista de seleccionadas y reordenables
-        def selected_image_card(img_name: str, index: int, on_click_handler: rx.EventSpec) -> rx.Component:
+        def selected_image_card(img_name: Var[str], index: Var[int], on_click_handler: EventSpec) -> rx.Component:
+            """Componente reutilizable para una imagen seleccionada y reordenable."""
             return rx.box(
                 rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                 # Indicador numérico
@@ -105,7 +108,6 @@ def blog_post_add_form() -> rx.Component:
                 # Botón para eliminar de la selección
                 rx.icon(
                     "x",
-                    # AHORA USA EL MANEJADOR PASADO COMO ARGUMENTO
                     on_click=on_click_handler,
                     style={
                         "position": "absolute", "top": "-5px", "right": "-5px",
@@ -144,7 +146,7 @@ def blog_post_add_form() -> rx.Component:
             sortable_js(
                 rx.foreach(
                     AppState.image_selection_for_grouping,
-                    # Usamos una lambda para pasar el manejador correcto a nuestra función
+                    # Usamos una lambda para llamar a nuestra nueva función reutilizable
                     lambda img, index: selected_image_card(
                         img, index, AppState.toggle_image_selection_for_grouping(img)
                     )
