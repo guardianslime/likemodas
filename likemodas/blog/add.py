@@ -48,11 +48,10 @@ moveable = Moveable.create
 # --- Componente del formulario (antes en forms.py) ---
 def blog_post_add_form() -> rx.Component:
     """
-    Formulario completo para AÑADIR una nueva publicación, con la lógica
-    de selección y ordenamiento numérico de imágenes.
+    Formulario completo para AÑADIR una nueva publicación, con la sintaxis
+    de los manejadores de eventos corregida para evitar AttributeErrors.
     """
     def image_and_group_section() -> rx.Component:
-        """Componente de UI para la gestión de imágenes."""
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
@@ -63,13 +62,23 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     wrap="wrap", spacing="2",
                 ),
-                rx.icon("trash-2", on_click=AppState.remove_variant_group(index),
-                    style={"position": "absolute", "top": "-8px", "right": "-8px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "20px", "height": "20px"}
+                rx.icon(
+                    "trash-2",
+                    # ✨ CORRECCIÓN (lambda): Envolver la llamada
+                    on_click=lambda: AppState.remove_variant_group(index),
+                    style={
+                        "position": "absolute", "top": "-8px", "right": "-8px",
+                        "background": "var(--red-9)", "color": "white",
+                        "border_radius": "50%", "padding": "2px", "cursor": "pointer",
+                        "width": "20px", "height": "20px"
+                    }
                 ),
-                position="relative", border_width="2px",
+                position="relative",
+                border_width="2px",
                 border_color=rx.cond(is_selected, "var(--violet-9)", "transparent"),
                 padding="0.25em", border_radius="md", cursor="pointer",
-                on_click=AppState.select_group_for_editing(index),
+                # ✨ CORRECCIÓN (lambda): Envolver la llamada
+                on_click=lambda: AppState.select_group_for_editing(index),
             )
 
         return rx.vstack(
@@ -91,24 +100,25 @@ def blog_post_add_form() -> rx.Component:
                             rx.box(
                                 rx.text(AppState.selection_order_map[img_name], color="white", weight="bold", font_size="1.5em"),
                                 rx.hstack(
-                                    # --- ✨ CORRECCIÓN AQUÍ (lambda para move) ✨ ---
+                                    # ✨ CORRECCIÓN (lambda) ✨
                                     rx.icon("arrow-left", size=16, on_click=lambda: AppState.move_image_in_selection(img_name, -1), cursor="pointer"),
                                     rx.icon("arrow-right", size=16, on_click=lambda: AppState.move_image_in_selection(img_name, 1), cursor="pointer"),
-                                    spacing="2", position="absolute", bottom="4px", left="50%", transform="translateX(-50%)",
-                                    bg="rgba(255, 255, 255, 0.8)", border_radius="sm", padding="0 4px",
+                                    spacing="2", position="absolute", bottom="4px", left="50%",
+                                    transform="translateX(-50%)", bg="rgba(255, 255, 255, 0.8)",
+                                    border_radius="sm", padding="0 4px",
                                 ),
                                 bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
                                 display="flex", align_items="center", justify_content="center"
                             )
                         ),
-                        # --- ✨ CORRECCIÓN AQUÍ (lambda para remove) ✨ ---
+                        # ✨ CORRECCIÓN (lambda) ✨
                         rx.icon("x", on_click=lambda: AppState.remove_uploaded_image(img_name),
                             style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}
                         ),
                         position="relative", border="2px solid",
                         border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
                         border_radius="lg", cursor="pointer",
-                        # --- ✨ CORRECCIÓN PRINCIPAL AQUÍ (lambda para toggle) ✨ ---
+                        # ✨ CORRECCIÓN PRINCIPAL (lambda) ✨
                         on_click=lambda: AppState.toggle_image_selection_for_grouping(img_name),
                     )
                 ),
@@ -122,6 +132,8 @@ def blog_post_add_form() -> rx.Component:
         )
 
     def attributes_and_stock_section() -> rx.Component:
+        # El contenido de esta función se mantiene igual, ya que sus 'on_click'
+        # también necesitan la corrección de la lambda.
         return rx.cond(
              AppState.selected_group_index >= 0,
             rx.vstack(
@@ -140,12 +152,14 @@ def blog_post_add_form() -> rx.Component:
                         rx.text("Talla"),
                         rx.hstack(
                             rx.select(LISTA_TALLAS_ROPA, placeholder="Añadir talla...", value=AppState.temp_talla, on_change=AppState.set_temp_talla),
-                            rx.button("Añadir", on_click=AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button")
+                            # ✨ CORRECCIÓN (lambda) ✨
+                            rx.button("Añadir", on_click=lambda: AppState.add_variant_attribute("Talla", AppState.temp_talla), type="button")
                         ),
                         rx.flex(
                              rx.foreach(
                                 AppState.attr_tallas_ropa,
-                                lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")
+                                # ✨ CORRECCIÓN (lambda) ✨
+                                lambda talla: rx.badge(talla, rx.icon("x", size=12, on_click=lambda: AppState.remove_variant_attribute("Talla", talla), cursor="pointer"), variant="soft", color_scheme="gray")
                              ),
                             wrap="wrap", spacing="2", min_height="28px", padding_top="0.5em"
                         ),
@@ -154,7 +168,8 @@ def blog_post_add_form() -> rx.Component:
                      ),
                     rx.vstack(
                         rx.text("Variantes y Stock", weight="medium"),
-                        rx.button("Generar / Actualizar Variantes", on_click=AppState.generate_variants_for_group(AppState.selected_group_index), type="button"),
+                        # ✨ CORRECCIÓN (lambda) ✨
+                        rx.button("Generar / Actualizar Variantes", on_click=lambda: AppState.generate_variants_for_group(AppState.selected_group_index), type="button"),
                         rx.cond(
                             AppState.generated_variants_map.contains(AppState.selected_group_index),
                             rx.scroll_area(
@@ -162,10 +177,11 @@ def blog_post_add_form() -> rx.Component:
                                      rx.foreach(
                                         AppState.generated_variants_map[AppState.selected_group_index],
                                         lambda variant, var_index: rx.hstack(
-                                             rx.text(variant.attributes.get("Talla", "N/A")), rx.spacer(),
-                                            rx.icon_button(rx.icon("minus"), on_click=AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
+                                            rx.text(variant.attributes["Talla"]), rx.spacer(),
+                                            # ✨ CORRECCIÓN (lambda) ✨
+                                            rx.icon_button(rx.icon("minus"), on_click=lambda: AppState.decrement_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
                                             rx.input(value=variant.stock.to_string(), on_change=lambda val: AppState.set_variant_stock(AppState.selected_group_index, var_index, val), text_align="center", max_width="50px"),
-                                            rx.icon_button(rx.icon("plus"), on_click=AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
+                                            rx.icon_button(rx.icon("plus"), on_click=lambda: AppState.increment_variant_stock(AppState.selected_group_index, var_index), size="1", type="button"),
                                             align="center"
                                          )
                                     ),
