@@ -1,6 +1,8 @@
 # likemodas/ui/components.py (COMPLETO Y CORREGIDO)
 
 import reflex as rx
+from reflex.vars import Var
+from reflex.event import EventSpec
 import math
 from likemodas.utils.formatting import format_to_cop
 from ..state import (
@@ -251,4 +253,33 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
             rx.foreach(posts, _render_single_card),
             wrap="wrap", spacing="6", justify="center", width="100%", max_width="1800px",
         )
+    )
+
+# PEGA LA FUNCIÓN AQUÍ, AL FINAL DEL ARCHIVO
+def selected_image_card(img_name: Var[str], index: Var[int], on_click_handler: EventSpec) -> rx.Component:
+    """Componente reutilizable para una imagen seleccionada y reordenable."""
+    return rx.box(
+        rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
+        # Indicador numérico
+        rx.box(
+            rx.text(index + 1, color="white", weight="bold"),
+            bg="rgba(90, 40, 180, 0.8)",
+            position="absolute", top="4px", left="4px",
+            border_radius="50%",
+            width="24px", height="24px",
+            display="flex", align_items="center", justify_content="center",
+        ),
+        # Botón para eliminar de la selección
+        rx.icon(
+            "x",
+            on_click=on_click_handler,
+            style={
+                "position": "absolute", "top": "-5px", "right": "-5px",
+                "background": "var(--red-9)", "color": "white",
+                "border_radius": "50%", "padding": "1px", "cursor": "pointer",
+                "width": "16px", "height": "16px"
+            }
+        ),
+        position="relative",
+        cursor="grab",
     )

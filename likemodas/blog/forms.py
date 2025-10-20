@@ -6,7 +6,7 @@ from ..models import Category
 from ..ui.components import searchable_select
 from ..data.product_options import LISTA_COLORES, LISTA_TALLAS_ROPA
 from ..ui.sortable import sortable_js
-from .add import selected_image_card  # Importamos la función reutilizable
+from ..ui.components import selected_image_card
 
 # =============================================================================
 # FORMULARIO PARA CREAR PUBLICACIONES (COMPLETO)

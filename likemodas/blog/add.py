@@ -16,6 +16,7 @@ from ..ui.components import searchable_select, star_rating_display_safe
 from ..ui.sortable import sortable_js
 from ..utils.formatting import format_to_cop
 from reflex.components.component import NoSSRComponent
+from ..ui.components import selected_image_card # <-- AÑADE ESTA LÍNEA
 
 class Moveable(NoSSRComponent):
     """Componente Reflex que envuelve la librería React-Moveable."""
