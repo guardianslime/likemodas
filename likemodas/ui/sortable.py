@@ -1,4 +1,4 @@
-# likemodas/ui/sortable.py (VERSIÓN FINAL DEFINITIVA)
+# likemodas/ui/sortable.py (VERSIÓN FINAL CON CORRECCIÓN DE SCOPE)
 
 import reflex as rx
 
@@ -7,27 +7,22 @@ class Sortable(rx.Component):
     Un componente de Reflex que envuelve la biblioteca 'SortableJS' para permitir
     listas reordenables mediante drag-and-drop.
     """
-    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-    # Se elimina la línea: library = "sortablejs"
-    # Esto le dice a Reflex que el componente del `tag` no viene de una librería externa,
-    # sino que está definido en nuestro `get_custom_code`.
-    # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-
     tag = "SortableProvider"
 
     on_end: rx.EventHandler[lambda old_index, new_index: [old_index, new_index]]
 
     def get_imports(self) -> dict:
-        # Aquí sí importamos la clase 'Sortable' de la librería para usarla en nuestro JS.
         return {
             "react": {"useEffect", "useRef"},
             "sortablejs": "Sortable",
         }
     
     def get_custom_code(self) -> str:
-        # Nuestro código JS personalizado que define el componente 'SortableProvider'
         return """
-function SortableProvider(props) {
+// --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+// Adjuntamos el componente al objeto global 'window' para garantizar que esté definido.
+window.SortableProvider = function(props) {
+// --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
     const ref = useRef(null);
     useEffect(() => {
         if (!ref.current) {
