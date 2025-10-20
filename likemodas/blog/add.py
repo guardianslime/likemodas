@@ -277,11 +277,19 @@ def post_preview(
         light_colors = {"gray": {"bg": "#F1F3F5", "text": "#495057"}, "violet": {"bg": "#F3F0FF", "text": "#5F3DC4"}, "teal": {"bg": "#E6FCF5", "text": "#0B7285"}}
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
+        
+        # --- ✅ SOLUCIÓN FINAL AQUÍ ---
+        # Añadimos 'white_space="nowrap"' para forzar que el texto nunca se divida en varias líneas.
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
-            bg=colors["bg"], color=colors["text"],
-            padding="1px 10px", border_radius="var(--radius-full)", font_size="0.8em",
+            bg=colors["bg"], 
+            color=colors["text"],
+            padding="1px 10px", 
+            border_radius="var(--radius-full)", 
+            font_size="0.8em",
+            white_space="nowrap", # <--- ESTA ES LA LÍNEA CLAVE
         )
+        # --- FIN DE LA SOLUCIÓN FINAL ---
     
     return rx.box(
         rx.vstack(
@@ -319,9 +327,6 @@ def post_preview(
                     color=rx.cond(AppState.use_default_style, rx.color_mode_cond("var(--gray-9)", "var(--gray-a11)"), AppState.live_price_color)
                 ),
                 rx.spacer(),
-
-                # --- ✅ SOLUCIÓN DEFINITIVA AQUÍ ---
-                # Reemplazamos la estructura anterior por una nueva que usa `rx.grid` para forzar el layout.
                 rx.vstack(
                     rx.grid(
                         _preview_badge(shipping_cost_badge_text, "gray"),
@@ -329,10 +334,10 @@ def post_preview(
                             is_moda_completa,
                             rx.tooltip(_preview_badge("Moda Completa", "violet"), content=moda_completa_tooltip_text),
                         ),
-                        columns="auto auto", # Crea 2 columnas que se ajustan al contenido
+                        columns="auto auto",
                         spacing="2",
                         align="center",
-                        justify="start", # Alinea los badges a la izquierda
+                        justify="start",
                         width="100%",
                     ),
                     rx.cond(
@@ -343,8 +348,6 @@ def post_preview(
                     align_items="start",
                     width="100%",
                 ),
-                # --- FIN DE LA SOLUCIÓN DEFINITIVA ---
-
                 spacing="2", align_items="start", width="100%", padding="1em", flex_grow="1",
             ),
             spacing="0", align_items="stretch", height="100%",
