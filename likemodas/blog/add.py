@@ -132,8 +132,6 @@ def blog_post_add_form() -> rx.Component:
         )
 
     def attributes_and_stock_section() -> rx.Component:
-        # El contenido de esta función se mantiene igual, ya que sus 'on_click'
-        # también necesitan la corrección de la lambda.
         return rx.cond(
              AppState.selected_group_index >= 0,
             rx.vstack(
