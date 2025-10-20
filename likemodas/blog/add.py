@@ -49,7 +49,6 @@ moveable = Moveable.create
 def blog_post_add_form() -> rx.Component:
     def image_and_group_section() -> rx.Component:
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
-            # Esta función interna para mostrar los grupos ya creados no cambia.
             is_selected = AppState.selected_group_index == index
             return rx.box(
                 rx.flex(
@@ -59,6 +58,7 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     wrap="wrap", spacing="2",
                 ),
+                # ✨ ICONO DE ELIMINAR PARA GRUPOS ✨
                 rx.icon(
                     "trash-2",
                     on_click=AppState.remove_variant_group(index),
@@ -78,6 +78,7 @@ def blog_post_add_form() -> rx.Component:
 
         return rx.vstack(
             rx.text("1. Subir Imágenes (máx 10)", weight="bold"),
+            # ... (tu componente de subida)
             rx.upload(
                  rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
                 id="blog_upload", multiple=True, max_files=10,
@@ -90,40 +91,15 @@ def blog_post_add_form() -> rx.Component:
                     AppState.uploaded_images,
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
-                        
-                        # --- ✨ INICIO DE LA MODIFICACIÓN CLAVE ✨ ---
                         rx.cond(
                             AppState.image_selection_for_grouping.contains(img_name),
                             rx.box(
-                                # Muestra el número de orden en lugar de un check
-                                rx.text(
-                                    AppState.selection_order_map[img_name],
-                                    color="white", weight="bold", font_size="1.2em",
-                                ),
-                                # Flechas para reordenar
-                                rx.hstack(
-                                    rx.icon("arrow-left", size=14, on_click=AppState.move_image_in_selection(img_name, -1), cursor="pointer", _hover={"color": "var(--violet-9)"}),
-                                    rx.icon("arrow-right", size=14, on_click=AppState.move_image_in_selection(img_name, 1), cursor="pointer", _hover={"color": "var(--violet-9)"}),
-                                    spacing="1",
-                                    position="absolute",
-                                    bottom="2px",
-                                    left="50%",
-                                    transform="translateX(-50%)",
-                                    bg="rgba(255, 255, 255, 0.7)",
-                                    border_radius="sm",
-                                    padding="0 2px",
-                                ),
-                                bg="rgba(90, 40, 180, 0.7)", 
-                                position="absolute", 
-                                inset="0", 
-                                border_radius="md",
-                                display="flex", 
-                                align_items="center", 
-                                justify_content="center"
+                                rx.icon("check", color="white", size=18),
+                                bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
+                                display="flex", align_items="center", justify_content="center"
                             )
                         ),
-                        # --- ✨ FIN DE LA MODIFICACIÓN CLAVE ✨ ---
-                        
+                        # ✨ ICONO DE ELIMINAR PARA IMÁGENES INDIVIDUALES ✨
                         rx.icon(
                             "x",
                             on_click=AppState.remove_uploaded_image(img_name),
