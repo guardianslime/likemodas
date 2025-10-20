@@ -1640,7 +1640,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     uploaded_images: list[str] = []
     
     # Almacena los NOMBRES DE ARCHIVO de las imágenes seleccionadas para crear un nuevo grupo
-    image_selection_for_grouping: set[str] = set()
+    image_selection_for_grouping: list[str] = []
 
     # La estructura principal: una lista de grupos de variantes.
     # Cada grupo tiene sus imágenes y sus atributos base (ej: Color).
@@ -3544,7 +3544,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # Lógica de grupos y variantes para edición
     edit_uploaded_images: list[str] = []
-    edit_image_selection_for_grouping: set[str] = set()
+    edit_image_selection_for_grouping: list[str] = []
     edit_variant_groups: list[VariantGroupDTO] = []
     edit_generated_variants_map: dict[int, list[VariantFormData]] = {}
     edit_selected_group_index: int = -1
@@ -3812,24 +3812,32 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA PREVISUALIZACIÓN DE EDICIÓN ✨ ---
 
+    # 5. REEMPLAZA la función `_update_edit_preview_image` para usar la lista ordenada
     def _update_edit_preview_image(self):
         """
-        [NUEVA FUNCIÓN] Actualiza la URL de la imagen principal para la previsualización en el modal de edición.
+        [NUEVA VERSIÓN] Actualiza la URL de la imagen principal para la previsualización en el modal de edición.
+        Ahora prioriza la primera imagen de la lista de selección.
         """
         self.edit_main_image_url_for_preview = ""
-        # Primero, intenta usar la primera imagen del grupo actualmente seleccionado.
+
+        # Prioridad 1: La primera imagen de la selección actual.
+        if self.edit_image_selection_for_grouping:
+            self.edit_main_image_url_for_preview = self.edit_image_selection_for_grouping[0]
+            return
+
+        # Prioridad 2: La primera imagen del grupo actualmente seleccionado.
         if self.edit_selected_group_index != -1 and 0 <= self.edit_selected_group_index < len(self.edit_variant_groups):
             selected_group = self.edit_variant_groups[self.edit_selected_group_index]
             if selected_group.image_urls:
                 self.edit_main_image_url_for_preview = selected_group.image_urls[0]
                 return
 
-        # Si no hay un grupo seleccionado o no tiene imágenes, usa la primera imagen del primer grupo como respaldo.
+        # Prioridad 3: La primera imagen del primer grupo como respaldo.
         if self.edit_variant_groups and self.edit_variant_groups[0].image_urls:
             self.edit_main_image_url_for_preview = self.edit_variant_groups[0].image_urls[0]
             return
         
-        # Si no hay grupos, usa la primera imagen que aún no ha sido agrupada.
+        # Prioridad 4: La primera imagen que aún no ha sido agrupada.
         if self.edit_uploaded_images:
             self.edit_main_image_url_for_preview = self.edit_uploaded_images[0]
 
@@ -4062,29 +4070,32 @@ class AppState(reflex_local_auth.LocalAuthState):
             outfile.write_bytes(upload_data)
             self.uploaded_images.append(unique_filename)
 
+    # 2. REEMPLAZA las funciones `toggle` para que funcionen con listas
     def toggle_image_selection_for_grouping(self, filename: str):
         """Añade o quita una imagen de la selección actual para agrupar."""
         if filename in self.image_selection_for_grouping:
             self.image_selection_for_grouping.remove(filename)
         else:
-            self.image_selection_for_grouping.add(filename)
+            self.image_selection_for_grouping.append(filename)
 
+    # 4. REEMPLAZA las funciones `create_variant_group` para que usen la lista directamente
     def create_variant_group(self):
-        """Crea un nuevo grupo de variantes con las imágenes seleccionadas."""
+        """Crea un nuevo grupo de variantes con las imágenes seleccionadas en su orden actual."""
         if not self.image_selection_for_grouping:
             return rx.toast.error("Debes seleccionar al menos una imagen.")
         
-        # --- ✨ CORRECCIÓN AQUÍ: Usamos el nuevo DTO ✨ ---
+        # Simplemente usamos la lista como está, ya no necesitamos ordenarla.
         new_group = VariantGroupDTO(
-            image_urls=sorted(list(self.image_selection_for_grouping)),
+            image_urls=list(self.image_selection_for_grouping),
         )
         self.variant_groups.append(new_group)
         
+        # Limpiamos las imágenes seleccionadas de la lista de disponibles
         for filename in self.image_selection_for_grouping:
             if filename in self.uploaded_images:
                 self.uploaded_images.remove(filename)
         
-        self.image_selection_for_grouping = set()
+        self.image_selection_for_grouping = []
         self.select_group_for_editing(len(self.variant_groups) - 1)
 
     def select_group_for_editing(self, group_index: int):
@@ -4292,25 +4303,45 @@ class AppState(reflex_local_auth.LocalAuthState):
         if image_name in self.edit_uploaded_images:
             self.edit_uploaded_images.remove(image_name)
 
-    @rx.event
     def toggle_edit_image_selection_for_grouping(self, filename: str):
+        """Versión para el modal de edición."""
         if filename in self.edit_image_selection_for_grouping:
             self.edit_image_selection_for_grouping.remove(filename)
         else:
-            self.edit_image_selection_for_grouping.add(filename)
+            self.edit_image_selection_for_grouping.append(filename)
+
+    # 3. AÑADE las NUEVAS funciones para reordenar
+    @rx.event
+    def reorder_selected_images(self, old_index: int, new_index: int):
+        """Reordena la lista de imágenes seleccionadas para un nuevo grupo."""
+        if 0 <= old_index < len(self.image_selection_for_grouping) and 0 <= new_index < len(self.image_selection_for_grouping):
+            item = self.image_selection_for_grouping.pop(old_index)
+            self.image_selection_for_grouping.insert(new_index, item)
+
+    @rx.event
+    def reorder_edit_selected_images(self, old_index: int, new_index: int):
+        """Versión para el modal de edición."""
+        if 0 <= old_index < len(self.edit_image_selection_for_grouping) and 0 <= new_index < len(self.edit_image_selection_for_grouping):
+            item = self.edit_image_selection_for_grouping.pop(old_index)
+            self.edit_image_selection_for_grouping.insert(new_index, item)
 
     @rx.event
     def create_edit_variant_group(self):
+        """Versión para el modal de edición."""
         if not self.edit_image_selection_for_grouping:
             return rx.toast.error("Debes seleccionar al menos una imagen.")
-        new_group = VariantGroupDTO(image_urls=sorted(list(self.edit_image_selection_for_grouping)))
+            
+        new_group = VariantGroupDTO(image_urls=list(self.edit_image_selection_for_grouping))
         self.edit_variant_groups.append(new_group)
+        
         for filename in self.edit_image_selection_for_grouping:
             if filename in self.edit_uploaded_images:
                 self.edit_uploaded_images.remove(filename)
-        self.edit_image_selection_for_grouping = set()
+                
+        self.edit_image_selection_for_grouping = []
+        
         yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
-        self._update_edit_preview_image() # Actualizar previsualización al crear grupo
+        self._update_edit_preview_image()
 
     @rx.event
     def remove_edit_variant_group(self, group_index: int):

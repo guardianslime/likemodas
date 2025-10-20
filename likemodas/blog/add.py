@@ -11,6 +11,7 @@ from ..state import AppState, VariantGroupDTO
 from ..auth.admin_auth import require_panel_access
 from .forms import blog_post_add_form
 from ..ui.components import searchable_select, star_rating_display_safe
+from ..ui.sortable import sortable_js
 from ..utils.formatting import format_to_cop
 from reflex.components.component import NoSSRComponent
 
@@ -48,6 +49,10 @@ moveable = Moveable.create
 # --- Componente del formulario (antes en forms.py) ---
 def blog_post_add_form() -> rx.Component:
     def image_and_group_section() -> rx.Component:
+        """
+        [NUEVA VERSIÓN] Sección de imágenes rediseñada con un área para
+        seleccionar y un área para ordenar las imágenes seleccionadas.
+        """
         def render_group_card(group: VariantGroupDTO, index: rx.Var[int]) -> rx.Component:
             is_selected = AppState.selected_group_index == index
             return rx.box(
@@ -58,7 +63,6 @@ def blog_post_add_form() -> rx.Component:
                     ),
                     wrap="wrap", spacing="2",
                 ),
-                # ✨ ICONO DE ELIMINAR PARA GRUPOS ✨
                 rx.icon(
                     "trash-2",
                     on_click=AppState.remove_variant_group(index),
@@ -76,57 +80,93 @@ def blog_post_add_form() -> rx.Component:
                 on_click=AppState.select_group_for_editing(index),
             )
 
+        # Componente para una imagen individual en la lista de disponibles
+        def available_image_card(img_name: str) -> rx.Component:
+            return rx.box(
+                rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
+                _hover={"opacity": 0.7},
+                cursor="pointer",
+                on_click=AppState.toggle_image_selection_for_grouping(img_name),
+            )
+
+        # Componente para una imagen en la lista de seleccionadas y reordenables
+        def selected_image_card(img_name: str, index: int) -> rx.Component:
+            return rx.box(
+                rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
+                # Indicador numérico
+                rx.box(
+                    rx.text(index + 1, color="white", weight="bold"),
+                    bg="rgba(90, 40, 180, 0.8)",
+                    position="absolute", top="4px", left="4px",
+                    border_radius="50%",
+                    width="24px", height="24px",
+                    display="flex", align_items="center", justify_content="center",
+                ),
+                # Botón para eliminar de la selección
+                rx.icon(
+                    "x",
+                    on_click=AppState.toggle_image_selection_for_grouping(img_name),
+                    style={
+                        "position": "absolute", "top": "-5px", "right": "-5px",
+                        "background": "var(--red-9)", "color": "white",
+                        "border_radius": "50%", "padding": "1px", "cursor": "pointer",
+                        "width": "16px", "height": "16px"
+                    }
+                ),
+                position="relative",
+                cursor="grab",
+            )
+
         return rx.vstack(
             rx.text("1. Subir Imágenes (máx 10)", weight="bold"),
-            # ... (tu componente de subida)
             rx.upload(
-                 rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
+                rx.vstack(rx.icon("upload"), rx.text("Arrastra o haz clic")),
                 id="blog_upload", multiple=True, max_files=10,
                 on_drop=AppState.handle_add_upload(rx.upload_files("blog_upload")),
                 border="1px dashed var(--gray-a6)", padding="2em", width="100%"
             ),
-            rx.text("2. Selecciona imágenes para crear un grupo de color:"),
+
+            rx.text("2. Haz clic en las imágenes para añadirlas al grupo:"),
             rx.flex(
-                 rx.foreach(
-                    AppState.uploaded_images,
-                    lambda img_name: rx.box(
-                        rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
-                        rx.cond(
-                            AppState.image_selection_for_grouping.contains(img_name),
-                            rx.box(
-                                rx.icon("check", color="white", size=18),
-                                bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md",
-                                display="flex", align_items="center", justify_content="center"
-                            )
-                        ),
-                        # ✨ ICONO DE ELIMINAR PARA IMÁGENES INDIVIDUALES ✨
-                        rx.icon(
-                            "x",
-                            on_click=AppState.remove_uploaded_image(img_name),
-                            style={
-                                "position": "absolute", "top": "-5px", "right": "-5px",
-                                "background": "var(--red-9)", "color": "white",
-                                "border_radius": "50%", "padding": "1px", "cursor": "pointer",
-                                "width": "16px", "height": "16px"
-                            }
-                        ),
-                        position="relative",
-                        border="2px solid",
-                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
-                        border_radius="lg", cursor="pointer",
-                        on_click=AppState.toggle_image_selection_for_grouping(img_name),
-                    )
+                rx.foreach(
+                    # Filtramos para mostrar solo las que NO están seleccionadas
+                    AppState.uploaded_images.where(
+                        lambda img: ~AppState.image_selection_for_grouping.contains(img)
+                    ),
+                    available_image_card
                 ),
                 wrap="wrap", spacing="2", padding_top="0.25em",
-             ),
+            ),
+            
+            rx.divider(margin_y="1em"),
+            
+            rx.text("Imágenes Seleccionadas (Arrastra para reordenar):"),
+            # Usamos nuestro componente SortableJS
+            sortable_js(
+                rx.foreach(
+                    AppState.image_selection_for_grouping,
+                    selected_image_card
+                ),
+                display="flex",
+                flex_wrap="wrap",
+                gap="0.5rem",
+                width="100%",
+                min_height="95px",
+                padding="0.5rem",
+                border="1px dashed var(--gray-a6)",
+                border_radius="md",
+                on_end=AppState.reorder_selected_images, # Conectamos el evento
+            ),
+
             rx.button(
                 "Crear Grupo de Color",
                 on_click=AppState.create_variant_group,
-                margin_top="0.5em", width="100%",
-                type="button",
+                is_disabled=~AppState.image_selection_for_grouping, # Deshabilitado si no hay selección
+                margin_top="0.5em", width="100%", type="button",
             ),
+            
             rx.divider(margin_y="1em"),
-            rx.text("3. Grupos (Selecciona uno para editar abajo):"),
+            rx.text("3. Grupos existentes (Selecciona uno para editar abajo):"),
             rx.flex(rx.foreach(AppState.variant_groups, render_group_card), wrap="wrap", spacing="2"),
             spacing="3", width="100%", align_items="stretch",
         )
@@ -414,12 +454,16 @@ def blog_post_add_content() -> rx.Component:
     )
     
     first_image_url = rx.cond(
-        (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
-        AppState.variant_groups[0].image_urls[0],
+        AppState.image_selection_for_grouping,
+        AppState.image_selection_for_grouping[0], # Prioridad 1: la primera imagen seleccionada
         rx.cond(
-            AppState.uploaded_images.length() > 0,
-            AppState.uploaded_images[0],
-            ""
+            (AppState.variant_groups.length() > 0) & (AppState.variant_groups[0].image_urls.length() > 0),
+            AppState.variant_groups[0].image_urls[0], # Prioridad 2: la primera de un grupo ya creado
+            rx.cond(
+                AppState.uploaded_images.length() > 0,
+                AppState.uploaded_images[0], # Prioridad 3: la primera subida
+                ""
+            )
         )
     )
 
