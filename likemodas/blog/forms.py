@@ -244,8 +244,8 @@ def blog_post_edit_form() -> rx.Component:
                                 ),
                                 # Botones de flecha para reordenar
                                 rx.hstack(
-                                    rx.icon("arrow-left", size=16, on_click=AppState.move_edit_image_in_selection(img_name, -1), cursor="pointer"),
-                                    rx.icon("arrow-right", size=16, on_click=AppState.move_edit_image_in_selection(img_name, 1), cursor="pointer"),
+                                    rx.icon("arrow-left", size=16, on_click=lambda: AppState.move_edit_image_in_selection(img_name, -1), cursor="pointer"),
+                                    rx.icon("arrow-right", size=16, on_click=lambda: AppState.move_edit_image_in_selection(img_name, 1), cursor="pointer"),
                                     spacing="2", position="absolute", bottom="4px", left="50%",
                                     transform="translateX(-50%)", bg="rgba(255, 255, 255, 0.8)",
                                     border_radius="sm", padding="0 4px",
@@ -254,11 +254,11 @@ def blog_post_edit_form() -> rx.Component:
                                 display="flex", align_items="center", justify_content="center"
                             )
                         ),
-                        rx.icon("x", on_click=AppState.remove_edit_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}),
+                        rx.icon("x", on_click=lambda: AppState.remove_edit_uploaded_image(img_name), style={"position": "absolute", "top": "-6px", "right": "-6px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "2px", "cursor": "pointer", "width": "18px", "height": "18px"}),
                         position="relative", border="2px solid",
                         border_color=rx.cond(AppState.edit_image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
                         border_radius="lg", cursor="pointer",
-                        on_click=AppState.toggle_edit_image_selection_for_grouping(img_name),
+                        on_click=lambda: AppState.toggle_edit_image_selection_for_grouping(img_name),
                     )
                 ),
                 wrap="wrap", spacing="3", padding_top="0.5em",
