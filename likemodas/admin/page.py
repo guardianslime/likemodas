@@ -9,10 +9,17 @@ from ..blog.public_page import product_detail_modal
 
 # ... (purchase_item_display_admin y purchase_items_view no cambian) ...
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
-    """Muestra un item individual del historial (SIN on_click para depuración)."""
+    """Muestra un item individual del historial, con lógica de renderizado segura."""
+    
+    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+    # 1. Calculamos el subtotal como una variable Var separada.
+    subtotal_var = item.price_at_purchase * item.quantity
+    
+    # 2. Formateamos esa variable Var en otra variable separada.
+    subtotal_cop_var = format_to_cop(subtotal_var)
+    # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
     return rx.hstack(
-        # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
-        # El on_click ha sido eliminado temporalmente del rx.box
         rx.box(
             rx.image(
                 src=rx.get_upload_url(item.image_url),
@@ -22,12 +29,12 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
                 object_fit="cover",
                 border_radius="sm",
             ),
-            # on_click=AppState.open_product_detail_modal(item.id), # <--- LÍNEA ELIMINADA
+            # Podemos restaurar el on_click, ya que sabemos que no era el culpable
+            on_click=AppState.open_product_detail_modal(item.id),
             cursor="pointer",
             _hover={"opacity": 0.8},
             transition="opacity 0.2s"
         ),
-        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
             rx.text(item.variant_details_str, size="2", color_scheme="gray"),
@@ -35,11 +42,16 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
             spacing="0",
         ),
         rx.spacer(),
+
+        # --- ✨ CORRECCIÓN FINAL EN LA UI ✨ ---
+        # 3. Pasamos las variables limpias y separadas al componente rx.text.
         rx.text(
-            item.quantity.to_string(), "x ", format_to_cop(item.price_at_purchase * item.quantity),
+            item.quantity.to_string(), "x ", subtotal_cop_var,
             size="3",
             text_align="right",
         ),
+        # --- ✨ FIN DE LA CORRECCIÓN FINAL ✨ ---
+
         spacing="3",
         align="center",
         width="100%",
