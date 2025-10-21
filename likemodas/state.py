@@ -1386,6 +1386,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 DirectSaleVariantDTO(
                     cart_key=item.cart_key,
                     attributes_str=variant_attrs_str,
+                    image_url=data["image_url"],
                     quantity=item.quantity
                 )
             )
@@ -4667,7 +4668,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         y pasando la ciudad del vendedor y comprador para un cálculo de envío preciso.
         """
         if not self.cart:
-            return {"subtotal": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
+            # ✨ CORRECCIÓN: El caso base también debe devolver la clave correcta.
+            return {"subtotal_con_iva": 0, "shipping_cost": 0, "grand_total": 0, "free_shipping_achieved": False, "iva": 0}
 
         with rx.session() as session:
             cart_items_details = self.cart_details
@@ -4817,19 +4819,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
                     # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
                     variant_image_url = ""
-                    correct_variant = None
+                    correct_variant = next((v for v in post.variants if v.get("attributes") == selection_details), None)
                     
-                    # 2. Buscamos la variante exacta que coincide con la selección del usuario.
-                    for v in post.variants:
-                        if v.get("attributes") == selection_details:
-                            correct_variant = v
-                            break
-                    
-                    # 3. Si encontramos la variante, obtenemos su grupo de imágenes.
                     if correct_variant:
                         image_urls = correct_variant.get("image_urls", [])
                         if image_urls:
                             variant_image_url = image_urls[0]
+                    
+                    if not variant_image_url and post.variants and post.variants[0].get("image_urls"):
+                        variant_image_url = post.variants[0]["image_urls"][0]
+                    # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
                     
                     # 4. Como respaldo (si la variante fue eliminada), usamos la primera imagen del producto.
                     if not variant_image_url and post.variants and post.variants[0].get("image_urls"):
@@ -6622,7 +6621,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
                 )
                 .where(
-                    PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE, PurchaseStatus.FAILED]),
+                    PurchaseModel.status.in_([
+                        PurchaseStatus.DELIVERED, 
+                        PurchaseStatus.DIRECT_SALE,
+                        PurchaseStatus.FAILED
+                    ]),
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
                 .join(PurchaseItemModel)
@@ -6632,22 +6635,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             temp_history = []
             for p in results:
                 detailed_items = []
-                for item in p.items:
-                    if item.blog_post:
-                        # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
-                        variant_image_url = ""
-                        # 1. Intenta encontrar la variante exacta que se compró
-                        for variant in item.blog_post.variants:
-                            if variant.get("attributes") == item.selected_variant:
-                                image_urls = variant.get("image_urls", [])
+                for p in results:
+                    detailed_items = []
+                    for item in p.items:
+                        if item.blog_post:
+                            # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
+                            variant_image_url = ""
+                            correct_variant = next((v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), None)
+
+                            if correct_variant:
+                                image_urls = correct_variant.get("image_urls", [])
                                 if image_urls:
                                     variant_image_url = image_urls[0]
-                                break
-                        
-                        # 2. Si no la encuentra (pudo ser borrada), usa la primera imagen del primer grupo como respaldo
-                        if not variant_image_url and item.blog_post.variants and item.blog_post.variants[0].get("image_urls"):
-                            variant_image_url = item.blog_post.variants[0]["image_urls"][0]
-                        # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
+                            
+                            if not variant_image_url and item.blog_post.variants and item.blog_post.variants[0].get("image_urls"):
+                                variant_image_url = item.blog_post.variants[0]["image_urls"][0]
+                            # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
 
                         variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
                         detailed_items.append(
@@ -6994,30 +6997,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            
             if purchase and purchase.payment_method == "Contra Entrega" and purchase.status == PurchaseStatus.SHIPPED:
-                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                
-                # 1. Se registra la fecha de confirmación y quién lo hizo.
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 purchase.action_by_id = self.authenticated_user_info.id
-                
-                # 2. NO se cambia el estado a DELIVERED. Se mantiene en SHIPPED.
-                # La línea `purchase.status = PurchaseStatus.DELIVERED` se elimina.
-
+                # NO se cambia el estado a DELIVERED. Se mantiene en SHIPPED.
                 session.add(purchase)
-
-                # 3. Se notifica al COMPRADOR para que confirme la entrega.
+                
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
-                    message=f"¡El vendedor confirmó tu pago para la compra #{purchase.id}! Por favor, confirma que recibiste tu pedido.",
+                    message=f"¡El vendedor confirmó tu pago para la compra #{purchase.id}! Ahora confirma que recibiste tu pedido.",
                     url="/my-purchases"
                 )
                 session.add(notification)
                 session.commit()
-                
-                yield rx.toast.success(f"Pago de la compra #{purchase.id} registrado.")
-                # Esta línea refresca la lista de órdenes activas, haciendo que el pedido desaparezca.
+                yield rx.toast.success(f"Pago registrado. Esperando confirmación del cliente.")
                 yield AppState.load_active_purchases
             else:
                 yield rx.toast.error("Esta acción no es válida para este pedido.")
