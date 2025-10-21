@@ -5071,39 +5071,24 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- Reemplaza tus setters de precio y ganancia por estos ---
     def set_price_str(self, value: str):
-        """
-        [CORREGIDO] Actualiza el precio y, si el nuevo precio es menor que la
-        ganancia actual, ajusta la ganancia para que sea igual al precio.
-        """
         self.price_str = value
         try:
             price_float = float(value) if value else 0.0
             profit_float = float(self.profit_str) if self.profit_str else 0.0
-            
-            # Si la ganancia actual es mayor que el nuevo precio, la ajustamos.
             if profit_float > price_float:
                 self.profit_str = value
         except (ValueError, TypeError):
-            # Permite que el campo esté temporalmente vacío o inválido mientras se escribe.
             pass
 
     def set_profit_str(self, value: str):
-        """
-        [CORREGIDO] Actualiza la ganancia, asegurándose de que nunca
-        supere el precio actual del producto.
-        """
         try:
             price_float = float(self.price_str) if self.price_str else 0.0
             profit_float = float(value) if value else 0.0
-
-            # Si la nueva ganancia es mayor que el precio, la ajustamos al valor del precio.
             if profit_float > price_float:
                 self.profit_str = self.price_str
             else:
                 self.profit_str = value
         except (ValueError, TypeError):
-            # Si el valor no es un número válido, simplemente lo asignamos para
-            # que el usuario pueda seguir escribiendo.
             self.profit_str = value
 
     # --- Variables para el Dashboard de Finanzas ---
