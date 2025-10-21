@@ -46,12 +46,20 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
 
 
 def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.Component:
-    """Renderiza la lista de artículos para una compra específica."""
+    """Renderiza la lista de artículos para una compra específica de forma segura."""
     return rx.vstack(
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Usamos rx.cond para verificar si la clave existe en el mapa del frontend
+        # y luego accedemos a ella con corchetes [].
         rx.foreach(
-            map_var.get(purchase_id, []), 
+            rx.cond(
+                map_var.contains(purchase_id), # Condición: ¿El mapa tiene esta clave?
+                map_var[purchase_id],          # Si es verdadero, usa el valor (la lista de items)
+                []                             # Si es falso, usa una lista vacía
+            ), 
             purchase_item_display_admin
         ),
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
         spacing="2",
         width="100%",
     )
