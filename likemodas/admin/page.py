@@ -9,8 +9,10 @@ from ..blog.public_page import product_detail_modal
 
 # ... (purchase_item_display_admin y purchase_items_view no cambian) ...
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
-    """Muestra un item individual y abre el modal del producto al hacer clic en la imagen."""
+    """Muestra un item individual del historial (SIN on_click para depuración)."""
     return rx.hstack(
+        # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
+        # El on_click ha sido eliminado temporalmente del rx.box
         rx.box(
             rx.image(
                 src=rx.get_upload_url(item.image_url),
@@ -20,11 +22,12 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
                 object_fit="cover",
                 border_radius="sm",
             ),
-            on_click=AppState.open_product_detail_modal(item.id),
+            # on_click=AppState.open_product_detail_modal(item.id), # <--- LÍNEA ELIMINADA
             cursor="pointer",
             _hover={"opacity": 0.8},
             transition="opacity 0.2s"
         ),
+        # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
             rx.text(item.variant_details_str, size="2", color_scheme="gray"),
@@ -32,17 +35,11 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
             spacing="0",
         ),
         rx.spacer(),
-        
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # En lugar de mostrar solo el precio unitario, ahora mostramos
-        # la cantidad y el subtotal (precio * cantidad) formateado.
         rx.text(
             item.quantity.to_string(), "x ", format_to_cop(item.price_at_purchase * item.quantity),
             size="3",
-            text_align="right", # Alineamos a la derecha para mejor visibilidad
+            text_align="right",
         ),
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-
         spacing="3",
         align="center",
         width="100%",
