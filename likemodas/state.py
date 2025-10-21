@@ -4112,11 +4112,50 @@ class AppState(reflex_local_auth.LocalAuthState):
                 self.edit_image_selection_for_grouping.insert(new_index, self.edit_image_selection_for_grouping.pop(current_index))
 
     # 4. Métodos de 'toggle' y 'create' actualizados para usar listas.
+    @rx.event
+    def toggle_image_selection_for_grouping(self, filename: str):
+        """Añade o quita una imagen de la lista de selección."""
+        if filename in self.image_selection_for_grouping:
+            self.image_selection_for_grouping.remove(filename)
+        else:
+            self.image_selection_for_grouping.append(filename)
+
+    @rx.event
+    def create_variant_group(self):
+        """Crea un nuevo grupo de variantes con las imágenes ordenadas."""
+        if not self.image_selection_for_grouping:
+            return rx.toast.error("Debes seleccionar al menos una imagen.")
+        
+        new_group = VariantGroupDTO(image_urls=self.image_selection_for_grouping)
+        self.variant_groups.append(new_group)
+        
+        for filename in self.image_selection_for_grouping:
+            if filename in self.uploaded_images:
+                self.uploaded_images.remove(filename)
+        
+        self.image_selection_for_grouping = []
+        self.select_group_for_editing(len(self.variant_groups) - 1)
+
+    # --- Aplica lo mismo a las versiones de 'edit' ---
+    @rx.event
     def toggle_edit_image_selection_for_grouping(self, filename: str):
         if filename in self.edit_image_selection_for_grouping:
             self.edit_image_selection_for_grouping.remove(filename)
         else:
             self.edit_image_selection_for_grouping.append(filename)
+            
+    @rx.event
+    def create_edit_variant_group(self):
+        if not self.edit_image_selection_for_grouping:
+            return rx.toast.error("Debes seleccionar al menos una imagen.")
+        new_group = VariantGroupDTO(image_urls=self.edit_image_selection_for_grouping)
+        self.edit_variant_groups.append(new_group)
+        for filename in self.edit_image_selection_for_grouping:
+            if filename in self.edit_uploaded_images:
+                self.edit_uploaded_images.remove(filename)
+        self.edit_image_selection_for_grouping = []
+        yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
+        self._update_edit_preview_image()
 
     def create_edit_variant_group(self):
         if not self.edit_image_selection_for_grouping:
@@ -4214,15 +4253,17 @@ class AppState(reflex_local_auth.LocalAuthState):
         return rx.toast.info(f"{len(generated_variants)} variantes generadas para el Grupo #{group_index + 1}.")
     # --- ✨ FIN DEL BLOQUE A REEMPLAZAR ✨ ---
 
-    # --- ✨ INICIO: CÓDIGO A AÑADIR (FUNCIONES PARA ELIMINAR) ✨ ---
-
+    @rx.event
     def remove_uploaded_image(self, image_name: str):
         """Elimina una imagen de la lista de imágenes subidas."""
         if image_name in self.uploaded_images:
             self.uploaded_images.remove(image_name)
-            # Opcional: podrías eliminar el archivo físico del servidor aquí,
-            # pero ten cuidado si la imagen ya está en un grupo.
-            # Mejor dejar la limpieza de archivos inútiles para un script de mantenimiento.
+
+    @rx.event
+    def remove_edit_uploaded_image(self, image_name: str):
+        """Elimina una imagen de la lista de imágenes subidas en el form de edición."""
+        if image_name in self.edit_uploaded_images:
+            self.edit_uploaded_images.remove(image_name)
 
     def remove_variant_group(self, group_index: int):
         """Elimina un grupo de variantes y sus imágenes asociadas."""
@@ -4328,19 +4369,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_uploaded_images.append(unique_filename)
         # Actualizar la previsualización con la primera imagen del primer grupo si se añaden imágenes
         self._update_edit_preview_image()
-
-
-    @rx.event
-    def remove_edit_uploaded_image(self, image_name: str):
-        if image_name in self.edit_uploaded_images:
-            self.edit_uploaded_images.remove(image_name)
-
-    @rx.event
-    def toggle_edit_image_selection_for_grouping(self, filename: str):
-        if filename in self.edit_image_selection_for_grouping:
-            self.edit_image_selection_for_grouping.remove(filename)
-        else:
-            self.edit_image_selection_for_grouping.add(filename)
 
     @rx.event
     def create_edit_variant_group(self):
