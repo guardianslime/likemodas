@@ -4133,7 +4133,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             if filename in self.uploaded_images:
                 self.uploaded_images.remove(filename)
         
-        self.image_selection_for_grouping = []
+        self.image_selection_for_grouping = [] # Resetea a una lista vacía
         self.select_group_for_editing(len(self.variant_groups) - 1)
 
     # --- Aplica lo mismo a las versiones de 'edit' ---
@@ -4157,17 +4157,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
         self._update_edit_preview_image()
 
-    def create_edit_variant_group(self):
-        if not self.edit_image_selection_for_grouping:
-            return rx.toast.error("Debes seleccionar al menos una imagen.")
-        new_group = VariantGroupDTO(image_urls=self.edit_image_selection_for_grouping)
-        self.edit_variant_groups.append(new_group)
-        for filename in self.edit_image_selection_for_grouping:
-            if filename in self.edit_uploaded_images:
-                self.edit_uploaded_images.remove(filename)
-        self.edit_image_selection_for_grouping = []
-        yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
-        self._update_edit_preview_image()
 
     def select_group_for_editing(self, group_index: int):
         """Selecciona un grupo para editar sus atributos."""
@@ -4369,19 +4358,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_uploaded_images.append(unique_filename)
         # Actualizar la previsualización con la primera imagen del primer grupo si se añaden imágenes
         self._update_edit_preview_image()
-
-    @rx.event
-    def create_edit_variant_group(self):
-        if not self.edit_image_selection_for_grouping:
-            return rx.toast.error("Debes seleccionar al menos una imagen.")
-        new_group = VariantGroupDTO(image_urls=sorted(list(self.edit_image_selection_for_grouping)))
-        self.edit_variant_groups.append(new_group)
-        for filename in self.edit_image_selection_for_grouping:
-            if filename in self.edit_uploaded_images:
-                self.edit_uploaded_images.remove(filename)
-        self.edit_image_selection_for_grouping = set()
-        yield self.select_edit_group_for_editing(len(self.edit_variant_groups) - 1)
-        self._update_edit_preview_image() # Actualizar previsualización al crear grupo
 
     @rx.event
     def remove_edit_variant_group(self, group_index: int):
