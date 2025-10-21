@@ -1,4 +1,4 @@
-# En: likemodas/utils/formatting.py (CORREGIDO)
+# En: likemodas/utils/formatting.py (VERSIÓN CORRECTA Y ÚNICA)
 
 from typing import Optional, Union
 import reflex as rx
@@ -8,7 +8,6 @@ def format_to_cop(price: Union[rx.Var[Optional[float]], Optional[float]]) -> Uni
     [VERSIÓN DEFINITIVA] Formatea un valor a moneda COP, funcionando tanto
     para Vars de Reflex en la UI como para floats/ints normales en el backend.
     """
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
     # 1. Primero, se maneja el caso de los números normales de Python (backend).
     if isinstance(price, (int, float)):
         if price is None or price < 1:
@@ -22,6 +21,7 @@ def format_to_cop(price: Union[rx.Var[Optional[float]], Optional[float]]) -> Uni
     # 2. Si no es un número de Python, se asume que es un rx.Var (de cualquier tipo)
     #    y se usa la lógica del frontend con rx.call_script.
     return rx.cond(
+        # La condición price > 0 funciona para rx.Var
         price > 0,
         # Se usa la función nativa del navegador para formatear la moneda.
         rx.call_script(
@@ -29,4 +29,3 @@ def format_to_cop(price: Union[rx.Var[Optional[float]], Optional[float]]) -> Uni
         ),
         "$ 0"
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---

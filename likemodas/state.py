@@ -390,10 +390,6 @@ class VariantDetailFinanceDTO(rx.Base):
     daily_profit_data: List[Dict[str, Any]] = []
  # Datos para el gráfico de la variante
 
-# Formatea a COP
-def format_to_cop(value: float) -> str:
-    return f"${int(value):,}".replace(",", ".") # Formato colombiano
-
 # 2. Ahora definimos la clase que la utiliza.
 class ProductDetailFinanceDTO(rx.Base):
     """DTO para el detalle financiero de un producto específico."""
