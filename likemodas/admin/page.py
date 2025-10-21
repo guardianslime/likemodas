@@ -200,18 +200,16 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
     """Muestra los detalles de una compra en el historial, con auditoría y desglose de costos."""
     
-    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-    # La lógica de cálculo ahora usa rx.cond para ser compatible con Reflex
+    # Esta variable 'subtotal' es un rx.Var que representa la operación en el frontend.
     subtotal = purchase.total_price - rx.cond(
-        purchase.shipping_applied,  # Condición: si shipping_applied tiene valor
-        purchase.shipping_applied,  # Si es verdadero, usa el valor
-        0.0                         # Si es falso (nulo), usa 0.0
+        purchase.shipping_applied,
+        purchase.shipping_applied,
+        0.0
     )
-    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-
+    
     return rx.card(
         rx.vstack(
-            # Encabezado (ID, cliente, fecha, estado)
+            # Encabezado (ID, cliente, fecha y estado)
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
@@ -222,7 +220,9 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="green", variant="soft", size="2"),
-                    rx.heading(purchase.total_price_cop, size="6"),
+                    # --- ✨ CORRECCIÓN 1 ✨ ---
+                    # Se formatea el valor numérico crudo directamente aquí
+                    rx.heading(format_to_cop(purchase.total_price), size="6"),
                     align_items="end",
                 ), width="100%",
             ),
@@ -249,23 +249,28 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             ),
             rx.divider(),
             
-            # Sección de Totales (con la nueva variable 'subtotal')
+            # Sección de Totales
             rx.vstack(
                 rx.hstack(
                     rx.text("Subtotal:", size="3", color_scheme="gray"),
                     rx.spacer(),
+                    # La variable 'subtotal' ya está preparada para ser formateada
                     rx.text(format_to_cop(subtotal), size="3"),
                 ),
                 rx.hstack(
                     rx.text("Envío:", size="3", color_scheme="gray"),
                     rx.spacer(),
-                    rx.text(purchase.shipping_applied_cop, size="3"),
+                    # --- ✨ CORRECCIÓN 2 ✨ ---
+                    # Se formatea el valor numérico crudo directamente aquí
+                    rx.text(format_to_cop(purchase.shipping_applied), size="3"),
                 ),
                 rx.divider(border_style="dashed"),
                 rx.hstack(
                     rx.text("Total Pagado:", weight="bold", size="4"),
                     rx.spacer(),
-                    rx.text(purchase.total_price_cop, weight="bold", size="4"),
+                    # --- ✨ CORRECCIÓN 3 ✨ ---
+                    # Se formatea el valor numérico crudo directamente aquí
+                    rx.text(format_to_cop(purchase.total_price), weight="bold", size="4"),
                 ),
                 spacing="2",
                 align_items="stretch",
@@ -297,7 +302,6 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             spacing="4", width="100%",
         ), width="100%",
     )
-# --- ✨ FIN: COMPONENTES DE COMPRA CORREGIDOS ✨ ---
 
 @require_panel_access 
 def admin_confirm_content() -> rx.Component:
