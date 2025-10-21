@@ -390,18 +390,9 @@ class VariantDetailFinanceDTO(rx.Base):
     daily_profit_data: List[Dict[str, Any]] = []
  # Datos para el gráfico de la variante
 
-# --- ✨ INICIO: AÑADIR ESTA FUNCIÓN AUXILIAR ✨ ---
-def _format_to_cop_backend(value: float | None) -> str:
-    """
-    Una función simple SOLO para el backend que formatea un número de Python a COP.
-    No funciona con rx.Var.
-    """
-    if value is None or value < 1:
-        return "$ 0"
-    formatted_number = f"{value:,.0f}"
-    colombian_format = formatted_number.replace(',', '.')
-    return f"$ {colombian_format}"
-# --- ✨ FIN: AÑADIR ESTA FUNCIÓN AUXILIAR ✨ ---
+# Formatea a COP
+def format_to_cop(value: float) -> str:
+    return f"${int(value):,}".replace(",", ".") # Formato colombiano
 
 # 2. Ahora definimos la clase que la utiliza.
 class ProductDetailFinanceDTO(rx.Base):

@@ -11,19 +11,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import String
 from reflex_local_auth.user import LocalUser
 from .utils.timing import get_utc_now
-
-
-# 2. AÑADE la definición de la función directamente aquí.
-def _format_to_cop_backend(value: float | None) -> str:
-    """
-    Una función simple SOLO para el backend que formatea un número de Python a COP.
-    No funciona con rx.Var.
-    """
-    if value is None or value < 1:
-        return "$ 0"
-    formatted_number = f"{value:,.0f}"
-    colombian_format = formatted_number.replace(',', '.')
-    return f"$ {colombian_format}"
+from .utils.formatting import format_to_cop
 
 # --- Adelanta la declaración de modelos ---
 if "CommentModel" not in locals():
@@ -418,10 +406,7 @@ class BlogPostModel(rx.Model, table=True):
     @property
     def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
     @property
-    @property
-    def price_cop(self) -> str: 
-        # 👇 CAMBIAR ESTA LÍNEA 👇
-        return _format_to_cop_backend(self.price)
+    def price_cop(self) -> str: return format_to_cop(self.price)
 
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
@@ -487,9 +472,7 @@ class PurchaseModel(rx.Model, table=True):
     @property
     def confirmed_at_formatted(self) -> str: return format_utc_to_local(self.confirmed_at)
     @property
-    def total_price_cop(self) -> str: 
-        # 👇 CAMBIAR ESTA LÍNEA 👇
-        return _format_to_cop_backend(self.total_price)
+    def total_price_cop(self) -> str: return format_to_cop(self.total_price)
     
 
 class PurchaseItemModel(rx.Model, table=True):
@@ -632,8 +615,7 @@ class Gasto(rx.Model, table=True):
 
     @property
     def valor_cop(self) -> str:
-        # 👇 CAMBIAR ESTA LÍNEA 👇
-        return _format_to_cop_backend(self.valor)
+        return format_to_cop(self.valor)
 
 class ActivityLog(rx.Model, table=True):
     """Registra una acción realizada por un usuario en el panel."""

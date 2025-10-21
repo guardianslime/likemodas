@@ -1,7 +1,7 @@
 # likemodas/admin/page.py (VERSIÓN FINAL CON AUDITORÍA)
 
 import reflex as rx
-from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData, format_to_cop
+from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
 from ..models import PurchaseStatus
 from ..auth.admin_auth import require_panel_access
 # ✨ IMPORTA EL MODAL AQUÍ ✨
@@ -9,17 +9,9 @@ from ..blog.public_page import product_detail_modal
 
 # ... (purchase_item_display_admin y purchase_items_view no cambian) ...
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
-    """Muestra un item individual del historial, con lógica de renderizado segura."""
-    
-    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-    # 1. Calculamos el subtotal como una variable Var separada.
-    subtotal_var = item.price_at_purchase * item.quantity
-    
-    # 2. Formateamos esa variable Var en otra variable separada.
-    subtotal_cop_var = format_to_cop(subtotal_var)
-    # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-
+    """Muestra un item individual y abre el modal del producto al hacer clic en la imagen."""
     return rx.hstack(
+        # ✨ INICIO DE LA CORRECCIÓN ✨
         rx.box(
             rx.image(
                 src=rx.get_upload_url(item.image_url),
@@ -29,12 +21,13 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
                 object_fit="cover",
                 border_radius="sm",
             ),
-            # Podemos restaurar el on_click, ya que sabemos que no era el culpable
+            # Se añade el evento on_click para abrir el modal
             on_click=AppState.open_product_detail_modal(item.id),
             cursor="pointer",
             _hover={"opacity": 0.8},
             transition="opacity 0.2s"
         ),
+        # ✨ FIN DE LA CORRECCIÓN ✨
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
             rx.text(item.variant_details_str, size="2", color_scheme="gray"),
@@ -42,16 +35,10 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
             spacing="0",
         ),
         rx.spacer(),
-
-        # --- ✨ CORRECCIÓN FINAL EN LA UI ✨ ---
-        # 3. Pasamos las variables limpias y separadas al componente rx.text.
         rx.text(
-            item.quantity.to_string(), "x ", subtotal_cop_var,
-            size="3",
-            text_align="right",
+            item.quantity.to_string(), "x ", item.price_at_purchase_cop,
+            size="3"
         ),
-        # --- ✨ FIN DE LA CORRECCIÓN FINAL ✨ ---
-
         spacing="3",
         align="center",
         width="100%",
@@ -59,20 +46,12 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
 
 
 def purchase_items_view(purchase_id: rx.Var[int], map_var: rx.Var[dict]) -> rx.Component:
-    """Renderiza la lista de artículos para una compra específica de forma segura."""
+    """Renderiza la lista de artículos para una compra específica."""
     return rx.vstack(
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Usamos rx.cond para verificar si la clave existe en el mapa del frontend
-        # y luego accedemos a ella con corchetes [].
         rx.foreach(
-            rx.cond(
-                map_var.contains(purchase_id), # Condición: ¿El mapa tiene esta clave?
-                map_var[purchase_id],          # Si es verdadero, usa el valor (la lista de items)
-                []                             # Si es falso, usa una lista vacía
-            ), 
+            map_var.get(purchase_id, []), 
             purchase_item_display_admin
         ),
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
         spacing="2",
         width="100%",
     )
@@ -211,12 +190,7 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     )
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra en el historial, con auditoría y desglose de costos."""
-
-    subtotal = purchase.total_price - rx.cond(
-        purchase.shipping_applied, purchase.shipping_applied, 0.0
-    )
-
+    """Muestra los detalles de una compra en el historial, con auditoría."""
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -229,7 +203,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="green", variant="soft", size="2"),
-                    rx.heading(format_to_cop(purchase.total_price), size="6"),
+                    rx.heading(purchase.total_price_cop, size="6"),
                     align_items="end",
                 ), width="100%",
             ),
@@ -250,26 +224,23 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
-            rx.divider(),
-            rx.vstack(
-                rx.hstack(
-                    rx.text("Subtotal:", size="3", color_scheme="gray"),
-                    rx.spacer(),
-                    rx.text(format_to_cop(subtotal), size="3"),
-                ),
-                rx.hstack(
-                    rx.text("Envío:", size="3", color_scheme="gray"),
-                    rx.spacer(),
-                    rx.text(format_to_cop(purchase.shipping_applied), size="3"),
-                ),
-                rx.divider(border_style="dashed"),
-                rx.hstack(
-                    rx.text("Total Pagado:", weight="bold", size="4"),
-                    rx.spacer(),
-                    rx.text(format_to_cop(purchase.total_price), weight="bold", size="4"),
-                ),
-                spacing="2", align_items="stretch", width="100%", padding_y="0.5em",
+            rx.cond(
+                purchase.action_by_name,
+                rx.box(
+                    rx.hstack(
+                        rx.icon("user-check", size=12, color_scheme="gray"),
+                        rx.text(
+                            "Gestionado por: ",
+                            rx.text.strong(purchase.action_by_name),
+                            size="2", color_scheme="gray"
+                        ),
+                        spacing="2"
+                    ),
+                    width="100%",
+                    margin_y="0.5em",
+                )
             ),
+            # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
             rx.cond(
                 purchase.action_by_name,
                 rx.box(
@@ -285,6 +256,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     width="100%", margin_y="0.5em",
                 )
             ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
+
             rx.link(
                 rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="0.5em"),
                 href=f"/invoice?id={purchase.id}",
@@ -293,6 +266,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             spacing="4", width="100%",
         ), width="100%",
     )
+# --- ✨ FIN: COMPONENTES DE COMPRA CORREGIDOS ✨ ---
 
 @require_panel_access 
 def admin_confirm_content() -> rx.Component:
