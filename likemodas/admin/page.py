@@ -190,12 +190,20 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     )
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra en el historial, con auditoría."""
-    # Calculamos el subtotal (Total - Envío)
-    subtotal = purchase.total_price - (purchase.shipping_applied or 0.0)
+    """Muestra los detalles de una compra en el historial, con auditoría y desglose de costos."""
     
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # La lógica de cálculo ahora usa rx.cond para ser compatible con Reflex
+    subtotal = purchase.total_price - rx.cond(
+        purchase.shipping_applied,  # Condición: si shipping_applied tiene valor
+        purchase.shipping_applied,  # Si es verdadero, usa el valor
+        0.0                         # Si es falso (nulo), usa 0.0
+    )
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+
     return rx.card(
         rx.vstack(
+            # Encabezado (ID, cliente, fecha, estado)
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
@@ -211,6 +219,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 ), width="100%",
             ),
             rx.divider(),
+            
+            # Detalles de envío
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -219,6 +229,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
+
+            # Artículos
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 purchase_items_view(
@@ -227,24 +239,9 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
-            rx.cond(
-                purchase.action_by_name,
-                rx.box(
-                    rx.hstack(
-                        rx.icon("user-check", size=12, color_scheme="gray"),
-                        rx.text(
-                            "Gestionado por: ",
-                            rx.text.strong(purchase.action_by_name),
-                            size="2", color_scheme="gray"
-                        ),
-                        spacing="2"
-                    ),
-                    width="100%",
-                    margin_y="0.5em",
-                )
-            ),
-            # --- ✨ INICIO DE LA MODIFICACIÓN: SECCIÓN DE TOTALES ✨ ---
             rx.divider(),
+            
+            # Sección de Totales (con la nueva variable 'subtotal')
             rx.vstack(
                 rx.hstack(
                     rx.text("Subtotal:", size="3", color_scheme="gray"),
@@ -267,8 +264,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 width="100%",
                 padding_y="0.5em",
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-            # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
+            
+            # Auditoría y botón de imprimir
             rx.cond(
                 purchase.action_by_name,
                 rx.box(
@@ -284,8 +281,6 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     width="100%", margin_y="0.5em",
                 )
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-
             rx.link(
                 rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="0.5em"),
                 href=f"/invoice?id={purchase.id}",
