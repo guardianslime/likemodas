@@ -199,9 +199,87 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     )
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Una tarjeta de prueba súper simple para aislar el error."""
+    """Muestra los detalles de una compra en el historial, con auditoría y desglose de costos."""
+
+    subtotal = purchase.total_price - rx.cond(
+        purchase.shipping_applied, purchase.shipping_applied, 0.0
+    )
+
     return rx.card(
-        rx.text(f"Cargando compra #{purchase.id}...")
+        rx.vstack(
+            rx.hstack(
+                rx.vstack(
+                    rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
+                    rx.text(f"Cliente: {purchase.customer_name} ({purchase.customer_email})", size="3"),
+                    rx.text(f"Fecha: {purchase.purchase_date_formatted}", size="3"),
+                    align_items="start",
+                ),
+                rx.spacer(),
+                rx.vstack(
+                    rx.badge(purchase.status, color_scheme="green", variant="soft", size="2"),
+                    rx.heading(format_to_cop(purchase.total_price), size="6"),
+                    align_items="end",
+                ), width="100%",
+            ),
+            rx.divider(),
+            rx.vstack(
+                rx.text("Detalles de Envío:", weight="medium", size="4"),
+                rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
+                rx.text(f"Dirección: {purchase.shipping_full_address}", size="3"),
+                rx.text(f"Teléfono: {purchase.shipping_phone}", size="3"),
+                spacing="1", align_items="start", width="100%",
+            ),
+            rx.divider(),
+            rx.vstack(
+                rx.text("Artículos:", weight="medium", size="4"),
+                purchase_items_view(
+                    purchase_id=purchase.id,
+                    map_var=AppState.purchase_history_items_map
+                ),
+                spacing="2", align_items="start", width="100%",
+            ),
+            rx.divider(),
+            rx.vstack(
+                rx.hstack(
+                    rx.text("Subtotal:", size="3", color_scheme="gray"),
+                    rx.spacer(),
+                    rx.text(format_to_cop(subtotal), size="3"),
+                ),
+                rx.hstack(
+                    rx.text("Envío:", size="3", color_scheme="gray"),
+                    rx.spacer(),
+                    rx.text(format_to_cop(purchase.shipping_applied), size="3"),
+                ),
+                rx.divider(border_style="dashed"),
+                rx.hstack(
+                    rx.text("Total Pagado:", weight="bold", size="4"),
+                    rx.spacer(),
+                    rx.text(format_to_cop(purchase.total_price), weight="bold", size="4"),
+                ),
+                spacing="2", align_items="stretch", width="100%", padding_y="0.5em",
+            ),
+            rx.cond(
+                purchase.action_by_name,
+                rx.box(
+                    rx.hstack(
+                        rx.icon("user-check", size=12, color_scheme="gray"),
+                        rx.text(
+                            "Venta procesada por: ",
+                            rx.text.strong(purchase.action_by_name),
+                            size="2", color_scheme="gray"
+                        ),
+                        spacing="2"
+                    ),
+                    width="100%", margin_y="0.5em",
+                )
+            ),
+            rx.link(
+                rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="0.5em"),
+                href=f"/invoice?id={purchase.id}",
+                target="_blank",
+            ),
+            spacing="4", width="100%",
+        ), width="100%",
     )
 
 @require_panel_access 
