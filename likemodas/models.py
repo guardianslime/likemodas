@@ -10,8 +10,6 @@ from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import String
 from reflex_local_auth.user import LocalUser
-
-from likemodas.state import _format_to_cop_backend
 from .utils.timing import get_utc_now
 
 
