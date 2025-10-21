@@ -412,11 +412,6 @@ def blog_post_add_content() -> rx.Component:
         rx.vstack(
             rx.heading("Crear Publicación", size="7", width="100%", text_align="left", margin_bottom="0.5em", color_scheme="gray", font_weight="medium"),
             blog_post_add_form(),
-            rx.hstack(
-                rx.spacer(),
-                rx.button("Publicar Producto", on_click=AppState.submit_and_publish_manual, color_scheme="violet", size="3"),
-                width="100%", margin_top="1em"
-            ),
             width="100%", spacing="4", align_items="center",
             padding_left={"lg": "15em"}, padding_x=["1em", "2em"],
         ),
