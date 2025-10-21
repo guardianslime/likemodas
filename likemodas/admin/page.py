@@ -11,7 +11,6 @@ from ..blog.public_page import product_detail_modal
 def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
     """Muestra un item individual y abre el modal del producto al hacer clic en la imagen."""
     return rx.hstack(
-        # ✨ INICIO DE LA CORRECCIÓN ✨
         rx.box(
             rx.image(
                 src=rx.get_upload_url(item.image_url),
@@ -21,13 +20,11 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
                 object_fit="cover",
                 border_radius="sm",
             ),
-            # Se añade el evento on_click para abrir el modal
             on_click=AppState.open_product_detail_modal(item.id),
             cursor="pointer",
             _hover={"opacity": 0.8},
             transition="opacity 0.2s"
         ),
-        # ✨ FIN DE LA CORRECCIÓN ✨
         rx.vstack(
             rx.text(item.title, weight="bold", size="3"),
             rx.text(item.variant_details_str, size="2", color_scheme="gray"),
@@ -35,10 +32,17 @@ def purchase_item_display_admin(item: PurchaseItemCardData) -> rx.Component:
             spacing="0",
         ),
         rx.spacer(),
+        
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # En lugar de mostrar solo el precio unitario, ahora mostramos
+        # la cantidad y el subtotal (precio * cantidad) formateado.
         rx.text(
-            item.quantity.to_string(), "x ", item.price_at_purchase_cop,
-            size="3"
+            item.quantity.to_string(), "x ", format_to_cop(item.price_at_purchase * item.quantity),
+            size="3",
+            text_align="right", # Alineamos a la derecha para mejor visibilidad
         ),
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
         spacing="3",
         align="center",
         width="100%",
@@ -200,16 +204,12 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
     """Muestra los detalles de una compra en el historial, con auditoría y desglose de costos."""
     
-    # Esta variable 'subtotal' es un rx.Var que representa la operación en el frontend.
     subtotal = purchase.total_price - rx.cond(
-        purchase.shipping_applied,
-        purchase.shipping_applied,
-        0.0
+        purchase.shipping_applied, purchase.shipping_applied, 0.0
     )
     
     return rx.card(
         rx.vstack(
-            # Encabezado (ID, cliente, fecha y estado)
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
@@ -220,15 +220,12 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="green", variant="soft", size="2"),
-                    # --- ✨ CORRECCIÓN 1 ✨ ---
                     # Se formatea el valor numérico crudo directamente aquí
                     rx.heading(format_to_cop(purchase.total_price), size="6"),
                     align_items="end",
                 ), width="100%",
             ),
             rx.divider(),
-            
-            # Detalles de envío
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -237,8 +234,6 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
-
-            # Artículos
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 purchase_items_view(
@@ -248,37 +243,25 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="2", align_items="start", width="100%",
             ),
             rx.divider(),
-            
-            # Sección de Totales
             rx.vstack(
                 rx.hstack(
                     rx.text("Subtotal:", size="3", color_scheme="gray"),
                     rx.spacer(),
-                    # La variable 'subtotal' ya está preparada para ser formateada
                     rx.text(format_to_cop(subtotal), size="3"),
                 ),
                 rx.hstack(
                     rx.text("Envío:", size="3", color_scheme="gray"),
                     rx.spacer(),
-                    # --- ✨ CORRECCIÓN 2 ✨ ---
-                    # Se formatea el valor numérico crudo directamente aquí
                     rx.text(format_to_cop(purchase.shipping_applied), size="3"),
                 ),
                 rx.divider(border_style="dashed"),
                 rx.hstack(
                     rx.text("Total Pagado:", weight="bold", size="4"),
                     rx.spacer(),
-                    # --- ✨ CORRECCIÓN 3 ✨ ---
-                    # Se formatea el valor numérico crudo directamente aquí
                     rx.text(format_to_cop(purchase.total_price), weight="bold", size="4"),
                 ),
-                spacing="2",
-                align_items="stretch",
-                width="100%",
-                padding_y="0.5em",
+                spacing="2", align_items="stretch", width="100%", padding_y="0.5em",
             ),
-            
-            # Auditoría y botón de imprimir
             rx.cond(
                 purchase.action_by_name,
                 rx.box(
