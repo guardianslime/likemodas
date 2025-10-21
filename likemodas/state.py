@@ -4847,44 +4847,56 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def modal_attribute_selectors(self) -> list[ModalSelectorDTO]:
         """
-        Genera dinámicamente la lista de selectores (ej: Tallas) necesarios
-        basado en la imagen seleccionada y el stock disponible.
+        [CORREGIDO] Genera dinámicamente los selectores (Talla, Número, etc.)
+        para el modal de detalle del producto, filtrando correctamente por grupo de imágenes.
         """
-        if not self.current_modal_variant or not self.product_in_modal: return []
-        
-        current_image_url = self.current_modal_image_filename
-        
-        # Filtra todas las variantes que pertenecen a la misma imagen
-        variants_for_this_image = [
-            v for v in self.product_in_modal.variants 
-            if v.get("image_url") == current_image_url
+        if not self.current_modal_variant or not self.product_in_modal:
+            return []
+
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+
+        # 1. Obtener el grupo de imágenes de la variante actualmente seleccionada.
+        #    Usamos una tupla ordenada para que sea una clave única y comparable.
+        current_image_group = tuple(sorted(self.current_modal_variant.get("image_urls", [])))
+        if not current_image_group:
+            return []
+
+        # 2. Filtrar TODAS las variantes del producto para encontrar solo las que pertenecen a este mismo grupo de imágenes.
+        variants_for_this_group = [
+            v for v in self.product_in_modal.variants
+            if tuple(sorted(v.get("image_urls", []))) == current_image_group
         ]
 
-        # Identifica qué atributos son seleccionables (Talla, Número, etc.)
+        # 3. Identificar qué atributos son seleccionables (Talla, Número, etc.) dentro de este grupo.
         selectable_keys = list(set(
-            key for v in variants_for_this_image 
+            key for v in variants_for_this_group
             for key in v.get("attributes", {})
-            if key in ["Talla", "Número", "Tamaño"]
+            if key in self.SELECTABLE_ATTRIBUTES  # Usa la constante que ya tienes: ["Talla", "Número", "Tamaño"]
         ))
-        
-        if not selectable_keys: return []
 
-        key_to_select = selectable_keys[0] # Asumimos un solo tipo de selector por grupo de imagen
+        if not selectable_keys:
+            return []
+
+        # 4. Para cada atributo seleccionable, encontrar sus opciones válidas (con stock > 0).
+        selectors = []
+        for key_to_select in selectable_keys:
+            valid_options = sorted(list({
+                v["attributes"][key_to_select]
+                for v in variants_for_this_group
+                if v.get("stock", 0) > 0 and key_to_select in v.get("attributes", {})
+            }))
+
+            if valid_options:
+                selectors.append(
+                    ModalSelectorDTO(
+                        key=key_to_select,
+                        options=valid_options,
+                        current_value=self.modal_selected_attributes.get(key_to_select, "")
+                    )
+                )
         
-        # Encuentra las opciones disponibles Y con stock
-        valid_options = sorted(list({
-            v["attributes"][key_to_select]
-            for v in variants_for_this_image
-            if v.get("stock", 0) > 0 and key_to_select in v.get("attributes", {})
-        }))
-        
-        if not valid_options: return []
-        
-        return [ModalSelectorDTO(
-            key=key_to_select,
-            options=valid_options,
-            current_value=self.modal_selected_attributes.get(key_to_select, "")
-        )]
+        return selectors
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
 
     @rx.event
     def add_to_cart(self, product_id: int):
