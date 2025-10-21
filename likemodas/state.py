@@ -1359,39 +1359,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def direct_sale_grouped_cart(self) -> list[DirectSaleGroupDTO]:
         """
-        [VERSIÓN CORREGIDA]
-        Transforma el carrito plano `direct_sale_cart` en una estructura
-        agrupada por producto Y POR IMAGEN, para diferenciar los colores.
+        [CORREGIDO] Transforma el carrito de venta directa en una estructura
+        agrupada, ahora obteniendo correctamente la URL de la imagen.
         """
         if not self.direct_sale_cart_details:
             return []
 
-        # Usaremos una tupla (product_id, image_url) como clave única para cada grupo
+        # Usamos defaultdict para agrupar fácilmente por producto
         grouped_products = defaultdict(lambda: {
-            "product_id": 0, "title": "", "image_url": "", "subtotal": 0.0, "variants": []
+            "product_id": 0, "title": "", "subtotal": 0.0, "variants": [], "image_url": ""
         })
 
         for item in self.direct_sale_cart_details:
-            # --- ✨ CAMBIO CLAVE: La nueva clave de agrupación --- ✨
-            group_key = (item.product_id, item.image_url)
-            # --- ✨ FIN DEL CAMBIO CLAVE --- ✨
+            group = grouped_products[item.product_id]
             
-            group = grouped_products[group_key]
-
-            if not group["title"]:  # Si es la primera vez que vemos este grupo (producto + color)
+            if not group["title"]:
                 group["product_id"] = item.product_id
                 group["title"] = item.title
+                # --- ✨ CORRECCIÓN AQUÍ: Guardamos la URL de la imagen del item ✨ ---
                 group["image_url"] = item.image_url
-            
+
             group["subtotal"] += item.subtotal
-            
-            # Para la descripción de la variante (ej: "Talla: M"), omitimos el color
-            # ya que está implícito en la imagen del grupo.
-            variant_attrs_str = ", ".join(
-                f"{k}: {v}" for k, v in item.variant_details.items() if k != "Color"
-            )
-            if not variant_attrs_str:
-                variant_attrs_str = "Variante única"
+            variant_attrs_str = ", ".join(f"{k}: {v}" for k, v in item.variant_details.items())
 
             group["variants"].append(
                 DirectSaleVariantDTO(
@@ -1401,13 +1390,13 @@ class AppState(reflex_local_auth.LocalAuthState):
                 )
             )
         
-        # Convertir el diccionario a la lista final de DTOs
         final_list = []
         for key, data in grouped_products.items():
             final_list.append(
                 DirectSaleGroupDTO(
                     product_id=data["product_id"],
                     title=data["title"],
+                    # --- ✨ CORRECCIÓN AQUÍ: Usamos la URL guardada ✨ ---
                     image_url=data["image_url"],
                     subtotal_cop=format_to_cop(data["subtotal"]),
                     variants=sorted(data["variants"], key=lambda v: v.attributes_str)
@@ -4761,13 +4750,25 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             grand_total = subtotal_con_iva + final_shipping_cost
             
-            return { "subtotal": subtotal_base, "shipping_cost": final_shipping_cost, "iva": iva, "grand_total": grand_total, "free_shipping_achieved": free_shipping_achieved }
-        
-    # --- 👇 AÑADE ESTAS TRES NUEVAS PROPIEDADES 👇 ---
+            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+            # En lugar de devolver 'subtotal': subtotal_base, devolvemos el valor con IVA.
+            return {
+                "subtotal_con_iva": subtotal_con_iva, 
+                "shipping_cost": final_shipping_cost, 
+                "iva": iva, 
+                "grand_total": grand_total, 
+                "free_shipping_achieved": free_shipping_achieved
+            }
+            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
     @rx.var
     def subtotal_cop(self) -> str:
-        """Devuelve el subtotal del carrito ya formateado."""
-        return format_to_cop(self.cart_summary["subtotal"])
+        """
+        [CORREGIDO] Devuelve el subtotal del carrito formateado, ahora usando
+        el valor correcto que incluye el IVA.
+        """
+        # --- ✨ CORRECCIÓN AQUÍ: Leemos el nuevo valor del diccionario ✨ ---
+        return format_to_cop(self.cart_summary["subtotal_con_iva"])
 
     @rx.var
     def shipping_cost_cop(self) -> str:
@@ -4782,53 +4783,77 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def cart_details(self) -> List[CartItemData]:
         """
-        Reconstruye los detalles del carrito leyendo la clave única que
-        contiene la selección específica del usuario.
+        [VERSIÓN FINAL CORREGIDA] Reconstruye los detalles del carrito. Ahora,
+        encuentra la variante exacta que el usuario seleccionó comparando sus
+        atributos para garantizar que siempre se muestre la imagen correcta.
         """
-        if not self.cart: return []
-        with rx.session() as session:
-            product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
-            if not product_ids: return []
+        if not self.cart:
+            return []
 
+        with rx.session() as session:
+            # Obtenemos los IDs de todos los productos en el carrito para una sola consulta a la BD.
+            product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
+            if not product_ids:
+                return []
+
+            # Traemos todos los productos necesarios de la BD de una sola vez.
             results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
             post_map = {p.id: p for p in results}
             
             cart_items_data = []
             for cart_key, quantity in self.cart.items():
-                parts = cart_key.split('-')
-                product_id = int(parts[0])
-                variant_index = int(parts[1])
-                
-                post = post_map.get(product_id)
-                if post and post.variants and 0 <= variant_index < len(post.variants):
-                    variant = post.variants[variant_index]
+                try:
+                    parts = cart_key.split('-')
+                    product_id = int(parts[0])
+                    variant_visual_index = int(parts[1]) # Índice visual de la miniatura seleccionada.
                     
-                    # Reconstruye la selección del usuario desde la clave del carrito
-                    selection_details = {}
-                    if len(parts) > 2:
-                        selection_parts = parts[2:]
-                        for part in selection_parts:
-                            if ':' in part:
-                                key, value = part.split(':', 1)
-                                selection_details[key] = value
+                    post = post_map.get(product_id)
+                    if not post or not post.variants:
+                        continue
 
-                    # Combina los atributos de solo lectura (Color) con la selección del usuario (Talla)
-                    variant_display_details = {}
-                    for key, value in variant.get("attributes", {}).items():
-                        if key not in self.SELECTABLE_ATTRIBUTES:
-                            variant_display_details[key] = ", ".join(value) if isinstance(value, list) else value
+                    # 1. Reconstruimos los atributos exactos desde la clave del carrito.
+                    #    Ej: {"Color": "Rojo", "Talla": "M"}
+                    selection_details = {part.split(':', 1)[0]: part.split(':', 1)[1] for part in parts[2:] if ':' in part}
+
+                    # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
+                    variant_image_url = ""
+                    correct_variant = None
                     
-                    # La selección final que se mostrará
-                    final_details_to_display = {**variant_display_details, **selection_details}
+                    # 2. Buscamos la variante exacta que coincide con la selección del usuario.
+                    for v in post.variants:
+                        if v.get("attributes") == selection_details:
+                            correct_variant = v
+                            break
+                    
+                    # 3. Si encontramos la variante, obtenemos su grupo de imágenes.
+                    if correct_variant:
+                        image_urls = correct_variant.get("image_urls", [])
+                        if image_urls:
+                            variant_image_url = image_urls[0]
+                    
+                    # 4. Como respaldo (si la variante fue eliminada), usamos la primera imagen del producto.
+                    if not variant_image_url and post.variants and post.variants[0].get("image_urls"):
+                        variant_image_url = post.variants[0]["image_urls"][0]
+                    # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
 
                     cart_items_data.append(
                         CartItemData(
-                            cart_key=cart_key, product_id=product_id, variant_index=variant_index,
-                            title=post.title, price=post.price, price_cop=post.price_cop,
-                            image_url=variant.get("image_url", ""), quantity=quantity,
-                            variant_details=final_details_to_display
+                            cart_key=cart_key,
+                            product_id=product_id,
+                            variant_index=variant_visual_index,
+                            title=post.title,
+                            price=post.price,
+                            price_cop=post.price_cop,
+                            image_url=variant_image_url,  # <--- Se pasa la URL correcta
+                            quantity=quantity,
+                            variant_details=selection_details
                         )
                     )
+                except (ValueError, IndexError) as e:
+                    # Si una clave del carrito está malformada, la ignoramos para evitar que la app crashee.
+                    logger.error(f"Error al procesar la clave del carrito '{cart_key}': {e}")
+                    continue
+                    
             return cart_items_data
     
     # Reemplaza la línea "modal_selected_variant_index: int = 0" por estas dos:
