@@ -222,12 +222,14 @@ class AdminPurchaseCardData(rx.Base):
     id: int
     customer_name: str
     customer_email: str
-    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     anonymous_customer_email: Optional[str] = None
     purchase_date_formatted: str
     status: str
     total_price: float
-    # --- ✨ INICIO: CAMPOS OPCIONALES CORREGIDOS ✨ ---
+    # --- ✨ INICIO: AÑADE ESTAS LÍNEAS ✨ ---
+    subtotal_cop: str = "$ 0"
+    iva_cop: str = "$ 0"
+    # --- ✨ FIN ✨ ---
     shipping_name: Optional[str] = None
     shipping_full_address: Optional[str] = None
     shipping_phone: Optional[str] = None
@@ -1441,18 +1443,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not purchase: return None
 
             # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
-            # 1. Obtenemos los IDs de todos los vendedores de los productos en esta compra.
             seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             
-            # 2. Verificamos si el usuario actual es el vendedor/empleado de ALGÚN producto.
+            # Un admin, vendedor o empleado puede ver la factura si su ID de contexto coincide con el vendedor del producto.
             is_seller_or_employee = self.context_user_id in seller_ids_in_purchase
             
-            # 3. Verificamos si el usuario actual es el comprador.
+            # El comprador original también puede verla.
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
 
-            # 4. Si no es ni comprador ni vendedor/empleado, se deniega el acceso.
             if not is_seller_or_employee and not is_buyer:
-                return None
+                return None # Si no es ninguno de los dos, se deniega el acceso.
             # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
@@ -5782,8 +5782,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def delete_post(self, post_id: int):
         """
-        [CORREGIDO] Elimina una publicación, con permisos para empleados
-        y eliminando la restricción de si tiene compras asociadas.
+        [CORREGIDO] Elimina una publicación, con permisos correctos para empleados.
         """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
@@ -5791,20 +5790,18 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             post_to_delete = session.get(BlogPostModel, post_id)
 
-            # --- ✨ CORRECCIÓN DE PERMISOS CLAVE ✨ ---
-            # Se comprueba contra el 'context_user_id' en lugar del 'authenticated_user_info.id'
+            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
+            # Comparamos el dueño del post con el ID del contexto actual (que puede ser el vendedor o su empleado).
             if not post_to_delete or post_to_delete.userinfo_id != self.context_user_id:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
                 return
             # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
-            # Se eliminó la restricción que impedía borrar si había compras existentes.
-            
             session.delete(post_to_delete)
             session.commit()
             
             yield rx.toast.success("Publicación eliminada correctamente.")
-            # Recargamos la lista de publicaciones para que se refleje el cambio en la UI
+            # Recargamos la lista de publicaciones para que se refleje el cambio en la UI.
             yield AppState.load_mis_publicaciones
 
     @rx.event
@@ -6707,6 +6704,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if p.shipping_address and p.shipping_neighborhood and p.shipping_city:
                     full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}"
 
+                # --- ✨ INICIO: AÑADE ESTA LÓGICA DE CÁLCULO ✨ ---
+                subtotal_base = sum(
+                    (item.blog_post.base_price * item.quantity)
+                    for item in p.items if item.blog_post
+                )
+                iva_calculado = subtotal_base * 0.19
+                # --- ✨ FIN ✨ ---
+
                 temp_history.append(
                     AdminPurchaseCardData(
                         id=p.id,
@@ -6723,6 +6728,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_phone=p.shipping_phone, 
                         payment_method=p.payment_method,
                         confirmed_at=p.confirmed_at,
+                        # --- ✨ INICIO: PASA LOS NUEVOS VALORES AL DTO ✨ ---
+                        subtotal_cop=format_to_cop(subtotal_base),
+                        iva_cop=format_to_cop(iva_calculado),
+                        # --- ✨ FIN ✨ ---
                         items=detailed_items,
                         action_by_name=actor_name
                     )
