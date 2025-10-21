@@ -6579,8 +6579,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_purchase_history(self):
         """
-        [CORRECCIÓN DEFINITIVA] Carga el historial de compras, mostrando los datos 
-        correctos del cliente gracias a la relación de modelo corregida.
+        [CORRECCIÓN DEFINITIVA] Carga el historial de compras del vendedor, asegurando
+        que la imagen de cada artículo corresponda a la variante exacta que se compró.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado):
             self.purchase_history = []
@@ -6597,11 +6597,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
                 )
                 .where(
-                    PurchaseModel.status.in_([
-                        PurchaseStatus.DELIVERED, 
-                        PurchaseStatus.DIRECT_SALE,
-                        PurchaseStatus.FAILED # También es bueno ver las fallidas aquí
-                    ]),
+                    PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE, PurchaseStatus.FAILED]),
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
                 .join(PurchaseItemModel)
@@ -6610,21 +6606,37 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             temp_history = []
             for p in results:
-                # La lógica para 'detailed_items' y 'actor_name' se mantiene igual
                 detailed_items = []
                 for item in p.items:
                     if item.blog_post:
-                        variant_image_url = next((v.get("image_url", "") for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), 
-                                                item.blog_post.variants[0].get("image_url", "") if item.blog_post.variants else "")
+                        # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
+                        variant_image_url = ""
+                        # 1. Intenta encontrar la variante exacta que se compró
+                        for variant in item.blog_post.variants:
+                            if variant.get("attributes") == item.selected_variant:
+                                image_urls = variant.get("image_urls", [])
+                                if image_urls:
+                                    variant_image_url = image_urls[0]
+                                break
+                        
+                        # 2. Si no la encuentra (pudo ser borrada), usa la primera imagen del primer grupo como respaldo
+                        if not variant_image_url and item.blog_post.variants and item.blog_post.variants[0].get("image_urls"):
+                            variant_image_url = item.blog_post.variants[0]["image_urls"][0]
+                        # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
+
                         variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
                         detailed_items.append(
                             PurchaseItemCardData(
-                                id=item.blog_post.id, title=item.blog_post.title, image_url=variant_image_url,
+                                id=item.blog_post.id,
+                                title=item.blog_post.title,
+                                image_url=variant_image_url, # Se pasa la URL correcta
                                 price_at_purchase=item.price_at_purchase,
                                 price_at_purchase_cop=format_to_cop(item.price_at_purchase),
-                                quantity=item.quantity, variant_details_str=variant_str,
+                                quantity=item.quantity,
+                                variant_details_str=variant_str,
                             )
                         )
+                
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
 
                 # ✨ --- INICIO DE LA NUEVA LÓGICA DE DATOS DE CLIENTE --- ✨
