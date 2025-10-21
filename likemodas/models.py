@@ -10,6 +10,8 @@ from sqlmodel import Field, Relationship, Column, JSON
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import String
 from reflex_local_auth.user import LocalUser
+
+from likemodas.state import _format_to_cop_backend
 from .utils.timing import get_utc_now
 from .utils.formatting import format_to_cop
 
@@ -406,7 +408,10 @@ class BlogPostModel(rx.Model, table=True):
     @property
     def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
     @property
-    def price_cop(self) -> str: return format_to_cop(self.price)
+    @property
+    def price_cop(self) -> str: 
+        # 👇 CAMBIAR ESTA LÍNEA 👇
+        return _format_to_cop_backend(self.price)
 
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
@@ -472,7 +477,9 @@ class PurchaseModel(rx.Model, table=True):
     @property
     def confirmed_at_formatted(self) -> str: return format_utc_to_local(self.confirmed_at)
     @property
-    def total_price_cop(self) -> str: return format_to_cop(self.total_price)
+    def total_price_cop(self) -> str: 
+        # 👇 CAMBIAR ESTA LÍNEA 👇
+        return _format_to_cop_backend(self.total_price)
     
 
 class PurchaseItemModel(rx.Model, table=True):
@@ -615,7 +622,8 @@ class Gasto(rx.Model, table=True):
 
     @property
     def valor_cop(self) -> str:
-        return format_to_cop(self.valor)
+        # 👇 CAMBIAR ESTA LÍNEA 👇
+        return _format_to_cop_backend(self.valor)
 
 class ActivityLog(rx.Model, table=True):
     """Registra una acción realizada por un usuario en el panel."""
