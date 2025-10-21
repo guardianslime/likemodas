@@ -3200,35 +3200,101 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_main_page_data(self):
         """
-        [VERSIÓN FINAL Y CORREGIDA]
-        Carga la galería de productos. Si la URL contiene 'product_id_to_load',
-        abre el modal correspondiente después de cargar la galería.
+        [VERSIÓN OPTIMIZADA] Carga la página principal. Primero, muestra los
+        productos con datos básicos para una carga visual instantánea. Luego, en
+        segundo plano, recalcula los costos de envío y maneja la apertura de
+        modales si se especifica en la URL.
         """
+        self.is_loading = True
+        yield
+
+        # Variables para parámetros de la URL
         product_id_to_load = None
-        full_url = ""
+        category = None
+
+        # 1. Parsea la URL de forma segura para obtener parámetros
         try:
             full_url = self.router.url
-        except Exception:
-            pass
-
-        # Extrae el ID del producto de la URL, si existe.
-        if full_url and "product_id_to_load=" in full_url:
-            try:
+            if full_url and "?" in full_url:
                 query_params = parse_qs(urlparse(full_url).query)
+                
+                # Extraer ID de producto para abrir modal
                 id_list = query_params.get("product_id_to_load")
                 if id_list:
                     product_id_to_load = int(id_list[0])
-            except (Exception) as e:
-                logger.error(f"Error parseando URL para abrir modal: {e}")
+                
+                # Extraer categoría para filtrar
+                category_list = query_params.get("category")
+                if category_list:
+                    category = category_list[0]
+        except (ValueError, TypeError, IndexError) as e:
+            logger.error(f"Error al parsear la URL en load_main_page_data: {e}")
 
-        # Siempre carga la galería de productos.
-        yield AppState.load_gallery_and_shipping
+        self.current_category = category if category else "todos"
 
-        # Si se encontró un ID en la URL, llama al evento para abrir el modal.
+        # 2. Carga los datos básicos de los productos desde la BD
+        with rx.session() as session:
+            query = sqlmodel.select(BlogPostModel).where(BlogPostModel.publish_active == True)
+            if self.current_category and self.current_category != "todos":
+                query = query.where(BlogPostModel.category == self.current_category)
+
+            results = session.exec(query.order_by(BlogPostModel.created_at.desc())).all()
+
+            temp_posts = []
+            for p in results:
+                main_image = ""
+                if p.variants and p.variants[0].get("image_urls") and p.variants[0]["image_urls"]:
+                    main_image = p.variants[0]["image_urls"][0]
+
+                moda_completa_text = f"Este item cuenta para el envío gratis en compras sobre {format_to_cop(p.free_shipping_threshold)}" if p.is_moda_completa_eligible and p.free_shipping_threshold else ""
+                combinado_text = f"Combina hasta {p.shipping_combination_limit} productos en un envío." if p.combines_shipping and p.shipping_combination_limit else ""
+
+                card_data = ProductCardData(
+                    id=p.id,
+                    userinfo_id=p.userinfo_id,
+                    title=p.title,
+                    price=p.price,
+                    price_cop=p.price_cop,
+                    variants=p.variants or [],
+                    attributes={},
+                    average_rating=p.average_rating,
+                    rating_count=p.rating_count,
+                    main_image_url=main_image,
+                    shipping_cost=p.shipping_cost,
+                    is_moda_completa_eligible=p.is_moda_completa_eligible,
+                    free_shipping_threshold=p.free_shipping_threshold,
+                    combines_shipping=p.combines_shipping,
+                    shipping_combination_limit=p.shipping_combination_limit,
+                    shipping_display_text=_get_shipping_display_text(p.shipping_cost),
+                    is_imported=p.is_imported,
+                    moda_completa_tooltip_text=moda_completa_text,
+                    envio_combinado_tooltip_text=combinado_text,
+                    use_default_style=p.use_default_style,
+                    light_card_bg_color=p.light_card_bg_color,
+                    light_title_color=p.light_title_color,
+                    light_price_color=p.light_price_color,
+                    dark_card_bg_color=p.dark_card_bg_color,
+                    dark_title_color=p.dark_title_color,
+                    dark_price_color=p.dark_price_color,
+                    image_styles=p.image_styles,
+                )
+                temp_posts.append(card_data)
+
+            # Guardamos los datos crudos y los mostramos inmediatamente en la UI
+            self._raw_posts = temp_posts
+            self.posts = temp_posts
+
+        # 3. Encadenamos los siguientes eventos que pueden ser más lentos
+        yield AppState.load_default_shipping_info
+        yield AppState.recalculate_all_shipping_costs
+        
+        # 4. Si se encontró un ID en la URL, se abre el modal correspondiente
         if product_id_to_load:
-            yield AppState.open_product_detail_modal(product_id_to_load)
-            # Limpia la URL para que una recarga manual no vuelva a abrir el modal.
+            yield from self.open_product_detail_modal(product_id_to_load)
+            # Limpiamos la URL para que un refresh no vuelva a abrir el modal
             yield rx.call_script("window.history.replaceState(null, '', '/')")
+
+        self.is_loading = False
 
 
     min_price: str = ""
@@ -6531,7 +6597,11 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
                 )
                 .where(
-                    PurchaseModel.status.in_([PurchaseStatus.DELIVERED, PurchaseStatus.DIRECT_SALE]),
+                    PurchaseModel.status.in_([
+                        PurchaseStatus.DELIVERED, 
+                        PurchaseStatus.DIRECT_SALE,
+                        PurchaseStatus.FAILED # También es bueno ver las fallidas aquí
+                    ]),
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
                 .join(PurchaseItemModel)
@@ -6635,12 +6705,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
                 )
                 .where(
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                    # Se elimina 'PurchaseStatus.DELIVERED' de esta lista.
                     PurchaseModel.status.in_([
                         PurchaseStatus.PENDING_CONFIRMATION,
                         PurchaseStatus.CONFIRMED,
                         PurchaseStatus.SHIPPED,
-                        PurchaseStatus.DELIVERED, # Se añade para confirmar pago contra entrega
                     ]),
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
                 .join(PurchaseItemModel)
@@ -6876,23 +6948,35 @@ class AppState(reflex_local_auth.LocalAuthState):
     
     @rx.event
     def confirm_cod_payment_received(self, purchase_id: int):
-        """Confirma el pago de un pedido Contra Entrega, registrando al actor y cambiando el estado."""
+        """
+        [CORREGIDO] El vendedor confirma que recibió el pago de un pedido Contra Entrega.
+        Esto NO completa la orden, solo registra el pago.
+        """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
         
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
-            # La condición se asegura que solo actúe sobre pedidos enviados o ya entregados
-            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status in [PurchaseStatus.SHIPPED, PurchaseStatus.DELIVERED]:
+            
+            if purchase and purchase.payment_method == "Contra Entrega" and purchase.status == PurchaseStatus.SHIPPED:
+                # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                
+                # 1. Se registra la fecha de confirmación y quién lo hizo.
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 purchase.action_by_id = self.authenticated_user_info.id
-
-                # ✨ ---- INICIO DE LA CORRECCIÓN CLAVE ---- ✨
-                # Esta es la línea que faltaba. Cambia el estado para moverlo al historial.
-                purchase.status = PurchaseStatus.DELIVERED
-                # ✨ ---- FIN DE LA CORRECCIÓN CLAVE ---- ✨
+                
+                # 2. NO se cambia el estado a DELIVERED. Se mantiene en SHIPPED.
+                # La línea `purchase.status = PurchaseStatus.DELIVERED` se elimina.
 
                 session.add(purchase)
+
+                # 3. Se notifica al COMPRADOR para que confirme la entrega.
+                notification = NotificationModel(
+                    userinfo_id=purchase.userinfo_id,
+                    message=f"¡El vendedor confirmó tu pago para la compra #{purchase.id}! Por favor, confirma que recibiste tu pedido.",
+                    url="/my-purchases"
+                )
+                session.add(notification)
                 session.commit()
                 
                 yield rx.toast.success(f"Pago de la compra #{purchase.id} registrado.")
@@ -7008,7 +7092,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if p.items:
                     for item in p.items:
                         if item.blog_post:
-                            # --- ✅ LÓGICA DE IMAGEN CORREGIDA Y ROBUSTA ---
+                            # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
                             variant_image_url = ""
                             # 1. Intenta encontrar la variante exacta que se compró
                             for variant in item.blog_post.variants:
@@ -7017,19 +7101,20 @@ class AppState(reflex_local_auth.LocalAuthState):
                                     if image_urls:
                                         variant_image_url = image_urls[0]
                                     break
-                            # 2. Si no la encuentra, usa la primera imagen del producto como respaldo
+                            
+                            # 2. Si no la encuentra (pudo ser borrada), usa la primera imagen del producto como respaldo
                             if not variant_image_url and item.blog_post.variants:
                                 image_urls = item.blog_post.variants[0].get("image_urls", [])
                                 if image_urls:
                                     variant_image_url = image_urls[0]
-                            # --- FIN DE LA CORRECCIÓN DE IMAGEN ---
+                            # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
 
                             variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
                             purchase_items_data.append(
                                 PurchaseItemCardData(
                                     id=item.blog_post.id,
                                     title=item.blog_post.title,
-                                    image_url=variant_image_url, # Se pasa la imagen correcta
+                                    image_url=variant_image_url, # Se pasa la URL correcta
                                     price_at_purchase=item.price_at_purchase,
                                     price_at_purchase_cop=format_to_cop(item.price_at_purchase),
                                     quantity=item.quantity,
