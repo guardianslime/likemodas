@@ -237,19 +237,13 @@ def blog_post_edit_form() -> rx.Component:
                         rx.cond(
                             AppState.edit_image_selection_for_grouping.contains(img_name),
                             rx.box(
-                                # Usa el mapa computado para obtener el número de orden
                                 rx.text(
                                     AppState.edit_selection_order_map[img_name],
                                     color="white", weight="bold", font_size="1.5em",
                                 ),
-                                # Botones de flecha para reordenar
-                                rx.hstack(
-                                    rx.icon("arrow-left", size=16, on_click=lambda: AppState.move_edit_image_in_selection(img_name, -1), cursor="pointer"),
-                                    rx.icon("arrow-right", size=16, on_click=lambda: AppState.move_edit_image_in_selection(img_name, 1), cursor="pointer"),
-                                    spacing="2", position="absolute", bottom="4px", left="50%",
-                                    transform="translateX(-50%)", bg="rgba(255, 255, 255, 0.8)",
-                                    border_radius="sm", padding="0 4px",
-                                ),
+                                # ✨ ESTE ES EL HSTACK QUE HEMOS ELIMINADO COMPLETAMENTE ✨
+                                # (Antes: rx.hstack con flechas)
+                                # ¡Ya no está aquí!
                                 bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
                                 display="flex", align_items="center", justify_content="center"
                             )
