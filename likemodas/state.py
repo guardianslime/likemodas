@@ -1359,50 +1359,29 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def direct_sale_grouped_cart(self) -> list[DirectSaleGroupDTO]:
         """
-        [CORREGIDO] Transforma el carrito de venta directa en una estructura
-        agrupada, ahora obteniendo correctamente la URL de la imagen.
+        [CORREGIDO] Agrupa el carrito de venta directa, usando la imagen correcta.
         """
-        if not self.direct_sale_cart_details:
-            return []
-
-        # Usamos defaultdict para agrupar fácilmente por producto
-        grouped_products = defaultdict(lambda: {
-            "product_id": 0, "title": "", "subtotal": 0.0, "variants": [], "image_url": ""
-        })
+        if not self.direct_sale_cart_details: return []
+        grouped_products = defaultdict(lambda: {"product_id": 0, "title": "", "subtotal": 0.0, "variants": [], "image_url": ""})
 
         for item in self.direct_sale_cart_details:
             group = grouped_products[item.product_id]
-            
             if not group["title"]:
-                group["product_id"] = item.product_id
-                group["title"] = item.title
-                # --- ✨ CORRECCIÓN AQUÍ: Guardamos la URL de la imagen del item ✨ ---
-                group["image_url"] = item.image_url
-
+                group.update({"product_id": item.product_id, "title": item.title, "image_url": item.image_url})
             group["subtotal"] += item.subtotal
-            variant_attrs_str = ", ".join(f"{k}: {v}" for k, v in item.variant_details.items())
-
-            group["variants"].append(
-                DirectSaleVariantDTO(
-                    cart_key=item.cart_key,
-                    attributes_str=variant_attrs_str,
-                    image_url=data["image_url"],
-                    quantity=item.quantity
-                )
-            )
+            group["variants"].append(DirectSaleVariantDTO(
+                cart_key=item.cart_key,
+                attributes_str=", ".join(f"{k}: {v}" for k, v in item.variant_details.items()),
+                quantity=item.quantity
+            ))
         
-        final_list = []
-        for key, data in grouped_products.items():
-            final_list.append(
-                DirectSaleGroupDTO(
-                    product_id=data["product_id"],
-                    title=data["title"],
-                    # --- ✨ CORRECCIÓN AQUÍ: Usamos la URL guardada ✨ ---
-                    image_url=data["image_url"],
-                    subtotal_cop=format_to_cop(data["subtotal"]),
-                    variants=sorted(data["variants"], key=lambda v: v.attributes_str)
-                )
-            )
+        final_list = [
+            DirectSaleGroupDTO(
+                product_id=data["product_id"], title=data["title"], image_url=data["image_url"],
+                subtotal_cop=format_to_cop(data["subtotal"]),
+                variants=sorted(data["variants"], key=lambda v: v.attributes_str)
+            ) for data in grouped_products.values()
+        ]
         return sorted(final_list, key=lambda g: g.title)
 
 
@@ -4785,20 +4764,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def cart_details(self) -> List[CartItemData]:
         """
-        [VERSIÓN FINAL CORREGIDA] Reconstruye los detalles del carrito. Ahora,
-        encuentra la variante exacta que el usuario seleccionó comparando sus
-        atributos para garantizar que siempre se muestre la imagen correcta.
+        [CORREGIDO] Reconstruye los detalles del carrito, obteniendo la URL
+        de la imagen de la variante específica que se seleccionó.
         """
-        if not self.cart:
-            return []
-
+        if not self.cart: return []
         with rx.session() as session:
-            # Obtenemos los IDs de todos los productos en el carrito para una sola consulta a la BD.
             product_ids = list(set([int(key.split('-')[0]) for key in self.cart.keys()]))
-            if not product_ids:
-                return []
+            if not product_ids: return []
 
-            # Traemos todos los productos necesarios de la BD de una sola vez.
             results = session.exec(sqlmodel.select(BlogPostModel).where(BlogPostModel.id.in_(product_ids))).all()
             post_map = {p.id: p for p in results}
             
@@ -4807,52 +4780,29 @@ class AppState(reflex_local_auth.LocalAuthState):
                 try:
                     parts = cart_key.split('-')
                     product_id = int(parts[0])
-                    variant_visual_index = int(parts[1]) # Índice visual de la miniatura seleccionada.
-                    
-                    post = post_map.get(product_id)
-                    if not post or not post.variants:
-                        continue
-
-                    # 1. Reconstruimos los atributos exactos desde la clave del carrito.
-                    #    Ej: {"Color": "Rojo", "Talla": "M"}
                     selection_details = {part.split(':', 1)[0]: part.split(':', 1)[1] for part in parts[2:] if ':' in part}
+                    post = post_map.get(product_id)
+                    if not post or not post.variants: continue
 
-                    # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
                     variant_image_url = ""
                     correct_variant = next((v for v in post.variants if v.get("attributes") == selection_details), None)
                     
                     if correct_variant:
                         image_urls = correct_variant.get("image_urls", [])
-                        if image_urls:
-                            variant_image_url = image_urls[0]
+                        if image_urls: variant_image_url = image_urls[0]
                     
-                    if not variant_image_url and post.variants and post.variants[0].get("image_urls"):
+                    if not variant_image_url and post.variants[0].get("image_urls"):
                         variant_image_url = post.variants[0]["image_urls"][0]
-                    # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
-                    
-                    # 4. Como respaldo (si la variante fue eliminada), usamos la primera imagen del producto.
-                    if not variant_image_url and post.variants and post.variants[0].get("image_urls"):
-                        variant_image_url = post.variants[0]["image_urls"][0]
-                    # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
 
                     cart_items_data.append(
                         CartItemData(
-                            cart_key=cart_key,
-                            product_id=product_id,
-                            variant_index=variant_visual_index,
-                            title=post.title,
-                            price=post.price,
-                            price_cop=post.price_cop,
-                            image_url=variant_image_url,  # <--- Se pasa la URL correcta
-                            quantity=quantity,
+                            cart_key=cart_key, product_id=product_id, variant_index=int(parts[1]),
+                            title=post.title, price=post.price, price_cop=post.price_cop,
+                            image_url=variant_image_url, quantity=quantity,
                             variant_details=selection_details
                         )
                     )
-                except (ValueError, IndexError) as e:
-                    # Si una clave del carrito está malformada, la ignoramos para evitar que la app crashee.
-                    logger.error(f"Error al procesar la clave del carrito '{cart_key}': {e}")
-                    continue
-                    
+                except (ValueError, IndexError): continue
             return cart_items_data
     
     # Reemplaza la línea "modal_selected_variant_index: int = 0" por estas dos:
@@ -6628,8 +6578,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                     ]),
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
-                .join(PurchaseItemModel)
-                .order_by(PurchaseModel.purchase_date.desc())
+                .join(PurchaseItemModel).order_by(PurchaseModel.purchase_date.desc())
             ).unique().all()
             
             temp_history = []
@@ -6745,18 +6694,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
                 )
                 .where(
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
-                    # Se elimina 'PurchaseStatus.DELIVERED' de esta lista.
                     PurchaseModel.status.in_([
                         PurchaseStatus.PENDING_CONFIRMATION,
                         PurchaseStatus.CONFIRMED,
                         PurchaseStatus.SHIPPED,
                     ]),
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                     PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
                 )
-                .join(PurchaseItemModel)
-                .order_by(PurchaseModel.purchase_date.asc())
+                .join(PurchaseItemModel).order_by(PurchaseModel.purchase_date.asc())
             ).unique().all()
             
             active_purchases_list = []
@@ -6989,27 +6934,26 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def confirm_cod_payment_received(self, purchase_id: int):
         """
-        [CORREGIDO] El vendedor confirma que recibió el pago de un pedido Contra Entrega.
-        Esto NO completa la orden, solo registra el pago.
+        [CORREGIDO] El vendedor confirma el pago de un pedido Contra Entrega.
+        Esto NO completa la orden, solo la prepara para la confirmación del comprador.
         """
-        if not self.authenticated_user_info:
-            return rx.toast.error("Acción no permitida.")
+        if not self.authenticated_user_info: return rx.toast.error("Acción no permitida.")
         
         with rx.session() as session:
             purchase = session.get(PurchaseModel, purchase_id)
             if purchase and purchase.payment_method == "Contra Entrega" and purchase.status == PurchaseStatus.SHIPPED:
                 purchase.confirmed_at = datetime.now(timezone.utc)
                 purchase.action_by_id = self.authenticated_user_info.id
-                # NO se cambia el estado a DELIVERED. Se mantiene en SHIPPED.
                 session.add(purchase)
                 
                 notification = NotificationModel(
                     userinfo_id=purchase.userinfo_id,
-                    message=f"¡El vendedor confirmó tu pago para la compra #{purchase.id}! Ahora confirma que recibiste tu pedido.",
+                    message=f"El vendedor confirmó tu pago para la compra #{purchase.id}. ¡Ahora confirma que la recibiste!",
                     url="/my-purchases"
                 )
                 session.add(notification)
                 session.commit()
+                
                 yield rx.toast.success(f"Pago registrado. Esperando confirmación del cliente.")
                 yield AppState.load_active_purchases
             else:
