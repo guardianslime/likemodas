@@ -2263,9 +2263,10 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def submit_and_publish_manual(self):
         """
-        [VERSIÓN MANUAL Y SEGURA]
-        Manejador que publica un producto leyendo los datos directamente desde el
-        estado de la aplicación, sin depender de un formulario.
+        [VERSIÓN FINAL CORREGIDA]
+        Manejador para crear y publicar un nuevo producto. Ahora lee correctamente
+        todos los campos del formulario desde el estado, incluyendo el costo de envío,
+        y realiza las validaciones numéricas necesarias.
         """
         owner_id = None
         creator_id_to_save = None
@@ -2302,10 +2303,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price_float = float(price_str)
             profit_float = float(self.profit_str) if self.profit_str else None
+            
+            # --- ✨ LÓGICA DE CONVERSIÓN CORREGIDA ✨ ---
+            shipping_cost_float = float(self.shipping_cost_str) if self.shipping_cost_str else None
             limit = int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
             threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
+        
         except (ValueError, TypeError):
-            yield rx.toast.error("Valores numéricos inválidos.")
+            yield rx.toast.error("Los valores de precio, ganancia, costo de envío y límite deben ser números válidos.")
             return
 
         all_variants_for_db = []
@@ -2324,7 +2329,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 all_variants_for_db.append(variant_dict)
         
         if not all_variants_for_db:
-            yield rx.toast.error("No se encontraron variantes configuradas.")
+            yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
             return
 
         with rx.session() as session:
@@ -2336,14 +2341,23 @@ class AppState(reflex_local_auth.LocalAuthState):
             }
 
             new_post = BlogPostModel(
-                userinfo_id=owner_id, creator_id=creator_id_to_save,
-                title=title, content=self.content, price=price_float, profit=profit_float,
-                price_includes_iva=self.price_includes_iva, category=category,
-                variants=all_variants_for_db, publish_active=True,
+                userinfo_id=owner_id,
+                creator_id=creator_id_to_save,
+                title=title,
+                content=self.content,
+                price=price_float,
+                profit=profit_float,
+                price_includes_iva=self.price_includes_iva,
+                category=category,
+                variants=all_variants_for_db,
+                publish_active=True,
                 publish_date=datetime.now(timezone.utc),
+                shipping_cost=shipping_cost_float, # <-- Se guarda el costo de envío
                 is_moda_completa_eligible=self.is_moda_completa,
-                free_shipping_threshold=threshold, combines_shipping=self.combines_shipping,
-                shipping_combination_limit=limit, is_imported=self.is_imported,
+                free_shipping_threshold=threshold,
+                combines_shipping=self.combines_shipping,
+                shipping_combination_limit=limit,
+                is_imported=self.is_imported,
                 use_default_style=self.use_default_style,
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
@@ -2356,7 +2370,8 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_post)
 
             log_entry = ActivityLog(
-                actor_id=self.authenticated_user_info.id, owner_id=owner_id,
+                actor_id=self.authenticated_user_info.id,
+                owner_id=owner_id,
                 action_type="Creación de Publicación",
                 description=f"Creó la publicación '{new_post.title}'"
             )
@@ -3934,14 +3949,16 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def save_edited_post(self):
         """
-        [NUEVA VERSIÓN] Guarda una publicación editada, serializando la nueva
-        estructura de grupos de vuelta a la base de datos.
+        [VERSIÓN FINAL CORREGIDA]
+        Guarda una publicación editada. Ahora lee correctamente todos los campos
+        del formulario de edición, incluyendo el costo de envío, y actualiza
+        el registro en la base de datos.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             yield rx.toast.error("Error: No se pudo guardar la publicación.")
             return
         
-        owner_id = self.context_user_id or self.authenticated_user_info.id
+        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
         if not owner_id:
             yield rx.toast.error("No se pudo verificar la identidad del usuario.")
             return
@@ -3949,11 +3966,14 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price = float(self.edit_price_str or 0.0)
             profit = float(self.edit_profit_str) if self.edit_profit_str else None
+            
+            # --- ✨ LÓGICA DE CONVERSIÓN CORREGIDA EN EDICIÓN ✨ ---
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
             threshold = float(self.edit_free_shipping_threshold_str) if self.edit_is_moda_completa and self.edit_free_shipping_threshold_str else None
             limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
-        except ValueError:
-            yield rx.toast.error("Valores numéricos inválidos.")
+        
+        except (ValueError, TypeError):
+            yield rx.toast.error("Valores numéricos inválidos en el formulario de edición.")
             return
 
         all_variants_for_db = []
@@ -3962,6 +3982,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             image_urls_for_group = self.edit_variant_groups[group_index].image_urls
             for variant_data in generated_list:
+                # Se preserva el UUID si ya existe, o se crea uno nuevo
                 variant_uuid = getattr(variant_data, 'variant_uuid', str(uuid.uuid4()))
                 variant_dict = {
                     "attributes": variant_data.attributes,
@@ -3981,6 +4002,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("No tienes permiso para guardar esta publicación.")
                 return
             
+            # Actualización de todos los campos del producto
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
             post_to_update.price = price
@@ -3988,7 +4010,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.category = self.edit_category
             post_to_update.price_includes_iva = self.edit_price_includes_iva
             post_to_update.is_imported = self.edit_is_imported
-            post_to_update.shipping_cost = shipping_cost
+            post_to_update.shipping_cost = shipping_cost # <-- Se guarda el costo de envío
             post_to_update.is_moda_completa_eligible = self.edit_is_moda_completa
             post_to_update.free_shipping_threshold = threshold
             post_to_update.combines_shipping = self.edit_combines_shipping
@@ -4006,11 +4028,16 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.add(post_to_update)
             
-            log_entry = ActivityLog(actor_id=self.authenticated_user_info.id, owner_id=post_to_update.userinfo_id, action_type="Edición de Publicación", description=f"Modificó la publicación '{post_to_update.title}'")
+            log_entry = ActivityLog(
+                actor_id=self.authenticated_user_info.id,
+                owner_id=post_to_update.userinfo_id,
+                action_type="Edición de Publicación",
+                description=f"Modificó la publicación '{post_to_update.title}'"
+            )
             session.add(log_entry)
             session.commit()
             
-        yield self.cancel_editing_post(False) # Cierra el modal y limpia el estado de edición
+        yield self.cancel_editing_post(False)
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
 
