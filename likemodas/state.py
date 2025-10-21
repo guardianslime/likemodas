@@ -1440,16 +1440,20 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             if not purchase: return None
 
-            # ✨ --- INICIO DE LA CORRECCIÓN DE PERMISOS --- ✨
-            # Verificamos si el usuario actual es el comprador O si es el vendedor/empleado de ALGÚN producto en la compra.
+            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
+            # 1. Obtenemos los IDs de todos los vendedores de los productos en esta compra.
             seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             
+            # 2. Verificamos si el usuario actual es el vendedor/empleado de ALGÚN producto.
             is_seller_or_employee = self.context_user_id in seller_ids_in_purchase
+            
+            # 3. Verificamos si el usuario actual es el comprador.
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
 
+            # 4. Si no es ni comprador ni vendedor/empleado, se deniega el acceso.
             if not is_seller_or_employee and not is_buyer:
-                return None # Si no es ni comprador ni vendedor/empleado, se deniega el acceso.
-            # ✨ --- FIN DE LA CORRECCIÓN DE PERMISOS --- ✨
+                return None
+            # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
             shipping_cost = purchase.shipping_applied or 0.0
@@ -5071,24 +5075,39 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     # --- Reemplaza tus setters de precio y ganancia por estos ---
     def set_price_str(self, value: str):
+        """
+        [CORREGIDO] Actualiza el precio y, si el nuevo precio es menor que la
+        ganancia actual, ajusta la ganancia para que sea igual al precio.
+        """
         self.price_str = value
         try:
             price_float = float(value) if value else 0.0
             profit_float = float(self.profit_str) if self.profit_str else 0.0
+            
+            # Si la ganancia actual es mayor que el nuevo precio, la ajustamos.
             if profit_float > price_float:
                 self.profit_str = value
         except (ValueError, TypeError):
+            # Permite que el campo esté temporalmente vacío o inválido mientras se escribe.
             pass
 
     def set_profit_str(self, value: str):
+        """
+        [CORREGIDO] Actualiza la ganancia, asegurándose de que nunca
+        supere el precio actual del producto.
+        """
         try:
             price_float = float(self.price_str) if self.price_str else 0.0
             profit_float = float(value) if value else 0.0
+
+            # Si la nueva ganancia es mayor que el precio, la ajustamos al valor del precio.
             if profit_float > price_float:
                 self.profit_str = self.price_str
             else:
                 self.profit_str = value
         except (ValueError, TypeError):
+            # Si el valor no es un número válido, simplemente lo asignamos para
+            # que el usuario pueda seguir escribiendo.
             self.profit_str = value
 
     # --- Variables para el Dashboard de Finanzas ---
@@ -5773,18 +5792,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_delete = session.get(BlogPostModel, post_id)
 
             # --- ✨ CORRECCIÓN DE PERMISOS CLAVE ✨ ---
+            # Se comprueba contra el 'context_user_id' en lugar del 'authenticated_user_info.id'
             if not post_to_delete or post_to_delete.userinfo_id != self.context_user_id:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
                 return
             # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             
-            # --- Eliminamos la restricción de compras existentes ---
+            # Se eliminó la restricción que impedía borrar si había compras existentes.
             
             session.delete(post_to_delete)
             session.commit()
             
             yield rx.toast.success("Publicación eliminada correctamente.")
-            yield AppState.on_load_admin_store
+            # Recargamos la lista de publicaciones para que se refleje el cambio en la UI
+            yield AppState.load_mis_publicaciones
 
     @rx.event
     def toggle_publish_status(self, post_id: int):

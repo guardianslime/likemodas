@@ -1,7 +1,7 @@
 # likemodas/admin/page.py (VERSIÓN FINAL CON AUDITORÍA)
 
 import reflex as rx
-from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
+from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData, format_to_cop
 from ..models import PurchaseStatus
 from ..auth.admin_auth import require_panel_access
 # ✨ IMPORTA EL MODAL AQUÍ ✨
@@ -191,6 +191,9 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
     """Muestra los detalles de una compra en el historial, con auditoría."""
+    # Calculamos el subtotal (Total - Envío)
+    subtotal = purchase.total_price - (purchase.shipping_applied or 0.0)
+    
     return rx.card(
         rx.vstack(
             rx.hstack(
@@ -240,6 +243,31 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     margin_y="0.5em",
                 )
             ),
+            # --- ✨ INICIO DE LA MODIFICACIÓN: SECCIÓN DE TOTALES ✨ ---
+            rx.divider(),
+            rx.vstack(
+                rx.hstack(
+                    rx.text("Subtotal:", size="3", color_scheme="gray"),
+                    rx.spacer(),
+                    rx.text(format_to_cop(subtotal), size="3"),
+                ),
+                rx.hstack(
+                    rx.text("Envío:", size="3", color_scheme="gray"),
+                    rx.spacer(),
+                    rx.text(purchase.shipping_applied_cop, size="3"),
+                ),
+                rx.divider(border_style="dashed"),
+                rx.hstack(
+                    rx.text("Total Pagado:", weight="bold", size="4"),
+                    rx.spacer(),
+                    rx.text(purchase.total_price_cop, weight="bold", size="4"),
+                ),
+                spacing="2",
+                align_items="stretch",
+                width="100%",
+                padding_y="0.5em",
+            ),
+            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
             # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
             rx.cond(
                 purchase.action_by_name,
