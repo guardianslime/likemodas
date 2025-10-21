@@ -1073,9 +1073,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def direct_sale_cart_details(self) -> List[CartItemData]:
         """
-        [VERSIÓN FINAL Y CORREGIDA]
-        Calcula los detalles del carrito de venta directa, encontrando la variante
-        correcta por sus atributos en lugar de por un índice propenso a errores.
+        [VERSIÓN CORREGIDA] Calcula los detalles del carrito de venta directa,
+        asegurando que se extraiga la URL de imagen correcta para cada variante.
         """
         if not self.direct_sale_cart:
             return []
@@ -1089,47 +1088,43 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             cart_items_data = []
             for cart_key, quantity in self.direct_sale_cart.items():
-                parts = cart_key.split('-')
-                product_id = int(parts[0])
-                post = post_map.get(product_id)
-                if not post:
-                    continue
+                try:
+                    parts = cart_key.split('-')
+                    product_id = int(parts[0])
+                    selection_details = {part.split(':', 1)[0]: part.split(':', 1)[1] for part in parts[2:] if ':' in part}
+                    post = post_map.get(product_id)
+                    if not post or not post.variants:
+                        continue
 
-                # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+                    # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
+                    variant_image_url = ""
+                    correct_variant = next((v for v in post.variants if v.get("attributes") == selection_details), None)
+                    
+                    if correct_variant:
+                        image_urls = correct_variant.get("image_urls", [])
+                        if image_urls:
+                            variant_image_url = image_urls[0]
+                    
+                    if not variant_image_url and post.variants[0].get("image_urls"):
+                        variant_image_url = post.variants[0]["image_urls"][0]
+                    # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
 
-                # 1. Reconstruimos los atributos exactos desde la clave del carrito.
-                selection_details = {part.split(':', 1)[0]: part.split(':', 1)[1] for part in parts[2:] if ':' in part}
-
-                # 2. Buscamos la variante correcta en la lista de variantes del producto
-                #    comparando los diccionarios de atributos.
-                correct_variant = None
-                correct_variant_index = -1
-                for i, v in enumerate(post.variants or []):
-                    if v.get("attributes") == selection_details:
-                        correct_variant = v
-                        correct_variant_index = i
-                        break
-                
-                # Si por alguna razón la variante ya no existe, la omitimos del carrito.
-                if not correct_variant:
-                    continue
-                # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-
-                cart_items_data.append(
-                    CartItemData(
-                        cart_key=cart_key,
-                        product_id=product_id,
-                        # Usamos el índice correcto que acabamos de encontrar
-                        variant_index=correct_variant_index,
-                        title=post.title,
-                        price=post.price,
-                        price_cop=post.price_cop,
-                        # Usamos la URL de la imagen de la variante correcta que encontramos
-                        image_url=correct_variant.get("image_url", ""),
-                        quantity=quantity,
-                        variant_details=selection_details
+                    cart_items_data.append(
+                        CartItemData(
+                            cart_key=cart_key,
+                            product_id=product_id,
+                            variant_index=int(parts[1]),
+                            title=post.title,
+                            price=post.price,
+                            price_cop=post.price_cop,
+                            image_url=variant_image_url,  # <--- Se pasa la URL correcta
+                            quantity=quantity,
+                            variant_details=selection_details
+                        )
                     )
-                )
+                except (ValueError, IndexError) as e:
+                    logger.error(f"Error al procesar la clave del carrito de venta directa '{cart_key}': {e}")
+                    continue
             return cart_items_data
         
     @rx.var
@@ -1359,29 +1354,41 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.var
     def direct_sale_grouped_cart(self) -> list[DirectSaleGroupDTO]:
         """
-        [CORREGIDO] Agrupa el carrito de venta directa, usando la imagen correcta.
+        [VERSIÓN CORREGIDA Y SIMPLIFICADA] Transforma el carrito de venta directa en una
+        estructura agrupada, usando los datos ya corregidos de `direct_sale_cart_details`.
         """
-        if not self.direct_sale_cart_details: return []
-        grouped_products = defaultdict(lambda: {"product_id": 0, "title": "", "subtotal": 0.0, "variants": [], "image_url": ""})
+        if not self.direct_sale_cart_details:
+            return []
 
+        # Agrupamos los items por su producto y su imagen principal (para diferenciar colores)
+        grouped_products = defaultdict(list)
         for item in self.direct_sale_cart_details:
-            group = grouped_products[item.product_id]
-            if not group["title"]:
-                group.update({"product_id": item.product_id, "title": item.title, "image_url": item.image_url})
-            group["subtotal"] += item.subtotal
-            group["variants"].append(DirectSaleVariantDTO(
-                cart_key=item.cart_key,
-                attributes_str=", ".join(f"{k}: {v}" for k, v in item.variant_details.items()),
-                quantity=item.quantity
-            ))
+            group_key = (item.product_id, item.image_url)
+            grouped_products[group_key].append(item)
         
-        final_list = [
-            DirectSaleGroupDTO(
-                product_id=data["product_id"], title=data["title"], image_url=data["image_url"],
-                subtotal_cop=format_to_cop(data["subtotal"]),
-                variants=sorted(data["variants"], key=lambda v: v.attributes_str)
-            ) for data in grouped_products.values()
-        ]
+        # Convertimos el diccionario agrupado a la lista final de DTOs
+        final_list = []
+        for (product_id, image_url), items_in_group in grouped_products.items():
+            first_item = items_in_group[0]
+            subtotal = sum(item.subtotal for item in items_in_group)
+            
+            variants_dto = [
+                DirectSaleVariantDTO(
+                    cart_key=item.cart_key,
+                    attributes_str=", ".join(f"{k}: {v}" for k, v in item.variant_details.items() if k != "Color"),
+                    quantity=item.quantity
+                ) for item in items_in_group
+            ]
+
+            final_list.append(
+                DirectSaleGroupDTO(
+                    product_id=product_id,
+                    title=first_item.title,
+                    image_url=image_url,
+                    subtotal_cop=format_to_cop(subtotal),
+                    variants=sorted(variants_dto, key=lambda v: v.attributes_str)
+                )
+            )
         return sorted(final_list, key=lambda g: g.title)
 
 
