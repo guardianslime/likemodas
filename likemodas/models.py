@@ -13,7 +13,19 @@ from reflex_local_auth.user import LocalUser
 
 from likemodas.state import _format_to_cop_backend
 from .utils.timing import get_utc_now
-from .utils.formatting import format_to_cop
+
+
+# 2. AÑADE la definición de la función directamente aquí.
+def _format_to_cop_backend(value: float | None) -> str:
+    """
+    Una función simple SOLO para el backend que formatea un número de Python a COP.
+    No funciona con rx.Var.
+    """
+    if value is None or value < 1:
+        return "$ 0"
+    formatted_number = f"{value:,.0f}"
+    colombian_format = formatted_number.replace(',', '.')
+    return f"$ {colombian_format}"
 
 # --- Adelanta la declaración de modelos ---
 if "CommentModel" not in locals():
