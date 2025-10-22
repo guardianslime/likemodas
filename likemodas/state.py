@@ -1454,7 +1454,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ FIN: VARIABLES DE ESTADO DE LA FACTURA MOVIDAS AQUÍ ✨ ---
 
     @rx.event
-    def _load_invoice_data_after_sync(self):
+    def load_invoice_data_after_sync(self):
         """
         [NUEVA FUNCIÓN PRIVADA] Se ejecuta DESPUÉS de que el contexto ha sido sincronizado.
         Contiene la lógica para cargar los datos de la factura.
@@ -1499,7 +1499,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         yield AppState.sync_user_context
         
         # Paso 2: Llama a la siguiente función en la cadena para cargar los datos.
-        yield AppState._load_invoice_data_after_sync
+        yield AppState.load_invoice_data_after_sync
     
     # --- ✨ MÉTODO MODIFICADO: `get_invoice_data` ✨ ---
     @rx.event
