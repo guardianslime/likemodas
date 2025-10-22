@@ -222,14 +222,12 @@ class AdminPurchaseCardData(rx.Base):
     id: int
     customer_name: str
     customer_email: str
+    # --- ✨ AÑADE ESTA LÍNEA ✨ ---
     anonymous_customer_email: Optional[str] = None
     purchase_date_formatted: str
     status: str
     total_price: float
-    # --- ✨ INICIO: AÑADE ESTAS LÍNEAS ✨ ---
-    subtotal_cop: str = "$ 0"
-    iva_cop: str = "$ 0"
-    # --- ✨ FIN ✨ ---
+    # --- ✨ INICIO: CAMPOS OPCIONALES CORREGIDOS ✨ ---
     shipping_name: Optional[str] = None
     shipping_full_address: Optional[str] = None
     shipping_phone: Optional[str] = None
@@ -1427,35 +1425,31 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ MÉTODO MODIFICADO: `get_invoice_data` ✨ ---
     @rx.event
     def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
-        """[CORREGIDO] Carga los datos de una factura con permisos para comprador y vendedor/empleado."""
         if not self.is_authenticated:
             return None
 
         with rx.session() as session:
-            # (código para cargar la compra se mantiene igual...)
             purchase = session.exec(
-                sqlmodel.select(PurchaseModel).options(
+                sqlmodel.select(PurchaseModel)
+                .options(
+                    sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
                     sqlalchemy.orm.joinedload(PurchaseModel.items).joinedload(PurchaseItemModel.blog_post)
-                ).where(PurchaseModel.id == purchase_id)
+                )
+                .where(PurchaseModel.id == purchase_id)
             ).unique().one_or_none()
 
-            if not purchase:
-                return None
+            if not purchase: return None
 
-            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
-            
-            # Obtenemos los IDs de los vendedores de los productos en esta compra
+            # ✨ --- INICIO DE LA CORRECCIÓN DE PERMISOS --- ✨
+            # Verificamos si el usuario actual es el comprador O si es el vendedor/empleado de ALGÚN producto en la compra.
             seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             
-            # Verificamos si el usuario en contexto (el vendedor o su empleado) es uno de los vendedores
             is_seller_or_employee = self.context_user_id in seller_ids_in_purchase
-            
-            # También verificamos si es el comprador original
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
 
-            # Si no es ni el vendedor/empleado ni el comprador, se deniega el acceso.
             if not is_seller_or_employee and not is_buyer:
-                return None
+                return None # Si no es ni comprador ni vendedor/empleado, se deniega el acceso.
+            # ✨ --- FIN DE LA CORRECCIÓN DE PERMISOS --- ✨
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
             shipping_cost = purchase.shipping_applied or 0.0
@@ -2269,10 +2263,9 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def submit_and_publish_manual(self):
         """
-        [VERSIÓN FINAL CORREGIDA]
-        Manejador para crear y publicar un nuevo producto. Ahora lee correctamente
-        todos los campos del formulario desde el estado, incluyendo el costo de envío,
-        y realiza las validaciones numéricas necesarias.
+        [VERSIÓN MANUAL Y SEGURA]
+        Manejador que publica un producto leyendo los datos directamente desde el
+        estado de la aplicación, sin depender de un formulario.
         """
         owner_id = None
         creator_id_to_save = None
@@ -2309,14 +2302,10 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price_float = float(price_str)
             profit_float = float(self.profit_str) if self.profit_str else None
-            
-            # --- ✨ LÓGICA DE CONVERSIÓN CORREGIDA ✨ ---
-            shipping_cost_float = float(self.shipping_cost_str) if self.shipping_cost_str else None
             limit = int(self.shipping_combination_limit_str) if self.combines_shipping and self.shipping_combination_limit_str else None
             threshold = float(self.free_shipping_threshold_str) if self.is_moda_completa and self.free_shipping_threshold_str else None
-        
         except (ValueError, TypeError):
-            yield rx.toast.error("Los valores de precio, ganancia, costo de envío y límite deben ser números válidos.")
+            yield rx.toast.error("Valores numéricos inválidos.")
             return
 
         all_variants_for_db = []
@@ -2335,7 +2324,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 all_variants_for_db.append(variant_dict)
         
         if not all_variants_for_db:
-            yield rx.toast.error("No se encontraron variantes configuradas para guardar.")
+            yield rx.toast.error("No se encontraron variantes configuradas.")
             return
 
         with rx.session() as session:
@@ -2347,23 +2336,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             }
 
             new_post = BlogPostModel(
-                userinfo_id=owner_id,
-                creator_id=creator_id_to_save,
-                title=title,
-                content=self.content,
-                price=price_float,
-                profit=profit_float,
-                price_includes_iva=self.price_includes_iva,
-                category=category,
-                variants=all_variants_for_db,
-                publish_active=True,
+                userinfo_id=owner_id, creator_id=creator_id_to_save,
+                title=title, content=self.content, price=price_float, profit=profit_float,
+                price_includes_iva=self.price_includes_iva, category=category,
+                variants=all_variants_for_db, publish_active=True,
                 publish_date=datetime.now(timezone.utc),
-                shipping_cost=shipping_cost_float, # <-- Se guarda el costo de envío
                 is_moda_completa_eligible=self.is_moda_completa,
-                free_shipping_threshold=threshold,
-                combines_shipping=self.combines_shipping,
-                shipping_combination_limit=limit,
-                is_imported=self.is_imported,
+                free_shipping_threshold=threshold, combines_shipping=self.combines_shipping,
+                shipping_combination_limit=limit, is_imported=self.is_imported,
                 use_default_style=self.use_default_style,
                 light_card_bg_color=self.light_theme_colors.get("bg"),
                 light_title_color=self.light_theme_colors.get("title"),
@@ -2376,8 +2356,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.add(new_post)
 
             log_entry = ActivityLog(
-                actor_id=self.authenticated_user_info.id,
-                owner_id=owner_id,
+                actor_id=self.authenticated_user_info.id, owner_id=owner_id,
                 action_type="Creación de Publicación",
                 description=f"Creó la publicación '{new_post.title}'"
             )
@@ -3424,34 +3403,6 @@ class AppState(reflex_local_auth.LocalAuthState):
     posts: list[ProductCardData] = []
     is_loading: bool = True
 
-    def _recalculate_shipping_for_list(self, posts_to_recalculate: list[ProductCardData]) -> list[ProductCardData]:
-        """
-        [NUEVA FUNCIÓN AYUDANTE]
-        Recibe una lista de productos, recalcula el envío para cada uno de forma segura
-        y devuelve una nueva lista con los costos actualizados.
-        """
-        if not posts_to_recalculate or not self.default_shipping_address:
-            return posts_to_recalculate
-
-        buyer_city = self.default_shipping_address.city
-        buyer_barrio = self.default_shipping_address.neighborhood
-        
-        with rx.session() as session:
-            seller_ids = {p.userinfo_id for p in posts_to_recalculate}
-            sellers_info = session.exec(
-                sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
-            ).all()
-            seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
-
-            recalculated_posts = []
-            for post in posts_to_recalculate:
-                seller_data = seller_data_map.get(post.userinfo_id)
-                seller_city = seller_data.get("city") if seller_data else None
-                seller_barrio = seller_data.get("barrio") if seller_data else None
-                
-                final_shipping_cost = calculate_dynamic_shipping(
-                    base_cost=post.shipping_cost
-
     # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA LA PREVISUALIZACIÓN ✨ ---
 
     @rx.var
@@ -3983,16 +3934,14 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     async def save_edited_post(self):
         """
-        [VERSIÓN FINAL CORREGIDA]
-        Guarda una publicación editada. Ahora lee correctamente todos los campos
-        del formulario de edición, incluyendo el costo de envío, y actualiza
-        el registro en la base de datos.
+        [NUEVA VERSIÓN] Guarda una publicación editada, serializando la nueva
+        estructura de grupos de vuelta a la base de datos.
         """
         if not self.authenticated_user_info or self.post_to_edit_id is None:
             yield rx.toast.error("Error: No se pudo guardar la publicación.")
             return
         
-        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
+        owner_id = self.context_user_id or self.authenticated_user_info.id
         if not owner_id:
             yield rx.toast.error("No se pudo verificar la identidad del usuario.")
             return
@@ -4000,14 +3949,11 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price = float(self.edit_price_str or 0.0)
             profit = float(self.edit_profit_str) if self.edit_profit_str else None
-            
-            # --- ✨ LÓGICA DE CONVERSIÓN CORREGIDA EN EDICIÓN ✨ ---
             shipping_cost = float(self.edit_shipping_cost_str) if self.edit_shipping_cost_str else None
             threshold = float(self.edit_free_shipping_threshold_str) if self.edit_is_moda_completa and self.edit_free_shipping_threshold_str else None
             limit = int(self.edit_shipping_combination_limit_str) if self.edit_combines_shipping and self.edit_shipping_combination_limit_str else None
-        
-        except (ValueError, TypeError):
-            yield rx.toast.error("Valores numéricos inválidos en el formulario de edición.")
+        except ValueError:
+            yield rx.toast.error("Valores numéricos inválidos.")
             return
 
         all_variants_for_db = []
@@ -4016,7 +3962,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             image_urls_for_group = self.edit_variant_groups[group_index].image_urls
             for variant_data in generated_list:
-                # Se preserva el UUID si ya existe, o se crea uno nuevo
                 variant_uuid = getattr(variant_data, 'variant_uuid', str(uuid.uuid4()))
                 variant_dict = {
                     "attributes": variant_data.attributes,
@@ -4036,7 +3981,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 yield rx.toast.error("No tienes permiso para guardar esta publicación.")
                 return
             
-            # Actualización de todos los campos del producto
             post_to_update.title = self.edit_post_title
             post_to_update.content = self.edit_post_content
             post_to_update.price = price
@@ -4044,7 +3988,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.category = self.edit_category
             post_to_update.price_includes_iva = self.edit_price_includes_iva
             post_to_update.is_imported = self.edit_is_imported
-            post_to_update.shipping_cost = shipping_cost # <-- Se guarda el costo de envío
+            post_to_update.shipping_cost = shipping_cost
             post_to_update.is_moda_completa_eligible = self.edit_is_moda_completa
             post_to_update.free_shipping_threshold = threshold
             post_to_update.combines_shipping = self.edit_combines_shipping
@@ -4062,16 +4006,11 @@ class AppState(reflex_local_auth.LocalAuthState):
             
             session.add(post_to_update)
             
-            log_entry = ActivityLog(
-                actor_id=self.authenticated_user_info.id,
-                owner_id=post_to_update.userinfo_id,
-                action_type="Edición de Publicación",
-                description=f"Modificó la publicación '{post_to_update.title}'"
-            )
+            log_entry = ActivityLog(actor_id=self.authenticated_user_info.id, owner_id=post_to_update.userinfo_id, action_type="Edición de Publicación", description=f"Modificó la publicación '{post_to_update.title}'")
             session.add(log_entry)
             session.commit()
             
-        yield self.cancel_editing_post(False)
+        yield self.cancel_editing_post(False) # Cierra el modal y limpia el estado de edición
         yield AppState.load_mis_publicaciones
         yield rx.toast.success("Publicación actualizada correctamente.")
 
@@ -5812,7 +5751,8 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def delete_post(self, post_id: int):
         """
-        [CORRECCIÓN DEFINITIVA] Elimina una publicación solo si no tiene un historial de ventas asociado.
+        [CORREGIDO] Elimina una publicación, con permisos para empleados
+        y eliminando la restricción de si tiene compras asociadas.
         """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
@@ -5820,33 +5760,19 @@ class AppState(reflex_local_auth.LocalAuthState):
         with rx.session() as session:
             post_to_delete = session.get(BlogPostModel, post_id)
 
-            # Verificamos que el post exista y que el usuario tenga permiso
+            # --- ✨ CORRECCIÓN DE PERMISOS CLAVE ✨ ---
             if not post_to_delete or post_to_delete.userinfo_id != self.context_user_id:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
                 return
-
-            # --- ✨ INICIO DE LA NUEVA LÓGICA DE VERIFICACIÓN ✨ ---
-            # Buscamos si algún item de compra está referenciando este post
-            has_sales = session.exec(
-                sqlmodel.select(PurchaseItemModel.id).where(PurchaseItemModel.blog_post_id == post_id)
-            ).first()
-
-            if has_sales:
-                # Si hay ventas, impedimos el borrado y le decimos al usuario qué hacer
-                yield rx.toast.error(
-                    "Este producto no se puede eliminar porque ya tiene un historial de ventas. En su lugar, puedes ocultarlo desde la columna 'Estado'.",
-                    duration=8000  # Aumentamos la duración para que el mensaje sea legible
-                )
-                return
-            # --- ✨ FIN DE LA NUEVA LÓGICA DE VERIFICACIÓN ✨ ---
-
-            # Si llegamos aquí, significa que el producto no tiene ventas y se puede borrar
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            
+            # --- Eliminamos la restricción de compras existentes ---
+            
             session.delete(post_to_delete)
             session.commit()
-
+            
             yield rx.toast.success("Publicación eliminada correctamente.")
-            # Recargamos la lista para que el cambio se refleje en la UI
-            yield AppState.load_mis_publicaciones
+            yield AppState.on_load_admin_store
 
     @rx.event
     def toggle_publish_status(self, post_id: int):
@@ -6748,14 +6674,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 if p.shipping_address and p.shipping_neighborhood and p.shipping_city:
                     full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}"
 
-                # --- ✨ INICIO: AÑADE ESTA LÓGICA DE CÁLCULO ✨ ---
-                subtotal_base = sum(
-                    (item.blog_post.base_price * item.quantity)
-                    for item in p.items if item.blog_post
-                )
-                iva_calculado = subtotal_base * 0.19
-                # --- ✨ FIN ✨ ---
-
                 temp_history.append(
                     AdminPurchaseCardData(
                         id=p.id,
@@ -6772,10 +6690,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                         shipping_phone=p.shipping_phone, 
                         payment_method=p.payment_method,
                         confirmed_at=p.confirmed_at,
-                        # --- ✨ INICIO: PASA LOS NUEVOS VALORES AL DTO ✨ ---
-                        subtotal_cop=format_to_cop(subtotal_base),
-                        iva_cop=format_to_cop(iva_calculado),
-                        # --- ✨ FIN ✨ ---
                         items=detailed_items,
                         action_by_name=actor_name
                     )

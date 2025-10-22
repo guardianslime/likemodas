@@ -240,38 +240,6 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     margin_y="0.5em",
                 )
             ),
-
-            # --- ✨ INICIO: SECCIÓN DE TOTALES AÑADIDA ✨ ---
-            rx.divider(),
-            rx.vstack(
-                rx.hstack(
-                    rx.text("Subtotal:", size="3", color_scheme="gray"),
-                    rx.spacer(),
-                    rx.text(purchase.subtotal_cop, size="3"),
-                ),
-                rx.hstack(
-                    rx.text("Envío:", size="3", color_scheme="gray"),
-                    rx.spacer(),
-                    rx.text(purchase.shipping_applied_cop, size="3"),
-                ),
-                rx.hstack(
-                    rx.text("IVA (19%):", size="3", color_scheme="gray"),
-                    rx.spacer(),
-                    rx.text(purchase.iva_cop, size="3"),
-                ),
-                rx.divider(border_style="dashed"),
-                rx.hstack(
-                    rx.text("Total Pagado:", weight="bold", size="4"),
-                    rx.spacer(),
-                    rx.text(purchase.total_price_cop, weight="bold", size="4"),
-                ),
-                spacing="2",
-                align_items="stretch",
-                width="100%",
-                padding_y="0.5em",
-            ),
-            # --- ✨ FIN DE LA SECCIÓN DE TOTALES ✨ ---
-
             # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
             rx.cond(
                 purchase.action_by_name,
