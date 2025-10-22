@@ -241,7 +241,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 )
             ),
 
-            # --- ✨ INICIO: SECCIÓN DE TOTALES CORREGIDA ✨ ---
+            # --- ✨ INICIO: SECCIÓN DE TOTALES AÑADIDA ✨ ---
             rx.divider(),
             rx.vstack(
                 rx.hstack(
