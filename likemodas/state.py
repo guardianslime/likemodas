@@ -1427,6 +1427,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ MÉTODO MODIFICADO: `get_invoice_data` ✨ ---
     @rx.event
     def get_invoice_data(self, purchase_id: int) -> Optional[InvoiceData]:
+        """[CORREGIDO] Carga los datos de una factura con permisos para comprador y vendedor/empleado."""
         if not self.is_authenticated:
             return None
 
@@ -1440,19 +1441,21 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .where(PurchaseModel.id == purchase_id)
             ).unique().one_or_none()
 
-            if not purchase: return None
+            if not purchase:
+                return None
 
             # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
             seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             
-            # Un admin, vendedor o empleado puede ver la factura si su ID de contexto coincide con el vendedor del producto.
+            # Un admin, vendedor o empleado puede ver la factura si su ID de contexto coincide con el del vendedor.
             is_seller_or_employee = self.context_user_id in seller_ids_in_purchase
             
             # El comprador original también puede verla.
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
 
+            # Si no es ninguno de los dos, se deniega el acceso.
             if not is_seller_or_employee and not is_buyer:
-                return None # Si no es ninguno de los dos, se deniega el acceso.
+                return None
             # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
@@ -5782,7 +5785,7 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def delete_post(self, post_id: int):
         """
-        [CORREGIDO] Elimina una publicación, con permisos correctos para empleados.
+        [CORREGIDO] Elimina una publicación, con permisos correctos para vendedores y empleados.
         """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
@@ -5795,13 +5798,13 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not post_to_delete or post_to_delete.userinfo_id != self.context_user_id:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
                 return
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
-            
+            # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
+
             session.delete(post_to_delete)
             session.commit()
-            
+
             yield rx.toast.success("Publicación eliminada correctamente.")
-            # Recargamos la lista de publicaciones para que se refleje el cambio en la UI.
+            # Recargamos la lista de publicaciones para que se refleje el cambio en la UI
             yield AppState.load_mis_publicaciones
 
     @rx.event

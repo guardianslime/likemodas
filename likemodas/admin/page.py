@@ -240,8 +240,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     margin_y="0.5em",
                 )
             ),
-            
-            # --- ✨ INICIO: NUEVA SECCIÓN DE TOTALES ✨ ---
+
+            # --- ✨ INICIO: SECCIÓN DE TOTALES CORREGIDA ✨ ---
             rx.divider(),
             rx.vstack(
                 rx.hstack(
@@ -270,7 +270,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 width="100%",
                 padding_y="0.5em",
             ),
-            # --- ✨ FIN DE LA NUEVA SECCIÓN ✨ ---
+            # --- ✨ FIN DE LA SECCIÓN DE TOTALES ✨ ---
 
             # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
             rx.cond(
