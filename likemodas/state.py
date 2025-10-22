@@ -1456,9 +1456,15 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def on_load_invoice_page(self):
         """
-        [NUEVA FUNCIÓN] Se ejecuta al cargar la página de la factura y tiene
-        acceso directo al contexto de usuario para una correcta validación de permisos.
+        [CORRECCIÓN DEFINITIVA] Se ejecuta al cargar la factura. Ahora sincroniza
+        el contexto del usuario ANTES de verificar los permisos.
         """
+        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+        # Forzamos la sincronización del contexto para asegurar que el ID del vendedor esté disponible.
+        yield AppState.sync_user_context
+        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+
+        # El resto de la función se mantiene exactamente igual
         self.invoice_data = None
         
         purchase_id_str = "0"
@@ -1480,13 +1486,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.error("ID de factura no válido.")
             return
 
-        # Como esta función está dentro de AppState, tiene acceso a la lógica de permisos.
+        # Ahora, cuando se llame a esta función, el contexto ya será el correcto.
         invoice_result = self.get_invoice_data(purchase_id)
 
         if invoice_result:
             self.invoice_data = invoice_result
         else:
-            # Este es el error que estás viendo, ahora se mostrará solo si realmente no hay permisos.
             yield rx.toast.error("Factura no encontrada o no tienes permisos para verla.")
     
     # --- ✨ MÉTODO MODIFICADO: `get_invoice_data` ✨ ---
