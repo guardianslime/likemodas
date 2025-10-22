@@ -1423,6 +1423,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.direct_sale_cart[cart_key] += 1
 
     # --- FIN: NUEVOS EVENT HANDLERS ---
+
+    @rx.event
+    def sync_user_context(self):
+        """
+        [NUEVA FUNCIÓN DE SINCRONIZACIÓN]
+        Asegura que el context_user_id sea el correcto para el usuario autenticado,
+        especialmente para roles que no son ni empleados ni administradores en modo vigilancia.
+        """
+        if self.is_authenticated and self.authenticated_user_info:
+            # Si el usuario NO es un empleado y NO está en modo vigilancia,
+            # su contexto DEBE ser su propio ID. Esta línea lo fuerza.
+            if not self.is_empleado and not self.is_vigilando:
+                if self.context_user_id != self.authenticated_user_info.id:
+                    self.context_user_id = self.authenticated_user_info.id
     
     # --- ✨ MÉTODO MODIFICADO: `get_invoice_data` ✨ ---
     @rx.event

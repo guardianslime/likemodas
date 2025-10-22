@@ -107,8 +107,10 @@ app.add_page(
     base_page(blog_admin_page()), 
     route="/blog", 
     title="Mis Publicaciones",
-    # --- ✨ AÑADE ESTE EVENTO ON_LOAD ✨ ---
-    on_load=AppState.load_mis_publicaciones
+    on_load=[
+        AppState.sync_user_context,  # <-- ✨ AÑADE ESTA LÍNEA PRIMERO ✨
+        AppState.load_mis_publicaciones
+    ]
 )
 app.add_page(base_page(finance_page.finance_page_content()), route="/admin/finance", on_load=AppState.on_load_finance_data, title="Finanzas")
 app.add_page(base_page(user_management_page()), route="/admin/users", on_load=AppState.load_all_users, title="Gestión de Usuarios")
