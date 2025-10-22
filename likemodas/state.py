@@ -1501,6 +1501,20 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VERSIÓN FINAL Y ROBUSTA] Verifica los permisos con una consulta directa a la base de datos
         para garantizar el acceso a Compradores, Vendedores y Administradores sin ambigüedades.
         """
+        # --- ✨ INICIO: PEGA ESTE BLOQUE DE DEPÚRACIÓN AQUÍ ✨ ---
+        logging.info("--- INICIANDO DEPURACIÓN DE PERMISOS DE FACTURA ---")
+        logging.info(f"ID de Compra Solicitado: {purchase_id}")
+        if self.authenticated_user_info:
+            logging.info(f"ID de Usuario Autenticado: {self.authenticated_user_info.id}")
+            logging.info(f"Rol de Usuario Autenticado: {self.authenticated_user_info.role}")
+        else:
+            logging.info("Usuario Autenticado: NINGUNO (ERROR DE SESIÓN)")
+
+        logging.info(f"ID de Contexto Actual: {self.context_user_id}")
+        logging.info(f"¿Es Admin?: {self.is_admin}")
+        # --- ✨ FIN: BLOQUE DE DEPÚRACIÓN ✨ ---
+
+        # El resto de tu función se mantiene exactamente igual
         if not self.is_authenticated or not self.authenticated_user_info:
             return None
 
