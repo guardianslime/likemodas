@@ -1456,19 +1456,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not purchase:
                 return None
 
-            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
-            
+            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS DEFINITIVA ✨ ---
+        
             # Obtenemos los IDs de los vendedores de los productos en esta compra
             seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             
-            # Verificamos si el usuario en contexto (el vendedor o su empleado) es uno de los vendedores
-            is_seller_or_employee = self.context_user_id in seller_ids_in_purchase
-            
-            # También verificamos si es el comprador original
+            # 1. ¿El usuario es el comprador original?
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
+            
+            # 2. ¿El contexto del usuario (vendedor o empleado) corresponde al vendedor de los productos?
+            is_seller_or_employee_context = self.context_user_id in seller_ids_in_purchase
+            
+            # 3. ¿El usuario es un Administrador general?
+            is_super_admin = self.is_admin
 
-            # Si no es ni el vendedor/empleado ni el comprador, se deniega el acceso.
-            if not is_seller_or_employee and not is_buyer:
+            # Si no cumple NINGUNA de estas condiciones, se deniega el acceso.
+            if not is_buyer and not is_seller_or_employee_context and not is_super_admin:
                 return None
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)

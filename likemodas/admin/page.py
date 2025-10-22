@@ -241,7 +241,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 )
             ),
 
-            # --- ✨ INICIO: SECCIÓN DE TOTALES AÑADIDA ✨ ---
+            # --- ✨ INICIO DE LA CORRECCIÓN: SECCIÓN DE TOTALES COMPLETA ✨ ---
             rx.divider(),
             rx.vstack(
                 rx.hstack(
@@ -249,6 +249,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     rx.spacer(),
                     rx.text(purchase.subtotal_cop, size="3"),
                 ),
+                # Esta es la sección que faltaba o era incorrecta:
                 rx.hstack(
                     rx.text("Envío:", size="3", color_scheme="gray"),
                     rx.spacer(),
@@ -270,7 +271,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 width="100%",
                 padding_y="0.5em",
             ),
-            # --- ✨ FIN DE LA SECCIÓN DE TOTALES ✨ ---
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
 
             # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
             rx.cond(
