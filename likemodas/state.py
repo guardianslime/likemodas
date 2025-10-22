@@ -3424,6 +3424,34 @@ class AppState(reflex_local_auth.LocalAuthState):
     posts: list[ProductCardData] = []
     is_loading: bool = True
 
+    def _recalculate_shipping_for_list(self, posts_to_recalculate: list[ProductCardData]) -> list[ProductCardData]:
+        """
+        [NUEVA FUNCIÓN AYUDANTE]
+        Recibe una lista de productos, recalcula el envío para cada uno de forma segura
+        y devuelve una nueva lista con los costos actualizados.
+        """
+        if not posts_to_recalculate or not self.default_shipping_address:
+            return posts_to_recalculate
+
+        buyer_city = self.default_shipping_address.city
+        buyer_barrio = self.default_shipping_address.neighborhood
+        
+        with rx.session() as session:
+            seller_ids = {p.userinfo_id for p in posts_to_recalculate}
+            sellers_info = session.exec(
+                sqlmodel.select(UserInfo).where(UserInfo.id.in_(list(seller_ids)))
+            ).all()
+            seller_data_map = {info.id: {"city": info.seller_city, "barrio": info.seller_barrio} for info in sellers_info}
+
+            recalculated_posts = []
+            for post in posts_to_recalculate:
+                seller_data = seller_data_map.get(post.userinfo_id)
+                seller_city = seller_data.get("city") if seller_data else None
+                seller_barrio = seller_data.get("barrio") if seller_data else None
+                
+                final_shipping_cost = calculate_dynamic_shipping(
+                    base_cost=post.shipping_cost
+
     # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA LA PREVISUALIZACIÓN ✨ ---
 
     @rx.var
