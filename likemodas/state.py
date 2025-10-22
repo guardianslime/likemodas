@@ -6711,29 +6711,24 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_purchase_history(self):
         """
-        [CORRECCIÓN DEFINITIVA] Carga el historial de compras del vendedor con una consulta
-        a la base de datos que evita duplicados y asegura que se carguen los datos correctos.
+        [CORRECCIÓN DEFINITIVA V2] Carga el historial del vendedor con la consulta
+        correcta y el método .unique() requerido por SQLAlchemy.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado):
             self.purchase_history = []
             return
 
         with rx.session() as session:
-            # Se obtiene el ID del vendedor o del admin en modo vigilancia para filtrar las compras.
             user_id_to_check = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else 0)
 
-            # --- ✨ INICIO DE LA NUEVA CONSULTA CORREGIDA ✨ ---
-
-            # 1. Primero, obtenemos una lista limpia de los IDs de las compras que
-            #    contienen al menos un producto vendido por el usuario en contexto.
-            #    Esto evita el error de duplicados que estabas experimentando.
+            # 1. Obtenemos los IDs únicos de las compras que pertenecen al vendedor.
             subquery = (
                 sqlmodel.select(PurchaseItemModel.purchase_id)
                 .join(BlogPostModel)
                 .where(BlogPostModel.userinfo_id == user_id_to_check)
             ).distinct()
 
-            # 2. Ahora, usamos esa lista limpia de IDs para obtener los objetos de compra completos.
+            # 2. Usamos esos IDs para obtener los objetos de compra completos.
             query = (
                 sqlmodel.select(PurchaseModel)
                 .options(
@@ -6752,10 +6747,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(PurchaseModel.purchase_date.desc())
             )
             
-            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-            # Añadimos .unique() antes de .all() para procesar correctamente los resultados.
+            # 3. Ejecutamos la consulta AÑADIENDO .unique() para agrupar los resultados.
             results = session.exec(query).unique().all()
-            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
             
             # --- ✨ FIN DE LA NUEVA CONSULTA CORREGIDA ✨ --
             
