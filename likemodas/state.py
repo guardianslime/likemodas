@@ -6752,9 +6752,12 @@ class AppState(reflex_local_auth.LocalAuthState):
                 .order_by(PurchaseModel.purchase_date.desc())
             )
             
-            results = session.exec(query).all()
+            # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+            # Añadimos .unique() antes de .all() para procesar correctamente los resultados.
+            results = session.exec(query).unique().all()
+            # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
             
-            # --- ✨ FIN DE LA NUEVA CONSULTA CORREGIDA ✨ ---
+            # --- ✨ FIN DE LA NUEVA CONSULTA CORREGIDA ✨ --
             
             temp_history = []
             for p in results:
