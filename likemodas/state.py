@@ -1441,6 +1441,53 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not self.is_empleado and not self.is_vigilando:
                 if self.context_user_id != self.authenticated_user_info.id:
                     self.context_user_id = self.authenticated_user_info.id
+
+    # --- ✨ INICIO: VARIABLES DE ESTADO DE LA FACTURA MOVIDAS AQUÍ ✨ ---
+    invoice_data: Optional[InvoiceData] = None
+
+    @rx.var
+    def invoice_items(self) -> List[InvoiceItemData]:
+        """Devuelve la lista de ítems de la factura de forma segura."""
+        if not self.invoice_data:
+            return []
+        return self.invoice_data.items
+    # --- ✨ FIN: VARIABLES DE ESTADO DE LA FACTURA MOVIDAS AQUÍ ✨ ---
+
+    @rx.event
+    def on_load_invoice_page(self):
+        """
+        [NUEVA FUNCIÓN] Se ejecuta al cargar la página de la factura y tiene
+        acceso directo al contexto de usuario para una correcta validación de permisos.
+        """
+        self.invoice_data = None
+        
+        purchase_id_str = "0"
+        try:
+            full_url = self.router.url
+            if "?" in full_url:
+                query_string = full_url.split("?")[1]
+                params = dict(param.split("=") for param in query_string.split("&"))
+                purchase_id_str = params.get("id", "0")
+        except Exception:
+            pass
+
+        try:
+            purchase_id = int(purchase_id_str)
+            if purchase_id <= 0:
+                yield rx.toast.error("ID de factura no válido.")
+                return
+        except ValueError:
+            yield rx.toast.error("ID de factura no válido.")
+            return
+
+        # Como esta función está dentro de AppState, tiene acceso a la lógica de permisos.
+        invoice_result = self.get_invoice_data(purchase_id)
+
+        if invoice_result:
+            self.invoice_data = invoice_result
+        else:
+            # Este es el error que estás viendo, ahora se mostrará solo si realmente no hay permisos.
+            yield rx.toast.error("Factura no encontrada o no tienes permisos para verla.")
     
     # --- ✨ MÉTODO MODIFICADO: `get_invoice_data` ✨ ---
     @rx.event

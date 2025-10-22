@@ -1,8 +1,10 @@
-# likemodas/invoice/page.py (VERSIÓN FINAL Y CORREGIDA)
+# En: likemodas/invoice/page.py
 
 import reflex as rx
-from .state import InvoiceState
+# Se importa el estado principal de la aplicación
+from ..state import AppState
 
+# Estilos para la factura, incluyendo formato para impresión
 invoice_style = {
     "font_family": "Arial, sans-serif", "padding": "2em", "max_width": "800px", "margin": "auto",
     "border": "1px solid #ddd", "box_shadow": "0 0 10px rgba(0, 0, 0, 0.1)",
@@ -13,32 +15,37 @@ invoice_style = {
 }
 
 def invoice_page_content() -> rx.Component:
-    """Página que renderiza una factura con detalles de variante específicos."""
+    """
+    [VERSIÓN FINAL Y CORREGIDA]
+    Página que renderiza una factura, utilizando AppState para garantizar los permisos correctos.
+    """
     return rx.box(
         rx.cond(
-            InvoiceState.invoice_data,
+            AppState.invoice_data,
             rx.vstack(
-                # --- Encabezado y datos del cliente (sin cambios) ---
+                # Encabezado con logo y número de factura
                 rx.hstack(
                     rx.image(src="/logo.png", width="120px", height="auto"),
                     rx.spacer(),
                     rx.vstack(
                         rx.heading("FACTURA", size="6", weight="bold"),
-                        rx.text("#", InvoiceState.invoice_data.id),
+                        rx.text("#", AppState.invoice_data.id),
                         align_items="end",
                     ),
                     width="100%", align_items="start", margin_bottom="1em",
                 ),
+                # Fecha de emisión
                 rx.hstack(
                     rx.text(
                         "Fecha de Emisión: ",
-                        rx.text.strong(InvoiceState.invoice_data.purchase_date_formatted),
+                        rx.text.strong(AppState.invoice_data.purchase_date_formatted),
                         font_size="0.9em",
                     ),
                     rx.spacer(),
                     width="100%",
                     margin_bottom="2em",
                 ),
+                # Datos del remitente y comprador
                 rx.grid(
                     rx.vstack(
                         rx.heading("Remitente", size="4"), rx.text("Likemodas Store"),
@@ -48,14 +55,14 @@ def invoice_page_content() -> rx.Component:
                     ),
                     rx.vstack(
                         rx.heading("Comprador", size="4"),
-                        rx.text(InvoiceState.invoice_data.customer_name, weight="bold"),
-                        rx.text(InvoiceState.invoice_data.shipping_full_address),
-                        rx.text(InvoiceState.invoice_data.customer_email),
+                        rx.text(AppState.invoice_data.customer_name, weight="bold"),
+                        rx.text(AppState.invoice_data.shipping_full_address),
+                        rx.text(AppState.invoice_data.customer_email),
                         align_items="start", spacing="1",
                     ),
                     columns="2", spacing="6", width="100%", margin_bottom="2em",
                 ),
-                # --- Tabla de artículos ---
+                # Tabla de artículos
                 rx.table.root(
                     rx.table.header(
                         rx.table.row(
@@ -69,24 +76,20 @@ def invoice_page_content() -> rx.Component:
                     ),
                     rx.table.body(
                         rx.foreach(
-                            InvoiceState.invoice_items,
+                            AppState.invoice_items,
                             lambda item: rx.table.row(
-                                # --- ✨ INICIO DE LA MODIFICACIÓN ✨ ---
                                 rx.table.cell(
                                     rx.hstack(
                                         rx.text(item.name, weight="bold", style={"color": "black"}),
-                                        # Se añade el texto con los detalles, paréntesis y color corregido
                                         rx.text(
                                             " (", item.variant_details_str, ")",
                                             size="2",
-                                            # Se usa un color gris oscuro explícito para garantizar la visibilidad
-                                            style={"color": "#555"}, 
+                                            style={"color": "#555"},
                                         ),
-                                        align="baseline", # Alinea los textos por la base para un mejor look
+                                        align="baseline",
                                         spacing="1"
                                     )
                                 ),
-                                # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
                                 rx.table.cell(item.quantity, text_align="center", style={"color": "black"}),
                                 rx.table.cell(item.price_cop, text_align="right", style={"color": "black"}),
                                 rx.table.cell(item.subtotal_cop, text_align="right", style={"color": "black"}),
@@ -98,29 +101,29 @@ def invoice_page_content() -> rx.Component:
                     variant="surface",
                     width="100%",
                 ),
-                # --- Sección de totales (sin cambios) ---
+                # Sección de totales
                 rx.hstack(
                     rx.spacer(),
                     rx.vstack(
                         rx.hstack(
                             rx.text("Subtotal:", weight="bold", width="120px", text_align="right"),
-                            rx.text(InvoiceState.invoice_data.subtotal_cop, width="120px", text_align="right"),
+                            rx.text(AppState.invoice_data.subtotal_cop, width="120px", text_align="right"),
                             justify="between", width="100%"
                         ),
                         rx.hstack(
                             rx.text("Envío:", weight="bold", width="120px", text_align="right"),
-                            rx.text(InvoiceState.invoice_data.shipping_applied_cop, width="120px", text_align="right"),
+                            rx.text(AppState.invoice_data.shipping_applied_cop, width="120px", text_align="right"),
                             justify="between", width="100%"
                         ),
                         rx.hstack(
                             rx.text("IVA (19%):", weight="bold", width="120px", text_align="right"),
-                            rx.text(InvoiceState.invoice_data.iva_cop, width="120px", text_align="right"),
+                            rx.text(AppState.invoice_data.iva_cop, width="120px", text_align="right"),
                             justify="between", width="100%"
                         ),
                         rx.divider(width="100%"),
                         rx.hstack(
                             rx.heading("Total:", size="5", width="120px", text_align="right"),
-                            rx.heading(InvoiceState.invoice_data.total_price_cop, size="5", width="120px", text_align="right"),
+                            rx.heading(AppState.invoice_data.total_price_cop, size="5", width="120px", text_align="right"),
                             justify="between", width="100%"
                         ),
                         spacing="2",
@@ -133,6 +136,7 @@ def invoice_page_content() -> rx.Component:
                     width="100%",
                     justify="end",
                 ),
+                # Botón de imprimir
                 rx.button(
                     "Imprimir Factura", on_click=rx.call_script("window.print()"),
                     class_name="no-print", margin_top="3em",
@@ -140,6 +144,7 @@ def invoice_page_content() -> rx.Component:
                 align="stretch",
                 spacing="5",
             ),
+            # Mensaje de carga
             rx.center(rx.spinner(size="3"), rx.text("Cargando factura..."), height="90vh"),
         ),
         style=invoice_style,

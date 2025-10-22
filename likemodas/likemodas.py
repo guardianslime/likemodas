@@ -96,7 +96,7 @@ app.add_page(processing_payment.processing_payment_page(), route="/processing-pa
 
 # Rutas de Soporte y Facturas
 # Nota: La página de facturas no usa base_page porque es para imprimir. Esto es correcto.
-app.add_page(invoice_page.invoice_page_content(), route="/invoice", on_load=InvoiceState.on_load_invoice_page, title="Factura")
+app.add_page(invoice_page.invoice_page_content(), route="/invoice", on_load=AppState.on_load_invoice_page, title="Factura")
 app.add_page(base_page(returns_page.return_exchange_page_content()), route=navigation.routes.RETURN_EXCHANGE_ROUTE, on_load=AppState.on_load_return_page, title="Devolución o Cambio")
 
 # Rutas del Panel de ADMINISTRADOR
