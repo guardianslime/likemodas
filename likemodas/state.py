@@ -5783,24 +5783,41 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.event
     def delete_post(self, post_id: int):
-        """[CORREGIDO] Elimina una publicación, con permisos correctos para vendedores y empleados."""
+        """
+        [CORRECCIÓN DEFINITIVA] Elimina una publicación solo si no tiene un historial de ventas asociado.
+        """
         if not self.authenticated_user_info:
             return rx.toast.error("Acción no permitida.")
 
         with rx.session() as session:
             post_to_delete = session.get(BlogPostModel, post_id)
 
-            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
-            # Comparamos el dueño del post con el ID del contexto actual (vendedor o empleado)
+            # Verificamos que el post exista y que el usuario tenga permiso
             if not post_to_delete or post_to_delete.userinfo_id != self.context_user_id:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
                 return
-            # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
 
+            # --- ✨ INICIO DE LA NUEVA LÓGICA DE VERIFICACIÓN ✨ ---
+            # Buscamos si algún item de compra está referenciando este post
+            has_sales = session.exec(
+                sqlmodel.select(PurchaseItemModel.id).where(PurchaseItemModel.blog_post_id == post_id)
+            ).first()
+
+            if has_sales:
+                # Si hay ventas, impedimos el borrado y le decimos al usuario qué hacer
+                yield rx.toast.error(
+                    "Este producto no se puede eliminar porque ya tiene un historial de ventas. En su lugar, puedes ocultarlo desde la columna 'Estado'.",
+                    duration=8000  # Aumentamos la duración para que el mensaje sea legible
+                )
+                return
+            # --- ✨ FIN DE LA NUEVA LÓGICA DE VERIFICACIÓN ✨ ---
+
+            # Si llegamos aquí, significa que el producto no tiene ventas y se puede borrar
             session.delete(post_to_delete)
             session.commit()
 
             yield rx.toast.success("Publicación eliminada correctamente.")
+            # Recargamos la lista para que el cambio se refleje en la UI
             yield AppState.load_mis_publicaciones
 
     @rx.event
