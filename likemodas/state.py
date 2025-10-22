@@ -237,6 +237,10 @@ class AdminPurchaseCardData(rx.Base):
     payment_method: str
     confirmed_at: Optional[datetime] = None
     shipping_applied: Optional[float] = 0.0
+    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+    # Ya no es una propiedad, es un campo de texto simple.
+    shipping_applied_cop: str = "$ 0"
+    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
     items: list[PurchaseItemCardData] = []
     action_by_name: Optional[str] = None
 
@@ -1456,21 +1460,22 @@ class AppState(reflex_local_auth.LocalAuthState):
             if not purchase:
                 return None
 
-            # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS DEFINITIVA ✨ ---
+            # --- ✨ INICIO DE LA LÓGICA DE PERMISOS REFORZADA ✨ ---
         
-            # Obtenemos los IDs de los vendedores de los productos en esta compra
             seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             
             # 1. ¿El usuario es el comprador original?
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
             
-            # 2. ¿El contexto del usuario (vendedor o empleado) corresponde al vendedor de los productos?
-            is_seller_or_employee_context = self.context_user_id in seller_ids_in_purchase
+            # 2. ¿El contexto del usuario (vendedor/empleado) corresponde al vendedor de los productos?
+            #    Se añade 'int()' para asegurar que la comparación no falle por tipos de datos.
+            current_context_id = int(self.context_user_id or 0)
+            is_seller_or_employee_context = current_context_id in seller_ids_in_purchase
             
-            # 3. ¿El usuario es un Administrador general?
+            # 3. ¿El usuario tiene rol de Administrador?
             is_super_admin = self.is_admin
 
-            # Si no cumple NINGUNA de estas condiciones, se deniega el acceso.
+            # Si no cumple NINGUNA de estas tres condiciones, se deniega el acceso.
             if not is_buyer and not is_seller_or_employee_context and not is_super_admin:
                 return None
 
@@ -6756,7 +6761,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                         purchase_date_formatted=p.purchase_date_formatted,
                         status=p.status.value,
                         total_price=p.total_price,
-                        shipping_applied=p.shipping_applied,
+                        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
+                        # Pasamos el valor ya formateado directamente, en lugar del número.
+                        shipping_applied_cop=format_to_cop(p.shipping_applied or 0.0),
+                        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
                         shipping_name=p.shipping_name,
                         shipping_full_address=full_address,
                         shipping_phone=p.shipping_phone, 
