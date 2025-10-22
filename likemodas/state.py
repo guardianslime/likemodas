@@ -1454,17 +1454,11 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ FIN: VARIABLES DE ESTADO DE LA FACTURA MOVIDAS AQUÍ ✨ ---
 
     @rx.event
-    def on_load_invoice_page(self):
+    def _load_invoice_data_after_sync(self):
         """
-        [CORRECCIÓN DEFINITIVA] Se ejecuta al cargar la factura. Ahora sincroniza
-        el contexto del usuario ANTES de verificar los permisos.
+        [NUEVA FUNCIÓN PRIVADA] Se ejecuta DESPUÉS de que el contexto ha sido sincronizado.
+        Contiene la lógica para cargar los datos de la factura.
         """
-        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-        # Forzamos la sincronización del contexto para asegurar que el ID del vendedor esté disponible.
-        yield AppState.sync_user_context
-        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
-
-        # El resto de la función se mantiene exactamente igual
         self.invoice_data = None
         
         purchase_id_str = "0"
@@ -1486,13 +1480,26 @@ class AppState(reflex_local_auth.LocalAuthState):
             yield rx.toast.error("ID de factura no válido.")
             return
 
-        # Ahora, cuando se llame a esta función, el contexto ya será el correcto.
+        # Ahora, llamamos a get_invoice_data, con la confianza de que self.context_user_id es correcto.
         invoice_result = self.get_invoice_data(purchase_id)
 
         if invoice_result:
             self.invoice_data = invoice_result
         else:
             yield rx.toast.error("Factura no encontrada o no tienes permisos para verla.")
+
+    @rx.event
+    def on_load_invoice_page(self):
+        """
+        [VERSIÓN FINAL CORREGIDA] Se ejecuta al cargar la factura. Su ÚNICA
+        responsabilidad es sincronizar el contexto y LUEGO llamar a la función
+        que cargará los datos, evitando condiciones de carrera.
+        """
+        # Paso 1: Sincroniza el contexto del usuario.
+        yield AppState.sync_user_context
+        
+        # Paso 2: Llama a la siguiente función en la cadena para cargar los datos.
+        yield AppState._load_invoice_data_after_sync
     
     # --- ✨ MÉTODO MODIFICADO: `get_invoice_data` ✨ ---
     @rx.event
