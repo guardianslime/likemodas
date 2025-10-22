@@ -5331,11 +5331,19 @@ class AppState(reflex_local_auth.LocalAuthState):
             product_shipping_profit_loss = product_shipping_collected - product_actual_shipping_cost
             grand_total_profit = product_total_net_profit + product_shipping_profit_loss
 
+            # Esta función auxiliar se asegura de obtener la primera imagen de la lista de forma segura.
+            def get_first_image_url(variant_data: dict) -> str | None:
+                image_urls = variant_data.get("image_urls", [])  # Usamos el nombre correcto 'image_urls'
+                return image_urls[0] if image_urls else None
+
             product_variants_data = [
                 VariantDetailFinanceDTO(
                     variant_key=self._get_variant_key(variant_db),
                     attributes_str=", ".join([f"{k}: {v}" for k, v in variant_db.get("attributes", {}).items()]),
-                    image_url=variant_db.get("image_url"),
+                    
+                    # Aquí aplicamos la corrección:
+                    image_url=get_first_image_url(variant_db),
+
                     units_sold=variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("units", 0),
                     total_revenue_cop=format_to_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("revenue", 0.0)),
                     total_cogs_cop=format_to_cop(variant_sales_aggregator.get(self._get_variant_key(variant_db), {}).get("cogs", 0.0)),
