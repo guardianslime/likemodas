@@ -1446,17 +1446,16 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
             seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
-            
+
             # Un admin, vendedor o empleado puede ver la factura si su ID de contexto coincide con el del vendedor.
             is_seller_or_employee = self.context_user_id in seller_ids_in_purchase
-            
+
             # El comprador original también puede verla.
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
 
             # Si no es ninguno de los dos, se deniega el acceso.
             if not is_seller_or_employee and not is_buyer:
                 return None
-            # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
 
             subtotal_base_products = sum(item.blog_post.base_price * item.quantity for item in purchase.items if item.blog_post)
             shipping_cost = purchase.shipping_applied or 0.0
@@ -5794,7 +5793,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_delete = session.get(BlogPostModel, post_id)
 
             # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
-            # Comparamos el dueño del post con el ID del contexto actual (que puede ser el vendedor o su empleado).
+            # Comparamos el dueño del post con el ID del contexto actual.
             if not post_to_delete or post_to_delete.userinfo_id != self.context_user_id:
                 yield rx.toast.error("No tienes permiso para eliminar esta publicación.")
                 return
@@ -5804,7 +5803,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             session.commit()
 
             yield rx.toast.success("Publicación eliminada correctamente.")
-            # Recargamos la lista de publicaciones para que se refleje el cambio en la UI
+            # Recargamos la lista para que la UI se actualice con el cambio
             yield AppState.load_mis_publicaciones
 
     @rx.event
