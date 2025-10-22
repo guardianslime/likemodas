@@ -38,16 +38,20 @@ def calculate_dynamic_shipping(
     buyer_city: str | None
 ) -> float:
     """
-    [CORREGIDO] Calcula el costo de envío final.
+    [VERSIÓN FINAL CORREGIDA] Calcula el costo de envío final, siempre partiendo
+    del costo base y sumando los costos de distancia.
     """
+    # Si las ciudades son diferentes, el costo es fijo y alto.
     if seller_city and buyer_city and seller_city != buyer_city:
         return 15000.0
 
-    city_data = CITY_SPECIFIC_DATA.get(seller_city)
-    if not city_data or not seller_barrio or not buyer_barrio:
+    # Si no hay datos suficientes o los barrios son iguales, el costo es simplemente el base.
+    if not seller_city or not seller_barrio or not buyer_barrio or seller_barrio == buyer_barrio:
         return base_cost
     
-    if seller_barrio == buyer_barrio:
+    # Obtenemos los datos geográficos de la ciudad del vendedor
+    city_data = CITY_SPECIFIC_DATA.get(seller_city)
+    if not city_data:
         return base_cost
 
     barrio_a_comuna_map = city_data["barrio_map"]
@@ -58,22 +62,26 @@ def calculate_dynamic_shipping(
 
     if not seller_commune or not buyer_commune:
         return base_cost
-        
-    # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-    distance_cost = 0.0  # Inicializamos el costo de distancia en 0
+
+    # --- ✨ LÓGICA DE CÁLCULO CORREGIDA Y SIMPLIFICADA ✨ ---
+    
+    costo_adicional = 0.0
+    
+    # Si los barrios son diferentes pero la comuna es la misma
     if seller_commune == buyer_commune:
-        # Si están en la misma comuna pero diferente barrio, se suma 2000.
-        distance_cost = 2000.0
+        costo_adicional = 2000.0
+    # Si las comunas son diferentes
     else:
         path = find_shortest_commune_path(seller_commune, buyer_commune, comuna_adjacency_graph)
         if not path:
-            distance_cost = 12000.0
+            # Si no se encuentra una ruta (caso improbable), se usa un costo alto.
+            return 12000.0
         else:
+            # Se calcula el costo basado en el número de "saltos" entre comunas.
             num_jumps = len(path) - 1
-            distance_cost = num_jumps * 4000.0
+            costo_adicional = num_jumps * 4000.0
 
-    # El costo total es el base + el de distancia, con un tope de 12000.
-    total_shipping_cost = min(base_cost + distance_cost, 12000.0)
-    # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
+    # El costo total es SIEMPRE el base + el adicional, con un tope máximo.
+    total_shipping_cost = min(base_cost + costo_adicional, 12000.0)
     
     return total_shipping_cost
