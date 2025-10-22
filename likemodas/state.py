@@ -6711,17 +6711,30 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def load_purchase_history(self):
         """
-        [CORRECCIÓN DEFINITIVA] Carga el historial de compras del vendedor, asegurando
-        que la imagen de cada artículo corresponda a la variante exacta que se compró.
+        [CORRECCIÓN DEFINITIVA] Carga el historial de compras del vendedor con una consulta
+        a la base de datos que evita duplicados y asegura que se carguen los datos correctos.
         """
         if not (self.is_admin or self.is_vendedor or self.is_empleado):
             self.purchase_history = []
             return
 
         with rx.session() as session:
-            user_id_to_check = self.context_user_id if self.context_user_info else (self.authenticated_user_info.id if self.authenticated_user_info else 0)
+            # Se obtiene el ID del vendedor o del admin en modo vigilancia para filtrar las compras.
+            user_id_to_check = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else 0)
 
-            results = session.exec(
+            # --- ✨ INICIO DE LA NUEVA CONSULTA CORREGIDA ✨ ---
+
+            # 1. Primero, obtenemos una lista limpia de los IDs de las compras que
+            #    contienen al menos un producto vendido por el usuario en contexto.
+            #    Esto evita el error de duplicados que estabas experimentando.
+            subquery = (
+                sqlmodel.select(PurchaseItemModel.purchase_id)
+                .join(BlogPostModel)
+                .where(BlogPostModel.userinfo_id == user_id_to_check)
+            ).distinct()
+
+            # 2. Ahora, usamos esa lista limpia de IDs para obtener los objetos de compra completos.
+            query = (
                 sqlmodel.select(PurchaseModel)
                 .options(
                     sqlalchemy.orm.joinedload(PurchaseModel.userinfo).joinedload(UserInfo.user),
@@ -6729,42 +6742,39 @@ class AppState(reflex_local_auth.LocalAuthState):
                     sqlalchemy.orm.joinedload(PurchaseModel.action_by).joinedload(UserInfo.user)
                 )
                 .where(
+                    PurchaseModel.id.in_(subquery),
                     PurchaseModel.status.in_([
-                        PurchaseStatus.DELIVERED, 
+                        PurchaseStatus.DELIVERED,
                         PurchaseStatus.DIRECT_SALE,
                         PurchaseStatus.FAILED
-                    ]),
-                    PurchaseItemModel.blog_post.has(BlogPostModel.userinfo_id == user_id_to_check)
+                    ])
                 )
-                .join(PurchaseItemModel).order_by(PurchaseModel.purchase_date.desc())
-            ).unique().all()
+                .order_by(PurchaseModel.purchase_date.desc())
+            )
+            
+            results = session.exec(query).all()
+            
+            # --- ✨ FIN DE LA NUEVA CONSULTA CORREGIDA ✨ ---
             
             temp_history = []
             for p in results:
                 detailed_items = []
-                for p in results:
-                    detailed_items = []
-                    for item in p.items:
-                        if item.blog_post:
-                            # --- ✨ INICIO DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
-                            variant_image_url = ""
-                            correct_variant = next((v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), None)
-
-                            if correct_variant:
-                                image_urls = correct_variant.get("image_urls", [])
-                                if image_urls:
-                                    variant_image_url = image_urls[0]
-                            
-                            if not variant_image_url and item.blog_post.variants and item.blog_post.variants[0].get("image_urls"):
-                                variant_image_url = item.blog_post.variants[0]["image_urls"][0]
-                            # --- ✨ FIN DE LA LÓGICA DE IMAGEN CORREGIDA ✨ ---
-
+                for item in p.items:
+                    if item.blog_post:
+                        # Lógica para obtener la URL de la imagen de la variante correcta
+                        variant_image_url = ""
+                        correct_variant = next((v for v in item.blog_post.variants if v.get("attributes") == item.selected_variant), None)
+                        if correct_variant:
+                            image_urls = correct_variant.get("image_urls", [])
+                            if image_urls:
+                                variant_image_url = image_urls[0]
+                        
                         variant_str = ", ".join([f"{k}: {v}" for k, v in item.selected_variant.items()])
                         detailed_items.append(
                             PurchaseItemCardData(
                                 id=item.blog_post.id,
                                 title=item.blog_post.title,
-                                image_url=variant_image_url, # Se pasa la URL correcta
+                                image_url=variant_image_url,
                                 price_at_purchase=item.price_at_purchase,
                                 price_at_purchase_cop=format_to_cop(item.price_at_purchase),
                                 quantity=item.quantity,
@@ -6774,53 +6784,43 @@ class AppState(reflex_local_auth.LocalAuthState):
                 
                 actor_name = p.action_by.user.username if p.action_by and p.action_by.user else None
 
-                # ✨ --- INICIO DE LA NUEVA LÓGICA DE DATOS DE CLIENTE --- ✨
+                # Lógica para mostrar el nombre y correo del cliente (anónimo o registrado)
                 customer_name_display = p.shipping_name or "Cliente"
                 customer_email_display = "Sin Correo"
-
                 if p.is_direct_sale:
-                    # Para Venta Directa, el email anónimo tiene la máxima prioridad.
                     customer_email_display = p.anonymous_customer_email or "Sin Correo"
                 elif p.userinfo and p.userinfo.user:
-                    # Para compras normales, usamos el email del usuario comprador.
                     customer_email_display = p.userinfo.email
-                # ✨ --- FIN DE LA NUEVA LÓGICA --- ✨
 
                 full_address = "N/A"
                 if p.shipping_address and p.shipping_neighborhood and p.shipping_city:
                     full_address = f"{p.shipping_address}, {p.shipping_neighborhood}, {p.shipping_city}"
 
-                # --- ✨ INICIO: AÑADE ESTA LÓGICA DE CÁLCULO ✨ ---
+                # Lógica de cálculo de costos (replicando la de la factura)
                 subtotal_base = sum(
                     (item.blog_post.base_price * item.quantity)
                     for item in p.items if item.blog_post
                 )
                 iva_calculado = subtotal_base * 0.19
-                # --- ✨ FIN ✨ ---
 
                 temp_history.append(
                     AdminPurchaseCardData(
                         id=p.id,
                         customer_name=customer_name_display,
                         customer_email=customer_email_display,
-                        # Pasamos el email anónimo al DTO para la búsqueda
                         anonymous_customer_email=p.anonymous_customer_email,
                         purchase_date_formatted=p.purchase_date_formatted,
                         status=p.status.value,
                         total_price=p.total_price,
-                        # --- ✨ INICIO DE LA CORRECCIÓN CLAVE ✨ ---
-                        # Pasamos el valor ya formateado directamente, en lugar del número.
-                        shipping_applied_cop=format_to_cop(p.shipping_applied or 0.0),
-                        # --- ✨ FIN DE LA CORRECCIÓN CLAVE ✨ ---
                         shipping_name=p.shipping_name,
                         shipping_full_address=full_address,
                         shipping_phone=p.shipping_phone, 
                         payment_method=p.payment_method,
                         confirmed_at=p.confirmed_at,
-                        # --- ✨ INICIO: PASA LOS NUEVOS VALORES AL DTO ✨ ---
+                        # Se pasan los valores correctos y formateados
+                        shipping_applied_cop=format_to_cop(p.shipping_applied or 0.0),
                         subtotal_cop=format_to_cop(subtotal_base),
                         iva_cop=format_to_cop(iva_calculado),
-                        # --- ✨ FIN ✨ ---
                         items=detailed_items,
                         action_by_name=actor_name
                     )
