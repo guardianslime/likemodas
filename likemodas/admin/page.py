@@ -1,7 +1,7 @@
 # likemodas/admin/page.py (VERSIÓN FINAL CON AUDITORÍA)
 
 import reflex as rx
-from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData
+from ..state import AppState, AdminPurchaseCardData, PurchaseItemCardData, format_to_cop
 from ..models import PurchaseStatus
 from ..auth.admin_auth import require_panel_access
 # ✨ IMPORTA EL MODAL AQUÍ ✨
@@ -190,9 +190,19 @@ def purchase_card_admin(purchase: AdminPurchaseCardData) -> rx.Component:
     )
 
 def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
-    """Muestra los detalles de una compra en el historial, con auditoría."""
+    """
+    [CORRECCIÓN DEFINITIVA] Muestra los detalles de una compra en el historial, 
+    con desglose completo de costos y formato seguro.
+    """
+    
+    # Calculamos el subtotal aquí de forma segura para el frontend
+    subtotal_var = purchase.total_price - rx.cond(
+        purchase.shipping_applied, purchase.shipping_applied, 0.0
+    )
+
     return rx.card(
         rx.vstack(
+            # --- Encabezado (ID, Cliente, Fecha) ---
             rx.hstack(
                 rx.vstack(
                     rx.text(f"Compra #{purchase.id}", weight="bold", size="5"),
@@ -203,11 +213,14 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.spacer(),
                 rx.vstack(
                     rx.badge(purchase.status, color_scheme="green", variant="soft", size="2"),
-                    rx.heading(purchase.total_price_cop, size="6"),
+                    # Usamos la función de formato sobre el valor numérico
+                    rx.heading(format_to_cop(purchase.total_price), size="6"),
                     align_items="end",
                 ), width="100%",
             ),
             rx.divider(),
+            
+            # --- Detalles de Envío ---
             rx.vstack(
                 rx.text("Detalles de Envío:", weight="medium", size="4"),
                 rx.text(f"Nombre: {purchase.shipping_name}", size="3"),
@@ -216,6 +229,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="1", align_items="start", width="100%",
             ),
             rx.divider(),
+
+            # --- Artículos ---
             rx.vstack(
                 rx.text("Artículos:", weight="medium", size="4"),
                 purchase_items_view(
@@ -224,56 +239,42 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 ),
                 spacing="2", align_items="start", width="100%",
             ),
-            rx.cond(
-                purchase.action_by_name,
-                rx.box(
-                    rx.hstack(
-                        rx.icon("user-check", size=12, color_scheme="gray"),
-                        rx.text(
-                            "Gestionado por: ",
-                            rx.text.strong(purchase.action_by_name),
-                            size="2", color_scheme="gray"
-                        ),
-                        spacing="2"
-                    ),
-                    width="100%",
-                    margin_y="0.5em",
-                )
-            ),
 
-            # --- ✨ INICIO DE LA CORRECCIÓN: SECCIÓN DE TOTALES COMPLETA ✨ ---
-            rx.divider(),
+            # --- ✨ INICIO: SECCIÓN DE TOTALES CORREGIDA Y COMPLETA ✨ ---
+            rx.divider(margin_y="0.75em"),
             rx.vstack(
                 rx.hstack(
                     rx.text("Subtotal:", size="3", color_scheme="gray"),
                     rx.spacer(),
-                    rx.text(purchase.subtotal_cop, size="3"),
+                    # Usamos la variable 'subtotal_var' que definimos arriba
+                    rx.text(format_to_cop(subtotal_var), size="3"),
                 ),
-                # Esta es la sección que faltaba o era incorrecta:
                 rx.hstack(
-                    rx.text("Envío:", size="3", color_scheme="gray"),
+                    rx.text("Envío:", size="3", color_scheme="gray"), # <-- LA LÍNEA QUE FALTABA
                     rx.spacer(),
-                    rx.text(purchase.shipping_applied_cop, size="3"),
+                    # Usamos la función de formato sobre el valor numérico
+                    rx.text(format_to_cop(purchase.shipping_applied), size="3"),
                 ),
                 rx.hstack(
                     rx.text("IVA (19%):", size="3", color_scheme="gray"),
                     rx.spacer(),
-                    rx.text(purchase.iva_cop, size="3"),
+                    rx.text(purchase.iva_cop, size="3"), # Este ya venía formateado del DTO
                 ),
                 rx.divider(border_style="dashed"),
                 rx.hstack(
                     rx.text("Total Pagado:", weight="bold", size="4"),
                     rx.spacer(),
-                    rx.text(purchase.total_price_cop, weight="bold", size="4"),
+                    # Usamos la función de formato sobre el valor numérico
+                    rx.text(format_to_cop(purchase.total_price), weight="bold", size="4"),
                 ),
                 spacing="2",
                 align_items="stretch",
                 width="100%",
                 padding_y="0.5em",
             ),
-            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+            # --- ✨ FIN DE LA SECCIÓN DE TOTALES ✨ ---
 
-            # --- ✨ AÑADIMOS LA INFORMACIÓN DE AUDITORÍA AQUÍ ✨ ---
+            # --- Auditoría y Botón de Imprimir ---
             rx.cond(
                 purchase.action_by_name,
                 rx.box(
@@ -289,8 +290,6 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                     width="100%", margin_y="0.5em",
                 )
             ),
-            # --- ✨ FIN DE LA MODIFICACIÓN ✨ ---
-
             rx.link(
                 rx.button("Imprimir Factura", variant="soft", color_scheme="gray", width="100%", margin_top="0.5em"),
                 href=f"/invoice?id={purchase.id}",
@@ -299,7 +298,6 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
             spacing="4", width="100%",
         ), width="100%",
     )
-# --- ✨ FIN: COMPONENTES DE COMPRA CORREGIDOS ✨ ---
 
 @require_panel_access 
 def admin_confirm_content() -> rx.Component:
