@@ -11,13 +11,23 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import String
 from reflex_local_auth.user import LocalUser
 from .utils.timing import get_utc_now
-from .utils.formatting import format_to_cop
+# from .utils.formatting import format_to_cop
 
 # --- Adelanta la declaración de modelos ---
 if "CommentModel" not in locals():
     CommentModel = "CommentModel"
 if "PurchaseItemModel" not in locals():
     PurchaseItemModel = "PurchaseItemModel"
+
+def _format_to_cop_backend(value: float | None) -> str:
+    """
+    Función de formato PRIVADA. Solo para el backend (modelos y DTOs).
+    """
+    if value is None or value < 1:
+        return "$ 0"
+    formatted_number = f"{value:,.0f}"
+    colombian_format = formatted_number.replace(',', '.')
+    return f"$ {colombian_format}"
 
 # --- ✨ INICIO: AÑADIR/REEMPLAZAR ESTE MODELO COMPLETO ✨ ---
 class LocalAuthSession(rx.Model, table=True):
@@ -403,10 +413,14 @@ class BlogPostModel(rx.Model, table=True):
 
     @property
     def created_at_formatted(self) -> str: return format_utc_to_local(self.created_at)
+    
     @property
     def publish_date_formatted(self) -> str: return format_utc_to_local(self.publish_date)
+    
     @property
-    def price_cop(self) -> str: return format_to_cop(self.price)
+    def price_cop(self) -> str: 
+        # 👇 CAMBIA LA LLAMADA a la nueva función
+        return _format_to_cop_backend(self.price)
 
 class ShippingAddressModel(rx.Model, table=True):
     __tablename__ = "shippingaddress"
@@ -469,10 +483,14 @@ class PurchaseModel(rx.Model, table=True):
 
     @property
     def purchase_date_formatted(self) -> str: return format_utc_to_local(self.purchase_date)
+    
     @property
     def confirmed_at_formatted(self) -> str: return format_utc_to_local(self.confirmed_at)
+    
     @property
-    def total_price_cop(self) -> str: return format_to_cop(self.total_price)
+    def total_price_cop(self) -> str: 
+        # 👇 CAMBIA LA LLAMADA a la nueva función
+        return _format_to_cop_backend(self.total_price)
     
 
 class PurchaseItemModel(rx.Model, table=True):
@@ -615,7 +633,8 @@ class Gasto(rx.Model, table=True):
 
     @property
     def valor_cop(self) -> str:
-        return format_to_cop(self.valor)
+        # 👇 CAMBIA LA LLAMADA a la nueva función
+        return _format_to_cop_backend(self.valor)
 
 class ActivityLog(rx.Model, table=True):
     """Registra una acción realizada por un usuario en el panel."""
