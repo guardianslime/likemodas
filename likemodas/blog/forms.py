@@ -375,7 +375,7 @@ def blog_post_edit_form() -> rx.Component:
                             AppState.edit_price_str.length(),
                             10 # Límite por defecto
                         )
-                        # --- ✨ FIN ✨ ---
+                        # --- ✨ FIN ✨ --
                     )),
                     columns="2", spacing="4"
                 ),
