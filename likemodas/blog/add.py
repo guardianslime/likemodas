@@ -10,7 +10,7 @@ from likemodas.data.product_options import LISTA_TALLAS_ROPA
 from ..state import AppState, VariantGroupDTO
 from ..auth.admin_auth import require_panel_access
 from .forms import blog_post_add_form
-from ..ui.components import searchable_select, star_rating_display_safe
+from ..ui.components import TITLE_CLAMP_STYLE, searchable_select, star_rating_display_safe
 from ..utils.formatting import format_to_cop
 from reflex.components.component import NoSSRComponent
 
@@ -312,10 +312,9 @@ def post_preview(
              rx.vstack(
                 rx.text(
                     rx.cond(title, title, "Título del Producto"),
-                    weight="bold", size="6",
-                    no_of_lines=2,  # <--- ESTA ES LA LÍNEA DE SOLUCIÓN
-                    width="100%",
-                    color=rx.cond(AppState.use_default_style, rx.color_mode_cond("var(--gray-11)", "white"), AppState.live_title_color)
+                    weight="bold", size="6", width="100%",
+                    color=rx.cond(...),
+                    style=TITLE_CLAMP_STYLE  # <--- REEMPLAZA no_of_lines CON ESTO
                 ),
                 star_rating_display_safe(0, 0, size=24),
                 rx.text(

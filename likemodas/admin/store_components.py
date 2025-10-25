@@ -3,7 +3,7 @@
 import reflex as rx
 from ..state import AppState, ProductCardData
 # Se importa el componente de estrellas que ya tenías
-from ..ui.components import star_rating_display_safe
+from ..ui.components import TITLE_CLAMP_STYLE, star_rating_display_safe
 # Se importan los colores por defecto para asegurar la consistencia visual
 from ..state import (
     DEFAULT_LIGHT_BG, DEFAULT_LIGHT_TITLE, DEFAULT_LIGHT_PRICE,
@@ -86,9 +86,9 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                         post.title, 
                         weight="bold", 
                         size="6", 
-                        no_of_lines=2,  # <--- ESTA ES LA LÍNEA DE SOLUCIÓN
                         width="100%", 
-                        color=title_color
+                        color=title_color,
+                        style=TITLE_CLAMP_STYLE  # <--- REEMPLAZA no_of_lines CON ESTO
                     ),
                     star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                     rx.text(post.price_cop, size="5", weight="medium", color=price_color),

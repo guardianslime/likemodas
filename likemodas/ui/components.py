@@ -12,6 +12,17 @@ from ..state import (
 
 from reflex.event import EventSpec
 
+# --- ✨ INICIO: AÑADE ESTE DICCIONARIO DE ESTILO ✨ ---
+# Este es el CSS a prueba de fallos para forzar 2 líneas y agregar "..."
+TITLE_CLAMP_STYLE = {
+    "display": "-webkit-box",
+    "-webkit-line-clamp": "2",  # El número de líneas
+    "-webkit-box-orient": "vertical",
+    "overflow": "hidden",
+    "text_overflow": "ellipsis",
+}
+# --- ✨ FIN ✨ ---
+
 def star_rating_display_safe(rating: rx.Var[float], count: rx.Var[int], size: int = 18) -> rx.Component:
     return rx.hstack(
         rx.foreach(
@@ -208,14 +219,15 @@ def product_gallery_component(posts: rx.Var[list[ProductCardData]]) -> rx.Compon
                         bg=rx.color_mode_cond("white", rx.color("gray", 3)),
                     ),
                     rx.vstack(
+                        # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
                         rx.text(
-                                post.title, 
-                                weight="bold", 
-                                size="6", 
-                                no_of_lines=2,  # <--- ESTA ES LA LÍNEA DE SOLUCIÓN
-                                width="100%", 
-                                color=title_color
-                            ),
+                            post.title, 
+                            weight="bold", 
+                            size="6", 
+                            width="100%", 
+                            color=title_color,
+                            style=TITLE_CLAMP_STYLE  # <--- REEMPLAZA no_of_lines CON ESTO
+                        ),
                         star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                         rx.text(post.price_cop, size="5", weight="medium", color=price_color),
                         rx.spacer(),
