@@ -352,8 +352,21 @@ def blog_post_edit_form() -> rx.Component:
                 ),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.edit_category, on_change=AppState.set_edit_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
-                    rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.edit_price_str, on_change=AppState.set_edit_price_str, type="number", required=True)),
-                    rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.edit_profit_str, on_change=AppState.set_edit_profit_str, type="number")),
+                    rx.vstack(rx.text("Precio (COP)"), rx.input(
+                        name="price", 
+                        value=AppState.edit_price_str, 
+                        on_change=AppState.set_edit_price_str, # <--- CORREGIDO
+                        type="number", 
+                        required=True
+                    )),
+                    rx.vstack(rx.text("Ganancia (COP)"), rx.input(
+                        name="profit", 
+                        value=AppState.profit_str, 
+                        on_change=AppState.set_profit_str, # <--- CORREGIDO
+                        # on_blur=... (elimina esta línea si existe)
+                        type="number", 
+                        placeholder="Ej: 15000"
+                    )),
                     columns="2", spacing="4"
                 ),
                 rx.grid(
