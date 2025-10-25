@@ -396,10 +396,6 @@ class VariantDetailFinanceDTO(rx.Base):
     daily_profit_data: List[Dict[str, Any]] = []
  # Datos para el gráfico de la variante
 
-# Formatea a COP
-def format_to_cop(value: float) -> str:
-    return f"${int(value):,}".replace(",", ".") # Formato colombiano
-
 # 2. Ahora definimos la clase que la utiliza.
 class ProductDetailFinanceDTO(rx.Base):
     """DTO para el detalle financiero de un producto específico."""
@@ -1522,18 +1518,12 @@ class AppState(reflex_local_auth.LocalAuthState):
             # --- ✨ INICIO DE LA CORRECCIÓN DE PERMISOS ✨ ---
             seller_ids_in_purchase = {item.blog_post.userinfo_id for item in purchase.items if item.blog_post}
             
-            # Un admin, vendedor o empleado puede ver la factura si su ID de contexto coincide con el del vendedor.
             is_seller_or_employee = self.context_user_id in seller_ids_in_purchase
-            
-            # El comprador original también puede verla.
             is_buyer = self.authenticated_user_info.id == purchase.userinfo_id
 
-            # Si no es ninguno de los dos, se deniega el acceso.
             if not is_seller_or_employee and not is_buyer:
-                return None
+                return None # Si no es ninguno de los dos, se deniega el acceso.
             # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
-
-            # --- Lógica para calcular y formatear los datos de la factura ---
             
             subtotal_base_products = sum(
                 (item.blog_post.base_price * item.quantity)
@@ -1542,7 +1532,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             shipping_cost = purchase.shipping_applied or 0.0
             iva_calculado = subtotal_base_products * 0.19
             
-            # --- Lógica para datos del cliente ---
             customer_name_display = "N/A"
             customer_email_display = "Sin Correo"
             if purchase.is_direct_sale:
@@ -1552,7 +1541,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 customer_name_display = purchase.shipping_name
                 customer_email_display = purchase.userinfo.email
 
-            # --- Lógica para ítems de la factura ---
             invoice_items = []
             for item in purchase.items:
                 if item.blog_post:
@@ -1566,15 +1554,14 @@ class AppState(reflex_local_auth.LocalAuthState):
                             name=item.blog_post.title,
                             quantity=item.quantity,
                             price=item.blog_post.base_price,
-                            price_cop=format_to_cop(item.blog_post.base_price),
-                            subtotal_cop=format_to_cop(item_base_subtotal),
-                            iva_cop=format_to_cop(item_iva),
-                            total_con_iva_cop=format_to_cop(item_total_con_iva),
+                            price_cop=_format_to_cop_backend(item.blog_post.base_price), # Usa la función de backend
+                            subtotal_cop=_format_to_cop_backend(item_base_subtotal),
+                            iva_cop=_format_to_cop_backend(item_iva),
+                            total_con_iva_cop=_format_to_cop_backend(item_total_con_iva),
                             variant_details_str=variant_str
                         )
                     )
 
-            # --- Devolver el DTO completo ---
             return InvoiceData(
                 id=purchase.id,
                 purchase_date_formatted=purchase.purchase_date_formatted,
@@ -1584,10 +1571,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 customer_email=customer_email_display,
                 shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}" if purchase.shipping_address else "N/A (Venta Directa)",
                 shipping_phone=purchase.shipping_phone,
-                subtotal_cop=format_to_cop(subtotal_base_products),
-                shipping_applied_cop=format_to_cop(shipping_cost),
-                iva_cop=format_to_cop(iva_calculado),
-                total_price_cop=format_to_cop(purchase.total_price)
+                subtotal_cop=_format_to_cop_backend(subtotal_base_products),
+                shipping_applied_cop=_format_to_cop_backend(shipping_cost),
+                iva_cop=_format_to_cop_backend(iva_calculado),
+                total_price_cop=_format_to_cop_backend(purchase.total_price)
             )
             
     @rx.var

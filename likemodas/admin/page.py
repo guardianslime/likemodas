@@ -240,20 +240,20 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 spacing="2", align_items="start", width="100%",
             ),
 
-            # --- ✨ INICIO: SECCIÓN DE TOTALES CORREGIDA Y COMPLETA ✨ ---
+            # --- ✨ SECCIÓN DE TOTALES CORREGIDA Y COMPLETA ✨ ---
             rx.divider(margin_y="0.75em"),
             rx.vstack(
                 rx.hstack(
                     rx.text("Subtotal:", size="3", color_scheme="gray"),
                     rx.spacer(),
-                    # Usamos la variable 'subtotal_var' que definimos arriba
-                    rx.text(format_to_cop(subtotal_var), size="3"),
+                    # El DTO ya tiene este valor formateado por el backend
+                    rx.text(purchase.subtotal_cop, size="3"),
                 ),
                 rx.hstack(
                     rx.text("Envío:", size="3", color_scheme="gray"), # <-- LA LÍNEA QUE FALTABA
                     rx.spacer(),
-                    # Usamos la función de formato sobre el valor numérico
-                    rx.text(format_to_cop(purchase.shipping_applied), size="3"),
+                    # El DTO ya tiene este valor formateado por el backend
+                    rx.text(purchase.shipping_applied_cop, size="3"),
                 ),
                 rx.hstack(
                     rx.text("IVA (19%):", size="3", color_scheme="gray"),
@@ -264,8 +264,8 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                 rx.hstack(
                     rx.text("Total Pagado:", weight="bold", size="4"),
                     rx.spacer(),
-                    # Usamos la función de formato sobre el valor numérico
-                    rx.text(format_to_cop(purchase.total_price), weight="bold", size="4"),
+                    # El DTO ya tiene este valor formateado por el backend
+                    rx.text(purchase.total_price_cop, weight="bold", size="4"),
                 ),
                 spacing="2",
                 align_items="stretch",
@@ -287,7 +287,7 @@ def purchase_card_history(purchase: AdminPurchaseCardData) -> rx.Component:
                         ),
                         spacing="2"
                     ),
-                    width="1D00%", margin_y="0.5em",
+                    width="100%", margin_y="0.5em",
                 )
             ),
             rx.link(
