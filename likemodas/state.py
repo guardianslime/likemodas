@@ -1533,7 +1533,8 @@ class AppState(reflex_local_auth.LocalAuthState):
                 return None
             # --- ✨ FIN DE LA CORRECCIÓN DE PERMISOS ✨ ---
 
-            # (El resto de la función para generar los datos de la factura continúa)
+            # --- Lógica para calcular y formatear los datos de la factura ---
+            
             subtotal_base_products = sum(
                 (item.blog_post.base_price * item.quantity)
                 for item in purchase.items if item.blog_post
@@ -1565,10 +1566,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                             name=item.blog_post.title,
                             quantity=item.quantity,
                             price=item.blog_post.base_price,
-                            price_cop=_format_to_cop_backend(item.blog_post.base_price), # Usa la función de backend
-                            subtotal_cop=_format_to_cop_backend(item_base_subtotal),
-                            iva_cop=_format_to_cop_backend(item_iva),
-                            total_con_iva_cop=_format_to_cop_backend(item_total_con_iva),
+                            price_cop=format_to_cop(item.blog_post.base_price),
+                            subtotal_cop=format_to_cop(item_base_subtotal),
+                            iva_cop=format_to_cop(item_iva),
+                            total_con_iva_cop=format_to_cop(item_total_con_iva),
                             variant_details_str=variant_str
                         )
                     )
@@ -1583,10 +1584,10 @@ class AppState(reflex_local_auth.LocalAuthState):
                 customer_email=customer_email_display,
                 shipping_full_address=f"{purchase.shipping_address}, {purchase.shipping_neighborhood}, {purchase.shipping_city}" if purchase.shipping_address else "N/A (Venta Directa)",
                 shipping_phone=purchase.shipping_phone,
-                subtotal_cop=_format_to_cop_backend(subtotal_base_products),
-                shipping_applied_cop=_format_to_cop_backend(shipping_cost),
-                iva_cop=_format_to_cop_backend(iva_calculado),
-                total_price_cop=_format_to_cop_backend(purchase.total_price) # Usa la función de backend
+                subtotal_cop=format_to_cop(subtotal_base_products),
+                shipping_applied_cop=format_to_cop(shipping_cost),
+                iva_cop=format_to_cop(iva_calculado),
+                total_price_cop=format_to_cop(purchase.total_price)
             )
             
     @rx.var
