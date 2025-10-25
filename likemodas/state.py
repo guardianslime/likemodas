@@ -3676,9 +3676,44 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ AÑADE ESTAS DOS LÍNEAS QUE FALTAN AQUÍ ✨ ---
     edit_profit_str: str = ""
 
-    def set_edit_profit_str(self, profit: str):
-        self.edit_profit_str = profit
-    # --- ✨ FIN DEL CÓDIGO A AÑADIR ✨ ---
+    # --- ✨ INICIO: AÑADE ESTAS 4 NUEVAS FUNCIONES ✨ ---
+
+    # 1. Para el formulario de CREAR
+    def set_profit_str(self, value: str):
+        """Actualiza el valor de la ganancia mientras se escribe."""
+        self.profit_str = value
+
+    @rx.event
+    def validate_profit_on_blur(self):
+        """Valida la ganancia cuando el usuario sale del campo."""
+        try:
+            price_float = float(self.price_str) if self.price_str else 0.0
+            profit_float = float(self.profit_str) if self.profit_str else 0.0
+
+            if profit_float > price_float:
+                self.profit_str = self.price_str # La ganancia se ajusta al precio
+                yield rx.toast.warn("La ganancia no puede ser mayor que el precio. Se ha ajustado.")
+        except (ValueError, TypeError):
+            self.profit_str = "" # Limpia si se escribió texto no válido
+
+    # 2. Para el formulario de EDITAR
+    def set_edit_profit_str(self, value: str):
+        """Actualiza el valor de la ganancia de EDICIÓN mientras se escribe."""
+        self.edit_profit_str = value
+
+    @rx.event
+    def validate_edit_profit_on_blur(self):
+        """Valida la ganancia de EDICIÓN cuando el usuario sale del campo."""
+        try:
+            price_float = float(self.edit_price_str) if self.edit_price_str else 0.0
+            profit_float = float(self.edit_profit_str) if self.edit_profit_str else 0.0
+
+            if profit_float > price_float:
+                self.edit_profit_str = self.edit_price_str # La ganancia se ajusta al precio
+                yield rx.toast.warn("La ganancia no puede ser mayor que el precio. Se ha ajustado.")
+        except (ValueError, TypeError):
+            self.edit_profit_str = ""
+    # --- ✨ FIN ✨ ---
 
     # --- ✨ INICIO DEL CÓDIGO A AÑADIR ✨ ---
     @rx.var
