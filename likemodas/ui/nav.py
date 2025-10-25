@@ -138,7 +138,7 @@ def notification_icon() -> rx.Component:
 def public_navbar() -> rx.Component:
     """La barra de navegación pública, con íconos reordenados y de tamaño uniforme."""
     icon_color = rx.color_mode_cond("black", "white")
-    
+
     hamburger_menu = rx.menu.root(
         rx.menu.trigger(
             rx.icon("menu", size=28, cursor="pointer", color=icon_color)
@@ -177,8 +177,7 @@ def public_navbar() -> rx.Component:
             ),
         ),
     )
-    
-    # --- ✨ INICIO DE LA CORRECCIÓN DEFINITIVA DE ICONOS ✨ ---
+
     authenticated_icons = rx.hstack(
         rx.icon_button(
             rx.icon("search", size=24, color=icon_color),
@@ -208,13 +207,11 @@ def public_navbar() -> rx.Component:
         ),
         notification_icon(),
         align="center",
-        # Se revierte a "end" para agrupar los íconos a la derecha.
-        justify="end", 
-        # Se ajusta el espaciado para que sea mayor en PC.
+        justify="end",
         spacing={"initial": "2", "md": "4"},
         width="100%",
     )
-    
+
     placeholder_icons = rx.hstack(
         rx.icon_button(
             rx.icon("search", size=24, color=icon_color),
@@ -223,7 +220,6 @@ def public_navbar() -> rx.Component:
             color_scheme="gray",
             display=["flex", "flex", "none", "none"]
         ),
-        # Se mantiene el orden, pero con los cambios de estilo.
         rx.icon_button(rx.icon("shopping-cart", size=24, color="transparent"), variant="ghost", disabled=True),
         rx.icon_button(rx.icon("bell", size=24, color="transparent"), variant="ghost", disabled=True),
         align="center",
@@ -236,7 +232,12 @@ def public_navbar() -> rx.Component:
         rx.grid(
             rx.hstack(
                 hamburger_menu,
-                rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
+                # --- ✨ LOGO CORREGIDO AQUÍ ✨ ---
+                rx.link(
+                    rx.image(src="/logo.png", width="8em", height="auto", border_radius="md"),
+                    href="/", # Redirige a la página principal
+                ),
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 align="center", spacing="4", justify="start",
             ),
             rx.input(
@@ -260,20 +261,17 @@ def public_navbar() -> rx.Component:
                     },
                 },
             ),
-            # El contenedor de los íconos
             rx.cond(
                 AppState.is_authenticated,
                 authenticated_icons,
                 placeholder_icons
             ),
-            # ✨ --- INICIO DE LA CORRECCIÓN CLAVE --- ✨
             columns={"initial": "auto 1fr", "md": "auto 1fr auto"},
-            # ✨ --- FIN DE LA CORRECCIÓN CLAVE --- ✨
             align_items="center",
             width="100%",
             gap="1.5rem",
         ),
-        
+
         rx.cond(
             AppState.is_authenticated & ~(AppState.is_admin | AppState.is_vendedor | AppState.is_empleado),
             rx.fragment(
