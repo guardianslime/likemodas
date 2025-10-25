@@ -325,7 +325,17 @@ def blog_post_edit_form() -> rx.Component:
                 spacing="5", width="100%",
             ),
             rx.vstack(
-                rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.edit_post_title, on_change=AppState.set_edit_post_title, required=True, max_length=24), align_items="stretch"),
+                rx.vstack(
+                    rx.text("Título del Producto"), 
+                    rx.input(
+                        name="title", 
+                        value=AppState.edit_post_title, 
+                        on_change=AppState.set_edit_post_title, 
+                        required=True, 
+                        max_length=38  # <--- CAMBIADO DE 24 A 38
+                    ), 
+                    align_items="stretch"
+                ),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.edit_category, on_change=AppState.set_edit_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.edit_price_str, on_change=AppState.set_edit_price_str, type="number", required=True)),

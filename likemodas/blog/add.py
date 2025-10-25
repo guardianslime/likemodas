@@ -198,7 +198,19 @@ def blog_post_add_form() -> rx.Component:
                 width="100%",
             ),
             rx.vstack(
-                rx.vstack(rx.text("Título del Producto"), rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True, max_length=24), align_items="stretch"),
+                rx.vstack(
+                    rx.text("Título del Producto"), 
+                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                    rx.input(
+                        name="title", 
+                        value=AppState.title, 
+                        on_change=AppState.set_title, 
+                        required=True, 
+                        max_length=38  # <--- CAMBIADO DE 24 A 38
+                    ), 
+                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
+                    align_items="stretch"
+                ),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
