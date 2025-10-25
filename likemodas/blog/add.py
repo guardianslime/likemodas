@@ -272,8 +272,6 @@ def post_preview(
         dark_colors = {"gray": {"bg": "#373A40", "text": "#ADB5BD"}, "violet": {"bg": "#4D2C7B", "text": "#D0BFFF"}, "teal": {"bg": "#0C3D3F", "text": "#96F2D7"}}
         colors = rx.cond(AppState.card_theme_mode == "light", light_colors[color_scheme], dark_colors[color_scheme])
         
-        # --- ✅ SOLUCIÓN FINAL AQUÍ ---
-        # Añadimos 'white_space="nowrap"' para forzar que el texto nunca se divida en varias líneas.
         return rx.box(
             rx.text(text_content, size="2", weight="medium"),
             bg=colors["bg"], 
@@ -281,26 +279,25 @@ def post_preview(
             padding="1px 10px", 
             border_radius="var(--radius-full)", 
             font_size="0.8em",
-            white_space="nowrap", # <--- ESTA ES LA LÍNEA CLAVE
+            white_space="nowrap",
         )
-        # --- FIN DE LA SOLUCIÓN FINAL ---
     
     return rx.box(
         rx.vstack(
              rx.box(
-                rx.image(
+                 rx.image(
                     src=rx.get_upload_url(first_image_url),
                     fallback="/image_off.png", 
                     width="100%", height="260px", object_fit="contain",
                     transform=rx.cond(
                         AppState.is_hydrated,
-                        f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
+                         f"scale({AppState.preview_zoom}) rotate({AppState.preview_rotation}deg) translateX({AppState.preview_offset_x}px) translateY({AppState.preview_offset_y}px)",
                         "scale(1)"
                     ),
                     transition="transform 0.2s ease-out",
                 ),
                 rx.badge(
-                    rx.cond(is_imported, "Importado", "Nacional"),
+                     rx.cond(is_imported, "Importado", "Nacional"),
                     color_scheme=rx.cond(is_imported, "purple", "cyan"), variant="solid",
                     style={"position": "absolute", "top": "0.5rem", "left": "0.5rem", "z_index": "1"}
                 ),
@@ -310,12 +307,20 @@ def post_preview(
                 bg=rx.cond(AppState.card_theme_mode == "light", "white", rx.color("gray", 3)),
              ),
              rx.vstack(
+                # --- ✨ ESTA ES LA LÍNEA CORREGIDA ✨ ---
                 rx.text(
                     rx.cond(title, title, "Título del Producto"),
                     weight="bold", size="6", width="100%",
-                    color=rx.cond(...),
-                    style=TITLE_CLAMP_STYLE  # <--- REEMPLAZA no_of_lines CON ESTO
+                    # 1. Se ha restaurado la lógica de color completa:
+                    color=rx.cond(
+                        AppState.use_default_style, 
+                        rx.color_mode_cond("var(--gray-11)", "white"), 
+                        AppState.live_title_color
+                    ),
+                    # 2. Se ha añadido el estilo de 2 líneas:
+                    style=TITLE_CLAMP_STYLE
                 ),
+                # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                 star_rating_display_safe(0, 0, size=24),
                 rx.text(
                     price_cop, size="5", weight="medium",
