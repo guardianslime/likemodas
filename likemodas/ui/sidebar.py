@@ -82,7 +82,13 @@ def sliding_admin_sidebar() -> rx.Component:
 
     sidebar_content = rx.vstack(
         rx.hstack(
-            rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
+            # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+            # Envolvemos la imagen en un rx.link que apunta a la tienda del admin/vendedor
+            rx.link(
+                rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
+                href="/admin/store" # <--- Esta es la ruta correcta
+            ),
+            # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             align="center", justify="center", width="100%",
         ),
         rx.cond(
