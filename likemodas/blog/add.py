@@ -198,13 +198,14 @@ def blog_post_add_form() -> rx.Component:
                 width="100%",
             ),
             rx.vstack(
-                rx.vstack(rx.text("Título del Producto"), 
+                rx.vstack(
+                    rx.text("Título del Producto"), 
                     rx.input(
                         name="title", 
                         value=AppState.title, 
                         on_change=AppState.set_title, 
-                        required=True,
-                        # max_length=38  <--- ELIMINA ESTA LÍNEA
+                        required=True, 
+                        max_length=40  # <--- CORRECCIÓN AÑADIDA
                     ), 
                     align_items="stretch"
                 ),

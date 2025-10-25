@@ -346,7 +346,7 @@ def blog_post_edit_form() -> rx.Component:
                         value=AppState.edit_post_title, 
                         on_change=AppState.set_edit_post_title, 
                         required=True, 
-                        max_length=38  # <--- CAMBIADO DE 24 A 38
+                        max_length=40  # <--- CORRECCIÓN AÑADIDA
                     ), 
                     align_items="stretch"
                 ),
