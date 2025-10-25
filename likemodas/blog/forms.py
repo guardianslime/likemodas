@@ -366,11 +366,16 @@ def blog_post_edit_form() -> rx.Component:
                     )),
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                         name="profit", 
-                        value=AppState.profit_str, 
-                        on_change=AppState.set_profit_str, # <--- CORREGIDO
-                        # on_blur=... (elimina esta línea si existe)
-                        type="number", 
-                        placeholder="Ej: 15000"
+                        value=AppState.edit_profit_str, 
+                        on_change=AppState.set_edit_profit_str,
+                        type="number",
+                        # --- ✨ INICIO: LÍMITE DE DÍGITOS DINÁMICO ✨ ---
+                        max_length=rx.cond(
+                            AppState.edit_price_str.length() > 0,
+                            AppState.edit_price_str.length(),
+                            10 # Límite por defecto
+                        )
+                        # --- ✨ FIN ✨ ---
                     )),
                     columns="2", spacing="4"
                 ),

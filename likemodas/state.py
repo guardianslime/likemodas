@@ -3685,26 +3685,31 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VALIDACIÓN CRUZADA] Actualiza la ganancia, impidiendo
         que el valor supere el precio en cualquier momento.
         """
-        # Permite que el campo esté vacío
+        # 1. Manejar el caso de borrado
         if new_profit == "":
             self.profit_str = ""
             return
 
+        # 2. Validar que la entrada sea un número
         try:
-            # Intenta convertir la nueva ganancia a número
             profit_float = float(new_profit)
-            # Intenta convertir el precio actual a número
+        except (ValueError, TypeError):
+            # Si se escribe "49a", el float() falla.
+            # NO actualizamos el estado. El input volverá a "49".
+            return # Importante: `return` aquí para no continuar.
+        
+        # 3. La entrada es un número válido. Obtener el precio.
+        try:
             price_float = float(self.price_str) if self.price_str else 0.0
         except (ValueError, TypeError):
-            # Si se escribe "abc", no actualiza la ganancia.
-            # El estado NO cambia, por lo que el input volverá a "self.profit_str"
-            return # <--- Esta es la corrección clave
+            price_float = 0.0 # Tratar el precio como 0 si es inválido
 
-        # Si la nueva ganancia es mayor que el precio, se ajusta al precio
+        # 4. Aplicar la regla de negocio
         if profit_float > price_float:
+            # Si la ganancia es mayor, forzarla a ser igual al precio
             self.profit_str = self.price_str
         else:
-            # Si es válido, se actualiza
+            # Si es válida, aceptarla
             self.profit_str = new_profit
 
     # 2. Para el formulario de EDITAR
@@ -3718,33 +3723,35 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_price_str = ""
             self.edit_profit_str = ""
             return
-
         try:
             price_float = float(new_price)
-            profit_float = float(self.edit_profit_str) if self.edit_profit_str else 0.0
         except (ValueError, TypeError):
-            return
-
-        if profit_float > price_float:
-            self.edit_profit_str = new_price
-        
+            return 
         self.edit_price_str = new_price
+        try:
+            profit_float = float(self.edit_profit_str) if self.edit_profit_str else 0.0
+            if profit_float > price_float:
+                self.edit_profit_str = new_price
+        except (ValueError, TypeError):
+            self.edit_profit_str = ""
 
+    @rx.event
     def set_edit_profit_str(self, new_profit: str):
         """
         [VALIDACIÓN CRUZADA] Actualiza la ganancia de EDICIÓN, impidiendo
-        que el valor supere el precio en cualquier momento.
+        que el valor supere el precio.
         """
         if new_profit == "":
             self.edit_profit_str = ""
             return
-
         try:
             profit_float = float(new_profit)
+        except (ValueError, TypeError):
+            return 
+        try:
             price_float = float(self.edit_price_str) if self.edit_price_str else 0.0
         except (ValueError, TypeError):
-            return
-
+            price_float = 0.0
         if profit_float > price_float:
             self.edit_profit_str = self.edit_price_str
         else:
@@ -5204,28 +5211,32 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VALIDACIÓN CRUZADA] Actualiza el precio y, si es necesario,
         corrige la ganancia para que nunca sea mayor.
         """
-        # Permite que el campo se vacíe
+        # 1. Manejar el caso de borrado
         if new_price == "":
             self.price_str = ""
             self.profit_str = "" # Si el precio es 0, la ganancia es 0
             return
 
+        # 2. Validar que la entrada sea un número
         try:
-            # Intenta convertir el nuevo precio a número
             price_float = float(new_price)
-            # Intenta convertir la ganancia actual a número
-            profit_float = float(self.profit_str) if self.profit_str else 0.0
         except (ValueError, TypeError):
-            # Si se escribe "abc", simplemente no actualiza el estado.
-            # El input se reseteará al valor anterior ("self.price_str").
-            return
+            # Si se escribe "49a", el float() falla.
+            # NO actualizamos el estado, por lo que el input volverá a "49" (el último estado válido).
+            return # Importante: `return` aquí para no continuar.
 
-        # Si la ganancia actual es mayor que el nuevo precio, se ajusta la ganancia
-        if profit_float > price_float:
-            self.profit_str = new_price
-        
-        # Finalmente, actualiza el precio
+        # 3. La entrada es un número válido, la aceptamos.
         self.price_str = new_price
+
+        # 4. Validar cruzadamente la ganancia existente
+        try:
+            profit_float = float(self.profit_str) if self.profit_str else 0.0
+            if profit_float > price_float:
+                # Corregir la ganancia si el nuevo precio es más bajo
+                self.profit_str = new_price
+        except (ValueError, TypeError):
+            # Si la ganancia actual es inválida (ej. "abc"), limpiarla.
+            self.profit_str = ""
 
     # --- Variables para el Dashboard de Finanzas ---
     finance_stats: Optional[FinanceStatsDTO] = None

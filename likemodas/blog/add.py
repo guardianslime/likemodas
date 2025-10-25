@@ -223,10 +223,16 @@ def blog_post_add_form() -> rx.Component:
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                         name="profit", 
                         value=AppState.profit_str, 
-                        on_change=AppState.set_profit_str, # <--- Asegúrate que sea este
-                        # (¡Sin on_blur!)
+                        on_change=AppState.set_profit_str,
                         type="number", 
-                        placeholder="Ej: 15000"
+                        placeholder="Ej: 15000",
+                        # --- ✨ INICIO: LÍMITE DE DÍGITOS DINÁMICO ✨ ---
+                        max_length=rx.cond(
+                            AppState.price_str.length() > 0,
+                            AppState.price_str.length(),
+                            10 # Un límite por defecto si el precio está vacío
+                        )
+                        # --- ✨ FIN ✨ ---
                     )),
                     columns="2", spacing="4"
                 ),
