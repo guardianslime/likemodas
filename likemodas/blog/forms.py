@@ -148,14 +148,19 @@ def blog_post_add_form() -> rx.Component:
                 ),
                                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
-                    rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
+                    rx.vstack(rx.text("Precio (COP)"), rx.input(
+                        name="price", 
+                        value=AppState.edit_price_str, 
+                        on_change=AppState.set_edit_price_str, # <--- Asegúrate que sea este
+                        type="number", 
+                        required=True
+                    )),
+                    # Campo de Ganancia
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                         name="profit", 
                         value=AppState.edit_profit_str, 
-                        # --- ✨ CORRECCIÓN AQUÍ ✨ ---
-                        on_change=AppState.set_edit_profit_str,
-                        on_blur=AppState.validate_edit_profit_on_blur, # <-- AÑADE ESTO
-                        # --- ✨ FIN ✨ ---
+                        on_change=AppState.set_edit_profit_str, # <--- Asegúrate que sea este
+                        # (¡Sin on_blur!)
                         type="number"
                     )),
                     columns="2", spacing="4"

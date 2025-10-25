@@ -3679,18 +3679,48 @@ class AppState(reflex_local_auth.LocalAuthState):
     # --- ✨ INICIO: AÑADE ESTAS 4 NUEVAS FUNCIONES ✨ ---
 
     # 1. Para el formulario de CREAR
-    def set_profit_str(self, value: str):
-        """Actualiza el valor de la ganancia mientras se escribe."""
-        self.profit_str = value
+    @rx.event
+    def set_profit_str(self, new_profit: str):
+        """
+        [VALIDACIÓN CRUZADA] Actualiza la ganancia, impidiendo
+        que el valor supere el precio en cualquier momento.
+        """
+        # Permite que el campo esté vacío
+        if new_profit == "":
+            self.profit_str = ""
+            return
+
+        try:
+            # Intenta convertir la nueva ganancia a número
+            profit_float = float(new_profit)
+            # Intenta convertir el precio actual a número
+            price_float = float(self.price_str) if self.price_str else 0.0
+        except (ValueError, TypeError):
+            # Si se escribe "abc", no actualiza la ganancia.
+            # El estado NO cambia, por lo que el input volverá a "self.profit_str"
+            return # <--- Esta es la corrección clave
+
+        # Si la nueva ganancia es mayor que el precio, se ajusta al precio
+        if profit_float > price_float:
+            self.profit_str = self.price_str
+        else:
+            # Si es válido, se actualiza
+            self.profit_str = new_profit
 
     # 2. Para el formulario de EDITAR
+    @rx.event
     def set_edit_price_str(self, new_price: str):
         """
         [VALIDACIÓN CRUZADA] Actualiza el precio de EDICIÓN y, si es necesario,
-        corrige la ganancia de EDICIÓN para que nunca sea mayor.
+        corrige la ganancia de EDICIÓN.
         """
+        if new_price == "":
+            self.edit_price_str = ""
+            self.edit_profit_str = ""
+            return
+
         try:
-            price_float = float(new_price) if new_price else 0.0
+            price_float = float(new_price)
             profit_float = float(self.edit_profit_str) if self.edit_profit_str else 0.0
         except (ValueError, TypeError):
             return
@@ -4177,21 +4207,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.edit_post_title = title
     def set_edit_post_content(self, content: str): 
         self.edit_post_content = content
-    def set_edit_price_str(self, new_price: str):
-        """
-        [VALIDACIÓN CRUZADA] Actualiza el precio de EDICIÓN y, si es necesario,
-        corrige la ganancia de EDICIÓN para que nunca sea mayor.
-        """
-        try:
-            price_float = float(new_price) if new_price else 0.0
-            profit_float = float(self.edit_profit_str) if self.edit_profit_str else 0.0
-        except (ValueError, TypeError):
-            return
-
-        if profit_float > price_float:
-            self.edit_profit_str = new_price
-        
-        self.edit_price_str = new_price
         
     def set_edit_category(self, cat: str): 
         self.edit_category = cat
@@ -5183,18 +5198,26 @@ class AppState(reflex_local_auth.LocalAuthState):
     profit_str: str = ""
 
     # --- Reemplaza tus setters de precio y ganancia por estos ---
+    @rx.event
     def set_price_str(self, new_price: str):
         """
         [VALIDACIÓN CRUZADA] Actualiza el precio y, si es necesario,
         corrige la ganancia para que nunca sea mayor.
         """
+        # Permite que el campo se vacíe
+        if new_price == "":
+            self.price_str = ""
+            self.profit_str = "" # Si el precio es 0, la ganancia es 0
+            return
+
         try:
             # Intenta convertir el nuevo precio a número
-            price_float = float(new_price) if new_price else 0.0
+            price_float = float(new_price)
             # Intenta convertir la ganancia actual a número
             profit_float = float(self.profit_str) if self.profit_str else 0.0
         except (ValueError, TypeError):
-            # Si se escribe "abc", simplemente no actualiza el precio
+            # Si se escribe "abc", simplemente no actualiza el estado.
+            # El input se reseteará al valor anterior ("self.price_str").
             return
 
         # Si la ganancia actual es mayor que el nuevo precio, se ajusta la ganancia
@@ -5203,32 +5226,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         
         # Finalmente, actualiza el precio
         self.price_str = new_price
-
-    def set_profit_str(self, new_profit: str):
-        """
-        [VALIDACIÓN CRUZADA] Actualiza la ganancia, impidiendo
-        que el valor supere el precio en cualquier momento.
-        """
-        # Permite que el campo esté vacío
-        if new_profit == "":
-            self.profit_str = ""
-            return
-
-        try:
-            # Intenta convertir la nueva ganancia a número
-            profit_float = float(new_profit)
-            # Intenta convertir el precio actual a número
-            price_float = float(self.price_str) if self.price_str else 0.0
-        except (ValueError, TypeError):
-            # Si se escribe "abc", no actualiza la ganancia
-            return
-
-        # Si la nueva ganancia es mayor que el precio, se ajusta al precio
-        if profit_float > price_float:
-            self.profit_str = self.price_str
-        else:
-            # Si es válido, se actualiza
-            self.profit_str = new_profit
 
     # --- Variables para el Dashboard de Finanzas ---
     finance_stats: Optional[FinanceStatsDTO] = None

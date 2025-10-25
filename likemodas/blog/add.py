@@ -214,16 +214,17 @@ def blog_post_add_form() -> rx.Component:
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
                         name="price", 
                         value=AppState.price_str, 
-                        on_change=AppState.set_price_str, # <--- CORREGIDO
+                        on_change=AppState.set_price_str, # <--- Asegúrate que sea este
                         type="number", 
                         required=True, 
                         placeholder="Ej: 55000"
                     )),
+                    # Campo de Ganancia
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                         name="profit", 
                         value=AppState.profit_str, 
-                        on_change=AppState.set_profit_str, # Se asegura de usar la nueva función
-                        # on_blur=AppState.validate_profit_on_blur, # <--- ELIMINA ESTA LÍNEA
+                        on_change=AppState.set_profit_str, # <--- Asegúrate que sea este
+                        # (¡Sin on_blur!)
                         type="number", 
                         placeholder="Ej: 15000"
                     )),
