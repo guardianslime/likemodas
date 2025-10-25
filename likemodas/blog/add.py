@@ -198,17 +198,14 @@ def blog_post_add_form() -> rx.Component:
                 width="100%",
             ),
             rx.vstack(
-                rx.vstack(
-                    rx.text("Título del Producto"), 
-                    # --- ✨ INICIO DE LA CORRECCIÓN ✨ ---
+                rx.vstack(rx.text("Título del Producto"), 
                     rx.input(
                         name="title", 
                         value=AppState.title, 
                         on_change=AppState.set_title, 
-                        required=True, 
-                        max_length=38  # <--- CAMBIADO DE 24 A 38
+                        required=True,
+                        # max_length=38  <--- ELIMINA ESTA LÍNEA
                     ), 
-                    # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
                     align_items="stretch"
                 ),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
@@ -315,7 +312,9 @@ def post_preview(
              rx.vstack(
                 rx.text(
                     rx.cond(title, title, "Título del Producto"),
-                    weight="bold", size="6", no_of_lines=2, width="100%",
+                    weight="bold", size="6",
+                    no_of_lines=2,  # <--- ESTA ES LA LÍNEA DE SOLUCIÓN
+                    width="100%",
                     color=rx.cond(AppState.use_default_style, rx.color_mode_cond("var(--gray-11)", "white"), AppState.live_title_color)
                 ),
                 star_rating_display_safe(0, 0, size=24),

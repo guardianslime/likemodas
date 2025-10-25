@@ -77,7 +77,6 @@ def sidebar_items() -> rx.Component:
 
 
 def sliding_admin_sidebar() -> rx.Component:
-    """Componente del sidebar deslizable."""
     SIDEBAR_WIDTH = "16em"
 
     sidebar_content = rx.vstack(
@@ -86,7 +85,7 @@ def sliding_admin_sidebar() -> rx.Component:
             # Envolvemos la imagen en un rx.link que apunta a la tienda del admin/vendedor
             rx.link(
                 rx.image(src="/logo.png", width="9em", height="auto", border_radius="25%"),
-                href="/admin/store" # <--- Esta es la ruta correcta
+                href="/admin/store" # <--- Esta es la ruta de la tienda del vendedor
             ),
             # --- ✨ FIN DE LA CORRECCIÓN ✨ ---
             align="center", justify="center", width="100%",

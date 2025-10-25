@@ -137,10 +137,16 @@ def blog_post_add_form() -> rx.Component:
             rx.vstack(
                 rx.vstack(
                     rx.text("Título del Producto"), 
-                    rx.input(name="title", value=AppState.title, on_change=AppState.set_title, required=True, max_length=24), 
+                    rx.input(
+                        name="title", 
+                        value=AppState.edit_post_title, 
+                        on_change=AppState.set_edit_post_title, 
+                        required=True,
+                        # max_length=38  <--- ELIMINA ESTA LÍNEA
+                    ), 
                     align_items="stretch"
                 ),
-                rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
+                                rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     rx.vstack(rx.text("Precio (COP)"), rx.input(name="price", value=AppState.price_str, on_change=AppState.set_price_str, type="number", required=True, placeholder="Ej: 55000")),
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(name="profit", value=AppState.profit_str, on_change=AppState.set_profit_str, type="number", placeholder="Ej: 15000")),

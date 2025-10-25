@@ -82,7 +82,14 @@ def admin_product_card(post: ProductCardData) -> rx.Component:
                 ),
                 # Sección de información del producto
                 rx.vstack(
-                    rx.text(post.title, weight="bold", size="6", no_of_lines=2, width="100%", color=title_color),
+                    rx.text(
+                        post.title, 
+                        weight="bold", 
+                        size="6", 
+                        no_of_lines=2,  # <--- ESTA ES LA LÍNEA DE SOLUCIÓN
+                        width="100%", 
+                        color=title_color
+                    ),
                     star_rating_display_safe(post.average_rating, post.rating_count, size=24),
                     rx.text(post.price_cop, size="5", weight="medium", color=price_color),
                     rx.spacer(),
