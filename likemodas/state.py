@@ -3685,34 +3685,27 @@ class AppState(reflex_local_auth.LocalAuthState):
         [VALIDACIÓN CRUZADA] Actualiza la ganancia, impidiendo
         que el valor supere el precio en cualquier momento.
         """
-        # 1. Manejar el caso de borrado
         if new_profit == "":
             self.profit_str = ""
             return
-
-        # 2. Validar que la entrada sea un número
         try:
             profit_float = float(new_profit)
         except (ValueError, TypeError):
-            # Si se escribe "49a", el float() falla.
-            # NO actualizamos el estado. El input volverá a "49".
-            return # Importante: `return` aquí para no continuar.
+            return # Ignora la entrada inválida
         
-        # 3. La entrada es un número válido. Obtener el precio.
         try:
             price_float = float(self.price_str) if self.price_str else 0.0
         except (ValueError, TypeError):
-            price_float = 0.0 # Tratar el precio como 0 si es inválido
+            price_float = 0.0 
 
-        # 4. Aplicar la regla de negocio
         if profit_float > price_float:
             # Si la ganancia es mayor, forzarla a ser igual al precio
             self.profit_str = self.price_str
         else:
-            # Si es válida, aceptarla
             self.profit_str = new_profit
 
-    # 2. Para el formulario de EDITAR
+    # --- PARA EL FORMULARIO DE EDITAR ---
+
     @rx.event
     def set_edit_price_str(self, new_price: str):
         """
@@ -3747,7 +3740,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             profit_float = float(new_profit)
         except (ValueError, TypeError):
-            return 
+            return # Ignora la entrada inválida
         try:
             price_float = float(self.edit_price_str) if self.edit_price_str else 0.0
         except (ValueError, TypeError):
@@ -5221,8 +5214,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         try:
             price_float = float(new_price)
         except (ValueError, TypeError):
-            # Si se escribe "49a", el float() falla.
-            # NO actualizamos el estado, por lo que el input volverá a "49" (el último estado válido).
+            # Si se escribe "abc", simplemente no actualiza el estado.
             return # Importante: `return` aquí para no continuar.
 
         # 3. La entrada es un número válido, la aceptamos.
@@ -5235,7 +5227,6 @@ class AppState(reflex_local_auth.LocalAuthState):
                 # Corregir la ganancia si el nuevo precio es más bajo
                 self.profit_str = new_price
         except (ValueError, TypeError):
-            # Si la ganancia actual es inválida (ej. "abc"), limpiarla.
             self.profit_str = ""
 
     # --- Variables para el Dashboard de Finanzas ---

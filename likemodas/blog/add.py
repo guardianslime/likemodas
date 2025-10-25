@@ -211,28 +211,32 @@ def blog_post_add_form() -> rx.Component:
                 ),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
+                    # --- Campo de Precio ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
                         name="price", 
                         value=AppState.price_str, 
-                        on_change=AppState.set_price_str, # <--- Asegúrate que sea este
-                        type="number", 
+                        on_change=AppState.set_price_str,
+                        type="text",            # <--- CAMBIADO
+                        input_mode="numeric",   # <--- AÑADIDO
+                        pattern="[0-9]*",     # <--- AÑADIDO
                         required=True, 
                         placeholder="Ej: 55000"
                     )),
-                    # Campo de Ganancia
+                    # --- Campo de Ganancia ---
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                         name="profit", 
                         value=AppState.profit_str, 
                         on_change=AppState.set_profit_str,
-                        type="number", 
+                        type="text",            # <--- CAMBIADO
+                        input_mode="numeric",   # <--- AÑADIDO
+                        pattern="[0-9]*",     # <--- AÑADIDO
                         placeholder="Ej: 15000",
-                        # --- ✨ INICIO: LÍMITE DE DÍGITOS DINÁMICO ✨ ---
+                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
                         max_length=rx.cond(
                             AppState.price_str.length() > 0,
                             AppState.price_str.length(),
-                            10 # Un límite por defecto si el precio está vacío
+                            20 # Un límite alto por defecto si el precio está vacío
                         )
-                        # --- ✨ FIN ✨ ---
                     )),
                     columns="2", spacing="4"
                 ),

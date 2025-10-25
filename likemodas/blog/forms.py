@@ -151,17 +151,26 @@ def blog_post_add_form() -> rx.Component:
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
                         name="price", 
                         value=AppState.edit_price_str, 
-                        on_change=AppState.set_edit_price_str, # <--- Asegúrate que sea este
-                        type="number", 
+                        on_change=AppState.set_edit_price_str,
+                        type="text",            # <--- CAMBIADO
+                        input_mode="numeric",   # <--- AÑADIDO
+                        pattern="[0-9]*",     # <--- AÑADIDO
                         required=True
                     )),
-                    # Campo de Ganancia
+                    # --- Campo de Ganancia ---
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                         name="profit", 
                         value=AppState.edit_profit_str, 
-                        on_change=AppState.set_edit_profit_str, # <--- Asegúrate que sea este
-                        # (¡Sin on_blur!)
-                        type="number"
+                        on_change=AppState.set_edit_profit_str,
+                        type="text",            # <--- CAMBIADO
+                        input_mode="numeric",   # <--- AÑADIDO
+                        pattern="[0-9]*",     # <--- AÑADIDO
+                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
+                        max_length=rx.cond(
+                            AppState.edit_price_str.length() > 0,
+                            AppState.edit_price_str.length(),
+                            20 # Límite alto por defecto
+                        )
                     )),
                     columns="2", spacing="4"
                 ),
@@ -360,22 +369,26 @@ def blog_post_edit_form() -> rx.Component:
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
                         name="price", 
                         value=AppState.edit_price_str, 
-                        on_change=AppState.set_edit_price_str, # <--- CORREGIDO
-                        type="number", 
+                        on_change=AppState.set_edit_price_str,
+                        type="text",            # <--- CAMBIADO
+                        input_mode="numeric",   # <--- AÑADIDO
+                        pattern="[0-9]*",     # <--- AÑADIDO
                         required=True
                     )),
+                    # --- Campo de Ganancia ---
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                         name="profit", 
                         value=AppState.edit_profit_str, 
                         on_change=AppState.set_edit_profit_str,
-                        type="number",
-                        # --- ✨ INICIO: LÍMITE DE DÍGITOS DINÁMICO ✨ ---
+                        type="text",            # <--- CAMBIADO
+                        input_mode="numeric",   # <--- AÑADIDO
+                        pattern="[0-9]*",     # <--- AÑADIDO
+                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
                         max_length=rx.cond(
                             AppState.edit_price_str.length() > 0,
                             AppState.edit_price_str.length(),
-                            10 # Límite por defecto
+                            20 # Límite alto por defecto
                         )
-                        # --- ✨ FIN ✨ --
                     )),
                     columns="2", spacing="4"
                 ),
