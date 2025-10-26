@@ -212,45 +212,50 @@ def blog_post_add_form() -> rx.Component:
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     # --- Campo de Precio ---
-                    rx.vstack(rx.text("Precio (COP)"), rx.input(
+                    # --- Campo de Precio (Corregido) ---
+                rx.vstack(rx.text("Precio (COP)"), rx.input(
                     name="price", 
                     value=AppState.price_str, 
-                    # Script simple para precio: solo permite números
+                    # Script simple: Solo permite números
                     on_change=lambda val: rx.call_script(
                         f"'{val}'.replace(/[^0-9]/g, '')", # Elimina no-números
                         callback=AppState.set_price_str # Envía el número limpio al backend
                     ),
                     type="text", # Necesario para que el script funcione bien
-                    input_mode="numeric", 
-                    pattern="[0-9]*",
+                    input_mode="numeric", # Teclado numérico en móvil
+                    pattern="[0-9]*", # Ayuda a la validación del navegador
                     required=True, 
                     placeholder="Ej: 55000"
                 )),
-                # --- Campo de Ganancia ---
+                # --- Campo de Ganancia (Corregido) ---
                 rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                     name="profit", 
                     value=AppState.profit_str, 
-                    # --- ✨ SCRIPT DE VALIDACIÓN INSTANTÁNEA ✨ ---
+                    # --- ✨ SCRIPT CORREGIDO Y DEFINITIVO ✨ ---
                     on_change=lambda val: rx.call_script(
+                        # Usamos una IIFE (Immediately Invoked Function Expression) para evitar el "Illegal return"
                         f"""
-                        let value = '{val}';
-                        const priceStr = '{AppState.price_str}'; // Lee el precio ACTUAL del estado
+                        (() => {{ 
+                            let value = '{val}';
+                            const priceStr = '{AppState.price_str}'; // Lee el precio ACTUAL del estado
 
-                        // 1. Limpia: solo números
-                        const numericValue = value.replace(/[^0-9]/g, '');
+                            // 1. Limpia: solo números
+                            const numericValue = value.replace(/[^0-9]/g, '');
+                            if (numericValue === '') {{ return ''; }} // Permite borrar
 
-                        // 2. Compara con el precio
-                        const priceFloat = parseFloat(priceStr || '0');
-                        let profitFloat = parseFloat(numericValue || '0');
-
-                        // 3. Corrige si es necesario
-                        let finalValueStr = numericValue;
-                        if (priceStr && profitFloat > priceFloat) {{ // Solo corrige si hay precio
-                            finalValueStr = priceStr; 
-                        }}
-
-                        // 4. Devuelve el valor limpio Y corregido
-                        return finalValueStr; 
+                            // 2. Compara con el precio (solo si hay precio)
+                            let finalValueStr = numericValue; // Por defecto, es el número limpio
+                            if (priceStr) {{
+                                const priceFloat = parseFloat(priceStr);
+                                const profitFloat = parseFloat(numericValue);
+                                if (!isNaN(priceFloat) && !isNaN(profitFloat) && profitFloat > priceFloat) {{
+                                    finalValueStr = priceStr; // Corrige si la ganancia es mayor
+                                }}
+                            }}
+                            
+                            // 3. Devuelve el valor limpio Y corregido
+                            return finalValueStr; 
+                        }})()
                         """,
                         callback=AppState.set_profit_str # El backend recibe el valor ya validado
                     ),
@@ -259,7 +264,7 @@ def blog_post_add_form() -> rx.Component:
                     input_mode="numeric", 
                     pattern="[0-9]*",
                     placeholder="Ej: 15000"
-                    # Ya no necesitamos max_length aquí, el script lo maneja mejor
+                    # No necesitamos max_length, el script es más inteligente
                 )),
                     columns="2", spacing="4"
                 ),
