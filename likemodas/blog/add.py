@@ -211,46 +211,30 @@ def blog_post_add_form() -> rx.Component:
                 ),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
-                    # --- Campo de Precio (Corregido) ---
+                    # --- Campo de Precio ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
-                        name="price", 
-                        value=AppState.price_str, 
-                        # Script simple: Solo permite números
-                        on_change=lambda val: rx.call_script(
-                            # IIFE para asegurar que solo números lleguen al backend
-                            f"(() => {{ return '{val}'.replace(/[^0-9]/g, ''); }})()", 
-                            callback=AppState.set_price_str 
-                        ),
-                        type="text", # Necesario para que el script funcione bien
-                        input_mode="numeric", # Teclado numérico en móvil
-                        pattern="[0-9]*", # Ayuda a la validación del navegador
-                        required=True, 
+                        name="price",
+                        value=AppState.price_str,
+                        # Solo actualiza el estado, sin scripts
+                        on_change=AppState.set_price_str,
+                        # Valida al salir
+                        on_blur=AppState.validate_price_on_blur_add, # <-- NUEVO
+                        type="number",            # <--- VUELVE A SER NUMBER
+                        required=True,
                         placeholder="Ej: 55000"
                     )),
-                    # --- Campo de Ganancia (Corregido) ---
-                    rx.vstack(rx.text("Precio (COP)"), rx.input(
-                    name="price",
-                    value=AppState.price_str,
-                    # Solo actualiza el estado, sin scripts
-                    on_change=AppState.set_price_str,
-                    # Valida al salir
-                    on_blur=AppState.validate_price_on_blur_add, # <-- NUEVO
-                    type="number",            # <--- VUELVE A SER NUMBER
-                    required=True,
-                    placeholder="Ej: 55000"
-                )),
-                # --- Campo de Ganancia ---
-                rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                    name="profit",
-                    value=AppState.profit_str,
-                    # Solo actualiza el estado, sin scripts
-                    on_change=AppState.set_profit_str,
-                    # Valida al salir
-                    on_blur=AppState.validate_profit_on_blur_add, # <-- NUEVO
-                    type="number",            # <--- VUELVE A SER NUMBER
-                    placeholder="Ej: 15000"
-                    # Sin max_length
-                )),
+                    # --- Campo de Ganancia ---
+                    rx.vstack(rx.text("Ganancia (COP)"), rx.input(
+                        name="profit",
+                        value=AppState.profit_str,
+                        # Solo actualiza el estado, sin scripts
+                        on_change=AppState.set_profit_str,
+                        # Valida al salir
+                        on_blur=AppState.validate_profit_on_blur_add, # <-- NUEVO
+                        type="number",            # <--- VUELVE A SER NUMBER
+                        placeholder="Ej: 15000"
+                        # Sin max_length
+                    )),
                     columns="2", spacing="4"
                 ),
                 rx.grid(
