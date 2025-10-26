@@ -209,7 +209,45 @@ def blog_post_add_form() -> rx.Component:
                     ), 
                     align_items="stretch"
                 ),
-                rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
+                rx.grid(
+                    # Selector de Categoría (ya existente)
+                    rx.vstack(rx.text("Categoría"), rx.select(
+                        AppState.categories, name="category", required=True,
+                        value=AppState.category, on_change=AppState.set_category
+                    ), align_items="stretch"),
+
+                    # Selector de Tipo (CORREGIDO)
+                    rx.vstack(rx.text("Tipo"), searchable_select(
+                        placeholder="Selecciona un Tipo",
+                        options=AppState.filtered_attr_tipos,
+                        value_select=AppState.attr_tipo, # <-- CORREGIDO: value -> value_select
+                        on_change_select=AppState.set_attr_tipo, # <-- CORREGIDO: on_change -> on_change_select
+                        search_value=AppState.search_attr_tipo,
+                        on_change_search=AppState.set_search_attr_tipo, # <-- CORREGIDO: on_search_change -> on_change_search
+                        filter_name="add_tipo_filter", # Nombre de filtro único
+                        is_disabled=~AppState.category
+                    ), align_items="stretch"),
+
+                    # Selector de Material/Tela (CORREGIDO)
+                    rx.vstack(
+                        rx.text(AppState.material_label),
+                        searchable_select(
+                            # label=... SE ELIMINA ESTA LÍNEA
+                            placeholder=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"),
+                            options=AppState.filtered_attr_materiales,
+                            value_select=AppState.attr_material, # <-- CORREGIDO: value -> value_select
+                            on_change_select=AppState.set_attr_material, # <-- CORREGIDO: on_change -> on_change_select
+                            search_value=AppState.search_attr_material,
+                            on_change_search=AppState.set_search_attr_material, # <-- CORREGIDO: on_search_change -> on_change_search
+                            filter_name="add_material_filter", # Nombre de filtro único
+                            is_disabled=~AppState.category
+                        )
+                    , align_items="stretch"),
+                    columns={"initial": "1", "md": "3"},
+                    spacing="4",
+                    width="100%"
+                ),
+                # --- ✨ FIN: SECCIÓN MODIFICADA ✨ ---
                 rx.grid(
                     # --- Campo de Precio ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(

@@ -409,14 +409,15 @@ def blog_post_edit_form() -> rx.Component:
 
                     # Selector de Material/Tela (NUEVO para Edición)
                     rx.vstack(
-                        rx.text(AppState.edit_material_label), # <-- Label dinámico de edición
+                        rx.text(AppState.edit_material_label),
                         searchable_select(
+                            # label=... SE ELIMINA ESTA LÍNEA
                             placeholder=rx.cond(AppState.edit_category, f"Selecciona {AppState.edit_material_label}", "Elige categoría"),
-                            options=AppState.edit_filtered_attr_materiales, # <-- Opciones de edición
-                            value_select=AppState.edit_attr_material, # <-- Valor de edición
-                            on_change_select=AppState.set_edit_attr_material, # <-- Setter de edición
-                            search_value=AppState.edit_search_attr_material, # <-- Búsqueda de edición
-                            on_change_search=AppState.set_edit_search_attr_material, # <-- Setter búsqueda de edición
+                            options=AppState.edit_filtered_attr_materiales,
+                            value_select=AppState.edit_attr_material, # <-- CORREGIDO
+                            on_change_select=AppState.set_edit_attr_material, # <-- CORREGIDO
+                            search_value=AppState.edit_search_attr_material,
+                            on_change_search=AppState.set_edit_search_attr_material, # <-- CORREGIDO
                             filter_name="edit_material_filter", # Nombre único
                             is_disabled=~AppState.edit_category
                         )
