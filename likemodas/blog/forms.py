@@ -149,29 +149,47 @@ def blog_post_add_form() -> rx.Component:
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 # --- Campo de Precio ---
                 rx.grid(
+                    # --- Campo de Precio (Corregido) ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
-                        name="price",
-                        value=AppState.edit_price_str,
-                        on_change=AppState.set_edit_price_str,
-                        type="text",            # <--- VUELVE A SER TEXT
-                        input_mode="numeric",   # <--- RESTAURADO
-                        pattern="[0-9]*",     # <--- RESTAURADO
-                        required=True
+                        name="price", 
+                        value=AppState.edit_price_str, 
+                        on_change=lambda val: rx.call_script(
+                            f"(() => {{ return '{val}'.replace(/[^0-9]/g, ''); }})()",
+                            callback=AppState.set_edit_price_str # Usa el setter de edición
+                        ),
+                        type="text", input_mode="numeric", pattern="[0-9]*", required=True
                     )),
-                    # --- Campo de Ganancia ---
+                    # --- Campo de Ganancia (Corregido) ---
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                        name="profit",
-                        value=AppState.edit_profit_str,
-                        on_change=AppState.set_edit_profit_str,
-                        type="text",            # <--- VUELVE A SER TEXT
-                        input_mode="numeric",   # <--- RESTAURADO
-                        pattern="[0-9]*",     # <--- RESTAURADO
-                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
-                        max_length=rx.cond(
-                            AppState.edit_price_str.length() > 0,
-                            AppState.edit_price_str.length(),
-                            20 # Límite alto por defecto
-                        )
+                        name="profit", 
+                        value=AppState.edit_profit_str, 
+                        # --- ✨ SCRIPT CORREGIDO Y DEFINITIVO (VERSIÓN EDITAR) ✨ ---
+                        on_change=lambda val: rx.call_script(
+                            f"""
+                            (() => {{
+                                let value = '{val}';
+                                const priceStr = '{AppState.edit_price_str}'; // Lee el precio de EDICIÓN
+
+                                const numericValue = value.replace(/[^0-9]/g, '');
+                                if (numericValue === '') {{ return ''; }}
+
+                                let finalValueStr = numericValue;
+                                if (priceStr) {{
+                                    const priceFloat = parseFloat(priceStr);
+                                    const profitFloat = parseFloat(numericValue);
+                                    if (!isNaN(priceFloat) && !isNaN(profitFloat) && profitFloat > priceFloat) {{
+                                        finalValueStr = priceStr; 
+                                    }}
+                                }}
+                                
+                                return finalValueStr; 
+                            }})()
+                            """,
+                            callback=AppState.set_edit_profit_str # Usa el setter de edición
+                        ),
+                        # --- ✨ FIN DEL SCRIPT ✨ ---
+                        type="text", input_mode="numeric", pattern="[0-9]*"
+                        # No necesitamos max_length
                     )),
                     columns="2", spacing="4"
                 ),

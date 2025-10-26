@@ -211,32 +211,61 @@ def blog_post_add_form() -> rx.Component:
                 ),
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
-                    # --- Campo de Precio ---
+                    # --- Campo de Precio (Corregido) ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
-                        name="price",
-                        value=AppState.price_str,
-                        on_change=AppState.set_price_str,
-                        type="text",            # <--- VUELVE A SER TEXT
-                        input_mode="numeric",   # <--- RESTAURADO
-                        pattern="[0-9]*",     # <--- RESTAURADO
-                        required=True,
+                        name="price", 
+                        value=AppState.price_str, 
+                        # Script simple: Solo permite números
+                        on_change=lambda val: rx.call_script(
+                            # IIFE para asegurar que solo números lleguen al backend
+                            f"(() => {{ return '{val}'.replace(/[^0-9]/g, ''); }})()", 
+                            callback=AppState.set_price_str 
+                        ),
+                        type="text", # Necesario para que el script funcione bien
+                        input_mode="numeric", # Teclado numérico en móvil
+                        pattern="[0-9]*", # Ayuda a la validación del navegador
+                        required=True, 
                         placeholder="Ej: 55000"
                     )),
-                    # --- Campo de Ganancia ---
+                    # --- Campo de Ganancia (Corregido) ---
                     rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                        name="profit",
-                        value=AppState.profit_str,
-                        on_change=AppState.set_profit_str,
-                        type="text",            # <--- VUELVE A SER TEXT
-                        input_mode="numeric",   # <--- RESTAURADO
-                        pattern="[0-9]*",     # <--- RESTAURADO
-                        placeholder="Ej: 15000",
-                        # --- LÍMITE DE DÍGITOS DINÁMICO ---
-                        max_length=rx.cond(
-                            AppState.price_str.length() > 0,
-                            AppState.price_str.length(),
-                            20 # Un límite alto por defecto si el precio está vacío
-                        )
+                        name="profit", 
+                        value=AppState.profit_str, 
+                        # --- ✨ SCRIPT CORREGIDO Y DEFINITIVO ✨ ---
+                        on_change=lambda val: rx.call_script(
+                            # Usamos una IIFE para evitar el "Illegal return" y validar
+                            f"""
+                            (() => {{ 
+                                let value = '{val}';
+                                const priceStr = '{AppState.price_str}'; // Lee el precio ACTUAL del estado
+
+                                // 1. Limpia: solo números
+                                const numericValue = value.replace(/[^0-9]/g, '');
+                                if (numericValue === '') {{ return ''; }} // Permite borrar
+
+                                // 2. Compara con el precio (solo si hay precio válido)
+                                let finalValueStr = numericValue; 
+                                if (priceStr) {{
+                                    const priceFloat = parseFloat(priceStr);
+                                    const profitFloat = parseFloat(numericValue);
+                                    // Asegúrate de que ambos sean números antes de comparar
+                                    if (!isNaN(priceFloat) && !isNaN(profitFloat) && profitFloat > priceFloat) {{
+                                        finalValueStr = priceStr; // Corrige si la ganancia es mayor
+                                    }}
+                                }}
+                                
+                                // 3. Devuelve el valor limpio Y corregido
+                                return finalValueStr; 
+                            }})()
+                            """,
+                            callback=AppState.set_profit_str # El backend recibe el valor ya validado
+                        ),
+                        # --- ✨ FIN DEL SCRIPT ✨ ---
+                        type="text", # Necesario para el script
+                        input_mode="numeric", 
+                        pattern="[0-9]*",
+                        placeholder="Ej: 15000"
+                        # No necesitamos max_length, el script lo maneja
                     )),
                     columns="2", spacing="4"
                 ),
