@@ -228,45 +228,29 @@ def blog_post_add_form() -> rx.Component:
                         placeholder="Ej: 55000"
                     )),
                     # --- Campo de Ganancia (Corregido) ---
-                    rx.vstack(rx.text("Ganancia (COP)"), rx.input(
-                        name="profit", 
-                        value=AppState.profit_str, 
-                        # --- ✨ SCRIPT CORREGIDO Y DEFINITIVO ✨ ---
-                        on_change=lambda val: rx.call_script(
-                            # Usamos una IIFE para evitar el "Illegal return" y validar
-                            f"""
-                            (() => {{ 
-                                let value = '{val}';
-                                const priceStr = '{AppState.price_str}'; // Lee el precio ACTUAL del estado
-
-                                // 1. Limpia: solo números
-                                const numericValue = value.replace(/[^0-9]/g, '');
-                                if (numericValue === '') {{ return ''; }} // Permite borrar
-
-                                // 2. Compara con el precio (solo si hay precio válido)
-                                let finalValueStr = numericValue; 
-                                if (priceStr) {{
-                                    const priceFloat = parseFloat(priceStr);
-                                    const profitFloat = parseFloat(numericValue);
-                                    // Asegúrate de que ambos sean números antes de comparar
-                                    if (!isNaN(priceFloat) && !isNaN(profitFloat) && profitFloat > priceFloat) {{
-                                        finalValueStr = priceStr; // Corrige si la ganancia es mayor
-                                    }}
-                                }}
-                                
-                                // 3. Devuelve el valor limpio Y corregido
-                                return finalValueStr; 
-                            }})()
-                            """,
-                            callback=AppState.set_profit_str # El backend recibe el valor ya validado
-                        ),
-                        # --- ✨ FIN DEL SCRIPT ✨ ---
-                        type="text", # Necesario para el script
-                        input_mode="numeric", 
-                        pattern="[0-9]*",
-                        placeholder="Ej: 15000"
-                        # No necesitamos max_length, el script lo maneja
-                    )),
+                    rx.vstack(rx.text("Precio (COP)"), rx.input(
+                    name="price",
+                    value=AppState.price_str,
+                    # Solo actualiza el estado, sin scripts
+                    on_change=AppState.set_price_str,
+                    # Valida al salir
+                    on_blur=AppState.validate_price_on_blur_add, # <-- NUEVO
+                    type="number",            # <--- VUELVE A SER NUMBER
+                    required=True,
+                    placeholder="Ej: 55000"
+                )),
+                # --- Campo de Ganancia ---
+                rx.vstack(rx.text("Ganancia (COP)"), rx.input(
+                    name="profit",
+                    value=AppState.profit_str,
+                    # Solo actualiza el estado, sin scripts
+                    on_change=AppState.set_profit_str,
+                    # Valida al salir
+                    on_blur=AppState.validate_profit_on_blur_add, # <-- NUEVO
+                    type="number",            # <--- VUELVE A SER NUMBER
+                    placeholder="Ej: 15000"
+                    # Sin max_length
+                )),
                     columns="2", spacing="4"
                 ),
                 rx.grid(
