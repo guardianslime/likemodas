@@ -3960,7 +3960,6 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_variant_groups = temp_variant_groups
             self.edit_generated_variants_map = temp_generated_variants
             self.edit_uploaded_images, self.edit_image_selection_for_grouping, self.edit_selected_group_index = [], [], -1
-
             # Cargar estilos
             self._load_card_styles_from_db(db_post)
             self._load_image_styles_from_db(db_post)

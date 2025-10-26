@@ -55,10 +55,10 @@ def searchable_select(
     is_open = AppState.open_filter_name == filter_name
     
     def render_option(option: rx.Var):
+        # ... (esta función interna ya está correcta con type="button")
         label = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[0], option)
         value = rx.cond(isinstance(option, list) | isinstance(option, tuple), option[1], option)
         
-        # --- 👇 ¡LA CORRECCIÓN ESTÁ AQUÍ! 👇 ---
         return rx.button(
             label,
             on_click=[on_change_select(value), AppState.toggle_filter_dropdown(filter_name)],
@@ -66,11 +66,11 @@ def searchable_select(
             variant="soft", 
             color_scheme="gray", 
             justify_content="start",
-            type="button",  # <--- Esta línea evita que el botón envíe el formulario.
+            type="button",  # <-- Esto ya estaba bien
         )
-        # --- 👆 ¡FIN DE LA CORRECCIÓN! 👆 ---
 
     return rx.box(
+        # --- 👇 ¡EL BOTÓN QUE FALTA CORREGIR ES ESTE! 👇 ---
         rx.button(
             rx.cond(value_select, value_select, placeholder),
             rx.icon(tag="chevron-down"),
@@ -81,7 +81,9 @@ def searchable_select(
             white_space="normal",
             text_align="left",
             padding="0.5em 0.75em",
+            type="button", # <--- ¡AÑADE ESTA LÍNEA AQUÍ!
         ),
+        # --- 👆 ¡FIN DE LA CORRECCIÓN! 👆 ---
         rx.cond(
             is_open,
             rx.vstack(
