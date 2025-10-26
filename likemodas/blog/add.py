@@ -199,57 +199,17 @@ def blog_post_add_form() -> rx.Component:
             ),
             rx.vstack(
                 rx.vstack(
-                    rx.text("Título del Producto"),
+                    rx.text("Título del Producto"), 
                     rx.input(
-                        name="title",
-                        value=AppState.title,
-                        on_change=AppState.set_title,
-                        required=True,
-                        max_length=40
-                    ),
+                        name="title", 
+                        value=AppState.title, 
+                        on_change=AppState.set_title, 
+                        required=True, 
+                        max_length=40  # <--- CORRECCIÓN AÑADIDA
+                    ), 
                     align_items="stretch"
                 ),
-
-                # --- ✨ INICIO: SECCIÓN CORREGIDA (REVISAR ESTA PARTE) ✨ ---
-                rx.grid(
-                    # Selector de Categoría
-                    rx.vstack(rx.text("Categoría"), rx.select(
-                        AppState.categories, name="category", required=True,
-                        value=AppState.category, on_change=AppState.set_category
-                    ), align_items="stretch"),
-
-                    # Selector de Tipo (ASEGÚRATE QUE ESTÉ ASÍ)
-                    rx.vstack(rx.text("Tipo"), searchable_select(
-                        placeholder="Selecciona un Tipo",
-                        options=AppState.filtered_attr_tipos,
-                        value_select=AppState.attr_tipo,           # Correcto: value_select
-                        on_change_select=AppState.set_attr_tipo,   # Correcto: on_change_select
-                        search_value=AppState.search_attr_tipo,
-                        on_change_search=AppState.set_search_attr_tipo, # Correcto: on_change_search
-                        filter_name="add_tipo_filter",
-                        is_disabled=~AppState.category
-                    ), align_items="stretch"),
-
-                    # Selector de Material/Tela (ASEGÚRATE QUE ESTÉ ASÍ)
-                    rx.vstack(
-                        rx.text(AppState.material_label),
-                        searchable_select(
-                            # SIN label= AQUÍ
-                            placeholder=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"),
-                            options=AppState.filtered_attr_materiales,
-                            value_select=AppState.attr_material,         # Correcto: value_select
-                            on_change_select=AppState.set_attr_material, # Correcto: on_change_select
-                            search_value=AppState.search_attr_material,
-                            on_change_search=AppState.set_search_attr_material, # Correcto: on_change_search
-                            filter_name="add_material_filter",
-                            is_disabled=~AppState.category
-                        )
-                    , align_items="stretch"),
-                    columns={"initial": "1", "md": "3"},
-                    spacing="4",
-                    width="100%"
-                ),
-                # --- ✨ FIN: SECCIÓN CORREGIDA ✨ ---
+                rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     # --- Campo de Precio ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
@@ -290,37 +250,43 @@ def blog_post_add_form() -> rx.Component:
                     columns="2", spacing="4"
                 ),
                 # --- ✨ INICIO: AÑADIR SELECTOR DE MATERIAL/TELA AQUÍ ✨ ---
+                # --- ✨ INICIO: SECCIÓN CORREGIDA (REVISAR ESTA PARTE) ✨ ---
                 rx.grid(
-                    # Selector de Categoría (ya existente)
+                    # Selector de Categoría
                     rx.vstack(rx.text("Categoría"), rx.select(
-                        AppState.categories, name="category", required=True, 
+                        AppState.categories, name="category", required=True,
                         value=AppState.category, on_change=AppState.set_category
-                    )),
-                    # Selector de Tipo (ya existente)
+                    ), align_items="stretch"),
+
+                    # Selector de Tipo (ASEGÚRATE QUE ESTÉ ASÍ)
                     rx.vstack(rx.text("Tipo"), searchable_select(
-                        label="Selecciona un Tipo",
+                        placeholder="Selecciona un Tipo",
                         options=AppState.filtered_attr_tipos,
-                        value=AppState.attr_tipo,
-                        on_change=AppState.set_attr_tipo,
+                        value_select=AppState.attr_tipo,           # Correcto: value_select
+                        on_change_select=AppState.set_attr_tipo,   # Correcto: on_change_select
                         search_value=AppState.search_attr_tipo,
-                        on_search_change=AppState.set_search_attr_tipo,
-                        is_disabled=~AppState.category # Deshabilitado si no hay categoría
-                    )),
-                    # Selector de Material/Tela (NUEVO)
+                        on_change_search=AppState.set_search_attr_tipo, # Correcto: on_change_search
+                        filter_name="add_tipo_filter",
+                        is_disabled=~AppState.category
+                    ), align_items="stretch"),
+
+                    # Selector de Material/Tela (ASEGÚRATE QUE ESTÉ ASÍ)
                     rx.vstack(
-                        rx.text(AppState.material_label), # <-- Label dinámico (Tela o Material)
+                        rx.text(AppState.material_label),
                         searchable_select(
-                            label=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"),
-                            options=AppState.filtered_attr_materiales, # <-- Opciones filtradas
-                            value=AppState.attr_material, # <-- Valor del estado
-                            on_change=AppState.set_attr_material, # <-- Setter del estado
-                            search_value=AppState.search_attr_material, # <-- Búsqueda
-                            on_search_change=AppState.set_search_attr_material, # <-- Setter búsqueda
-                            is_disabled=~AppState.category # Deshabilitado si no hay categoría
+                            # SIN label= AQUÍ
+                            placeholder=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"),
+                            options=AppState.filtered_attr_materiales,
+                            value_select=AppState.attr_material,         # Correcto: value_select
+                            on_change_select=AppState.set_attr_material, # Correcto: on_change_select
+                            search_value=AppState.search_attr_material,
+                            on_change_search=AppState.set_search_attr_material, # Correcto: on_change_search
+                            filter_name="add_material_filter",
+                            is_disabled=~AppState.category
                         )
-                    ),
-                    columns="3", # Ajusta a 3 columnas para que quepa bien
-                    spacing="4", 
+                    , align_items="stretch"),
+                    columns={"initial": "1", "md": "3"},
+                    spacing="4",
                     width="100%"
                 ),
                 rx.vstack(
