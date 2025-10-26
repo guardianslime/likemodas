@@ -3959,7 +3959,7 @@ class AppState(reflex_local_auth.LocalAuthState):
 
             self.edit_variant_groups = temp_variant_groups
             self.edit_generated_variants_map = temp_generated_variants
-            self.edit_uploaded_images, self.edit_image_selection_for_grouping, self.edit_selected_group_index = [], set(), -1
+            self.edit_uploaded_images, self.edit_image_selection_for_grouping, self.edit_selected_group_index = [], [], -1
 
             # Cargar estilos
             self._load_card_styles_from_db(db_post)
@@ -5827,7 +5827,7 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.attr_material = ""
         self.search_attr_material = ""
         self.uploaded_images = []
-        self.image_selection_for_grouping = set()
+        self.image_selection_for_grouping = []
         self.variant_groups = []
         self.generated_variants_map = {}
         self.selected_group_index = -1
