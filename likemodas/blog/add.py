@@ -199,47 +199,49 @@ def blog_post_add_form() -> rx.Component:
             ),
             rx.vstack(
                 rx.vstack(
-                    rx.text("Título del Producto"), 
+                    rx.text("Título del Producto"),
                     rx.input(
-                        name="title", 
-                        value=AppState.title, 
-                        on_change=AppState.set_title, 
-                        required=True, 
-                        max_length=40  # <--- CORRECCIÓN AÑADIDA
-                    ), 
+                        name="title",
+                        value=AppState.title,
+                        on_change=AppState.set_title,
+                        required=True,
+                        max_length=40
+                    ),
                     align_items="stretch"
                 ),
+
+                # --- ✨ INICIO: SECCIÓN CORREGIDA (REVISAR ESTA PARTE) ✨ ---
                 rx.grid(
-                    # Selector de Categoría (ya existente)
+                    # Selector de Categoría
                     rx.vstack(rx.text("Categoría"), rx.select(
                         AppState.categories, name="category", required=True,
                         value=AppState.category, on_change=AppState.set_category
                     ), align_items="stretch"),
 
-                    # Selector de Tipo (CORREGIDO)
+                    # Selector de Tipo (ASEGÚRATE QUE ESTÉ ASÍ)
                     rx.vstack(rx.text("Tipo"), searchable_select(
                         placeholder="Selecciona un Tipo",
                         options=AppState.filtered_attr_tipos,
-                        value_select=AppState.attr_tipo, # <-- CORREGIDO: value -> value_select
-                        on_change_select=AppState.set_attr_tipo, # <-- CORREGIDO: on_change -> on_change_select
+                        value_select=AppState.attr_tipo,           # Correcto: value_select
+                        on_change_select=AppState.set_attr_tipo,   # Correcto: on_change_select
                         search_value=AppState.search_attr_tipo,
-                        on_change_search=AppState.set_search_attr_tipo, # <-- CORREGIDO: on_search_change -> on_change_search
-                        filter_name="add_tipo_filter", # Nombre de filtro único
+                        on_change_search=AppState.set_search_attr_tipo, # Correcto: on_change_search
+                        filter_name="add_tipo_filter",
                         is_disabled=~AppState.category
                     ), align_items="stretch"),
 
-                    # Selector de Material/Tela (CORREGIDO)
+                    # Selector de Material/Tela (ASEGÚRATE QUE ESTÉ ASÍ)
                     rx.vstack(
                         rx.text(AppState.material_label),
                         searchable_select(
-                            # label=... SE ELIMINA ESTA LÍNEA
+                            # SIN label= AQUÍ
                             placeholder=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"),
                             options=AppState.filtered_attr_materiales,
-                            value_select=AppState.attr_material, # <-- CORREGIDO: value -> value_select
-                            on_change_select=AppState.set_attr_material, # <-- CORREGIDO: on_change -> on_change_select
+                            value_select=AppState.attr_material,         # Correcto: value_select
+                            on_change_select=AppState.set_attr_material, # Correcto: on_change_select
                             search_value=AppState.search_attr_material,
-                            on_change_search=AppState.set_search_attr_material, # <-- CORREGIDO: on_search_change -> on_change_search
-                            filter_name="add_material_filter", # Nombre de filtro único
+                            on_change_search=AppState.set_search_attr_material, # Correcto: on_change_search
+                            filter_name="add_material_filter",
                             is_disabled=~AppState.category
                         )
                     , align_items="stretch"),
@@ -247,7 +249,7 @@ def blog_post_add_form() -> rx.Component:
                     spacing="4",
                     width="100%"
                 ),
-                # --- ✨ FIN: SECCIÓN MODIFICADA ✨ ---
+                # --- ✨ FIN: SECCIÓN CORREGIDA ✨ ---
                 rx.grid(
                     # --- Campo de Precio ---
                     rx.vstack(rx.text("Precio (COP)"), rx.input(
