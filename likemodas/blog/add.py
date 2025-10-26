@@ -297,19 +297,12 @@ def blog_post_add_form() -> rx.Component:
         ),
         rx.hstack(
             rx.spacer(),
-            rx.button(
-                "Publicar Producto", 
-                on_click=AppState.submit_and_publish_manual,
-                color_scheme="violet", 
-                size="3"
-            ),
-            width="100%", 
-            margin_top="1em"
+            rx.button("Publicar Producto", type="submit", size="3", margin_top="2em"),
+
+            spacing="5", width="100%", max_width="960px",
         ),
-        spacing="5", 
-        width="100%",
-        max_width="1200px",
-        # --- ✨ LÍNEA DUPLICADA ELIMINADA AQUÍ ✨ ---
+        on_submit=AppState.submit_and_publish_manual, # O submit_and_publish
+        reset_on_submit=False,
     )
 
 # --- Componente para la previsualización de la tarjeta ---
