@@ -1587,21 +1587,42 @@ class AppState(reflex_local_auth.LocalAuthState):
             return LISTA_TIPOS_MOCHILAS
         return []
 
+    # --- Propiedades Computadas para Material/Tela ---
     @rx.var
     def material_label(self) -> str:
+        """Devuelve 'Tela' o 'Material' según la categoría seleccionada (CREACIÓN)."""
         if self.category == Category.ROPA.value:
             return "Tela"
         return "Material"
 
     @rx.var
+    def edit_material_label(self) -> str:
+        """Devuelve 'Tela' o 'Material' según la categoría seleccionada (EDICIÓN)."""
+        if self.edit_category == Category.ROPA.value:
+            return "Tela"
+        return "Material"
+
+    @rx.var
     def available_materials(self) -> list[str]:
+        """Devuelve la lista de materiales/telas según la categoría (CREACIÓN)."""
         if self.category == Category.ROPA.value:
             return MATERIALES_ROPA
         if self.category == Category.CALZADO.value:
             return MATERIALES_CALZADO
         if self.category == Category.MOCHILAS.value:
             return MATERIALES_MOCHILAS
-        return []
+        return LISTA_MATERIALES # Lista general por defecto
+    
+    @rx.var
+    def edit_available_materials(self) -> list[str]:
+        """Devuelve la lista de materiales/telas según la categoría (EDICIÓN)."""
+        if self.edit_category == Category.ROPA.value:
+            return MATERIALES_ROPA
+        if self.edit_category == Category.CALZADO.value:
+            return MATERIALES_CALZADO
+        if self.edit_category == Category.MOCHILAS.value:
+            return MATERIALES_MOCHILAS
+        return LISTA_MATERIALES # Lista general por defecto
             
     attr_tallas_ropa: list[str] = []
     attr_numeros_calzado: list[str] = []
@@ -1610,13 +1631,19 @@ class AppState(reflex_local_auth.LocalAuthState):
     # Ya no permitimos múltiples colores, solo uno a la vez.
     attr_colores: str = "" # Antes era una lista: attr_colores: list[str] = []
     attr_material: str = ""
+    # --- Variables para Material/Tela (Formulario de EDICIÓN) ---
+    edit_attr_material: str = ""
+    edit_search_attr_material: str = ""
     attr_tipo: str = ""
     search_attr_tipo: str = ""
 
     # --- AÑADE ESTE NUEVO SETTER ---
     def set_attr_colores(self, value: str): self.attr_colores = value
     def set_attr_talla_ropa(self, value: str): self.attr_talla_ropa = value
-    def set_attr_material(self, value: str): self.attr_material = value
+    # --- Setters para Material/Tela ---
+    def set_attr_material(self, value: str):
+        """Actualiza el material seleccionado (CREACIÓN)."""
+        self.attr_material = value
     def set_attr_numero_calzado(self, value: str): self.attr_numero_calzado = value
     def set_attr_tipo(self, value: str):
         self.attr_tipo = value
@@ -2409,6 +2436,7 @@ class AppState(reflex_local_auth.LocalAuthState):
                 profit=profit_float,
                 price_includes_iva=self.price_includes_iva,
                 category=category,
+                attr_material=self.attr_material, # Guardar material
                 variants=all_variants_for_db,
                 publish_active=True,
                 publish_date=datetime.now(timezone.utc),
@@ -2535,7 +2563,18 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     def set_search_attr_color(self, query: str): self.search_attr_color = query
     def set_search_attr_talla_ropa(self, query: str): self.search_attr_talla_ropa = query
-    def set_search_attr_material(self, query: str): self.search_attr_material = query
+    def set_search_attr_material(self, query: str):
+        """Actualiza la búsqueda de material (CREACIÓN)."""
+        self.search_attr_material = query
+    
+    def set_edit_attr_material(self, value: str):
+        """Actualiza el material seleccionado (EDICIÓN)."""
+        self.edit_attr_material = value
+
+    def set_edit_search_attr_material(self, query: str):
+        """Actualiza la búsqueda de material (EDICIÓN)."""
+        self.edit_search_attr_material = query
+
     def set_search_attr_numero_calzado(self, query: str): self.search_attr_numero_calzado = query
     def set_search_attr_tipo(self, query: str):
         self.search_attr_tipo = query
@@ -2551,13 +2590,33 @@ class AppState(reflex_local_auth.LocalAuthState):
         return [o for o in LISTA_TALLAS_ROPA if self.search_attr_talla_ropa.lower() in o.lower()]
 
     @rx.var
+    def edit_available_materials(self) -> list[str]:
+        """Devuelve la lista de materiales/telas según la categoría (EDICIÓN)."""
+        if self.edit_category == Category.ROPA.value:
+            return MATERIALES_ROPA
+        if self.edit_category == Category.CALZADO.value:
+            return MATERIALES_CALZADO
+        if self.edit_category == Category.MOCHILAS.value:
+            return MATERIALES_MOCHILAS
+        return LISTA_MATERIALES # Lista general por defecto
+    
+    @rx.var
     def filtered_attr_materiales(self) -> list[str]:
+        """Filtra los materiales/telas disponibles para el selector (CREACIÓN)."""
+        options = self.available_materials
         if not self.search_attr_material.strip():
-            return self.available_materials
-        return [
-            o for o in self.available_materials 
-            if self.search_attr_material.lower() in o.lower()
-        ]
+            return options
+        query = self.search_attr_material.lower()
+        return [o for o in options if query in o.lower()]
+    
+    @rx.var
+    def edit_filtered_attr_materiales(self) -> list[str]:
+        """Filtra los materiales/telas disponibles para el selector (EDICIÓN)."""
+        options = self.edit_available_materials
+        if not self.edit_search_attr_material.strip():
+            return options
+        query = self.edit_search_attr_material.lower()
+        return [o for o in options if query in o.lower()]
 
     @rx.var
     def filtered_attr_numeros_calzado(self) -> list[str]:
@@ -3859,6 +3918,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_price_str = str(db_post.price or 0.0)
             self.edit_profit_str = str(db_post.profit or "")
             self.edit_category = db_post.category
+            self.edit_attr_material = db_post.attr_material or "" # Cargar material
             self.edit_shipping_cost_str = str(db_post.shipping_cost or "")
             self.edit_is_moda_completa = db_post.is_moda_completa_eligible
             self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold or "200000")
@@ -3866,6 +3926,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_shipping_combination_limit_str = str(db_post.shipping_combination_limit or "3")
             self.edit_is_imported = db_post.is_imported
             self.edit_price_includes_iva = db_post.price_includes_iva
+            self.is_editing_post = True
 
             # Reconstruir la estructura de grupos y variantes
             groups_map = defaultdict(lambda: {"variants": []})
@@ -3965,86 +4026,6 @@ class AppState(reflex_local_auth.LocalAuthState):
         if group_index in self.edit_generated_variants_map and 0 <= item_index < len(self.edit_generated_variants_map[group_index]):
             current_stock = self.edit_generated_variants_map[group_index][item_index].stock
             self.edit_generated_variants_map[group_index][item_index].stock = max(0, current_stock - 1)
-
-    # --- FUNCIÓN CLAVE: Cargar datos en el formulario de edición ---
-    @rx.event
-    def start_editing_post(self, post_id: int):
-        """
-        [NUEVA VERSIÓN] Carga todos los datos de un producto en el estado del
-        formulario de edición, reconstruyendo la estructura de grupos.
-        """
-        owner_id = self.context_user_id or (self.authenticated_user_info.id if self.authenticated_user_info else None)
-        if not owner_id:
-            return rx.toast.error("No se pudo verificar la identidad del usuario.")
-
-        with rx.session() as session:
-            db_post = session.get(BlogPostModel, post_id)
-            if not db_post or db_post.userinfo_id != owner_id:
-                return rx.toast.error("No tienes permiso para editar esta publicación.")
-
-            # Limpiar estado anterior
-            self.edit_uploaded_images.clear()
-            self.edit_image_selection_for_grouping.clear()
-            self.edit_variant_groups.clear()
-            self.edit_generated_variants_map.clear()
-            self.edit_selected_group_index = -1
-            self.edit_temp_color = ""
-            self.edit_temp_talla = ""
-            self.edit_attr_tallas_ropa.clear()
-
-
-            # Cargar datos básicos
-            self.post_to_edit_id = db_post.id
-            self.edit_post_title = db_post.title
-            self.edit_post_content = db_post.content
-            self.edit_price_str = str(db_post.price or 0.0)
-            self.edit_profit_str = str(db_post.profit if db_post.profit is not None else "")
-            self.edit_category = db_post.category
-            self.edit_shipping_cost_str = str(db_post.shipping_cost if db_post.shipping_cost is not None else "")
-            self.edit_is_moda_completa = db_post.is_moda_completa_eligible
-            self.edit_free_shipping_threshold_str = str(db_post.free_shipping_threshold if db_post.free_shipping_threshold is not None else "200000")
-            self.edit_combines_shipping = db_post.combines_shipping
-            self.edit_shipping_combination_limit_str = str(db_post.shipping_combination_limit if db_post.shipping_combination_limit is not None else "3")
-            self.edit_is_imported = db_post.is_imported
-            self.edit_price_includes_iva = db_post.price_includes_iva
-
-            # Reconstruir la estructura de grupos y variantes
-            groups_map = defaultdict(lambda: {"variants": []})
-            for variant_db in (db_post.variants or []):
-                urls_tuple = tuple(sorted(variant_db.get("image_urls", [])))
-                groups_map[urls_tuple]["variants"].append(variant_db)
-
-            temp_variant_groups = []
-            temp_generated_variants = {}
-            for group_index, (urls_tuple, group_data) in enumerate(groups_map.items()):
-                group_dto = VariantGroupDTO(image_urls=list(urls_tuple), attributes={})
-                generated_variants_list = []
-                
-                tallas_en_grupo = set()
-                for variant_db in group_data["variants"]:
-                    attrs = variant_db.get("attributes", {})
-                    variant_form_data = VariantFormData(attributes=attrs, stock=variant_db.get("stock", 0))
-                    if 'variant_uuid' in variant_db: # Preservar UUID existente
-                        variant_form_data.variant_uuid = variant_db['variant_uuid']
-                    generated_variants_list.append(variant_form_data)
-                    
-                    if "Color" in attrs: group_dto.attributes["Color"] = attrs["Color"]
-                    if "Talla" in attrs: tallas_en_grupo.add(attrs["Talla"])
-                
-                if tallas_en_grupo: group_dto.attributes["Talla"] = sorted(list(tallas_en_grupo))
-
-                temp_variant_groups.append(group_dto)
-                temp_generated_variants[group_index] = sorted(generated_variants_list, key=lambda v: v.attributes.get("Talla", ""))
-
-            self.edit_variant_groups = temp_variant_groups
-            self.edit_generated_variants_map = temp_generated_variants
-
-            # Cargar estilos
-            self._load_card_styles_from_db(db_post)
-            self._load_image_styles_from_db(db_post)
-            
-            self.is_editing_post = True
-            self._update_edit_preview_image() # Asegurar que la imagen de previsualización se cargue
 
     # --- ✨ INICIO: NUEVAS VARIABLES COMPUTADAS PARA PREVISUALIZACIÓN DE EDICIÓN ✨ ---
 
@@ -4187,6 +4168,7 @@ class AppState(reflex_local_auth.LocalAuthState):
             post_to_update.price = price
             post_to_update.profit = profit
             post_to_update.category = self.edit_category
+            post_to_update.attr_material = self.edit_attr_material # Actualizar material
             post_to_update.price_includes_iva = self.edit_price_includes_iva
             post_to_update.is_imported = self.edit_is_imported
             post_to_update.shipping_cost = shipping_cost # <-- Se guarda el costo de envío
@@ -4257,7 +4239,13 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.edit_post_content = content
         
     def set_edit_category(self, cat: str): 
-        self.edit_category = cat
+        self.edit_category = value
+        # self.edit_attr_tipo = "" # Reinicia tipo (si tienes esta variable)
+        self.edit_attr_material = "" # Reinicia material
+        # Reinicia también las listas de atributos de variantes de edición
+        self.edit_variant_groups = []
+        self.edit_generated_variants_map = {}
+        self.edit_selected_group_index = -1
     def set_edit_shipping_cost_str(self, cost: str): 
         self.edit_shipping_cost_str = cost
     def set_edit_is_moda_completa(self, val: bool): 
@@ -5228,7 +5216,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         relacionados con los grupos de variantes para evitar errores.
         """
         self.category = value
-
+        self.attr_tipo = "" # Reinicia tipo
+        self.attr_material = "" # Reinicia material
         # --- ✨ INICIO DE LA CORRECCIÓN: Limpia las variables del nuevo sistema ✨ ---
         self.variant_groups = []
         self.generated_variants_map = {}
@@ -5806,6 +5795,8 @@ class AppState(reflex_local_auth.LocalAuthState):
         self.price_str = ""
         self.profit_str = ""
         self.category = ""
+        self.attr_material = ""
+        self.search_attr_material = ""
         self.uploaded_images = []
         self.image_selection_for_grouping = set()
         self.variant_groups = []
