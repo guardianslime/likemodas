@@ -3682,26 +3682,38 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def set_profit_str(self, new_profit: str):
         """
-        [VALIDACIÓN CRUZADA] Actualiza la ganancia, impidiendo
-        que el valor supere el precio en cualquier momento.
+        [VALIDACIÓN ESTRICTA] Actualiza la ganancia, impidiendo que supere
+        el precio o tenga más dígitos que el precio.
         """
+        # 1. Permite borrar el campo
         if new_profit == "":
             self.profit_str = ""
             return
+
+        # 2. Obtener el precio actual (como string)
+        current_price_str = self.price_str if self.price_str else ""
+
+        # --- VALIDACIÓN 1: Límite de Dígitos ---
+        # Solo permite escribir si el precio tiene dígitos y la nueva ganancia no los excede
+        if current_price_str and len(new_profit) > len(current_price_str):
+            # Si intenta escribir más dígitos, simplemente no actualiza el estado.
+            # El input volverá al valor anterior (self.profit_str)
+            return # Detiene la ejecución aquí
+
+        # 3. Validar que sea un número y compararlo con el precio
         try:
             profit_float = float(new_profit)
+            price_float = float(current_price_str) if current_price_str else 0.0
         except (ValueError, TypeError):
-            return # Ignora la entrada inválida
-        
-        try:
-            price_float = float(self.price_str) if self.price_str else 0.0
-        except (ValueError, TypeError):
-            price_float = 0.0 
+            # Si escribe algo inválido (ej. '-'), no actualiza el estado.
+            return # Detiene la ejecución aquí
 
+        # --- VALIDACIÓN 2: Límite de Valor ---
         if profit_float > price_float:
-            # Si la ganancia es mayor, forzarla a ser igual al precio
-            self.profit_str = self.price_str
+            # Si el valor es mayor, fuerza la ganancia a ser igual al precio
+            self.profit_str = current_price_str
         else:
+            # Si ambas validaciones pasan, actualiza el estado
             self.profit_str = new_profit
 
     # --- PARA EL FORMULARIO DE EDITAR ---
@@ -3731,22 +3743,28 @@ class AppState(reflex_local_auth.LocalAuthState):
     @rx.event
     def set_edit_profit_str(self, new_profit: str):
         """
-        [VALIDACIÓN CRUZADA] Actualiza la ganancia de EDICIÓN, impidiendo
-        que el valor supere el precio.
+        [VALIDACIÓN ESTRICTA] Actualiza la ganancia de EDICIÓN, impidiendo que supere
+        el precio o tenga más dígitos que el precio.
         """
         if new_profit == "":
             self.edit_profit_str = ""
             return
+
+        current_price_str = self.edit_price_str if self.edit_price_str else ""
+
+        # --- VALIDACIÓN 1: Límite de Dígitos ---
+        if current_price_str and len(new_profit) > len(current_price_str):
+            return 
+
         try:
             profit_float = float(new_profit)
+            price_float = float(current_price_str) if current_price_str else 0.0
         except (ValueError, TypeError):
-            return # Ignora la entrada inválida
-        try:
-            price_float = float(self.edit_price_str) if self.edit_price_str else 0.0
-        except (ValueError, TypeError):
-            price_float = 0.0
+            return 
+
+        # --- VALIDACIÓN 2: Límite de Valor ---
         if profit_float > price_float:
-            self.edit_profit_str = self.edit_price_str
+            self.edit_profit_str = current_price_str
         else:
             self.edit_profit_str = new_profit
 

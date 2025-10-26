@@ -212,59 +212,26 @@ def blog_post_add_form() -> rx.Component:
                 rx.vstack(rx.text("Categoría"), rx.select(AppState.categories, value=AppState.category, on_change=AppState.set_category, name="category", required=True), align_items="stretch"),
                 rx.grid(
                     # --- Campo de Precio ---
-                    # --- Campo de Precio (Corregido) ---
                 rx.vstack(rx.text("Precio (COP)"), rx.input(
                     name="price", 
                     value=AppState.price_str, 
-                    # Script simple: Solo permite números
-                    on_change=lambda val: rx.call_script(
-                        f"'{val}'.replace(/[^0-9]/g, '')", # Elimina no-números
-                        callback=AppState.set_price_str # Envía el número limpio al backend
-                    ),
-                    type="text", # Necesario para que el script funcione bien
-                    input_mode="numeric", # Teclado numérico en móvil
-                    pattern="[0-9]*", # Ayuda a la validación del navegador
+                    on_change=AppState.set_price_str,
+                    type="number",            # <--- VUELVE A SER NUMBER
+                    # input_mode="numeric",   # Ya no es necesario
+                    # pattern="[0-9]*",     # Ya no es necesario
                     required=True, 
                     placeholder="Ej: 55000"
                 )),
-                # --- Campo de Ganancia (Corregido) ---
+                # --- Campo de Ganancia ---
                 rx.vstack(rx.text("Ganancia (COP)"), rx.input(
                     name="profit", 
                     value=AppState.profit_str, 
-                    # --- ✨ SCRIPT CORREGIDO Y DEFINITIVO ✨ ---
-                    on_change=lambda val: rx.call_script(
-                        # Usamos una IIFE (Immediately Invoked Function Expression) para evitar el "Illegal return"
-                        f"""
-                        (() => {{ 
-                            let value = '{val}';
-                            const priceStr = '{AppState.price_str}'; // Lee el precio ACTUAL del estado
-
-                            // 1. Limpia: solo números
-                            const numericValue = value.replace(/[^0-9]/g, '');
-                            if (numericValue === '') {{ return ''; }} // Permite borrar
-
-                            // 2. Compara con el precio (solo si hay precio)
-                            let finalValueStr = numericValue; // Por defecto, es el número limpio
-                            if (priceStr) {{
-                                const priceFloat = parseFloat(priceStr);
-                                const profitFloat = parseFloat(numericValue);
-                                if (!isNaN(priceFloat) && !isNaN(profitFloat) && profitFloat > priceFloat) {{
-                                    finalValueStr = priceStr; // Corrige si la ganancia es mayor
-                                }}
-                            }}
-                            
-                            // 3. Devuelve el valor limpio Y corregido
-                            return finalValueStr; 
-                        }})()
-                        """,
-                        callback=AppState.set_profit_str # El backend recibe el valor ya validado
-                    ),
-                    # --- ✨ FIN DEL SCRIPT ✨ ---
-                    type="text", # Necesario para el script
-                    input_mode="numeric", 
-                    pattern="[0-9]*",
+                    on_change=AppState.set_profit_str,
+                    type="number",            # <--- VUELVE A SER NUMBER
+                    # input_mode="numeric",   # Ya no es necesario
+                    # pattern="[0-9]*",     # Ya no es necesario
                     placeholder="Ej: 15000"
-                    # No necesitamos max_length, el script es más inteligente
+                    # max_length=... # Elimina esta línea, no funciona con type="number"
                 )),
                     columns="2", spacing="4"
                 ),
