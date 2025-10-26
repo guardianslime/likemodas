@@ -4232,40 +4232,44 @@ class AppState(reflex_local_auth.LocalAuthState):
             self.edit_attr_numeros_calzado = all_numeros
             self.edit_attr_tamanos_mochila = all_tamanos
     
-    # --- Setters para los campos del formulario de edición ---
-    def set_edit_post_title(self, title: str): 
-        self.edit_post_title = title
-    def set_edit_post_content(self, content: str): 
-        self.edit_post_content = content
-        
-    def set_edit_category(self, cat: str): 
-        self.edit_category = value
+    # --- Setters para el formulario de EDICIÓN (con parámetro renombrado) ---
+    def set_edit_post_title(self, new_value: str):
+        self.edit_post_title = new_value
+    def set_edit_post_content(self, new_value: str):
+        self.edit_post_content = new_value
+    def set_edit_category(self, new_value: str): # <--- Ejemplo corregido
+        self.edit_category = new_value
         # self.edit_attr_tipo = "" # Reinicia tipo (si tienes esta variable)
         self.edit_attr_material = "" # Reinicia material
         # Reinicia también las listas de atributos de variantes de edición
         self.edit_variant_groups = []
         self.edit_generated_variants_map = {}
         self.edit_selected_group_index = -1
-    def set_edit_shipping_cost_str(self, cost: str): 
-        self.edit_shipping_cost_str = cost
-    def set_edit_is_moda_completa(self, val: bool): 
-        self.edit_is_moda_completa = val
-    def set_edit_free_shipping_threshold_str(self, val: str): 
-        self.edit_free_shipping_threshold_str = val
-    def set_edit_combines_shipping(self, val: bool): 
-        self.edit_combines_shipping = val
-    def set_edit_shipping_combination_limit_str(self, val: str): 
-        self.edit_shipping_combination_limit_str = val
-    def set_edit_is_imported(self, val: bool): 
-        self.edit_is_imported = val
-    def set_edit_price_includes_iva(self, val: bool): 
-        self.edit_price_includes_iva = val
-    def set_edit_temp_color(self, color: str): 
-        self.edit_temp_color = color
-    def set_edit_temp_talla(self, talla: str): 
-        self.edit_temp_talla = talla
-    def set_edit_temp_numero(self, val: str): self.edit_temp_numero = val
-    def set_edit_temp_tamano(self, val: str): self.edit_temp_tamano = val
+        # ... (limpia otras variables relacionadas con variantes de edición)
+
+    def set_edit_shipping_cost_str(self, new_value: str):
+        self.edit_shipping_cost_str = new_value
+    def set_edit_is_moda_completa(self, new_value: bool):
+        self.edit_is_moda_completa = new_value
+    def set_edit_free_shipping_threshold_str(self, new_value: str):
+        self.edit_free_shipping_threshold_str = new_value
+    def set_edit_combines_shipping(self, new_value: bool):
+        self.edit_combines_shipping = new_value
+    def set_edit_shipping_combination_limit_str(self, new_value: str):
+        self.edit_shipping_combination_limit_str = new_value
+    def set_edit_is_imported(self, new_value: bool):
+        self.edit_is_imported = new_value
+    def set_edit_price_includes_iva(self, new_value: bool):
+        self.edit_price_includes_iva = new_value
+    def set_edit_temp_color(self, new_value: str):
+        self.edit_temp_color = new_value
+    def set_edit_temp_talla(self, new_value: str):
+        self.edit_temp_talla = new_value
+    def set_edit_temp_numero(self, new_value: str):
+         self.edit_temp_numero = new_value
+    def set_edit_temp_tamano(self, new_value: str):
+         self.edit_temp_tamano = new_value
+
 
     # Lógica para añadir/quitar atributos en el formulario de EDICIÓN
     @rx.event
@@ -5217,8 +5221,11 @@ class AppState(reflex_local_auth.LocalAuthState):
 
     @rx.var
     def categories(self) -> list[str]: return [c.value for c in Category]
-    def set_title(self, value: str): self.title = value
-    def set_content(self, value: str): self.content = value
+    # --- Setters para el formulario de CREACIÓN (también puedes renombrar aquí) ---
+    def set_title(self, new_value: str):
+        self.title = new_value
+    def set_content(self, new_value: str):
+        self.content = new_value
     def set_price_from_input(self, value: str):
         """Actualiza el precio y valida que la ganancia no sea mayor."""
         self.price = value
