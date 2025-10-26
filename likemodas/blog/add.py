@@ -307,8 +307,10 @@ def blog_post_add_form() -> rx.Component:
 
             spacing="5", width="100%", max_width="960px",
         ),
-        on_submit=AppState.submit_and_publish_manual, # O submit_and_publish
-        reset_on_submit=False,
+        # ASIGNAMOS EL on_submit AL rx.form
+        on_submit=AppState.submit_and_publish_manual,
+        reset_on_submit=False, # reset_on_submit también va en rx.form
+        width="100%" # El form puede ocupar todo el ancho
     )
 
 # --- Componente para la previsualización de la tarjeta ---
