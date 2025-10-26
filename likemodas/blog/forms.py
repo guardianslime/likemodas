@@ -45,19 +45,20 @@ def blog_post_add_form() -> rx.Component:
             rx.text("2. Selecciona imágenes para crear un grupo de color:"),
             rx.flex(
                  rx.foreach(
-                    AppState.uploaded_images,
+                    AppState.edit_uploaded_images,
                     lambda img_name: rx.box(
-                        rx.image(src=rx.get_upload_url(img_name), width="60px", height="60px", object_fit="cover", border_radius="md"),
+                        rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
-                            AppState.image_selection_for_grouping.contains(img_name),
+                            # img_name in AppState.edit_image_selection_for_grouping, # <--- LÍNEA ANTERIOR (INCORRECTA)
+                            AppState.edit_image_selection_for_grouping.contains(img_name), # <--- CORRECCIÓN: Volver a usar .contains()
                             rx.box(rx.icon("check", color="white", size=18), bg="rgba(90, 40, 180, 0.7)", position="absolute", inset="0", border_radius="md", display="flex", align_items="center", justify_content="center")
                         ),
                         rx.icon("x", on_click=AppState.remove_uploaded_image(img_name), style={"position": "absolute", "top": "-5px", "right": "-5px", "background": "var(--red-9)", "color": "white", "border_radius": "50%", "padding": "1px", "cursor": "pointer", "width": "16px", "height": "16px"}),
-                        position="relative",
-                        border="2px solid",
-                        border_color=rx.cond(AppState.image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"),
+                        position="relative", border="2px solid",
+                        # border_color=rx.cond(img_name in AppState.edit_image_selection_for_grouping, "var(--violet-9)", "transparent"), # <--- LÍNEA ANTERIOR (INCORRECTA)
+                        border_color=rx.cond(AppState.edit_image_selection_for_grouping.contains(img_name), "var(--violet-9)", "transparent"), # <--- CORRECCIÓN: Volver a usar .contains()
                         border_radius="lg", cursor="pointer",
-                        on_click=AppState.toggle_image_selection_for_grouping(img_name),
+                        on_click=lambda: AppState.toggle_edit_image_selection_for_grouping(img_name),
                     )
                 ),
                  wrap="wrap", spacing="2", padding_top="0.25em",

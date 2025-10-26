@@ -95,7 +95,8 @@ def blog_post_add_form() -> rx.Component:
                     lambda img_name: rx.box(
                         rx.image(src=rx.get_upload_url(img_name), width="80px", height="80px", object_fit="cover", border_radius="md"),
                         rx.cond(
-                            AppState.image_selection_for_grouping.contains(img_name),
+                            # img_name in AppState.image_selection_for_grouping, # <--- LÍNEA ANTERIOR (INCORRECTA)
+                            AppState.image_selection_for_grouping.contains(img_name), # <--- CORRECCIÓN: Volver a usar .contains()
                             rx.box(
                                 rx.text(AppState.selection_order_map[img_name], color="white", weight="bold", font_size="1.5em"),
                                 bg="rgba(90, 40, 180, 0.75)", position="absolute", inset="0", border_radius="md",
