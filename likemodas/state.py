@@ -3692,21 +3692,20 @@ class AppState(reflex_local_auth.LocalAuthState):
             price_float = float(self.price_str) if self.price_str else 0.0
             profit_float = float(self.profit_str) if self.profit_str else 0.0
 
-            # Asegura que el valor sea numérico positivo
             if profit_float < 0:
                 self.profit_str = "0"
                 profit_float = 0.0
-                yield rx.toast.warn("La ganancia no puede ser negativa.", duration=2000)
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                yield rx.toast.warning("La ganancia no puede ser negativa.", duration=2000)
 
-            # Corrige si la ganancia es mayor que el precio
             if price_float > 0 and profit_float > price_float:
                 self.profit_str = self.price_str
-                yield rx.toast.warn("La ganancia no puede ser mayor que el precio. Se ha ajustado.", duration=3000)
-            elif self.profit_str: # Reformatea a número limpio si es válido
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                yield rx.toast.warning("La ganancia no puede ser mayor que el precio. Se ha ajustado.", duration=3000)
+            elif self.profit_str:
                  self.profit_str = str(int(profit_float))
 
         except (ValueError, TypeError):
-            # Si se dejó texto inválido, limpia el campo
             self.profit_str = ""
 
     @rx.event
@@ -3716,26 +3715,23 @@ class AppState(reflex_local_auth.LocalAuthState):
             price_float = float(self.price_str) if self.price_str else 0.0
             profit_float = float(self.profit_str) if self.profit_str else 0.0
 
-            # Asegura precio positivo
             if price_float < 0:
                 self.price_str = "0"
                 price_float = 0.0
-                yield rx.toast.warn("El precio no puede ser negativo.", duration=2000)
-            elif self.price_str: # Reformatea a número limpio
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                yield rx.toast.warning("El precio no puede ser negativo.", duration=2000)
+            elif self.price_str:
                  self.price_str = str(int(price_float))
 
-
-            # Re-valida la ganancia con el nuevo precio
             if profit_float > price_float:
-                self.profit_str = self.price_str # Ajusta la ganancia si es necesario
-                yield rx.toast.warn("La ganancia se ajustó al nuevo precio.", duration=3000)
+                self.profit_str = self.price_str
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                yield rx.toast.warning("La ganancia se ajustó al nuevo precio.", duration=3000)
 
         except (ValueError, TypeError):
-            # Limpia ambos si el precio es inválido
             self.price_str = ""
             self.profit_str = ""
 
-    # Para el formulario de EDITAR
     @rx.event
     def validate_profit_on_blur_edit(self):
         """Valida la ganancia (Editar) cuando el usuario sale del campo."""
@@ -3746,12 +3742,14 @@ class AppState(reflex_local_auth.LocalAuthState):
             if profit_float < 0:
                 self.edit_profit_str = "0"
                 profit_float = 0.0
-                yield rx.toast.warn("La ganancia no puede ser negativa.", duration=2000)
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                yield rx.toast.warning("La ganancia no puede ser negativa.", duration=2000)
 
             if price_float > 0 and profit_float > price_float:
                 self.edit_profit_str = self.edit_price_str
-                yield rx.toast.warn("La ganancia no puede ser mayor que el precio. Se ha ajustado.", duration=3000)
-            elif self.edit_profit_str: # Reformatea
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                yield rx.toast.warning("La ganancia no puede ser mayor que el precio. Se ha ajustado.", duration=3000)
+            elif self.edit_profit_str:
                  self.edit_profit_str = str(int(profit_float))
 
         except (ValueError, TypeError):
@@ -3767,13 +3765,15 @@ class AppState(reflex_local_auth.LocalAuthState):
             if price_float < 0:
                 self.edit_price_str = "0"
                 price_float = 0.0
-                yield rx.toast.warn("El precio no puede ser negativo.", duration=2000)
-            elif self.edit_price_str: # Reformatea
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                yield rx.toast.warning("El precio no puede ser negativo.", duration=2000)
+            elif self.edit_price_str:
                  self.edit_price_str = str(int(price_float))
 
             if profit_float > price_float:
                 self.edit_profit_str = self.edit_price_str
-                yield rx.toast.warn("La ganancia se ajustó al nuevo precio.", duration=3000)
+                # --- ✨ CORRECCIÓN AQUÍ ✨ ---
+                yield rx.toast.warning("La ganancia se ajustó al nuevo precio.", duration=3000)
 
         except (ValueError, TypeError):
             self.edit_price_str = ""
