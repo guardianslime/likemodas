@@ -421,6 +421,32 @@ def blog_post_edit_form() -> rx.Component:
                     ),
                     columns="2", spacing="4", width="100%",
                 ),
+                # --- ✨ INICIO: AÑADIR SELECTOR DE MATERIAL/TELA AQUÍ ✨ ---
+                rx.grid(
+                    # Selector de Categoría (ya existente)
+                    rx.vstack(rx.text("Categoría"), rx.select(
+                        AppState.categories, name="category", required=True, 
+                        value=AppState.edit_category, on_change=AppState.set_edit_category
+                    )),
+                    # (Asumo que ya tienes un selector de Tipo para editar, si no, añádelo aquí)
+
+                    # Selector de Material/Tela (NUEVO para Edición)
+                    rx.vstack(
+                        rx.text(AppState.edit_material_label), # <-- Label dinámico
+                        searchable_select(
+                            label=rx.cond(AppState.edit_category, f"Selecciona {AppState.edit_material_label}", "Elige categoría"),
+                            options=AppState.edit_filtered_attr_materiales, # <-- Opciones de edición
+                            value=AppState.edit_attr_material, # <-- Valor de edición
+                            on_change=AppState.set_edit_attr_material, # <-- Setter de edición
+                            search_value=AppState.edit_search_attr_material, # <-- Búsqueda de edición
+                            on_search_change=AppState.set_edit_search_attr_material, # <-- Setter búsqueda de edición
+                            is_disabled=~AppState.edit_category
+                        )
+                    ),
+                    columns="2", # O "3" si tienes el selector de Tipo también
+                    spacing="4", 
+                    width="100%"
+                ),
                 rx.vstack(
                     rx.text("Descripción"),
                     rx.text_area(name="content", value=AppState.edit_post_content, on_change=AppState.set_edit_post_content, style={"height": "120px"}),

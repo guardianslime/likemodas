@@ -249,6 +249,40 @@ def blog_post_add_form() -> rx.Component:
                     rx.vstack(rx.text("Límite de Productos"), rx.input(value=AppState.shipping_combination_limit_str, on_change=AppState.set_shipping_combination_limit_str, is_disabled=~AppState.combines_shipping), rx.text("Máx. de items por envío.", size="1", color_scheme="gray"), align_items="stretch"),
                     columns="2", spacing="4"
                 ),
+                # --- ✨ INICIO: AÑADIR SELECTOR DE MATERIAL/TELA AQUÍ ✨ ---
+                rx.grid(
+                    # Selector de Categoría (ya existente)
+                    rx.vstack(rx.text("Categoría"), rx.select(
+                        AppState.categories, name="category", required=True, 
+                        value=AppState.category, on_change=AppState.set_category
+                    )),
+                    # Selector de Tipo (ya existente)
+                    rx.vstack(rx.text("Tipo"), searchable_select(
+                        label="Selecciona un Tipo",
+                        options=AppState.filtered_attr_tipos,
+                        value=AppState.attr_tipo,
+                        on_change=AppState.set_attr_tipo,
+                        search_value=AppState.search_attr_tipo,
+                        on_search_change=AppState.set_search_attr_tipo,
+                        is_disabled=~AppState.category # Deshabilitado si no hay categoría
+                    )),
+                    # Selector de Material/Tela (NUEVO)
+                    rx.vstack(
+                        rx.text(AppState.material_label), # <-- Label dinámico (Tela o Material)
+                        searchable_select(
+                            label=rx.cond(AppState.category, f"Selecciona {AppState.material_label}", "Elige categoría primero"),
+                            options=AppState.filtered_attr_materiales, # <-- Opciones filtradas
+                            value=AppState.attr_material, # <-- Valor del estado
+                            on_change=AppState.set_attr_material, # <-- Setter del estado
+                            search_value=AppState.search_attr_material, # <-- Búsqueda
+                            on_search_change=AppState.set_search_attr_material, # <-- Setter búsqueda
+                            is_disabled=~AppState.category # Deshabilitado si no hay categoría
+                        )
+                    ),
+                    columns="3", # Ajusta a 3 columnas para que quepa bien
+                    spacing="4", 
+                    width="100%"
+                ),
                 rx.vstack(
                     rx.text("Descripción", as_="div", size="3", weight="bold"),
                     rx.text_area(name="content", value=AppState.content, on_change=AppState.set_content, style={"height": "120px"}),
@@ -263,19 +297,12 @@ def blog_post_add_form() -> rx.Component:
         ),
         rx.hstack(
             rx.spacer(),
-            rx.button(
-                "Publicar Producto", 
-                on_click=AppState.submit_and_publish_manual,
-                color_scheme="violet", 
-                size="3"
-            ),
-            width="100%", 
-            margin_top="1em"
+            rx.button("Publicar Producto", type="submit", size="3", margin_top="2em"),
+
+            spacing="5", width="100%", max_width="960px",
         ),
-        spacing="5", 
-        width="100%",
-        max_width="1200px",
-        # --- ✨ LÍNEA DUPLICADA ELIMINADA AQUÍ ✨ ---
+        on_submit=AppState.submit_and_publish_manual, # O submit_and_publish
+        reset_on_submit=False,
     )
 
 # --- Componente para la previsualización de la tarjeta ---
